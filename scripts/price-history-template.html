@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* ── Reset ─────────────────────────────────────────────────────────────── */
+    .ph-root, .ph-root * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Page ──────────────────────────────────────────────────────────────── */
+    .ph-root {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12px;
+      color: #2d2d2d;
+      background: #ffffff;
+      padding: 36px 44px;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────────────── */
+    .doc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 18px;
+      border-bottom: 3px solid #e8645a;
+      margin-bottom: 28px;
+    }
+    .doc-logo {
+      font-size: 26px;
+      font-weight: 900;
+      color: #e8645a;
+      letter-spacing: -0.5px;
+    }
+    .doc-meta {
+      text-align: right;
+      font-size: 11px;
+      color: #888;
+      line-height: 1.6;
+    }
+    .doc-meta strong {
+      color: #444;
+    }
+
+    /* ── Page title ────────────────────────────────────────────────────────── */
+    .doc-title {
+      text-align: center;
+      font-size: 14px;
+      font-weight: bold;
+      color: #2d2d2d;
+      margin-bottom: 6px;
+    }
+    .doc-subtitle {
+      text-align: center;
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 32px;
+    }
+
+    /* ── Client strip ──────────────────────────────────────────────────────── */
+    .client-strip {
+      display: flex;
+      gap: 0;
+      margin-bottom: 28px;
+      border: 1px solid #e8e8e8;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .client-field {
+      flex: 1;
+      padding: 10px 14px;
+      border-right: 1px solid #e8e8e8;
+    }
+    .client-field:last-child { border-right: none; }
+    .client-field-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #aaa;
+      margin-bottom: 3px;
+    }
+    .client-field-value {
+      font-size: 12px;
+      font-weight: 600;
+      color: #2d2d2d;
+    }
+
+    /* ── Tables injected via {{HISTORY_TABLES}} ────────────────────────────── */
+    /* Inner tables are fully inline-styled by the generator; no extra CSS needed. */
+
+    /* ── Footer ────────────────────────────────────────────────────────────── */
+    .doc-footer {
+      margin-top: 36px;
+      padding-top: 14px;
+      border-top: 1px solid #e8e8e8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: #aaa;
+    }
+    .doc-footer-brand {
+      font-weight: 700;
+      color: #e8645a;
+    }
+  </style>
+</head>
+<body>
+<div class="ph-root">
+
+  <!-- ── Document header ────────────────────────────────────────────────── -->
+  <div class="doc-header">
+    <div class="doc-logo">AXPO</div>
+    <div class="doc-meta">
+      <div><strong>Simulación:</strong> {{SIMULATION_ID}}</div>
+      <div><strong>Fecha:</strong> {{CREATED_AT}}</div>
+      <div><strong>Comercial:</strong> {{OWNER_NAME}}</div>
+    </div>
+  </div>
+
+  <!-- ── Page title ─────────────────────────────────────────────────────── -->
+  <div class="doc-title">
+    Histórico indexado últimos 12 meses — {{PRODUCT_LABEL}} — {{PERFIL}}
+  </div>
+  <div class="doc-subtitle">
+    Márgenes €/kWh por período tarifario
+  </div>
+
+  <!-- ── Client info strip ──────────────────────────────────────────────── -->
+  <div class="client-strip">
+    <div class="client-field">
+      <div class="client-field-label">Cliente</div>
+      <div class="client-field-value">{{CLIENT_NAME}}</div>
+    </div>
+    <div class="client-field">
+      <div class="client-field-label">Producto</div>
+      <div class="client-field-value">{{PRODUCT_LABEL}}</div>
+    </div>
+    <div class="client-field">
+      <div class="client-field-label">Tarifa acceso</div>
+      <div class="client-field-value">{{TARIFA}}</div>
+    </div>
+    <div class="client-field">
+      <div class="client-field-label">Perfil de carga</div>
+      <div class="client-field-value">{{PERFIL}}</div>
+    </div>
+  </div>
+
+  <!-- ── History tables (all tariffs) ──────────────────────────────────── -->
+  <div class="history-body">
+    {{HISTORY_TABLES}}
+  </div>
+
+  <!-- ── Footer ─────────────────────────────────────────────────────────── -->
+  <div class="doc-footer">
+    <span><span class="doc-footer-brand">AXPO</span> — Documento generado automáticamente</span>
+    <span>{{OWNER_NAME}} · {{OWNER_EMAIL}}</span>
+  </div>
+  </div><!-- /.ph-root -->
+</body>
+</html>

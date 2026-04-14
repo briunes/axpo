@@ -1,0 +1,39 @@
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Inter, sans-serif;
+}
+
+.environment-indicator {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid transparent;
+}
+
+.env-preview {
+  background: #fff7e6;
+  color: #8a4b08;
+  border-bottom-color: #f4c98f;
+}
+
+.env-production {
+  background: #FFF0F3;
+  color: #C82648;
+  border-bottom-color: #FFCAD5;
+}
+
+.environment-content {
+  padding: 1rem;
+}

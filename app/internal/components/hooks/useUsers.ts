@@ -1,0 +1,481 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import {
+  createUser,
+  listUsers,
+  rotateUserPin,
+  updateUser,
+  updateUserStatus,
+  type CreateUserResult,
+  type ListUsersParams,
+  type RotatePinResult,
+  type UserItem,
+  type UserRole,
+} from "../../lib/internalApi";
+import type { SessionState } from "../../lib/authSession";
+
+export interface UsersActions {
+  users: UserItem[];
+  loading: boolean;
+  busyAction: string | null;
+  errorText: string | null;
+  successText: string | null;
+  clearFeedback: () => void;
+  refresh: () => Promise<void>;
+  // pagination
+  page: number;
+  pageSize: number;
+  total: number;
+  setPage: (page: number) => void;
+  setPageSize: (size: number) => void;
+  // sort
+  sortColumn: string;
+  sortDir: "asc" | "desc";
+  setSort: (column: string, dir: "asc" | "desc") => void;
+  // search
+  search: string;
+  setSearch: (v: string) => void;
+  // create form
+  newUserName: string;
+  setNewUserName: (v: string) => void;
+  newUserEmail: string;
+  setNewUserEmail: (v: string) => void;
+  newUserPassword: string;
+  setNewUserPassword: (v: string) => void;
+  newUserRole: UserRole;
+  setNewUserRole: (v: UserRole) => void;
+  newUserAgencyId: string;
+  setNewUserAgencyId: (v: string) => void;
+  handleCreateUser: (
+    e: React.FormEvent,
+    data?: {
+      name: string;
+      email: string;
+      mobilePhone: string;
+      commercialPhone: string;
+      commercialEmail: string;
+      otherDetails?: string;
+      password: string;
+      role: UserRole;
+      agencyId: string;
+    },
+  ) => Promise<CreateUserResult | null>;
+  // edit
+  selectedUserId: string | null;
+  editUserName: string;
+  setEditUserName: (v: string) => void;
+  editUserEmail: string;
+  setEditUserEmail: (v: string) => void;
+  editUserPassword: string;
+  setEditUserPassword: (v: string) => void;
+  editUserCurrentPassword: string;
+  setEditUserCurrentPassword: (v: string) => void;
+  openUserEditor: (user: UserItem) => void;
+  closeUserEditor: () => void;
+  handleUpdateUser: (
+    e: React.FormEvent,
+    data?: {
+      userId: string;
+      name: string;
+      email: string;
+      mobilePhone: string;
+      commercialPhone: string;
+      commercialEmail: string;
+      otherDetails?: string;
+      password: string;
+      currentPassword: string;
+      role?: string;
+      agencyId?: string;
+    },
+  ) => Promise<void>;
+  // self-service profile
+  profileFullName: string;
+  setProfileFullName: (v: string) => void;
+  profileEmail: string;
+  setProfileEmail: (v: string) => void;
+  handleUpdateOwnProfile: (e: React.FormEvent) => Promise<void>;
+  // actions
+  handleToggleUserStatus: (user: UserItem) => Promise<void>;
+  handleRotateUserPin: (user: UserItem) => Promise<RotatePinResult | null>;
+}
+
+export function useUsers(session: SessionState | null): UsersActions {
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [successText, setSuccessText] = useState<string | null>(null);
+
+  // pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
+  // sort
+  const [sortColumn, setSortColumn] = useState("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const setSort = (column: string, dir: "asc" | "desc") => {
+    setSortColumn(column);
+    setSortDir(dir);
+  };
+  // search
+  const [search, setSearch] = useState("");
+
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserMobilePhone, setNewUserMobilePhone] = useState("");
+  const [newUserCommercialPhone, setNewUserCommercialPhone] = useState("");
+  const [newUserCommercialEmail, setNewUserCommercialEmail] = useState("");
+  const [newUserOtherDetails, setNewUserOtherDetails] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState<UserRole>("COMMERCIAL");
+  const [newUserAgencyId, setNewUserAgencyId] = useState("");
+
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [editUserName, setEditUserName] = useState("");
+  const [editUserEmail, setEditUserEmail] = useState("");
+  const [editUserMobilePhone, setEditUserMobilePhone] = useState("");
+  const [editUserCommercialPhone, setEditUserCommercialPhone] = useState("");
+  const [editUserCommercialEmail, setEditUserCommercialEmail] = useState("");
+  const [editUserOtherDetails, setEditUserOtherDetails] = useState("");
+  const [editUserPassword, setEditUserPassword] = useState("");
+  const [editUserCurrentPassword, setEditUserCurrentPassword] = useState("");
+
+  const [profileFullName, setProfileFullName] = useState(
+    session?.user.fullName ?? "",
+  );
+  const [profileEmail, setProfileEmail] = useState(session?.user.email ?? "");
+
+  const clearFeedback = () => {
+    setErrorText(null);
+    setSuccessText(null);
+  };
+
+  const runAction = async (id: string, fn: () => Promise<void>) => {
+    try {
+      setBusyAction(id);
+      clearFeedback();
+      await fn();
+    } catch (error) {
+      setErrorText(error instanceof Error ? error.message : "Action failed.");
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const refresh = useCallback(
+    async (overrides?: ListUsersParams) => {
+      if (!session) return;
+      setLoading(true);
+      try {
+        const params: ListUsersParams = {
+          page,
+          pageSize,
+          search: search || undefined,
+          orderBy: sortColumn,
+          sortDir,
+          ...overrides,
+        };
+        const result = await listUsers(session.token, params);
+        setUsers(result.items);
+        setTotal(result.total);
+        setNewUserAgencyId(
+          (curr) =>
+            curr || session.user.agencyId || result.items[0]?.agencyId || "",
+        );
+      } catch (error) {
+        setErrorText(
+          error instanceof Error ? error.message : "Could not load users.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [session, page, pageSize, search, sortColumn, sortDir],
+  );
+
+  const handleCreateUser = async (
+    e: React.FormEvent,
+    data?: {
+      name: string;
+      email: string;
+      mobilePhone: string;
+      commercialPhone: string;
+      commercialEmail: string;
+      otherDetails?: string;
+      password: string;
+      role: UserRole;
+      agencyId: string;
+    },
+  ): Promise<CreateUserResult | null> => {
+    e.preventDefault();
+    if (!session) return null;
+
+    const name = data?.name ?? newUserName;
+    const email = data?.email ?? newUserEmail;
+    const mobilePhone = data?.mobilePhone ?? newUserMobilePhone;
+    const commercialPhone = data?.commercialPhone ?? newUserCommercialPhone;
+    const commercialEmail = data?.commercialEmail ?? newUserCommercialEmail;
+    const otherDetails = data?.otherDetails ?? newUserOtherDetails;
+    const password = data?.password ?? newUserPassword;
+    const role = data?.role ?? newUserRole;
+    const agencyId = data?.agencyId ?? newUserAgencyId;
+
+    if (
+      !agencyId ||
+      !name.trim() ||
+      !email.trim() ||
+      !mobilePhone.trim() ||
+      !commercialPhone.trim() ||
+      !commercialEmail.trim() ||
+      !password
+    ) {
+      setErrorText(
+        "Name, email, mobile phone, commercial contact, password and agency are required.",
+      );
+      return null;
+    }
+    if (
+      !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,128}$/.test(
+        password,
+      )
+    ) {
+      setErrorText(
+        "Password must be 12–128 chars with uppercase, lowercase, number and special character.",
+      );
+      return null;
+    }
+    if (
+      session.user.role === "AGENT" &&
+      (role !== "COMMERCIAL" || agencyId !== session.user.agencyId)
+    ) {
+      setErrorText(
+        "Agent can only create commercial users in the same agency.",
+      );
+      return null;
+    }
+
+    let result: CreateUserResult | null = null;
+    await runAction("create-user", async () => {
+      result = await createUser(session.token, {
+        agencyId,
+        role,
+        fullName: name.trim(),
+        email: email.trim(),
+        mobilePhone: mobilePhone.trim(),
+        commercialPhone: commercialPhone.trim(),
+        commercialEmail: commercialEmail.trim(),
+        otherDetails: otherDetails.trim() || undefined,
+        password,
+      });
+      setNewUserName("");
+      setNewUserEmail("");
+      setNewUserMobilePhone("");
+      setNewUserCommercialPhone("");
+      setNewUserCommercialEmail("");
+      setNewUserOtherDetails("");
+      setNewUserPassword("");
+      await refresh();
+      setSuccessText(
+        result?.generatedPinMasked
+          ? `User created. Temporary PIN: ${result.generatedPinMasked}`
+          : "User created.",
+      );
+    });
+    return result;
+  };
+
+  const openUserEditor = (user: UserItem) => {
+    setSelectedUserId(user.id);
+    setEditUserName(user.fullName);
+    setEditUserEmail(user.email);
+    setEditUserMobilePhone(user.mobilePhone ?? "");
+    setEditUserCommercialPhone(user.commercialPhone ?? "");
+    setEditUserCommercialEmail(user.commercialEmail ?? "");
+    setEditUserOtherDetails(user.otherDetails ?? "");
+    setEditUserPassword("");
+    setEditUserCurrentPassword("");
+  };
+
+  const closeUserEditor = () => {
+    setSelectedUserId(null);
+    setEditUserPassword("");
+    setEditUserCurrentPassword("");
+  };
+
+  const handleUpdateUser = async (
+    e: React.FormEvent,
+    data?: {
+      userId: string;
+      name: string;
+      email: string;
+      mobilePhone: string;
+      commercialPhone: string;
+      commercialEmail: string;
+      otherDetails?: string;
+      password: string;
+      currentPassword: string;
+      role?: string;
+      agencyId?: string;
+    },
+  ) => {
+    e.preventDefault();
+    if (!session) return;
+
+    const userId = data?.userId ?? selectedUserId;
+    const name = data?.name ?? editUserName;
+    const email = data?.email ?? editUserEmail;
+    const mobilePhone = data?.mobilePhone ?? editUserMobilePhone;
+    const commercialPhone = data?.commercialPhone ?? editUserCommercialPhone;
+    const commercialEmail = data?.commercialEmail ?? editUserCommercialEmail;
+    const otherDetails = data?.otherDetails ?? editUserOtherDetails;
+    const password = data?.password ?? editUserPassword;
+    const currentPassword = data?.currentPassword ?? editUserCurrentPassword;
+    const role = data?.role as UserRole | undefined;
+    const agencyId = data?.agencyId;
+
+    if (!userId) return;
+    if (
+      !name.trim() ||
+      !email.trim() ||
+      !mobilePhone.trim() ||
+      !commercialPhone.trim() ||
+      !commercialEmail.trim()
+    ) {
+      setErrorText(
+        "Full name, email, mobile phone and commercial contacts are required.",
+      );
+      return;
+    }
+    const changingPassword = password.trim().length > 0;
+    if (
+      changingPassword &&
+      !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,128}$/.test(
+        password,
+      )
+    ) {
+      setErrorText(
+        "New password must be 12–128 chars with uppercase, lowercase, number and special character.",
+      );
+      return;
+    }
+    if (changingPassword && userId === session.user.id && !currentPassword) {
+      setErrorText("Current password is required to change your own password.");
+      return;
+    }
+    await runAction("update-user", async () => {
+      await updateUser(session.token, userId, {
+        fullName: name.trim(),
+        email: email.trim(),
+        mobilePhone: mobilePhone.trim(),
+        commercialPhone: commercialPhone.trim(),
+        commercialEmail: commercialEmail.trim(),
+        otherDetails: otherDetails?.trim() || "",
+        ...(role ? { role } : {}),
+        ...(agencyId ? { agencyId } : {}),
+        ...(changingPassword
+          ? {
+              password: password,
+              currentPassword:
+                userId === session.user.id ? currentPassword : undefined,
+            }
+          : {}),
+      });
+      await refresh();
+      setSuccessText(
+        changingPassword ? "User and password updated." : "User updated.",
+      );
+      setSelectedUserId(null);
+      setEditUserPassword("");
+      setEditUserCurrentPassword("");
+    });
+  };
+
+  const handleUpdateOwnProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session) return;
+    if (!profileFullName.trim() || !profileEmail.trim()) {
+      setErrorText("Full name and email are required.");
+      return;
+    }
+    await runAction("update-profile", async () => {
+      await updateUser(session.token, session.user.id, {
+        fullName: profileFullName.trim(),
+        email: profileEmail.trim(),
+      });
+      setSuccessText("Profile updated.");
+    });
+  };
+
+  const handleToggleUserStatus = async (user: UserItem) => {
+    await runAction(`toggle-user-${user.id}`, async () => {
+      if (!session) return;
+      await updateUserStatus(session.token, user.id, !user.isActive);
+      await refresh();
+      setSuccessText("User status updated.");
+    });
+  };
+
+  const handleRotateUserPin = async (
+    user: UserItem,
+  ): Promise<RotatePinResult | null> => {
+    if (!session) return null;
+    let result: RotatePinResult | null = null;
+    await runAction(`rotate-user-${user.id}`, async () => {
+      result = await rotateUserPin(session.token, user.id);
+      await refresh();
+      setSuccessText(`PIN rotated: ${result?.newPinMasked}`);
+    });
+    return result;
+  };
+
+  return {
+    users,
+    loading,
+    busyAction,
+    errorText,
+    successText,
+    clearFeedback,
+    refresh,
+    page,
+    pageSize,
+    total,
+    setPage,
+    setPageSize,
+    sortColumn,
+    sortDir,
+    setSort,
+    search,
+    setSearch,
+    newUserName,
+    setNewUserName,
+    newUserEmail,
+    setNewUserEmail,
+    newUserPassword,
+    setNewUserPassword,
+    newUserRole,
+    setNewUserRole,
+    newUserAgencyId,
+    setNewUserAgencyId,
+    handleCreateUser,
+    selectedUserId,
+    editUserName,
+    setEditUserName,
+    editUserEmail,
+    setEditUserEmail,
+    editUserPassword,
+    setEditUserPassword,
+    editUserCurrentPassword,
+    setEditUserCurrentPassword,
+    openUserEditor,
+    closeUserEditor,
+    handleUpdateUser,
+    profileFullName,
+    setProfileFullName,
+    profileEmail,
+    setProfileEmail,
+    handleUpdateOwnProfile,
+    handleToggleUserStatus,
+    handleRotateUserPin,
+  };
+}

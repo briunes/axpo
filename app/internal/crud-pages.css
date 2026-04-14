@@ -1,0 +1,188 @@
+/* ==========================================================================
+   CRUD Page Styles
+   Consistent styling for create/edit pages across all CRUD modules
+   Works within app-content area (doesn't need full-page wrapper)
+   ========================================================================== */
+
+/* Back button */
+.crud-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--static-space-4);
+  padding: var(--static-space-8) var(--static-space-12);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-s);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--neutral-on-background-strong);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: var(--static-space-8);
+}
+
+.crud-back-btn:hover {
+  background: var(--neutral-alpha-weak);
+  color: var(--brand-on-background-strong);
+}
+
+.crud-back-btn svg {
+  opacity: 0.7;
+}
+
+/* Header section */
+.crud-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--static-space-12);
+}
+
+.crud-page-title-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--static-space-24);
+}
+
+.crud-page-actions {
+  display: flex;
+  gap: var(--static-space-12);
+  flex-shrink: 0;
+}
+
+/* Content area */
+.crud-page-content {
+  background: var(--neutral-on-solid-strong);
+  border: 1px solid var(--neutral-alpha-weak);
+  border-radius: var(--radius-l);
+  padding: var(--static-space-32);
+}
+
+/* Form container */
+.crud-form {
+  width: 100%;
+}
+
+/* Alert messages */
+.crud-alert {
+  padding: var(--static-space-16);
+  border-radius: var(--radius-m);
+  font-size: var(--font-size-body-s);
+  line-height: 1.5;
+}
+
+.crud-alert--error {
+  background: var(--danger-alpha-weak);
+  color: var(--danger-on-background-strong);
+  border: 1px solid var(--danger-alpha-medium);
+}
+
+.crud-alert--success {
+  background: var(--success-alpha-weak);
+  color: var(--success-on-background-strong);
+  border: 1px solid var(--success-alpha-medium);
+}
+
+/* Form field */
+.crud-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--static-space-8);
+}
+
+.crud-form-label {
+  font-size: var(--font-size-body-s);
+  font-weight: 500;
+  color: var(--neutral-on-background-strong);
+  display: flex;
+  gap: var(--static-space-4);
+}
+
+.crud-form-required {
+  color: var(--danger-on-background-strong);
+}
+
+.crud-form-hint {
+  font-size: var(--font-size-body-xs);
+  color: var(--neutral-on-background-weak);
+  line-height: 1.4;
+}
+
+.crud-form-error {
+  font-size: var(--font-size-body-xs);
+  color: var(--danger-on-background-strong);
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* Form row */
+.crud-form-row {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .crud-form-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Form footer */
+.crud-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--static-space-12);
+  padding-top: var(--static-space-24);
+  border-top: 1px solid var(--neutral-alpha-weak);
+}
+
+/* Callout boxes (for PIN display, etc.) */
+.crud-callout {
+  padding: var(--static-space-20);
+  border-radius: var(--radius-m);
+  background: var(--brand-alpha-weak);
+  border: 1px solid var(--brand-alpha-medium);
+}
+
+.crud-callout-label {
+  font-size: var(--font-size-body-s);
+  font-weight: 500;
+  color: var(--brand-on-background-strong);
+  display: block;
+  margin-bottom: var(--static-space-12);
+}
+
+.crud-callout-value {
+  font-size: var(--font-size-display-xs);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--brand-on-background-strong);
+  letter-spacing: 0.05em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .crud-page {
+    padding: var(--static-space-20) var(--static-space-16);
+  }
+
+  .crud-page-content {
+    padding: var(--static-space-20);
+  }
+
+  .crud-page-title-section {
+    flex-direction: column;
+  }
+
+  .crud-page-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .crud-form-footer {
+    flex-direction: column-reverse;
+  }
+
+  .crud-form-footer > * {
+    width: 100%;
+  }
+}

@@ -1,0 +1,6354 @@
+{
+  "name": "AXPO Price Tables 2026-04",
+  "scopeType": "GLOBAL",
+  "sourceWorkbookRef": "SIMULADOR AXPO 01.04.2026 (Pen, Islas) 1_v15 ABIERTO.xlsm",
+  "sourceScope": "ALL",
+  "version": 1,
+  "items": [
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.159164,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:2.0TD:P1:POTENCIA",
+      "valueNumeric": 39.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.159164,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:2.0TD:P2:POTENCIA",
+      "valueNumeric": 21.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.159164,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.137025,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P1:POTENCIA",
+      "valueNumeric": 24.876927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.137025,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P2:POTENCIA",
+      "valueNumeric": 15.117621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.137025,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P3:POTENCIA",
+      "valueNumeric": 8.981534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.137025,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P4:POTENCIA",
+      "valueNumeric": 12.386333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.137025,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P5:POTENCIA",
+      "valueNumeric": 14.013851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.137025,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P6:POTENCIA",
+      "valueNumeric": 14.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.154088,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:2.0TD:P1:POTENCIA",
+      "valueNumeric": 37.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.154088,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:2.0TD:P2:POTENCIA",
+      "valueNumeric": 19.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.154088,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.131949,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P1:POTENCIA",
+      "valueNumeric": 23.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.131949,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P2:POTENCIA",
+      "valueNumeric": 13.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.131949,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P3:POTENCIA",
+      "valueNumeric": 7.581534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.131949,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P4:POTENCIA",
+      "valueNumeric": 11.386333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.131949,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P5:POTENCIA",
+      "valueNumeric": 13.013851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.131949,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P6:POTENCIA",
+      "valueNumeric": 13.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.149012,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:2.0TD:P1:POTENCIA",
+      "valueNumeric": 34.204413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.149012,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:2.0TD:P2:POTENCIA",
+      "valueNumeric": 19.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.149012,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.126873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P1:POTENCIA",
+      "valueNumeric": 23.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.126873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P2:POTENCIA",
+      "valueNumeric": 13.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.126873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P3:POTENCIA",
+      "valueNumeric": 7.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.126873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P4:POTENCIA",
+      "valueNumeric": 10.386333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.126873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P5:POTENCIA",
+      "valueNumeric": 10.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.126873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P6:POTENCIA",
+      "valueNumeric": 9.942287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.159164,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:2.0TD:P1:POTENCIA",
+      "valueNumeric": 60.204413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.159164,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:2.0TD:P2:POTENCIA",
+      "valueNumeric": 57.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.159164,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.137025,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P1:POTENCIA",
+      "valueNumeric": 27.276927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.137025,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P2:POTENCIA",
+      "valueNumeric": 17.517621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.137025,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P3:POTENCIA",
+      "valueNumeric": 11.381534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.137025,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P4:POTENCIA",
+      "valueNumeric": 14.786333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.137025,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P5:POTENCIA",
+      "valueNumeric": 16.413851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.137025,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P6:POTENCIA",
+      "valueNumeric": 16.842287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.154088,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:2.0TD:P1:POTENCIA",
+      "valueNumeric": 54.93055,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.154088,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:2.0TD:P2:POTENCIA",
+      "valueNumeric": 52.697588,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.154088,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.131949,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P1:POTENCIA",
+      "valueNumeric": 24.658495,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.131949,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P2:POTENCIA",
+      "valueNumeric": 15.251651,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.131949,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P3:POTENCIA",
+      "valueNumeric": 9.362536,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.131949,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P4:POTENCIA",
+      "valueNumeric": 13.181551,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.131949,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P5:POTENCIA",
+      "valueNumeric": 14.828167,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.131949,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P6:POTENCIA",
+      "valueNumeric": 15.356394,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.149012,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:2.0TD:P1:POTENCIA",
+      "valueNumeric": 52.43055,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.149012,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:2.0TD:P2:POTENCIA",
+      "valueNumeric": 48.697588,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.149012,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.126873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P1:POTENCIA",
+      "valueNumeric": 24.358495,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.126873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P2:POTENCIA",
+      "valueNumeric": 14.951651,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.126873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P3:POTENCIA",
+      "valueNumeric": 8.962536,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.126873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P4:POTENCIA",
+      "valueNumeric": 11.881551,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.126873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P5:POTENCIA",
+      "valueNumeric": 12.028167,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.126873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P6:POTENCIA",
+      "valueNumeric": 11.556394,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.238661,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:2.0TD:P1:POTENCIA",
+      "valueNumeric": 26.93055,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.167303,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.697588,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.141781,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.222933,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P1:POTENCIA",
+      "valueNumeric": 19.658495,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.187726,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.251651,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.146042,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.262536,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.122772,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.681551,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.10867,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.328167,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.13732,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.356394,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P1:ENERGIA",
+      "valueNumeric": 0.193739,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P1:POTENCIA",
+      "valueNumeric": 28.791866,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P2:ENERGIA",
+      "valueNumeric": 0.16602,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.077643,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P3:ENERGIA",
+      "valueNumeric": 0.132282,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.55917,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P4:ENERGIA",
+      "valueNumeric": 0.114847,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.172085,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P5:ENERGIA",
+      "valueNumeric": 0.103093,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P5:POTENCIA",
+      "valueNumeric": 1.932805,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P6:ENERGIA",
+      "valueNumeric": 0.134913,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P6:POTENCIA",
+      "valueNumeric": 0.916088,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.226843,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:2.0TD:P1:POTENCIA",
+      "valueNumeric": 26.93055,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.155486,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.697588,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.129964,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.211115,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P1:POTENCIA",
+      "valueNumeric": 19.658495,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.175909,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.251651,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.134224,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.262536,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.110954,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.681551,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.096853,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.328167,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.125503,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.356394,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P1:ENERGIA",
+      "valueNumeric": 0.181922,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P1:POTENCIA",
+      "valueNumeric": 28.791866,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P2:ENERGIA",
+      "valueNumeric": 0.154203,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.077643,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P3:ENERGIA",
+      "valueNumeric": 0.120465,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.55917,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P4:ENERGIA",
+      "valueNumeric": 0.103029,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.172085,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P5:ENERGIA",
+      "valueNumeric": 0.091276,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P5:POTENCIA",
+      "valueNumeric": 1.932805,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P6:ENERGIA",
+      "valueNumeric": 0.123096,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P6:POTENCIA",
+      "valueNumeric": 0.916088,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.220569,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:2.0TD:P1:POTENCIA",
+      "valueNumeric": 26.93055,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.149212,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.697588,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.12369,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.204841,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P1:POTENCIA",
+      "valueNumeric": 19.658495,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.169635,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.251651,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.12795,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.262536,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.10468,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.681551,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.090579,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.328167,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.119229,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.356394,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P1:ENERGIA",
+      "valueNumeric": 0.175648,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P1:POTENCIA",
+      "valueNumeric": 28.791866,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P2:ENERGIA",
+      "valueNumeric": 0.147929,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.077643,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P3:ENERGIA",
+      "valueNumeric": 0.114191,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.55917,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P4:ENERGIA",
+      "valueNumeric": 0.096755,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.172085,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P5:ENERGIA",
+      "valueNumeric": 0.085002,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P5:POTENCIA",
+      "valueNumeric": 1.932805,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P6:ENERGIA",
+      "valueNumeric": 0.116822,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P6:POTENCIA",
+      "valueNumeric": 0.916088,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.227534,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:2.0TD:P1:POTENCIA",
+      "valueNumeric": 35.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.156176,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:2.0TD:P2:POTENCIA",
+      "valueNumeric": 18.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.130654,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.212364,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P1:POTENCIA",
+      "valueNumeric": 23.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.177158,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P2:POTENCIA",
+      "valueNumeric": 13.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.135473,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P3:POTENCIA",
+      "valueNumeric": 7.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.112203,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P4:POTENCIA",
+      "valueNumeric": 10.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.098102,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P5:POTENCIA",
+      "valueNumeric": 11.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.126752,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P6:POTENCIA",
+      "valueNumeric": 11.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P1:ENERGIA",
+      "valueNumeric": 0.182064,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P1:POTENCIA",
+      "valueNumeric": 32.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P2:ENERGIA",
+      "valueNumeric": 0.154345,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P2:POTENCIA",
+      "valueNumeric": 18.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P3:ENERGIA",
+      "valueNumeric": 0.120607,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P3:POTENCIA",
+      "valueNumeric": 9.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P4:ENERGIA",
+      "valueNumeric": 0.103171,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P4:POTENCIA",
+      "valueNumeric": 12.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P5:ENERGIA",
+      "valueNumeric": 0.091418,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P5:POTENCIA",
+      "valueNumeric": 11.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P6:ENERGIA",
+      "valueNumeric": 0.123238,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P6:POTENCIA",
+      "valueNumeric": 11.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.222275,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:2.0TD:P1:POTENCIA",
+      "valueNumeric": 33.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.150918,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:2.0TD:P2:POTENCIA",
+      "valueNumeric": 16.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.125395,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.207349,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P1:POTENCIA",
+      "valueNumeric": 21.876927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.172143,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P2:POTENCIA",
+      "valueNumeric": 12.117621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.130458,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P3:POTENCIA",
+      "valueNumeric": 5.981534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.107188,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P4:POTENCIA",
+      "valueNumeric": 9.386333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.093087,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P5:POTENCIA",
+      "valueNumeric": 10.013851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.121737,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P6:POTENCIA",
+      "valueNumeric": 9.942287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P1:ENERGIA",
+      "valueNumeric": 0.178003,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P1:POTENCIA",
+      "valueNumeric": 31.095368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P2:ENERGIA",
+      "valueNumeric": 0.150284,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P2:POTENCIA",
+      "valueNumeric": 17.014709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P3:ENERGIA",
+      "valueNumeric": 0.116546,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P3:POTENCIA",
+      "valueNumeric": 8.301881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P4:ENERGIA",
+      "valueNumeric": 0.099111,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P4:POTENCIA",
+      "valueNumeric": 10.893829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P5:ENERGIA",
+      "valueNumeric": 0.087357,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P5:POTENCIA",
+      "valueNumeric": 9.625113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P6:ENERGIA",
+      "valueNumeric": 0.119177,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P6:POTENCIA",
+      "valueNumeric": 9.504181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.217666,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:2.0TD:P1:POTENCIA",
+      "valueNumeric": 31.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.146308,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:2.0TD:P2:POTENCIA",
+      "valueNumeric": 14.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.120786,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.203136,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.876927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.167929,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P2:POTENCIA",
+      "valueNumeric": 11.117621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.126245,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.981534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.102975,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P4:POTENCIA",
+      "valueNumeric": 7.386333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.088873,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P5:POTENCIA",
+      "valueNumeric": 7.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.117523,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P6:POTENCIA",
+      "valueNumeric": 7.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P1:ENERGIA",
+      "valueNumeric": 0.17382,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P1:POTENCIA",
+      "valueNumeric": 30.095368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P2:ENERGIA",
+      "valueNumeric": 0.146101,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P2:POTENCIA",
+      "valueNumeric": 16.014709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P3:ENERGIA",
+      "valueNumeric": 0.112363,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P3:POTENCIA",
+      "valueNumeric": 7.301881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P4:ENERGIA",
+      "valueNumeric": 0.094928,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P4:POTENCIA",
+      "valueNumeric": 8.893829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P5:ENERGIA",
+      "valueNumeric": 0.083175,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P5:POTENCIA",
+      "valueNumeric": 7.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P6:ENERGIA",
+      "valueNumeric": 0.114995,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P6:POTENCIA",
+      "valueNumeric": 7.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.210441,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:2.0TD:P1:POTENCIA",
+      "valueNumeric": 35.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.140046,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:2.0TD:P2:POTENCIA",
+      "valueNumeric": 18.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.103239,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.20866,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P1:POTENCIA",
+      "valueNumeric": 23.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.171301,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P2:POTENCIA",
+      "valueNumeric": 13.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.129434,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P3:POTENCIA",
+      "valueNumeric": 7.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.105449,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P4:POTENCIA",
+      "valueNumeric": 10.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.090103,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P5:POTENCIA",
+      "valueNumeric": 11.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.102555,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P6:POTENCIA",
+      "valueNumeric": 11.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P1:ENERGIA",
+      "valueNumeric": 0.17769,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P1:POTENCIA",
+      "valueNumeric": 32.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P2:ENERGIA",
+      "valueNumeric": 0.147045,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P2:POTENCIA",
+      "valueNumeric": 18.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P3:ENERGIA",
+      "valueNumeric": 0.114901,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P3:POTENCIA",
+      "valueNumeric": 9.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P4:ENERGIA",
+      "valueNumeric": 0.094962,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P4:POTENCIA",
+      "valueNumeric": 12.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P5:ENERGIA",
+      "valueNumeric": 0.0812,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P5:POTENCIA",
+      "valueNumeric": 11.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P6:ENERGIA",
+      "valueNumeric": 0.093031,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P6:POTENCIA",
+      "valueNumeric": 11.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.205182,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:2.0TD:P1:POTENCIA",
+      "valueNumeric": 33.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.134787,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:2.0TD:P2:POTENCIA",
+      "valueNumeric": 16.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.09798,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.203645,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P1:POTENCIA",
+      "valueNumeric": 21.876927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.166286,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P2:POTENCIA",
+      "valueNumeric": 12.117621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.124419,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P3:POTENCIA",
+      "valueNumeric": 5.981534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.100434,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P4:POTENCIA",
+      "valueNumeric": 9.386333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.085087,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P5:POTENCIA",
+      "valueNumeric": 10.013851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.09754,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P6:POTENCIA",
+      "valueNumeric": 9.942287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P1:ENERGIA",
+      "valueNumeric": 0.173629,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P1:POTENCIA",
+      "valueNumeric": 31.095368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P2:ENERGIA",
+      "valueNumeric": 0.142985,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P2:POTENCIA",
+      "valueNumeric": 17.014709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P3:ENERGIA",
+      "valueNumeric": 0.11084,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P3:POTENCIA",
+      "valueNumeric": 8.301881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P4:ENERGIA",
+      "valueNumeric": 0.090901,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P4:POTENCIA",
+      "valueNumeric": 10.893829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P5:ENERGIA",
+      "valueNumeric": 0.077139,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P5:POTENCIA",
+      "valueNumeric": 9.625113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P6:ENERGIA",
+      "valueNumeric": 0.08897,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P6:POTENCIA",
+      "valueNumeric": 9.504181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.200573,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:2.0TD:P1:POTENCIA",
+      "valueNumeric": 31.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.130178,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:2.0TD:P2:POTENCIA",
+      "valueNumeric": 14.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.093371,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.199432,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.876927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.162073,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P2:POTENCIA",
+      "valueNumeric": 11.117621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.120205,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.981534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.096221,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P4:POTENCIA",
+      "valueNumeric": 7.386333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.080874,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P5:POTENCIA",
+      "valueNumeric": 7.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.093326,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P6:POTENCIA",
+      "valueNumeric": 7.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P1:ENERGIA",
+      "valueNumeric": 0.169446,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P1:POTENCIA",
+      "valueNumeric": 30.095368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P2:ENERGIA",
+      "valueNumeric": 0.138802,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P2:POTENCIA",
+      "valueNumeric": 16.014709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P3:ENERGIA",
+      "valueNumeric": 0.106657,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P3:POTENCIA",
+      "valueNumeric": 7.301881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P4:ENERGIA",
+      "valueNumeric": 0.086718,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P4:POTENCIA",
+      "valueNumeric": 8.893829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P5:ENERGIA",
+      "valueNumeric": 0.072957,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P5:POTENCIA",
+      "valueNumeric": 7.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P6:ENERGIA",
+      "valueNumeric": 0.084787,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P6:POTENCIA",
+      "valueNumeric": 7.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.221568,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:2.0TD:P1:POTENCIA",
+      "valueNumeric": 27.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.151173,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.114366,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.219229,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.18187,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.140002,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.116018,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.100671,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.113123,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P1:ENERGIA",
+      "valueNumeric": 0.189365,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P1:POTENCIA",
+      "valueNumeric": 29.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P2:ENERGIA",
+      "valueNumeric": 0.158721,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P3:ENERGIA",
+      "valueNumeric": 0.126576,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P4:ENERGIA",
+      "valueNumeric": 0.106637,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P5:ENERGIA",
+      "valueNumeric": 0.092876,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P5:POTENCIA",
+      "valueNumeric": 2.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P6:ENERGIA",
+      "valueNumeric": 0.104706,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P6:POTENCIA",
+      "valueNumeric": 1.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.20975,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:2.0TD:P1:POTENCIA",
+      "valueNumeric": 27.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.139356,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.102548,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.207412,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.170052,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.128185,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.104201,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.088854,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.101306,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P1:ENERGIA",
+      "valueNumeric": 0.177548,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P1:POTENCIA",
+      "valueNumeric": 29.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P2:ENERGIA",
+      "valueNumeric": 0.146903,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P3:ENERGIA",
+      "valueNumeric": 0.114759,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P4:ENERGIA",
+      "valueNumeric": 0.09482,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P5:ENERGIA",
+      "valueNumeric": 0.081058,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P5:POTENCIA",
+      "valueNumeric": 2.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P6:ENERGIA",
+      "valueNumeric": 0.092889,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P6:POTENCIA",
+      "valueNumeric": 1.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:2.0TD:P1:ENERGIA",
+      "valueNumeric": 0.203476,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:2.0TD:P1:POTENCIA",
+      "valueNumeric": 27.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:2.0TD:P2:ENERGIA",
+      "valueNumeric": 0.133082,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:2.0TD:P3:ENERGIA",
+      "valueNumeric": 0.096274,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P1:ENERGIA",
+      "valueNumeric": 0.201138,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P2:ENERGIA",
+      "valueNumeric": 0.163778,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P3:ENERGIA",
+      "valueNumeric": 0.121911,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P4:ENERGIA",
+      "valueNumeric": 0.097926,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P5:ENERGIA",
+      "valueNumeric": 0.08258,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P6:ENERGIA",
+      "valueNumeric": 0.095032,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P1:ENERGIA",
+      "valueNumeric": 0.171274,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P1:POTENCIA",
+      "valueNumeric": 29.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P2:ENERGIA",
+      "valueNumeric": 0.140629,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P3:ENERGIA",
+      "valueNumeric": 0.108485,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P4:ENERGIA",
+      "valueNumeric": 0.088546,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P5:ENERGIA",
+      "valueNumeric": 0.074784,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P5:POTENCIA",
+      "valueNumeric": 2.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P6:ENERGIA",
+      "valueNumeric": 0.086614,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P6:POTENCIA",
+      "valueNumeric": 1.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:2.0TD:P1:POTENCIA",
+      "valueNumeric": 27.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:6.1TD:P1:POTENCIA",
+      "valueNumeric": 29.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:6.1TD:P5:POTENCIA",
+      "valueNumeric": 2.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.03,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N1:6.1TD:P6:POTENCIA",
+      "valueNumeric": 1.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:2.0TD:P1:POTENCIA",
+      "valueNumeric": 27.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:6.1TD:P1:POTENCIA",
+      "valueNumeric": 29.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:6.1TD:P5:POTENCIA",
+      "valueNumeric": 2.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.01399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N2:6.1TD:P6:POTENCIA",
+      "valueNumeric": 1.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:2.0TD:P1:POTENCIA",
+      "valueNumeric": 27.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:6.1TD:P1:POTENCIA",
+      "valueNumeric": 29.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:6.1TD:P5:POTENCIA",
+      "valueNumeric": 2.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.009,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA:N3:6.1TD:P6:POTENCIA",
+      "valueNumeric": 1.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.046742,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:2.0TD:P1:POTENCIA",
+      "valueNumeric": 27.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.045947,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.046654,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.045281,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.045554,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.046347,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.048304,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.048904,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.045774,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.045064,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:6.1TD:P1:POTENCIA",
+      "valueNumeric": 29.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.045667,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.046556,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.048561,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.049161,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:6.1TD:P5:POTENCIA",
+      "valueNumeric": 2.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.046174,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:6.1TD:P6:POTENCIA",
+      "valueNumeric": 1.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.031842,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:2.0TD:P1:POTENCIA",
+      "valueNumeric": 27.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.031047,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.031754,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.036781,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.037054,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.037847,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.039804,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.040404,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.037274,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.036164,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:6.1TD:P1:POTENCIA",
+      "valueNumeric": 29.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.036767,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.037656,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.039661,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.040261,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:6.1TD:P5:POTENCIA",
+      "valueNumeric": 2.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.037274,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:6.1TD:P6:POTENCIA",
+      "valueNumeric": 1.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.026852,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:2.0TD:P1:POTENCIA",
+      "valueNumeric": 27.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.026057,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.026764,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.031791,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.032064,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.032857,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.034814,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.035414,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.032284,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.031174,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:6.1TD:P1:POTENCIA",
+      "valueNumeric": 29.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.031777,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.032666,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.034671,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.035271,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:6.1TD:P5:POTENCIA",
+      "valueNumeric": 2.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.032284,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:6.1TD:P6:POTENCIA",
+      "valueNumeric": 1.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.049342,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:2.0TD:P1:POTENCIA",
+      "valueNumeric": 35.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.048547,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:2.0TD:P2:POTENCIA",
+      "valueNumeric": 18.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.049254,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.042281,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:3.0TD:P1:POTENCIA",
+      "valueNumeric": 23.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.042554,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:3.0TD:P2:POTENCIA",
+      "valueNumeric": 13.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.043347,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:3.0TD:P3:POTENCIA",
+      "valueNumeric": 7.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.045304,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:3.0TD:P4:POTENCIA",
+      "valueNumeric": 10.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.045904,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:3.0TD:P5:POTENCIA",
+      "valueNumeric": 11.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.042774,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:3.0TD:P6:POTENCIA",
+      "valueNumeric": 11.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.051664,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:6.1TD:P1:POTENCIA",
+      "valueNumeric": 32.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.052267,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:6.1TD:P2:POTENCIA",
+      "valueNumeric": 18.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.053156,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:6.1TD:P3:POTENCIA",
+      "valueNumeric": 9.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.055161,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:6.1TD:P4:POTENCIA",
+      "valueNumeric": 12.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.055761,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:6.1TD:P5:POTENCIA",
+      "valueNumeric": 11.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.052774,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:6.1TD:P6:POTENCIA",
+      "valueNumeric": 11.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.029342,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:2.0TD:P1:POTENCIA",
+      "valueNumeric": 33.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.028547,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:2.0TD:P2:POTENCIA",
+      "valueNumeric": 16.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.029254,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.028281,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:3.0TD:P1:POTENCIA",
+      "valueNumeric": 21.876927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.028554,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:3.0TD:P2:POTENCIA",
+      "valueNumeric": 12.117621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.029347,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:3.0TD:P3:POTENCIA",
+      "valueNumeric": 5.981534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.031304,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:3.0TD:P4:POTENCIA",
+      "valueNumeric": 9.386333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.031904,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:3.0TD:P5:POTENCIA",
+      "valueNumeric": 10.013851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.028774,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:3.0TD:P6:POTENCIA",
+      "valueNumeric": 9.942287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.027664,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:6.1TD:P1:POTENCIA",
+      "valueNumeric": 31.095368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.028267,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:6.1TD:P2:POTENCIA",
+      "valueNumeric": 17.014709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.029156,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:6.1TD:P3:POTENCIA",
+      "valueNumeric": 8.301881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.031161,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:6.1TD:P4:POTENCIA",
+      "valueNumeric": 10.893829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.031761,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:6.1TD:P5:POTENCIA",
+      "valueNumeric": 9.625113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.028774,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:6.1TD:P6:POTENCIA",
+      "valueNumeric": 9.504181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.023342,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:2.0TD:P1:POTENCIA",
+      "valueNumeric": 31.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.022547,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:2.0TD:P2:POTENCIA",
+      "valueNumeric": 14.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.023254,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.024281,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.876927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.024554,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:3.0TD:P2:POTENCIA",
+      "valueNumeric": 11.117621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.025347,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.981534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.027304,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:3.0TD:P4:POTENCIA",
+      "valueNumeric": 7.386333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.027904,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:3.0TD:P5:POTENCIA",
+      "valueNumeric": 7.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.024774,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:3.0TD:P6:POTENCIA",
+      "valueNumeric": 7.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.023664,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:6.1TD:P1:POTENCIA",
+      "valueNumeric": 30.095368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.024267,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:6.1TD:P2:POTENCIA",
+      "valueNumeric": 16.014709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.025156,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:6.1TD:P3:POTENCIA",
+      "valueNumeric": 7.301881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.027161,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:6.1TD:P4:POTENCIA",
+      "valueNumeric": 8.893829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.027761,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:6.1TD:P5:POTENCIA",
+      "valueNumeric": 7.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.024774,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:6.1TD:P6:POTENCIA",
+      "valueNumeric": 7.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.062492,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:2.0TD:P1:POTENCIA",
+      "valueNumeric": 27.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.061697,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.062404,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.061031,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.061304,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.062097,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.064054,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.064654,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.061524,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.060814,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P1:POTENCIA",
+      "valueNumeric": 29.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.061417,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.062306,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.064311,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.064911,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P5:POTENCIA",
+      "valueNumeric": 2.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.061924,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P6:POTENCIA",
+      "valueNumeric": 1.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.047592,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:2.0TD:P1:POTENCIA",
+      "valueNumeric": 27.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.046797,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.047504,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.052531,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.052804,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.053597,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.055554,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.056154,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.053024,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.051914,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P1:POTENCIA",
+      "valueNumeric": 29.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.052517,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.053406,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.055411,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.056011,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P5:POTENCIA",
+      "valueNumeric": 2.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.053024,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P6:POTENCIA",
+      "valueNumeric": 1.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.042602,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:2.0TD:P1:POTENCIA",
+      "valueNumeric": 27.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.041807,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:2.0TD:P2:POTENCIA",
+      "valueNumeric": 0.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.042514,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.047541,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.047814,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P2:POTENCIA",
+      "valueNumeric": 10.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.048607,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.050564,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P4:POTENCIA",
+      "valueNumeric": 3.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.051164,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P5:POTENCIA",
+      "valueNumeric": 2.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.048034,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P6:POTENCIA",
+      "valueNumeric": 1.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.046924,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P1:POTENCIA",
+      "valueNumeric": 29.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.047527,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P2:POTENCIA",
+      "valueNumeric": 15.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.048416,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P3:POTENCIA",
+      "valueNumeric": 6.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.050421,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P4:POTENCIA",
+      "valueNumeric": 5.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.051021,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P5:POTENCIA",
+      "valueNumeric": 2.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.048034,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P6:POTENCIA",
+      "valueNumeric": 1.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.027,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:2.0TD:P1:POTENCIA",
+      "valueNumeric": 35.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.027,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:2.0TD:P2:POTENCIA",
+      "valueNumeric": 18.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.027,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.022,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:3.0TD:P1:POTENCIA",
+      "valueNumeric": 23.376927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.022,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:3.0TD:P2:POTENCIA",
+      "valueNumeric": 13.617621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.022,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:3.0TD:P3:POTENCIA",
+      "valueNumeric": 7.481534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.022,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:3.0TD:P4:POTENCIA",
+      "valueNumeric": 10.886333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.022,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:3.0TD:P5:POTENCIA",
+      "valueNumeric": 11.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.022,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:3.0TD:P6:POTENCIA",
+      "valueNumeric": 11.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.019,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:6.1TD:P1:POTENCIA",
+      "valueNumeric": 32.595368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.019,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:6.1TD:P2:POTENCIA",
+      "valueNumeric": 18.514709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.019,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:6.1TD:P3:POTENCIA",
+      "valueNumeric": 9.801881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.019,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:6.1TD:P4:POTENCIA",
+      "valueNumeric": 12.393829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.019,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:6.1TD:P5:POTENCIA",
+      "valueNumeric": 11.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.019,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N1:6.1TD:P6:POTENCIA",
+      "valueNumeric": 11.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.01,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:2.0TD:P1:POTENCIA",
+      "valueNumeric": 33.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.01,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:2.0TD:P2:POTENCIA",
+      "valueNumeric": 16.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.01,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.01,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:3.0TD:P1:POTENCIA",
+      "valueNumeric": 21.876927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.01,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:3.0TD:P2:POTENCIA",
+      "valueNumeric": 12.117621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.01,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:3.0TD:P3:POTENCIA",
+      "valueNumeric": 5.981534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.01,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:3.0TD:P4:POTENCIA",
+      "valueNumeric": 9.386333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.01,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:3.0TD:P5:POTENCIA",
+      "valueNumeric": 10.013851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.01,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:3.0TD:P6:POTENCIA",
+      "valueNumeric": 9.942287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.0095,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:6.1TD:P1:POTENCIA",
+      "valueNumeric": 31.095368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.0095,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:6.1TD:P2:POTENCIA",
+      "valueNumeric": 17.014709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.0095,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:6.1TD:P3:POTENCIA",
+      "valueNumeric": 8.301881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.0095,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:6.1TD:P4:POTENCIA",
+      "valueNumeric": 10.893829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.0095,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:6.1TD:P5:POTENCIA",
+      "valueNumeric": 9.625113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.0095,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N2:6.1TD:P6:POTENCIA",
+      "valueNumeric": 9.504181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:2.0TD:P1:MARGEN",
+      "valueNumeric": 0.008,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:2.0TD:P1:POTENCIA",
+      "valueNumeric": 31.704413,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:2.0TD:P2:MARGEN",
+      "valueNumeric": 0.008,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:2.0TD:P2:POTENCIA",
+      "valueNumeric": 14.725423,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:2.0TD:P3:MARGEN",
+      "valueNumeric": 0.008,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:3.0TD:P1:MARGEN",
+      "valueNumeric": 0.0075,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:3.0TD:P1:POTENCIA",
+      "valueNumeric": 20.876927,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:3.0TD:P2:MARGEN",
+      "valueNumeric": 0.0075,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:3.0TD:P2:POTENCIA",
+      "valueNumeric": 11.117621,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:3.0TD:P3:MARGEN",
+      "valueNumeric": 0.0075,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:3.0TD:P3:POTENCIA",
+      "valueNumeric": 4.981534,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:3.0TD:P4:MARGEN",
+      "valueNumeric": 0.0075,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:3.0TD:P4:POTENCIA",
+      "valueNumeric": 7.386333,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:3.0TD:P5:MARGEN",
+      "valueNumeric": 0.0075,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:3.0TD:P5:POTENCIA",
+      "valueNumeric": 7.513851,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:3.0TD:P6:MARGEN",
+      "valueNumeric": 0.0075,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:3.0TD:P6:POTENCIA",
+      "valueNumeric": 7.442287,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:6.1TD:P1:MARGEN",
+      "valueNumeric": 0.007,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:6.1TD:P1:POTENCIA",
+      "valueNumeric": 30.095368,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:6.1TD:P2:MARGEN",
+      "valueNumeric": 0.007,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:6.1TD:P2:POTENCIA",
+      "valueNumeric": 16.014709,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:6.1TD:P3:MARGEN",
+      "valueNumeric": 0.007,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:6.1TD:P3:POTENCIA",
+      "valueNumeric": 7.301881,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:6.1TD:P4:MARGEN",
+      "valueNumeric": 0.007,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:6.1TD:P4:POTENCIA",
+      "valueNumeric": 8.893829,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:6.1TD:P5:MARGEN",
+      "valueNumeric": 0.007,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:6.1TD:P5:POTENCIA",
+      "valueNumeric": 7.125113,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:6.1TD:P6:MARGEN",
+      "valueNumeric": 0.007,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "ELEC:INDEX:DINAMICA_PLUS:N3:6.1TD:P6:POTENCIA",
+      "valueNumeric": 7.004181,
+      "unit": "€/kW/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL01:BAL:ENERGIA",
+      "valueNumeric": 0.104448,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL01:PEN:ENERGIA",
+      "valueNumeric": 0.104448,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL01:TERMINO_ANIO",
+      "valueNumeric": 286.767346,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL01:TERMINO_DIA",
+      "valueNumeric": 0.7856639616,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL02:BAL:ENERGIA",
+      "valueNumeric": 0.100461,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL02:PEN:ENERGIA",
+      "valueNumeric": 0.100461,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL02:TERMINO_ANIO",
+      "valueNumeric": 329.712628,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL02:TERMINO_DIA",
+      "valueNumeric": 0.9033222685,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL03:BAL:ENERGIA",
+      "valueNumeric": 0.096238,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL03:PEN:ENERGIA",
+      "valueNumeric": 0.096238,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL03:TERMINO_ANIO",
+      "valueNumeric": 444.266688,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL03:TERMINO_DIA",
+      "valueNumeric": 1.2171690082,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL04:BAL:ENERGIA",
+      "valueNumeric": 0.098572,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL04:PEN:ENERGIA",
+      "valueNumeric": 0.098572,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL04:TERMINO_ANIO",
+      "valueNumeric": 752.278185,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL04:TERMINO_DIA",
+      "valueNumeric": 2.0610361233,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL05:BAL:ENERGIA",
+      "valueNumeric": 0.09519,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL05:PEN:ENERGIA",
+      "valueNumeric": 0.09519,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL06:BAL:ENERGIA",
+      "valueNumeric": 0.08809,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL06:PEN:ENERGIA",
+      "valueNumeric": 0.08809,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS1:BAL:ENERGIA",
+      "valueNumeric": 0.132732,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS1:PEN:ENERGIA",
+      "valueNumeric": 0.132732,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS1:TERMINO_ANIO",
+      "valueNumeric": 286.767346,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS1:TERMINO_DIA",
+      "valueNumeric": 0.7856639616,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS2:BAL:ENERGIA",
+      "valueNumeric": 0.128745,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS2:PEN:ENERGIA",
+      "valueNumeric": 0.128745,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS2:TERMINO_ANIO",
+      "valueNumeric": 329.712628,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS2:TERMINO_DIA",
+      "valueNumeric": 0.9033222685,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS3:BAL:ENERGIA",
+      "valueNumeric": 0.124522,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS3:PEN:ENERGIA",
+      "valueNumeric": 0.124522,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS3:TERMINO_ANIO",
+      "valueNumeric": 444.266688,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS3:TERMINO_DIA",
+      "valueNumeric": 1.2171690082,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS4:BAL:ENERGIA",
+      "valueNumeric": 0.126856,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS4:PEN:ENERGIA",
+      "valueNumeric": 0.126856,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS4:TERMINO_ANIO",
+      "valueNumeric": 752.278185,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS4:TERMINO_DIA",
+      "valueNumeric": 2.0610361233,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS5:BAL:ENERGIA",
+      "valueNumeric": 0.123474,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS5:PEN:ENERGIA",
+      "valueNumeric": 0.123474,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS5:TERMINO_ANIO",
+      "valueNumeric": 2997.382057,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS5:TERMINO_DIA",
+      "valueNumeric": 8.2120056356,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS6:BAL:ENERGIA",
+      "valueNumeric": 0.116374,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS6:PEN:ENERGIA",
+      "valueNumeric": 0.116374,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS6:TERMINO_ANIO",
+      "valueNumeric": 13466.221534,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS6:TERMINO_DIA",
+      "valueNumeric": 36.8937576274,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL01:BAL:ENERGIA",
+      "valueNumeric": 0.097341,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL01:PEN:ENERGIA",
+      "valueNumeric": 0.097341,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL01:TERMINO_ANIO",
+      "valueNumeric": 146.767346,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL01:TERMINO_DIA",
+      "valueNumeric": 0.4021023178,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL02:BAL:ENERGIA",
+      "valueNumeric": 0.095192,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL02:PEN:ENERGIA",
+      "valueNumeric": 0.095192,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL02:TERMINO_ANIO",
+      "valueNumeric": 189.712628,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL02:TERMINO_DIA",
+      "valueNumeric": 0.5197606247,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL03:BAL:ENERGIA",
+      "valueNumeric": 0.090492,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL03:PEN:ENERGIA",
+      "valueNumeric": 0.090492,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL03:TERMINO_ANIO",
+      "valueNumeric": 304.266688,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL03:TERMINO_DIA",
+      "valueNumeric": 0.8336073644,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL04:BAL:ENERGIA",
+      "valueNumeric": 0.095384,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL04:PEN:ENERGIA",
+      "valueNumeric": 0.095384,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL04:TERMINO_ANIO",
+      "valueNumeric": 577.278185,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL04:TERMINO_DIA",
+      "valueNumeric": 1.5815840685,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL05:BAL:ENERGIA",
+      "valueNumeric": 0.094625,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL05:PEN:ENERGIA",
+      "valueNumeric": 0.094625,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL06:BAL:ENERGIA",
+      "valueNumeric": 0.085235,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL06:PEN:ENERGIA",
+      "valueNumeric": 0.085235,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS1:BAL:ENERGIA",
+      "valueNumeric": 0.125625,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS1:PEN:ENERGIA",
+      "valueNumeric": 0.125625,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS1:TERMINO_ANIO",
+      "valueNumeric": 146.767346,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS1:TERMINO_DIA",
+      "valueNumeric": 0.4021023178,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS2:BAL:ENERGIA",
+      "valueNumeric": 0.123476,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS2:PEN:ENERGIA",
+      "valueNumeric": 0.123476,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS2:TERMINO_ANIO",
+      "valueNumeric": 189.712628,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS2:TERMINO_DIA",
+      "valueNumeric": 0.5197606247,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS3:BAL:ENERGIA",
+      "valueNumeric": 0.118776,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS3:PEN:ENERGIA",
+      "valueNumeric": 0.118776,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS3:TERMINO_ANIO",
+      "valueNumeric": 304.266688,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS3:TERMINO_DIA",
+      "valueNumeric": 0.8336073644,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS4:BAL:ENERGIA",
+      "valueNumeric": 0.123668,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS4:PEN:ENERGIA",
+      "valueNumeric": 0.123668,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS4:TERMINO_ANIO",
+      "valueNumeric": 577.278185,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS4:TERMINO_DIA",
+      "valueNumeric": 1.5815840685,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS5:BAL:ENERGIA",
+      "valueNumeric": 0.122908,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS5:PEN:ENERGIA",
+      "valueNumeric": 0.122908,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS5:TERMINO_ANIO",
+      "valueNumeric": 2812.382057,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS5:TERMINO_DIA",
+      "valueNumeric": 7.7051563205,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS6:BAL:ENERGIA",
+      "valueNumeric": 0.113519,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS6:PEN:ENERGIA",
+      "valueNumeric": 0.113519,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS6:TERMINO_ANIO",
+      "valueNumeric": 13281.221534,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS6:TERMINO_DIA",
+      "valueNumeric": 36.3869083123,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL01:BAL:ENERGIA",
+      "valueNumeric": 0.0919,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL01:PEN:ENERGIA",
+      "valueNumeric": 0.0919,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL01:TERMINO_ANIO",
+      "valueNumeric": 106.767346,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL01:TERMINO_DIA",
+      "valueNumeric": 0.2925132767,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL02:BAL:ENERGIA",
+      "valueNumeric": 0.090664,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL02:PEN:ENERGIA",
+      "valueNumeric": 0.090664,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL02:TERMINO_ANIO",
+      "valueNumeric": 149.712628,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL02:TERMINO_DIA",
+      "valueNumeric": 0.4101715836,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL03:BAL:ENERGIA",
+      "valueNumeric": 0.087274,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL03:PEN:ENERGIA",
+      "valueNumeric": 0.087274,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL03:TERMINO_ANIO",
+      "valueNumeric": 264.266688,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL03:TERMINO_DIA",
+      "valueNumeric": 0.7240183233,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL04:BAL:ENERGIA",
+      "valueNumeric": 0.089821,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL04:PEN:ENERGIA",
+      "valueNumeric": 0.089821,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL04:TERMINO_ANIO",
+      "valueNumeric": 562.278185,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL04:TERMINO_DIA",
+      "valueNumeric": 1.5404881781,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL05:BAL:ENERGIA",
+      "valueNumeric": 0.09104,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL05:PEN:ENERGIA",
+      "valueNumeric": 0.09104,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL06:BAL:ENERGIA",
+      "valueNumeric": 0.082868,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL06:PEN:ENERGIA",
+      "valueNumeric": 0.082868,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS1:BAL:ENERGIA",
+      "valueNumeric": 0.120183,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS1:PEN:ENERGIA",
+      "valueNumeric": 0.120183,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS1:TERMINO_ANIO",
+      "valueNumeric": 106.767346,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS1:TERMINO_DIA",
+      "valueNumeric": 0.2925132767,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS2:BAL:ENERGIA",
+      "valueNumeric": 0.118948,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS2:PEN:ENERGIA",
+      "valueNumeric": 0.118948,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS2:TERMINO_ANIO",
+      "valueNumeric": 149.712628,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS2:TERMINO_DIA",
+      "valueNumeric": 0.4101715836,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS3:BAL:ENERGIA",
+      "valueNumeric": 0.115558,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS3:PEN:ENERGIA",
+      "valueNumeric": 0.115558,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS3:TERMINO_ANIO",
+      "valueNumeric": 264.266688,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS3:TERMINO_DIA",
+      "valueNumeric": 0.7240183233,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS4:BAL:ENERGIA",
+      "valueNumeric": 0.118104,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS4:PEN:ENERGIA",
+      "valueNumeric": 0.118104,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS4:TERMINO_ANIO",
+      "valueNumeric": 562.278185,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS4:TERMINO_DIA",
+      "valueNumeric": 1.5404881781,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS5:BAL:ENERGIA",
+      "valueNumeric": 0.119324,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS5:PEN:ENERGIA",
+      "valueNumeric": 0.119324,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS5:TERMINO_ANIO",
+      "valueNumeric": 2787.382057,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS5:TERMINO_DIA",
+      "valueNumeric": 7.6366631699,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS6:BAL:ENERGIA",
+      "valueNumeric": 0.111152,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS6:PEN:ENERGIA",
+      "valueNumeric": 0.111152,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS6:TERMINO_ANIO",
+      "valueNumeric": 13256.221534,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS6:TERMINO_DIA",
+      "valueNumeric": 36.3184151616,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL01:BAL:ENERGIA",
+      "valueNumeric": 0.124001,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL01:PEN:ENERGIA",
+      "valueNumeric": 0.124001,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL01:TERMINO_ANIO",
+      "valueNumeric": 26.767346,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL01:TERMINO_DIA",
+      "valueNumeric": 0.0733351945,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL02:BAL:ENERGIA",
+      "valueNumeric": 0.121933,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL02:PEN:ENERGIA",
+      "valueNumeric": 0.121933,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL02:TERMINO_ANIO",
+      "valueNumeric": 69.712628,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL02:TERMINO_DIA",
+      "valueNumeric": 0.1909935014,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL03:BAL:ENERGIA",
+      "valueNumeric": 0.111436,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL03:PEN:ENERGIA",
+      "valueNumeric": 0.111436,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL03:TERMINO_ANIO",
+      "valueNumeric": 184.266688,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL03:TERMINO_DIA",
+      "valueNumeric": 0.5048402411,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL04:BAL:ENERGIA",
+      "valueNumeric": 0.101343,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL04:PEN:ENERGIA",
+      "valueNumeric": 0.101343,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL04:TERMINO_ANIO",
+      "valueNumeric": 492.278185,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL04:TERMINO_DIA",
+      "valueNumeric": 1.3487073562,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL05:BAL:ENERGIA",
+      "valueNumeric": 0.089099,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL05:PEN:ENERGIA",
+      "valueNumeric": 0.089099,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL05:TERMINO_ANIO",
+      "valueNumeric": 2747.382057,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL05:TERMINO_DIA",
+      "valueNumeric": 7.5270741288,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL06:BAL:ENERGIA",
+      "valueNumeric": 0.080953,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL06:PEN:ENERGIA",
+      "valueNumeric": 0.080953,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL06:TERMINO_ANIO",
+      "valueNumeric": 13216.221168,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RL06:TERMINO_DIA",
+      "valueNumeric": 36.2088251178,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS1:BAL:ENERGIA",
+      "valueNumeric": 0.152285,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS1:PEN:ENERGIA",
+      "valueNumeric": 0.152285,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS1:TERMINO_ANIO",
+      "valueNumeric": 25.248868,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS1:TERMINO_DIA",
+      "valueNumeric": 0.0691749808,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS2:BAL:ENERGIA",
+      "valueNumeric": 0.150217,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS2:PEN:ENERGIA",
+      "valueNumeric": 0.150217,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS2:TERMINO_ANIO",
+      "valueNumeric": 64.386526,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS2:TERMINO_DIA",
+      "valueNumeric": 0.1764014411,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS3:BAL:ENERGIA",
+      "valueNumeric": 0.13972,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS3:PEN:ENERGIA",
+      "valueNumeric": 0.13972,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS3:TERMINO_ANIO",
+      "valueNumeric": 171.254133,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS3:TERMINO_DIA",
+      "valueNumeric": 0.4691894055,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS4:BAL:ENERGIA",
+      "valueNumeric": 0.129627,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS4:PEN:ENERGIA",
+      "valueNumeric": 0.129627,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS4:TERMINO_ANIO",
+      "valueNumeric": 415.653901,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS4:TERMINO_DIA",
+      "valueNumeric": 1.138777811,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS5:BAL:ENERGIA",
+      "valueNumeric": 0.117383,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS5:PEN:ENERGIA",
+      "valueNumeric": 0.117383,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS5:TERMINO_ANIO",
+      "valueNumeric": 2335.897567,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS5:TERMINO_DIA",
+      "valueNumeric": 6.3997193616,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS6:BAL:ENERGIA",
+      "valueNumeric": 0.109237,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS6:PEN:ENERGIA",
+      "valueNumeric": 0.109237,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS6:TERMINO_ANIO",
+      "valueNumeric": 11802.651287,
+      "unit": "€/año"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N1:RLPS6:TERMINO_DIA",
+      "valueNumeric": 32.3360309233,
+      "unit": "€/día"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RL01:BAL:ENERGIA",
+      "valueNumeric": 0.111818,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RL01:PEN:ENERGIA",
+      "valueNumeric": 0.111818,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RL02:BAL:ENERGIA",
+      "valueNumeric": 0.10975,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RL02:PEN:ENERGIA",
+      "valueNumeric": 0.10975,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RL03:BAL:ENERGIA",
+      "valueNumeric": 0.101284,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RL03:PEN:ENERGIA",
+      "valueNumeric": 0.101284,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RL04:BAL:ENERGIA",
+      "valueNumeric": 0.097283,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RL04:PEN:ENERGIA",
+      "valueNumeric": 0.097283,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RL05:BAL:ENERGIA",
+      "valueNumeric": 0.088084,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RL05:PEN:ENERGIA",
+      "valueNumeric": 0.088084,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RL06:BAL:ENERGIA",
+      "valueNumeric": 0.079938,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RL06:PEN:ENERGIA",
+      "valueNumeric": 0.079938,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RLPS1:BAL:ENERGIA",
+      "valueNumeric": 0.140102,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RLPS1:PEN:ENERGIA",
+      "valueNumeric": 0.140102,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RLPS2:BAL:ENERGIA",
+      "valueNumeric": 0.138034,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RLPS2:PEN:ENERGIA",
+      "valueNumeric": 0.138034,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RLPS3:BAL:ENERGIA",
+      "valueNumeric": 0.129568,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RLPS3:PEN:ENERGIA",
+      "valueNumeric": 0.129568,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RLPS4:BAL:ENERGIA",
+      "valueNumeric": 0.125566,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RLPS4:PEN:ENERGIA",
+      "valueNumeric": 0.125566,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RLPS5:BAL:ENERGIA",
+      "valueNumeric": 0.116367,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RLPS5:PEN:ENERGIA",
+      "valueNumeric": 0.116367,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RLPS6:BAL:ENERGIA",
+      "valueNumeric": 0.108221,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N2:RLPS6:PEN:ENERGIA",
+      "valueNumeric": 0.108221,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RL01:BAL:ENERGIA",
+      "valueNumeric": 0.101666,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RL01:PEN:ENERGIA",
+      "valueNumeric": 0.101666,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RL02:BAL:ENERGIA",
+      "valueNumeric": 0.099598,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RL02:PEN:ENERGIA",
+      "valueNumeric": 0.099598,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RL03:BAL:ENERGIA",
+      "valueNumeric": 0.092147,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RL03:PEN:ENERGIA",
+      "valueNumeric": 0.092147,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RL04:BAL:ENERGIA",
+      "valueNumeric": 0.089161,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RL04:PEN:ENERGIA",
+      "valueNumeric": 0.089161,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RL05:BAL:ENERGIA",
+      "valueNumeric": 0.087068,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RL05:PEN:ENERGIA",
+      "valueNumeric": 0.087068,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RL06:BAL:ENERGIA",
+      "valueNumeric": 0.078922,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RL06:PEN:ENERGIA",
+      "valueNumeric": 0.078922,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RLPS1:BAL:ENERGIA",
+      "valueNumeric": 0.12995,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RLPS1:PEN:ENERGIA",
+      "valueNumeric": 0.12995,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RLPS2:BAL:ENERGIA",
+      "valueNumeric": 0.127882,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RLPS2:PEN:ENERGIA",
+      "valueNumeric": 0.127882,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RLPS3:BAL:ENERGIA",
+      "valueNumeric": 0.120431,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RLPS3:PEN:ENERGIA",
+      "valueNumeric": 0.120431,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RLPS4:BAL:ENERGIA",
+      "valueNumeric": 0.117445,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RLPS4:PEN:ENERGIA",
+      "valueNumeric": 0.117445,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RLPS5:BAL:ENERGIA",
+      "valueNumeric": 0.115352,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RLPS5:PEN:ENERGIA",
+      "valueNumeric": 0.115352,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RLPS6:BAL:ENERGIA",
+      "valueNumeric": 0.107206,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:FIJO:FIJO:N3:RLPS6:PEN:ENERGIA",
+      "valueNumeric": 0.107206,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL01:BAL:MARGEN",
+      "valueNumeric": 0.041748,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL01:PEN:MARGEN",
+      "valueNumeric": 0.041748,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL02:BAL:MARGEN",
+      "valueNumeric": 0.037761,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL02:PEN:MARGEN",
+      "valueNumeric": 0.037761,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL03:BAL:MARGEN",
+      "valueNumeric": 0.033538,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL03:PEN:MARGEN",
+      "valueNumeric": 0.033538,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL04:BAL:MARGEN",
+      "valueNumeric": 0.035872,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL04:PEN:MARGEN",
+      "valueNumeric": 0.035872,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL05:BAL:MARGEN",
+      "valueNumeric": 0.03249,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL05:PEN:MARGEN",
+      "valueNumeric": 0.03249,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL06:BAL:MARGEN",
+      "valueNumeric": 0.02539,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL06:PEN:MARGEN",
+      "valueNumeric": 0.02539,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS1:BAL:MARGEN",
+      "valueNumeric": 0.070032,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS1:PEN:MARGEN",
+      "valueNumeric": 0.070032,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS2:BAL:MARGEN",
+      "valueNumeric": 0.066045,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS2:PEN:MARGEN",
+      "valueNumeric": 0.066045,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS3:BAL:MARGEN",
+      "valueNumeric": 0.061822,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS3:PEN:MARGEN",
+      "valueNumeric": 0.061822,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS4:BAL:MARGEN",
+      "valueNumeric": 0.064156,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS4:PEN:MARGEN",
+      "valueNumeric": 0.064156,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS5:BAL:MARGEN",
+      "valueNumeric": 0.060774,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS5:PEN:MARGEN",
+      "valueNumeric": 0.060774,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS6:BAL:MARGEN",
+      "valueNumeric": 0.053674,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS6:PEN:MARGEN",
+      "valueNumeric": 0.053674,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL01:BAL:MARGEN",
+      "valueNumeric": 0.034641,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL01:PEN:MARGEN",
+      "valueNumeric": 0.034641,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL02:BAL:MARGEN",
+      "valueNumeric": 0.032492,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL02:PEN:MARGEN",
+      "valueNumeric": 0.032492,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL03:BAL:MARGEN",
+      "valueNumeric": 0.027792,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL03:PEN:MARGEN",
+      "valueNumeric": 0.027792,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL04:BAL:MARGEN",
+      "valueNumeric": 0.032684,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL04:PEN:MARGEN",
+      "valueNumeric": 0.032684,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL05:BAL:MARGEN",
+      "valueNumeric": 0.031925,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL05:PEN:MARGEN",
+      "valueNumeric": 0.031925,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL06:BAL:MARGEN",
+      "valueNumeric": 0.022535,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL06:PEN:MARGEN",
+      "valueNumeric": 0.022535,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS1:BAL:MARGEN",
+      "valueNumeric": 0.062925,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS1:PEN:MARGEN",
+      "valueNumeric": 0.062925,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS2:BAL:MARGEN",
+      "valueNumeric": 0.060776,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS2:PEN:MARGEN",
+      "valueNumeric": 0.060776,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS3:BAL:MARGEN",
+      "valueNumeric": 0.056076,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS3:PEN:MARGEN",
+      "valueNumeric": 0.056076,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS4:BAL:MARGEN",
+      "valueNumeric": 0.060968,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS4:PEN:MARGEN",
+      "valueNumeric": 0.060968,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS5:BAL:MARGEN",
+      "valueNumeric": 0.060208,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS5:PEN:MARGEN",
+      "valueNumeric": 0.060208,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS6:BAL:MARGEN",
+      "valueNumeric": 0.050819,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS6:PEN:MARGEN",
+      "valueNumeric": 0.050819,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL01:BAL:MARGEN",
+      "valueNumeric": 0.0292,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL01:PEN:MARGEN",
+      "valueNumeric": 0.0292,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL02:BAL:MARGEN",
+      "valueNumeric": 0.027964,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL02:PEN:MARGEN",
+      "valueNumeric": 0.027964,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL03:BAL:MARGEN",
+      "valueNumeric": 0.024574,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL03:PEN:MARGEN",
+      "valueNumeric": 0.024574,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL04:BAL:MARGEN",
+      "valueNumeric": 0.027121,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL04:PEN:MARGEN",
+      "valueNumeric": 0.027121,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL05:BAL:MARGEN",
+      "valueNumeric": 0.02834,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL05:PEN:MARGEN",
+      "valueNumeric": 0.02834,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL06:BAL:MARGEN",
+      "valueNumeric": 0.020168,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL06:PEN:MARGEN",
+      "valueNumeric": 0.020168,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS1:BAL:MARGEN",
+      "valueNumeric": 0.057483,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS1:PEN:MARGEN",
+      "valueNumeric": 0.057483,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS2:BAL:MARGEN",
+      "valueNumeric": 0.056248,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS2:PEN:MARGEN",
+      "valueNumeric": 0.056248,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS3:BAL:MARGEN",
+      "valueNumeric": 0.052858,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS3:PEN:MARGEN",
+      "valueNumeric": 0.052858,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS4:BAL:MARGEN",
+      "valueNumeric": 0.055404,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS4:PEN:MARGEN",
+      "valueNumeric": 0.055404,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS5:BAL:MARGEN",
+      "valueNumeric": 0.056624,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS5:PEN:MARGEN",
+      "valueNumeric": 0.056624,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS6:BAL:MARGEN",
+      "valueNumeric": 0.048452,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS6:PEN:MARGEN",
+      "valueNumeric": 0.048452,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RL01:BAL:MARGEN",
+      "valueNumeric": 0.061301,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RL01:PEN:MARGEN",
+      "valueNumeric": 0.061301,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RL02:BAL:MARGEN",
+      "valueNumeric": 0.059233,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RL02:PEN:MARGEN",
+      "valueNumeric": 0.059233,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RL03:BAL:MARGEN",
+      "valueNumeric": 0.048736,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RL03:PEN:MARGEN",
+      "valueNumeric": 0.048736,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RL04:BAL:MARGEN",
+      "valueNumeric": 0.038643,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RL04:PEN:MARGEN",
+      "valueNumeric": 0.038643,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RL05:BAL:MARGEN",
+      "valueNumeric": 0.026399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RL05:PEN:MARGEN",
+      "valueNumeric": 0.026399,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RL06:BAL:MARGEN",
+      "valueNumeric": 0.018253,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RL06:PEN:MARGEN",
+      "valueNumeric": 0.018253,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RLPS1:BAL:MARGEN",
+      "valueNumeric": 0.089585,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RLPS1:PEN:MARGEN",
+      "valueNumeric": 0.089585,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RLPS2:BAL:MARGEN",
+      "valueNumeric": 0.087517,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RLPS2:PEN:MARGEN",
+      "valueNumeric": 0.087517,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RLPS3:BAL:MARGEN",
+      "valueNumeric": 0.07702,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RLPS3:PEN:MARGEN",
+      "valueNumeric": 0.07702,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RLPS4:BAL:MARGEN",
+      "valueNumeric": 0.066927,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RLPS4:PEN:MARGEN",
+      "valueNumeric": 0.066927,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RLPS5:BAL:MARGEN",
+      "valueNumeric": 0.054683,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RLPS5:PEN:MARGEN",
+      "valueNumeric": 0.054683,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RLPS6:BAL:MARGEN",
+      "valueNumeric": 0.046537,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N1:RLPS6:PEN:MARGEN",
+      "valueNumeric": 0.046537,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RL01:BAL:MARGEN",
+      "valueNumeric": 0.049118,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RL01:PEN:MARGEN",
+      "valueNumeric": 0.049118,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RL02:BAL:MARGEN",
+      "valueNumeric": 0.04705,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RL02:PEN:MARGEN",
+      "valueNumeric": 0.04705,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RL03:BAL:MARGEN",
+      "valueNumeric": 0.038584,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RL03:PEN:MARGEN",
+      "valueNumeric": 0.038584,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RL04:BAL:MARGEN",
+      "valueNumeric": 0.034583,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RL04:PEN:MARGEN",
+      "valueNumeric": 0.034583,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RL05:BAL:MARGEN",
+      "valueNumeric": 0.025384,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RL05:PEN:MARGEN",
+      "valueNumeric": 0.025384,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RL06:BAL:MARGEN",
+      "valueNumeric": 0.017238,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RL06:PEN:MARGEN",
+      "valueNumeric": 0.017238,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RLPS1:BAL:MARGEN",
+      "valueNumeric": 0.077402,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RLPS1:PEN:MARGEN",
+      "valueNumeric": 0.077402,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RLPS2:BAL:MARGEN",
+      "valueNumeric": 0.075334,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RLPS2:PEN:MARGEN",
+      "valueNumeric": 0.075334,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RLPS3:BAL:MARGEN",
+      "valueNumeric": 0.066868,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RLPS3:PEN:MARGEN",
+      "valueNumeric": 0.066868,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RLPS4:BAL:MARGEN",
+      "valueNumeric": 0.062866,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RLPS4:PEN:MARGEN",
+      "valueNumeric": 0.062866,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RLPS5:BAL:MARGEN",
+      "valueNumeric": 0.053667,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RLPS5:PEN:MARGEN",
+      "valueNumeric": 0.053667,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RLPS6:BAL:MARGEN",
+      "valueNumeric": 0.045521,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N2:RLPS6:PEN:MARGEN",
+      "valueNumeric": 0.045521,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RL01:BAL:MARGEN",
+      "valueNumeric": 0.038966,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RL01:PEN:MARGEN",
+      "valueNumeric": 0.038966,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RL02:BAL:MARGEN",
+      "valueNumeric": 0.036898,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RL02:PEN:MARGEN",
+      "valueNumeric": 0.036898,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RL03:BAL:MARGEN",
+      "valueNumeric": 0.029447,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RL03:PEN:MARGEN",
+      "valueNumeric": 0.029447,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RL04:BAL:MARGEN",
+      "valueNumeric": 0.026461,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RL04:PEN:MARGEN",
+      "valueNumeric": 0.026461,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RL05:BAL:MARGEN",
+      "valueNumeric": 0.024368,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RL05:PEN:MARGEN",
+      "valueNumeric": 0.024368,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RL06:BAL:MARGEN",
+      "valueNumeric": 0.016222,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RL06:PEN:MARGEN",
+      "valueNumeric": 0.016222,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RLPS1:BAL:MARGEN",
+      "valueNumeric": 0.06725,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RLPS1:PEN:MARGEN",
+      "valueNumeric": 0.06725,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RLPS2:BAL:MARGEN",
+      "valueNumeric": 0.065182,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RLPS2:PEN:MARGEN",
+      "valueNumeric": 0.065182,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RLPS3:BAL:MARGEN",
+      "valueNumeric": 0.057731,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RLPS3:PEN:MARGEN",
+      "valueNumeric": 0.057731,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RLPS4:BAL:MARGEN",
+      "valueNumeric": 0.054745,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RLPS4:PEN:MARGEN",
+      "valueNumeric": 0.054745,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RLPS5:BAL:MARGEN",
+      "valueNumeric": 0.052652,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RLPS5:PEN:MARGEN",
+      "valueNumeric": 0.052652,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RLPS6:BAL:MARGEN",
+      "valueNumeric": 0.044506,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "GAS:INDEX:INDEXADO:N3:RLPS6:PEN:MARGEN",
+      "valueNumeric": 0.044506,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2025-03",
+      "valueNumeric": 0.0415109677,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2025-04",
+      "valueNumeric": 0.0338463333,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2025-05",
+      "valueNumeric": 0.034006129,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2025-06",
+      "valueNumeric": 0.036582,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2025-07",
+      "valueNumeric": 0.033913871,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2025-08",
+      "valueNumeric": 0.0325616129,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2025-09",
+      "valueNumeric": 0.0318023333,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2025-10",
+      "valueNumeric": 0.031166129,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2025-11",
+      "valueNumeric": 0.0301726667,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2025-12",
+      "valueNumeric": 0.0277206452,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2026-01",
+      "valueNumeric": 0.0351732258,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2026-02",
+      "valueNumeric": 0.0316767857,
+      "unit": "€/kWh"
+    }
+  ]
+}

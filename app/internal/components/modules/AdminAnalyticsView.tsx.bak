@@ -1,0 +1,536 @@
+"use client";
+
+import { LineChart } from "@mui/x-charts/LineChart";
+import { BarChart } from "@mui/x-charts/BarChart";
+import { PieChart } from "@mui/x-charts/PieChart";
+import type { AnalyticsSummary, AnalyticsAgencyStat, AnalyticsUserStat } from "../../lib/internalApi";
+import { DataTable } from "../ui";
+import type { ColumnDef } from "../ui";
+import { useI18n } from "../../../../src/lib/i18n-context";
+
+interface KpiCardProps {
+    title: string;
+    value: string | number;
+    sub?: string;
+    accent?: string;
+    percentage?: number;
+    trend?: "up" | "down" | "neutral";
+}
+
+function KpiCard({ title, value, sub, accent, percentage, trend }: KpiCardProps) {
+    return (
+        <div className="panel-card" style={{
+            flex: "1 1 140px",
+            background: accent ? `linear-gradient(135deg, ${accent}15 0%, ${accent}05 100%)` : undefined,
+            border: accent ? `1px solid ${accent}40` : undefined,
+            borderRadius: 12,
+            padding: "18px 20px",
+            position: "relative",
+            overflow: "hidden",
+        }}>
+            {accent && (
+                <div style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 3,
+                    background: `linear-gradient(90deg, ${accent} 0%, ${accent}80 100%)`,
+                }} />
+            )}
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginBottom: 8 }}>{title}</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.1 }}>{value}</div>
+                {percentage !== undefined && (
+                    <div style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: accent || "var(--scheme-neutral-400)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                    }}>
+                        {trend === "up" && "↗"}
+                        {trend === "down" && "↘"}
+                        {percentage}%
+                    </div>
+                )}
+            </div>
+            {sub && <div style={{ fontSize: 12, color: "var(--scheme-neutral-500)", marginTop: 6 }}>{sub}</div>}
+            {percentage !== undefined && (
+                <div style={{
+                    marginTop: 10,
+                    height: 4,
+                    background: "var(--scheme-neutral-900)",
+                    borderRadius: 2,
+                    overflow: "hidden",
+                }}>
+                    <div style={{
+                        height: "100%",
+                        width: `${Math.min(percentage, 100)}%`,
+                        background: `linear-gradient(90deg, ${accent} 0%, ${accent}CC 100%)`,
+                        transition: "width 0.6s ease",
+                    }} />
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ChartPanel({ title, subtitle, children, style }: {
+    title: string;
+    subtitle?: string;
+    children: React.ReactNode;
+    style?: React.CSSProperties;
+}) {
+    return (
+        <div className="panel-card" style={{
+            borderRadius: 10,
+            padding: "18px 20px",
+            ...style,
+        }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--scheme-neutral-500)", marginBottom: subtitle ? 2 : 14 }}>{title}</div>
+            {subtitle && <div style={{ fontSize: 12, color: "var(--scheme-neutral-500)", marginBottom: 14 }}>{subtitle}</div>}
+            {children}
+        </div>
+    );
+}
+
+interface AdminAnalyticsViewProps {
+    analytics: AnalyticsSummary;
+    selectedDays: number;
+}
+
+export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsViewProps) {
+    const { t } = useI18n();
+
+    const chartSx = {
+        "& .MuiChartsAxis-tickLabel": { fontSize: 10, fill: "var(--scheme-neutral-400)" },
+        "& .MuiChartsGrid-line": { strokeDasharray: "4 4", opacity: 0.2, stroke: "var(--scheme-neutral-800)" },
+        "& .MuiChartsLegend-series text": { fontSize: 11, fill: "var(--scheme-neutral-300)" },
+    };
+
+    // Prepare data
+    const simDates = (analytics.simulationTrend ?? []).map((d) => new Date(d.date + "T00:00:00"));
+    const simCounts = (analytics.simulationTrend ?? []).map((d) => d.count);
+    const accessDates = (analytics.accessTrend ?? []).map((d) => new Date(d.date + "T00:00:00"));
+    const accessSuccess = (analytics.accessTrend ?? []).map((d) => d.successful);
+    const accessFailed = (analytics.accessTrend ?? []).map((d) => d.count - d.successful);
+    const draftCount = analytics.draftSimulations ?? (analytics.totalSimulations - analytics.sharedSimulations - analytics.expiredSimulations);
+
+    const pieData = [
+        { id: 0, value: draftCount, label: t("analyticsModule", "labelDraft"), color: "#6366f1" },
+        { id: 1, value: analytics.sharedSimulations, label: t("analyticsModule", "labelShared"), color: "#4ade80" },
+        { id: 2, value: analytics.expiredSimulations, label: t("analyticsModule", "labelExpired"), color: "#f59e0b" },
+    ].filter((d) => d.value > 0);
+
+    const hasSimTrend = simCounts.some((v) => v > 0);
+    const hasAccessTrend = accessFailed.some((v) => v > 0) || accessSuccess.some((v) => v > 0);
+
+    // Calculate metrics
+    const shareRate = Math.round((analytics.sharedSimulations / Math.max(analytics.totalSimulations, 1)) * 100);
+    const expireRate = Math.round((analytics.expiredSimulations / Math.max(analytics.sharedSimulations, 1)) * 100);
+    const successRate = Math.round(((analytics.successfulAccess ?? 0) / Math.max(analytics.accessAttempts, 1)) * 100);
+
+    // Table columns
+    const agencyColumns: ColumnDef<AnalyticsAgencyStat & { id: string }>[] = [
+        {
+            key: "agencyName",
+            label: "Agency",
+            sortable: true,
+            renderCell: (r) => <span className="dt-cell-primary">{r.agencyName}</span>,
+        },
+        {
+            key: "total",
+            label: "Total",
+            sortable: true,
+            renderCell: (r) => <span style={{ fontWeight: 600 }}>{r.total}</span>
+        },
+        {
+            key: "shared",
+            label: "Shared",
+            sortable: true,
+            renderCell: (r) => (
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontWeight: 600, color: "#10b981" }}>{r.shared}</span>
+                    <div style={{
+                        flex: 1,
+                        height: 6,
+                        background: "var(--scheme-neutral-900)",
+                        borderRadius: 3,
+                        overflow: "hidden",
+                        minWidth: 60,
+                    }}>
+                        <div style={{
+                            height: "100%",
+                            width: `${r.total > 0 ? (r.shared / r.total * 100) : 0}%`,
+                            background: "linear-gradient(90deg, #10b981 0%, #10b981CC 100%)",
+                        }} />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            key: "expired",
+            label: "Expired",
+            sortable: true,
+            renderCell: (r) => <span style={{ color: r.expired > 0 ? "#f59e0b" : "inherit" }}>{r.expired}</span>,
+        },
+        {
+            key: "shareRate",
+            label: t("analyticsModule", "colShareRate"),
+            renderCell: (r) => {
+                const rate = r.total > 0 ? Math.round((r.shared / r.total) * 100) : 0;
+                return (
+                    <div style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "4px 10px",
+                        background: rate > 70 ? "#10b98120" : rate > 40 ? "#06b6d420" : "#8b5cf620",
+                        border: `1px solid ${rate > 70 ? "#10b98140" : rate > 40 ? "#06b6d440" : "#8b5cf640"}`,
+                        borderRadius: 6,
+                    }}>
+                        <span style={{
+                            fontWeight: 600,
+                            color: rate > 70 ? "#10b981" : rate > 40 ? "#06b6d4" : "#8b5cf6",
+                        }}>
+                            {rate}%
+                        </span>
+                    </div>
+                );
+            },
+        },
+    ];
+
+    const userColumns: ColumnDef<AnalyticsUserStat & { id: string }>[] = [
+        {
+            key: "userName",
+            label: "User",
+            sortable: true,
+            renderCell: (r) => <span className="dt-cell-primary">{r.userName}</span>,
+        },
+        {
+            key: "total",
+            label: "Simulations",
+            sortable: true,
+            renderCell: (r) => (
+                <span style={{
+                    fontWeight: 600,
+                    color: r.total > 10 ? "#10b981" : r.total > 5 ? "#06b6d4" : "inherit",
+                }}>
+                    {r.total}
+                </span>
+            ),
+        },
+        {
+            key: "shared",
+            label: "Shared",
+            sortable: true,
+            renderCell: (r) => (
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontWeight: 600, color: "#10b981" }}>{r.shared}</span>
+                    <div style={{
+                        flex: 1,
+                        height: 6,
+                        background: "var(--scheme-neutral-900)",
+                        borderRadius: 3,
+                        overflow: "hidden",
+                        minWidth: 50,
+                    }}>
+                        <div style={{
+                            height: "100%",
+                            width: `${r.total > 0 ? (r.shared / r.total * 100) : 0}%`,
+                            background: "linear-gradient(90deg, #10b981 0%, #10b981CC 100%)",
+                        }} />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            key: "shareRate",
+            label: t("analyticsModule", "colShareRate"),
+            renderCell: (r) => {
+                const rate = r.total > 0 ? Math.round((r.shared / r.total) * 100) : 0;
+                return (
+                    <div style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "4px 10px",
+                        background: rate > 70 ? "#10b98120" : rate > 40 ? "#06b6d420" : "#8b5cf620",
+                        border: `1px solid ${rate > 70 ? "#10b98140" : rate > 40 ? "#06b6d440" : "#8b5cf640"}`,
+                        borderRadius: 6,
+                    }}>
+                        <span style={{
+                            fontWeight: 600,
+                            color: rate > 70 ? "#10b981" : rate > 40 ? "#06b6d4" : "#8b5cf6",
+                        }}>
+                            {rate}%
+                        </span>
+                    </div>
+                );
+            },
+        },
+    ];
+
+    return (
+        <>
+            {/* ── Admin KPIs ─────────────────────────────────────────────── */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+                <KpiCard
+                    title="Total Simulations"
+                    value={analytics.totalSimulations}
+                    accent="#8b5cf6"
+                    sub="All simulations across platform"
+                />
+                <KpiCard
+                    title="Total Agencies"
+                    value={analytics.byAgency?.length || 0}
+                    accent="#f59e0b"
+                    sub="Active agencies"
+                />
+                <KpiCard
+                    title="Shared"
+                    value={analytics.sharedSimulations}
+                    sub="Sent to clients"
+                    accent="#10b981"
+                    percentage={shareRate}
+                    trend={shareRate > 50 ? "up" : "neutral"}
+                />
+                <KpiCard
+                    title="Expired"
+                    value={analytics.expiredSimulations}
+                    sub="Past due date"
+                    accent="#ef4444"
+                    percentage={expireRate}
+                    trend={expireRate > 30 ? "down" : "neutral"}
+                />
+                <KpiCard
+                    title="Access Rate"
+                    value={`${successRate}%`}
+                    sub={`${analytics.accessAttempts} total attempts`}
+                    accent="#06b6d4"
+                    percentage={successRate}
+                    trend={successRate > 80 ? "up" : successRate < 50 ? "down" : "neutral"}
+                />
+                <KpiCard
+                    title="Active Users"
+                    value={analytics.byUser?.length || 0}
+                    accent="#a78bfa"
+                    sub="Users with simulations"
+                />
+            </div>
+
+            {/* ── Trend + Distribution ──────────────────────────────────────── */}
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
+                <ChartPanel
+                    title={t("analyticsModule", "chartSimTrend")}
+                    subtitle={t("analyticsModule", "lastDays", { days: selectedDays })}
+                >
+                    {hasSimTrend ? (
+                        <LineChart
+                            xAxis={[{ data: simDates, scaleType: "time" }]}
+                            series={[{
+                                data: simCounts,
+                                label: t("analyticsModule", "labelCreated") || "Created",
+                                color: "#8b5cf6",
+                                area: true,
+                                showMark: true,
+                                curve: "natural",
+                            }]}
+                            height={200}
+                            sx={chartSx}
+                            margin={{ left: 36, right: 12, top: 12, bottom: 32 }}
+                        />
+                    ) : (
+                        <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
+                            {t("analyticsModule", "noSimTrend")}
+                        </div>
+                    )}
+                </ChartPanel>
+
+                <ChartPanel title={t("analyticsModule", "chartStatusDist")}>
+                    {pieData.length > 0 ? (
+                        <PieChart
+                            series={[{
+                                data: pieData,
+                                innerRadius: 48,
+                                outerRadius: 76,
+                                paddingAngle: 3,
+                                cornerRadius: 4,
+                                cx: 90,
+                            }]}
+                            height={200}
+                            sx={chartSx}
+                            slotProps={{
+                                legend: {
+                                    direction: "vertical" as const,
+                                    position: { vertical: "middle" as const, horizontal: "end" as const },
+                                },
+                            }}
+                            margin={{ left: 0, right: 110, top: 10, bottom: 10 }}
+                        />
+                    ) : (
+                        <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
+                            {t("analyticsModule", "noSimData")}
+                        </div>
+                    )}
+                </ChartPanel>
+            </div>
+
+            {/* ── Conversion funnel ──────────────────────────────────────── */}
+            <ChartPanel title={t("analyticsModule", "chartFunnel")} subtitle={t("analyticsModule", "chartFunnelSub")}>
+                <div style={{ display: "flex", gap: 12, alignItems: "stretch", padding: "12px 0", position: "relative" }}>
+                    {[
+                        { label: t("analyticsModule", "funnelTotalCreated"), value: analytics.totalSimulations, color: "#8b5cf6", percent: 100 },
+                        { label: t("analyticsModule", "kpiShared"), value: analytics.sharedSimulations, color: "#10b981", percent: shareRate },
+                        { label: t("analyticsModule", "funnelAccessed"), value: analytics.accessAttempts, color: "#06b6d4", percent: analytics.sharedSimulations > 0 ? Math.round((analytics.accessAttempts / analytics.sharedSimulations) * 100) : 0 },
+                    ].map((stage, idx) => (
+                        <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, position: "relative" }}>
+                            <div style={{
+                                background: `${stage.color}20`,
+                                border: `1px solid ${stage.color}40`,
+                                borderRadius: 8,
+                                padding: "16px",
+                                textAlign: "center",
+                            }}>
+                                <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginBottom: 6 }}>{stage.label}</div>
+                                <div style={{ fontSize: 28, fontWeight: 700, color: stage.color }}>{stage.value}</div>
+                                <div style={{ fontSize: 18, fontWeight: 600, color: `${stage.color}CC`, marginTop: 4 }}>{stage.percent}%</div>
+                            </div>
+                            {idx < 2 && (
+                                <div style={{
+                                    position: "absolute",
+                                    right: "-18px",
+                                    top: "50%",
+                                    transform: "translateY(-50%)",
+                                    fontSize: 24,
+                                    color: "var(--scheme-neutral-700)",
+                                    zIndex: 1,
+                                }}>→</div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </ChartPanel>
+
+            {/* ── Access trends ───────────────────────────────────────────── */}
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
+                <ChartPanel title={t("analyticsModule", "chartAccess")} subtitle={t("analyticsModule", "lastDays", { days: selectedDays })}>
+                    {hasAccessTrend ? (
+                        <BarChart
+                            xAxis={[{ data: accessDates, scaleType: "time" }]}
+                            series={[
+                                { data: accessSuccess, label: t("analyticsModule", "accessSuccessful"), color: "#10b981", stack: "access" },
+                                { data: accessFailed, label: t("analyticsModule", "accessFailed"), color: "#ef4444", stack: "access" },
+                            ]}
+                            height={200}
+                            sx={chartSx}
+                            slotProps={{ legend: { direction: "horizontal" as const, position: { vertical: "top" as const, horizontal: "end" as const } } }}
+                            margin={{ left: 36, right: 12, top: 40, bottom: 32 }}
+                        />
+                    ) : (
+                        <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
+                            {t("analyticsModule", "noAccessTrend")}
+                        </div>
+                    )}
+                </ChartPanel>
+
+                <ChartPanel title={t("analyticsModule", "chartAccessMetrics")}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        {[
+                            { label: t("analyticsModule", "accessTotal"), value: analytics.accessAttempts, color: "#8b5cf6" },
+                            { label: t("analyticsModule", "accessSuccessful"), value: analytics.successfulAccess ?? 0, color: "#10b981" },
+                            { label: t("analyticsModule", "accessFailed"), value: analytics.accessAttempts - (analytics.successfulAccess ?? 0), color: "#ef4444" },
+                        ].map((row) => (
+                            <div
+                                key={row.label}
+                                style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    padding: "12px 14px",
+                                    background: `${row.color}10`,
+                                    borderLeft: `3px solid ${row.color}`,
+                                    borderRadius: 6,
+                                    marginBottom: 8,
+                                }}
+                            >
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                                    <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", color: "var(--scheme-neutral-400)" }}>{row.label}</span>
+                                    <span style={{ fontSize: 18, fontWeight: 700, color: row.color }}>{row.value}</span>
+                                </div>
+                                <div style={{
+                                    height: 6,
+                                    background: "var(--scheme-neutral-900)",
+                                    borderRadius: 3,
+                                    overflow: "hidden",
+                                }}>
+                                    <div style={{
+                                        height: "100%",
+                                        width: `${analytics.accessAttempts > 0 ? (row.value / analytics.accessAttempts * 100) : 0}%`,
+                                        background: row.color,
+                                        transition: "width 0.5s ease",
+                                    }} />
+                                </div>
+                            </div>
+                        ))}
+                        <div style={{
+                            marginTop: 8,
+                            padding: "14px",
+                            background: "linear-gradient(135deg, #06b6d420 0%, #06b6d410 100%)",
+                            border: "1px solid #06b6d440",
+                            borderRadius: 8,
+                            textAlign: "center",
+                        }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginBottom: 4 }}>{t("analyticsModule", "accessSuccessRate")}</div>
+                            <div style={{ fontSize: 32, fontWeight: 700, color: "#06b6d4" }}>{successRate}%</div>
+                        </div>
+                    </div>
+                </ChartPanel>
+            </div>
+
+            {/* ── Agency Performance Table ─────────────────────────────────────────── */}
+            {analytics.byAgency && analytics.byAgency.length > 0 && (
+                <div>
+                    <div style={{ marginBottom: 12 }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--scheme-neutral-100)", marginBottom: 4 }}>
+                            {t("analyticsModule", "titleAgencyPerformance") || "Agency Performance"}
+                        </h3>
+                        <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
+                            {t("analyticsModule", "subtitleAgencyPerformance") || "Compare simulation activity across all agencies"}
+                        </p>
+                    </div>
+                    <DataTable<AnalyticsAgencyStat & { id: string }>
+                        columns={agencyColumns}
+                        rows={(analytics.byAgency ?? []).map((r) => ({ ...r, id: r.agencyId }))}
+                        loading={false}
+                        emptyMessage={t("analyticsModule", "emptyAgency")}
+                        headerRight={<span className="dt-meta-pill">{analytics.byAgency.length} {t("analyticsModule", "pillAgencies") || "agencies"}</span>}
+                    />
+                </div>
+            )}
+
+            {/* ── Top Users Table ───────────────────────────────────────────── */}
+            {analytics.byUser && analytics.byUser.length > 0 && (
+                <div>
+                    <div style={{ marginBottom: 12 }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--scheme-neutral-100)", marginBottom: 4 }}>
+                            {t("analyticsModule", "titleTopUsers") || "Top Performing Users"}
+                        </h3>
+                        <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
+                            {t("analyticsModule", "subtitleTopUsers") || "Most active users across all agencies"}
+                        </p>
+                    </div>
+                    <DataTable<AnalyticsUserStat & { id: string }>
+                        columns={userColumns}
+                        rows={(analytics.byUser ?? []).map((r) => ({ ...r, id: r.userId }))}
+                        loading={false}
+                        emptyMessage={t("analyticsModule", "emptyUsers")}
+                        headerRight={<span className="dt-meta-pill">{t("analyticsModule", "pillTopUsers")}</span>}
+                    />
+                </div>
+            )}
+        </>
+    );
+}

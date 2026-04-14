@@ -1,0 +1,167 @@
+{
+  "info": {
+    "name": "AXPO Simulator API (M2-M3)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Complete API collection for internal and public endpoints."
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.success && json?.data?.token) pm.environment.set('bearerToken', json.data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/internal/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"pin\": \"{{adminPin}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Register (Deprecated)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{bearerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/internal/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agencyId\": \"{{agencyId}}\",\n  \"role\": \"COMMERCIAL\",\n  \"fullName\": \"New User\",\n  \"email\": \"new.user@axpo.local\",\n  \"pin\": \"4567\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health & Specs",
+      "item": [
+        { "name": "Internal Health", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/internal/health" } },
+        { "name": "Internal OpenAPI", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/internal/openapi" } },
+        { "name": "Public OpenAPI", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/openapi" } }
+      ]
+    },
+    {
+      "name": "Agencies",
+      "item": [
+        { "name": "List Agencies", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/agencies" } },
+        { "name": "Create Agency", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/v1/internal/agencies", "body": { "mode": "raw", "raw": "{\n  \"name\": \"AXPO Porto\"\n}", "options": { "raw": { "language": "json" } } } } },
+        { "name": "Get Agency By ID", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/agencies/{{agencyId}}" } },
+        { "name": "Update Agency", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/v1/internal/agencies/{{agencyId}}", "body": { "mode": "raw", "raw": "{\n  \"name\": \"AXPO Porto Updated\",\n  \"isActive\": true\n}", "options": { "raw": { "language": "json" } } } } }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        { "name": "List Users", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/users" } },
+        { "name": "Create User", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/v1/internal/users", "body": { "mode": "raw", "raw": "{\n  \"agencyId\": \"{{agencyId}}\",\n  \"role\": \"COMMERCIAL\",\n  \"fullName\": \"Commercial User\",\n  \"email\": \"commercial.user@axpo.local\",\n  \"pin\": \"5678\"\n}", "options": { "raw": { "language": "json" } } } } },
+        { "name": "Get User By ID", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/users/{{userId}}" } },
+        { "name": "Update User", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/v1/internal/users/{{userId}}", "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Commercial User Updated\",\n  \"isActive\": true\n}", "options": { "raw": { "language": "json" } } } } },
+        { "name": "Get User PIN Metadata", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/users/{{userId}}/pin" } },
+        { "name": "Rotate User PIN", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/users/{{userId}}/pin/rotate" } }
+      ]
+    },
+    {
+      "name": "Simulations",
+      "item": [
+        { "name": "List Simulations", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/simulations" } },
+        { "name": "Create Simulation", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/v1/internal/simulations", "body": { "mode": "raw", "raw": "{\n  \"ownerUserId\": \"{{userId}}\",\n  \"payloadJson\": {\n    \"clientName\": \"Cliente Demo\",\n    \"annualConsumption\": 25000\n  }\n}", "options": { "raw": { "language": "json" } } } } },
+        { "name": "Get Simulation By ID", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/simulations/{{simulationId}}" } },
+        { "name": "Update Simulation", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/v1/internal/simulations/{{simulationId}}", "body": { "mode": "raw", "raw": "{\n  \"payloadJson\": {\n    \"clientName\": \"Cliente Demo Updated\",\n    \"annualConsumption\": 32000\n  }\n}", "options": { "raw": { "language": "json" } } } } },
+        { "name": "Delete Simulation (Soft)", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/simulations/{{simulationId}}" } },
+        { "name": "Clone Simulation", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/simulations/{{simulationId}}/clone" } },
+        { "name": "Share Simulation", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/simulations/{{simulationId}}/share" } },
+        { "name": "Rotate Simulation PIN Snapshot", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/simulations/{{simulationId}}/pin/rotate" } },
+        { "name": "OCR Prefill", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/v1/internal/simulations/{{simulationId}}/ocr-prefill", "body": { "mode": "raw", "raw": "{\n  \"extractedFields\": {\n    \"contractPower\": \"10.35\",\n    \"profile\": \"BTE\"\n  },\n  \"source\": \"manual-test\",\n  \"confidence\": 0.93\n}", "options": { "raw": { "language": "json" } } } } },
+        { "name": "Export PDF", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/simulations/{{simulationId}}/pdf" } }
+      ]
+    },
+    {
+      "name": "Base Values",
+      "item": [
+        { "name": "List Base Value Sets", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/base-values" } },
+        { "name": "Create Base Value Set", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/v1/internal/base-values", "body": { "mode": "raw", "raw": "{\n  \"name\": \"Tariff Set 2026\",\n  \"scope\": \"GLOBAL\",\n  \"isActive\": false,\n  \"items\": [\n    {\n      \"key\": \"energy_price\",\n      \"value\": 0.145,\n      \"unit\": \"EUR/kWh\"\n    }\n  ]\n}", "options": { "raw": { "language": "json" } } } } },
+        { "name": "Get Base Value Set", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/base-values/{{baseValueSetId}}" } },
+        { "name": "Update Base Value Set", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/v1/internal/base-values/{{baseValueSetId}}", "body": { "mode": "raw", "raw": "{\n  \"name\": \"Tariff Set 2026 Updated\",\n  \"isActive\": true\n}", "options": { "raw": { "language": "json" } } } } },
+        { "name": "List Base Value Items", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/base-values/{{baseValueSetId}}/items" } },
+        { "name": "Replace Base Value Items", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/v1/internal/base-values/{{baseValueSetId}}/items", "body": { "mode": "raw", "raw": "{\n  \"items\": [\n    { \"key\": \"energy_price\", \"value\": 0.151, \"unit\": \"EUR/kWh\" },\n    { \"key\": \"fixed_fee\", \"value\": 12.5, \"unit\": \"EUR/month\" }\n  ]\n}", "options": { "raw": { "language": "json" } } } } },
+        { "name": "Activate Base Value Set", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/base-values/{{baseValueSetId}}/activate" } }
+      ]
+    },
+    {
+      "name": "Analytics & Audit",
+      "item": [
+        { "name": "Analytics Overview", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/analytics/overview" } },
+        { "name": "List Audit Logs", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }], "url": "{{baseUrl}}/api/v1/internal/audit-logs" } }
+      ]
+    },
+    {
+      "name": "CUPS",
+      "item": [
+        { "name": "Validate CUPS", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{bearerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/v1/internal/cups/validate", "body": { "mode": "raw", "raw": "{\n  \"cups\": \"ES0021000000000000AB\"\n}", "options": { "raw": { "language": "json" } } } } }
+      ]
+    },
+    {
+      "name": "Public API (External Frontend Consumer)",
+      "item": [
+        {
+          "name": "Public Access (Token + PIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.success && json?.data?.accessSessionToken) pm.environment.set('accessSessionToken', json.data.accessSessionToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/public/simulations/access",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{publicToken}}\",\n  \"pin\": \"{{publicPin}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get Public Simulation By Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessSessionToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/public/simulations/{{publicToken}}"
+          }
+        }
+      ]
+    }
+  ]
+}

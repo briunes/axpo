@@ -1,0 +1,4 @@
+ALTER TABLE "clients" DROP COLUMN IF EXISTS "cups";
+ALTER TABLE "clients" DROP COLUMN IF EXISTS "tags";
+ALTER TABLE "clients" DROP COLUMN IF EXISTS "status";
+DROP TYPE IF EXISTS "ClientStatus";
