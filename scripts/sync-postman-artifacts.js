@@ -11,6 +11,16 @@ const artifactNames = [
   "axpo-simulator.postman_environment.json",
 ];
 
+// If the source directory doesn't exist (e.g. in CI/Vercel where the project
+// is the repo root), skip syncing — the files should already be committed to
+// public/postman in the repository.
+if (!fs.existsSync(sourceDir)) {
+  console.log(
+    `Postman source directory not found (${sourceDir}), skipping sync.`
+  );
+  process.exit(0);
+}
+
 fs.mkdirSync(targetDir, { recursive: true });
 
 for (const artifactName of artifactNames) {
