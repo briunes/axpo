@@ -69,5 +69,17 @@
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.2",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "@prisma/client",
+      "@prisma/engines",
+      "bcrypt",
+      "core-js-pure",
+      "prisma",
+      "puppeteer",
+      "sharp"
+    ]
   }
 }
