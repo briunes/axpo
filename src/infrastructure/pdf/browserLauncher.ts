@@ -2,8 +2,9 @@ import type { Browser } from "puppeteer-core";
 
 // Remote Chromium binary used as fallback when the bundled binary is missing
 // (e.g. Vercel pnpm deployments where file-tracing misses the /bin directory).
+// NOTE: as of v147.0.0 the pack files are architecture-specific; Vercel runs x64.
 const CHROMIUM_REMOTE_URL =
-  "https://github.com/Sparticuz/chromium/releases/download/v147.0.0/chromium-v147.0.0-pack.tar";
+  "https://github.com/Sparticuz/chromium/releases/download/v147.0.0/chromium-v147.0.0-pack.x64.tar";
 
 /**
  * Launches a browser instance appropriate for the current environment.
