@@ -4,7 +4,7 @@ import { Fragment, use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { getSimulation, shareSimulation, type SimulationItem } from "../../lib/internalApi";
+import { getSimulation, shareSimulation, listClients, updateClient, type SimulationItem, type ClientItem } from "../../lib/internalApi";
 import { CrudPageLayout, LoadingState, useAlerts } from "../../components/shared";
 import { SimulationForm } from "../../components/modules/SimulationForm";
 import type { SimulationResults } from "@/domain/types";
@@ -12,6 +12,7 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typogra
 import ShareIcon from "@mui/icons-material/Share";
 import CloseIcon from "@mui/icons-material/Close";
 import HistoryIcon from "@mui/icons-material/History";
+import LockIcon from "@mui/icons-material/Lock";
 import { ShareSimulationView } from "./components/ShareSimulationView";
 import { DownloadHistoryDialog } from "./components/DownloadHistoryDialog";
 
@@ -127,6 +128,7 @@ export default function SimulationDetailPage({ params }: { params: Promise<{ id:
     const { t } = useI18n();
 
     const [simulation, setSimulation] = useState<SimulationItem | null>(null);
+    const [clients, setClients] = useState<ClientItem[]>([]);
     const [lastResults, setLastResults] = useState<SimulationResults | null>(null);
     const [showShareDialog, setShowShareDialog] = useState(false);
     const [showHistoryDialog, setShowHistoryDialog] = useState(false);
@@ -156,11 +158,33 @@ export default function SimulationDetailPage({ params }: { params: Promise<{ id:
                 showError(err instanceof Error ? err.message : t("simulationDetail", "notFound"));
                 router.push("/internal/simulations");
             });
+
+        listClients(session.token, { pageSize: 500 })
+            .then((res) => setClients(res.items))
+            .catch(() => { /* non-critical */ });
     }, [session, id]);
 
     const handleShare = async () => {
         if (!session || !simulation) return;
+        // Re-fetch the simulation so ShareSimulationView always receives a fresh
+        // payloadJson (containing the latest results + selectedOffer) without
+        // requiring a full page refresh after a calculation or offer selection.
+        try {
+            const { simulation: freshSim } = await getSimulation(session.token, simulation.id);
+            setSimulation(freshSim);
+        } catch {
+            // Non-critical — fall back to the existing (possibly stale) data.
+        }
         setShowShareDialog(true);
+    };
+
+    const handleClientFieldsChanged = async (clientId: string, data: { name?: string; contactName?: string }) => {
+        if (!session) return;
+        try {
+            await updateClient(session.token, clientId, data);
+        } catch {
+            // non-critical — silent failure; changes are already saved in the simulation payload
+        }
     };
 
     if (!session || !simulation) {
@@ -179,8 +203,25 @@ export default function SimulationDetailPage({ params }: { params: Promise<{ id:
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                 <div style={{ flex: 1 }}>
                     <SimulationMeta sim={simulation} />
+                    {simulation.status === "SHARED" && (
+                        <div style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "10px 16px",
+                            marginBottom: 16,
+                            background: "rgba(74, 222, 128, 0.07)",
+                            border: "1px solid rgba(74, 222, 128, 0.3)",
+                            borderRadius: 8,
+                            fontSize: 13,
+                            color: "#4ade80",
+                        }}>
+                            <LockIcon sx={{ fontSize: 16 }} />
+                            <span>This simulation has been shared and is now read-only. No changes can be made.</span>
+                        </div>
+                    )}
                 </div>
-                {!!lastResults && (
+                {!!lastResults && simulation.status === 'DRAFT' && (
                     <>
                         <Button
                             variant="outlined"
@@ -205,9 +246,12 @@ export default function SimulationDetailPage({ params }: { params: Promise<{ id:
             <SimulationForm
                 simulation={simulation}
                 token={session.token}
+                clients={clients}
+                onClientFieldsChanged={handleClientFieldsChanged}
                 onSuccess={(results) => setLastResults(results)}
                 onNotify={(text, tone) => tone === "success" ? showSuccess(text) : showError(text)}
                 onOfferSelected={(productKey) => setSelectedOfferProductKey(productKey)}
+                readOnly={simulation.status === "SHARED"}
             />
 
             {/* Share Dialog */}

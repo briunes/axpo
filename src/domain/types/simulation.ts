@@ -94,10 +94,11 @@ export interface ElectricityInputs {
   potenciaContratada: ElecPeriodMap;
 
   /**
-   * Excess power used above the contracted value in kW per period.
-   * Only periods P1–P3 may carry excess for 3.0TD / 6.1TD.
+   * Excess power charge in € — copied directly from the client's invoice.
+   * This is a regulatory grid charge, identical regardless of commercial supplier
+   * (matches Excel E35 pass-through).
    */
-  excesoPotencia: Partial<Record<"P1" | "P2" | "P3", number>>;
+  excesoPotencia?: number;
 
   /** Energy consumed in kWh per period for the billing period */
   consumo: ElecPeriodMap;
@@ -126,6 +127,10 @@ export interface ElectricityInputs {
     reactiva?: number; // €  reactive energy charge
     alquilerEquipoMedida?: number; // €  meter rental
     otrosCargos?: number; // €  other charges
+    /** IVA rate as a percentage (e.g. 21 means 21%). Falls back to 21% if not set. */
+    ivaTasa?: number;
+    /** Impuesto Eléctrico rate as a percentage (e.g. 5.11269 means 5.11%). Falls back to 5.11269% if not set. */
+    impuestoElectricoTasa?: number;
   };
 }
 

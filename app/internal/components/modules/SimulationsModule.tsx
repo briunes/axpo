@@ -14,10 +14,13 @@ import {
   Typography,
   TextField,
   Box,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import SyncIcon from "@mui/icons-material/Sync";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -54,6 +57,11 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
   const [shareSim, setShareSim] = useState<SimulationItem | null>(null);
   const [confirmArchiveSim, setConfirmArchiveSim] = useState<SimulationItem | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [dropdownState, setDropdownState] = useState<{
+    anchorEl: HTMLElement | null;
+    items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }>;
+  }>({ anchorEl: null, items: [] });
+  const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
 
   useEffect(() => { refresh(); }, []);
 
@@ -220,7 +228,7 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
     {
       key: "actions",
       label: t("columns", "actions"),
-      width: "360",
+      width: "160",
       renderCell: (s) => {
         const isShared = s.status === "SHARED";
         const canArchive = !s.isDeleted && canDo(session.user.role, "simulations.archive");
@@ -228,40 +236,39 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
         const canDuplicate = canDo(session.user.role, "simulations.duplicate");
         const canCreate = canDo(session.user.role, "simulations.create");
 
+        const primaryLabel = isShared ? t("actions", "view") : t("actions", "simulate");
+        const primaryClass = isShared ? "dt-action-btn" : "dt-action-btn dt-action-btn--primary";
+        const primaryOnClick = () => router.push(
+          isShared ? `/internal/simulations/${s.id}/view` : `/internal/simulations/${s.id}`
+        );
+
+        const secondaryItems: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
+        if (canDuplicate) {
+          secondaryItems.push({ label: t("actions", "duplicate"), onClick: () => handleClone(s), disabled: busyAction === `clone-${s.id}` });
+        }
+        if (canArchive) {
+          secondaryItems.push({ label: t("actions", "archive"), onClick: () => setConfirmArchiveSim(s), danger: true });
+        }
+
+        const hasDropdown = secondaryItems.length > 0;
+
         return (
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            {!isShared && canCreate && (
-              <button
-                className="dt-action-btn dt-action-btn--primary"
-                onClick={() => router.push(`/internal/simulations/${s.id}`)}
-              >
-                {t("actions", "simulate")}
-              </button>
-            )}
-            <button className="dt-action-btn" onClick={() => router.push(`/internal/simulations/${s.id}/view`)}>{t("actions", "view")}</button>
-            {!isShared && canShare && (
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <button
+              className={primaryClass}
+              style={hasDropdown ? { borderRadius: "6px 0 0 6px", borderRight: "none" } : undefined}
+              onClick={primaryOnClick}
+            >
+              {primaryLabel}
+            </button>
+            {hasDropdown && (
               <button
                 className="dt-action-btn"
-                onClick={() => router.push(`/internal/simulations/${s.id}/share`)}
+                style={{ borderRadius: "0 6px 6px 0", padding: "0 5px", minWidth: 24 }}
+                onClick={(e) => setDropdownState({ anchorEl: e.currentTarget, items: secondaryItems })}
+                aria-label="More actions"
               >
-                {t("actions", "share")}
-              </button>
-            )}
-            {canDuplicate && (
-              <button
-                className="dt-action-btn"
-                onClick={() => handleClone(s)}
-                disabled={busyAction === `clone-${s.id}`}
-              >
-                {t("actions", "duplicate")}
-              </button>
-            )}
-            {canArchive && (
-              <button
-                className="dt-action-btn dt-action-btn--danger"
-                onClick={() => setConfirmArchiveSim(s)}
-              >
-                {t("actions", "archive")}
+                <KeyboardArrowDownIcon sx={{ fontSize: 14, display: "block" }} />
               </button>
             )}
           </div>
@@ -419,6 +426,40 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
           onCancel={() => setConfirmArchiveSim(null)}
         />
       )}
+
+      {/* ── Actions dropdown menu ── */}
+      <Menu
+        open={!!dropdownState.anchorEl}
+        anchorEl={dropdownState.anchorEl}
+        onClose={closeDropdown}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 0.5,
+              minWidth: 150,
+              borderRadius: "8px",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+            },
+          },
+        }}
+      >
+        {dropdownState.items.map((item, i) => (
+          <MenuItem
+            key={i}
+            onClick={() => { item.onClick(); closeDropdown(); }}
+            disabled={item.disabled}
+            sx={{
+              fontSize: 13,
+              color: item.danger ? "error.main" : "text.primary",
+              py: 0.75,
+            }}
+          >
+            {item.label}
+          </MenuItem>
+        ))}
+      </Menu>
     </Column>
   );
 }

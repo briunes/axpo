@@ -17,6 +17,7 @@ interface SimulationResultsCardsProps {
     calculating?: boolean;
     selectedOffer?: { productKey: string; commodity: "ELECTRICITY" | "GAS" };
     onSelectOffer?: (productKey: string, commodity: "ELECTRICITY" | "GAS", pricingType: "FIXED" | "INDEXED") => Promise<void>;
+    readOnly?: boolean;
 }
 
 interface PendingOffer {
@@ -299,6 +300,7 @@ function EditableInputPanel({
     onUpdatePeriod,
     onRecalculate,
     calculating,
+    readOnly,
 }: {
     facturaActual?: number;
     tarifaAcceso?: string;
@@ -309,6 +311,7 @@ function EditableInputPanel({
     onUpdatePeriod?: (type: "energy" | "power" | "omie", period: string, value: number) => void;
     onRecalculate?: () => void;
     calculating?: boolean;
+    readOnly?: boolean;
 }) {
     const { t } = useI18n();
     const [expandedSection, setExpandedSection] = useState<"energy" | "power" | "omie" | null>(null);
@@ -398,213 +401,215 @@ function EditableInputPanel({
                 )}
             </div>
 
-            {/* Editable periods */}
-            {energyPeriods && Object.keys(energyPeriods).length > 0 && (
-                <div style={{ marginTop: 12 }}>
+            {!readOnly && (<>
+                {/* Editable periods */}
+                {energyPeriods && Object.keys(energyPeriods).length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                        <button
+                            onClick={() => setExpandedSection(expandedSection === "energy" ? null : "energy")}
+                            style={{
+                                width: "100%",
+                                padding: "8px 10px",
+                                background: expandedSection === "energy" ? "#f3f4f6" : "#fff",
+                                border: "1px solid #d1d5db",
+                                borderRadius: 6,
+                                color: "#374151",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                transition: "all 0.2s",
+                            }}
+                        >
+                            <span>{t("simulationOffersCards", "btnConsumption")}</span>
+                            <span>{expandedSection === "energy" ? "▲" : "▼"}</span>
+                        </button>
+                        {expandedSection === "energy" && (
+                            <div style={{ marginTop: 8, padding: 12, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                                {Object.entries(energyPeriods).map(([period, value]) => (
+                                    <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", minWidth: 30 }}>
+                                            {period}:
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={value}
+                                            onChange={(e) => handleInputChange("energy", period, e.target.value)}
+                                            style={{
+                                                flex: 1,
+                                                padding: "6px 10px",
+                                                border: "1px solid #d1d5db",
+                                                borderRadius: 6,
+                                                fontSize: 13,
+                                                fontWeight: 600,
+                                                color: "#111827",
+                                                background: "#fff",
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {powerPeriods && Object.keys(powerPeriods).length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                        <button
+                            onClick={() => setExpandedSection(expandedSection === "power" ? null : "power")}
+                            style={{
+                                width: "100%",
+                                padding: "8px 10px",
+                                background: expandedSection === "power" ? "#f3f4f6" : "#fff",
+                                border: "1px solid #d1d5db",
+                                borderRadius: 6,
+                                color: "#374151",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                transition: "all 0.2s",
+                            }}
+                        >
+                            <span>{t("simulationOffersCards", "btnPower")}</span>
+                            <span>{expandedSection === "power" ? "▲" : "▼"}</span>
+                        </button>
+                        {expandedSection === "power" && (
+                            <div style={{ marginTop: 8, padding: 12, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                                {Object.entries(powerPeriods).map(([period, value]) => (
+                                    <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", minWidth: 30 }}>
+                                            {period}:
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={value}
+                                            onChange={(e) => handleInputChange("power", period, e.target.value)}
+                                            step="0.01"
+                                            style={{
+                                                flex: 1,
+                                                padding: "6px 10px",
+                                                border: "1px solid #d1d5db",
+                                                borderRadius: 6,
+                                                fontSize: 13,
+                                                fontWeight: 600,
+                                                color: "#111827",
+                                                background: "#fff",
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {omiePeriods && Object.keys(omiePeriods).length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                        <button
+                            onClick={() => setExpandedSection(expandedSection === "omie" ? null : "omie")}
+                            style={{
+                                width: "100%",
+                                padding: "8px 10px",
+                                background: expandedSection === "omie" ? "#f3f4f6" : "#fff",
+                                border: "1px solid #d1d5db",
+                                borderRadius: 6,
+                                color: "#374151",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                transition: "all 0.2s",
+                            }}
+                        >
+                            <span>{t("simulationOffersCards", "btnOmie")}</span>
+                            <span>{expandedSection === "omie" ? "▲" : "▼"}</span>
+                        </button>
+                        {expandedSection === "omie" && (
+                            <div style={{ marginTop: 8, padding: 12, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                                {Object.entries(omiePeriods).map(([period, value]) => (
+                                    <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", minWidth: 30 }}>
+                                            {period}:
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={value}
+                                            onChange={(e) => handleInputChange("omie", period, e.target.value)}
+                                            step="0.001"
+                                            style={{
+                                                flex: 1,
+                                                padding: "6px 10px",
+                                                border: "1px solid #d1d5db",
+                                                borderRadius: 6,
+                                                fontSize: 13,
+                                                fontWeight: 600,
+                                                color: "#111827",
+                                                background: "#fff",
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <div style={{
+                    marginTop: 16,
+                    paddingTop: 12,
+                    borderTop: "2px solid #e5e7eb",
+                }}>
                     <button
-                        onClick={() => setExpandedSection(expandedSection === "energy" ? null : "energy")}
+                        onClick={onRecalculate}
+                        disabled={calculating}
                         style={{
                             width: "100%",
-                            padding: "8px 10px",
-                            background: expandedSection === "energy" ? "#f3f4f6" : "#fff",
-                            border: "1px solid #d1d5db",
-                            borderRadius: 6,
-                            color: "#374151",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
+                            padding: "10px 16px",
+                            background: calculating
+                                ? "linear-gradient(135deg, #d1d5db, #9ca3af)"
+                                : "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                            border: "none",
+                            borderRadius: 8,
+                            color: "#fff",
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: calculating ? "not-allowed" : "pointer",
                             transition: "all 0.2s",
+                            opacity: calculating ? 0.7 : 1,
+                            boxShadow: calculating ? "none" : "0 4px 6px -1px rgba(99, 102, 241, 0.3)",
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!calculating) {
+                                e.currentTarget.style.transform = "translateY(-2px)";
+                                e.currentTarget.style.boxShadow = "0 8px 12px -1px rgba(99, 102, 241, 0.4)";
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.boxShadow = calculating ? "none" : "0 4px 6px -1px rgba(99, 102, 241, 0.3)";
                         }}
                     >
-                        <span>{t("simulationOffersCards", "btnConsumption")}</span>
-                        <span>{expandedSection === "energy" ? "▲" : "▼"}</span>
+                        {calculating ? t("simulationOffersCards", "btnCalculating") : t("simulationOffersCards", "btnRecalculate")}
                     </button>
-                    {expandedSection === "energy" && (
-                        <div style={{ marginTop: 8, padding: 12, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-                            {Object.entries(energyPeriods).map(([period, value]) => (
-                                <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                    <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", minWidth: 30 }}>
-                                        {period}:
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={value}
-                                        onChange={(e) => handleInputChange("energy", period, e.target.value)}
-                                        style={{
-                                            flex: 1,
-                                            padding: "6px 10px",
-                                            border: "1px solid #d1d5db",
-                                            borderRadius: 6,
-                                            fontSize: 13,
-                                            fontWeight: 600,
-                                            color: "#111827",
-                                            background: "#fff",
-                                        }}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    )}
                 </div>
-            )}
 
-            {powerPeriods && Object.keys(powerPeriods).length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                    <button
-                        onClick={() => setExpandedSection(expandedSection === "power" ? null : "power")}
-                        style={{
-                            width: "100%",
-                            padding: "8px 10px",
-                            background: expandedSection === "power" ? "#f3f4f6" : "#fff",
-                            border: "1px solid #d1d5db",
-                            borderRadius: 6,
-                            color: "#374151",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            transition: "all 0.2s",
-                        }}
-                    >
-                        <span>{t("simulationOffersCards", "btnPower")}</span>
-                        <span>{expandedSection === "power" ? "▲" : "▼"}</span>
-                    </button>
-                    {expandedSection === "power" && (
-                        <div style={{ marginTop: 8, padding: 12, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-                            {Object.entries(powerPeriods).map(([period, value]) => (
-                                <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                    <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", minWidth: 30 }}>
-                                        {period}:
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={value}
-                                        onChange={(e) => handleInputChange("power", period, e.target.value)}
-                                        step="0.01"
-                                        style={{
-                                            flex: 1,
-                                            padding: "6px 10px",
-                                            border: "1px solid #d1d5db",
-                                            borderRadius: 6,
-                                            fontSize: 13,
-                                            fontWeight: 600,
-                                            color: "#111827",
-                                            background: "#fff",
-                                        }}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                <div style={{
+                    marginTop: 8,
+                    fontSize: 10,
+                    color: "#9ca3af",
+                    textAlign: "center",
+                    fontWeight: 500,
+                }}>
+                    {t("simulationOffersCards", "recalculateHint")}
                 </div>
-            )}
-
-            {omiePeriods && Object.keys(omiePeriods).length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                    <button
-                        onClick={() => setExpandedSection(expandedSection === "omie" ? null : "omie")}
-                        style={{
-                            width: "100%",
-                            padding: "8px 10px",
-                            background: expandedSection === "omie" ? "#f3f4f6" : "#fff",
-                            border: "1px solid #d1d5db",
-                            borderRadius: 6,
-                            color: "#374151",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            transition: "all 0.2s",
-                        }}
-                    >
-                        <span>{t("simulationOffersCards", "btnOmie")}</span>
-                        <span>{expandedSection === "omie" ? "▲" : "▼"}</span>
-                    </button>
-                    {expandedSection === "omie" && (
-                        <div style={{ marginTop: 8, padding: 12, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-                            {Object.entries(omiePeriods).map(([period, value]) => (
-                                <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                    <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", minWidth: 30 }}>
-                                        {period}:
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={value}
-                                        onChange={(e) => handleInputChange("omie", period, e.target.value)}
-                                        step="0.001"
-                                        style={{
-                                            flex: 1,
-                                            padding: "6px 10px",
-                                            border: "1px solid #d1d5db",
-                                            borderRadius: 6,
-                                            fontSize: 13,
-                                            fontWeight: 600,
-                                            color: "#111827",
-                                            background: "#fff",
-                                        }}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            <div style={{
-                marginTop: 16,
-                paddingTop: 12,
-                borderTop: "2px solid #e5e7eb",
-            }}>
-                <button
-                    onClick={onRecalculate}
-                    disabled={calculating}
-                    style={{
-                        width: "100%",
-                        padding: "10px 16px",
-                        background: calculating
-                            ? "linear-gradient(135deg, #d1d5db, #9ca3af)"
-                            : "linear-gradient(135deg, #6366f1, #8b5cf6)",
-                        border: "none",
-                        borderRadius: 8,
-                        color: "#fff",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: calculating ? "not-allowed" : "pointer",
-                        transition: "all 0.2s",
-                        opacity: calculating ? 0.7 : 1,
-                        boxShadow: calculating ? "none" : "0 4px 6px -1px rgba(99, 102, 241, 0.3)",
-                    }}
-                    onMouseEnter={(e) => {
-                        if (!calculating) {
-                            e.currentTarget.style.transform = "translateY(-2px)";
-                            e.currentTarget.style.boxShadow = "0 8px 12px -1px rgba(99, 102, 241, 0.4)";
-                        }
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = calculating ? "none" : "0 4px 6px -1px rgba(99, 102, 241, 0.3)";
-                    }}
-                >
-                    {calculating ? t("simulationOffersCards", "btnCalculating") : t("simulationOffersCards", "btnRecalculate")}
-                </button>
-            </div>
-
-            <div style={{
-                marginTop: 8,
-                fontSize: 10,
-                color: "#9ca3af",
-                textAlign: "center",
-                fontWeight: 500,
-            }}>
-                {t("simulationOffersCards", "recalculateHint")}
-            </div>
+            </>)}
         </div>
     );
 }
@@ -622,6 +627,7 @@ export function SimulationResultsCards({
     calculating,
     selectedOffer,
     onSelectOffer,
+    readOnly,
 }: SimulationResultsCardsProps) {
     const { t } = useI18n();
     const [elecTab, setElecTab] = useState<"all" | "fixed" | "indexed">("all");
@@ -685,6 +691,7 @@ export function SimulationResultsCards({
                 onUpdatePeriod={onUpdatePeriod}
                 onRecalculate={onRecalculate}
                 calculating={calculating}
+                readOnly={readOnly}
             />
 
             {/* Right side - Product tables */}
@@ -780,7 +787,7 @@ export function SimulationResultsCards({
                                     products={displayProducts}
                                     facturaActual={facturaActual}
                                     selectedOffer={selectedOffer}
-                                    onOfferClick={handleOfferClick}
+                                    onOfferClick={readOnly ? undefined : handleOfferClick}
                                     commodity="ELECTRICITY"
                                     bestProductKey={bestElecProduct.productKey}
                                 />
@@ -886,7 +893,7 @@ export function SimulationResultsCards({
                                     products={displayProducts}
                                     facturaActual={facturaActual}
                                     selectedOffer={selectedOffer}
-                                    onOfferClick={handleOfferClick}
+                                    onOfferClick={readOnly ? undefined : handleOfferClick}
                                     commodity="GAS"
                                     bestProductKey={bestGasProduct.productKey}
                                 />

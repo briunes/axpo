@@ -1,13 +1,13 @@
 {
   "name": "AXPO Price Tables 2026-04",
   "scopeType": "GLOBAL",
-  "sourceWorkbookRef": "SIMULADOR AXPO 01.04.2026 (Pen, Islas) 1_v15 ABIERTO.xlsm",
+  "sourceWorkbookRef": "sim_open.xlsm",
   "sourceScope": "ALL",
   "version": 1,
   "items": [
     {
       "key": "ELEC:FIJO:1P_PLUS:N1:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.159164,
+      "valueNumeric": 0.14395,
       "unit": "€/kWh"
     },
     {
@@ -17,7 +17,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N1:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.159164,
+      "valueNumeric": 0.14395,
       "unit": "€/kWh"
     },
     {
@@ -27,12 +27,12 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N1:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.159164,
+      "valueNumeric": 0.14395,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.137025,
+      "valueNumeric": 0.122914,
       "unit": "€/kWh"
     },
     {
@@ -42,7 +42,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.137025,
+      "valueNumeric": 0.122914,
       "unit": "€/kWh"
     },
     {
@@ -52,7 +52,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.137025,
+      "valueNumeric": 0.122914,
       "unit": "€/kWh"
     },
     {
@@ -62,7 +62,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.137025,
+      "valueNumeric": 0.122914,
       "unit": "€/kWh"
     },
     {
@@ -72,7 +72,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.137025,
+      "valueNumeric": 0.122914,
       "unit": "€/kWh"
     },
     {
@@ -82,7 +82,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N1:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.137025,
+      "valueNumeric": 0.122914,
       "unit": "€/kWh"
     },
     {
@@ -92,7 +92,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N2:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.154088,
+      "valueNumeric": 0.138874,
       "unit": "€/kWh"
     },
     {
@@ -102,7 +102,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N2:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.154088,
+      "valueNumeric": 0.138874,
       "unit": "€/kWh"
     },
     {
@@ -112,12 +112,12 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N2:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.154088,
+      "valueNumeric": 0.138874,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.131949,
+      "valueNumeric": 0.117838,
       "unit": "€/kWh"
     },
     {
@@ -127,7 +127,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.131949,
+      "valueNumeric": 0.117838,
       "unit": "€/kWh"
     },
     {
@@ -137,7 +137,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.131949,
+      "valueNumeric": 0.117838,
       "unit": "€/kWh"
     },
     {
@@ -147,7 +147,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.131949,
+      "valueNumeric": 0.117838,
       "unit": "€/kWh"
     },
     {
@@ -157,7 +157,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.131949,
+      "valueNumeric": 0.117838,
       "unit": "€/kWh"
     },
     {
@@ -167,7 +167,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N2:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.131949,
+      "valueNumeric": 0.117838,
       "unit": "€/kWh"
     },
     {
@@ -177,7 +177,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N3:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.149012,
+      "valueNumeric": 0.133798,
       "unit": "€/kWh"
     },
     {
@@ -187,7 +187,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N3:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.149012,
+      "valueNumeric": 0.133798,
       "unit": "€/kWh"
     },
     {
@@ -197,12 +197,12 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N3:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.149012,
+      "valueNumeric": 0.133798,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.126873,
+      "valueNumeric": 0.112761,
       "unit": "€/kWh"
     },
     {
@@ -212,7 +212,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.126873,
+      "valueNumeric": 0.112761,
       "unit": "€/kWh"
     },
     {
@@ -222,7 +222,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.126873,
+      "valueNumeric": 0.112761,
       "unit": "€/kWh"
     },
     {
@@ -232,7 +232,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.126873,
+      "valueNumeric": 0.112761,
       "unit": "€/kWh"
     },
     {
@@ -242,7 +242,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.126873,
+      "valueNumeric": 0.112761,
       "unit": "€/kWh"
     },
     {
@@ -252,7 +252,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS:N3:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.126873,
+      "valueNumeric": 0.112761,
       "unit": "€/kWh"
     },
     {
@@ -262,7 +262,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N1:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.159164,
+      "valueNumeric": 0.14395,
       "unit": "€/kWh"
     },
     {
@@ -272,7 +272,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N1:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.159164,
+      "valueNumeric": 0.14395,
       "unit": "€/kWh"
     },
     {
@@ -282,12 +282,12 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N1:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.159164,
+      "valueNumeric": 0.14395,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.137025,
+      "valueNumeric": 0.122914,
       "unit": "€/kWh"
     },
     {
@@ -297,7 +297,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.137025,
+      "valueNumeric": 0.122914,
       "unit": "€/kWh"
     },
     {
@@ -307,7 +307,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.137025,
+      "valueNumeric": 0.122914,
       "unit": "€/kWh"
     },
     {
@@ -317,7 +317,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.137025,
+      "valueNumeric": 0.122914,
       "unit": "€/kWh"
     },
     {
@@ -327,7 +327,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.137025,
+      "valueNumeric": 0.122914,
       "unit": "€/kWh"
     },
     {
@@ -337,7 +337,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N1:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.137025,
+      "valueNumeric": 0.122914,
       "unit": "€/kWh"
     },
     {
@@ -347,7 +347,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N2:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.154088,
+      "valueNumeric": 0.138874,
       "unit": "€/kWh"
     },
     {
@@ -357,7 +357,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N2:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.154088,
+      "valueNumeric": 0.138874,
       "unit": "€/kWh"
     },
     {
@@ -367,12 +367,12 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N2:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.154088,
+      "valueNumeric": 0.138874,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.131949,
+      "valueNumeric": 0.117838,
       "unit": "€/kWh"
     },
     {
@@ -382,7 +382,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.131949,
+      "valueNumeric": 0.117838,
       "unit": "€/kWh"
     },
     {
@@ -392,7 +392,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.131949,
+      "valueNumeric": 0.117838,
       "unit": "€/kWh"
     },
     {
@@ -402,7 +402,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.131949,
+      "valueNumeric": 0.117838,
       "unit": "€/kWh"
     },
     {
@@ -412,7 +412,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.131949,
+      "valueNumeric": 0.117838,
       "unit": "€/kWh"
     },
     {
@@ -422,7 +422,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N2:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.131949,
+      "valueNumeric": 0.117838,
       "unit": "€/kWh"
     },
     {
@@ -432,7 +432,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N3:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.149012,
+      "valueNumeric": 0.133798,
       "unit": "€/kWh"
     },
     {
@@ -442,7 +442,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N3:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.149012,
+      "valueNumeric": 0.133798,
       "unit": "€/kWh"
     },
     {
@@ -452,12 +452,12 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N3:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.149012,
+      "valueNumeric": 0.133798,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.126873,
+      "valueNumeric": 0.112761,
       "unit": "€/kWh"
     },
     {
@@ -467,7 +467,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.126873,
+      "valueNumeric": 0.112761,
       "unit": "€/kWh"
     },
     {
@@ -477,7 +477,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.126873,
+      "valueNumeric": 0.112761,
       "unit": "€/kWh"
     },
     {
@@ -487,7 +487,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.126873,
+      "valueNumeric": 0.112761,
       "unit": "€/kWh"
     },
     {
@@ -497,7 +497,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.126873,
+      "valueNumeric": 0.112761,
       "unit": "€/kWh"
     },
     {
@@ -507,7 +507,7 @@
     },
     {
       "key": "ELEC:FIJO:1P_PLUS_XL:N3:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.126873,
+      "valueNumeric": 0.112761,
       "unit": "€/kWh"
     },
     {
@@ -517,7 +517,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.238661,
+      "valueNumeric": 0.222786,
       "unit": "€/kWh"
     },
     {
@@ -527,7 +527,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.167303,
+      "valueNumeric": 0.151921,
       "unit": "€/kWh"
     },
     {
@@ -537,12 +537,12 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.141781,
+      "valueNumeric": 0.127007,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.222933,
+      "valueNumeric": 0.198461,
       "unit": "€/kWh"
     },
     {
@@ -552,7 +552,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.187726,
+      "valueNumeric": 0.169205,
       "unit": "€/kWh"
     },
     {
@@ -562,7 +562,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.146042,
+      "valueNumeric": 0.136223,
       "unit": "€/kWh"
     },
     {
@@ -572,7 +572,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.122772,
+      "valueNumeric": 0.114524,
       "unit": "€/kWh"
     },
     {
@@ -582,7 +582,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.10867,
+      "valueNumeric": 0.102261,
       "unit": "€/kWh"
     },
     {
@@ -592,7 +592,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.13732,
+      "valueNumeric": 0.123243,
       "unit": "€/kWh"
     },
     {
@@ -602,7 +602,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P1:ENERGIA",
-      "valueNumeric": 0.193739,
+      "valueNumeric": 0.171295,
       "unit": "€/kWh"
     },
     {
@@ -612,7 +612,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P2:ENERGIA",
-      "valueNumeric": 0.16602,
+      "valueNumeric": 0.14862,
       "unit": "€/kWh"
     },
     {
@@ -622,7 +622,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P3:ENERGIA",
-      "valueNumeric": 0.132282,
+      "valueNumeric": 0.12327,
       "unit": "€/kWh"
     },
     {
@@ -632,7 +632,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P4:ENERGIA",
-      "valueNumeric": 0.114847,
+      "valueNumeric": 0.10692,
       "unit": "€/kWh"
     },
     {
@@ -642,7 +642,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P5:ENERGIA",
-      "valueNumeric": 0.103093,
+      "valueNumeric": 0.096879,
       "unit": "€/kWh"
     },
     {
@@ -652,7 +652,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N1:6.1TD:P6:ENERGIA",
-      "valueNumeric": 0.134913,
+      "valueNumeric": 0.120617,
       "unit": "€/kWh"
     },
     {
@@ -662,7 +662,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.226843,
+      "valueNumeric": 0.210968,
       "unit": "€/kWh"
     },
     {
@@ -672,7 +672,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.155486,
+      "valueNumeric": 0.140104,
       "unit": "€/kWh"
     },
     {
@@ -682,12 +682,12 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.129964,
+      "valueNumeric": 0.11519,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.211115,
+      "valueNumeric": 0.186644,
       "unit": "€/kWh"
     },
     {
@@ -697,7 +697,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.175909,
+      "valueNumeric": 0.157388,
       "unit": "€/kWh"
     },
     {
@@ -707,7 +707,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.134224,
+      "valueNumeric": 0.124406,
       "unit": "€/kWh"
     },
     {
@@ -717,7 +717,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.110954,
+      "valueNumeric": 0.102707,
       "unit": "€/kWh"
     },
     {
@@ -727,7 +727,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.096853,
+      "valueNumeric": 0.090444,
       "unit": "€/kWh"
     },
     {
@@ -737,7 +737,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.125503,
+      "valueNumeric": 0.111425,
       "unit": "€/kWh"
     },
     {
@@ -747,7 +747,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P1:ENERGIA",
-      "valueNumeric": 0.181922,
+      "valueNumeric": 0.159478,
       "unit": "€/kWh"
     },
     {
@@ -757,7 +757,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P2:ENERGIA",
-      "valueNumeric": 0.154203,
+      "valueNumeric": 0.136802,
       "unit": "€/kWh"
     },
     {
@@ -767,7 +767,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P3:ENERGIA",
-      "valueNumeric": 0.120465,
+      "valueNumeric": 0.111453,
       "unit": "€/kWh"
     },
     {
@@ -777,7 +777,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P4:ENERGIA",
-      "valueNumeric": 0.103029,
+      "valueNumeric": 0.095103,
       "unit": "€/kWh"
     },
     {
@@ -787,7 +787,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P5:ENERGIA",
-      "valueNumeric": 0.091276,
+      "valueNumeric": 0.085061,
       "unit": "€/kWh"
     },
     {
@@ -797,7 +797,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N2:6.1TD:P6:ENERGIA",
-      "valueNumeric": 0.123096,
+      "valueNumeric": 0.108799,
       "unit": "€/kWh"
     },
     {
@@ -807,7 +807,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.220569,
+      "valueNumeric": 0.204694,
       "unit": "€/kWh"
     },
     {
@@ -817,7 +817,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.149212,
+      "valueNumeric": 0.13383,
       "unit": "€/kWh"
     },
     {
@@ -827,12 +827,12 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.12369,
+      "valueNumeric": 0.108916,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.204841,
+      "valueNumeric": 0.18037,
       "unit": "€/kWh"
     },
     {
@@ -842,7 +842,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.169635,
+      "valueNumeric": 0.151114,
       "unit": "€/kWh"
     },
     {
@@ -852,7 +852,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.12795,
+      "valueNumeric": 0.118132,
       "unit": "€/kWh"
     },
     {
@@ -862,7 +862,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.10468,
+      "valueNumeric": 0.096433,
       "unit": "€/kWh"
     },
     {
@@ -872,7 +872,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.090579,
+      "valueNumeric": 0.08417,
       "unit": "€/kWh"
     },
     {
@@ -882,7 +882,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.119229,
+      "valueNumeric": 0.105151,
       "unit": "€/kWh"
     },
     {
@@ -892,7 +892,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P1:ENERGIA",
-      "valueNumeric": 0.175648,
+      "valueNumeric": 0.153203,
       "unit": "€/kWh"
     },
     {
@@ -902,7 +902,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P2:ENERGIA",
-      "valueNumeric": 0.147929,
+      "valueNumeric": 0.130528,
       "unit": "€/kWh"
     },
     {
@@ -912,7 +912,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P3:ENERGIA",
-      "valueNumeric": 0.114191,
+      "valueNumeric": 0.105179,
       "unit": "€/kWh"
     },
     {
@@ -922,7 +922,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P4:ENERGIA",
-      "valueNumeric": 0.096755,
+      "valueNumeric": 0.088829,
       "unit": "€/kWh"
     },
     {
@@ -932,7 +932,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P5:ENERGIA",
-      "valueNumeric": 0.085002,
+      "valueNumeric": 0.078787,
       "unit": "€/kWh"
     },
     {
@@ -942,7 +942,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE:N3:6.1TD:P6:ENERGIA",
-      "valueNumeric": 0.116822,
+      "valueNumeric": 0.102525,
       "unit": "€/kWh"
     },
     {
@@ -952,7 +952,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.227534,
+      "valueNumeric": 0.211659,
       "unit": "€/kWh"
     },
     {
@@ -962,7 +962,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.156176,
+      "valueNumeric": 0.140794,
       "unit": "€/kWh"
     },
     {
@@ -972,12 +972,12 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.130654,
+      "valueNumeric": 0.11588,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.212364,
+      "valueNumeric": 0.187893,
       "unit": "€/kWh"
     },
     {
@@ -987,7 +987,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.177158,
+      "valueNumeric": 0.158637,
       "unit": "€/kWh"
     },
     {
@@ -997,7 +997,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.135473,
+      "valueNumeric": 0.125655,
       "unit": "€/kWh"
     },
     {
@@ -1007,7 +1007,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.112203,
+      "valueNumeric": 0.103956,
       "unit": "€/kWh"
     },
     {
@@ -1017,7 +1017,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.098102,
+      "valueNumeric": 0.091693,
       "unit": "€/kWh"
     },
     {
@@ -1027,7 +1027,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.126752,
+      "valueNumeric": 0.112674,
       "unit": "€/kWh"
     },
     {
@@ -1037,7 +1037,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P1:ENERGIA",
-      "valueNumeric": 0.182064,
+      "valueNumeric": 0.15962,
       "unit": "€/kWh"
     },
     {
@@ -1047,7 +1047,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P2:ENERGIA",
-      "valueNumeric": 0.154345,
+      "valueNumeric": 0.136945,
       "unit": "€/kWh"
     },
     {
@@ -1057,7 +1057,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P3:ENERGIA",
-      "valueNumeric": 0.120607,
+      "valueNumeric": 0.111595,
       "unit": "€/kWh"
     },
     {
@@ -1067,7 +1067,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P4:ENERGIA",
-      "valueNumeric": 0.103171,
+      "valueNumeric": 0.095245,
       "unit": "€/kWh"
     },
     {
@@ -1077,7 +1077,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P5:ENERGIA",
-      "valueNumeric": 0.091418,
+      "valueNumeric": 0.085204,
       "unit": "€/kWh"
     },
     {
@@ -1087,7 +1087,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N1:6.1TD:P6:ENERGIA",
-      "valueNumeric": 0.123238,
+      "valueNumeric": 0.108941,
       "unit": "€/kWh"
     },
     {
@@ -1097,7 +1097,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.222275,
+      "valueNumeric": 0.2064,
       "unit": "€/kWh"
     },
     {
@@ -1107,7 +1107,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.150918,
+      "valueNumeric": 0.135535,
       "unit": "€/kWh"
     },
     {
@@ -1117,12 +1117,12 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.125395,
+      "valueNumeric": 0.110621,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.207349,
+      "valueNumeric": 0.182877,
       "unit": "€/kWh"
     },
     {
@@ -1132,7 +1132,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.172143,
+      "valueNumeric": 0.153621,
       "unit": "€/kWh"
     },
     {
@@ -1142,7 +1142,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.130458,
+      "valueNumeric": 0.120639,
       "unit": "€/kWh"
     },
     {
@@ -1152,7 +1152,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.107188,
+      "valueNumeric": 0.098941,
       "unit": "€/kWh"
     },
     {
@@ -1162,7 +1162,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.093087,
+      "valueNumeric": 0.086678,
       "unit": "€/kWh"
     },
     {
@@ -1172,7 +1172,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.121737,
+      "valueNumeric": 0.107659,
       "unit": "€/kWh"
     },
     {
@@ -1182,7 +1182,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P1:ENERGIA",
-      "valueNumeric": 0.178003,
+      "valueNumeric": 0.155559,
       "unit": "€/kWh"
     },
     {
@@ -1192,7 +1192,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P2:ENERGIA",
-      "valueNumeric": 0.150284,
+      "valueNumeric": 0.132884,
       "unit": "€/kWh"
     },
     {
@@ -1202,7 +1202,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P3:ENERGIA",
-      "valueNumeric": 0.116546,
+      "valueNumeric": 0.107534,
       "unit": "€/kWh"
     },
     {
@@ -1212,7 +1212,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P4:ENERGIA",
-      "valueNumeric": 0.099111,
+      "valueNumeric": 0.091184,
       "unit": "€/kWh"
     },
     {
@@ -1222,7 +1222,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P5:ENERGIA",
-      "valueNumeric": 0.087357,
+      "valueNumeric": 0.081143,
       "unit": "€/kWh"
     },
     {
@@ -1232,7 +1232,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N2:6.1TD:P6:ENERGIA",
-      "valueNumeric": 0.119177,
+      "valueNumeric": 0.104881,
       "unit": "€/kWh"
     },
     {
@@ -1242,7 +1242,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.217666,
+      "valueNumeric": 0.201791,
       "unit": "€/kWh"
     },
     {
@@ -1252,7 +1252,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.146308,
+      "valueNumeric": 0.130926,
       "unit": "€/kWh"
     },
     {
@@ -1262,12 +1262,12 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.120786,
+      "valueNumeric": 0.106012,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.203136,
+      "valueNumeric": 0.178664,
       "unit": "€/kWh"
     },
     {
@@ -1277,7 +1277,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.167929,
+      "valueNumeric": 0.149408,
       "unit": "€/kWh"
     },
     {
@@ -1287,7 +1287,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.126245,
+      "valueNumeric": 0.116426,
       "unit": "€/kWh"
     },
     {
@@ -1297,7 +1297,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.102975,
+      "valueNumeric": 0.094727,
       "unit": "€/kWh"
     },
     {
@@ -1307,7 +1307,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.088873,
+      "valueNumeric": 0.082464,
       "unit": "€/kWh"
     },
     {
@@ -1317,7 +1317,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.117523,
+      "valueNumeric": 0.103446,
       "unit": "€/kWh"
     },
     {
@@ -1327,7 +1327,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P1:ENERGIA",
-      "valueNumeric": 0.17382,
+      "valueNumeric": 0.151376,
       "unit": "€/kWh"
     },
     {
@@ -1337,7 +1337,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P2:ENERGIA",
-      "valueNumeric": 0.146101,
+      "valueNumeric": 0.128701,
       "unit": "€/kWh"
     },
     {
@@ -1347,7 +1347,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P3:ENERGIA",
-      "valueNumeric": 0.112363,
+      "valueNumeric": 0.103351,
       "unit": "€/kWh"
     },
     {
@@ -1357,7 +1357,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P4:ENERGIA",
-      "valueNumeric": 0.094928,
+      "valueNumeric": 0.087001,
       "unit": "€/kWh"
     },
     {
@@ -1367,7 +1367,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P5:ENERGIA",
-      "valueNumeric": 0.083175,
+      "valueNumeric": 0.07696,
       "unit": "€/kWh"
     },
     {
@@ -1377,7 +1377,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS:N3:6.1TD:P6:ENERGIA",
-      "valueNumeric": 0.114995,
+      "valueNumeric": 0.100698,
       "unit": "€/kWh"
     },
     {
@@ -1387,7 +1387,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.210441,
+      "valueNumeric": 0.199721,
       "unit": "€/kWh"
     },
     {
@@ -1397,7 +1397,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.140046,
+      "valueNumeric": 0.129808,
       "unit": "€/kWh"
     },
     {
@@ -1407,12 +1407,12 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.103239,
+      "valueNumeric": 0.094611,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.20866,
+      "valueNumeric": 0.183294,
       "unit": "€/kWh"
     },
     {
@@ -1422,7 +1422,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.171301,
+      "valueNumeric": 0.15468,
       "unit": "€/kWh"
     },
     {
@@ -1432,7 +1432,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.129434,
+      "valueNumeric": 0.120427,
       "unit": "€/kWh"
     },
     {
@@ -1442,7 +1442,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.105449,
+      "valueNumeric": 0.098169,
       "unit": "€/kWh"
     },
     {
@@ -1452,7 +1452,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.090103,
+      "valueNumeric": 0.084712,
       "unit": "€/kWh"
     },
     {
@@ -1462,7 +1462,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.102555,
+      "valueNumeric": 0.093956,
       "unit": "€/kWh"
     },
     {
@@ -1472,7 +1472,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P1:ENERGIA",
-      "valueNumeric": 0.17769,
+      "valueNumeric": 0.154809,
       "unit": "€/kWh"
     },
     {
@@ -1482,7 +1482,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P2:ENERGIA",
-      "valueNumeric": 0.147045,
+      "valueNumeric": 0.132022,
       "unit": "€/kWh"
     },
     {
@@ -1492,7 +1492,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P3:ENERGIA",
-      "valueNumeric": 0.114901,
+      "valueNumeric": 0.106594,
       "unit": "€/kWh"
     },
     {
@@ -1502,7 +1502,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P4:ENERGIA",
-      "valueNumeric": 0.094962,
+      "valueNumeric": 0.088283,
       "unit": "€/kWh"
     },
     {
@@ -1512,7 +1512,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P5:ENERGIA",
-      "valueNumeric": 0.0812,
+      "valueNumeric": 0.07628,
       "unit": "€/kWh"
     },
     {
@@ -1522,7 +1522,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N1:6.1TD:P6:ENERGIA",
-      "valueNumeric": 0.093031,
+      "valueNumeric": 0.085216,
       "unit": "€/kWh"
     },
     {
@@ -1532,7 +1532,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.205182,
+      "valueNumeric": 0.194463,
       "unit": "€/kWh"
     },
     {
@@ -1542,7 +1542,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.134787,
+      "valueNumeric": 0.124549,
       "unit": "€/kWh"
     },
     {
@@ -1552,12 +1552,12 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.09798,
+      "valueNumeric": 0.089352,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.203645,
+      "valueNumeric": 0.178279,
       "unit": "€/kWh"
     },
     {
@@ -1567,7 +1567,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.166286,
+      "valueNumeric": 0.149665,
       "unit": "€/kWh"
     },
     {
@@ -1577,7 +1577,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.124419,
+      "valueNumeric": 0.115412,
       "unit": "€/kWh"
     },
     {
@@ -1587,7 +1587,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.100434,
+      "valueNumeric": 0.093154,
       "unit": "€/kWh"
     },
     {
@@ -1597,7 +1597,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.085087,
+      "valueNumeric": 0.079697,
       "unit": "€/kWh"
     },
     {
@@ -1607,7 +1607,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.09754,
+      "valueNumeric": 0.088941,
       "unit": "€/kWh"
     },
     {
@@ -1617,7 +1617,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P1:ENERGIA",
-      "valueNumeric": 0.173629,
+      "valueNumeric": 0.150748,
       "unit": "€/kWh"
     },
     {
@@ -1627,7 +1627,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P2:ENERGIA",
-      "valueNumeric": 0.142985,
+      "valueNumeric": 0.127961,
       "unit": "€/kWh"
     },
     {
@@ -1637,7 +1637,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P3:ENERGIA",
-      "valueNumeric": 0.11084,
+      "valueNumeric": 0.102533,
       "unit": "€/kWh"
     },
     {
@@ -1647,7 +1647,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P4:ENERGIA",
-      "valueNumeric": 0.090901,
+      "valueNumeric": 0.084222,
       "unit": "€/kWh"
     },
     {
@@ -1657,7 +1657,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P5:ENERGIA",
-      "valueNumeric": 0.077139,
+      "valueNumeric": 0.072219,
       "unit": "€/kWh"
     },
     {
@@ -1667,7 +1667,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N2:6.1TD:P6:ENERGIA",
-      "valueNumeric": 0.08897,
+      "valueNumeric": 0.081155,
       "unit": "€/kWh"
     },
     {
@@ -1677,7 +1677,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.200573,
+      "valueNumeric": 0.189853,
       "unit": "€/kWh"
     },
     {
@@ -1687,7 +1687,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.130178,
+      "valueNumeric": 0.11994,
       "unit": "€/kWh"
     },
     {
@@ -1697,12 +1697,12 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.093371,
+      "valueNumeric": 0.084743,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.199432,
+      "valueNumeric": 0.174065,
       "unit": "€/kWh"
     },
     {
@@ -1712,7 +1712,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.162073,
+      "valueNumeric": 0.145451,
       "unit": "€/kWh"
     },
     {
@@ -1722,7 +1722,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.120205,
+      "valueNumeric": 0.111199,
       "unit": "€/kWh"
     },
     {
@@ -1732,7 +1732,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.096221,
+      "valueNumeric": 0.08894,
       "unit": "€/kWh"
     },
     {
@@ -1742,7 +1742,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.080874,
+      "valueNumeric": 0.075484,
       "unit": "€/kWh"
     },
     {
@@ -1752,7 +1752,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.093326,
+      "valueNumeric": 0.084728,
       "unit": "€/kWh"
     },
     {
@@ -1762,7 +1762,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P1:ENERGIA",
-      "valueNumeric": 0.169446,
+      "valueNumeric": 0.146565,
       "unit": "€/kWh"
     },
     {
@@ -1772,7 +1772,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P2:ENERGIA",
-      "valueNumeric": 0.138802,
+      "valueNumeric": 0.123778,
       "unit": "€/kWh"
     },
     {
@@ -1782,7 +1782,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P3:ENERGIA",
-      "valueNumeric": 0.106657,
+      "valueNumeric": 0.09835,
       "unit": "€/kWh"
     },
     {
@@ -1792,7 +1792,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P4:ENERGIA",
-      "valueNumeric": 0.086718,
+      "valueNumeric": 0.080039,
       "unit": "€/kWh"
     },
     {
@@ -1802,7 +1802,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P5:ENERGIA",
-      "valueNumeric": 0.072957,
+      "valueNumeric": 0.068036,
       "unit": "€/kWh"
     },
     {
@@ -1812,7 +1812,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_PLUS_TALLERES:N3:6.1TD:P6:ENERGIA",
-      "valueNumeric": 0.084787,
+      "valueNumeric": 0.076973,
       "unit": "€/kWh"
     },
     {
@@ -1822,7 +1822,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.221568,
+      "valueNumeric": 0.210848,
       "unit": "€/kWh"
     },
     {
@@ -1832,7 +1832,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.151173,
+      "valueNumeric": 0.140935,
       "unit": "€/kWh"
     },
     {
@@ -1842,12 +1842,12 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.114366,
+      "valueNumeric": 0.105737,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.219229,
+      "valueNumeric": 0.193862,
       "unit": "€/kWh"
     },
     {
@@ -1857,7 +1857,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.18187,
+      "valueNumeric": 0.165248,
       "unit": "€/kWh"
     },
     {
@@ -1867,7 +1867,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.140002,
+      "valueNumeric": 0.130996,
       "unit": "€/kWh"
     },
     {
@@ -1877,7 +1877,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.116018,
+      "valueNumeric": 0.108737,
       "unit": "€/kWh"
     },
     {
@@ -1887,7 +1887,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.100671,
+      "valueNumeric": 0.095281,
       "unit": "€/kWh"
     },
     {
@@ -1897,7 +1897,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.113123,
+      "valueNumeric": 0.104525,
       "unit": "€/kWh"
     },
     {
@@ -1907,7 +1907,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P1:ENERGIA",
-      "valueNumeric": 0.189365,
+      "valueNumeric": 0.166484,
       "unit": "€/kWh"
     },
     {
@@ -1917,7 +1917,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P2:ENERGIA",
-      "valueNumeric": 0.158721,
+      "valueNumeric": 0.143697,
       "unit": "€/kWh"
     },
     {
@@ -1927,7 +1927,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P3:ENERGIA",
-      "valueNumeric": 0.126576,
+      "valueNumeric": 0.118269,
       "unit": "€/kWh"
     },
     {
@@ -1937,7 +1937,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P4:ENERGIA",
-      "valueNumeric": 0.106637,
+      "valueNumeric": 0.099958,
       "unit": "€/kWh"
     },
     {
@@ -1947,7 +1947,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P5:ENERGIA",
-      "valueNumeric": 0.092876,
+      "valueNumeric": 0.087955,
       "unit": "€/kWh"
     },
     {
@@ -1957,7 +1957,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N1:6.1TD:P6:ENERGIA",
-      "valueNumeric": 0.104706,
+      "valueNumeric": 0.096891,
       "unit": "€/kWh"
     },
     {
@@ -1967,7 +1967,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.20975,
+      "valueNumeric": 0.199031,
       "unit": "€/kWh"
     },
     {
@@ -1977,7 +1977,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.139356,
+      "valueNumeric": 0.129118,
       "unit": "€/kWh"
     },
     {
@@ -1987,12 +1987,12 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.102548,
+      "valueNumeric": 0.09392,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.207412,
+      "valueNumeric": 0.182045,
       "unit": "€/kWh"
     },
     {
@@ -2002,7 +2002,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.170052,
+      "valueNumeric": 0.153431,
       "unit": "€/kWh"
     },
     {
@@ -2012,7 +2012,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.128185,
+      "valueNumeric": 0.119178,
       "unit": "€/kWh"
     },
     {
@@ -2022,7 +2022,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.104201,
+      "valueNumeric": 0.09692,
       "unit": "€/kWh"
     },
     {
@@ -2032,7 +2032,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.088854,
+      "valueNumeric": 0.083463,
       "unit": "€/kWh"
     },
     {
@@ -2042,7 +2042,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.101306,
+      "valueNumeric": 0.092708,
       "unit": "€/kWh"
     },
     {
@@ -2052,7 +2052,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P1:ENERGIA",
-      "valueNumeric": 0.177548,
+      "valueNumeric": 0.154666,
       "unit": "€/kWh"
     },
     {
@@ -2062,7 +2062,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P2:ENERGIA",
-      "valueNumeric": 0.146903,
+      "valueNumeric": 0.13188,
       "unit": "€/kWh"
     },
     {
@@ -2072,7 +2072,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P3:ENERGIA",
-      "valueNumeric": 0.114759,
+      "valueNumeric": 0.106452,
       "unit": "€/kWh"
     },
     {
@@ -2082,7 +2082,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P4:ENERGIA",
-      "valueNumeric": 0.09482,
+      "valueNumeric": 0.088141,
       "unit": "€/kWh"
     },
     {
@@ -2092,7 +2092,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P5:ENERGIA",
-      "valueNumeric": 0.081058,
+      "valueNumeric": 0.076138,
       "unit": "€/kWh"
     },
     {
@@ -2102,7 +2102,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N2:6.1TD:P6:ENERGIA",
-      "valueNumeric": 0.092889,
+      "valueNumeric": 0.085074,
       "unit": "€/kWh"
     },
     {
@@ -2112,7 +2112,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:2.0TD:P1:ENERGIA",
-      "valueNumeric": 0.203476,
+      "valueNumeric": 0.192757,
       "unit": "€/kWh"
     },
     {
@@ -2122,7 +2122,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:2.0TD:P2:ENERGIA",
-      "valueNumeric": 0.133082,
+      "valueNumeric": 0.122844,
       "unit": "€/kWh"
     },
     {
@@ -2132,12 +2132,12 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:2.0TD:P3:ENERGIA",
-      "valueNumeric": 0.096274,
+      "valueNumeric": 0.087646,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P1:ENERGIA",
-      "valueNumeric": 0.201138,
+      "valueNumeric": 0.175771,
       "unit": "€/kWh"
     },
     {
@@ -2147,7 +2147,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P2:ENERGIA",
-      "valueNumeric": 0.163778,
+      "valueNumeric": 0.147157,
       "unit": "€/kWh"
     },
     {
@@ -2157,7 +2157,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P3:ENERGIA",
-      "valueNumeric": 0.121911,
+      "valueNumeric": 0.112904,
       "unit": "€/kWh"
     },
     {
@@ -2167,7 +2167,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P4:ENERGIA",
-      "valueNumeric": 0.097926,
+      "valueNumeric": 0.090646,
       "unit": "€/kWh"
     },
     {
@@ -2177,7 +2177,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P5:ENERGIA",
-      "valueNumeric": 0.08258,
+      "valueNumeric": 0.077189,
       "unit": "€/kWh"
     },
     {
@@ -2187,7 +2187,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:3.0TD:P6:ENERGIA",
-      "valueNumeric": 0.095032,
+      "valueNumeric": 0.086433,
       "unit": "€/kWh"
     },
     {
@@ -2197,7 +2197,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P1:ENERGIA",
-      "valueNumeric": 0.171274,
+      "valueNumeric": 0.148392,
       "unit": "€/kWh"
     },
     {
@@ -2207,7 +2207,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P2:ENERGIA",
-      "valueNumeric": 0.140629,
+      "valueNumeric": 0.125605,
       "unit": "€/kWh"
     },
     {
@@ -2217,7 +2217,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P3:ENERGIA",
-      "valueNumeric": 0.108485,
+      "valueNumeric": 0.100177,
       "unit": "€/kWh"
     },
     {
@@ -2227,7 +2227,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P4:ENERGIA",
-      "valueNumeric": 0.088546,
+      "valueNumeric": 0.081867,
       "unit": "€/kWh"
     },
     {
@@ -2237,7 +2237,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P5:ENERGIA",
-      "valueNumeric": 0.074784,
+      "valueNumeric": 0.069864,
       "unit": "€/kWh"
     },
     {
@@ -2247,7 +2247,7 @@
     },
     {
       "key": "ELEC:FIJO:ESTABLE_TALLERES:N3:6.1TD:P6:ENERGIA",
-      "valueNumeric": 0.086614,
+      "valueNumeric": 0.0788,
       "unit": "€/kWh"
     },
     {
@@ -2692,7 +2692,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL:N1:2.0TD:P1:MARGEN",
-      "valueNumeric": 0.046742,
+      "valueNumeric": 0.046743,
       "unit": "€/kWh"
     },
     {
@@ -2837,7 +2837,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL:N2:2.0TD:P1:MARGEN",
-      "valueNumeric": 0.031842,
+      "valueNumeric": 0.031843,
       "unit": "€/kWh"
     },
     {
@@ -2982,7 +2982,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL:N3:2.0TD:P1:MARGEN",
-      "valueNumeric": 0.026852,
+      "valueNumeric": 0.026853,
       "unit": "€/kWh"
     },
     {
@@ -3127,7 +3127,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N1:2.0TD:P1:MARGEN",
-      "valueNumeric": 0.049342,
+      "valueNumeric": 0.049343,
       "unit": "€/kWh"
     },
     {
@@ -3272,7 +3272,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N2:2.0TD:P1:MARGEN",
-      "valueNumeric": 0.029342,
+      "valueNumeric": 0.029343,
       "unit": "€/kWh"
     },
     {
@@ -3417,7 +3417,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_PLUS:N3:2.0TD:P1:MARGEN",
-      "valueNumeric": 0.023342,
+      "valueNumeric": 0.023343,
       "unit": "€/kWh"
     },
     {
@@ -3562,7 +3562,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:2.0TD:P1:MARGEN",
-      "valueNumeric": 0.062492,
+      "valueNumeric": 0.060993,
       "unit": "€/kWh"
     },
     {
@@ -3572,7 +3572,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:2.0TD:P2:MARGEN",
-      "valueNumeric": 0.061697,
+      "valueNumeric": 0.060197,
       "unit": "€/kWh"
     },
     {
@@ -3582,12 +3582,12 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:2.0TD:P3:MARGEN",
-      "valueNumeric": 0.062404,
+      "valueNumeric": 0.060904,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P1:MARGEN",
-      "valueNumeric": 0.061031,
+      "valueNumeric": 0.059531,
       "unit": "€/kWh"
     },
     {
@@ -3597,7 +3597,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P2:MARGEN",
-      "valueNumeric": 0.061304,
+      "valueNumeric": 0.059804,
       "unit": "€/kWh"
     },
     {
@@ -3607,7 +3607,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P3:MARGEN",
-      "valueNumeric": 0.062097,
+      "valueNumeric": 0.060597,
       "unit": "€/kWh"
     },
     {
@@ -3617,7 +3617,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P4:MARGEN",
-      "valueNumeric": 0.064054,
+      "valueNumeric": 0.062554,
       "unit": "€/kWh"
     },
     {
@@ -3627,7 +3627,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P5:MARGEN",
-      "valueNumeric": 0.064654,
+      "valueNumeric": 0.063154,
       "unit": "€/kWh"
     },
     {
@@ -3637,7 +3637,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:3.0TD:P6:MARGEN",
-      "valueNumeric": 0.061524,
+      "valueNumeric": 0.060024,
       "unit": "€/kWh"
     },
     {
@@ -3647,7 +3647,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P1:MARGEN",
-      "valueNumeric": 0.060814,
+      "valueNumeric": 0.059314,
       "unit": "€/kWh"
     },
     {
@@ -3657,7 +3657,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P2:MARGEN",
-      "valueNumeric": 0.061417,
+      "valueNumeric": 0.059917,
       "unit": "€/kWh"
     },
     {
@@ -3667,7 +3667,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P3:MARGEN",
-      "valueNumeric": 0.062306,
+      "valueNumeric": 0.060806,
       "unit": "€/kWh"
     },
     {
@@ -3677,7 +3677,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P4:MARGEN",
-      "valueNumeric": 0.064311,
+      "valueNumeric": 0.062811,
       "unit": "€/kWh"
     },
     {
@@ -3687,7 +3687,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P5:MARGEN",
-      "valueNumeric": 0.064911,
+      "valueNumeric": 0.063411,
       "unit": "€/kWh"
     },
     {
@@ -3697,7 +3697,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N1:6.1TD:P6:MARGEN",
-      "valueNumeric": 0.061924,
+      "valueNumeric": 0.060424,
       "unit": "€/kWh"
     },
     {
@@ -3707,7 +3707,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:2.0TD:P1:MARGEN",
-      "valueNumeric": 0.047592,
+      "valueNumeric": 0.046093,
       "unit": "€/kWh"
     },
     {
@@ -3717,7 +3717,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:2.0TD:P2:MARGEN",
-      "valueNumeric": 0.046797,
+      "valueNumeric": 0.045297,
       "unit": "€/kWh"
     },
     {
@@ -3727,12 +3727,12 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:2.0TD:P3:MARGEN",
-      "valueNumeric": 0.047504,
+      "valueNumeric": 0.046004,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P1:MARGEN",
-      "valueNumeric": 0.052531,
+      "valueNumeric": 0.051031,
       "unit": "€/kWh"
     },
     {
@@ -3742,7 +3742,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P2:MARGEN",
-      "valueNumeric": 0.052804,
+      "valueNumeric": 0.051304,
       "unit": "€/kWh"
     },
     {
@@ -3752,7 +3752,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P3:MARGEN",
-      "valueNumeric": 0.053597,
+      "valueNumeric": 0.052097,
       "unit": "€/kWh"
     },
     {
@@ -3762,7 +3762,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P4:MARGEN",
-      "valueNumeric": 0.055554,
+      "valueNumeric": 0.054054,
       "unit": "€/kWh"
     },
     {
@@ -3772,7 +3772,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P5:MARGEN",
-      "valueNumeric": 0.056154,
+      "valueNumeric": 0.054654,
       "unit": "€/kWh"
     },
     {
@@ -3782,7 +3782,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:3.0TD:P6:MARGEN",
-      "valueNumeric": 0.053024,
+      "valueNumeric": 0.051524,
       "unit": "€/kWh"
     },
     {
@@ -3792,7 +3792,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P1:MARGEN",
-      "valueNumeric": 0.051914,
+      "valueNumeric": 0.050414,
       "unit": "€/kWh"
     },
     {
@@ -3802,7 +3802,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P2:MARGEN",
-      "valueNumeric": 0.052517,
+      "valueNumeric": 0.051017,
       "unit": "€/kWh"
     },
     {
@@ -3812,7 +3812,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P3:MARGEN",
-      "valueNumeric": 0.053406,
+      "valueNumeric": 0.051906,
       "unit": "€/kWh"
     },
     {
@@ -3822,7 +3822,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P4:MARGEN",
-      "valueNumeric": 0.055411,
+      "valueNumeric": 0.053911,
       "unit": "€/kWh"
     },
     {
@@ -3832,7 +3832,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P5:MARGEN",
-      "valueNumeric": 0.056011,
+      "valueNumeric": 0.054511,
       "unit": "€/kWh"
     },
     {
@@ -3842,7 +3842,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N2:6.1TD:P6:MARGEN",
-      "valueNumeric": 0.053024,
+      "valueNumeric": 0.051524,
       "unit": "€/kWh"
     },
     {
@@ -3852,7 +3852,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:2.0TD:P1:MARGEN",
-      "valueNumeric": 0.042602,
+      "valueNumeric": 0.041103,
       "unit": "€/kWh"
     },
     {
@@ -3862,7 +3862,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:2.0TD:P2:MARGEN",
-      "valueNumeric": 0.041807,
+      "valueNumeric": 0.040307,
       "unit": "€/kWh"
     },
     {
@@ -3872,12 +3872,12 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:2.0TD:P3:MARGEN",
-      "valueNumeric": 0.042514,
+      "valueNumeric": 0.041014,
       "unit": "€/kWh"
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P1:MARGEN",
-      "valueNumeric": 0.047541,
+      "valueNumeric": 0.046041,
       "unit": "€/kWh"
     },
     {
@@ -3887,7 +3887,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P2:MARGEN",
-      "valueNumeric": 0.047814,
+      "valueNumeric": 0.046314,
       "unit": "€/kWh"
     },
     {
@@ -3897,7 +3897,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P3:MARGEN",
-      "valueNumeric": 0.048607,
+      "valueNumeric": 0.047107,
       "unit": "€/kWh"
     },
     {
@@ -3907,7 +3907,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P4:MARGEN",
-      "valueNumeric": 0.050564,
+      "valueNumeric": 0.049064,
       "unit": "€/kWh"
     },
     {
@@ -3917,7 +3917,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P5:MARGEN",
-      "valueNumeric": 0.051164,
+      "valueNumeric": 0.049664,
       "unit": "€/kWh"
     },
     {
@@ -3927,7 +3927,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:P6:MARGEN",
-      "valueNumeric": 0.048034,
+      "valueNumeric": 0.046534,
       "unit": "€/kWh"
     },
     {
@@ -3937,7 +3937,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P1:MARGEN",
-      "valueNumeric": 0.046924,
+      "valueNumeric": 0.045424,
       "unit": "€/kWh"
     },
     {
@@ -3947,7 +3947,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P2:MARGEN",
-      "valueNumeric": 0.047527,
+      "valueNumeric": 0.046027,
       "unit": "€/kWh"
     },
     {
@@ -3957,7 +3957,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P3:MARGEN",
-      "valueNumeric": 0.048416,
+      "valueNumeric": 0.046916,
       "unit": "€/kWh"
     },
     {
@@ -3967,7 +3967,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P4:MARGEN",
-      "valueNumeric": 0.050421,
+      "valueNumeric": 0.048921,
       "unit": "€/kWh"
     },
     {
@@ -3977,7 +3977,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P5:MARGEN",
-      "valueNumeric": 0.051021,
+      "valueNumeric": 0.049521,
       "unit": "€/kWh"
     },
     {
@@ -3987,7 +3987,7 @@
     },
     {
       "key": "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P6:MARGEN",
-      "valueNumeric": 0.048034,
+      "valueNumeric": 0.046534,
       "unit": "€/kWh"
     },
     {
@@ -4432,12 +4432,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL01:BAL:ENERGIA",
-      "valueNumeric": 0.104448,
+      "valueNumeric": 0.073528,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL01:PEN:ENERGIA",
-      "valueNumeric": 0.104448,
+      "valueNumeric": 0.073528,
       "unit": "€/kWh"
     },
     {
@@ -4452,12 +4452,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL02:BAL:ENERGIA",
-      "valueNumeric": 0.100461,
+      "valueNumeric": 0.069541,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL02:PEN:ENERGIA",
-      "valueNumeric": 0.100461,
+      "valueNumeric": 0.069541,
       "unit": "€/kWh"
     },
     {
@@ -4472,12 +4472,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL03:BAL:ENERGIA",
-      "valueNumeric": 0.096238,
+      "valueNumeric": 0.065319,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL03:PEN:ENERGIA",
-      "valueNumeric": 0.096238,
+      "valueNumeric": 0.065319,
       "unit": "€/kWh"
     },
     {
@@ -4492,12 +4492,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL04:BAL:ENERGIA",
-      "valueNumeric": 0.098572,
+      "valueNumeric": 0.067652,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL04:PEN:ENERGIA",
-      "valueNumeric": 0.098572,
+      "valueNumeric": 0.067652,
       "unit": "€/kWh"
     },
     {
@@ -4512,32 +4512,32 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL05:BAL:ENERGIA",
-      "valueNumeric": 0.09519,
+      "valueNumeric": 0.06427,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL05:PEN:ENERGIA",
-      "valueNumeric": 0.09519,
+      "valueNumeric": 0.06427,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL06:BAL:ENERGIA",
-      "valueNumeric": 0.08809,
+      "valueNumeric": 0.05717,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RL06:PEN:ENERGIA",
-      "valueNumeric": 0.08809,
+      "valueNumeric": 0.05717,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS1:BAL:ENERGIA",
-      "valueNumeric": 0.132732,
+      "valueNumeric": 0.101659,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS1:PEN:ENERGIA",
-      "valueNumeric": 0.132732,
+      "valueNumeric": 0.101659,
       "unit": "€/kWh"
     },
     {
@@ -4552,12 +4552,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS2:BAL:ENERGIA",
-      "valueNumeric": 0.128745,
+      "valueNumeric": 0.097673,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS2:PEN:ENERGIA",
-      "valueNumeric": 0.128745,
+      "valueNumeric": 0.097673,
       "unit": "€/kWh"
     },
     {
@@ -4572,12 +4572,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS3:BAL:ENERGIA",
-      "valueNumeric": 0.124522,
+      "valueNumeric": 0.09345,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS3:PEN:ENERGIA",
-      "valueNumeric": 0.124522,
+      "valueNumeric": 0.09345,
       "unit": "€/kWh"
     },
     {
@@ -4592,12 +4592,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS4:BAL:ENERGIA",
-      "valueNumeric": 0.126856,
+      "valueNumeric": 0.095783,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS4:PEN:ENERGIA",
-      "valueNumeric": 0.126856,
+      "valueNumeric": 0.095783,
       "unit": "€/kWh"
     },
     {
@@ -4612,12 +4612,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS5:BAL:ENERGIA",
-      "valueNumeric": 0.123474,
+      "valueNumeric": 0.092402,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS5:PEN:ENERGIA",
-      "valueNumeric": 0.123474,
+      "valueNumeric": 0.092402,
       "unit": "€/kWh"
     },
     {
@@ -4632,12 +4632,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS6:BAL:ENERGIA",
-      "valueNumeric": 0.116374,
+      "valueNumeric": 0.085301,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N1:RLPS6:PEN:ENERGIA",
-      "valueNumeric": 0.116374,
+      "valueNumeric": 0.085301,
       "unit": "€/kWh"
     },
     {
@@ -4652,12 +4652,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL01:BAL:ENERGIA",
-      "valueNumeric": 0.097341,
+      "valueNumeric": 0.066421,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL01:PEN:ENERGIA",
-      "valueNumeric": 0.097341,
+      "valueNumeric": 0.066421,
       "unit": "€/kWh"
     },
     {
@@ -4672,12 +4672,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL02:BAL:ENERGIA",
-      "valueNumeric": 0.095192,
+      "valueNumeric": 0.064272,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL02:PEN:ENERGIA",
-      "valueNumeric": 0.095192,
+      "valueNumeric": 0.064272,
       "unit": "€/kWh"
     },
     {
@@ -4692,12 +4692,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL03:BAL:ENERGIA",
-      "valueNumeric": 0.090492,
+      "valueNumeric": 0.059572,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL03:PEN:ENERGIA",
-      "valueNumeric": 0.090492,
+      "valueNumeric": 0.059572,
       "unit": "€/kWh"
     },
     {
@@ -4712,12 +4712,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL04:BAL:ENERGIA",
-      "valueNumeric": 0.095384,
+      "valueNumeric": 0.064464,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL04:PEN:ENERGIA",
-      "valueNumeric": 0.095384,
+      "valueNumeric": 0.064464,
       "unit": "€/kWh"
     },
     {
@@ -4732,32 +4732,32 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL05:BAL:ENERGIA",
-      "valueNumeric": 0.094625,
+      "valueNumeric": 0.063705,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL05:PEN:ENERGIA",
-      "valueNumeric": 0.094625,
+      "valueNumeric": 0.063705,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL06:BAL:ENERGIA",
-      "valueNumeric": 0.085235,
+      "valueNumeric": 0.054315,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RL06:PEN:ENERGIA",
-      "valueNumeric": 0.085235,
+      "valueNumeric": 0.054315,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS1:BAL:ENERGIA",
-      "valueNumeric": 0.125625,
+      "valueNumeric": 0.094553,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS1:PEN:ENERGIA",
-      "valueNumeric": 0.125625,
+      "valueNumeric": 0.094553,
       "unit": "€/kWh"
     },
     {
@@ -4772,12 +4772,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS2:BAL:ENERGIA",
-      "valueNumeric": 0.123476,
+      "valueNumeric": 0.092403,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS2:PEN:ENERGIA",
-      "valueNumeric": 0.123476,
+      "valueNumeric": 0.092403,
       "unit": "€/kWh"
     },
     {
@@ -4792,12 +4792,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS3:BAL:ENERGIA",
-      "valueNumeric": 0.118776,
+      "valueNumeric": 0.087704,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS3:PEN:ENERGIA",
-      "valueNumeric": 0.118776,
+      "valueNumeric": 0.087704,
       "unit": "€/kWh"
     },
     {
@@ -4812,12 +4812,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS4:BAL:ENERGIA",
-      "valueNumeric": 0.123668,
+      "valueNumeric": 0.092596,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS4:PEN:ENERGIA",
-      "valueNumeric": 0.123668,
+      "valueNumeric": 0.092596,
       "unit": "€/kWh"
     },
     {
@@ -4832,12 +4832,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS5:BAL:ENERGIA",
-      "valueNumeric": 0.122908,
+      "valueNumeric": 0.091836,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS5:PEN:ENERGIA",
-      "valueNumeric": 0.122908,
+      "valueNumeric": 0.091836,
       "unit": "€/kWh"
     },
     {
@@ -4852,12 +4852,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS6:BAL:ENERGIA",
-      "valueNumeric": 0.113519,
+      "valueNumeric": 0.082447,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N2:RLPS6:PEN:ENERGIA",
-      "valueNumeric": 0.113519,
+      "valueNumeric": 0.082447,
       "unit": "€/kWh"
     },
     {
@@ -4872,12 +4872,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL01:BAL:ENERGIA",
-      "valueNumeric": 0.0919,
+      "valueNumeric": 0.06098,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL01:PEN:ENERGIA",
-      "valueNumeric": 0.0919,
+      "valueNumeric": 0.06098,
       "unit": "€/kWh"
     },
     {
@@ -4892,12 +4892,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL02:BAL:ENERGIA",
-      "valueNumeric": 0.090664,
+      "valueNumeric": 0.059744,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL02:PEN:ENERGIA",
-      "valueNumeric": 0.090664,
+      "valueNumeric": 0.059744,
       "unit": "€/kWh"
     },
     {
@@ -4912,12 +4912,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL03:BAL:ENERGIA",
-      "valueNumeric": 0.087274,
+      "valueNumeric": 0.056354,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL03:PEN:ENERGIA",
-      "valueNumeric": 0.087274,
+      "valueNumeric": 0.056354,
       "unit": "€/kWh"
     },
     {
@@ -4932,12 +4932,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL04:BAL:ENERGIA",
-      "valueNumeric": 0.089821,
+      "valueNumeric": 0.058901,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL04:PEN:ENERGIA",
-      "valueNumeric": 0.089821,
+      "valueNumeric": 0.058901,
       "unit": "€/kWh"
     },
     {
@@ -4952,32 +4952,32 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL05:BAL:ENERGIA",
-      "valueNumeric": 0.09104,
+      "valueNumeric": 0.06012,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL05:PEN:ENERGIA",
-      "valueNumeric": 0.09104,
+      "valueNumeric": 0.06012,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL06:BAL:ENERGIA",
-      "valueNumeric": 0.082868,
+      "valueNumeric": 0.051949,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RL06:PEN:ENERGIA",
-      "valueNumeric": 0.082868,
+      "valueNumeric": 0.051949,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS1:BAL:ENERGIA",
-      "valueNumeric": 0.120183,
+      "valueNumeric": 0.089111,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS1:PEN:ENERGIA",
-      "valueNumeric": 0.120183,
+      "valueNumeric": 0.089111,
       "unit": "€/kWh"
     },
     {
@@ -4992,12 +4992,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS2:BAL:ENERGIA",
-      "valueNumeric": 0.118948,
+      "valueNumeric": 0.087876,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS2:PEN:ENERGIA",
-      "valueNumeric": 0.118948,
+      "valueNumeric": 0.087876,
       "unit": "€/kWh"
     },
     {
@@ -5012,12 +5012,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS3:BAL:ENERGIA",
-      "valueNumeric": 0.115558,
+      "valueNumeric": 0.084486,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS3:PEN:ENERGIA",
-      "valueNumeric": 0.115558,
+      "valueNumeric": 0.084486,
       "unit": "€/kWh"
     },
     {
@@ -5032,12 +5032,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS4:BAL:ENERGIA",
-      "valueNumeric": 0.118104,
+      "valueNumeric": 0.087032,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS4:PEN:ENERGIA",
-      "valueNumeric": 0.118104,
+      "valueNumeric": 0.087032,
       "unit": "€/kWh"
     },
     {
@@ -5052,12 +5052,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS5:BAL:ENERGIA",
-      "valueNumeric": 0.119324,
+      "valueNumeric": 0.088251,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS5:PEN:ENERGIA",
-      "valueNumeric": 0.119324,
+      "valueNumeric": 0.088251,
       "unit": "€/kWh"
     },
     {
@@ -5072,12 +5072,12 @@
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS6:BAL:ENERGIA",
-      "valueNumeric": 0.111152,
+      "valueNumeric": 0.08008,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:ESTABLE_PLUS:N3:RLPS6:PEN:ENERGIA",
-      "valueNumeric": 0.111152,
+      "valueNumeric": 0.08008,
       "unit": "€/kWh"
     },
     {
@@ -5092,12 +5092,12 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RL01:BAL:ENERGIA",
-      "valueNumeric": 0.124001,
+      "valueNumeric": 0.093081,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RL01:PEN:ENERGIA",
-      "valueNumeric": 0.124001,
+      "valueNumeric": 0.093081,
       "unit": "€/kWh"
     },
     {
@@ -5112,12 +5112,12 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RL02:BAL:ENERGIA",
-      "valueNumeric": 0.121933,
+      "valueNumeric": 0.091013,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RL02:PEN:ENERGIA",
-      "valueNumeric": 0.121933,
+      "valueNumeric": 0.091013,
       "unit": "€/kWh"
     },
     {
@@ -5132,12 +5132,12 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RL03:BAL:ENERGIA",
-      "valueNumeric": 0.111436,
+      "valueNumeric": 0.080517,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RL03:PEN:ENERGIA",
-      "valueNumeric": 0.111436,
+      "valueNumeric": 0.080517,
       "unit": "€/kWh"
     },
     {
@@ -5152,12 +5152,12 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RL04:BAL:ENERGIA",
-      "valueNumeric": 0.101343,
+      "valueNumeric": 0.070424,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RL04:PEN:ENERGIA",
-      "valueNumeric": 0.101343,
+      "valueNumeric": 0.070424,
       "unit": "€/kWh"
     },
     {
@@ -5172,12 +5172,12 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RL05:BAL:ENERGIA",
-      "valueNumeric": 0.089099,
+      "valueNumeric": 0.058179,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RL05:PEN:ENERGIA",
-      "valueNumeric": 0.089099,
+      "valueNumeric": 0.058179,
       "unit": "€/kWh"
     },
     {
@@ -5192,12 +5192,12 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RL06:BAL:ENERGIA",
-      "valueNumeric": 0.080953,
+      "valueNumeric": 0.050033,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RL06:PEN:ENERGIA",
-      "valueNumeric": 0.080953,
+      "valueNumeric": 0.050033,
       "unit": "€/kWh"
     },
     {
@@ -5212,12 +5212,12 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RLPS1:BAL:ENERGIA",
-      "valueNumeric": 0.152285,
+      "valueNumeric": 0.121213,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RLPS1:PEN:ENERGIA",
-      "valueNumeric": 0.152285,
+      "valueNumeric": 0.121213,
       "unit": "€/kWh"
     },
     {
@@ -5232,12 +5232,12 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RLPS2:BAL:ENERGIA",
-      "valueNumeric": 0.150217,
+      "valueNumeric": 0.119145,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RLPS2:PEN:ENERGIA",
-      "valueNumeric": 0.150217,
+      "valueNumeric": 0.119145,
       "unit": "€/kWh"
     },
     {
@@ -5252,12 +5252,12 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RLPS3:BAL:ENERGIA",
-      "valueNumeric": 0.13972,
+      "valueNumeric": 0.108648,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RLPS3:PEN:ENERGIA",
-      "valueNumeric": 0.13972,
+      "valueNumeric": 0.108648,
       "unit": "€/kWh"
     },
     {
@@ -5272,12 +5272,12 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RLPS4:BAL:ENERGIA",
-      "valueNumeric": 0.129627,
+      "valueNumeric": 0.098555,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RLPS4:PEN:ENERGIA",
-      "valueNumeric": 0.129627,
+      "valueNumeric": 0.098555,
       "unit": "€/kWh"
     },
     {
@@ -5292,12 +5292,12 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RLPS5:BAL:ENERGIA",
-      "valueNumeric": 0.117383,
+      "valueNumeric": 0.08631,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RLPS5:PEN:ENERGIA",
-      "valueNumeric": 0.117383,
+      "valueNumeric": 0.08631,
       "unit": "€/kWh"
     },
     {
@@ -5312,12 +5312,12 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RLPS6:BAL:ENERGIA",
-      "valueNumeric": 0.109237,
+      "valueNumeric": 0.078164,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N1:RLPS6:PEN:ENERGIA",
-      "valueNumeric": 0.109237,
+      "valueNumeric": 0.078164,
       "unit": "€/kWh"
     },
     {
@@ -5332,962 +5332,967 @@
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RL01:BAL:ENERGIA",
-      "valueNumeric": 0.111818,
+      "valueNumeric": 0.080898,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RL01:PEN:ENERGIA",
-      "valueNumeric": 0.111818,
+      "valueNumeric": 0.080898,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RL02:BAL:ENERGIA",
-      "valueNumeric": 0.10975,
+      "valueNumeric": 0.07883,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RL02:PEN:ENERGIA",
-      "valueNumeric": 0.10975,
+      "valueNumeric": 0.07883,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RL03:BAL:ENERGIA",
-      "valueNumeric": 0.101284,
+      "valueNumeric": 0.070364,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RL03:PEN:ENERGIA",
-      "valueNumeric": 0.101284,
+      "valueNumeric": 0.070364,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RL04:BAL:ENERGIA",
-      "valueNumeric": 0.097283,
+      "valueNumeric": 0.066363,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RL04:PEN:ENERGIA",
-      "valueNumeric": 0.097283,
+      "valueNumeric": 0.066363,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RL05:BAL:ENERGIA",
-      "valueNumeric": 0.088084,
+      "valueNumeric": 0.057164,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RL05:PEN:ENERGIA",
-      "valueNumeric": 0.088084,
+      "valueNumeric": 0.057164,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RL06:BAL:ENERGIA",
-      "valueNumeric": 0.079938,
+      "valueNumeric": 0.049018,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RL06:PEN:ENERGIA",
-      "valueNumeric": 0.079938,
+      "valueNumeric": 0.049018,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RLPS1:BAL:ENERGIA",
-      "valueNumeric": 0.140102,
+      "valueNumeric": 0.10903,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RLPS1:PEN:ENERGIA",
-      "valueNumeric": 0.140102,
+      "valueNumeric": 0.10903,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RLPS2:BAL:ENERGIA",
-      "valueNumeric": 0.138034,
+      "valueNumeric": 0.106962,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RLPS2:PEN:ENERGIA",
-      "valueNumeric": 0.138034,
+      "valueNumeric": 0.106962,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RLPS3:BAL:ENERGIA",
-      "valueNumeric": 0.129568,
+      "valueNumeric": 0.098496,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RLPS3:PEN:ENERGIA",
-      "valueNumeric": 0.129568,
+      "valueNumeric": 0.098496,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RLPS4:BAL:ENERGIA",
-      "valueNumeric": 0.125566,
+      "valueNumeric": 0.094494,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RLPS4:PEN:ENERGIA",
-      "valueNumeric": 0.125566,
+      "valueNumeric": 0.094494,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RLPS5:BAL:ENERGIA",
-      "valueNumeric": 0.116367,
+      "valueNumeric": 0.085295,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RLPS5:PEN:ENERGIA",
-      "valueNumeric": 0.116367,
+      "valueNumeric": 0.085295,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RLPS6:BAL:ENERGIA",
-      "valueNumeric": 0.108221,
+      "valueNumeric": 0.077149,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N2:RLPS6:PEN:ENERGIA",
-      "valueNumeric": 0.108221,
+      "valueNumeric": 0.077149,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RL01:BAL:ENERGIA",
-      "valueNumeric": 0.101666,
+      "valueNumeric": 0.070746,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RL01:PEN:ENERGIA",
-      "valueNumeric": 0.101666,
+      "valueNumeric": 0.070746,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RL02:BAL:ENERGIA",
-      "valueNumeric": 0.099598,
+      "valueNumeric": 0.068678,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RL02:PEN:ENERGIA",
-      "valueNumeric": 0.099598,
+      "valueNumeric": 0.068678,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RL03:BAL:ENERGIA",
-      "valueNumeric": 0.092147,
+      "valueNumeric": 0.061227,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RL03:PEN:ENERGIA",
-      "valueNumeric": 0.092147,
+      "valueNumeric": 0.061227,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RL04:BAL:ENERGIA",
-      "valueNumeric": 0.089161,
+      "valueNumeric": 0.058241,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RL04:PEN:ENERGIA",
-      "valueNumeric": 0.089161,
+      "valueNumeric": 0.058241,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RL05:BAL:ENERGIA",
-      "valueNumeric": 0.087068,
+      "valueNumeric": 0.056148,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RL05:PEN:ENERGIA",
-      "valueNumeric": 0.087068,
+      "valueNumeric": 0.056148,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RL06:BAL:ENERGIA",
-      "valueNumeric": 0.078922,
+      "valueNumeric": 0.048002,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RL06:PEN:ENERGIA",
-      "valueNumeric": 0.078922,
+      "valueNumeric": 0.048002,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RLPS1:BAL:ENERGIA",
-      "valueNumeric": 0.12995,
+      "valueNumeric": 0.098878,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RLPS1:PEN:ENERGIA",
-      "valueNumeric": 0.12995,
+      "valueNumeric": 0.098878,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RLPS2:BAL:ENERGIA",
-      "valueNumeric": 0.127882,
+      "valueNumeric": 0.09681,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RLPS2:PEN:ENERGIA",
-      "valueNumeric": 0.127882,
+      "valueNumeric": 0.09681,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RLPS3:BAL:ENERGIA",
-      "valueNumeric": 0.120431,
+      "valueNumeric": 0.089359,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RLPS3:PEN:ENERGIA",
-      "valueNumeric": 0.120431,
+      "valueNumeric": 0.089359,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RLPS4:BAL:ENERGIA",
-      "valueNumeric": 0.117445,
+      "valueNumeric": 0.086372,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RLPS4:PEN:ENERGIA",
-      "valueNumeric": 0.117445,
+      "valueNumeric": 0.086372,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RLPS5:BAL:ENERGIA",
-      "valueNumeric": 0.115352,
+      "valueNumeric": 0.08428,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RLPS5:PEN:ENERGIA",
-      "valueNumeric": 0.115352,
+      "valueNumeric": 0.08428,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RLPS6:BAL:ENERGIA",
-      "valueNumeric": 0.107206,
+      "valueNumeric": 0.076134,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:FIJO:FIJO:N3:RLPS6:PEN:ENERGIA",
-      "valueNumeric": 0.107206,
+      "valueNumeric": 0.076134,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL01:BAL:MARGEN",
-      "valueNumeric": 0.041748,
+      "valueNumeric": 0.040828,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL01:PEN:MARGEN",
-      "valueNumeric": 0.041748,
+      "valueNumeric": 0.040828,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL02:BAL:MARGEN",
-      "valueNumeric": 0.037761,
+      "valueNumeric": 0.036841,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL02:PEN:MARGEN",
-      "valueNumeric": 0.037761,
+      "valueNumeric": 0.036841,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL03:BAL:MARGEN",
-      "valueNumeric": 0.033538,
+      "valueNumeric": 0.032619,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL03:PEN:MARGEN",
-      "valueNumeric": 0.033538,
+      "valueNumeric": 0.032619,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL04:BAL:MARGEN",
-      "valueNumeric": 0.035872,
+      "valueNumeric": 0.034952,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL04:PEN:MARGEN",
-      "valueNumeric": 0.035872,
+      "valueNumeric": 0.034952,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL05:BAL:MARGEN",
-      "valueNumeric": 0.03249,
+      "valueNumeric": 0.03157,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL05:PEN:MARGEN",
-      "valueNumeric": 0.03249,
+      "valueNumeric": 0.03157,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL06:BAL:MARGEN",
-      "valueNumeric": 0.02539,
+      "valueNumeric": 0.02447,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RL06:PEN:MARGEN",
-      "valueNumeric": 0.02539,
+      "valueNumeric": 0.02447,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS1:BAL:MARGEN",
-      "valueNumeric": 0.070032,
+      "valueNumeric": 0.068959,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS1:PEN:MARGEN",
-      "valueNumeric": 0.070032,
+      "valueNumeric": 0.068959,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS2:BAL:MARGEN",
-      "valueNumeric": 0.066045,
+      "valueNumeric": 0.064973,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS2:PEN:MARGEN",
-      "valueNumeric": 0.066045,
+      "valueNumeric": 0.064973,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS3:BAL:MARGEN",
-      "valueNumeric": 0.061822,
+      "valueNumeric": 0.06075,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS3:PEN:MARGEN",
-      "valueNumeric": 0.061822,
+      "valueNumeric": 0.06075,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS4:BAL:MARGEN",
-      "valueNumeric": 0.064156,
+      "valueNumeric": 0.063083,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS4:PEN:MARGEN",
-      "valueNumeric": 0.064156,
+      "valueNumeric": 0.063083,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS5:BAL:MARGEN",
-      "valueNumeric": 0.060774,
+      "valueNumeric": 0.059702,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS5:PEN:MARGEN",
-      "valueNumeric": 0.060774,
+      "valueNumeric": 0.059702,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS6:BAL:MARGEN",
-      "valueNumeric": 0.053674,
+      "valueNumeric": 0.052601,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N1:RLPS6:PEN:MARGEN",
-      "valueNumeric": 0.053674,
+      "valueNumeric": 0.052601,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL01:BAL:MARGEN",
-      "valueNumeric": 0.034641,
+      "valueNumeric": 0.033721,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL01:PEN:MARGEN",
-      "valueNumeric": 0.034641,
+      "valueNumeric": 0.033721,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL02:BAL:MARGEN",
-      "valueNumeric": 0.032492,
+      "valueNumeric": 0.031572,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL02:PEN:MARGEN",
-      "valueNumeric": 0.032492,
+      "valueNumeric": 0.031572,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL03:BAL:MARGEN",
-      "valueNumeric": 0.027792,
+      "valueNumeric": 0.026872,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL03:PEN:MARGEN",
-      "valueNumeric": 0.027792,
+      "valueNumeric": 0.026872,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL04:BAL:MARGEN",
-      "valueNumeric": 0.032684,
+      "valueNumeric": 0.031764,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL04:PEN:MARGEN",
-      "valueNumeric": 0.032684,
+      "valueNumeric": 0.031764,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL05:BAL:MARGEN",
-      "valueNumeric": 0.031925,
+      "valueNumeric": 0.031005,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL05:PEN:MARGEN",
-      "valueNumeric": 0.031925,
+      "valueNumeric": 0.031005,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL06:BAL:MARGEN",
-      "valueNumeric": 0.022535,
+      "valueNumeric": 0.021615,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RL06:PEN:MARGEN",
-      "valueNumeric": 0.022535,
+      "valueNumeric": 0.021615,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS1:BAL:MARGEN",
-      "valueNumeric": 0.062925,
+      "valueNumeric": 0.061853,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS1:PEN:MARGEN",
-      "valueNumeric": 0.062925,
+      "valueNumeric": 0.061853,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS2:BAL:MARGEN",
-      "valueNumeric": 0.060776,
+      "valueNumeric": 0.059703,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS2:PEN:MARGEN",
-      "valueNumeric": 0.060776,
+      "valueNumeric": 0.059703,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS3:BAL:MARGEN",
-      "valueNumeric": 0.056076,
+      "valueNumeric": 0.055004,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS3:PEN:MARGEN",
-      "valueNumeric": 0.056076,
+      "valueNumeric": 0.055004,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS4:BAL:MARGEN",
-      "valueNumeric": 0.060968,
+      "valueNumeric": 0.059896,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS4:PEN:MARGEN",
-      "valueNumeric": 0.060968,
+      "valueNumeric": 0.059896,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS5:BAL:MARGEN",
-      "valueNumeric": 0.060208,
+      "valueNumeric": 0.059136,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS5:PEN:MARGEN",
-      "valueNumeric": 0.060208,
+      "valueNumeric": 0.059136,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS6:BAL:MARGEN",
-      "valueNumeric": 0.050819,
+      "valueNumeric": 0.049747,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N2:RLPS6:PEN:MARGEN",
-      "valueNumeric": 0.050819,
+      "valueNumeric": 0.049747,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL01:BAL:MARGEN",
-      "valueNumeric": 0.0292,
+      "valueNumeric": 0.02828,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL01:PEN:MARGEN",
-      "valueNumeric": 0.0292,
+      "valueNumeric": 0.02828,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL02:BAL:MARGEN",
-      "valueNumeric": 0.027964,
+      "valueNumeric": 0.027044,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL02:PEN:MARGEN",
-      "valueNumeric": 0.027964,
+      "valueNumeric": 0.027044,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL03:BAL:MARGEN",
-      "valueNumeric": 0.024574,
+      "valueNumeric": 0.023654,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL03:PEN:MARGEN",
-      "valueNumeric": 0.024574,
+      "valueNumeric": 0.023654,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL04:BAL:MARGEN",
-      "valueNumeric": 0.027121,
+      "valueNumeric": 0.026201,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL04:PEN:MARGEN",
-      "valueNumeric": 0.027121,
+      "valueNumeric": 0.026201,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL05:BAL:MARGEN",
-      "valueNumeric": 0.02834,
+      "valueNumeric": 0.02742,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL05:PEN:MARGEN",
-      "valueNumeric": 0.02834,
+      "valueNumeric": 0.02742,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL06:BAL:MARGEN",
-      "valueNumeric": 0.020168,
+      "valueNumeric": 0.019249,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RL06:PEN:MARGEN",
-      "valueNumeric": 0.020168,
+      "valueNumeric": 0.019249,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS1:BAL:MARGEN",
-      "valueNumeric": 0.057483,
+      "valueNumeric": 0.056411,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS1:PEN:MARGEN",
-      "valueNumeric": 0.057483,
+      "valueNumeric": 0.056411,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS2:BAL:MARGEN",
-      "valueNumeric": 0.056248,
+      "valueNumeric": 0.055176,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS2:PEN:MARGEN",
-      "valueNumeric": 0.056248,
+      "valueNumeric": 0.055176,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS3:BAL:MARGEN",
-      "valueNumeric": 0.052858,
+      "valueNumeric": 0.051786,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS3:PEN:MARGEN",
-      "valueNumeric": 0.052858,
+      "valueNumeric": 0.051786,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS4:BAL:MARGEN",
-      "valueNumeric": 0.055404,
+      "valueNumeric": 0.054332,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS4:PEN:MARGEN",
-      "valueNumeric": 0.055404,
+      "valueNumeric": 0.054332,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS5:BAL:MARGEN",
-      "valueNumeric": 0.056624,
+      "valueNumeric": 0.055551,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS5:PEN:MARGEN",
-      "valueNumeric": 0.056624,
+      "valueNumeric": 0.055551,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS6:BAL:MARGEN",
-      "valueNumeric": 0.048452,
+      "valueNumeric": 0.04738,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:DINAMICA_PLUS:N3:RLPS6:PEN:MARGEN",
-      "valueNumeric": 0.048452,
+      "valueNumeric": 0.04738,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RL01:BAL:MARGEN",
-      "valueNumeric": 0.061301,
+      "valueNumeric": 0.060381,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RL01:PEN:MARGEN",
-      "valueNumeric": 0.061301,
+      "valueNumeric": 0.060381,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RL02:BAL:MARGEN",
-      "valueNumeric": 0.059233,
+      "valueNumeric": 0.058313,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RL02:PEN:MARGEN",
-      "valueNumeric": 0.059233,
+      "valueNumeric": 0.058313,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RL03:BAL:MARGEN",
-      "valueNumeric": 0.048736,
+      "valueNumeric": 0.047817,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RL03:PEN:MARGEN",
-      "valueNumeric": 0.048736,
+      "valueNumeric": 0.047817,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RL04:BAL:MARGEN",
-      "valueNumeric": 0.038643,
+      "valueNumeric": 0.037724,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RL04:PEN:MARGEN",
-      "valueNumeric": 0.038643,
+      "valueNumeric": 0.037724,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RL05:BAL:MARGEN",
-      "valueNumeric": 0.026399,
+      "valueNumeric": 0.025479,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RL05:PEN:MARGEN",
-      "valueNumeric": 0.026399,
+      "valueNumeric": 0.025479,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RL06:BAL:MARGEN",
-      "valueNumeric": 0.018253,
+      "valueNumeric": 0.017333,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RL06:PEN:MARGEN",
-      "valueNumeric": 0.018253,
+      "valueNumeric": 0.017333,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RLPS1:BAL:MARGEN",
-      "valueNumeric": 0.089585,
+      "valueNumeric": 0.088513,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RLPS1:PEN:MARGEN",
-      "valueNumeric": 0.089585,
+      "valueNumeric": 0.088513,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RLPS2:BAL:MARGEN",
-      "valueNumeric": 0.087517,
+      "valueNumeric": 0.086445,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RLPS2:PEN:MARGEN",
-      "valueNumeric": 0.087517,
+      "valueNumeric": 0.086445,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RLPS3:BAL:MARGEN",
-      "valueNumeric": 0.07702,
+      "valueNumeric": 0.075948,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RLPS3:PEN:MARGEN",
-      "valueNumeric": 0.07702,
+      "valueNumeric": 0.075948,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RLPS4:BAL:MARGEN",
-      "valueNumeric": 0.066927,
+      "valueNumeric": 0.065855,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RLPS4:PEN:MARGEN",
-      "valueNumeric": 0.066927,
+      "valueNumeric": 0.065855,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RLPS5:BAL:MARGEN",
-      "valueNumeric": 0.054683,
+      "valueNumeric": 0.05361,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RLPS5:PEN:MARGEN",
-      "valueNumeric": 0.054683,
+      "valueNumeric": 0.05361,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RLPS6:BAL:MARGEN",
-      "valueNumeric": 0.046537,
+      "valueNumeric": 0.045464,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N1:RLPS6:PEN:MARGEN",
-      "valueNumeric": 0.046537,
+      "valueNumeric": 0.045464,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RL01:BAL:MARGEN",
-      "valueNumeric": 0.049118,
+      "valueNumeric": 0.048198,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RL01:PEN:MARGEN",
-      "valueNumeric": 0.049118,
+      "valueNumeric": 0.048198,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RL02:BAL:MARGEN",
-      "valueNumeric": 0.04705,
+      "valueNumeric": 0.04613,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RL02:PEN:MARGEN",
-      "valueNumeric": 0.04705,
+      "valueNumeric": 0.04613,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RL03:BAL:MARGEN",
-      "valueNumeric": 0.038584,
+      "valueNumeric": 0.037664,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RL03:PEN:MARGEN",
-      "valueNumeric": 0.038584,
+      "valueNumeric": 0.037664,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RL04:BAL:MARGEN",
-      "valueNumeric": 0.034583,
+      "valueNumeric": 0.033663,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RL04:PEN:MARGEN",
-      "valueNumeric": 0.034583,
+      "valueNumeric": 0.033663,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RL05:BAL:MARGEN",
-      "valueNumeric": 0.025384,
+      "valueNumeric": 0.024464,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RL05:PEN:MARGEN",
-      "valueNumeric": 0.025384,
+      "valueNumeric": 0.024464,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RL06:BAL:MARGEN",
-      "valueNumeric": 0.017238,
+      "valueNumeric": 0.016318,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RL06:PEN:MARGEN",
-      "valueNumeric": 0.017238,
+      "valueNumeric": 0.016318,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RLPS1:BAL:MARGEN",
-      "valueNumeric": 0.077402,
+      "valueNumeric": 0.07633,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RLPS1:PEN:MARGEN",
-      "valueNumeric": 0.077402,
+      "valueNumeric": 0.07633,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RLPS2:BAL:MARGEN",
-      "valueNumeric": 0.075334,
+      "valueNumeric": 0.074262,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RLPS2:PEN:MARGEN",
-      "valueNumeric": 0.075334,
+      "valueNumeric": 0.074262,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RLPS3:BAL:MARGEN",
-      "valueNumeric": 0.066868,
+      "valueNumeric": 0.065796,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RLPS3:PEN:MARGEN",
-      "valueNumeric": 0.066868,
+      "valueNumeric": 0.065796,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RLPS4:BAL:MARGEN",
-      "valueNumeric": 0.062866,
+      "valueNumeric": 0.061794,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RLPS4:PEN:MARGEN",
-      "valueNumeric": 0.062866,
+      "valueNumeric": 0.061794,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RLPS5:BAL:MARGEN",
-      "valueNumeric": 0.053667,
+      "valueNumeric": 0.052595,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RLPS5:PEN:MARGEN",
-      "valueNumeric": 0.053667,
+      "valueNumeric": 0.052595,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RLPS6:BAL:MARGEN",
-      "valueNumeric": 0.045521,
+      "valueNumeric": 0.044449,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N2:RLPS6:PEN:MARGEN",
-      "valueNumeric": 0.045521,
+      "valueNumeric": 0.044449,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RL01:BAL:MARGEN",
-      "valueNumeric": 0.038966,
+      "valueNumeric": 0.038046,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RL01:PEN:MARGEN",
-      "valueNumeric": 0.038966,
+      "valueNumeric": 0.038046,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RL02:BAL:MARGEN",
-      "valueNumeric": 0.036898,
+      "valueNumeric": 0.035978,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RL02:PEN:MARGEN",
-      "valueNumeric": 0.036898,
+      "valueNumeric": 0.035978,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RL03:BAL:MARGEN",
-      "valueNumeric": 0.029447,
+      "valueNumeric": 0.028527,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RL03:PEN:MARGEN",
-      "valueNumeric": 0.029447,
+      "valueNumeric": 0.028527,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RL04:BAL:MARGEN",
-      "valueNumeric": 0.026461,
+      "valueNumeric": 0.025541,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RL04:PEN:MARGEN",
-      "valueNumeric": 0.026461,
+      "valueNumeric": 0.025541,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RL05:BAL:MARGEN",
-      "valueNumeric": 0.024368,
+      "valueNumeric": 0.023448,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RL05:PEN:MARGEN",
-      "valueNumeric": 0.024368,
+      "valueNumeric": 0.023448,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RL06:BAL:MARGEN",
-      "valueNumeric": 0.016222,
+      "valueNumeric": 0.015302,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RL06:PEN:MARGEN",
-      "valueNumeric": 0.016222,
+      "valueNumeric": 0.015302,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RLPS1:BAL:MARGEN",
-      "valueNumeric": 0.06725,
+      "valueNumeric": 0.066178,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RLPS1:PEN:MARGEN",
-      "valueNumeric": 0.06725,
+      "valueNumeric": 0.066178,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RLPS2:BAL:MARGEN",
-      "valueNumeric": 0.065182,
+      "valueNumeric": 0.06411,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RLPS2:PEN:MARGEN",
-      "valueNumeric": 0.065182,
+      "valueNumeric": 0.06411,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RLPS3:BAL:MARGEN",
-      "valueNumeric": 0.057731,
+      "valueNumeric": 0.056659,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RLPS3:PEN:MARGEN",
-      "valueNumeric": 0.057731,
+      "valueNumeric": 0.056659,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RLPS4:BAL:MARGEN",
-      "valueNumeric": 0.054745,
+      "valueNumeric": 0.053672,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RLPS4:PEN:MARGEN",
-      "valueNumeric": 0.054745,
+      "valueNumeric": 0.053672,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RLPS5:BAL:MARGEN",
-      "valueNumeric": 0.052652,
+      "valueNumeric": 0.05158,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RLPS5:PEN:MARGEN",
-      "valueNumeric": 0.052652,
+      "valueNumeric": 0.05158,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RLPS6:BAL:MARGEN",
-      "valueNumeric": 0.044506,
+      "valueNumeric": 0.043434,
       "unit": "€/kWh"
     },
     {
       "key": "GAS:INDEX:INDEXADO:N3:RLPS6:PEN:MARGEN",
-      "valueNumeric": 0.044506,
+      "valueNumeric": 0.043434,
+      "unit": "€/kWh"
+    },
+    {
+      "key": "MIBGAS:2025-02",
+      "valueNumeric": 0.0503925,
       "unit": "€/kWh"
     },
     {
@@ -6343,11 +6348,6 @@
     {
       "key": "MIBGAS:2026-01",
       "valueNumeric": 0.0351732258,
-      "unit": "€/kWh"
-    },
-    {
-      "key": "MIBGAS:2026-02",
-      "valueNumeric": 0.0316767857,
       "unit": "€/kWh"
     }
   ]

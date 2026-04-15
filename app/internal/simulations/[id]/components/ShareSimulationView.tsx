@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "../../../../../src/lib/i18n-context";
-import { getClient, updateSimulation } from "../../../lib/internalApi";
+import { getClient, shareSimulation } from "../../../lib/internalApi";
 import {
     getPdfTemplates,
     getEmailTemplates,
@@ -137,13 +137,14 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
         setShareMode(mode);
     };
 
-    const replaceVariables = (content: string) => {
+    const replaceVariables = (content: string, simulationLink?: string) => {
         if (!simulation) return content;
 
         // payloadJson is attached directly to the simulation object by the API
         const payload = simulation.payloadJson;
         const variableValues = extractVariableValues(simulation, payload, {
             pin: simulation.pinSnapshot ?? undefined,
+            ...(simulationLink ? { simulationLink } : {}),
         });
         return replaceVars(content, variableValues);
     };
@@ -151,7 +152,23 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
     const handleDownloadPdf = async (markAsShared: boolean = false) => {
         setIsSending(true);
         try {
-            const processedContent = replaceVariables(editedPdfContent);
+            // When producing the final (shared) PDF, share the simulation first so
+            // the publicToken is available for SIMULATION_LINK variable replacement.
+            let simulationLink: string | undefined;
+            if (markAsShared) {
+                try {
+                    const shared = await shareSimulation(token, simulation.id);
+                    const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
+                    if (shared.publicToken) {
+                        simulationLink = `${baseUrl}/simulador/?token=${shared.publicToken}`;
+                    }
+                    onStatusChange?.();
+                } catch (err) {
+                    console.error("Failed to share simulation before downloading PDF:", err);
+                }
+            }
+
+            const processedContent = replaceVariables(editedPdfContent, simulationLink);
 
             const response = await fetch(`/api/v1/internal/simulations/${simulation.id}/generate-pdf`, {
                 method: 'POST',
@@ -180,16 +197,6 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            // Mark simulation as SHARED only if requested
-            if (markAsShared) {
-                try {
-                    await updateSimulation(token, simulation.id, { status: "SHARED" });
-                    onStatusChange?.();
-                } catch (err) {
-                    console.error("Failed to update simulation status:", err);
-                }
-            }
-
             onSuccess?.(t("shareSimulation", "pdfDownloaded") || "PDF downloaded successfully");
             return true;
         } catch (err) {
@@ -208,9 +215,23 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
 
         setIsSending(true);
         try {
-            const processedContent = replaceVariables(editedEmailContent);
-            const processedSubject = replaceVariables(editedSubject);
-            const processedPdfContent = attachPdfToEmail ? replaceVariables(editedEmailPdfContent) : undefined;
+            // Share the simulation first so a publicToken is generated and the
+            // SIMULATION_LINK variable resolves to a real URL instead of N/A.
+            let simulationLink: string | undefined;
+            try {
+                const shared = await shareSimulation(token, simulation.id);
+                const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
+                if (shared.publicToken) {
+                    simulationLink = `${baseUrl}/simulador/?token=${shared.publicToken}`;
+                }
+                onStatusChange?.();
+            } catch (err) {
+                console.error("Failed to share simulation before sending email:", err);
+            }
+
+            const processedContent = replaceVariables(editedEmailContent, simulationLink);
+            const processedSubject = replaceVariables(editedSubject, simulationLink);
+            const processedPdfContent = attachPdfToEmail ? replaceVariables(editedEmailPdfContent, simulationLink) : undefined;
 
             const response = await fetch(`/api/v1/internal/simulations/${simulation.id}/send-email`, {
                 method: "POST",
@@ -229,14 +250,6 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.error || "Failed to send email");
-            }
-
-            // Mark simulation as SHARED
-            try {
-                await updateSimulation(token, simulation.id, { status: "SHARED" });
-                onStatusChange?.();
-            } catch (err) {
-                console.error("Failed to update simulation status:", err);
             }
 
             onSuccess?.(t("shareSimulation", "emailSent") || "Email sent successfully");

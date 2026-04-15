@@ -675,6 +675,35 @@ export async function softDeleteSimulation(
   );
 }
 
+export interface CupsLookupEntry {
+  cups: string;
+  nombreTitular: string;
+  personaContacto: string;
+  comercial: string;
+  direccion: string;
+  comercializadorActual: string;
+  clientId: string | null;
+}
+
+export async function fetchCupsLookup(
+  token: string,
+  params: { clientId?: string } = {},
+): Promise<CupsLookupEntry[]> {
+  const qs = params.clientId
+    ? `?clientId=${encodeURIComponent(params.clientId)}`
+    : "";
+  const response = await fetch(`${baseUrl}/api/v1/internal/cups/lookup${qs}`, {
+    method: "GET",
+    headers: authHeaders(token),
+  });
+
+  const result = await parseApiResponse<{ items: CupsLookupEntry[] }>(
+    response,
+    "CUPS lookup failed",
+  );
+  return result.items;
+}
+
 export interface ListUsersParams {
   page?: number;
   pageSize?: number;

@@ -3,20 +3,26 @@ import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
 const { PinService } = require("../../application/services/pinService");
-const { PasswordService } = require("../../application/services/passwordService");
+const {
+  PasswordService,
+} = require("../../application/services/passwordService");
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const agency = await prisma.agency.upsert({
-    where: { id: "seed-agency-main" },
-    update: { name: "AXPO Seed Agency", isActive: true },
-    create: {
-      id: "seed-agency-main",
-      name: "AXPO Seed Agency",
-      isActive: true,
-    },
+  let agency = await prisma.agency.findFirst({
+    where: { name: "AXPO Seed Agency" },
   });
+  if (!agency) {
+    agency = await prisma.agency.create({
+      data: { name: "AXPO Seed Agency", isActive: true },
+    });
+  } else {
+    agency = await prisma.agency.update({
+      where: { id: agency.id },
+      data: { isActive: true },
+    });
+  }
 
   const adminPin = await PinService.hash("1234");
   const agentPin = await PinService.hash("2345");
@@ -83,7 +89,9 @@ async function main() {
     },
   });
 
-  console.log("Seed completed: agency + admin/agent/commercial users created with password auth");
+  console.log(
+    "Seed completed: agency + admin/agent/commercial users created with password auth",
+  );
 }
 
 main()

@@ -2374,6 +2374,35 @@
         }
       }
     },
+    "/api/v1/internal/cups/lookup": {
+      "get": {
+        "tags": [
+          "Validation"
+        ],
+        "summary": "Look up previously used CUPS codes with associated client data",
+        "description": "Returns distinct CUPS codes used in past simulations, optionally filtered by client. Useful for auto-completing the CUPS field in the simulation form.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "clientId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by client ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of CUPS entries"
+          }
+        }
+      }
+    },
     "/api/v1/internal/cups/validate": {
       "post": {
         "tags": [

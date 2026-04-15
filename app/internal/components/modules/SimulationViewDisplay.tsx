@@ -439,6 +439,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                                     productKey: selectedOffer.productKey,
                                     commodity: selectedOffer.commodity
                                 } : undefined}
+                                readOnly
                             />
                         </div>
                     )}

@@ -72,13 +72,6 @@ const POWER_PERIODS: Record<string, string[]> = {
   "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 
-/** Periods eligible for excess-power surcharge (factor × 2 × price). */
-const EXCESS_PERIODS: Record<string, string[]> = {
-  "2.0TD": [],
-  "3.0TD": ["P1", "P2", "P3"],
-  "6.1TD": ["P1", "P2", "P3"],
-};
-
 const ELEC_PRODUCT_LABELS: Record<string, string> = {
   ESTABLE: "Estable",
   ESTABLE_PLUS: "Estable Plus",
@@ -135,13 +128,8 @@ function calcElecFijo(
   const dias = periodo.dias;
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
-  const excessPeriods = EXCESS_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
   const potenciaMap = potenciaContratada as unknown as Record<
-    string,
-    number | undefined
-  >;
-  const excesoMap = (excesoPotencia ?? {}) as Record<
     string,
     number | undefined
   >;
@@ -166,24 +154,26 @@ function calcElecFijo(
     terminoPotencia += precioPot * pv(potenciaMap, p) * (dias / 365);
   }
 
-  let terminoExceso = 0;
-  for (const p of excessPeriods) {
-    const precioPot = priceOf(
-      map,
-      `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
-    );
-    if (precioPot === undefined) continue;
-    terminoExceso += 2 * precioPot * pv(excesoMap, p) * (dias / 365);
-  }
+  // excesoPotencia is the € amount from the client's current invoice (grid charge,
+  // same regardless of commercial supplier — matches Excel E35 pass-through)
+  const terminoExceso = excesoPotencia ?? 0;
 
   const reactiva = extras?.reactiva ?? 0;
-  const baseImponible =
-    terminoEnergia + terminoPotencia + terminoExceso + reactiva;
-  const impuestoElectrico = r2(baseImponible * IMPUESTO_ELECTRICO);
   const alquiler = extras?.alquilerEquipoMedida ?? 0;
+  // otrosCargos (IMP RDL) is included in the Impuesto Eléctrico base per Excel formula:
+  // IMP = (TOTAL_POT + TOTAL_ENER + IMP_RDL) × 5.11%
   const otros = extras?.otrosCargos ?? 0;
-  const baseIva = baseImponible + impuestoElectrico + alquiler + otros;
-  const iva = r2(baseIva * IVA_RATE);
+  const ieRate =
+    extras?.impuestoElectricoTasa != null
+      ? extras.impuestoElectricoTasa / 100
+      : IMPUESTO_ELECTRICO;
+  const ivaRate = extras?.ivaTasa != null ? extras.ivaTasa / 100 : IVA_RATE;
+  const baseImponible =
+    terminoEnergia + terminoPotencia + terminoExceso + reactiva + otros;
+  const impuestoElectrico = r2(baseImponible * ieRate);
+  // alquilerEquipoMedida is outside the impuesto base but inside the IVA base
+  const baseIva = baseImponible + impuestoElectrico + alquiler;
+  const iva = r2(baseIva * ivaRate);
   const total = r2(baseIva + iva);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
@@ -230,13 +220,8 @@ function calcElecIndex(
   const dias = periodo.dias;
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
-  const excessPeriods = EXCESS_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
   const potenciaMap = potenciaContratada as unknown as Record<
-    string,
-    number | undefined
-  >;
-  const excesoMap = (excesoPotencia ?? {}) as Record<
     string,
     number | undefined
   >;
@@ -263,24 +248,26 @@ function calcElecIndex(
     terminoPotencia += precioPot * pv(potenciaMap, p) * (dias / 365);
   }
 
-  let terminoExceso = 0;
-  for (const p of excessPeriods) {
-    const precioPot = priceOf(
-      map,
-      `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
-    );
-    if (precioPot === undefined) continue;
-    terminoExceso += 2 * precioPot * pv(excesoMap, p) * (dias / 365);
-  }
+  // excesoPotencia is the € amount from the client's current invoice (grid charge,
+  // same regardless of commercial supplier — matches Excel E35 pass-through)
+  const terminoExceso = excesoPotencia ?? 0;
 
   const reactiva = extras?.reactiva ?? 0;
-  const baseImponible =
-    terminoEnergia + terminoPotencia + terminoExceso + reactiva;
-  const impuestoElectrico = r2(baseImponible * IMPUESTO_ELECTRICO);
   const alquiler = extras?.alquilerEquipoMedida ?? 0;
+  // otrosCargos (IMP RDL) is included in the Impuesto Eléctrico base per Excel formula:
+  // IMP = (TOTAL_POT + TOTAL_ENER + IMP_RDL) × 5.11%
   const otros = extras?.otrosCargos ?? 0;
-  const baseIva = baseImponible + impuestoElectrico + alquiler + otros;
-  const iva = r2(baseIva * IVA_RATE);
+  const ieRate =
+    extras?.impuestoElectricoTasa != null
+      ? extras.impuestoElectricoTasa / 100
+      : IMPUESTO_ELECTRICO;
+  const ivaRate = extras?.ivaTasa != null ? extras.ivaTasa / 100 : IVA_RATE;
+  const baseImponible =
+    terminoEnergia + terminoPotencia + terminoExceso + reactiva + otros;
+  const impuestoElectrico = r2(baseImponible * ieRate);
+  // alquilerEquipoMedida is outside the impuesto base but inside the IVA base
+  const baseIva = baseImponible + impuestoElectrico + alquiler;
+  const iva = r2(baseIva * ivaRate);
   const total = r2(baseIva + iva);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;

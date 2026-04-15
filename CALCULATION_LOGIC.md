@@ -102,25 +102,47 @@ powerCost = Σ(contractedPower[period] * powerPrice[period] * days) / normalizer
 
 ### 3. Excess Power Cost (for 3.0TD and 6.1TD)
 
+The excess power charge is taken **directly from the client's current invoice as a € amount**.
+This is a regulatory grid charge (IMP RDL) that is the same regardless of commercial supplier.
+The Excel simulator (cell E35) simply passes it through unchanged — no recalculation is done.
+
 ```
-excessCost = Σ(excess[period] * excessPrice[period])
+excessCost = excesoPotencia  (direct € amount from client invoice)
 ```
+
+> **Why?** The excess power penalty is set by the regulator and applied by the network operator.
+> Changing commercial supplier does not affect this charge, so there is no formula to apply.
 
 ### 4. Other Charges
 
-```
-otherCharges = reactiva + alquilerEquipoMedida + otrosCargos
-```
+Two types of charges are treated differently for tax purposes:
+
+- **`otrosCargos`** (IMP RDL / other regulatory charges): **included** in the Impuesto Eléctrico base
+- **`alquilerEquipoMedida`** (meter rental): **excluded** from Impuesto Eléctrico base, only added before IVA
+- **`reactiva`** (reactive power surcharge): included in the Impuesto Eléctrico base
 
 ### 5. Taxes
 
+This matches the exact order used in the Excel formula sheet (rows 1295–1315):
+
 ```
-subtotal = energyCost + powerCost + excessCost + otherCharges
-impuestoElectrico = subtotal * 0.0511  (5.11%)
-baseImponible = subtotal + impuestoElectrico
-IVA = baseImponible * 0.21  (21%)
-totalFactura = baseImponible + IVA
+# Step 1: Build the Impuesto Eléctrico taxable base
+baseImponible = energyCost + powerCost + excessCost + reactiva + otrosCargos
+
+# Step 2: Apply Impuesto Eléctrico (5.11269632%)
+impuestoElectrico = baseImponible × 0.0511269632
+
+# Step 3: Add meter rental (alquiler) to get the IVA base
+baseIva = baseImponible + impuestoElectrico + alquilerEquipoMedida
+
+# Step 4: Apply IVA (21%)
+iva = baseIva × 0.21
+totalFactura = baseIva × 1.21
 ```
+
+> ⚠️ **Common mistake**: `alquilerEquipoMedida` must be added **after** the impuesto base,
+> not inside it. `otrosCargos` must be **inside** the impuesto base. Getting this wrong
+> causes incorrect Impuesto Eléctrico values on every quote.
 
 ### 6. Savings Calculation
 

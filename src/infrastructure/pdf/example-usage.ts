@@ -55,7 +55,7 @@ const mockPayload: SimulationPayload = {
     },
 
     // Excess power (if any)
-    excesoPotencia: {},
+    excesoPotencia: 0,
 
     // Energy consumption (kWh) for the billing period
     consumo: {

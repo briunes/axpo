@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import { SimulationResultsCards } from "./SimulationResultsCards";
-import type { SimulationItem } from "../../lib/internalApi";
-import { calculateSimulation, updateSimulation } from "../../lib/internalApi";
+import type { SimulationItem, ClientItem, CupsLookupEntry } from "../../lib/internalApi";
+import { calculateSimulation, updateSimulation, fetchCupsLookup } from "../../lib/internalApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import type {
     SimulationPayload,
@@ -61,12 +61,14 @@ interface ElecFormState {
     fechaFin: string;
     consumo: PeriodMap;
     potencia: PeriodMap;
-    exceso: PeriodMap;
+    exceso: number;
     omie: PeriodMap;
     facturaActual: number;
     reactiva: number;
     alquiler: number;
     otrosCargos: number;
+    ivaTasa: number;
+    impuestoElectricoTasa: number;
 }
 
 interface GasFormState {
@@ -83,7 +85,7 @@ interface GasFormState {
 
 function daysBetween(from: string, to: string): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-    return Math.max(1, d);
+    return Math.max(1, d + 1); // inclusive end date, matching Excel E25 = (E24-D24)+1
 }
 
 function prevMonthRange() {
@@ -113,12 +115,14 @@ function defaultElecState(): ElecFormState {
         fechaFin,
         consumo: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
         potencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
-        exceso: { P1: 0, P2: 0, P3: 0 },
+        exceso: 0,
         omie: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
         facturaActual: 0,
         reactiva: 0,
         alquiler: 0,
         otrosCargos: 0,
+        ivaTasa: 21,
+        impuestoElectricoTasa: 5.11269,
     };
 }
 
@@ -164,6 +168,8 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
             reactiva: s.reactiva || undefined,
             alquilerEquipoMedida: s.alquiler || undefined,
             otrosCargos: s.otrosCargos || undefined,
+            ivaTasa: s.ivaTasa,
+            impuestoElectricoTasa: s.impuestoElectricoTasa,
         },
     } as any;
 }
@@ -192,10 +198,7 @@ function validateElec(s: ElecFormState): Record<string, string> {
     if (!s.fechaFin) errs.fechaFin = "End date is required";
     if (s.fechaInicio && s.fechaFin && s.fechaFin <= s.fechaInicio) errs.fechaFin = "Must be after start date";
     if (s.facturaActual <= 0) errs.facturaActual = "Enter the current invoice total";
-    const ep = ELEC_ENERGY_PERIODS[s.tarifaAcceso];
-    const pp = ELEC_POWER_PERIODS[s.tarifaAcceso];
-    ep.forEach((p) => { if ((s.consumo[p] ?? 0) <= 0) errs[`consumo.${p}`] = "Required"; });
-    pp.forEach((p) => { if ((s.potencia[p] ?? 0) <= 0) errs[`potencia.${p}`] = "Required"; });
+    // Periods can be 0 — the Excel simulator accepts any value per period
     return errs;
 }
 
@@ -216,10 +219,8 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
     if (!e) return null;
     const ep = ELEC_ENERGY_PERIODS[e.tarifaAcceso] ?? [];
     const pp = ELEC_POWER_PERIODS[e.tarifaAcceso] ?? [];
-    const xp = ELEC_EXCESS_PERIODS[e.tarifaAcceso] ?? [];
     const cMap = e.consumo as unknown as Record<string, number>;
     const potMap = e.potenciaContratada as unknown as Record<string, number>;
-    const exMap = (e.excesoPotencia ?? {}) as Record<string, number>;
     const omieMap = (e.omieEstimado ?? {}) as Record<string, number>;
     const clientData = (e as any).clientData ?? {};
     return {
@@ -237,12 +238,14 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
         fechaFin: e.periodo.fechaFin,
         consumo: Object.fromEntries(ep.map((p) => [p, cMap[p] ?? 0])),
         potencia: Object.fromEntries(pp.map((p) => [p, potMap[p] ?? 0])),
-        exceso: Object.fromEntries(xp.map((p) => [p, exMap[p] ?? 0])),
+        exceso: typeof e.excesoPotencia === "number" ? e.excesoPotencia : 0,
         omie: Object.fromEntries(ep.map((p) => [p, omieMap[p] ?? 0])),
         facturaActual: e.facturaActual,
         reactiva: e.extras?.reactiva ?? 0,
         alquiler: e.extras?.alquilerEquipoMedida ?? 0,
         otrosCargos: e.extras?.otrosCargos ?? 0,
+        ivaTasa: e.extras?.ivaTasa ?? 21,
+        impuestoElectricoTasa: e.extras?.impuestoElectricoTasa ?? 5.11269,
     };
 }
 
@@ -436,15 +439,39 @@ function PeriodGrid({ label, periods, values, onChange, step, hint, errorPeriods
 
 // ─── Electricity sub-form ─────────────────────────────────────────────────────
 
-function ElecForm({ state, onChange, errors = {} }: { state: ElecFormState; onChange: (s: ElecFormState) => void; errors?: Record<string, string> }) {
+function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFieldsChanged }: {
+    state: ElecFormState;
+    onChange: (s: ElecFormState) => void;
+    errors?: Record<string, string>;
+    cupsHistory?: CupsLookupEntry[];
+    onClientFieldsChanged?: (data: { name?: string; contactName?: string }) => void;
+}) {
     const { t } = useI18n();
     const up = <K extends keyof ElecFormState>(k: K, v: ElecFormState[K]) => onChange({ ...state, [k]: v });
-    const upP = (field: "consumo" | "potencia" | "exceso" | "omie") => (p: string, v: number) => up(field, { ...state[field], [p]: v });
+    const upP = (field: "consumo" | "potencia" | "omie") => (p: string, v: number) => up(field, { ...state[field], [p]: v });
     const ep = ELEC_ENERGY_PERIODS[state.tarifaAcceso];
     const pp = ELEC_POWER_PERIODS[state.tarifaAcceso];
     const xp = ELEC_EXCESS_PERIODS[state.tarifaAcceso];
     const consumoErrPeriods = ep.filter((p) => !!errors[`consumo.${p}`]);
     const potenciaErrPeriods = pp.filter((p) => !!errors[`potencia.${p}`]);
+
+    // When a known CUPS is selected, auto-fill client fields from history
+    const handleCupsChange = (value: string) => {
+        const normalized = value.toUpperCase().trim();
+        up("cups", value);
+        const match = cupsHistory.find((e) => e.cups === normalized);
+        if (match) {
+            onChange({
+                ...state,
+                cups: value,
+                nombreTitular: match.nombreTitular || state.nombreTitular,
+                personaContacto: match.personaContacto || state.personaContacto,
+                comercial: match.comercial || state.comercial,
+                direccion: match.direccion || state.direccion,
+                comercializadorActual: match.comercializadorActual || state.comercializadorActual,
+            });
+        }
+    };
 
     // Completion checks
     const clientComplete = !!state.cups && !!state.nombreTitular;
@@ -491,8 +518,25 @@ function ElecForm({ state, onChange, errors = {} }: { state: ElecFormState; onCh
             {/* Client data section */}
             <Sec title={t("simulationForm", "sectionClientInfo")} block collapsible complete={clientComplete}>
                 <Row>
-                    <Field label={t("simulationForm", "fieldCups")} flex="1 1 280px" required help={t("simulationForm", "helpCups")}>
-                        <input className="sp-form-input" type="text" value={state.cups} onChange={(e) => up("cups", e.target.value)} placeholder={t("simulationForm", "placeholderCups")} />
+                    <Field label={t("simulationForm", "fieldCups")} flex="1 1 280px" required help={t("simulationForm", "helpCups")}
+                        hint={cupsHistory.length > 0 ? t("simulationForm", "cupsLookupHint", { count: cupsHistory.length }) : undefined}>
+                        <input
+                            className="sp-form-input"
+                            type="text"
+                            list="cups-history-list"
+                            value={state.cups}
+                            onChange={(e) => handleCupsChange(e.target.value)}
+                            placeholder={t("simulationForm", "placeholderCups")}
+                        />
+                        {cupsHistory.length > 0 && (
+                            <datalist id="cups-history-list">
+                                {cupsHistory.map((entry) => (
+                                    <option key={entry.cups} value={entry.cups}>
+                                        {entry.nombreTitular ? `${entry.cups} — ${entry.nombreTitular}` : entry.cups}
+                                    </option>
+                                ))}
+                            </datalist>
+                        )}
                     </Field>
                     <Field label={t("simulationForm", "fieldAnnualConsumption")} flex="1 1 180px" hint={t("simulationForm", "fieldAnnualConsumptionHint")} help={t("simulationForm", "helpAnnualConsumption")}>
                         <Num value={state.consumoAnual} onChange={(v) => up("consumoAnual", v)} step={1000} />
@@ -504,10 +548,24 @@ function ElecForm({ state, onChange, errors = {} }: { state: ElecFormState; onCh
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginTop: 20, marginBottom: 12, paddingBottom: 6, borderBottom: "1px solid var(--scheme-neutral-900)" }}>{t("simulationForm", "clientDetailsSubtitle")}</div>
                 <Row>
                     <Field label={t("simulationForm", "fieldClientName")} required>
-                        <input className="sp-form-input" type="text" value={state.nombreTitular} onChange={(e) => up("nombreTitular", e.target.value)} placeholder={t("simulationForm", "placeholderClientName")} />
+                        <input
+                            className="sp-form-input"
+                            type="text"
+                            value={state.nombreTitular}
+                            onChange={(e) => up("nombreTitular", e.target.value)}
+                            onBlur={() => onClientFieldsChanged?.({ name: state.nombreTitular })}
+                            placeholder={t("simulationForm", "placeholderClientName")}
+                        />
                     </Field>
                     <Field label={t("simulationForm", "fieldContactPerson")}>
-                        <input className="sp-form-input" type="text" value={state.personaContacto} onChange={(e) => up("personaContacto", e.target.value)} placeholder={t("simulationForm", "placeholderContactPerson")} />
+                        <input
+                            className="sp-form-input"
+                            type="text"
+                            value={state.personaContacto}
+                            onChange={(e) => up("personaContacto", e.target.value)}
+                            onBlur={() => onClientFieldsChanged?.({ contactName: state.personaContacto })}
+                            placeholder={t("simulationForm", "placeholderContactPerson")}
+                        />
                     </Field>
                 </Row>
                 <Row>
@@ -546,7 +604,7 @@ function ElecForm({ state, onChange, errors = {} }: { state: ElecFormState; onCh
                                 tarifaAcceso: tariff,
                                 consumo: emptyPeriods(ELEC_ENERGY_PERIODS[tariff]),
                                 potencia: emptyPeriods(ELEC_POWER_PERIODS[tariff]),
-                                exceso: emptyPeriods(ELEC_EXCESS_PERIODS[tariff]),
+                                exceso: 0,
                                 omie: emptyPeriods(ELEC_ENERGY_PERIODS[tariff]),
                             });
                         }} options={[{ value: "2.0TD", label: t("simulationForm", "optionLowVoltage15") }, { value: "3.0TD", label: t("simulationForm", "optionLowVoltage15Plus") }, { value: "6.1TD", label: t("simulationForm", "optionHighVoltage") }]} />
@@ -577,8 +635,15 @@ function ElecForm({ state, onChange, errors = {} }: { state: ElecFormState; onCh
                 {xp.length > 0 && (
                     <>
                         <div style={{ height: 12 }} />
-                        <div style={{ fontSize: 11, opacity: 0.55, marginBottom: 6 }}>{t("simulationForm", "excessPowerNote")}</div>
-                        <PeriodGrid label={`${t("simulationForm", "powerPeriodsLabel", { periods: xp.join(" · ") })}`} periods={xp} values={state.exceso} onChange={upP("exceso")} step={0.1} hint={t("simulationForm", "excessPowerHint")} />
+                        <Row>
+                            <Field label={t("simulationForm", "excessPowerLabel")} hint={t("simulationForm", "excessPowerHint")} flex="0 0 200px">
+                                <Num
+                                    value={state.exceso}
+                                    onChange={(v) => up("exceso", v)}
+                                    step={0.1}
+                                />
+                            </Field>
+                        </Row>
                     </>
                 )}
             </Sec>
@@ -602,10 +667,10 @@ function ElecForm({ state, onChange, errors = {} }: { state: ElecFormState; onCh
                 <div style={{ height: 6 }} />
                 <Row>
                     <Field label={t("simulationForm", "fieldVat")} hint={t("simulationForm", "fieldVatHint")} flex="1 1 120px">
-                        <input className="sp-form-input" type="number" value="21" readOnly style={{ opacity: 0.6 }} />
+                        <Num value={state.ivaTasa} onChange={(v) => up("ivaTasa", v)} step={0.01} />
                     </Field>
                     <Field label={t("simulationForm", "fieldElecTax")} hint={t("simulationForm", "fieldElecTaxHint")} flex="1 1 160px">
-                        <input className="sp-form-input" type="number" value="5.11" readOnly style={{ opacity: 0.6 }} />
+                        <Num value={state.impuestoElectricoTasa} onChange={(v) => up("impuestoElectricoTasa", v)} step={0.001} />
                     </Field>
                     <Field label={t("simulationForm", "fieldInvoiceTotal")} hint={t("simulationForm", "fieldCurrentInvoiceHint")} error={errors.facturaActual} flex="1 1 160px" required help={t("simulationForm", "helpInvoiceTotal")}>
                         <Num value={state.facturaActual} onChange={(v) => up("facturaActual", v)} step={10} />
@@ -734,12 +799,15 @@ function TypeButton({ active, onClick, children }: { active: boolean; onClick: (
 export interface SimulationFormProps {
     simulation: SimulationItem;
     token: string;
+    clients?: ClientItem[];
+    onClientFieldsChanged?: (clientId: string, data: { name?: string; contactName?: string }) => void;
     onSuccess?: (results: SimulationResults) => void;
     onNotify?: (text: string, tone: "success" | "error") => void;
     onOfferSelected?: (productKey: string) => void;
+    readOnly?: boolean;
 }
 
-export function SimulationForm({ simulation, token, onSuccess, onNotify, onOfferSelected }: SimulationFormProps) {
+export function SimulationForm({ simulation, token, clients, onClientFieldsChanged, onSuccess, onNotify, onOfferSelected, readOnly }: SimulationFormProps) {
     const { t } = useI18n();
     const existingPayload = (simulation.payloadJson ?? {}) as SimulationPayload;
 
@@ -755,6 +823,32 @@ export function SimulationForm({ simulation, token, onSuccess, onNotify, onOffer
         existingPayload.selectedOffer ?? undefined
     );
     const [savingSelection, setSavingSelection] = useState(false);
+    const [cupsHistory, setCupsHistory] = useState<CupsLookupEntry[]>([]);
+
+    // Load CUPS history (scoped to simulation's client if set)
+    useEffect(() => {
+        fetchCupsLookup(token, simulation.clientId ? { clientId: simulation.clientId } : {})
+            .then(setCupsHistory)
+            .catch(() => { /* non-critical */ });
+    }, [token, simulation.clientId]);
+
+    // Pre-fill client fields from ClientItem when a client is linked and form client data is empty
+    useEffect(() => {
+        if (!simulation.clientId || !clients?.length) return;
+        const client = clients.find((c) => c.id === simulation.clientId);
+        if (!client) return;
+
+        setElecState((prev) => {
+            // Only pre-fill if the simulation payload had no client data at all
+            const hasExistingData = prev.nombreTitular || prev.personaContacto;
+            if (hasExistingData) return prev;
+            return {
+                ...prev,
+                nombreTitular: client.name ?? prev.nombreTitular,
+                personaContacto: client.contactName ?? prev.personaContacto,
+            };
+        });
+    }, [simulation.clientId, clients]);
     const elecErrors = useMemo(
         () => (hasValidated && simType !== "GAS" ? validateElec(elecState) : {}),
         [hasValidated, elecState, simType]
@@ -782,12 +876,14 @@ export function SimulationForm({ simulation, token, onSuccess, onNotify, onOffer
                 fechaFin: "2026-03-01",
                 consumo: { P1: 468, P2: 449, P3: 1023, P4: 0, P5: 0, P6: 0 },
                 potencia: { P1: 9.86, P2: 9.86, P3: 0, P4: 0, P5: 0, P6: 0 },
-                exceso: { P1: 0, P2: 0, P3: 0 },
+                exceso: 0,
                 omie: { P1: 0.17623088364033698, P2: 0.10728797576897793, P3: 0.079728736723209598, P4: 0, P5: 0, P6: 0 },
                 facturaActual: 493.79,
                 reactiva: 0,
                 alquiler: 1.3,
                 otrosCargos: 0,
+                ivaTasa: 21,
+                impuestoElectricoTasa: 5.11269,
             };
             setElecState(testElec);
         }
@@ -928,7 +1024,19 @@ export function SimulationForm({ simulation, token, onSuccess, onNotify, onOffer
                             {simType === "BOTH" && (
                                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 16, color: "var(--scheme-neutral-300)", display: "flex", alignItems: "center", gap: 6 }}><BoltIcon sx={{ fontSize: 16, color: "#f59e0b" }} /> {t("simulationForm", "electricity")}</div>
                             )}
-                            <ElecForm state={elecState} onChange={setElecState} errors={elecErrors} />
+                            <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, opacity: readOnly ? 0.7 : 1 }}>
+                                <ElecForm
+                                    state={elecState}
+                                    onChange={setElecState}
+                                    errors={elecErrors}
+                                    cupsHistory={cupsHistory}
+                                    onClientFieldsChanged={
+                                        simulation.clientId && onClientFieldsChanged
+                                            ? (data) => onClientFieldsChanged(simulation.clientId!, data)
+                                            : undefined
+                                    }
+                                />
+                            </fieldset>
                         </div>
                     )}
 
@@ -939,7 +1047,9 @@ export function SimulationForm({ simulation, token, onSuccess, onNotify, onOffer
                             {simType === "BOTH" && (
                                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 16, color: "var(--scheme-neutral-300)", display: "flex", alignItems: "center", gap: 6 }}><LocalFireDepartmentIcon sx={{ fontSize: 16, color: "#ef4444" }} /> {t("simulationForm", "gas")}</div>
                             )}
-                            <GasForm state={gasState} onChange={setGasState} errors={gasErrors} />
+                            <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, opacity: readOnly ? 0.7 : 1 }}>
+                                <GasForm state={gasState} onChange={setGasState} errors={gasErrors} />
+                            </fieldset>
                         </div>
                     )}
 
@@ -953,36 +1063,38 @@ export function SimulationForm({ simulation, token, onSuccess, onNotify, onOffer
                     {error && (
                         <div className="crud-alert crud-alert--error" style={{ marginBottom: 16 }}>{error}</div>
                     )}
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, paddingTop: 8, borderTop: "1px solid var(--scheme-neutral-900)" }}>
-                        <button
-                            type="button"
-                            className="sp-btn-secondary"
-                            onClick={fillTestData}
-                            style={{ padding: "10px 20px", fontSize: 14 }}
-                        >
-                            {t("simulationForm", "fillTestData")}
-                        </button>
-                        <div style={{ display: "flex", gap: 10 }}>
-                            {results && (
-                                <button
-                                    type="button"
-                                    className="sp-btn-secondary"
-                                    onClick={() => setActiveTab("results")}
-                                >
-                                    {t("simulationForm", "viewPreviousResults")}
-                                </button>
-                            )}
+                    {!readOnly && (
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, paddingTop: 8, borderTop: "1px solid var(--scheme-neutral-900)" }}>
                             <button
                                 type="button"
-                                className="sp-btn-primary"
-                                onClick={handleCalculate}
-                                disabled={calculating}
-                                style={{ minWidth: 180, padding: "10px 24px", fontSize: 14 }}
+                                className="sp-btn-secondary"
+                                onClick={fillTestData}
+                                style={{ padding: "10px 20px", fontSize: 14 }}
                             >
-                                {calculating ? t("simulationForm", "btnCalculating") : t("simulationForm", "btnCalculate")}
+                                {t("simulationForm", "fillTestData")}
                             </button>
+                            <div style={{ display: "flex", gap: 10 }}>
+                                {results && (
+                                    <button
+                                        type="button"
+                                        className="sp-btn-secondary"
+                                        onClick={() => setActiveTab("results")}
+                                    >
+                                        {t("simulationForm", "viewPreviousResults")}
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    className="sp-btn-primary"
+                                    onClick={handleCalculate}
+                                    disabled={calculating}
+                                    style={{ minWidth: 180, padding: "10px 24px", fontSize: 14 }}
+                                >
+                                    {calculating ? t("simulationForm", "btnCalculating") : t("simulationForm", "btnCalculate")}
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             )}
 
@@ -998,7 +1110,7 @@ export function SimulationForm({ simulation, token, onSuccess, onNotify, onOffer
                             energyPeriods={simType !== "GAS" ? elecState.consumo : undefined}
                             powerPeriods={simType !== "GAS" ? elecState.potencia : undefined}
                             omiePeriods={simType !== "GAS" ? elecState.omie : undefined}
-                            onUpdatePeriod={(type: "energy" | "power" | "omie", period: string, value: number) => {
+                            onUpdatePeriod={readOnly ? undefined : (type: "energy" | "power" | "omie", period: string, value: number) => {
                                 if (simType !== "GAS") {
                                     setElecState(prev => ({
                                         ...prev,
@@ -1009,10 +1121,11 @@ export function SimulationForm({ simulation, token, onSuccess, onNotify, onOffer
                                     }));
                                 }
                             }}
-                            onRecalculate={handleCalculate}
+                            onRecalculate={readOnly ? undefined : handleCalculate}
                             calculating={calculating}
                             selectedOffer={selectedOffer}
-                            onSelectOffer={handleSelectOffer}
+                            onSelectOffer={readOnly ? undefined : handleSelectOffer}
+                            readOnly={readOnly}
                         />
                     ) : (
                         <div style={{ padding: "60px 20px", textAlign: "center", opacity: 0.5 }}>

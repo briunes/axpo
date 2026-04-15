@@ -15,6 +15,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:seed": "set -a && . ./.env.local && set +a && node ./scripts/seed-runtime.mjs",
+    "db:demo-cleanup": "set -a && . ./.env.local && set +a && node ./scripts/db-demo-cleanup.mjs",
     "db:import-prices": "set -a && . ./.env.local && set +a && node ./scripts/import-base-values.mjs",
     "db:import-prices:replace": "set -a && . ./.env.local && set +a && node ./scripts/import-base-values.mjs --replace",
     "db:studio": "prisma studio",

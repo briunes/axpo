@@ -349,14 +349,15 @@ function ElectricityForm({
                     hint={t("simulationForm", "powerPeriodsHint")}
                 />
                 {excessPeriods.length > 0 && (
-                    <PeriodGrid
-                        label={t("simulationForm", "excessPowerLabel")}
-                        periods={excessPeriods}
-                        values={state.exceso}
-                        onChange={upPeriod("exceso")}
-                        step={0.1}
-                        hint={t("simulationForm", "excessPowerHint")}
-                    />
+                    <FieldRow>
+                        <Field label={t("simulationForm", "excessPowerLabel")} hint={t("simulationForm", "excessPowerHint")} flex="0 0 200px">
+                            <Num
+                                value={state.exceso[excessPeriods[0]] ?? 0}
+                                onChange={(v) => up("exceso", Object.fromEntries(excessPeriods.map((p) => [p, v])))}
+                                step={0.1}
+                            />
+                        </Field>
+                    </FieldRow>
                 )}
             </FormSection>
 
@@ -515,7 +516,7 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
         zonaGeografica: s.zonaGeografica,
         perfilCarga: s.perfilCarga,
         potenciaContratada: s.potencia as ElectricityInputs["potenciaContratada"],
-        excesoPotencia: s.exceso,
+        excesoPotencia: Object.values(s.exceso)[0] ?? 0,
         consumo: s.consumo as ElectricityInputs["consumo"],
         omieEstimado: s.omie,
         periodo: {
@@ -572,7 +573,7 @@ function hydrateElec(payload: SimulationPayload): ElecFormState | null {
         fechaFin: e.periodo.fechaFin,
         consumo: Object.fromEntries(ep.map((p) => [p, consumoMap[p] ?? 0])),
         potencia: Object.fromEntries(pp.map((p) => [p, potenciaMap[p] ?? 0])),
-        exceso: Object.fromEntries(xp.map((p) => [p, excesoMap[p] ?? 0])),
+        exceso: Object.fromEntries(xp.map((p) => [p, excesoMap["P1"] ?? excesoMap[xp[0]] ?? 0])),
         omie: Object.fromEntries(ep.map((p) => [p, omieMap[p] ?? 0])),
         facturaActual: e.facturaActual,
         reactiva: e.extras?.reactiva ?? 0,

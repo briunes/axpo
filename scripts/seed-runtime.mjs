@@ -4,16 +4,20 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  const agency = await prisma.agency.upsert({
-    where: { id: "seed-agency-main" },
-    update: { name: "AXPO Seed Agency", isActive: true },
-    create: {
-      id: "seed-agency-main",
-      name: "AXPO Seed Agency",
-      isActive: true,
-    },
+async function ensureClient(data) {
+  const existing = await prisma.client.findFirst({
+    where: { cif: data.cif, agencyId: data.agencyId },
   });
+  if (!existing) await prisma.client.create({ data });
+}
+
+async function main() {
+  let agency = await prisma.agency.findFirst({ where: { name: "AXPO Seed Agency" } });
+  if (!agency) {
+    agency = await prisma.agency.create({ data: { name: "AXPO Seed Agency", isActive: true } });
+  } else {
+    agency = await prisma.agency.update({ where: { id: agency.id }, data: { isActive: true } });
+  }
 
   const [adminPin, agentPin, commercialPin, adminPassword, agentPassword, commercialPassword] = await Promise.all([
     bcrypt.hash("1234", 10),
@@ -35,7 +39,6 @@ async function main() {
       isActive: true,
     },
     create: {
-      id: "seed-user-admin",
       agencyId: agency.id,
       role: UserRole.ADMIN,
       fullName: "Seed Admin",
@@ -57,7 +60,6 @@ async function main() {
       isActive: true,
     },
     create: {
-      id: "seed-user-agent",
       agencyId: agency.id,
       role: UserRole.AGENT,
       fullName: "Seed Agent",
@@ -79,7 +81,6 @@ async function main() {
       isActive: true,
     },
     create: {
-      id: "seed-user-commercial",
       agencyId: agency.id,
       role: UserRole.COMMERCIAL,
       fullName: "Seed Commercial",
@@ -91,85 +92,11 @@ async function main() {
   });
 
   // Seed clients
-  await prisma.client.upsert({
-    where: { id: "seed-client-1" },
-    update: {},
-    create: {
-      id: "seed-client-1",
-      agencyId: agency.id,
-      name: "Industrias Mediterráneas S.L.",
-      cif: "B12345678",
-      contactName: "María García López",
-      contactEmail: "maria.garcia@industriasmed.es",
-      contactPhone: "+34 915 123 456",
-      otherDetails: "Cliente industrial con alto consumo energético",
-      isActive: true,
-    },
-  });
-
-  await prisma.client.upsert({
-    where: { id: "seed-client-2" },
-    update: {},
-    create: {
-      id: "seed-client-2",
-      agencyId: agency.id,
-      name: "Comercial Levante S.A.",
-      cif: "A87654321",
-      contactName: "Juan Martínez Sánchez",
-      contactEmail: "juan.martinez@comerciallevante.com",
-      contactPhone: "+34 963 987 654",
-      otherDetails: "Cadena de tiendas con múltiples puntos de suministro",
-      isActive: true,
-    },
-  });
-
-  await prisma.client.upsert({
-    where: { id: "seed-client-3" },
-    update: {},
-    create: {
-      id: "seed-client-3",
-      agencyId: agency.id,
-      name: "Hotel Costa Blanca Group",
-      cif: "B23456789",
-      contactName: "Carmen Ruiz Fernández",
-      contactEmail: "carmen.ruiz@costablancahotels.es",
-      contactPhone: "+34 965 234 567",
-      otherDetails: "Grupo hotelero con necesidades de eficiencia energética",
-      isActive: true,
-    },
-  });
-
-  await prisma.client.upsert({
-    where: { id: "seed-client-4" },
-    update: {},
-    create: {
-      id: "seed-client-4",
-      agencyId: agency.id,
-      name: "Tecnología y Servicios Barcelona S.L.",
-      cif: "B34567890",
-      contactName: "Pedro López Gómez",
-      contactEmail: "pedro.lopez@tecnoservi.cat",
-      contactPhone: "+34 933 456 789",
-      otherDetails: "Empresa tecnológica en fase de expansión",
-      isActive: true,
-    },
-  });
-
-  await prisma.client.upsert({
-    where: { id: "seed-client-5" },
-    update: {},
-    create: {
-      id: "seed-client-5",
-      agencyId: agency.id,
-      name: "Alimentación Castilla La Mancha",
-      cif: "B45678901",
-      contactName: "Ana Jiménez Torres",
-      contactEmail: "ana.jimenez@alimentacionclm.es",
-      contactPhone: "+34 925 567 890",
-      otherDetails: "Distribuidor regional de productos alimenticios",
-      isActive: true,
-    },
-  });
+  await ensureClient({ agencyId: agency.id, name: "Industrias Mediterráneas S.L.", cif: "B12345678", contactName: "María García López", contactEmail: "maria.garcia@industriasmed.es", contactPhone: "+34 915 123 456", otherDetails: "Cliente industrial con alto consumo energético", isActive: true });
+  await ensureClient({ agencyId: agency.id, name: "Comercial Levante S.A.", cif: "A87654321", contactName: "Juan Martínez Sánchez", contactEmail: "juan.martinez@comerciallevante.com", contactPhone: "+34 963 987 654", otherDetails: "Cadena de tiendas con múltiples puntos de suministro", isActive: true });
+  await ensureClient({ agencyId: agency.id, name: "Hotel Costa Blanca Group", cif: "B23456789", contactName: "Carmen Ruiz Fernández", contactEmail: "carmen.ruiz@costablancahotels.es", contactPhone: "+34 965 234 567", otherDetails: "Grupo hotelero con necesidades de eficiencia energética", isActive: true });
+  await ensureClient({ agencyId: agency.id, name: "Tecnología y Servicios Barcelona S.L.", cif: "B34567890", contactName: "Pedro López Gómez", contactEmail: "pedro.lopez@tecnoservi.cat", contactPhone: "+34 933 456 789", otherDetails: "Empresa tecnológica en fase de expansión", isActive: true });
+  await ensureClient({ agencyId: agency.id, name: "Alimentación Castilla La Mancha", cif: "B45678901", contactName: "Ana Jiménez Torres", contactEmail: "ana.jimenez@alimentacionclm.es", contactPhone: "+34 925 567 890", otherDetails: "Distribuidor regional de productos alimenticios", isActive: true });
 
   console.log("✓ Seeded 5 clients");
 

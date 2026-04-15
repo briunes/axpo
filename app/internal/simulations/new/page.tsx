@@ -253,7 +253,6 @@ export default function NewSimulationPage() {
                                     >
                                         <MenuItem value="ELECTRICITY">
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} />
                                                 <span>{t("newSimulationPage", "electricity")}</span>
                                             </div>
                                         </MenuItem>
