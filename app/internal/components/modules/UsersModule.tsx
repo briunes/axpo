@@ -136,7 +136,7 @@ export function UsersModule({ session, actions, agencies, onNotify }: UsersModul
           {new Date(u.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
           {" - "}
           <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
-            System
+            {u.createdByUser?.fullName ?? "—"}
           </span>
         </Typography>
       ),
@@ -151,7 +151,7 @@ export function UsersModule({ session, actions, agencies, onNotify }: UsersModul
           {new Date(u.updatedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
           {" - "}
           <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
-            System
+            {u.updatedByUser?.fullName ?? "—"}
           </span>
         </Typography>
       ),

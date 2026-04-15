@@ -21,6 +21,7 @@ interface CreateUserInput {
   otherDetails?: string;
   password: string;
   pin?: string;
+  createdByUserId?: string;
 }
 
 export class AuthService {
@@ -85,6 +86,8 @@ export class AuthService {
         passwordHash,
         pinHash,
         pinCurrent: generated,
+        createdByUserId: input.createdByUserId,
+        updatedByUserId: input.createdByUserId,
       },
     });
 

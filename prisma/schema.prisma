@@ -78,11 +78,18 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  createdByUserId String?
+  createdByUser   User?    @relation("UserCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUserId String?
+  updatedByUser   User?    @relation("UserUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
   // Relations
   simulations         Simulation[]
   simulationVersions  SimulationVersion[]
   baseValueSets       BaseValueSet[]
   auditLogs           AuditLog[]
+  createdUsers        User[]   @relation("UserCreatedBy")
+  updatedUsers        User[]   @relation("UserUpdatedBy")
 
   @@map("users")
 }

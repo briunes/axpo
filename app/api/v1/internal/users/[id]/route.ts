@@ -90,6 +90,8 @@ export const GET = withErrorHandler(
         createdAt: true,
         updatedAt: true,
         pinRotatedAt: true,
+        createdByUser: { select: { id: true, fullName: true } },
+        updatedByUser: { select: { id: true, fullName: true } },
       },
     });
 
@@ -194,6 +196,7 @@ export const PATCH = withErrorHandler(
         role: payload.role,
         agencyId: payload.agencyId,
         passwordHash,
+        updatedByUserId: auth.userId,
       },
       select: {
         id: true,
@@ -209,6 +212,8 @@ export const PATCH = withErrorHandler(
         createdAt: true,
         updatedAt: true,
         pinRotatedAt: true,
+        createdByUser: { select: { id: true, fullName: true } },
+        updatedByUser: { select: { id: true, fullName: true } },
       },
     });
 

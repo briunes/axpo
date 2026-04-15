@@ -144,6 +144,8 @@ export interface UserItem {
   createdAt: string;
   updatedAt: string;
   pinRotatedAt?: string;
+  createdByUser?: { id: string; fullName: string } | null;
+  updatedByUser?: { id: string; fullName: string } | null;
 }
 
 interface UpdateUserInput {

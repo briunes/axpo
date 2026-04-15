@@ -163,6 +163,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         createdAt: true,
         updatedAt: true,
         pinRotatedAt: true,
+        createdByUser: { select: { id: true, fullName: true } },
+        updatedByUser: { select: { id: true, fullName: true } },
       },
       orderBy: { [orderByField]: sortDir },
       skip: (page - 1) * pageSize,
@@ -243,6 +245,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     throw new ValidationError("Agency not found");
   }
 
-  const created = await AuthService.createUser(payload);
+  const created = await AuthService.createUser({
+    ...payload,
+    createdByUserId: auth.userId,
+  });
   return ResponseHandler.ok(created, 201);
 });
