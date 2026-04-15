@@ -6,7 +6,7 @@ import { Stack } from "@mui/material";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { createAgency } from "../../lib/internalApi";
-import { CrudFormContainer, CrudPageLayout, useAlerts } from "../../components/shared";
+import { AddressForm, CrudFormContainer, CrudPageLayout, useAlerts, type AddressData } from "../../components/shared";
 import { FormInput } from "../../components/ui";
 
 export default function NewAgencyPage() {
@@ -16,11 +16,7 @@ export default function NewAgencyPage() {
     const { t } = useI18n();
 
     const [name, setName] = useState("");
-    const [street, setStreet] = useState("");
-    const [city, setCity] = useState("");
-    const [postalCode, setPostalCode] = useState("");
-    const [province, setProvince] = useState("");
-    const [country, setCountry] = useState("");
+    const [address, setAddress] = useState<AddressData>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -37,11 +33,11 @@ export default function NewAgencyPage() {
         try {
             await createAgency(session.token, {
                 name: name.trim(),
-                street: street.trim() || undefined,
-                city: city.trim() || undefined,
-                postalCode: postalCode.trim() || undefined,
-                province: province.trim() || undefined,
-                country: country.trim() || undefined,
+                street: address.street?.trim() || undefined,
+                city: address.city?.trim() || undefined,
+                postalCode: address.postalCode?.trim() || undefined,
+                province: address.province?.trim() || undefined,
+                country: address.country?.trim() || undefined,
             });
             showSuccess(t("agencyFormPage", "created"));
             router.push("/internal/agencies");
@@ -77,45 +73,7 @@ export default function NewAgencyPage() {
                         placeholder="e.g. Energía Sur S.L."
                         autoFocus
                     />
-                    <FormInput
-                        label={t("agencyFormPage", "streetLabel")}
-                        type="text"
-                        value={street}
-                        onChange={(e) => setStreet((e.target as HTMLInputElement).value)}
-                        placeholder="e.g. Calle Mayor 123"
-                    />
-                    <Stack direction="row" spacing={2}>
-                        <FormInput
-                            label={t("agencyFormPage", "cityLabel")}
-                            type="text"
-                            value={city}
-                            onChange={(e) => setCity((e.target as HTMLInputElement).value)}
-                            placeholder="e.g. Madrid"
-                        />
-                        <FormInput
-                            label={t("agencyFormPage", "postalCodeLabel")}
-                            type="text"
-                            value={postalCode}
-                            onChange={(e) => setPostalCode((e.target as HTMLInputElement).value)}
-                            placeholder="e.g. 28001"
-                        />
-                    </Stack>
-                    <Stack direction="row" spacing={2}>
-                        <FormInput
-                            label={t("agencyFormPage", "provinceLabel")}
-                            type="text"
-                            value={province}
-                            onChange={(e) => setProvince((e.target as HTMLInputElement).value)}
-                            placeholder="e.g. Madrid"
-                        />
-                        <FormInput
-                            label={t("agencyFormPage", "countryLabel")}
-                            type="text"
-                            value={country}
-                            onChange={(e) => setCountry((e.target as HTMLInputElement).value)}
-                            placeholder="e.g. España"
-                        />
-                    </Stack>
+                    <AddressForm value={address} onChange={setAddress} />
                 </Stack>
             </CrudFormContainer>
         </CrudPageLayout>

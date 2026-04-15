@@ -6,7 +6,7 @@ import { Stack } from "@mui/material";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
 import { getAgency, updateAgency, type AgencyItem } from "../../../lib/internalApi";
-import { CrudFormContainer, CrudPageLayout, LoadingState, useAlerts } from "../../../components/shared";
+import { AddressForm, CrudFormContainer, CrudPageLayout, LoadingState, useAlerts, type AddressData } from "../../../components/shared";
 import { FormInput } from "../../../components/ui";
 
 export default function EditAgencyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,11 +18,7 @@ export default function EditAgencyPage({ params }: { params: Promise<{ id: strin
 
     const [agency, setAgency] = useState<AgencyItem | null>(null);
     const [name, setName] = useState("");
-    const [street, setStreet] = useState("");
-    const [city, setCity] = useState("");
-    const [postalCode, setPostalCode] = useState("");
-    const [province, setProvince] = useState("");
-    const [country, setCountry] = useState("");
+    const [address, setAddress] = useState<AddressData>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -32,11 +28,13 @@ export default function EditAgencyPage({ params }: { params: Promise<{ id: strin
             .then((a) => {
                 setAgency(a);
                 setName(a.name);
-                setStreet(a.street || "");
-                setCity(a.city || "");
-                setPostalCode(a.postalCode || "");
-                setProvince(a.province || "");
-                setCountry(a.country || "");
+                setAddress({
+                    street: a.street || "",
+                    city: a.city || "",
+                    postalCode: a.postalCode || "",
+                    province: a.province || "",
+                    country: a.country || "",
+                });
             })
             .catch((err) => {
                 showError(err instanceof Error ? err.message : t("agencyFormPage", "notFound"));
@@ -56,11 +54,11 @@ export default function EditAgencyPage({ params }: { params: Promise<{ id: strin
         try {
             await updateAgency(session.token, agency.id, {
                 name: name.trim(),
-                street: street.trim() || undefined,
-                city: city.trim() || undefined,
-                postalCode: postalCode.trim() || undefined,
-                province: province.trim() || undefined,
-                country: country.trim() || undefined,
+                street: address.street?.trim() || undefined,
+                city: address.city?.trim() || undefined,
+                postalCode: address.postalCode?.trim() || undefined,
+                province: address.province?.trim() || undefined,
+                country: address.country?.trim() || undefined,
             });
             showSuccess(t("agencyFormPage", "updated"));
             router.push("/internal/agencies");
@@ -103,45 +101,7 @@ export default function EditAgencyPage({ params }: { params: Promise<{ id: strin
                         onChange={(e) => setName((e.target as HTMLInputElement).value)}
                         autoFocus
                     />
-                    <FormInput
-                        label={t("agencyFormPage", "streetLabel")}
-                        type="text"
-                        value={street}
-                        onChange={(e) => setStreet((e.target as HTMLInputElement).value)}
-                        placeholder="e.g. Calle Mayor 123"
-                    />
-                    <Stack direction="row" spacing={2}>
-                        <FormInput
-                            label={t("agencyFormPage", "cityLabel")}
-                            type="text"
-                            value={city}
-                            onChange={(e) => setCity((e.target as HTMLInputElement).value)}
-                            placeholder="e.g. Madrid"
-                        />
-                        <FormInput
-                            label={t("agencyFormPage", "postalCodeLabel")}
-                            type="text"
-                            value={postalCode}
-                            onChange={(e) => setPostalCode((e.target as HTMLInputElement).value)}
-                            placeholder="e.g. 28001"
-                        />
-                    </Stack>
-                    <Stack direction="row" spacing={2}>
-                        <FormInput
-                            label={t("agencyFormPage", "provinceLabel")}
-                            type="text"
-                            value={province}
-                            onChange={(e) => setProvince((e.target as HTMLInputElement).value)}
-                            placeholder="e.g. Madrid"
-                        />
-                        <FormInput
-                            label={t("agencyFormPage", "countryLabel")}
-                            type="text"
-                            value={country}
-                            onChange={(e) => setCountry((e.target as HTMLInputElement).value)}
-                            placeholder="e.g. España"
-                        />
-                    </Stack>
+                    <AddressForm value={address} onChange={setAddress} />
                 </Stack>
             </CrudFormContainer>
         </CrudPageLayout>

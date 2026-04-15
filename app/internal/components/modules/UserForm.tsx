@@ -6,7 +6,7 @@ import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, UserRole } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
 import { CrudFormContainer, CrudFormRow } from "../shared";
-import { FormInput, FormSelect } from "../ui";
+import { FormAutocomplete, FormInput, FormSelect, PasswordStrengthInput, PhoneInput } from "../ui";
 import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface UserFormData {
@@ -193,12 +193,11 @@ export function UserForm({
             </CrudFormRow>
 
             <CrudFormRow>
-                <FormInput
+                <PhoneInput
                     label={t("userFormPage", "fieldMobilePhone")}
-                    type="text"
                     value={data.mobilePhone}
-                    onChange={(e) => {
-                        onChange({ ...data, mobilePhone: e.target.value });
+                    onChange={(phone) => {
+                        onChange({ ...data, mobilePhone: phone });
                         clearError('mobilePhone');
                     }}
                     required
@@ -207,12 +206,11 @@ export function UserForm({
                     helperText={validationErrors.mobilePhone}
                 />
 
-                <FormInput
+                <PhoneInput
                     label={t("userFormPage", "fieldCommercialPhone")}
-                    type="text"
                     value={data.commercialPhone}
-                    onChange={(e) => {
-                        onChange({ ...data, commercialPhone: e.target.value });
+                    onChange={(phone) => {
+                        onChange({ ...data, commercialPhone: phone });
                         clearError('commercialPhone');
                     }}
                     required
@@ -236,50 +234,7 @@ export function UserForm({
                     error={!!validationErrors.commercialEmail}
                     helperText={validationErrors.commercialEmail}
                 />
-
-                <FormInput
-                    label={t("userFormPage", "fieldOtherDetails")}
-                    type="text"
-                    value={data.otherDetails || ""}
-                    onChange={(e) => onChange({ ...data, otherDetails: e.target.value })}
-                    disabled={isSubmitting}
-                    helperText={t("userFormPage", "fieldOtherDetailsHint")}
-                />
             </CrudFormRow>
-
-            {mode === "edit" && isEditingSelf && (
-                <FormInput
-                    label={t("userFormPage", "fieldCurrentPassword")}
-                    type="password"
-                    helperText={validationErrors.currentPassword || t("userFormPage", "fieldCurrentPasswordHint")}
-                    value={data.currentPassword || ""}
-                    onChange={(e) => {
-                        onChange({ ...data, currentPassword: e.target.value });
-                        clearError('currentPassword');
-                    }}
-                    disabled={isSubmitting}
-                    error={!!validationErrors.currentPassword}
-                />
-            )}
-
-            <FormInput
-                label={mode === "create" ? t("userFormPage", "fieldPassword") : t("userFormPage", "fieldNewPassword")}
-                type="password"
-                helperText={
-                    validationErrors.password ||
-                    (mode === "create"
-                        ? t("userFormPage", "fieldPasswordHintCreate")
-                        : t("userFormPage", "fieldPasswordHintEdit"))
-                }
-                value={data.password || ""}
-                onChange={(e) => {
-                    onChange({ ...data, password: e.target.value });
-                    clearError('password');
-                }}
-                required={requirePassword}
-                disabled={isSubmitting}
-                error={!!validationErrors.password}
-            />
 
             {canManageRole && (
                 <CrudFormRow>
@@ -301,26 +256,70 @@ export function UserForm({
                     </FormSelect>
 
                     {canManageAgency && (
-                        <FormSelect
+                        <FormAutocomplete
                             label={t("userFormPage", "fieldAgency")}
+                            options={agencies.map((a) => ({ value: a.id, label: a.name }))}
                             value={data.agencyId || ""}
-                            onChange={(e) => {
-                                onChange({ ...data, agencyId: e.target.value as string });
+                            onChange={(val) => {
+                                onChange({ ...data, agencyId: val });
                                 clearError('agencyId');
                             }}
+                            placeholder={t("userFormPage", "selectAgencyPlaceholder")}
                             required={mode === "create"}
                             disabled={isSubmitting}
                             error={!!validationErrors.agencyId}
                             helperText={validationErrors.agencyId}
-                        >
-                            {mode === "edit" ? null : <MenuItem value="">{t("userFormPage", "selectAgencyPlaceholder")}</MenuItem>}
-                            {agencies.map((a) => (
-                                <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>
-                            ))}
-                        </FormSelect>
+                            disableClearable={mode === "edit"}
+                        />
                     )}
                 </CrudFormRow>
             )}
+
+            {mode === "edit" && isEditingSelf && (
+                <FormInput
+                    label={t("userFormPage", "fieldCurrentPassword")}
+                    type="password"
+                    helperText={validationErrors.currentPassword || t("userFormPage", "fieldCurrentPasswordHint")}
+                    value={data.currentPassword || ""}
+                    onChange={(e) => {
+                        onChange({ ...data, currentPassword: e.target.value });
+                        clearError('currentPassword');
+                    }}
+                    disabled={isSubmitting}
+                    error={!!validationErrors.currentPassword}
+                />
+            )}
+
+            <CrudFormRow>
+                <PasswordStrengthInput
+                    label={mode === "create" ? t("userFormPage", "fieldPassword") : t("userFormPage", "fieldNewPassword")}
+                    value={data.password || ""}
+                    onChange={(val) => {
+                        onChange({ ...data, password: val });
+                        clearError('password');
+                    }}
+                    required={requirePassword}
+                    disabled={isSubmitting}
+                    error={!!validationErrors.password}
+                    helperText={
+                        validationErrors.password ||
+                        (mode === "create"
+                            ? t("userFormPage", "fieldPasswordHintCreate")
+                            : t("userFormPage", "fieldPasswordHintEdit"))
+                    }
+                    showGenerator
+                />
+
+                <FormInput
+                    label={t("userFormPage", "fieldOtherDetails")}
+                    value={data.otherDetails || ""}
+                    onChange={(e) => onChange({ ...data, otherDetails: e.target.value })}
+                    disabled={isSubmitting}
+                    helperText={t("userFormPage", "fieldOtherDetailsHint")}
+                    multiline
+                    rows={3}
+                />
+            </CrudFormRow>
         </CrudFormContainer>
     );
 }

@@ -14,3 +14,5 @@ export { CrudPageLayout } from "./CrudPageLayout";
 export { CrudFormContainer } from "./CrudFormContainer";
 export { CrudFormField } from "./CrudFormField";
 export { CrudFormRow } from "./CrudFormRow";
+export { AddressForm } from "./AddressForm";
+export type { AddressData } from "./AddressForm";

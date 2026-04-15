@@ -2,5 +2,19 @@
   "framework": "nextjs",
   "buildCommand": "pnpm run build",
   "outputDirectory": ".next",
-  "installCommand": "pnpm install"
+  "installCommand": "pnpm install",
+  "functions": {
+    "app/api/v1/internal/simulations/[id]/generate-pdf/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "app/api/v1/public/simulations/[token]/pdf/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "app/api/v1/internal/simulations/[id]/send-email/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  }
 }

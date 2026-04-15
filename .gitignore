@@ -1,0 +1,27 @@
+.vscode/settings.json
+
+# Dependencies
+/node_modules/
+
+# Build artifacts
+.next/
+dist/
+build/
+*.tsbuildinfo
+
+# Env files
+.env
+*.env
+*.env.local
+
+# Logs
+*.log
+
+# Workbook source files (local reference only)
+xls/
+.vercel
+.env*.local
+.env.vercel.preview
+.env.vercel.production
+.env.vercel.*.local
+backend/tsconfig.tsbuildinfo

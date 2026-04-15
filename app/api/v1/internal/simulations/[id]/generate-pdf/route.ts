@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/application/middleware/auth";
 import { UserRole } from "@/domain/types";
 import { assertRole } from "@/application/middleware/rbac";
-import puppeteer from "puppeteer";
+import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
 
 /**
  * @swagger
@@ -123,10 +123,7 @@ export async function POST(
       : `${stylesHtml}\n${htmlContent}`;
 
     // Use Puppeteer to generate PDF
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    const browser = await launchBrowser();
 
     const page = await browser.newPage();
     await page.setContent(enrichedHtml, {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import puppeteer from "puppeteer";
+import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
 import { InvalidTokenError, NotFoundError } from "@/domain/errors/errors";
 import { SimulationService } from "@/application/services/simulationService";
 import { prisma } from "@/infrastructure/database/prisma";
@@ -254,10 +254,7 @@ ${processedHtml}
       : `${pageBreakStyle}\n${fullHtml}`;
 
     // Generate PDF with Puppeteer
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    const browser = await launchBrowser();
 
     const page = await browser.newPage();
     await page.setContent(enrichedHtml, {

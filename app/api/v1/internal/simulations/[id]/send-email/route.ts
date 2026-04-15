@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/application/middleware/auth";
 import { UserRole } from "@/domain/types";
 import { assertRole } from "@/application/middleware/rbac";
-import puppeteer from "puppeteer";
+import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
 import { EmailService } from "@/application/services/emailService";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 
@@ -98,10 +98,7 @@ export const POST = withErrorHandler(
           ? pdfHtmlContent.replace("</head>", `${stylesHtml}\n</head>`)
           : `${stylesHtml}\n${pdfHtmlContent}`;
 
-        const browser = await puppeteer.launch({
-          headless: true,
-          args: ["--no-sandbox", "--disable-setuid-sandbox"],
-        });
+        const browser = await launchBrowser();
 
         const page = await browser.newPage();
         await page.setContent(enrichedHtml, {

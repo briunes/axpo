@@ -5,8 +5,7 @@ import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
 import { CrudFormContainer, CrudFormRow } from "../shared";
-import { FormInput, FormSelect } from "../ui";
-import { MenuItem } from "@mui/material";
+import { FormAutocomplete, FormInput, PhoneInput } from "../ui";
 import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface ClientFormData {
@@ -132,11 +131,10 @@ export function ClientForm({
                     onChange={(e) => onChange({ ...data, contactName: e.target.value })}
                     disabled={isSubmitting}
                 />
-                <FormInput
+                <PhoneInput
                     label={t("clientFormPage", "fieldContactPhone")}
-                    type="tel"
                     value={data.contactPhone}
-                    onChange={(e) => onChange({ ...data, contactPhone: e.target.value })}
+                    onChange={(phone) => onChange({ ...data, contactPhone: phone })}
                     disabled={isSubmitting}
                 />
             </CrudFormRow>
@@ -158,17 +156,15 @@ export function ClientForm({
 
             {/* Agency (admin only) */}
             {canManageAgency && agencies.length > 0 && (
-                <FormSelect
+                <FormAutocomplete
                     label={t("clientFormPage", "fieldAgency")}
+                    options={agencies.map((a) => ({ value: a.id, label: a.name }))}
                     value={data.agencyId || ""}
-                    onChange={(e) => onChange({ ...data, agencyId: e.target.value as string })}
+                    onChange={(val) => onChange({ ...data, agencyId: val })}
+                    placeholder={t("clientFormPage", "selectAgencyPlaceholder")}
                     disabled={isSubmitting}
-                >
-                    {mode === "create" && <MenuItem value="">{t("clientFormPage", "selectAgencyPlaceholder")}</MenuItem>}
-                    {agencies.map((a) => (
-                        <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>
-                    ))}
-                </FormSelect>
+                    disableClearable={mode === "edit"}
+                />
             )}
 
             {/* Other details */}

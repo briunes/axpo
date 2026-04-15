@@ -39,9 +39,6 @@ export function PinResultDialog({ pin, onClose }: PinResultDialogProps) {
             <DialogTitle sx={{ pb: 1.5 }}>PIN rotated successfully</DialogTitle>
             <Divider />
             <DialogContent sx={{ pt: 3, pb: 3 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Save this PIN now — it will <strong>not</strong> be shown again.
-                </Typography>
                 <Box
                     sx={{
                         display: "flex",
