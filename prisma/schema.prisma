@@ -70,7 +70,9 @@ model User {
   commercialPhone String?
   commercialEmail String?
   otherDetails   String?
-  passwordHash   String?  // Internal authentication password hash
+  passwordHash         String?   // Internal authentication password hash
+  setupToken           String?   @unique // One-time token for first-time password setup
+  setupTokenExpiresAt  DateTime? // Expiry for the setup token (72 hours from user creation)
   pinHash        String   // Global PIN (hashed only, visible in backoffice as masked PIN for client sharing)
   pinCurrent     String?  // Plaintext PIN stored for display in backoffice (set at creation/rotation)
   pinRotatedAt   DateTime @default(now())

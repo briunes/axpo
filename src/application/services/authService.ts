@@ -1,8 +1,10 @@
+import crypto from "crypto";
 import { UserRole } from "@/domain/types";
 import {
   AlreadyExistsError,
   ForbiddenError,
   UnauthorizedError,
+  ValidationError,
 } from "@/domain/errors/errors";
 import { prisma } from "@/infrastructure/database/prisma";
 import { PinService } from "./pinService";
@@ -19,7 +21,7 @@ interface CreateUserInput {
   commercialPhone: string;
   commercialEmail: string;
   otherDetails?: string;
-  password: string;
+  password?: string;
   pin?: string;
   createdByUserId?: string;
 }
@@ -67,11 +69,19 @@ export class AuthService {
       throw new AlreadyExistsError("User", "email", input.email);
     }
 
-    PasswordService.validatePolicy(input.password);
+    let passwordHash: string | undefined;
+    if (input.password) {
+      PasswordService.validatePolicy(input.password);
+      passwordHash = await PasswordService.hash(input.password);
+    }
+
+    // Always generate a setup token so the user can set/reset their password
+    // via the first-time setup link (valid for 72 hours).
+    const setupToken = crypto.randomBytes(32).toString("hex");
+    const setupTokenExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
 
     const generated = input.pin ?? PinService.generate();
     const pinHash = await PinService.hash(generated);
-    const passwordHash = await PasswordService.hash(input.password);
 
     const user = await prisma.user.create({
       data: {
@@ -83,7 +93,9 @@ export class AuthService {
         commercialPhone: input.commercialPhone,
         commercialEmail: input.commercialEmail,
         otherDetails: input.otherDetails,
-        passwordHash,
+        passwordHash: passwordHash ?? null,
+        setupToken,
+        setupTokenExpiresAt,
         pinHash,
         pinCurrent: generated,
         createdByUserId: input.createdByUserId,
@@ -121,6 +133,60 @@ export class AuthService {
       },
       generatedPin: generated,
       generatedPinMasked: PinService.mask(generated),
+      setupToken,
+    };
+  }
+
+  /**
+   * Validate a first-time setup token and set the user's password.
+   * The token is consumed (cleared) after successful use.
+   */
+  static async setupPassword(token: string, newPassword: string) {
+    const user = await prisma.user.findUnique({
+      where: { setupToken: token },
+    });
+
+    if (!user) {
+      throw new ValidationError("Invalid or already used setup link");
+    }
+
+    if (!user.setupTokenExpiresAt || user.setupTokenExpiresAt < new Date()) {
+      throw new ValidationError("This setup link has expired");
+    }
+
+    if (!user.isActive) {
+      throw new ForbiddenError("User account is inactive");
+    }
+
+    PasswordService.validatePolicy(newPassword);
+    const passwordHash = await PasswordService.hash(newPassword);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        setupToken: null,
+        setupTokenExpiresAt: null,
+        updatedByUserId: user.id,
+      },
+    });
+
+    const authToken = JwtService.signAccessToken({
+      sub: user.id,
+      role: user.role as UserRole,
+      agencyId: user.agencyId,
+      email: user.email,
+    });
+
+    return {
+      token: authToken,
+      user: {
+        id: user.id,
+        agencyId: user.agencyId,
+        role: user.role,
+        fullName: user.fullName,
+        email: user.email,
+      },
     };
   }
 

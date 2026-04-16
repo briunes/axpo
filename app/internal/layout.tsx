@@ -30,8 +30,12 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
 
   const section = getSection();
 
-  // Login page should not have the workspace wrapper
-  if (pathname === "/internal/login" || pathname === "/internal") {
+  // Login and setup-password pages should not have the workspace wrapper
+  if (
+    pathname === "/internal/login" ||
+    pathname === "/internal/setup-password" ||
+    pathname === "/internal"
+  ) {
     return <>{children}</>;
   }
 

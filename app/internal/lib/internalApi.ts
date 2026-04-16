@@ -444,6 +444,21 @@ export async function login(
   return parseApiResponse<LoginResult>(response, "Login failed");
 }
 
+export async function setupPassword(
+  token: string,
+  password: string,
+): Promise<LoginResult> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/auth/setup-password`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, password }),
+    },
+  );
+  return parseApiResponse<LoginResult>(response, "Password setup failed");
+}
+
 export async function listSimulations(
   token: string,
 ): Promise<SimulationItem[]> {

@@ -16,6 +16,22 @@ export const translations = {
       validationError: "Provide a valid email and password.",
       authFailed: "Authentication failed.",
     },
+    setupPassword: {
+      title: "Set your password",
+      subtitle: "Choose a secure password to activate your account.",
+      newPassword: "New password",
+      confirmPassword: "Confirm password",
+      passwordHint:
+        "Min. 12 characters with uppercase, lowercase, number and special character.",
+      passwordMismatch: "Passwords do not match.",
+      submitting: "Setting password…",
+      submit: "Set password & sign in",
+      invalidToken: "This setup link is invalid or has already been used.",
+      expiredToken:
+        "This setup link has expired. Ask your administrator to resend it.",
+      success: "Password set successfully. Redirecting…",
+      missingToken: "No setup token found in the link.",
+    },
     sectionDescriptions: {
       simulations:
         "Create, update, share and archive simulation records with expiration control.",
@@ -1109,6 +1125,23 @@ export const translations = {
       signIn: "Iniciar sesión",
       validationError: "Ingresa un correo y contraseña válidos.",
       authFailed: "Error de autenticación.",
+    },
+    setupPassword: {
+      title: "Establece tu contraseña",
+      subtitle: "Elige una contraseña segura para activar tu cuenta.",
+      newPassword: "Nueva contraseña",
+      confirmPassword: "Confirmar contraseña",
+      passwordHint:
+        "Mín. 12 caracteres con mayúsculas, minúsculas, número y carácter especial.",
+      passwordMismatch: "Las contraseñas no coinciden.",
+      submitting: "Estableciendo contraseña…",
+      submit: "Establecer contraseña e iniciar sesión",
+      invalidToken:
+        "Este enlace de configuración no es válido o ya fue utilizado.",
+      expiredToken:
+        "Este enlace de configuración ha expirado. Pide a tu administrador que lo reenvíe.",
+      success: "Contraseña establecida correctamente. Redirigiendo…",
+      missingToken: "No se encontró el token de configuración en el enlace.",
     },
     sectionDescriptions: {
       simulations:
