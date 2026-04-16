@@ -5,6 +5,7 @@ import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { HtmlEditor } from "./HtmlEditor";
 import { DraggableVariables } from "./DraggableVariables";
+import { EditableSectionsEditor } from "./EditableSectionsEditor";
 import {
     getPdfTemplates,
     createPdfTemplate,
@@ -404,6 +405,11 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                             } />
                                         </div>
                                     </div>
+
+                                    <EditableSectionsEditor
+                                        value={(formData.editableSections as any) || null}
+                                        onChange={(sections) => setFormData({ ...formData, editableSections: sections as any })}
+                                    />
 
                                     <div style={{ marginTop: "20px" }}>
                                         <button

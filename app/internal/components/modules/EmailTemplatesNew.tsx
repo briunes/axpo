@@ -5,6 +5,7 @@ import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { HtmlEditor } from "./HtmlEditor";
 import { DraggableVariables } from "./DraggableVariables";
+import { EditableSectionsEditor } from "./EditableSectionsEditor";
 import {
     getEmailTemplates,
     createEmailTemplate,
@@ -428,6 +429,11 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                             }))} />
                                         </div>
                                     </div>
+
+                                    <EditableSectionsEditor
+                                        value={(formData.editableSections as any) || null}
+                                        onChange={(sections) => setFormData({ ...formData, editableSections: sections as any })}
+                                    />
 
                                     <div style={{ marginTop: "20px" }}>
                                         <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>

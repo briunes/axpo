@@ -88,6 +88,7 @@ model User {
   simulationVersions  SimulationVersion[]
   baseValueSets       BaseValueSet[]
   auditLogs           AuditLog[]
+  triggeredEmailLogs  EmailLog[]   // Emails triggered by this user
   createdUsers        User[]   @relation("UserCreatedBy")
   updatedUsers        User[]   @relation("UserUpdatedBy")
 
@@ -285,6 +286,7 @@ model PdfTemplate {
   type        String   // simulation-output, simulation-detailed, contract, price-history, invoice, report
   active      Boolean  @default(true)
   htmlContent String   @db.Text
+  editableSections Json? // Defines editable sections with defaults: {"INTRO_TEXT": {"label": "Intro", "default": "Default text", "multiline": true}}
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -300,6 +302,7 @@ model EmailTemplate {
   active      Boolean  @default(true)
   subject     String
   htmlContent String   @db.Text
+  editableSections Json? // Defines editable sections with defaults: {"INTRO_TEXT": {"label": "Intro", "default": "Default text", "multiline": true}}
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -334,4 +337,41 @@ model TemplateVariable {
   updatedAt   DateTime @updatedAt
 
   @@map("template_variables")
+}
+
+model EmailLog {
+  id                String   @id @default(cuid())
+  sentAt            DateTime @default(now())
+  
+  // Recipient info
+  recipientEmail    String
+  
+  // Email content
+  templateId        String?
+  templateName      String?
+  subject           String
+  htmlBody          String   @db.Text
+  
+  // Metadata - what triggered this email
+  triggeredBy       String?  // e.g., "user-creation", "simulation-share", "test-email"
+  triggeredByUserId String?
+  triggeredByUser   User?    @relation(fields: [triggeredByUserId], references: [id])
+  
+  // Variables/payload used
+  variables         Json?    // Store the template variables as JSON
+  
+  // Status
+  status            String   @default("sent") // sent, failed
+  errorMessage      String?  @db.Text
+  
+  // Associated records (for linking back to entities)
+  relatedUserId     String?  // If related to a user (e.g., welcome email)
+  relatedSimulationId String? // If related to a simulation (e.g., share email)
+  
+  @@map("email_logs")
+  @@index([sentAt])
+  @@index([recipientEmail])
+  @@index([triggeredBy])
+  @@index([status])
+  @@index([triggeredByUserId])
 }

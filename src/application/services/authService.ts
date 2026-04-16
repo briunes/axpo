@@ -98,6 +98,8 @@ export class AuthService {
         userName: user.fullName,
         userPin: generated,
         userPassword: input.password,
+        userId: user.id,
+        triggeredByUserId: input.createdByUserId,
       });
     } catch (error) {
       // Don't fail user creation if email fails, just log it

@@ -9,6 +9,11 @@ import type {
   SimulationPayload,
   ElecPeriodMap,
 } from "@/domain/types/simulation";
+import type { EditableSectionOverrides } from "@/infrastructure/templates/editableSections";
+import {
+  mergeEditableSections,
+  type EditableSectionsConfig,
+} from "@/infrastructure/templates/editableSections";
 
 /**
  * Formats a number as currency (euros)
@@ -58,6 +63,8 @@ export function extractVariableValues(
   simulation: any,
   payload?: SimulationPayload,
   shareContext?: ShareContext,
+  editableSections?: EditableSectionsConfig,
+  editableOverrides?: EditableSectionOverrides,
 ): Record<string, string> {
   // Debug logging
   console.log(
@@ -168,7 +175,7 @@ export function extractVariableValues(
   const savingsAmount = selectedResult?.ahorro || 0;
 
   // Build complete variable map
-  return {
+  const variables: Record<string, string> = {
     // Client information
     CLIENT_NAME: clientName,
     CONTACT_PERSON: contactPerson,
@@ -277,6 +284,17 @@ export function extractVariableValues(
     // Savings
     SAVINGS_AMOUNT: formatCurrency(savingsAmount),
   };
+
+  // Merge editable sections if template defines them
+  if (editableSections) {
+    const editableValues = mergeEditableSections(
+      editableSections,
+      editableOverrides,
+    );
+    Object.assign(variables, editableValues);
+  }
+
+  return variables;
 }
 
 /**

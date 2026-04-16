@@ -46,6 +46,17 @@ export interface PdfTemplate {
   type: string;
   active: boolean;
   htmlContent: string;
+  editableSections?: Record<
+    string,
+    {
+      label: string;
+      default: string;
+      description?: string;
+      multiline?: boolean;
+      maxLength?: number;
+      required?: boolean;
+    }
+  > | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -58,6 +69,17 @@ export interface EmailTemplate {
   active: boolean;
   subject: string;
   htmlContent: string;
+  editableSections?: Record<
+    string,
+    {
+      label: string;
+      default: string;
+      description?: string;
+      multiline?: boolean;
+      maxLength?: number;
+      required?: boolean;
+    }
+  > | null;
   createdAt: string;
   updatedAt: string;
 }

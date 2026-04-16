@@ -8,3 +8,4 @@ export { BaseValuesModule } from "./BaseValuesModule";
 export { AuditLogsModule } from "./AuditLogsModule";
 export { AnalyticsModule } from "./AnalyticsModule";
 export { ConfigurationsModule } from "./ConfigurationsModule";
+export { EmailLogsModule } from "./EmailLogsModule";

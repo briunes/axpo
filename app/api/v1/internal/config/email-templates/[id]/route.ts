@@ -65,6 +65,7 @@ export async function PUT(
       active: body.active,
       subject: body.subject,
       htmlContent: body.htmlContent,
+      editableSections: body.editableSections ?? undefined,
     },
   });
 

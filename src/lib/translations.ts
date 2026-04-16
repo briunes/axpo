@@ -29,6 +29,8 @@ export const translations = {
         "Manage base value sets, item payloads and active versions used in simulation calculations.",
       auditLogs:
         "Review immutable events and access traces for governance and compliance monitoring.",
+      emailLogs:
+        "Track all emails sent by the system including status, recipients, and content.",
       analytics:
         "Track simulation performance and access metrics for operational decisions.",
       configurations:
@@ -297,6 +299,7 @@ export const translations = {
       configurations: "Configurations",
       analytics: "Analytics",
       auditLogs: "Audit Logs",
+      emailLogs: "Email Logs",
       baseValues: "Base Values",
     },
     auth: {
@@ -629,8 +632,7 @@ export const translations = {
       btnCalculating: "Calculating…",
       btnCalculate: "Calculate offer",
       errorCalculating: "Error calculating",
-      noResultsPrompt:
-        'Enter data and press "Calculate offer" to see results.',
+      noResultsPrompt: 'Enter data and press "Calculate offer" to see results.',
       simTypeSection: "Simulation type",
       electricity: "Electricity",
       gas: "Gas",
@@ -1033,6 +1035,7 @@ export const translations = {
       perm_label_section_clients: "Clients",
       perm_label_section_base_values: "Base Values",
       perm_label_section_audit_logs: "Audit Logs",
+      perm_label_section_email_logs: "Email Logs",
       perm_label_section_analytics: "Analytics & Reports",
       perm_label_section_configurations: "Configurations",
       perm_label_simulations_create: "Create simulations",
@@ -1059,6 +1062,8 @@ export const translations = {
       perm_desc_section_clients: "Access the clients management section",
       perm_desc_section_base_values: "Access price base value sets",
       perm_desc_section_audit_logs: "View system audit log entries",
+      perm_desc_section_email_logs:
+        "View email delivery logs and status (admin only)",
       perm_desc_section_analytics: "Access analytics dashboard and reports",
       perm_desc_section_configurations:
         "Access system configurations (admin only)",
@@ -1118,6 +1123,8 @@ export const translations = {
         "Gestiona conjuntos de valores base, payloads y versiones activas usadas en cálculos de simulación.",
       auditLogs:
         "Revisa eventos inmutables y trazas de acceso para gobernanza y cumplimiento.",
+      emailLogs:
+        "Rastrea todos los correos enviados por el sistema incluyendo estado, destinatarios y contenido.",
       analytics:
         "Monitorea el rendimiento de simulaciones y métricas de acceso para decisiones operativas.",
       configurations:
@@ -1391,6 +1398,7 @@ export const translations = {
       configurations: "Configuraciones",
       analytics: "Analíticas",
       auditLogs: "Registros de Auditoría",
+      emailLogs: "Registros de Correos",
       baseValues: "Valores Base",
     },
     auth: {
@@ -2139,6 +2147,7 @@ export const translations = {
       perm_label_section_clients: "Clientes",
       perm_label_section_base_values: "Valores Base",
       perm_label_section_audit_logs: "Registros de Auditoría",
+      perm_label_section_email_logs: "Registros de Correos",
       perm_label_section_analytics: "Analíticas e Informes",
       perm_label_section_configurations: "Configuraciones",
       perm_label_simulations_create: "Crear simulaciones",
@@ -2168,6 +2177,8 @@ export const translations = {
         "Acceder a conjuntos de valores base de precios",
       perm_desc_section_audit_logs:
         "Ver entradas del registro de auditoría del sistema",
+      perm_desc_section_email_logs:
+        "Ver registros de envío de correos y estado (solo admin)",
       perm_desc_section_analytics: "Acceder al panel de analíticas e informes",
       perm_desc_section_configurations:
         "Acceder a las configuraciones del sistema (solo admin)",

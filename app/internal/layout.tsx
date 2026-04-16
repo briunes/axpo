@@ -22,6 +22,7 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
     if (pathname.startsWith("/internal/clients")) return "clients";
     if (pathname.startsWith("/internal/base-values")) return "base-values";
     if (pathname.startsWith("/internal/audit-logs")) return "audit-logs";
+    if (pathname.startsWith("/internal/email-logs")) return "email-logs";
     if (pathname.startsWith("/internal/analytics")) return "analytics";
     if (pathname.startsWith("/internal/configurations")) return "configurations";
     return "simulations";

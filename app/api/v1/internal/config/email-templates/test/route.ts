@@ -72,6 +72,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     to: parsed.recipientEmail,
     templateId: parsed.templateId,
     variables: sampleVariables,
+    triggeredBy: "test-email",
+    triggeredByUserId: auth.userId,
   });
 
   return NextResponse.json({

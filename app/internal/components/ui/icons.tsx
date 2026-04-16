@@ -8,6 +8,7 @@ import BusinessIcon from "@mui/icons-material/Business";
 import PersonIcon from "@mui/icons-material/Person";
 import TuneIcon from "@mui/icons-material/Tune";
 import DescriptionIcon from "@mui/icons-material/Description";
+import EmailIcon from "@mui/icons-material/Email";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -34,6 +35,10 @@ export function BaseValuesIcon({ className }: { className?: string }) {
 
 export function AuditLogsIcon({ className }: { className?: string }) {
   return <DescriptionIcon className={className} sx={{ fontSize: 18 }} />;
+}
+
+export function EmailLogsIcon({ className }: { className?: string }) {
+  return <EmailIcon className={className} sx={{ fontSize: 18 }} />;
 }
 
 export function AnalyticsIcon({ className }: { className?: string }) {

@@ -10,13 +10,14 @@ import {
   ClientsIcon,
   BaseValuesIcon,
   AuditLogsIcon,
+  EmailLogsIcon,
   AnalyticsIcon,
   LogoutIcon,
   ConfigurationsIcon,
 } from "../ui/icons";
 import { useI18n } from "../../../../src/lib/i18n-context";
 
-export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "audit-logs" | "analytics" | "configurations";
+export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "audit-logs" | "email-logs" | "analytics" | "configurations";
 
 // Static English labels kept for non-UI uses (routes, test-ids, etc.)
 export const sectionLabel: Record<AppSection, string> = {
@@ -26,6 +27,7 @@ export const sectionLabel: Record<AppSection, string> = {
   clients: "Clients",
   "base-values": "Base Values",
   "audit-logs": "Audit Logs",
+  "email-logs": "Email Logs",
   analytics: "Analytics",
   configurations: "Configurations",
 };
@@ -38,6 +40,7 @@ const sectionNavKey: Record<AppSection, string> = {
   clients: "clients",
   "base-values": "baseValues",
   "audit-logs": "auditLogs",
+  "email-logs": "emailLogs",
   analytics: "analytics",
   configurations: "configurations",
 };
@@ -49,6 +52,7 @@ export const sectionDescription: Record<AppSection, string> = {
   clients: "Manage client accounts linked to agencies for simulation assignment.",
   "base-values": "Manage base value sets, item payloads and active versions used in simulation calculations.",
   "audit-logs": "Review immutable events and access traces for governance and compliance monitoring.",
+  "email-logs": "Track all emails sent by the system including status, recipients, and content.",
   analytics: "Track simulation performance and access metrics for operational decisions.",
   configurations: "Manage system settings, PDF templates, email templates and other configurable definitions.",
 };
@@ -60,6 +64,7 @@ export const sectionRoute: Record<AppSection, string> = {
   clients: "/internal/clients",
   "base-values": "/internal/base-values",
   "audit-logs": "/internal/audit-logs",
+  "email-logs": "/internal/email-logs",
   analytics: "/internal/analytics",
   configurations: "/internal/configurations",
 };
@@ -71,6 +76,7 @@ export const sectionPrimaryAction: Record<AppSection, { label: string; targetId:
   clients: { label: "New Client", targetId: "clients-create-form" },
   "base-values": { label: "New Base Value Set", targetId: "base-values-create-form" },
   "audit-logs": { label: "Jump to Audit Table", targetId: "audit-logs-table" },
+  "email-logs": { label: "View Email Logs", targetId: "email-logs-table" },
   analytics: { label: "Refresh Metrics", targetId: "analytics-panel" },
   configurations: { label: "System Settings", targetId: "configurations-panel" },
 };
@@ -82,6 +88,7 @@ export const sectionIcon: Record<AppSection, React.FC<{ className?: string }>> =
   clients: ClientsIcon,
   "base-values": BaseValuesIcon,
   "audit-logs": AuditLogsIcon,
+  "email-logs": EmailLogsIcon,
   analytics: AnalyticsIcon,
   configurations: ConfigurationsIcon,
 };
@@ -101,6 +108,7 @@ export function SectionMenu({
   canSeeClientsSection,
   canSeeBaseValuesSection,
   canSeeAuditLogsSection,
+  canSeeEmailLogsSection,
   canViewAnalytics,
   canSeeConfigurationsSection,
   onNavigate,
@@ -114,6 +122,7 @@ export function SectionMenu({
   canSeeClientsSection: boolean;
   canSeeBaseValuesSection: boolean;
   canSeeAuditLogsSection: boolean;
+  canSeeEmailLogsSection: boolean;
   canViewAnalytics: boolean;
   canSeeConfigurationsSection: boolean;
   onNavigate: (section: AppSection) => void;
@@ -132,6 +141,7 @@ export function SectionMenu({
       if (item === "clients" && !canSeeClientsSection) return false;
       if (item === "base-values" && !canSeeBaseValuesSection) return false;
       if (item === "audit-logs" && !canSeeAuditLogsSection) return false;
+      if (item === "email-logs" && !canSeeEmailLogsSection) return false;
       if (item === "analytics" && !canViewAnalytics) return false;
       return true;
     });

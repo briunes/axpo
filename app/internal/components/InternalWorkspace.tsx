@@ -27,6 +27,7 @@ import {
   AuditLogsModule,
   BaseValuesModule,
   ClientsModule,
+  EmailLogsModule,
   SimulationsModule,
   UsersModule,
   ConfigurationsModule,
@@ -129,6 +130,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
       clients: "/internal/clients",
       "base-values": "/internal/base-values",
       "audit-logs": "/internal/audit-logs",
+      "email-logs": "/internal/email-logs",
       analytics: "/internal/analytics",
       configurations: "/internal/configurations",
     };
@@ -165,6 +167,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
     clients: canDo(role, "section.clients"),
     "base-values": canDo(role, "section.base-values"),
     "audit-logs": canDo(role, "section.audit-logs"),
+    "email-logs": canDo(role, "section.email-logs"),
     analytics: canDo(role, "section.analytics"),
     configurations: canDo(role, "section.configurations"),
   };
@@ -180,6 +183,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
             canSeeClientsSection={canDo(role, "section.clients")}
             canSeeBaseValuesSection={canDo(role, "section.base-values")}
             canSeeAuditLogsSection={canDo(role, "section.audit-logs")}
+            canSeeEmailLogsSection={canDo(role, "section.email-logs")}
             canViewAnalytics={canDo(role, "section.analytics")}
             canSeeConfigurationsSection={canDo(role, "section.configurations")}
             onNavigate={handleNavigate}
@@ -231,6 +235,8 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
         return <BaseValuesModule session={session} actions={baseValuesActions} onNotify={handleNotify} />;
       case "audit-logs":
         return <AuditLogsModule session={session} actions={auditLogsActions} onNotify={handleNotify} />;
+      case "email-logs":
+        return <EmailLogsModule session={session} onNotify={handleNotify} />;
       case "analytics":
         return <AnalyticsModule session={session} actions={analyticsActions} onNotify={handleNotify} />;
       case "configurations":
@@ -271,6 +277,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
             canSeeClientsSection={canDo(role, "section.clients")}
             canSeeBaseValuesSection={canDo(role, "section.base-values")}
             canSeeAuditLogsSection={canDo(role, "section.audit-logs")}
+            canSeeEmailLogsSection={canDo(role, "section.email-logs")}
             canViewAnalytics={canDo(role, "section.analytics")}
             canSeeConfigurationsSection={canDo(role, "section.configurations")}
             onNavigate={handleNavigate}

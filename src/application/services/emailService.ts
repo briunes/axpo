@@ -7,12 +7,25 @@ interface EmailOptions {
   html: string;
   text?: string;
   attachments?: any[];
+  // Metadata for logging
+  templateId?: string;
+  templateName?: string;
+  triggeredBy?: string;
+  triggeredByUserId?: string;
+  variables?: Record<string, string>;
+  relatedUserId?: string;
+  relatedSimulationId?: string;
 }
 
 interface SendTemplateEmailOptions {
   to: string;
   templateId: string;
   variables?: Record<string, string>;
+  // Metadata for logging
+  triggeredBy?: string;
+  triggeredByUserId?: string;
+  relatedUserId?: string;
+  relatedSimulationId?: string;
 }
 
 export class EmailService {
@@ -81,9 +94,24 @@ export class EmailService {
   }
 
   /**
-   * Send an email with custom content
+   * Send an email with custom content and log it
    */
   static async sendEmail(options: EmailOptions): Promise<void> {
+    const logData = {
+      recipientEmail: options.to,
+      subject: options.subject,
+      htmlBody: options.html,
+      templateId: options.templateId,
+      templateName: options.templateName,
+      triggeredBy: options.triggeredBy,
+      triggeredByUserId: options.triggeredByUserId,
+      variables: options.variables || {},
+      relatedUserId: options.relatedUserId,
+      relatedSimulationId: options.relatedSimulationId,
+      status: "sent" as const,
+      errorMessage: null,
+    };
+
     try {
       const transporter = await this.createTransporter();
       const config = await this.getSMTPConfig();
@@ -97,8 +125,21 @@ export class EmailService {
         attachments: options.attachments,
       });
 
+      // Log successful send
+      await prisma.emailLog.create({ data: logData });
+
       console.log(`Email sent successfully to ${options.to}`);
     } catch (error) {
+      // Log failed send
+      await prisma.emailLog.create({
+        data: {
+          ...logData,
+          status: "failed",
+          errorMessage:
+            error instanceof Error ? error.message : "Unknown error",
+        },
+      });
+
       console.error("Failed to send email:", error);
       throw new Error(
         `Failed to send email: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -133,6 +174,13 @@ export class EmailService {
         to: options.to,
         subject,
         html,
+        templateId: template.id,
+        templateName: template.name,
+        triggeredBy: options.triggeredBy,
+        triggeredByUserId: options.triggeredByUserId,
+        variables,
+        relatedUserId: options.relatedUserId,
+        relatedSimulationId: options.relatedSimulationId,
       });
     } catch (error) {
       console.error("Failed to send template email:", error);
@@ -148,6 +196,8 @@ export class EmailService {
     userName: string;
     userPin: string;
     userPassword?: string;
+    userId?: string;
+    triggeredByUserId?: string;
   }): Promise<void> {
     try {
       const config = await prisma.systemConfig.findFirst();
@@ -171,6 +221,9 @@ export class EmailService {
         to: options.userEmail,
         templateId: config.userCreationEmailTemplateId,
         variables,
+        triggeredBy: "user-creation",
+        triggeredByUserId: options.triggeredByUserId,
+        relatedUserId: options.userId,
       });
 
       console.log(`User creation email sent to ${options.userEmail}`);

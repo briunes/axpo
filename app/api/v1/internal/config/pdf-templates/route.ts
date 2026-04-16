@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
       type: body.type,
       active: body.active ?? true,
       htmlContent: body.htmlContent,
+      editableSections: body.editableSections ?? undefined,
     },
   });
 

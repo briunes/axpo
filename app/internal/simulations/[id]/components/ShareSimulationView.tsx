@@ -14,12 +14,18 @@ import {
 import { HtmlEditor } from "../../../components/modules/HtmlEditor";
 import { DraggableVariables } from "../../../components/modules/DraggableVariables";
 import { extractVariableValues, replaceVariables as replaceVars } from "@/infrastructure/pdf/variableReplacer";
+import type { EditableSectionOverrides, EditableSectionsConfig } from "@/infrastructure/templates/editableSections";
+import { mergeEditableSections } from "@/infrastructure/templates/editableSections";
 import {
     Box,
     Button,
     Card,
     CardContent,
     Checkbox,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     FormControl,
     FormControlLabel,
     InputLabel,
@@ -72,6 +78,11 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
     const [pdfTemplateViewMode, setPdfTemplateViewMode] = useState<"preview" | "edit">("preview");
     const [activeTab, setActiveTab] = useState<"email" | "pdf">("email");
 
+    // Editable sections state
+    const [pdfEditableOverrides, setPdfEditableOverrides] = useState<EditableSectionOverrides>({});
+    const [emailEditableOverrides, setEmailEditableOverrides] = useState<EditableSectionOverrides>({});
+    const [emailPdfEditableOverrides, setEmailPdfEditableOverrides] = useState<EditableSectionOverrides>({});
+
     useEffect(() => {
         Promise.all([
             getPdfTemplates({ active: true, excludeType: "price-history" }),
@@ -91,11 +102,26 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
                     setEditedPdfContent(defaultPdf.htmlContent);
                     setSelectedEmailPdfTemplate(defaultPdf.id);
                     setEditedEmailPdfContent(defaultPdf.htmlContent);
+                    // Seed editable section defaults so variables resolve immediately
+                    if (defaultPdf.editableSections) {
+                        const defaults = Object.fromEntries(
+                            Object.entries(defaultPdf.editableSections).map(([k, v]) => [k, v.default])
+                        );
+                        setPdfEditableOverrides(defaults);
+                        setEmailPdfEditableOverrides(defaults);
+                    }
                 }
                 if (defaultEmail) {
                     setSelectedEmailTemplate(defaultEmail.id);
                     setEditedEmailContent(defaultEmail.htmlContent);
                     setEditedSubject(defaultEmail.subject);
+                    // Seed editable section defaults
+                    if (defaultEmail.editableSections) {
+                        const defaults = Object.fromEntries(
+                            Object.entries(defaultEmail.editableSections).map(([k, v]) => [k, v.default])
+                        );
+                        setEmailEditableOverrides(defaults);
+                    }
                 }
 
                 // Pre-fill recipient email if client exists
@@ -122,13 +148,23 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
         if (shareMode === "pdf") {
             setSelectedPdfTemplate(templateId);
             const template = pdfTemplates.find((t) => t.id === templateId);
-            if (template) setEditedPdfContent(template.htmlContent);
+            if (template) {
+                setEditedPdfContent(template.htmlContent);
+                const defaults = template.editableSections
+                    ? Object.fromEntries(Object.entries(template.editableSections).map(([k, v]) => [k, v.default]))
+                    : {};
+                setPdfEditableOverrides(defaults);
+            }
         } else {
             setSelectedEmailTemplate(templateId);
             const template = emailTemplates.find((t) => t.id === templateId);
             if (template) {
                 setEditedEmailContent(template.htmlContent);
                 setEditedSubject(template.subject);
+                const defaults = template.editableSections
+                    ? Object.fromEntries(Object.entries(template.editableSections).map(([k, v]) => [k, v.default]))
+                    : {};
+                setEmailEditableOverrides(defaults);
             }
         }
     };
@@ -137,16 +173,90 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
         setShareMode(mode);
     };
 
-    const replaceVariables = (content: string, simulationLink?: string) => {
+    // Editable section inline editing modal state
+    const [editingSection, setEditingSection] = useState<{
+        key: string;
+        label: string;
+        value: string;
+        multiline: boolean;
+        maxLength?: number;
+        onSave: (val: string) => void;
+    } | null>(null);
+
+    const replaceVariables = (
+        content: string,
+        simulationLink?: string,
+        editableOverrides?: EditableSectionOverrides,
+        templateSections?: EditableSectionsConfig | null,
+    ) => {
         if (!simulation) return content;
 
-        // payloadJson is attached directly to the simulation object by the API
         const payload = simulation.payloadJson;
         const variableValues = extractVariableValues(simulation, payload, {
             pin: simulation.pinSnapshot ?? undefined,
             ...(simulationLink ? { simulationLink } : {}),
         });
+        // Merge: use override value if set, otherwise fall back to section default
+        if (templateSections) {
+            const merged = mergeEditableSections(templateSections, editableOverrides);
+            Object.assign(variableValues, merged);
+        } else if (editableOverrides) {
+            Object.assign(variableValues, editableOverrides);
+        }
         return replaceVars(content, variableValues);
+    };
+
+    /**
+     * Like replaceVariables but wraps editable section values in clickable
+     * zones with a subtle dashed border so users can click to edit inline.
+     */
+    const replaceVariablesWithZones = (
+        content: string,
+        editableOverrides: EditableSectionOverrides,
+        templateSections: EditableSectionsConfig,
+        simulationLink?: string,
+    ) => {
+        if (!simulation) return content;
+        const payload = simulation.payloadJson;
+        const variableValues = extractVariableValues(simulation, payload, {
+            pin: simulation.pinSnapshot ?? undefined,
+            ...(simulationLink ? { simulationLink } : {}),
+        });
+        let result = replaceVars(content, variableValues);
+        const merged = mergeEditableSections(templateSections, editableOverrides);
+        for (const key of Object.keys(templateSections)) {
+            const value = merged[key] ?? "";
+            const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
+            result = result.replace(
+                regex,
+                `<span data-editable-key="${key}" style="outline:2px dashed #e53935;outline-offset:4px;border-radius:3px;cursor:pointer;position:relative;display:inline-block;min-width:40px;" title="Click to edit">${value}<span aria-hidden="true" style="position:absolute;top:-9px;right:-9px;background:#e53935;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;line-height:18px;text-align:center;pointer-events:none;">✎</span></span>`,
+            );
+        }
+        return result;
+    };
+
+    const handlePreviewClick = (
+        e: React.MouseEvent<HTMLDivElement>,
+        templateSections: EditableSectionsConfig,
+        overrides: EditableSectionOverrides,
+        setOverrides: (o: EditableSectionOverrides) => void,
+    ) => {
+        const target = (e.target as HTMLElement).closest("[data-editable-key]") as HTMLElement | null;
+        if (!target) return;
+        const key = target.getAttribute("data-editable-key");
+        if (!key || !templateSections[key]) return;
+        const def = templateSections[key];
+        setEditingSection({
+            key,
+            label: def.label,
+            value: overrides[key] ?? def.default,
+            multiline: def.multiline ?? true,
+            maxLength: def.maxLength,
+            onSave: (val) => {
+                setOverrides({ ...overrides, [key]: val });
+                setEditingSection(null);
+            },
+        });
     };
 
     const handleDownloadPdf = async (markAsShared: boolean = false) => {
@@ -168,7 +278,7 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
                 }
             }
 
-            const processedContent = replaceVariables(editedPdfContent, simulationLink);
+            const processedContent = replaceVariables(editedPdfContent, simulationLink, pdfEditableOverrides);
 
             const response = await fetch(`/api/v1/internal/simulations/${simulation.id}/generate-pdf`, {
                 method: 'POST',
@@ -229,9 +339,9 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
                 console.error("Failed to share simulation before sending email:", err);
             }
 
-            const processedContent = replaceVariables(editedEmailContent, simulationLink);
+            const processedContent = replaceVariables(editedEmailContent, simulationLink, emailEditableOverrides);
             const processedSubject = replaceVariables(editedSubject, simulationLink);
-            const processedPdfContent = attachPdfToEmail ? replaceVariables(editedEmailPdfContent, simulationLink) : undefined;
+            const processedPdfContent = attachPdfToEmail ? replaceVariables(editedEmailPdfContent, simulationLink, emailPdfEditableOverrides) : undefined;
 
             const response = await fetch(`/api/v1/internal/simulations/${simulation.id}/send-email`, {
                 method: "POST",
@@ -274,123 +384,60 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
         );
     }
 
+    const sec = editingSection;
+
     return (
-        <Stack spacing={3} sx={{ p: 2 }}>
-            {/* Share Mode and Template Selection */}
-            <Card>
-                <CardContent>
-                    <Box sx={{ display: "flex", gap: 3, flexDirection: { xs: "column", md: "row" } }}>
-                        {/* Share Mode Selection */}
-                        <Box sx={{ flex: 1 }}>
-                            <Typography variant="h6" gutterBottom>
-                                {t("shareSimulation", "selectMode") || "Select Mode"}
-                            </Typography>
-                            <RadioGroup
-                                value={shareMode}
-                                onChange={(e) => handleShareModeChange(e.target.value as ShareMode)}
-                            >
-                                <FormControlLabel
-                                    value="pdf"
-                                    control={<Radio />}
-                                    label={
-                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                            <DownloadIcon />
-                                            {t("shareSimulation", "downloadPdfAndShare") || "Download PDF and Share"}
-                                        </Box>
-                                    }
-                                />
-                                <FormControlLabel
-                                    value="email"
-                                    control={<Radio />}
-                                    label={
-                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                            <SendIcon />
-                                            {t("shareSimulation", "sendEmail") || "Send Email"}
-                                        </Box>
-                                    }
-                                />
-                            </RadioGroup>
-                        </Box>
-
-                        {/* Template Selection */}
-                        <Box sx={{ flex: 1 }}>
-                            <Typography variant="h6" gutterBottom>
-                                {t("shareSimulation", "selectTemplate") || "Select Template"}
-                            </Typography>
-                            <FormControl fullWidth>
-                                <InputLabel>{t("shareSimulation", "selectTemplate") || "Template"}</InputLabel>
-                                <Select
-                                    value={shareMode === "pdf" ? selectedPdfTemplate : selectedEmailTemplate}
-                                    onChange={(e) => handleTemplateChange(e.target.value)}
-                                    label={t("shareSimulation", "selectTemplate") || "Template"}
+        <>
+            <Stack spacing={3} sx={{ p: 2 }}>
+                {/* Share Mode and Template Selection */}
+                <Card>
+                    <CardContent>
+                        <Box sx={{ display: "flex", gap: 3, flexDirection: { xs: "column", md: "row" } }}>
+                            {/* Share Mode Selection */}
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="h6" gutterBottom>
+                                    {t("shareSimulation", "selectMode") || "Select Mode"}
+                                </Typography>
+                                <RadioGroup
+                                    value={shareMode}
+                                    onChange={(e) => handleShareModeChange(e.target.value as ShareMode)}
                                 >
-                                    {(shareMode === "pdf" ? pdfTemplates : emailTemplates).map((template) => (
-                                        <MenuItem key={template.id} value={template.id}>
-                                            <Box>
-                                                <Typography variant="body2">{template.name}</Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {template.description}
-                                                </Typography>
+                                    <FormControlLabel
+                                        value="pdf"
+                                        control={<Radio />}
+                                        label={
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                                <DownloadIcon />
+                                                {t("shareSimulation", "downloadPdfAndShare") || "Download PDF and Share"}
                                             </Box>
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Box>
-                    </Box>
-                </CardContent>
-            </Card>
-
-            {/* Email Recipient (only for email mode) */}
-            {shareMode === "email" && (
-                <Card>
-                    <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                            {t("shareSimulation", "recipient") || "Recipient"}
-                        </Typography>
-                        <TextField
-                            fullWidth
-                            type="email"
-                            label={t("shareSimulation", "recipientEmail") || "Email"}
-                            value={recipientEmail}
-                            onChange={(e) => setRecipientEmail(e.target.value)}
-                            placeholder="client@example.com"
-                        />
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Attach PDF to Email (only for email mode) */}
-            {shareMode === "email" && (
-                <Card>
-                    <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                            {t("shareSimulation", "attachPdf") || "Attach PDF to email"}
-                        </Typography>
-                        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={attachPdfToEmail}
-                                        onChange={(e) => setAttachPdfToEmail(e.target.checked)}
+                                        }
                                     />
-                                }
-                                label={t("shareSimulation", "attachPdfLabel") || "Include PDF attachment"}
-                            />
-                            {attachPdfToEmail && (
-                                <FormControl sx={{ flex: 1 }}>
-                                    <InputLabel>{t("shareSimulation", "selectPdfTemplate") || "PDF Template"}</InputLabel>
+                                    <FormControlLabel
+                                        value="email"
+                                        control={<Radio />}
+                                        label={
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                                <SendIcon />
+                                                {t("shareSimulation", "sendEmail") || "Send Email"}
+                                            </Box>
+                                        }
+                                    />
+                                </RadioGroup>
+                            </Box>
+
+                            {/* Template Selection */}
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="h6" gutterBottom>
+                                    {t("shareSimulation", "selectTemplate") || "Select Template"}
+                                </Typography>
+                                <FormControl fullWidth>
+                                    <InputLabel>{t("shareSimulation", "selectTemplate") || "Template"}</InputLabel>
                                     <Select
-                                        value={selectedEmailPdfTemplate}
-                                        onChange={(e) => {
-                                            const templateId = e.target.value;
-                                            setSelectedEmailPdfTemplate(templateId);
-                                            const template = pdfTemplates.find((t) => t.id === templateId);
-                                            if (template) setEditedEmailPdfContent(template.htmlContent);
-                                        }}
-                                        label={t("shareSimulation", "selectPdfTemplate") || "PDF Template"}
+                                        value={shareMode === "pdf" ? selectedPdfTemplate : selectedEmailTemplate}
+                                        onChange={(e) => handleTemplateChange(e.target.value)}
+                                        label={t("shareSimulation", "selectTemplate") || "Template"}
                                     >
-                                        {pdfTemplates.map((template) => (
+                                        {(shareMode === "pdf" ? pdfTemplates : emailTemplates).map((template) => (
                                             <MenuItem key={template.id} value={template.id}>
                                                 <Box>
                                                     <Typography variant="body2">{template.name}</Typography>
@@ -402,197 +449,335 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
                                         ))}
                                     </Select>
                                 </FormControl>
-                            )}
+                            </Box>
                         </Box>
                     </CardContent>
                 </Card>
-            )}
 
-            {/* Template Editor / Preview */}
-            {currentTemplate && (
-                <Card>
-                    <CardContent>
-                        {/* Tabs for Email mode - always show tabs */}
-                        {shareMode === "email" ? (
-                            <>
-                                <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
-                                    <Tab label={t("shareSimulation", "tabPreviewEmail") || "Preview Email"} value="email" />
-                                    {attachPdfToEmail && selectedEmailPdfTemplate && (
-                                        <Tab label={t("shareSimulation", "tabPreviewPdf") || "Preview PDF"} value="pdf" />
-                                    )}
-                                </Tabs>
-
-                                {/* Email Tab */}
-                                {activeTab === "email" && (
-                                    <>
-                                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", mb: 2 }}>
-                                            <Button
-                                                variant="outlined"
-                                                size="small"
-                                                startIcon={templateViewMode === "edit" ? <VisibilityIcon /> : <EditIcon />}
-                                                onClick={() => setTemplateViewMode(templateViewMode === "edit" ? "preview" : "edit")}
-                                            >
-                                                {templateViewMode === "edit"
-                                                    ? t("shareSimulation", "btnPreviewEmailTemplate") || "Preview"
-                                                    : t("shareSimulation", "btnEditEmailTemplate") || "Edit"}
-                                            </Button>
-                                        </Box>
-                                        {templateViewMode === "edit" ? (
-                                            <>
-                                                <TextField
-                                                    fullWidth
-                                                    label={t("shareSimulation", "subject") || "Subject"}
-                                                    value={editedSubject}
-                                                    onChange={(e) => setEditedSubject(e.target.value)}
-                                                    sx={{ mb: 2 }}
-                                                />
-                                                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 2 }}>
-                                                    <HtmlEditor
-                                                        key={`email-${selectedEmailTemplate}`}
-                                                        initialHtml={editedEmailContent}
-                                                        onChange={setEditedEmailContent}
-                                                        height="500px"
-                                                    />
-                                                    <DraggableVariables
-                                                        variables={templateVariables.map(v => ({
-                                                            name: v.key,
-                                                            label: v.label,
-                                                            description: v.description || "",
-                                                        }))}
-                                                    />
-                                                </Box>
-                                            </>
-                                        ) : (
-                                            <Paper
-                                                variant="outlined"
-                                                sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
-                                                dangerouslySetInnerHTML={{ __html: replaceVariables(editedEmailContent) }}
-                                            />
-                                        )}
-                                    </>
-                                )}
-
-                                {/* PDF Tab */}
-                                {activeTab === "pdf" && attachPdfToEmail && selectedEmailPdfTemplate && (
-                                    <>
-                                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", mb: 2 }}>
-                                            <Button
-                                                variant="outlined"
-                                                size="small"
-                                                startIcon={pdfTemplateViewMode === "edit" ? <VisibilityIcon /> : <EditIcon />}
-                                                onClick={() => setPdfTemplateViewMode(pdfTemplateViewMode === "edit" ? "preview" : "edit")}
-                                            >
-                                                {pdfTemplateViewMode === "edit"
-                                                    ? t("shareSimulation", "btnPreviewPdfTemplate") || "Preview"
-                                                    : t("shareSimulation", "btnEditPdfTemplate") || "Edit"}
-                                            </Button>
-                                        </Box>
-                                        {pdfTemplateViewMode === "edit" ? (
-                                            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 2 }}>
-                                                <HtmlEditor
-                                                    key={`email-pdf-${selectedEmailPdfTemplate}`}
-                                                    initialHtml={editedEmailPdfContent}
-                                                    onChange={setEditedEmailPdfContent}
-                                                    height="500px"
-                                                />
-                                                <DraggableVariables
-                                                    variables={templateVariables.map(v => ({
-                                                        name: v.key,
-                                                        label: v.label,
-                                                        description: v.description || "",
-                                                    }))}
-                                                />
-                                            </Box>
-                                        ) : (
-                                            <Paper
-                                                variant="outlined"
-                                                sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
-                                                dangerouslySetInnerHTML={{ __html: replaceVariables(editedEmailPdfContent) }}
-                                            />
-                                        )}
-                                    </>
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                {/* PDF Download Mode - Simple Edit/Preview without tabs */}
-                                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-                                    <Typography variant="h6">
-                                        {templateViewMode === "edit"
-                                            ? t("shareSimulation", "editTemplate") || "Edit Template"
-                                            : t("shareSimulation", "previewTemplate") || "Preview Template"}
-                                    </Typography>
-                                    <Button
-                                        variant="outlined"
-                                        size="small"
-                                        startIcon={templateViewMode === "edit" ? <VisibilityIcon /> : <EditIcon />}
-                                        onClick={() => setTemplateViewMode(templateViewMode === "edit" ? "preview" : "edit")}
-                                    >
-                                        {templateViewMode === "edit"
-                                            ? t("shareSimulation", "previewTemplate") || "Preview"
-                                            : t("shareSimulation", "editTemplate") || "Edit"}
-                                    </Button>
-                                </Box>
-
-                                {templateViewMode === "edit" ? (
-                                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 2 }}>
-                                        <HtmlEditor
-                                            key={`pdf-${selectedPdfTemplate}`}
-                                            initialHtml={editedPdfContent}
-                                            onChange={setEditedPdfContent}
-                                            height="500px"
-                                        />
-                                        <DraggableVariables
-                                            variables={templateVariables.map(v => ({
-                                                name: v.key,
-                                                label: v.label,
-                                                description: v.description || "",
-                                            }))}
-                                        />
-                                    </Box>
-                                ) : (
-                                    <Paper
-                                        variant="outlined"
-                                        sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
-                                        dangerouslySetInnerHTML={{ __html: replaceVariables(editedPdfContent) }}
-                                    />
-                                )}
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Actions */}
-            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-                {shareMode === "pdf" && (
-                    <Button
-                        variant="outlined"
-                        onClick={() => handleDownloadPdf(false)}
-                        disabled={isSending || !currentTemplate}
-                        startIcon={<DownloadIcon />}
-                    >
-                        {t("shareSimulation", "downloadOnly") || "Download PDF"}
-                    </Button>
+                {/* Email Recipient (only for email mode) */}
+                {shareMode === "email" && (
+                    <Card>
+                        <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                                {t("shareSimulation", "recipient") || "Recipient"}
+                            </Typography>
+                            <TextField
+                                fullWidth
+                                type="email"
+                                label={t("shareSimulation", "recipientEmail") || "Email"}
+                                value={recipientEmail}
+                                onChange={(e) => setRecipientEmail(e.target.value)}
+                                placeholder="client@example.com"
+                            />
+                        </CardContent>
+                    </Card>
                 )}
-                <Button
-                    variant="contained"
-                    onClick={shareMode === "pdf" ? () => handleDownloadPdf(true) : handleSendEmail}
-                    disabled={
-                        isSending ||
-                        !currentTemplate ||
-                        (shareMode === "email" && !recipientEmail) ||
-                        (shareMode === "email" && attachPdfToEmail && !selectedEmailPdfTemplate)
-                    }
-                    startIcon={shareMode === "pdf" ? <DownloadIcon /> : <SendIcon />}
-                >
-                    {isSending
-                        ? t("shareSimulation", "processing") || "Processing..."
-                        : shareMode === "pdf"
-                            ? t("shareSimulation", "downloadPdfAndShare") || "Download PDF and Share"
-                            : t("shareSimulation", "sendEmail") || "Send Email"}
-                </Button>
-            </Box>
-        </Stack>
+
+                {/* Attach PDF to Email (only for email mode) */}
+                {shareMode === "email" && (
+                    <Card>
+                        <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                                {t("shareSimulation", "attachPdf") || "Attach PDF to email"}
+                            </Typography>
+                            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={attachPdfToEmail}
+                                            onChange={(e) => setAttachPdfToEmail(e.target.checked)}
+                                        />
+                                    }
+                                    label={t("shareSimulation", "attachPdfLabel") || "Include PDF attachment"}
+                                />
+                                {attachPdfToEmail && (
+                                    <FormControl sx={{ flex: 1 }}>
+                                        <InputLabel>{t("shareSimulation", "selectPdfTemplate") || "PDF Template"}</InputLabel>
+                                        <Select
+                                            value={selectedEmailPdfTemplate}
+                                            onChange={(e) => {
+                                                const templateId = e.target.value;
+                                                setSelectedEmailPdfTemplate(templateId);
+                                                const template = pdfTemplates.find((t) => t.id === templateId);
+                                                if (template) setEditedEmailPdfContent(template.htmlContent);
+                                            }}
+                                            label={t("shareSimulation", "selectPdfTemplate") || "PDF Template"}
+                                        >
+                                            {pdfTemplates.map((template) => (
+                                                <MenuItem key={template.id} value={template.id}>
+                                                    <Box>
+                                                        <Typography variant="body2">{template.name}</Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {template.description}
+                                                        </Typography>
+                                                    </Box>
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                )}
+                            </Box>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Template Editor / Preview */}
+                {currentTemplate && (
+                    <Card>
+                        <CardContent>
+                            {/* Tabs for Email mode - always show tabs */}
+                            {shareMode === "email" ? (
+                                <>
+                                    <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+                                        <Tab label={t("shareSimulation", "tabPreviewEmail") || "Preview Email"} value="email" />
+                                        {attachPdfToEmail && selectedEmailPdfTemplate && (
+                                            <Tab label={t("shareSimulation", "tabPreviewPdf") || "Preview PDF"} value="pdf" />
+                                        )}
+                                    </Tabs>
+
+                                    {/* Email Tab */}
+                                    {activeTab === "email" && (
+                                        <>
+                                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", mb: 2 }}>
+                                                <Button
+                                                    variant="outlined"
+                                                    size="small"
+                                                    startIcon={templateViewMode === "edit" ? <VisibilityIcon /> : <EditIcon />}
+                                                    onClick={() => setTemplateViewMode(templateViewMode === "edit" ? "preview" : "edit")}
+                                                >
+                                                    {templateViewMode === "edit"
+                                                        ? t("shareSimulation", "btnPreviewEmailTemplate") || "Preview"
+                                                        : t("shareSimulation", "btnEditEmailTemplate") || "Edit"}
+                                                </Button>
+                                            </Box>
+
+                                            {templateViewMode === "edit" ? (
+                                                <>
+                                                    <TextField
+                                                        fullWidth
+                                                        label={t("shareSimulation", "subject") || "Subject"}
+                                                        value={editedSubject}
+                                                        onChange={(e) => setEditedSubject(e.target.value)}
+                                                        sx={{ mb: 2 }}
+                                                    />
+                                                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 2 }}>
+                                                        <HtmlEditor
+                                                            key={`email-${selectedEmailTemplate}`}
+                                                            initialHtml={editedEmailContent}
+                                                            onChange={setEditedEmailContent}
+                                                            height="500px"
+                                                        />
+                                                        <DraggableVariables
+                                                            variables={templateVariables.map(v => ({
+                                                                name: v.key,
+                                                                label: v.label,
+                                                                description: v.description || "",
+                                                            }))}
+                                                        />
+                                                    </Box>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {currentTemplate?.editableSections && (
+                                                        <Box sx={{ mb: 1.5, fontSize: "0.75rem", color: "text.secondary", display: "flex", alignItems: "center", gap: 0.5 }}>
+                                                            <Box component="span" sx={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", bgcolor: "#e53935" }} />
+                                                            Click highlighted sections to edit them
+                                                        </Box>
+                                                    )}
+                                                    <Paper
+                                                        variant="outlined"
+                                                        sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
+                                                        onClick={(e) => currentTemplate?.editableSections && handlePreviewClick(e, currentTemplate.editableSections as EditableSectionsConfig, emailEditableOverrides, setEmailEditableOverrides)}
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: currentTemplate?.editableSections
+                                                                ? replaceVariablesWithZones(editedEmailContent, emailEditableOverrides, currentTemplate.editableSections as EditableSectionsConfig)
+                                                                : replaceVariables(editedEmailContent, undefined, emailEditableOverrides),
+                                                        }}
+                                                    />
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* PDF Tab */}
+                                    {activeTab === "pdf" && attachPdfToEmail && selectedEmailPdfTemplate && (() => {
+                                        const emailPdfTpl = pdfTemplates.find(t => t.id === selectedEmailPdfTemplate);
+                                        return (
+                                            <>
+                                                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", mb: 2 }}>
+                                                    <Button
+                                                        variant="outlined"
+                                                        size="small"
+                                                        startIcon={pdfTemplateViewMode === "edit" ? <VisibilityIcon /> : <EditIcon />}
+                                                        onClick={() => setPdfTemplateViewMode(pdfTemplateViewMode === "edit" ? "preview" : "edit")}
+                                                    >
+                                                        {pdfTemplateViewMode === "edit"
+                                                            ? t("shareSimulation", "btnPreviewPdfTemplate") || "Preview"
+                                                            : t("shareSimulation", "btnEditPdfTemplate") || "Edit"}
+                                                    </Button>
+                                                </Box>
+
+                                                {pdfTemplateViewMode === "edit" ? (
+                                                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 2 }}>
+                                                        <HtmlEditor
+                                                            key={`email-pdf-${selectedEmailPdfTemplate}`}
+                                                            initialHtml={editedEmailPdfContent}
+                                                            onChange={setEditedEmailPdfContent}
+                                                            height="500px"
+                                                        />
+                                                        <DraggableVariables
+                                                            variables={templateVariables.map(v => ({
+                                                                name: v.key,
+                                                                label: v.label,
+                                                                description: v.description || "",
+                                                            }))}
+                                                        />
+                                                    </Box>
+                                                ) : (
+                                                    <>
+                                                        {emailPdfTpl?.editableSections && (
+                                                            <Box sx={{ mb: 1.5, fontSize: "0.75rem", color: "text.secondary", display: "flex", alignItems: "center", gap: 0.5 }}>
+                                                                <Box component="span" sx={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", bgcolor: "#e53935" }} />
+                                                                Click highlighted sections to edit them
+                                                            </Box>
+                                                        )}
+                                                        <Paper
+                                                            variant="outlined"
+                                                            sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
+                                                            onClick={(e) => emailPdfTpl?.editableSections && handlePreviewClick(e, emailPdfTpl.editableSections as EditableSectionsConfig, emailPdfEditableOverrides, setEmailPdfEditableOverrides)}
+                                                            dangerouslySetInnerHTML={{
+                                                                __html: emailPdfTpl?.editableSections
+                                                                    ? replaceVariablesWithZones(editedEmailPdfContent, emailPdfEditableOverrides, emailPdfTpl.editableSections as EditableSectionsConfig)
+                                                                    : replaceVariables(editedEmailPdfContent, undefined, emailPdfEditableOverrides),
+                                                            }}
+                                                        />
+                                                    </>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
+                                </>
+                            ) : (
+                                <>
+                                    {/* PDF Download Mode - Edit/Preview toggle + always-on live preview when editable sections exist */}
+                                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+                                        <Typography variant="h6">
+                                            {templateViewMode === "edit"
+                                                ? t("shareSimulation", "editTemplate") || "Edit Template"
+                                                : t("shareSimulation", "previewTemplate") || "Preview Template"}
+                                        </Typography>
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            startIcon={templateViewMode === "edit" ? <VisibilityIcon /> : <EditIcon />}
+                                            onClick={() => setTemplateViewMode(templateViewMode === "edit" ? "preview" : "edit")}
+                                        >
+                                            {templateViewMode === "edit"
+                                                ? t("shareSimulation", "previewTemplate") || "Preview"
+                                                : t("shareSimulation", "editTemplate") || "Edit"}
+                                        </Button>
+                                    </Box>
+
+                                    {templateViewMode === "edit" ? (
+                                        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 2 }}>
+                                            <HtmlEditor
+                                                key={`pdf-${selectedPdfTemplate}`}
+                                                initialHtml={editedPdfContent}
+                                                onChange={setEditedPdfContent}
+                                                height="500px"
+                                            />
+                                            <DraggableVariables
+                                                variables={templateVariables.map(v => ({
+                                                    name: v.key,
+                                                    label: v.label,
+                                                    description: v.description || "",
+                                                }))}
+                                            />
+                                        </Box>
+                                    ) : (
+                                        <>
+                                            {currentTemplate?.editableSections && (
+                                                <Box sx={{ mb: 1.5, fontSize: "0.75rem", color: "text.secondary", display: "flex", alignItems: "center", gap: 0.5 }}>
+                                                    <Box component="span" sx={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", bgcolor: "#e53935" }} />
+                                                    Click highlighted sections to edit them
+                                                </Box>
+                                            )}
+                                            <Paper
+                                                variant="outlined"
+                                                sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
+                                                onClick={(e) => currentTemplate?.editableSections && handlePreviewClick(e, currentTemplate.editableSections as EditableSectionsConfig, pdfEditableOverrides, setPdfEditableOverrides)}
+                                                dangerouslySetInnerHTML={{
+                                                    __html: currentTemplate?.editableSections
+                                                        ? replaceVariablesWithZones(editedPdfContent, pdfEditableOverrides, currentTemplate.editableSections as EditableSectionsConfig)
+                                                        : replaceVariables(editedPdfContent, undefined, pdfEditableOverrides),
+                                                }}
+                                            />
+                                        </>
+                                    )}
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Actions */}
+                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+                    {shareMode === "pdf" && (
+                        <Button
+                            variant="outlined"
+                            onClick={() => handleDownloadPdf(false)}
+                            disabled={isSending || !currentTemplate}
+                            startIcon={<DownloadIcon />}
+                        >
+                            {t("shareSimulation", "downloadOnly") || "Download PDF"}
+                        </Button>
+                    )}
+                    <Button
+                        variant="contained"
+                        onClick={shareMode === "pdf" ? () => handleDownloadPdf(true) : handleSendEmail}
+                        disabled={
+                            isSending ||
+                            !currentTemplate ||
+                            (shareMode === "email" && !recipientEmail) ||
+                            (shareMode === "email" && attachPdfToEmail && !selectedEmailPdfTemplate)
+                        }
+                        startIcon={shareMode === "pdf" ? <DownloadIcon /> : <SendIcon />}
+                    >
+                        {isSending
+                            ? t("shareSimulation", "processing") || "Processing..."
+                            : shareMode === "pdf"
+                                ? t("shareSimulation", "downloadPdfAndShare") || "Download PDF and Share"
+                                : t("shareSimulation", "sendEmail") || "Send Email"}
+                    </Button>
+                </Box>
+            </Stack>
+
+            {/* Inline section editing modal */}
+            {sec && (
+                <Dialog open onClose={() => setEditingSection(null)} maxWidth="sm" fullWidth>
+                    <DialogTitle sx={{ pb: 1 }}>Edit: {sec.label}</DialogTitle>
+                    <DialogContent>
+                        <TextField
+                            autoFocus
+                            fullWidth
+                            multiline={sec.multiline}
+                            minRows={sec.multiline ? 3 : 1}
+                            maxRows={10}
+                            value={sec.value}
+                            onChange={(e) => setEditingSection({ ...sec, value: e.target.value })}
+                            inputProps={{ maxLength: sec.maxLength }}
+                            helperText={sec.maxLength ? `${sec.value.length} / ${sec.maxLength}` : undefined}
+                            sx={{ mt: 1 }}
+                        />
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setEditingSection(null)}>Cancel</Button>
+                        <Button variant="contained" onClick={() => sec.onSave(sec.value)}>
+                            Apply
+                        </Button>
+                    </DialogActions>
+                </Dialog>
+            )}
+        </>
     );
 }

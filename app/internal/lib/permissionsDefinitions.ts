@@ -11,6 +11,7 @@ export type PermissionKey =
   | "section.clients"
   | "section.base-values"
   | "section.audit-logs"
+  | "section.email-logs"
   | "section.analytics"
   | "section.configurations"
   // ── Simulation actions ───────────────────────────────────────────────────
@@ -74,6 +75,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: "section.audit-logs",
         label: "Audit Logs",
         description: "View system audit log entries",
+      },
+      {
+        key: "section.email-logs",
+        label: "Email Logs",
+        description: "View email delivery logs and status (admin only)",
+        adminOnly: true,
       },
       {
         key: "section.analytics",
@@ -240,6 +247,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.clients": true,
     "section.base-values": true,
     "section.audit-logs": true,
+    "section.email-logs": true,
     "section.analytics": true,
     "section.configurations": true,
     "simulations.create": true,
@@ -268,6 +276,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.clients": true,
     "section.base-values": true,
     "section.audit-logs": true,
+    "section.email-logs": false,
     "section.analytics": true,
     "section.configurations": false,
     "simulations.create": true,
@@ -296,6 +305,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.clients": false,
     "section.base-values": false,
     "section.audit-logs": false,
+    "section.email-logs": false,
     "section.analytics": false,
     "section.configurations": false,
     "simulations.create": true,

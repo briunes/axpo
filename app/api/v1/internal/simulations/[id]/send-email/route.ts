@@ -57,7 +57,23 @@ export const POST = withErrorHandler(
 
     const id = context?.params?.id || "";
 
-    const body = await request.json();
+    let body;
+    try {
+      const text = await request.text();
+      if (!text || text.trim() === "") {
+        return NextResponse.json(
+          { error: "Request body is required" },
+          { status: 400 },
+        );
+      }
+      body = JSON.parse(text);
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 },
+      );
+    }
+
     const { to, subject, htmlContent, pdfHtmlContent } = body;
 
     if (!to || !subject || !htmlContent) {
