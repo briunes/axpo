@@ -91,15 +91,18 @@ export class AuthService {
       },
     });
 
-    // Send welcome email asynchronously (don't block user creation if email fails)
-    EmailService.sendUserCreationEmail({
-      userEmail: user.email,
-      userName: user.fullName,
-      userPin: generated,
-      userPassword: input.password,
-    }).catch((error) => {
+    // Send welcome email (await to ensure it completes in serverless environments)
+    try {
+      await EmailService.sendUserCreationEmail({
+        userEmail: user.email,
+        userName: user.fullName,
+        userPin: generated,
+        userPassword: input.password,
+      });
+    } catch (error) {
+      // Don't fail user creation if email fails, just log it
       console.error("Failed to send user creation email:", error);
-    });
+    }
 
     return {
       user: {
