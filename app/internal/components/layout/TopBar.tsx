@@ -11,8 +11,7 @@ const sectionNavKey: Record<AppSection, string> = {
   agencies: "agencies",
   clients: "clients",
   "base-values": "baseValues",
-  "audit-logs": "auditLogs",
-  "email-logs": "emailLogs",
+  logs: "logs",
   analytics: "analytics",
   configurations: "configurations",
 };
@@ -21,13 +20,17 @@ export function TopBar({
   section,
   onRefresh,
   onMobileMenuToggle,
+  actionButtons,
 }: {
   section: AppSection;
   onRefresh: () => void;
   onMobileMenuToggle: () => void;
+  actionButtons?: React.ReactNode;
 }) {
   const { t } = useI18n();
   const Icon = sectionIcon[section];
+
+  console.log('TopBar rendering, actionButtons:', actionButtons);
 
   return (
     <div className="app-topbar">
@@ -45,6 +48,7 @@ export function TopBar({
         <span className="topbar-section-title">{t("nav", sectionNavKey[section])}</span>
       </div>
       <div className="topbar-right">
+        {actionButtons}
       </div>
     </div>
   );

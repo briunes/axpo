@@ -1,6 +1,16 @@
 "use client";
 
-import { Tooltip } from "@mui/material";
+import {
+  Tooltip,
+  Button,
+  Box,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Typography,
+} from "@mui/material";
 import { useRouter } from "next/navigation";
 import type { SessionState } from "../../lib/authSession";
 import {
@@ -17,7 +27,7 @@ import {
 } from "../ui/icons";
 import { useI18n } from "../../../../src/lib/i18n-context";
 
-export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "audit-logs" | "email-logs" | "analytics" | "configurations";
+export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "logs" | "analytics" | "configurations";
 
 // Static English labels kept for non-UI uses (routes, test-ids, etc.)
 export const sectionLabel: Record<AppSection, string> = {
@@ -26,8 +36,7 @@ export const sectionLabel: Record<AppSection, string> = {
   agencies: "Agencies",
   clients: "Clients",
   "base-values": "Base Values",
-  "audit-logs": "Audit Logs",
-  "email-logs": "Email Logs",
+  logs: "System Logs",
   analytics: "Analytics",
   configurations: "Configurations",
 };
@@ -39,8 +48,7 @@ const sectionNavKey: Record<AppSection, string> = {
   agencies: "agencies",
   clients: "clients",
   "base-values": "baseValues",
-  "audit-logs": "auditLogs",
-  "email-logs": "emailLogs",
+  logs: "logs",
   analytics: "analytics",
   configurations: "configurations",
 };
@@ -51,8 +59,7 @@ export const sectionDescription: Record<AppSection, string> = {
   agencies: "Control agency activation and ownership scope for operational teams.",
   clients: "Manage client accounts linked to agencies for simulation assignment.",
   "base-values": "Manage base value sets, item payloads and active versions used in simulation calculations.",
-  "audit-logs": "Review immutable events and access traces for governance and compliance monitoring.",
-  "email-logs": "Track all emails sent by the system including status, recipients, and content.",
+  logs: "Review audit logs, email logs, and cron job execution logs for governance and compliance monitoring.",
   analytics: "Track simulation performance and access metrics for operational decisions.",
   configurations: "Manage system settings, PDF templates, email templates and other configurable definitions.",
 };
@@ -63,8 +70,7 @@ export const sectionRoute: Record<AppSection, string> = {
   agencies: "/internal/agencies",
   clients: "/internal/clients",
   "base-values": "/internal/base-values",
-  "audit-logs": "/internal/audit-logs",
-  "email-logs": "/internal/email-logs",
+  logs: "/internal/logs",
   analytics: "/internal/analytics",
   configurations: "/internal/configurations",
 };
@@ -75,8 +81,7 @@ export const sectionPrimaryAction: Record<AppSection, { label: string; targetId:
   agencies: { label: "New Agency", targetId: "agencies-create-form" },
   clients: { label: "New Client", targetId: "clients-create-form" },
   "base-values": { label: "New Base Value Set", targetId: "base-values-create-form" },
-  "audit-logs": { label: "Jump to Audit Table", targetId: "audit-logs-table" },
-  "email-logs": { label: "View Email Logs", targetId: "email-logs-table" },
+  logs: { label: "View System Logs", targetId: "system-logs-table" },
   analytics: { label: "Refresh Metrics", targetId: "analytics-panel" },
   configurations: { label: "System Settings", targetId: "configurations-panel" },
 };
@@ -87,8 +92,7 @@ export const sectionIcon: Record<AppSection, React.FC<{ className?: string }>> =
   agencies: AgenciesIcon,
   clients: ClientsIcon,
   "base-values": BaseValuesIcon,
-  "audit-logs": AuditLogsIcon,
-  "email-logs": EmailLogsIcon,
+  logs: AuditLogsIcon,
   analytics: AnalyticsIcon,
   configurations: ConfigurationsIcon,
 };
@@ -107,8 +111,7 @@ export function SectionMenu({
   canSeeAgenciesSection,
   canSeeClientsSection,
   canSeeBaseValuesSection,
-  canSeeAuditLogsSection,
-  canSeeEmailLogsSection,
+  canSeeLogsSection,
   canViewAnalytics,
   canSeeConfigurationsSection,
   onNavigate,
@@ -121,8 +124,7 @@ export function SectionMenu({
   canSeeAgenciesSection: boolean;
   canSeeClientsSection: boolean;
   canSeeBaseValuesSection: boolean;
-  canSeeAuditLogsSection: boolean;
-  canSeeEmailLogsSection: boolean;
+  canSeeLogsSection: boolean;
   canViewAnalytics: boolean;
   canSeeConfigurationsSection: boolean;
   onNavigate: (section: AppSection) => void;
@@ -140,8 +142,7 @@ export function SectionMenu({
       if (item === "agencies" && !canSeeAgenciesSection) return false;
       if (item === "clients" && !canSeeClientsSection) return false;
       if (item === "base-values" && !canSeeBaseValuesSection) return false;
-      if (item === "audit-logs" && !canSeeAuditLogsSection) return false;
-      if (item === "email-logs" && !canSeeEmailLogsSection) return false;
+      if (item === "logs" && !canSeeLogsSection) return false;
       if (item === "analytics" && !canViewAnalytics) return false;
       return true;
     });
@@ -151,156 +152,345 @@ export function SectionMenu({
 
   return (
     <>
-      <nav className="app-nav" role="navigation" aria-label="Internal app sections">
-        <span className="app-nav-section-title">Menu</span>
-        {items.map((item) => {
-          const Icon = sectionIcon[item];
-          const isActive = section === item;
-          const label = t("nav", sectionNavKey[item]);
-          return (
-            <Tooltip
-              key={item}
-              title={label}
-              placement="right"
-              disableHoverListener={!collapsed}
-              arrow
-            >
-              <button
-                className={`app-nav-item${isActive ? " active" : ""}`}
-                data-testid={`nav-${item}`}
-                onClick={() => onNavigate(item)}
-              >
-                <span className="nav-icon">
-                  <Icon />
-                </span>
-                <span className="app-nav-label">{label}</span>
-              </button>
-            </Tooltip>
-          );
-        })}
-      </nav>
+      <Box
+        component="nav"
+        role="navigation"
+        aria-label="Internal app sections"
+        sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "var(--scheme-neutral-600)",
+            px: 2,
+            py: 0.75,
+            opacity: collapsed ? 0 : 1,
+            height: collapsed ? 0 : "auto",
+            overflow: "hidden",
+            transition: "opacity 180ms ease, height 220ms ease",
+          }}
+        >
+          Menu
+        </Typography>
+        <List sx={{ flex: 1, px: 1, py: 0, overflowY: "auto", overflowX: "hidden" }}>
+          {items.map((item) => {
+            const Icon = sectionIcon[item];
+            const isActive = section === item;
+            const label = t("nav", sectionNavKey[item]);
+            return (
+              <ListItem key={item} disablePadding sx={{ mb: 0.25 }}>
+                <Tooltip
+                  title={label}
+                  placement="right"
+                  disableHoverListener={!collapsed}
+                  arrow
+                >
+                  <ListItemButton
+                    data-testid={`nav-${item}`}
+                    onClick={() => onNavigate(item)}
+                    selected={isActive}
+                    sx={{
+                      borderRadius: 1.5,
+                      gap: 1.25,
+                      py: 1.125,
+                      px: 1,
+                      borderLeft: "3px solid transparent",
+                      borderLeftColor: isActive ? "primary.main" : "transparent",
+                      justifyContent: collapsed ? "center" : "flex-start",
+                      "&.Mui-selected": {
+                        bgcolor: "rgba(255, 50, 84, 0.08)",
+                        color: "var(--scheme-brand-600)",
+                        fontWeight: 600,
+                        "&:hover": {
+                          bgcolor: "rgba(255, 50, 84, 0.12)",
+                        },
+                      },
+                      "&:hover": {
+                        bgcolor: "var(--scheme-neutral-1100)",
+                      },
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        minWidth: "auto",
+                        opacity: isActive ? 1 : 0.65,
+                        color: isActive ? "var(--scheme-brand-600)" : "var(--scheme-neutral-400)",
+                        transition: "opacity 150ms",
+                      }}
+                    >
+                      <Icon />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={label}
+                      sx={{
+                        m: 0,
+                        opacity: collapsed ? 0 : 1,
+                        maxWidth: collapsed ? 0 : 180,
+                        overflow: "hidden",
+                        transition: "opacity 180ms ease, max-width 220ms ease",
+                        "& .MuiListItemText-primary": {
+                          fontSize: 14,
+                          fontWeight: isActive ? 600 : 500,
+                          color: isActive ? "var(--scheme-brand-600)" : "var(--scheme-neutral-400)",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        },
+                      }}
+                    />
+                  </ListItemButton>
+                </Tooltip>
+              </ListItem>
+            );
+          })}
+        </List>
+      </Box>
 
       <div className="app-user-card">
         {/* Configurations menu item — ADMIN only */}
         {canSeeConfigurationsSection && (
+          <List sx={{ px: 1, py: 0, mb: 0.25 }}>
+            <ListItem disablePadding>
+              <Tooltip
+                title={t("nav", "configurations")}
+                placement="right"
+                disableHoverListener={!collapsed}
+                arrow
+              >
+                <ListItemButton
+                  data-testid="nav-configurations"
+                  onClick={() => onNavigate("configurations")}
+                  selected={isConfigurationsActive}
+                  sx={{
+                    borderRadius: 1.5,
+                    gap: 1.25,
+                    py: 1.125,
+                    px: 1,
+                    borderLeft: "3px solid transparent",
+                    borderLeftColor: isConfigurationsActive ? "primary.main" : "transparent",
+                    justifyContent: collapsed ? "center" : "flex-start",
+                    "&.Mui-selected": {
+                      bgcolor: "rgba(255, 50, 84, 0.08)",
+                      color: "var(--scheme-brand-600)",
+                      fontWeight: 600,
+                      "&:hover": {
+                        bgcolor: "rgba(255, 50, 84, 0.12)",
+                      },
+                    },
+                    "&:hover": {
+                      bgcolor: "var(--scheme-neutral-1100)",
+                    },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: "auto",
+                      opacity: isConfigurationsActive ? 1 : 0.65,
+                      color: isConfigurationsActive
+                        ? "var(--scheme-brand-600)"
+                        : "var(--scheme-neutral-400)",
+                      transition: "opacity 150ms",
+                    }}
+                  >
+                    <ConfigIcon />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={t("nav", "configurations")}
+                    sx={{
+                      m: 0,
+                      opacity: collapsed ? 0 : 1,
+                      maxWidth: collapsed ? 0 : 180,
+                      overflow: "hidden",
+                      transition: "opacity 180ms ease, max-width 220ms ease",
+                      "& .MuiListItemText-primary": {
+                        fontSize: 14,
+                        fontWeight: isConfigurationsActive ? 600 : 500,
+                        color: isConfigurationsActive
+                          ? "var(--scheme-brand-600)"
+                          : "var(--scheme-neutral-400)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      },
+                    }}
+                  />
+                </ListItemButton>
+              </Tooltip>
+            </ListItem>
+          </List>
+        )}
+
+        {/* Language toggle */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: collapsed ? 0.5 : 0.75,
+            px: collapsed ? 1 : 1.5,
+            py: 0.75,
+            mb: 0.5,
+            justifyContent: "center",
+            flexDirection: collapsed ? "column" : "row",
+          }}
+        >
+          {!collapsed && (
+            <Box component="span" sx={{ fontSize: 11, color: "var(--scheme-neutral-500)", mr: 0.25 }}>
+              Lang
+            </Box>
+          )}
+          <Tooltip title="English" placement="right">
+            <Button
+              onClick={() => setLocale("en")}
+              variant={locale === "en" ? "contained" : "outlined"}
+              size="small"
+              sx={{
+                minWidth: collapsed ? 32 : 36,
+                minHeight: collapsed ? 32 : 36,
+                width: collapsed ? 32 : 36,
+                height: collapsed ? 32 : 36,
+                p: 0.5,
+                fontSize: collapsed ? 16 : 18,
+                lineHeight: 1,
+                borderRadius: 1.5,
+                borderWidth: 2,
+                borderColor: locale === "en" ? "primary.main" : "transparent",
+                bgcolor: locale === "en" ? "rgba(255, 50, 84, 0.08)" : "var(--scheme-neutral-1100)",
+                opacity: locale === "en" ? 1 : 0.5,
+                transform: locale === "en" ? "scale(1.05)" : "scale(1)",
+                transition: "all 0.2s ease",
+                boxShadow: locale === "en" ? 1 : 0,
+                "&:hover": {
+                  opacity: 0.8,
+                  transform: "scale(1.05)",
+                  borderColor: locale === "en" ? "primary.main" : "var(--scheme-neutral-800)",
+                  bgcolor: locale === "en" ? "rgba(255, 50, 84, 0.12)" : "var(--scheme-neutral-1000)",
+                },
+              }}
+            >
+              🇬🇧
+            </Button>
+          </Tooltip>
+          <Tooltip title="Español" placement="right">
+            <Button
+              onClick={() => setLocale("es")}
+              variant={locale === "es" ? "contained" : "outlined"}
+              size="small"
+              sx={{
+                minWidth: collapsed ? 32 : 36,
+                minHeight: collapsed ? 32 : 36,
+                width: collapsed ? 32 : 36,
+                height: collapsed ? 32 : 36,
+                p: 0.5,
+                fontSize: collapsed ? 16 : 18,
+                lineHeight: 1,
+                borderRadius: 1.5,
+                borderWidth: 2,
+                borderColor: locale === "es" ? "primary.main" : "transparent",
+                bgcolor: locale === "es" ? "rgba(255, 50, 84, 0.08)" : "var(--scheme-neutral-1100)",
+                opacity: locale === "es" ? 1 : 0.5,
+                transform: locale === "es" ? "scale(1.05)" : "scale(1)",
+                transition: "all 0.2s ease",
+                boxShadow: locale === "es" ? 1 : 0,
+                "&:hover": {
+                  opacity: 0.8,
+                  transform: "scale(1.05)",
+                  borderColor: locale === "es" ? "primary.main" : "var(--scheme-neutral-800)",
+                  bgcolor: locale === "es" ? "rgba(255, 50, 84, 0.12)" : "var(--scheme-neutral-1000)",
+                },
+              }}
+            >
+              🇪🇸
+            </Button>
+          </Tooltip>
+        </Box>
+
+        <Box sx={{ display: "flex", flexDirection: collapsed ? "column" : "row", alignItems: "center", gap: collapsed ? 1 : 0.5, px: collapsed ? 1 : 0 }}>
           <Tooltip
-            title={t("nav", "configurations")}
+            title="My Profile"
             placement="right"
             disableHoverListener={!collapsed}
             arrow
           >
-            <button
-              className={`app-nav-item${isConfigurationsActive ? " active" : ""}`}
-              data-testid="nav-configurations"
-              onClick={() => onNavigate("configurations")}
-              style={{ marginBottom: "8px" }}
+            <Box
+              component="button"
+              onClick={() => router.push("/internal/profile")}
+              data-testid="nav-profile"
+              sx={{
+                background: "none",
+                border: "none",
+                padding: collapsed ? 0.5 : "6px 4px",
+                cursor: "pointer",
+                flex: collapsed ? "0" : 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                textAlign: "left",
+                borderRadius: 1.5,
+                transition: "background 0.15s",
+                width: collapsed ? "auto" : "100%",
+                justifyContent: collapsed ? "center" : "flex-start",
+                "&:hover": {
+                  bgcolor: "var(--scheme-neutral-1100)",
+                },
+              }}
             >
-              <span className="nav-icon">
-                <ConfigIcon />
-              </span>
-              <span className="app-nav-label">{t("nav", "configurations")}</span>
-            </button>
+              <Box
+                className="app-user-avatar"
+                aria-hidden="true"
+                sx={{
+                  width: collapsed ? 32 : 30,
+                  height: collapsed ? 32 : 30,
+                  flexShrink: 0,
+                }}
+              >
+                {getInitials(session.user.fullName)}
+              </Box>
+              {!collapsed && (
+                <Box className="app-user-detail" sx={{ flex: 1, overflow: "hidden" }}>
+                  <Box className="app-user-name">{session.user.fullName}</Box>
+                  <Box className="app-user-role">{session.user.role}</Box>
+                </Box>
+              )}
+            </Box>
           </Tooltip>
-        )}
-
-        {/* Language toggle */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            padding: collapsed ? "6px 0" : "6px 12px",
-            marginBottom: 4,
-            justifyContent: collapsed ? "center" : "flex-start",
-          }}
-        >
-          {!collapsed && (
-            <span style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginRight: 4 }}>
-              Lang
-            </span>
-          )}
-          <button
-            onClick={() => setLocale("en")}
-            style={{
-              fontSize: 11,
-              fontWeight: locale === "en" ? 700 : 400,
-              padding: "2px 7px",
-              borderRadius: 4,
-              border: locale === "en" ? "1.5px solid var(--scheme-brand-500)" : "1px solid var(--scheme-neutral-300)",
-              background: locale === "en" ? "var(--scheme-brand-100)" : "transparent",
-              color: locale === "en" ? "var(--scheme-brand-600)" : "var(--scheme-neutral-500)",
-              cursor: "pointer",
-              lineHeight: "1.6",
-            }}
-            title="English"
+          <Tooltip
+            title={t("actions", "signOut")}
+            placement="right"
+            arrow
           >
-            {t("language", "en")}
-          </button>
-          <button
-            onClick={() => setLocale("es")}
-            style={{
-              fontSize: 11,
-              fontWeight: locale === "es" ? 700 : 400,
-              padding: "2px 7px",
-              borderRadius: 4,
-              border: locale === "es" ? "1.5px solid var(--scheme-brand-500)" : "1px solid var(--scheme-neutral-300)",
-              background: locale === "es" ? "var(--scheme-brand-100)" : "transparent",
-              color: locale === "es" ? "var(--scheme-brand-600)" : "var(--scheme-neutral-500)",
-              cursor: "pointer",
-              lineHeight: "1.6",
-            }}
-            title="Español"
-          >
-            {t("language", "es")}
-          </button>
-        </div>
-
-        <Tooltip
-          title="My Profile"
-          placement="right"
-          disableHoverListener={!collapsed}
-          arrow
-        >
-          <button
-            className="app-user-inner"
-            onClick={() => router.push("/internal/profile")}
-            data-testid="nav-profile"
-            style={{
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              width: "100%",
-              textAlign: "left",
-              borderRadius: 8,
-              transition: "background 0.15s",
-            }}
-          >
-            <div className="app-user-avatar" aria-hidden="true">
-              {getInitials(session.user.fullName)}
-            </div>
-            <div className="app-user-detail">
-              <div className="app-user-name">{session.user.fullName}</div>
-              <div className="app-user-role">{session.user.role}</div>
-            </div>
-          </button>
-        </Tooltip>
-        <Tooltip
-          title={t("actions", "signOut")}
-          placement="right"
-          disableHoverListener={!collapsed}
-          arrow
-        >
-          <button
-            className="app-nav-item"
-            onClick={onLogout}
-            data-testid="logout-button"
-            style={{ color: "var(--scheme-neutral-500)" }}
-          >
-            <span className="nav-icon"><LogoutIcon /></span>
-            <span className="app-nav-label">{t("actions", "signOut")}</span>
-          </button>
-        </Tooltip>
+            <Box
+              component="button"
+              onClick={onLogout}
+              data-testid="logout-button"
+              sx={{
+                background: "none",
+                border: "none",
+                p: collapsed ? 1 : 0.75,
+                cursor: "pointer",
+                color: "var(--scheme-neutral-500)",
+                borderRadius: 1.5,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "background 0.15s, color 0.15s",
+                minWidth: collapsed ? 32 : "auto",
+                minHeight: collapsed ? 32 : "auto",
+                "&:hover": {
+                  bgcolor: "var(--scheme-neutral-1100)",
+                  color: "var(--scheme-neutral-200)",
+                },
+              }}
+            >
+              <Box className="nav-icon" sx={{ display: "flex" }}>
+                <LogoutIcon />
+              </Box>
+            </Box>
+          </Tooltip>
+        </Box>
       </div>
     </>
   );

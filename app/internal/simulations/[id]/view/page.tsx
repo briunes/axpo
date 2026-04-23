@@ -77,9 +77,36 @@ function SimulationMeta({ sim }: { sim: SimulationItem }) {
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                         <span style={{ fontSize: 10, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("simulationDetail", "metaExpires")}</span>
                         <span style={{ fontSize: 11, color: "var(--scheme-neutral-200)" }}>
-                            {new Date(sim.expiresAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}
+                            {new Date(sim.expiresAt).toLocaleString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </span>
                     </span>
+                </>
+            )}
+
+            {/* Invoice File */}
+            {(sim.invoiceFileName || sim.invoiceFilePath) && (
+                <>
+                    <span style={{ color: "var(--scheme-neutral-800)", fontSize: 14, userSelect: "none" }}>·</span>
+                    <a
+                        href={`/api/v1/internal/simulations/${sim.id}/invoice`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            textDecoration: "none",
+                            color: "var(--scheme-primary-500)",
+                            cursor: "pointer",
+                        }}
+                        title={sim.invoiceFileName || "View invoice"}
+                    >
+                        <span style={{ fontSize: 10, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>📄 {t("simulationDetail", "invoiceFile")}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600 }}>{sim.invoiceFileName || "View"}</span>
+                        {sim.invoiceFileSize && (
+                            <span style={{ fontSize: 10, color: "var(--scheme-neutral-600)" }}>({Math.round(sim.invoiceFileSize / 1024)} KB)</span>
+                        )}
+                    </a>
                 </>
             )}
 
@@ -90,7 +117,7 @@ function SimulationMeta({ sim }: { sim: SimulationItem }) {
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                         <span style={{ fontSize: 10, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("simulationDetail", "metaCreated")}</span>
                         <span style={{ fontSize: 11, color: "var(--scheme-neutral-200)" }}>
-                            {new Date(sim.createdAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}
+                            {new Date(sim.createdAt).toLocaleString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </span>
                     </span>
                 </>

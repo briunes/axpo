@@ -42,16 +42,22 @@ const toInputJson = (value: unknown): Prisma.InputJsonValue => {
 };
 
 export class SimulationService {
-  static buildSimulationFilter(actor: ActorContext) {
+  static buildSimulationFilter(actor: ActorContext, includeDeleted = false) {
     if (actor.role === UserRole.ADMIN) {
-      return { isDeleted: false };
+      return includeDeleted ? {} : { isDeleted: false };
     }
 
     if (actor.role === UserRole.AGENT) {
-      return { isDeleted: false, agencyId: actor.agencyId };
+      return {
+        ...(includeDeleted ? {} : { isDeleted: false }),
+        agencyId: actor.agencyId,
+      };
     }
 
-    return { isDeleted: false, ownerUserId: actor.userId };
+    return {
+      ...(includeDeleted ? {} : { isDeleted: false }),
+      ownerUserId: actor.userId,
+    };
   }
 
   static async assertSimulationAccess(

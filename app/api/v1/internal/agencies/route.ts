@@ -126,6 +126,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     Math.max(1, parseInt(searchParams.get("pageSize") ?? "25", 10)),
   );
   const search = searchParams.get("search") ?? undefined;
+  const includeDeleted =
+    searchParams.get("includeDeleted") === "true" &&
+    auth.role === UserRole.ADMIN;
   const orderBy = searchParams.get("orderBy") ?? "createdAt";
   const sortDir =
     (searchParams.get("sortDir") ?? "desc") === "asc" ? "asc" : "desc";
@@ -137,12 +140,17 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   };
   const safeOrderBy = allowedOrderBy[orderBy] ? orderBy : "createdAt";
 
-  const where =
+  const baseWhere =
     auth.role === UserRole.ADMIN
       ? search
         ? { name: { contains: search, mode: "insensitive" as const } }
         : {}
       : { id: auth.agencyId };
+
+  const where = {
+    ...baseWhere,
+    ...(includeDeleted ? {} : { isDeleted: false }), // Only filter out deleted if not including them
+  };
 
   const [agencies, total] = await Promise.all([
     prisma.agency.findMany({

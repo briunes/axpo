@@ -36,6 +36,7 @@ export default function NewUserPage() {
         email: string;
         pin: string;
     } | null>(null);
+    const [formActions, setFormActions] = useState<React.ReactNode>(null);
 
     const fetchedRef = useRef(false);
     useEffect(() => {
@@ -98,6 +99,7 @@ export default function NewUserPage() {
             title={t("userFormPage", "newTitle")}
             subtitle={t("userFormPage", "newSubtitle")}
             backHref="/internal/users"
+            actions={formActions}
         >
             {newlyCreated?.pin && (
                 <div className="crud-callout" style={{ marginBottom: "24px" }}>
@@ -131,6 +133,7 @@ export default function NewUserPage() {
                     cancelLabel={t("actions", "cancel")}
                     onCancel={() => router.push("/internal/users")}
                     mode="create"
+                    onRenderActions={setFormActions}
                 />
             )}
         </CrudPageLayout>

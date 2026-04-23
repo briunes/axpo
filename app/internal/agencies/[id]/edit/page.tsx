@@ -2,12 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
-import { Stack } from "@mui/material";
+import { Box, Stack, Tabs, Tab } from "@mui/material";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
-import { getAgency, updateAgency, type AgencyItem } from "../../../lib/internalApi";
+import { getAgency, updateAgency, listUsers, type AgencyItem, type UserItem } from "../../../lib/internalApi";
 import { AddressForm, CrudFormContainer, CrudPageLayout, LoadingState, useAlerts, type AddressData } from "../../../components/shared";
-import { FormInput } from "../../../components/ui";
+import { FormInput, DataTable, StatusBadge } from "../../../components/ui";
+import { AgencyTariffConfig } from "../../../components/ui/AgencyTariffConfig";
 
 export default function EditAgencyPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -21,6 +22,10 @@ export default function EditAgencyPage({ params }: { params: Promise<{ id: strin
     const [address, setAddress] = useState<AddressData>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [users, setUsers] = useState<UserItem[]>([]);
+    const [loadingUsers, setLoadingUsers] = useState(false);
+    const [activeTab, setActiveTab] = useState(0);
+    const [formActions, setFormActions] = useState<React.ReactNode>(null);
 
     useEffect(() => {
         if (!session) return;
@@ -35,6 +40,12 @@ export default function EditAgencyPage({ params }: { params: Promise<{ id: strin
                     province: a.province || "",
                     country: a.country || "",
                 });
+                // Load users for this agency
+                setLoadingUsers(true);
+                listUsers(session.token, { agencyId: a.id, pageSize: 100 })
+                    .then((result) => setUsers(result.items))
+                    .catch((err) => console.error("Failed to load users:", err))
+                    .finally(() => setLoadingUsers(false));
             })
             .catch((err) => {
                 showError(err instanceof Error ? err.message : t("agencyFormPage", "notFound"));
@@ -79,31 +90,108 @@ export default function EditAgencyPage({ params }: { params: Promise<{ id: strin
         );
     }
 
+    const userColumns = [
+        {
+            key: "fullName",
+            label: t("columns", "name"),
+            sortable: false,
+            renderCell: (row: UserItem) => row.fullName,
+        },
+        {
+            key: "email",
+            label: t("columns", "email"),
+            sortable: false,
+            renderCell: (row: UserItem) => row.email,
+        },
+        {
+            key: "role",
+            label: t("columns", "role"),
+            sortable: false,
+            renderCell: (row: UserItem) => (
+                <StatusBadge
+                    label={row.role}
+                    tone={row.role === "ADMIN" ? "brand" : row.role === "AGENT" ? "accent" : "neutral"}
+                />
+            ),
+        },
+        {
+            key: "status",
+            label: t("columns", "status"),
+            sortable: false,
+            renderCell: (row: UserItem) => (
+                <StatusBadge
+                    label={row.isActive ? t("status", "active") : t("status", "inactive")}
+                    tone={row.isActive ? "success" : "neutral"}
+                />
+            ),
+        },
+    ];
+
     return (
         <CrudPageLayout
             title={t("agencyFormPage", "editTitle")}
             subtitle={t("agencyFormPage", "editSubtitle", { name: agency.name })}
             backHref="/internal/agencies"
+            actions={formActions}
         >
-            <CrudFormContainer
-                onSubmit={handleSubmit}
-                errorMessage={errorMessage}
-                submitLabel={t("actions", "saveChanges")}
-                cancelLabel={t("actions", "cancel")}
-                onCancel={() => router.push("/internal/agencies")}
-                isSubmitting={isSubmitting}
-            >
-                <Stack spacing={2}>
-                    <FormInput
-                        label={t("agencyFormPage", "nameLabel")}
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName((e.target as HTMLInputElement).value)}
-                        autoFocus
+            <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+                <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+                    <Tab label={t("agencyFormPage", "tabDetails")} />
+                    <Tab label={t("agencyFormPage", "tabUsers")} />
+                    <Tab label={t("agencyFormPage", "tabTariffs")} />
+                </Tabs>
+            </Box>
+
+            {activeTab === 0 && (
+                <CrudFormContainer
+                    onSubmit={handleSubmit}
+                    errorMessage={errorMessage}
+                    submitLabel={t("actions", "saveChanges")}
+                    cancelLabel={t("actions", "cancel")}
+                    onCancel={() => router.push("/internal/agencies")}
+                    isSubmitting={isSubmitting}
+                    onRenderActions={setFormActions}
+                >
+                    <Stack spacing={2}>
+                        <FormInput
+                            label={t("agencyFormPage", "nameLabel")}
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName((e.target as HTMLInputElement).value)}
+                            autoFocus
+                        />
+                        <AddressForm value={address} onChange={setAddress} />
+                    </Stack>
+                </CrudFormContainer>
+            )}
+
+            {activeTab === 1 && (
+                <Box>
+                    <Box sx={{ mb: 2 }}>
+                        <h3 style={{ margin: 0, marginBottom: "4px", fontSize: "1.1rem" }}>
+                            {t("agencyFormPage", "assignedUsers")}
+                        </h3>
+                        <p style={{ margin: 0, fontSize: "0.875rem", color: "#666" }}>
+                            {t("agencyFormPage", "assignedUsersSubtitle")}
+                        </p>
+                    </Box>
+                    <DataTable<UserItem>
+                        columns={userColumns}
+                        rows={users}
+                        loading={loadingUsers}
+                        emptyMessage={t("agencyFormPage", "noUsers")}
+                        t={t}
                     />
-                    <AddressForm value={address} onChange={setAddress} />
-                </Stack>
-            </CrudFormContainer>
+                </Box>
+            )}
+
+            {activeTab === 2 && (
+                <AgencyTariffConfig
+                    agencyId={agency.id}
+                    token={session.token}
+                    onNotify={(msg, type) => type === "error" ? showError(msg) : showSuccess(msg)}
+                />
+            )}
         </CrudPageLayout>
     );
 }

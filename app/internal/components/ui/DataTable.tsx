@@ -1,10 +1,11 @@
 "use client";
 
 import { DataGrid, type GridColDef, type GridSortModel } from "@mui/x-data-grid";
-import { Box, IconButton, Skeleton } from "@mui/material";
+import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import { useEffect, useMemo, useState } from "react";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -39,15 +40,23 @@ export interface DataTableProps<T extends { id: string }> {
   searchPlaceholder?: string;
   sortState?: SortState;
   onSort?: (column: string) => void;
+  toolbarLeft?: React.ReactNode;
+  renderCustomSearch?: (params: {
+    draft: string;
+    setDraft: (value: string) => void;
+    commitSearch: () => void;
+    searchPlaceholder: string;
+  }) => React.ReactNode;
   filterBar?: React.ReactNode;
   pagination?: PaginationState;
   rowActions?: (row: T) => React.ReactNode;
   headerRight?: React.ReactNode;
   footerLeft?: React.ReactNode;
   emptyMessage?: string;
+  t?: (namespace: any, key: string) => string;
 }
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const BASE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -61,13 +70,27 @@ export function DataTable<T extends { id: string }>({
   searchPlaceholder = "Search…",
   sortState,
   onSort,
+  toolbarLeft,
+  renderCustomSearch,
   filterBar,
   pagination,
   rowActions,
   headerRight,
   footerLeft,
   emptyMessage = "No records found.",
+  t,
 }: DataTableProps<T>) {
+  const { preferences } = useUserPreferences();
+
+  // Build page size options, ensuring the user's preferred size is always included
+  const PAGE_SIZE_OPTIONS = useMemo(() => {
+    const preferred = preferences.itemsPerPage;
+    const opts = BASE_PAGE_SIZE_OPTIONS.includes(preferred)
+      ? BASE_PAGE_SIZE_OPTIONS
+      : [...BASE_PAGE_SIZE_OPTIONS, preferred].sort((a, b) => a - b);
+    return opts;
+  }, [preferences.itemsPerPage]);
+
   // Convert custom ColumnDef to MUI GridColDef
   const muiColumns: GridColDef<T>[] = useMemo(() => {
     const cols: GridColDef<T>[] = columns.map((col) => ({
@@ -149,37 +172,47 @@ export function DataTable<T extends { id: string }>({
       {/* Toolbar */}
       <div className="dt-toolbar">
 
-        <div className="dt-toolbar-center">
-          {onSearch && (
-            <div className="dt-search-wrap">
-              <input
-                className="dt-search"
-                type="text"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
-                placeholder={searchPlaceholder}
-                aria-label={searchPlaceholder}
-              />
-              <IconButton
-                size="small"
-                onClick={() => { setDraft(""); if (onSearch) onSearch(""); }}
-                aria-label="Clear"
-                sx={{ visibility: draft ? "visible" : "hidden" }}
-              >
-                <CloseIcon fontSize="inherit" />
-              </IconButton>
-              <IconButton
-                className="dt-search-btn"
-                size="small"
-                onClick={commitSearch}
-                aria-label="Search"
-              >
-                <SearchIcon fontSize="inherit" color="primary" />
-              </IconButton>
-            </div>
+        <div className="dt-toolbar-left">
+          {renderCustomSearch ? (
+            renderCustomSearch({ draft, setDraft, commitSearch, searchPlaceholder })
+          ) : (
+            toolbarLeft
           )}
         </div>
+
+        {!renderCustomSearch && (
+          <div className="dt-toolbar-center">
+            {onSearch && (
+              <div className="dt-search-wrap">
+                <input
+                  className="dt-search"
+                  type="text"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
+                  placeholder={searchPlaceholder}
+                  aria-label={searchPlaceholder}
+                />
+                <IconButton
+                  size="small"
+                  onClick={() => { setDraft(""); if (onSearch) onSearch(""); }}
+                  aria-label="Clear"
+                  sx={{ visibility: draft ? "visible" : "hidden" }}
+                >
+                  <CloseIcon fontSize="inherit" />
+                </IconButton>
+                <IconButton
+                  className="dt-search-btn"
+                  size="small"
+                  onClick={commitSearch}
+                  aria-label="Search"
+                >
+                  <SearchIcon fontSize="inherit" color="primary" />
+                </IconButton>
+              </div>
+            )}
+          </div>
+        )}
         <div className="dt-toolbar-right">
           {headerRight}
         </div>
@@ -198,18 +231,17 @@ export function DataTable<T extends { id: string }>({
           columns={muiColumns}
           loading={false}
           pageSizeOptions={PAGE_SIZE_OPTIONS}
-          initialState={{
-            pagination: {
-              paginationModel: {
-                pageSize: pagination?.pageSize || 25,
-                page: pagination ? pagination.page - 1 : 0
-              }
-            },
+          paginationMode="server"
+          paginationModel={{
+            pageSize: pagination?.pageSize || preferences.itemsPerPage,
+            page: pagination ? pagination.page - 1 : 0
           }}
+          rowCount={pagination?.total || 0}
           sortModel={sortModel}
           onSortModelChange={handleSortModelChange}
           disableRowSelectionOnClick
           disableColumnMenu
+          hideFooter
           sx={{
             border: '0px solid rgba(0, 0, 0, 0.12)',
             borderRadius: '8px',
@@ -247,20 +279,58 @@ export function DataTable<T extends { id: string }>({
             '& .MuiDataGrid-columnSeparator': {
               display: 'none',
             },
-            '& .MuiDataGrid-footerContainer': {
-              borderTop: '1px solid rgba(0, 0, 0, 0.12)',
-            },
           }}
         />
       </Box>
 
-      {/* Footer for custom pagination */}
-      {pagination && footerLeft && (
-        <div className="dt-footer">
-          <div className="dt-footer-left">
+      {/* Custom pagination footer */}
+      {pagination && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: 1,
+            borderTop: '1px solid rgba(0, 0, 0, 0.12)',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {footerLeft}
-          </div>
-        </div>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '14px' }}>
+              <span>{t ? t('pagination', 'rowsPerPage') : 'Rows per page:'}</span>
+              <FormControl size="small" sx={{ minWidth: 70 }}>
+                <Select
+                  value={pagination.pageSize}
+                  onChange={(e) => pagination.onPageSizeChange(Number(e.target.value))}
+                  sx={{ fontSize: '14px' }}
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <MenuItem key={size} value={size}>
+                      {size}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            <Box sx={{ fontSize: '14px', color: 'text.secondary' }}>
+              {`${(pagination.page - 1) * pagination.pageSize + 1}-${Math.min(
+                pagination.page * pagination.pageSize,
+                pagination.total
+              )} of ${pagination.total}`}
+            </Box>
+            <Pagination
+              count={Math.ceil(pagination.total / pagination.pageSize)}
+              page={pagination.page}
+              onChange={(_, page) => pagination.onPageChange(page)}
+              color="primary"
+              shape="rounded"
+              showFirstButton
+              showLastButton
+            />
+          </Box>
+        </Box>
       )}
     </div>
   );

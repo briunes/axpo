@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Stack, Autocomplete, TextField, MenuItem, InputAdornment } from "@mui/material";
+import { Stack, Autocomplete, TextField, InputAdornment } from "@mui/material";
 import { Country, State } from "country-state-city";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { FormInput } from "../ui";
@@ -97,20 +97,16 @@ export function AddressForm({ value, onChange, disabled }: AddressFormProps) {
                         <FormSelect
                             label={t("addressForm", "provinceLabel")}
                             value={value.province ?? ""}
-                            onChange={(e) =>
-                                onChange({ ...value, province: e.target.value as string })
+                            onChange={(val) =>
+                                onChange({ ...value, province: val as string })
                             }
+                            options={[
+                                { value: "", label: t("addressForm", "provinceSelectPlaceholder") },
+                                ...provinces.map((s) => ({ value: s.name, label: s.name }))
+                            ]}
+                            placeholder={t("addressForm", "provinceSelectPlaceholder")}
                             disabled={disabled}
-                        >
-                            <MenuItem value="">
-                                <em>{t("addressForm", "provinceSelectPlaceholder")}</em>
-                            </MenuItem>
-                            {provinces.map((s) => (
-                                <MenuItem key={s.isoCode} value={s.name}>
-                                    {s.name}
-                                </MenuItem>
-                            ))}
-                        </FormSelect>
+                        />
                     ) : (
                         <FormInput
                             label={t("addressForm", "provinceLabel")}

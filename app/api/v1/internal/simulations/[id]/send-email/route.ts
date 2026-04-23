@@ -50,12 +50,13 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 export const POST = withErrorHandler(
   async (
     request: NextRequest,
-    context?: { params?: Record<string, string> },
+    context?: { params?: Promise<Record<string, string>> },
   ) => {
     const auth = await requireAuth(request);
     assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
 
-    const id = context?.params?.id || "";
+    const params = context?.params ? await context.params : {};
+    const id = params?.id || "";
 
     let body;
     try {
@@ -143,6 +144,7 @@ export const POST = withErrorHandler(
           },
         ];
       } catch (err) {
+        console.error("Failed to generate PDF attachment:", err);
         return NextResponse.json(
           { error: "Failed to generate PDF attachment" },
           { status: 500 },
@@ -150,13 +152,24 @@ export const POST = withErrorHandler(
       }
     }
 
-    await EmailService.sendEmail({
-      to,
-      subject,
-      html: htmlContent,
-      attachments,
-    });
+    try {
+      await EmailService.sendEmail({
+        to,
+        subject,
+        html: htmlContent,
+        attachments,
+        triggeredBy: "simulation-share",
+        triggeredByUserId: auth.userId,
+        relatedSimulationId: id,
+      });
 
-    return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true });
+    } catch (err) {
+      console.error("Failed to send simulation email:", err);
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Failed to send email" },
+        { status: 500 },
+      );
+    }
   },
 );

@@ -29,6 +29,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [formActions, setFormActions] = useState<React.ReactNode>(null);
 
     const fetchedRef = useRef(false);
     useEffect(() => {
@@ -97,6 +98,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
             title={t("clientFormPage", "editTitle")}
             subtitle={t("clientFormPage", "editSubtitle", { name: client.name })}
             backHref="/internal/clients"
+            actions={formActions}
         >
             <ClientForm
                 session={session}
@@ -110,6 +112,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
                 cancelLabel={t("actions", "cancel")}
                 onCancel={() => router.push("/internal/clients")}
                 mode="edit"
+                onRenderActions={setFormActions}
             />
         </CrudPageLayout>
     );

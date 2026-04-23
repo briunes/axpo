@@ -6,12 +6,16 @@ import { useAgencies } from "../components/hooks/useAgencies";
 import { useUsers } from "../components/hooks/useUsers";
 import { UsersModule } from "../components/modules";
 import { useAlerts } from "../components/shared";
+import { useActionButtons } from "../components/InternalWorkspace";
+import { useUserPreferences } from "../components/providers/UserPreferencesProvider";
 
 export default function UsersPage() {
   const [session] = useState(loadSession());
   const { showSuccess, showError } = useAlerts();
+  const onActionButtons = useActionButtons();
+  const { preferences } = useUserPreferences();
 
-  const usersActions = useUsers(session);
+  const usersActions = useUsers(session, preferences.itemsPerPage);
   const agenciesActions = useAgencies(session);
 
   const fetchedRef = useRef(false);
@@ -34,6 +38,7 @@ export default function UsersPage() {
       actions={usersActions}
       agencies={agenciesActions.agencies}
       onNotify={handleNotify}
+      onActionButtons={onActionButtons || undefined}
     />
   );
 }

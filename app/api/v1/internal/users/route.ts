@@ -61,6 +61,11 @@ const createUserSchema = z.object({
  *           enum: [ADMIN, AGENT, COMMERCIAL]
  *         description: Filter by role
  *       - in: query
+ *         name: agencyId
+ *         schema:
+ *           type: string
+ *         description: Filter by agency ID
+ *       - in: query
  *         name: orderBy
  *         schema:
  *           type: string
@@ -123,6 +128,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     Math.max(1, parseInt(sp.get("pageSize") || "25", 10)),
   );
   const search = sp.get("search") || undefined;
+  const roleFilter = sp.get("role") || undefined;
+  const agencyIdFilter = sp.get("agencyId") || undefined;
+  const includeDeleted =
+    sp.get("includeDeleted") === "true" && auth.role === UserRole.ADMIN;
   const rawOrderBy = sp.get("orderBy") || "createdAt";
   const sortDir: "asc" | "desc" = sp.get("sortDir") === "asc" ? "asc" : "desc";
 
@@ -144,7 +153,18 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         ],
       }
     : {};
-  const where = { ...baseWhere, ...searchWhere };
+  const roleWhere = roleFilter ? { role: roleFilter as UserRole } : {};
+  const agencyWhere =
+    agencyIdFilter && auth.role === UserRole.ADMIN
+      ? { agencyId: agencyIdFilter }
+      : {};
+  const where = {
+    ...baseWhere,
+    ...searchWhere,
+    ...roleWhere,
+    ...agencyWhere,
+    ...(includeDeleted ? {} : { isDeleted: false }), // Only filter out deleted if not including them
+  };
 
   const [users, total] = await Promise.all([
     prisma.user.findMany({

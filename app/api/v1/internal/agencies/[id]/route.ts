@@ -159,7 +159,7 @@ export const GET = withErrorHandler(
     }
 
     const agency = await prisma.agency.findUnique({ where: { id } });
-    if (!agency) {
+    if (!agency || agency.isDeleted) {
       throw new NotFoundError("Agency", id);
     }
 
@@ -184,7 +184,7 @@ export const PATCH = withErrorHandler(
     const payload = updateAgencySchema.parse(body);
 
     const existing = await prisma.agency.findUnique({ where: { id } });
-    if (!existing) {
+    if (!existing || existing.isDeleted) {
       throw new NotFoundError("Agency", id);
     }
 
@@ -217,5 +217,53 @@ export const PATCH = withErrorHandler(
     });
 
     return ResponseHandler.ok(updated, 200);
+  },
+);
+
+/**
+ * @swagger
+ * /api/v1/internal/agencies/{id}:
+ *   delete:
+ *     tags: [Agencies]
+ *     summary: Delete agency (Admin only - deactivates the agency)
+ *     security:
+ *       - bearerAuth: []
+ */
+export const DELETE = withErrorHandler(
+  async (
+    request: NextRequest,
+    context?: { params?: Record<string, string> },
+  ) => {
+    const auth = await requireAuth(request);
+    assertRole(auth, [UserRole.ADMIN]);
+
+    const id = context?.params?.id;
+    if (!id) {
+      throw new ValidationError("Agency id parameter is required");
+    }
+
+    const existing = await prisma.agency.findUnique({ where: { id } });
+    if (!existing || existing.isDeleted) {
+      throw new NotFoundError("Agency", id);
+    }
+
+    // Admin sets isDeleted = true (soft delete)
+    await prisma.agency.update({
+      where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        isActive: false,
+      },
+    });
+
+    await AuditService.logEvent({
+      actorUserId: auth.userId,
+      eventType: "AGENCY_DELETED",
+      targetType: "AGENCY",
+      targetId: id,
+    });
+
+    return ResponseHandler.ok({ agencyId: id, deleted: true }, 200);
   },
 );

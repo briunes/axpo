@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useLayoutEffect } from "react";
+import Skeleton from "@mui/material/Skeleton";
 import type { SessionState } from "../../lib/authSession";
 import type { AnalyticsActions } from "../hooks/useAnalytics";
 import { isAdmin } from "../../lib/internalApi";
@@ -8,6 +9,245 @@ import { EmptyState, LoadingState } from "../shared";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { AdminAnalyticsView } from "./AdminAnalyticsView";
 import { AgentAnalyticsView } from "./AgentAnalyticsView";
+
+// ─── Skeleton components ──────────────────────────────────────────────────────
+
+function KpiCardSkeleton() {
+  return (
+    <div
+      className="panel-card"
+      style={{
+        flex: "1 1 160px",
+        borderRadius: 12,
+        padding: "18px 20px",
+        minWidth: 160,
+      }}
+    >
+      <Skeleton
+        variant="text"
+        width="60%"
+        height={12}
+        sx={{ marginBottom: 1, bgcolor: "var(--scheme-neutral-800)" }}
+      />
+      <Skeleton
+        variant="text"
+        width="80%"
+        height={32}
+        sx={{ marginBottom: 1, bgcolor: "var(--scheme-neutral-800)" }}
+      />
+      <Skeleton
+        variant="text"
+        width="50%"
+        height={10}
+        sx={{ bgcolor: "var(--scheme-neutral-800)" }}
+      />
+    </div>
+  );
+}
+
+function ChartSkeleton({ height = 200 }: { height?: number }) {
+  return (
+    <div
+      className="panel-card"
+      style={{
+        borderRadius: 10,
+        padding: "18px 20px",
+      }}
+    >
+      <Skeleton
+        variant="text"
+        width="40%"
+        height={12}
+        sx={{ marginBottom: 2, bgcolor: "var(--scheme-neutral-800)" }}
+      />
+      <Skeleton
+        variant="rectangular"
+        width="100%"
+        height={height}
+        sx={{ borderRadius: 1, bgcolor: "var(--scheme-neutral-800)" }}
+      />
+    </div>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <div
+      className="panel-card"
+      style={{
+        borderRadius: 10,
+        padding: "18px 20px",
+      }}
+    >
+      <div style={{ marginBottom: 12 }}>
+        <Skeleton
+          variant="text"
+          width="30%"
+          height={16}
+          sx={{ marginBottom: 0.5, bgcolor: "var(--scheme-neutral-800)" }}
+        />
+        <Skeleton
+          variant="text"
+          width="60%"
+          height={12}
+          sx={{ bgcolor: "var(--scheme-neutral-800)" }}
+        />
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          marginTop: 20,
+        }}
+      >
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Skeleton
+            key={i}
+            variant="rectangular"
+            width="100%"
+            height={40}
+            sx={{ borderRadius: 1, bgcolor: "var(--scheme-neutral-800)" }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function AdminAnalyticsViewSkeleton() {
+  return (
+    <>
+      {/* KPIs */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <KpiCardSkeleton key={i} />
+        ))}
+      </div>
+
+      {/* Funnel */}
+      <ChartSkeleton height={180} />
+
+      {/* Charts */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <ChartSkeleton />
+        <ChartSkeleton />
+      </div>
+
+      {/* Table */}
+      <TableSkeleton />
+
+      {/* Alerts */}
+      <div
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}
+      >
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="panel-card"
+            style={{ padding: "16px", borderRadius: 8 }}
+          >
+            <Skeleton
+              variant="text"
+              width="60%"
+              height={10}
+              sx={{ marginBottom: 0.5, bgcolor: "var(--scheme-neutral-800)" }}
+            />
+            <Skeleton
+              variant="text"
+              width="40%"
+              height={24}
+              sx={{ marginBottom: 0.5, bgcolor: "var(--scheme-neutral-800)" }}
+            />
+            <Skeleton
+              variant="text"
+              width="80%"
+              height={10}
+              sx={{ bgcolor: "var(--scheme-neutral-800)" }}
+            />
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+export function AgentAnalyticsViewSkeleton() {
+  return (
+    <>
+      {/* KPIs */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <KpiCardSkeleton key={i} />
+        ))}
+      </div>
+
+      {/* Funnel */}
+      <ChartSkeleton height={180} />
+
+      {/* Activity Charts */}
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
+        <ChartSkeleton height={220} />
+        <ChartSkeleton height={220} />
+      </div>
+
+      {/* Follow-ups */}
+      <div
+        className="panel-card"
+        style={{
+          padding: "20px",
+          borderRadius: 12,
+        }}
+      >
+        <Skeleton
+          variant="text"
+          width="40%"
+          height={16}
+          sx={{ marginBottom: 2, bgcolor: "var(--scheme-neutral-800)" }}
+        />
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}
+        >
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              style={{
+                padding: "16px",
+                background: "var(--scheme-neutral-950)",
+                borderRadius: 8,
+              }}
+            >
+              <Skeleton
+                variant="text"
+                width="60%"
+                height={10}
+                sx={{ marginBottom: 0.5, bgcolor: "var(--scheme-neutral-800)" }}
+              />
+              <Skeleton
+                variant="text"
+                width="40%"
+                height={28}
+                sx={{ marginBottom: 0.5, bgcolor: "var(--scheme-neutral-800)" }}
+              />
+              <Skeleton
+                variant="text"
+                width="50%"
+                height={10}
+                sx={{ bgcolor: "var(--scheme-neutral-800)" }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
+      <TableSkeleton />
+
+      {/* Trend Chart */}
+      <ChartSkeleton />
+    </>
+  );
+}
 
 // ─── Helper components ────────────────────────────────────────────────────────
 
@@ -52,9 +292,10 @@ interface AnalyticsModuleProps {
   session: SessionState;
   actions: AnalyticsActions;
   onNotify?: (text: string, tone: "success" | "error") => void;
+  onActionButtons?: (buttons: React.ReactNode) => void;
 }
 
-export function AnalyticsModule({ session, actions }: AnalyticsModuleProps) {
+export function AnalyticsModule({ session, actions, onNotify, onActionButtons }: AnalyticsModuleProps) {
   const { t } = useI18n();
   const { analytics, loading, errorText, refresh } = actions;
   const [selectedDays, setSelectedDays] = useState(30);
@@ -67,40 +308,31 @@ export function AnalyticsModule({ session, actions }: AnalyticsModuleProps) {
     refresh(d);
   };
 
+  // Render action buttons for topbar
+  useLayoutEffect(() => {
+    onActionButtons?.(
+      <>
+        <DaysFilter selected={selectedDays} onChange={handleDaysChange} loading={loading} />
+        <button
+          type="button"
+          className="sp-btn-secondary"
+          onClick={() => refresh(selectedDays)}
+          disabled={loading}
+          style={{ fontSize: 12, padding: "6px 14px" }}
+        >
+          {loading ? t("common", "loading") : `↺ ${t("actions", "refresh")}`}
+        </button>
+      </>
+    );
+    return () => onActionButtons?.(null);
+  }, [onActionButtons, selectedDays, handleDaysChange, loading, t, refresh]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {/* Header */}
-      <div className="section-header">
-        <div>
-          <h2 className="section-title">
-            {isAdminView
-              ? t("analyticsModule", "titleAdmin") || t("nav", "analytics")
-              : t("analyticsModule", "titleAgent") || t("nav", "analytics")}
-          </h2>
-          <p className="section-subtitle">
-            {isAdminView
-              ? t("analyticsModule", "subtitleAdmin") || "Overview of all agencies and platform performance"
-              : t("analyticsModule", "subtitleAgent") || "Your agency's performance and team activity"}
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <DaysFilter selected={selectedDays} onChange={handleDaysChange} loading={loading} />
-          <button
-            type="button"
-            className="sp-btn-secondary"
-            onClick={() => refresh(selectedDays)}
-            disabled={loading}
-            style={{ fontSize: 12, padding: "6px 14px" }}
-          >
-            {loading ? t("common", "loading") : `↺ ${t("actions", "refresh")}`}
-          </button>
-        </div>
-      </div>
-
       {errorText && <div className="sp-panel-error">{errorText}</div>}
 
-      {loading && !analytics ? (
-        <LoadingState message={t("analyticsModule", "loadingMessage")} />
+      {loading ? (
+        isAdminView ? <AdminAnalyticsViewSkeleton /> : <AgentAnalyticsViewSkeleton />
       ) : !analytics ? (
         <EmptyState message={t("analyticsModule", "noData")} />
       ) : (

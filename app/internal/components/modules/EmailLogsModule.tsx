@@ -179,10 +179,12 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             width: "180",
             renderCell: (log) => (
                 <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
-                    {new Date(log.sentAt).toLocaleDateString("en-GB", {
+                    {new Date(log.sentAt).toLocaleString("en-GB", {
                         day: "2-digit",
                         month: "2-digit",
                         year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
                     })}{" "}
                     {new Date(log.sentAt).toLocaleTimeString("en-GB", {
                         hour: "2-digit",
@@ -320,6 +322,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                         setPage(1);
                     },
                 }}
+                t={t}
                 rowActions={(log) => (
                     <Button
                         startIcon={<VisibilityIcon />}

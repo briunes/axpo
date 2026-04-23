@@ -24,6 +24,8 @@ model Agency {
   province     String?
   country      String?
   isActive     Boolean    @default(true)
+  isDeleted    Boolean    @default(false)
+  deletedAt    DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -32,8 +34,24 @@ model Agency {
   simulations         Simulation[]
   baseValueSets       BaseValueSet[]
   clients             Client[]
+  agencyTariffs       AgencyTariff[]
 
   @@map("agencies")
+}
+
+model AgencyTariff {
+  id           String   @id @default(cuid())
+  agencyId     String
+  agency       Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  
+  tariffType   String   // "ELEC:2.0TD", "ELEC:3.0TD", "ELEC:6.1TD", "GAS:RL01", etc.
+  isEnabled    Boolean  @default(true)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([agencyId, tariffType])
+  @@map("agency_tariffs")
 }
 
 model Client {
@@ -70,13 +88,17 @@ model User {
   commercialPhone String?
   commercialEmail String?
   otherDetails   String?
-  passwordHash         String?   // Internal authentication password hash
-  setupToken           String?   @unique // One-time token for first-time password setup
-  setupTokenExpiresAt  DateTime? // Expiry for the setup token (72 hours from user creation)
+  passwordHash                String?   // Internal authentication password hash
+  setupToken                  String?   @unique // One-time token for first-time password setup
+  setupTokenExpiresAt         DateTime? // Expiry for the setup token (72 hours from user creation)
+  passwordResetToken          String?   @unique // One-time token for password reset
+  passwordResetTokenExpiresAt DateTime? // Expiry for the password reset token
   pinHash        String   // Global PIN (hashed only, visible in backoffice as masked PIN for client sharing)
   pinCurrent     String?  // Plaintext PIN stored for display in backoffice (set at creation/rotation)
   pinRotatedAt   DateTime @default(now())
   isActive       Boolean  @default(true)
+  isDeleted      Boolean  @default(false)
+  deletedAt      DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -93,8 +115,27 @@ model User {
   triggeredEmailLogs  EmailLog[]   // Emails triggered by this user
   createdUsers        User[]   @relation("UserCreatedBy")
   updatedUsers        User[]   @relation("UserUpdatedBy")
+  preferences         UserPreferences?
 
   @@map("users")
+}
+
+model UserPreferences {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Display preferences (null = use system default)
+  dateFormat       String?  // DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD
+  timeFormat       String?  // 12h, 24h
+  timezone         String?  // Europe/Madrid, America/New_York, etc.
+  numberFormat     String?  // eu (1.234,56), us (1,234.56)
+  itemsPerPage     Int?     // Pagination preference
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("user_preferences")
 }
 
 enum UserRole {
@@ -119,6 +160,11 @@ model Simulation {
   publicToken      String?  @unique // Random long token for public access
   pinHashSnapshot  String?  // PIN snapshot at share time (allows clients to access even after user PIN rotation)
   pinSnapshot      String?  // Plaintext PIN at snapshot time (for backoffice display)
+  invoiceFilePath  String?  // Path to uploaded invoice file (deprecated - use invoiceFileData)
+  invoiceFileData  Bytes?   // Invoice file binary data
+  invoiceFileName  String?  // Original invoice filename
+  invoiceFileMimeType String? // Invoice file MIME type (application/pdf, image/jpeg, etc.)
+  invoiceFileSize  Int?     // Invoice file size in bytes
   isDeleted        Boolean  @default(false) // Soft delete
   deletedAt        DateTime?
   sharedAt         DateTime?
@@ -166,6 +212,7 @@ model BaseValueSet {
   version          Int      @default(1)
   
   isActive         Boolean  @default(true)
+  isProduction     Boolean  @default(false) // Production vs testing version control
   isDeleted        Boolean  @default(false) // Soft delete
   deletedAt        DateTime?
   
@@ -248,6 +295,11 @@ model SystemConfig {
   simulationShareText       String   @default("Your simulation is ready. Access it with PIN: {PIN}")
   enablePixelTracking       Boolean  @default(true)
   
+  // Cron job settings
+  cronExpirationEnabled     Boolean  @default(true)         // Enable/disable automatic expiration cron job
+  cronExpirationSchedule    String   @default("0 2 * * *")  // Cron schedule expression (default: daily at 2 AM)
+  cronExpirationTimezone    String   @default("UTC")        // Timezone for cron execution
+  
   // User & Auth settings
   requirePinForAccess       Boolean  @default(true)
   pinLength                 Int      @default(4)
@@ -274,6 +326,35 @@ model SystemConfig {
   
   // Email template settings for automated emails
   userCreationEmailTemplateId  String?  // Template to use when creating new users
+  passwordResetEmailTemplateId String?  // Template to use when resetting password
+  
+  // PDF template settings for simulations
+  defaultPdfTemplateGasId      String?  // Default PDF template for gas simulations
+  defaultPdfTemplateElectricityId String? // Default PDF template for electricity simulations
+  
+  // Password setup token settings
+  setupTokenValidityHours   Int      @default(72)          // Hours before setup password token expires (default 72h = 3 days)
+  passwordResetTokenValidityHours Int @default(24)         // Hours before password reset token expires (default 24h = 1 day)
+  
+  // Calculation formula parameters
+  ivaRate                   Decimal  @default(0.21)        // IVA (VAT) rate (21%)
+  electricityTaxRate        Decimal  @default(0.051127)    // Electricity tax rate (5.1127%)
+  
+  // System-wide user preference defaults
+  defaultDateFormat         String   @default("DD/MM/YYYY")  // DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD
+  defaultTimeFormat         String   @default("24h")         // 12h, 24h
+  defaultTimezone           String   @default("Europe/Madrid")
+  defaultNumberFormat       String   @default("eu")          // eu (1.234,56), us (1,234.56)
+  defaultItemsPerPage       Int      @default(10)            // Default pagination
+  
+  // LLM settings for simulation data extraction
+  llmProvider               String?  @default("ollama")      // ollama, openai, anthropic, azure-openai, google, custom
+  llmApiKey                 String?                          // API key for LLM service (not needed for Ollama)
+  llmModelName              String?  @default("llama3.2")    // Model to use (e.g., llama3.2, gpt-4, claude-3-opus)
+  llmBaseUrl                String?                          // Base URL for LLM API (for Ollama or custom endpoints)
+  llmTemperature            Decimal? @default(0.1)           // Temperature for LLM responses (0.0-2.0)
+  llmMaxTokens              Int?     @default(2000)          // Maximum tokens for LLM responses
+  llmEnabled                Boolean  @default(false)         // Enable/disable LLM features
   
   updatedAt                 DateTime @updatedAt
   createdAt                 DateTime @default(now())
@@ -286,9 +367,12 @@ model PdfTemplate {
   name        String
   description String
   type        String   // simulation-output, simulation-detailed, contract, price-history, invoice, report
+  commodity   String?  // ELECTRICITY, GAS - filters which simulations can use this template
   active      Boolean  @default(true)
   htmlContent String   @db.Text
   editableSections Json? // Defines editable sections with defaults: {"INTRO_TEXT": {"label": "Intro", "default": "Default text", "multiline": true}}
+  isDeleted   Boolean  @default(false)
+  deletedAt   DateTime?
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -305,6 +389,8 @@ model EmailTemplate {
   subject     String
   htmlContent String   @db.Text
   editableSections Json? // Defines editable sections with defaults: {"INTRO_TEXT": {"label": "Intro", "default": "Default text", "multiline": true}}
+  isDeleted   Boolean  @default(false)
+  deletedAt   DateTime?
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -334,6 +420,8 @@ model TemplateVariable {
   example     String?  // Example value
   sortOrder   Int      @default(0)
   active      Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+  deletedAt   DateTime?
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -376,4 +464,34 @@ model EmailLog {
   @@index([triggeredBy])
   @@index([status])
   @@index([triggeredByUserId])
+}
+
+model CronLog {
+  id              String   @id @default(cuid())
+  executedAt      DateTime @default(now())
+  
+  // Job identification
+  jobName         String   // e.g., "simulation-expiration"
+  jobType         String   // e.g., "EXPIRATION", "CLEANUP", "SYNC"
+  
+  // Execution status
+  status          String   // "SUCCESS", "FAILED"
+  
+  // Execution details
+  duration        Int?     // Duration in milliseconds
+  totalProcessed  Int      @default(0) // Number of items processed
+  totalAffected   Int      @default(0) // Number of items affected/expired/etc
+  
+  // Additional metadata
+  metadata        Json?    // Store job-specific data (e.g., expired IDs, schedule, timezone)
+  
+  // Error information
+  errorMessage    String?  @db.Text
+  errorStack      String?  @db.Text
+  
+  @@map("cron_logs")
+  @@index([executedAt])
+  @@index([jobName])
+  @@index([jobType])
+  @@index([status])
 }

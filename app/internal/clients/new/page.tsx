@@ -28,6 +28,7 @@ export default function NewClientPage() {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [formActions, setFormActions] = useState<React.ReactNode>(null);
 
     const fetchedRef = useRef(false);
     useEffect(() => {
@@ -77,6 +78,7 @@ export default function NewClientPage() {
             title={t("clientFormPage", "newTitle")}
             subtitle={t("clientFormPage", "newSubtitle")}
             backHref="/internal/clients"
+            actions={formActions}
         >
             <ClientForm
                 session={session}
@@ -90,6 +92,7 @@ export default function NewClientPage() {
                 cancelLabel={t("actions", "cancel")}
                 onCancel={() => router.push("/internal/clients")}
                 mode="create"
+                onRenderActions={setFormActions}
             />
         </CrudPageLayout>
     );

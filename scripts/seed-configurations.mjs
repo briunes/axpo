@@ -21,6 +21,7 @@ async function main() {
             enableAuditLogsModule: true,
             defaultDashboardView: "COMMERCIAL",
             enableRealtimeReports: false,
+            setupTokenValidityHours: 72, // 3 days default for password setup tokens
         },
     });
     console.log("✓ System config created");
@@ -31,6 +32,7 @@ async function main() {
             name: "Standard Simulation PDF",
             description: "Default simulation output with pricing details",
             type: "simulation-output",
+            commodity: "ELECTRICITY",
             active: true,
             htmlContent: `<!DOCTYPE html>
 <html>

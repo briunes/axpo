@@ -156,7 +156,7 @@ function buildHistoryHtml(
     // If a price-history template is selected, inject the tables and all variables
     if (template?.htmlContent) {
         const createdAt = simulation?.createdAt
-            ? new Date(simulation.createdAt).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })
+            ? new Date(simulation.createdAt).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
             : "";
 
         return template.htmlContent

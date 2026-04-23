@@ -5,11 +5,13 @@ import { loadSession } from "../lib/authSession";
 import { useAnalytics } from "../components/hooks/useAnalytics";
 import { AnalyticsModule } from "../components/modules";
 import { useAlerts } from "../components/shared";
+import { useActionButtons } from "../components/InternalWorkspace";
 
 export default function AnalyticsPage() {
   const [session] = useState(loadSession());
   const { showSuccess, showError } = useAlerts();
   const analyticsActions = useAnalytics(session);
+  const onActionButtons = useActionButtons();
 
   const handleNotify = (text: string, tone: "success" | "error") => {
     tone === "success" ? showSuccess(text) : showError(text);
@@ -22,6 +24,7 @@ export default function AnalyticsPage() {
       session={session}
       actions={analyticsActions}
       onNotify={handleNotify}
+      onActionButtons={onActionButtons || undefined}
     />
   );
 }

@@ -117,25 +117,112 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
   assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
 
-  const simulations = await prisma.simulation.findMany({
-    where: SimulationService.buildSimulationFilter(auth),
-    include: {
-      ownerUser: { select: { id: true, fullName: true, email: true } },
-      client: { select: { id: true, name: true } },
-      versions: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { payloadJson: true },
+  const sp = request.nextUrl.searchParams;
+  const page = parseInt(sp.get("page") || "1", 10);
+  const pageSize = parseInt(sp.get("pageSize") || "25", 10);
+  const orderBy = sp.get("orderBy") || "updatedAt";
+  const sortDir = (sp.get("sortDir") || "desc") as "asc" | "desc";
+  const includeDeleted =
+    sp.get("includeDeleted") === "true" && auth.role === UserRole.ADMIN;
+  const search = sp.get("search") || undefined;
+  const ownerUserId = sp.get("ownerUserId") || undefined;
+  const clientId = sp.get("clientId") || undefined;
+  const cups = sp.get("cups") || undefined;
+  const status = sp.get("status") || undefined;
+
+  const baseWhere = SimulationService.buildSimulationFilter(
+    auth,
+    includeDeleted,
+  );
+
+  const where = {
+    ...baseWhere,
+    ...(ownerUserId ? { ownerUserId } : {}),
+    ...(clientId ? { clientId } : {}),
+    ...(status ? { status } : {}),
+    ...(search
+      ? {
+          OR: [
+            {
+              client: {
+                name: { contains: search, mode: "insensitive" as const },
+              },
+            },
+            {
+              ownerUser: {
+                fullName: { contains: search, mode: "insensitive" as const },
+              },
+            },
+          ],
+        }
+      : {}),
+    ...(cups
+      ? {
+          versions: {
+            some: {
+              OR: [
+                {
+                  payloadJson: {
+                    path: ["electricity", "clientData", "cups"],
+                    string_contains: cups,
+                  },
+                },
+                {
+                  payloadJson: {
+                    path: ["gas", "clientData", "cups"],
+                    string_contains: cups,
+                  },
+                },
+              ],
+            },
+          },
+        }
+      : {}),
+  };
+
+  const [simulations, total] = await Promise.all([
+    prisma.simulation.findMany({
+      where,
+      select: {
+        id: true,
+        agencyId: true,
+        ownerUserId: true,
+        clientId: true,
+        status: true,
+        isDeleted: true,
+        deletedAt: true,
+        sharedAt: true,
+        publicToken: true,
+        pinSnapshot: true,
+        invoiceFilePath: true,
+        invoiceFileName: true,
+        invoiceFileSize: true,
+        expiresAt: true,
+        createdAt: true,
+        updatedAt: true,
+        ownerUser: { select: { id: true, fullName: true, email: true } },
+        client: { select: { id: true, name: true } },
+        versions: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { payloadJson: true },
+        },
       },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
+      orderBy: { [orderBy]: sortDir },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.simulation.count({ where }),
+  ]);
 
   // Attach payloadJson and extract CUPS from latest version
   const items = simulations.map((sim) => {
     const latestVersion = sim.versions[0];
     const payload = latestVersion?.payloadJson as any;
-    const cupsNumber = payload?.electricity?.cups || null;
+    const cupsNumber =
+      payload?.electricity?.clientData?.cups ||
+      payload?.gas?.clientData?.cups ||
+      null;
 
     const { versions, ...simWithoutVersions } = sim;
     return {
@@ -145,7 +232,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     };
   });
 
-  return ResponseHandler.ok({ items }, 200);
+  return ResponseHandler.ok({ items, total }, 200);
 });
 
 export const POST = withErrorHandler(async (request: NextRequest) => {

@@ -32,6 +32,9 @@ export interface SimulationItem {
   sharedAt?: string | null;
   publicToken?: string | null;
   pinSnapshot?: string | null;
+  invoiceFilePath?: string | null;
+  invoiceFileName?: string | null;
+  invoiceFileSize?: number | null;
   expiresAt: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -46,6 +49,7 @@ export interface SimulationItem {
 
 interface ListSimulationsResult {
   items: SimulationItem[];
+  total: number;
 }
 
 export interface AgencyItem {
@@ -83,6 +87,7 @@ export interface ListAgenciesParams {
   search?: string;
   orderBy?: string;
   sortDir?: "asc" | "desc";
+  includeDeleted?: boolean;
 }
 
 export interface ListAgenciesResponse {
@@ -121,6 +126,7 @@ export interface ListClientsParams {
   search?: string;
   orderBy?: string;
   sortDir?: "asc" | "desc";
+  includeDeleted?: boolean;
 }
 
 export interface ListClientsResponse {
@@ -220,6 +226,7 @@ export interface BaseValueSetItem {
   sourceScope?: string | null;
   version: number;
   isActive: boolean;
+  isProduction: boolean;
   isDeleted: boolean;
   createdBy: string;
   createdByUser?: {
@@ -459,10 +466,74 @@ export async function setupPassword(
   return parseApiResponse<LoginResult>(response, "Password setup failed");
 }
 
+export async function forgotPassword(
+  email: string,
+): Promise<{ success: boolean }> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/auth/forgot-password`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email }),
+    },
+  );
+  return parseApiResponse<{ success: boolean }>(
+    response,
+    "Password reset request failed",
+  );
+}
+
+export async function resetPassword(
+  token: string,
+  password: string,
+): Promise<LoginResult> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/auth/reset-password`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, password }),
+    },
+  );
+  return parseApiResponse<LoginResult>(response, "Password reset failed");
+}
+
+export interface ListSimulationsParams {
+  page?: number;
+  pageSize?: number;
+  orderBy?: string;
+  sortDir?: "asc" | "desc";
+  includeDeleted?: boolean;
+  // filters
+  search?: string;
+  ownerUserId?: string;
+  clientId?: string;
+  cups?: string;
+  status?: string;
+}
+
 export async function listSimulations(
   token: string,
-): Promise<SimulationItem[]> {
-  const response = await fetch(`${baseUrl}/api/v1/internal/simulations`, {
+  params?: ListSimulationsParams,
+): Promise<{ items: SimulationItem[]; total: number }> {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.set("page", params.page.toString());
+  if (params?.pageSize)
+    searchParams.set("pageSize", params.pageSize.toString());
+  if (params?.orderBy) searchParams.set("orderBy", params.orderBy);
+  if (params?.sortDir) searchParams.set("sortDir", params.sortDir);
+  if (params?.includeDeleted) searchParams.set("includeDeleted", "true");
+  if (params?.search) searchParams.set("search", params.search);
+  if (params?.ownerUserId) searchParams.set("ownerUserId", params.ownerUserId);
+  if (params?.clientId) searchParams.set("clientId", params.clientId);
+  if (params?.cups) searchParams.set("cups", params.cups);
+  if (params?.status) searchParams.set("status", params.status);
+
+  const url = `${baseUrl}/api/v1/internal/simulations${
+    searchParams.toString() ? `?${searchParams.toString()}` : ""
+  }`;
+
+  const response = await fetch(url, {
     method: "GET",
     headers: {
       authorization: `Bearer ${token}`,
@@ -474,7 +545,7 @@ export async function listSimulations(
     response,
     "Simulation list failed",
   );
-  return body.items;
+  return { items: body.items, total: body.total || body.items.length };
 }
 
 export async function getSimulation(
@@ -725,8 +796,11 @@ export interface ListUsersParams {
   page?: number;
   pageSize?: number;
   search?: string;
+  role?: string;
+  agencyId?: string;
   orderBy?: string;
   sortDir?: "asc" | "desc";
+  includeDeleted?: boolean;
 }
 
 export interface ListUsersResponse {
@@ -744,8 +818,11 @@ export async function listUsers(
   if (params?.page) qs.set("page", String(params.page));
   if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
   if (params?.search) qs.set("search", params.search);
+  if (params?.role) qs.set("role", params.role);
+  if (params?.agencyId) qs.set("agencyId", params.agencyId);
   if (params?.orderBy) qs.set("orderBy", params.orderBy);
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
+  if (params?.includeDeleted) qs.set("includeDeleted", "true");
   const url = `${baseUrl}/api/v1/internal/users${qs.toString() ? `?${qs}` : ""}`;
   const response = await fetch(url, {
     method: "GET",
@@ -821,6 +898,19 @@ export async function rotateUserPin(
   return parseApiResponse<RotatePinResult>(response, "Rotate user PIN failed");
 }
 
+export async function deleteUser(token: string, userId: string): Promise<void> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/users/${userId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+    body: JSON.stringify({}),
+  });
+
+  await parseApiResponse<{ userId: string; deleted: boolean }>(
+    response,
+    "Delete user failed",
+  );
+}
+
 export async function listAgencies(
   token: string,
   params?: ListAgenciesParams,
@@ -831,6 +921,7 @@ export async function listAgencies(
   if (params?.search) qs.set("search", params.search);
   if (params?.orderBy) qs.set("orderBy", params.orderBy);
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
+  if (params?.includeDeleted) qs.set("includeDeleted", "true");
   const url = `${baseUrl}/api/v1/internal/agencies${qs.toString() ? `?${qs}` : ""}`;
   const response = await fetch(url, {
     method: "GET",
@@ -894,6 +985,25 @@ export async function updateAgencyStatus(
   return updateAgency(token, agencyId, { isActive });
 }
 
+export async function deleteAgency(
+  token: string,
+  agencyId: string,
+): Promise<void> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/agencies/${agencyId}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(token),
+      body: JSON.stringify({}),
+    },
+  );
+
+  await parseApiResponse<{ agencyId: string; deleted: boolean }>(
+    response,
+    "Delete agency failed",
+  );
+}
+
 export async function listClients(
   token: string,
   params?: ListClientsParams,
@@ -904,6 +1014,7 @@ export async function listClients(
   if (params?.search) qs.set("search", params.search);
   if (params?.orderBy) qs.set("orderBy", params.orderBy);
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
+  if (params?.includeDeleted) qs.set("includeDeleted", "true");
   const url = `${baseUrl}/api/v1/internal/clients${qs.toString() ? `?${qs}` : ""}`;
   const response = await fetch(url, {
     method: "GET",
@@ -1069,6 +1180,26 @@ export async function updateBaseValueSet(
   return parseApiResponse<BaseValueSetItem>(
     response,
     "Update base value set failed",
+  );
+}
+
+export async function toggleBaseValueSetProduction(
+  token: string,
+  setId: string,
+  isProduction: boolean,
+): Promise<BaseValueSetItem> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/base-values/${setId}/production`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify({ isProduction }),
+    },
+  );
+
+  return parseApiResponse<BaseValueSetItem>(
+    response,
+    "Toggle production flag failed",
   );
 }
 

@@ -15,6 +15,37 @@ export const translations = {
       signIn: "Sign in",
       validationError: "Provide a valid email and password.",
       authFailed: "Authentication failed.",
+      forgotPassword: "Forgot your password?",
+    },
+    forgotPassword: {
+      title: "Reset your password",
+      subtitle:
+        "Enter your email and we'll send you a link to reset your password.",
+      emailLabel: "Email",
+      emailPlaceholder: "your@email.com",
+      emailHint: "Enter the email associated with your account.",
+      invalidEmail: "Please enter a valid email address.",
+      submitting: "Sending reset link…",
+      submit: "Send reset link",
+      requestFailed: "Failed to send reset link. Please try again.",
+      successMessage:
+        "If an account exists with this email, you will receive a password reset link shortly. Please check your inbox.",
+      backToLogin: "Back to login",
+    },
+    resetPassword: {
+      title: "Reset your password",
+      subtitle: "Choose a new secure password for your account.",
+      newPassword: "New password",
+      confirmPassword: "Confirm password",
+      passwordHint:
+        "Min. 12 characters with uppercase, lowercase, number and special character.",
+      passwordMismatch: "Passwords do not match.",
+      submitting: "Resetting password…",
+      submit: "Reset password & sign in",
+      invalidToken: "This reset link is invalid or has already been used.",
+      expiredToken: "This reset link has expired. Please request a new one.",
+      success: "Password reset successfully. Redirecting…",
+      missingToken: "No reset token found in the link.",
     },
     setupPassword: {
       title: "Set your password",
@@ -58,6 +89,7 @@ export const translations = {
       saving: "Saving…",
       cancel: "Cancel",
       confirm: "Confirm",
+      edit: "Edit",
       signOut: "Sign out",
       newSimulation: "New simulation",
       newUser: "New user",
@@ -71,6 +103,7 @@ export const translations = {
       duplicate: "Duplicate",
       link: "Link",
       archive: "Archive",
+      delete: "Delete",
       activate: "Activate",
       deactivate: "Deactivate",
       rotatePin: "Rotate PIN",
@@ -115,6 +148,14 @@ export const translations = {
       baseValues: "Search base value sets…",
       emptyAuditLogs: "No audit log entries found.",
       emptyBaseValues: "No base value sets found.",
+      allRoles: "All roles",
+      allAgencies: "All agencies",
+      allOwners: "All owners",
+      allClients: "All clients",
+      allStatuses: "All statuses",
+    },
+    pagination: {
+      rowsPerPage: "Rows per page:",
     },
     simulationsModule: {
       subtitle: "Manage all simulations, share them, and monitor access.",
@@ -126,6 +167,9 @@ export const translations = {
       archiveTitle: "Archive simulation",
       archiveConfirm:
         "Archive simulation {id}? It will be hidden but not deleted.",
+      deleteTitle: "Delete simulation",
+      deleteConfirm:
+        "Are you sure you want to delete simulation {id}? This action cannot be undone.",
       expiresLabel: "Expires: {date}",
     },
     usersModule: {
@@ -146,6 +190,9 @@ export const translations = {
       rotateTitle: "Rotate user PIN",
       rotateConfirm:
         "Generate a new PIN for {name}? The old PIN will immediately stop working.",
+      deleteTitle: "Delete user",
+      deleteConfirm:
+        "Are you sure you want to delete {name}? This action will delete the user.",
     },
     agenciesModule: {
       subtitle: "Create and manage agencies.",
@@ -155,6 +202,9 @@ export const translations = {
       activateAgency_tooltip: "Activate agency",
       toggleTitle: "agency",
       toggleConfirm: "Are you sure you want to {action} {name}?",
+      deleteTitle: "Delete agency",
+      deleteConfirm:
+        "Are you sure you want to delete {name}? This action will deactivate the agency.",
     },
     clientsModule: {
       subtitle: "Manage company clients linked to simulations.",
@@ -184,7 +234,27 @@ export const translations = {
       noSimTrend: "No simulations created in this period",
       noAccessTrend: "No access attempts in this period",
       loadingMessage: "Loading analytics…",
-      // KPI cards
+      // KPI cards - Admin View
+      kpiTotalAgencies: "Total Agencies",
+      kpiTotalAgenciesSub: "Active agencies",
+      kpiSimsCreated: "Simulations Created",
+      kpiSimsCreatedSub: "All simulations",
+      kpiSimsSent: "Simulations Sent",
+      kpiSimsSentSub: "Sent to clients",
+      kpiOpenRate: "Open Rate",
+      kpiOpenRateSub: "{count} total opens",
+      kpiTotalOpens: "Total Opens",
+      kpiTotalOpensSub: "{count} attempts",
+      kpiActiveUsers: "Active Users",
+      kpiActiveUsersSub: "Users creating sims",
+      // KPI cards - Agent View
+      kpiCommercials: "Commercials Managed",
+      kpiCommercialsSub: "Your team size",
+      kpiSimsCreatedAgency: "Simulations Created",
+      kpiSimsCreatedAgencySub: "Total by your agency",
+      kpiPendingOpens: "Pending Opens",
+      kpiPendingOpensSub: "Sent but not opened",
+      // KPI cards - legacy
       kpiTotalSims: "Total Simulations",
       kpiTotalSimsSub: "All time",
       kpiDraft: "Draft",
@@ -196,6 +266,16 @@ export const translations = {
       kpiAccessRate: "Access Rate",
       kpiAccessRateSub: "{count} total attempts",
       // Chart panels
+      chartEngagementFunnel: "Engagement Funnel",
+      chartEngagementFunnelSub: "Core business metrics",
+      chartTeamEngagementFunnel: "Team Engagement Funnel",
+      chartTeamEngagementFunnelSub: "Your agency's performance",
+      chartSimsCreated: "Simulations Created",
+      chartSimsOpened: "Simulations Opened",
+      chartActivityOverTime: "Activity Over Time",
+      chartStatusDistribution: "Status Distribution",
+      chartClientOpens: "Client Opens Over Time",
+      chartClientOpensSub: "tracking engagement",
       chartSimTrend: "📈 Simulation creation trend",
       chartStatusDist: "🎯 Status distribution",
       chartFunnel: "🔄 Conversion funnel",
@@ -204,10 +284,18 @@ export const translations = {
       chartAccessMetrics: "📊 Access metrics",
       lastDays: "Last {days} days",
       noSimData: "No simulation data yet",
-      // Pie / funnel labels
+      noSimulationsInPeriod: "No simulations created in this period",
+      noOpensInPeriod: "No opens in this period",
+      noActivityInPeriod: "No activity in this period",
+      noDataAvailable: "No data available",
+      // Funnel labels
+      funnelCreated: "Created",
+      funnelSent: "Sent",
+      funnelOpened: "Opened",
       labelDraft: "Draft",
       labelShared: "Shared",
       labelExpired: "Expired",
+      labelSentNotOpened: "Sent (Not Opened)",
       funnelTotalCreated: "Total Created",
       funnelAccessed: "Accessed",
       // Access metrics
@@ -215,11 +303,28 @@ export const translations = {
       accessSuccessful: "Successful",
       accessFailed: "Failed",
       accessSuccessRate: "Success Rate",
-      // Table columns
+      // Table - Agency Performance
+      tableAgencyPerformance: "Agency Performance Ranking",
+      tableAgencyPerformanceSub:
+        "Which agencies are generating simulations and getting clients to open them",
+      colAgencyName: "Agency Name",
+      colCreated: "Created",
+      colSent: "Sent",
+      colOpenRate: "Open Rate",
+      colExpired: "Expired",
+      emptyAgencyData: "No agency data available",
+      pillAgencies: "{count} agencies",
+      // Table - Commercial Performance
+      tableCommercialPerformance: "Commercial Performance",
+      tableCommercialPerformanceSub:
+        "Activity breakdown for your agency's commercials",
+      colCommercialName: "Commercial Name",
+      emptyCommercialData: "No commercial data available",
+      pillCommercials: "{count} commercials",
+      // Table columns - legacy
       colAgency: "Agency",
       colTotal: "Total",
       colShared: "Shared",
-      colExpired: "Expired",
       colShareRate: "Share rate",
       colUser: "User",
       colSimulations: "Simulations",
@@ -228,6 +333,29 @@ export const translations = {
       emptyUsers: "No user data.",
       pillByAgency: "By agency",
       pillTopUsers: "Top users",
+      // Alerts & Insights
+      alertLowOpenRate: "⚠️ Low Open Rate",
+      alertLowOpenRateAction: "Action Needed",
+      alertLowOpenRateGood: "Looking Good",
+      alertLowOpenRateMsgBad: "Many sent simulations not being opened",
+      alertLowOpenRateMsgGood: "Open rate is healthy",
+      alertSentRate: "🎯 Sent Rate",
+      alertSentRateMsgLow: "Many drafts not being sent",
+      alertSentRateMsgGood: "Good conversion to sent",
+      alertPendingOpens: "📊 Pending Opens",
+      alertPendingOpensSub: "Sent but not yet opened",
+      // Follow-ups (Agent View)
+      followUpsRequired: "Follow-ups Required",
+      followUpsRequiredSub:
+        "Simulations sent but not yet opened - action needed",
+      followUpsTotalPending: "Total Pending",
+      followUpsTotalPendingSub: "Need follow-up",
+      followUpsRecentlySent: "Recently Sent",
+      followUpsRecentlySentSub: "Last 7 days",
+      followUpsDeadLeads: "Likely Dead Leads",
+      followUpsDeadLeadsSub: "> 30 days old",
+      followUpsActionItems:
+        "💡 Action items: Call clients with pending opens • Resend simulations to old leads • Coach commercials with low open rates",
     },
     baseValuesModule: {
       subtitle: "Configure economic reference values used in simulations.",
@@ -245,6 +373,7 @@ export const translations = {
       colVersion: "Version",
       colItems: "Items",
       colStatus: "Status",
+      colProduction: "Production",
       colActions: "Actions",
       scopeAgency: "Agency",
       scopeGlobal: "Global",
@@ -254,6 +383,9 @@ export const translations = {
       activate_tooltip: "Activate",
       archive_tooltip: "Archive",
       restore_tooltip: "Restore",
+      production_tooltip_on: "Active production version (cannot be removed)",
+      production_tooltip_off:
+        "Set as production version (will set others to draft)",
       newTitle: "New Base Value Set",
       newSubtitle:
         "Create a new set of economic reference values for simulations.",
@@ -360,6 +492,16 @@ export const translations = {
       code: "Code",
       contact: "Contact",
     },
+    agencyTariffs: {
+      title: "Tariff Availability",
+      description:
+        "Configure which tariffs are available for this agency's simulations",
+      electricity: "Electricity Tariffs",
+      gas: "Gas Tariffs",
+      loading: "Loading tariff configuration...",
+      saveSuccess: "Tariff configuration saved successfully",
+      saveError: "Failed to save tariff configuration",
+    },
     user: {
       title: "Users",
       newUser: "New User",
@@ -395,6 +537,7 @@ export const translations = {
       metaCups: "CUPS",
       metaExpires: "Expires",
       metaCreated: "Created",
+      invoiceFile: "Invoice",
       shareTitle: "Share Simulation",
     },
     simulationView: {
@@ -578,6 +721,13 @@ export const translations = {
       passwordStrengthFair: "Fair",
       passwordStrengthGood: "Good",
       passwordStrengthStrong: "Strong",
+      regeneratePin: "Re-generate PIN",
+      fieldIsActive: "Status",
+      statusActive: "Active",
+      statusInactive: "Inactive",
+      cannotDeactivateSelf: "You cannot deactivate your own account",
+      tabDetails: "Details",
+      tabPreferences: "Preferences",
     },
     agencyFormPage: {
       newTitle: "New Agency",
@@ -598,6 +748,27 @@ export const translations = {
       provinceLabel: "Province",
       countryLabel: "Country",
       createSubmit: "Create agency",
+      assignedUsers: "Assigned Users",
+      assignedUsersSubtitle: "Users who belong to this agency",
+      noUsers: "No users assigned to this agency.",
+      tabDetails: "Details",
+      tabUsers: "Users",
+      tabTariffs: "Tariffs",
+    },
+    userPreferences: {
+      title: "User Preferences",
+      description:
+        "Customize your display and formatting preferences. These settings will override system defaults.",
+      loading: "Loading preferences...",
+      saveSuccess: "Preferences saved successfully",
+      saveError: "Failed to save preferences",
+      overridden: "Custom value",
+      resetToDefault: "Reset to system default",
+      tabPreferences: "Preferences",
+    },
+    profilePage: {
+      tabDetails: "Details",
+      tabPreferences: "Preferences",
     },
     addressForm: {
       streetLabel: "Street address",
@@ -665,6 +836,7 @@ export const translations = {
       fieldTariff: "Access tariff",
       fieldZone: "Geographical zone",
       fieldLoadProfile: "Load profile",
+      fieldBillingPeriod: "Billing period",
       fieldStartDate: "Start date",
       fieldEndDate: "End date",
       fieldDays: "Days",
@@ -843,6 +1015,8 @@ export const translations = {
       confirmCancel: "Cancel",
       confirmSaving: "Saving...",
       confirmButton: "✓ Confirm Selection",
+      monthSelectorLabel: "Billing month",
+      monthSelectorRecalculating: "Recalculating…",
     },
     downloadHistory: {
       buttonLabel: "Download History",
@@ -860,28 +1034,56 @@ export const translations = {
     configurationsModule: {
       title: "Configurations",
       subtitle:
-        "Manage system settings, PDF templates, email templates, and role permissions",
+        "Manage templates, system settings, user experience, and integrations",
+      tabTemplatesCommunications: "Templates & Communications",
+      tabSystemBusiness: "System & Business Logic",
+      tabUserExperience: "User Experience",
+      tabIntegrations: "Integrations",
       tabSystemSettings: "System Settings",
       tabPdfTemplates: "PDF Templates",
       tabEmailTemplates: "Email Templates",
       tabRolePermissions: "Role Permissions",
+      tabLlmSettings: "LLM Settings",
     },
     systemSettings: {
       loading: "Loading configuration...",
       tabSimulation: "Simulation",
       tabClients: "Clients",
+      tabCalculation: "Calculation",
+      tabPdfDefaults: "PDF Templates",
+      tabPreferences: "User Preferences",
       tabSmtp: "SMTP Email",
       tabAutomatedEmails: "Automated Emails",
       titleSimulation: "Simulation Configuration",
       titleClients: "Client Management Configuration",
+      titleCalculation: "Calculation Formula Parameters",
+      titlePreferences: "Default User Preferences",
       titleSmtp: "SMTP Email Configuration",
       titleAutomatedEmails: "Automated Email Configuration",
+      preferencesDescription:
+        "Set system-wide defaults for user preferences. Users can override these in their personal settings.",
       fieldExpirationDays: "Simulation Expiration (Days)",
       fieldExpirationDesc:
         "Number of days before a simulation expires and becomes read-only",
       fieldAutoCreate: "Allow New Client on Simulation Create",
       fieldAutoCreateDesc:
         "Automatically create a new client record when creating a simulation without selecting an existing client",
+      fieldIvaRate: "IVA Rate (VAT)",
+      fieldIvaRateDesc: "Value Added Tax rate as decimal (e.g., 0.21 for 21%)",
+      fieldElectricityTaxRate: "Electricity Tax Rate",
+      fieldElectricityTaxRateDesc:
+        "Electricity tax rate as decimal (e.g., 0.051127 for 5.1127%)",
+      fieldDateFormat: "Date Format",
+      fieldDateFormatDesc: "Default format for displaying dates",
+      fieldTimeFormat: "Time Format",
+      fieldTimeFormatDesc: "Default format for displaying time",
+      fieldTimezone: "Timezone",
+      fieldTimezoneDesc: "Default timezone for date/time display",
+      fieldNumberFormat: "Number Format",
+      fieldNumberFormatDesc:
+        "Default format for displaying numbers and decimals",
+      fieldItemsPerPage: "Items Per Page",
+      fieldItemsPerPageDesc: "Default number of rows to show in tables",
       fieldSmtpHost: "SMTP Host",
       fieldSmtpHostDesc: "SMTP server hostname (e.g., smtp.gmail.com)",
       fieldSmtpPort: "SMTP Port",
@@ -901,6 +1103,21 @@ export const translations = {
       fieldUserCreationTemplate: "User Creation Email Template",
       fieldUserCreationTemplateDesc:
         "Email template to send when a new user is created (leave empty to disable)",
+      fieldPasswordResetTemplate: "Password Reset Email Template",
+      fieldPasswordResetTemplateDesc:
+        "Email template to send when a user requests a password reset (leave empty to disable)",
+      titlePdfDefaults: "Default PDF Templates",
+      titlePdfDefaultsDesc:
+        "Configure which PDF templates are used by default when sharing simulations",
+      fieldDefaultPdfGas: "Default Gas Template",
+      fieldDefaultPdfGasDesc:
+        "PDF template used by default for gas simulations",
+      fieldDefaultPdfElectricity: "Default Electricity Template",
+      fieldDefaultPdfElectricityDesc:
+        "PDF template used by default for electricity simulations",
+      fieldSetupTokenValidity: "Password Setup Token Validity",
+      fieldSetupTokenValidityDesc:
+        "How long setup password links remain valid before expiring",
       noTemplateSelected: "— No template selected (disabled) —",
       btnSave: "Save Changes",
       btnReset: "Reset to Defaults",
@@ -914,12 +1131,75 @@ export const translations = {
       savedSuccess: "System settings saved successfully",
       savedError: "Failed to save system settings",
     },
+    llmSettings: {
+      title: "LLM Configuration",
+      description:
+        "Configure AI/LLM settings for simulation data extraction and processing",
+      generalSettings: "General Settings",
+      enableLlm: "Enable LLM Features",
+      enableLlmDesc:
+        "Enable AI-powered features for reading and extracting data when creating simulations",
+      provider: "LLM Provider",
+      providerDesc: "Select the AI/LLM service provider",
+      apiKey: "API Key",
+      apiKeyDesc: "API key for authentication (not required for Ollama)",
+      apiKeyPlaceholder: "Enter your API key",
+      baseUrl: "Base URL",
+      baseUrlDesc: "Base URL for the LLM API endpoint",
+      modelName: "Model Name",
+      modelNameDesc: "Name of the AI model to use for processing",
+      customModel: "Custom Model Name",
+      customModelDesc: "Enter a custom model name if not listed above",
+      temperature: "Temperature",
+      temperatureDesc:
+        "Controls randomness: lower values (0.0-0.3) are more precise, higher values (0.7-2.0) are more creative",
+      maxTokens: "Max Tokens",
+      maxTokensDesc:
+        "Maximum number of tokens in the response (higher = longer responses but more cost)",
+      usageInfo: "Usage Information",
+      usageInfoDesc: "LLM features will be used in the following scenarios:",
+      usageExample1:
+        "Extracting data from uploaded documents when creating simulations",
+      usageExample2:
+        "Processing and understanding complex energy tariff information",
+      usageExample3: "Assisting with data validation and error detection",
+      testConnection: "Test Connection",
+      testConnectionDesc:
+        "Verify your LLM configuration by testing the connection",
+      btnTest: "Test Connection",
+      testing: "Testing...",
+      testSuccess: "Connection Successful",
+      testError: "Connection Failed",
+      saveSuccess: "LLM configuration saved successfully",
+      saveError: "Failed to save LLM configuration",
+      errorLoading: "Failed to load LLM configuration",
+    },
+    invoiceExtractor: {
+      title: "Invoice Data Extraction",
+      description:
+        "Upload an energy invoice (PDF or image) to automatically extract simulation data",
+      uploadPrompt: "Select Invoice File",
+      uploadHint: "Supported: PDF, JPG, PNG, WEBP (max 10MB).",
+      extracting: "Extracting data from invoice...",
+      extract: "Extract Data",
+      remove: "Remove File",
+      success: "Invoice data extracted successfully",
+      error: "Failed to extract invoice data",
+      noFile: "Please select a file first",
+      fileTooLarge: "File size exceeds 10MB limit",
+      invalidFormat: "Invalid file format",
+      llmNotConfigured:
+        "LLM is not configured. Please configure it in Settings.",
+      llmNotEnabled:
+        "LLM features are not enabled. Please enable them in Settings.",
+    },
     pdfTemplatesModule: {
       loading: "Loading templates...",
       title: "PDF Templates",
       btnNew: "+ New Template",
       colName: "Name",
       colType: "Type",
+      colCommodity: "Commodity",
       colDescription: "Description",
       colStatus: "Status",
       colUpdated: "Last Updated",
@@ -935,6 +1215,7 @@ export const translations = {
       fieldName: "Template Name",
       fieldNamePlaceholder: "Enter template name",
       fieldType: "Template Type",
+      fieldCommodity: "Commodity",
       fieldDescription: "Description",
       fieldDescriptionPlaceholder: "Brief description of this template",
       fieldActive: "Active",
@@ -952,6 +1233,9 @@ export const translations = {
       typePriceHistory: "Price History",
       typeInvoice: "Invoice",
       typeReport: "Report",
+      commodityBoth: "Both (Electricity & Gas)",
+      commodityElectricity: "Electricity Only",
+      commodityGas: "Gas Only",
       deletedSuccess: "Template deleted successfully",
       deletedError: "Failed to delete template",
       statusUpdated: "Template status updated",
@@ -1125,6 +1409,39 @@ export const translations = {
       signIn: "Iniciar sesión",
       validationError: "Ingresa un correo y contraseña válidos.",
       authFailed: "Error de autenticación.",
+      forgotPassword: "¿Olvidaste tu contraseña?",
+    },
+    forgotPassword: {
+      title: "Restablece tu contraseña",
+      subtitle:
+        "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
+      emailLabel: "Correo electrónico",
+      emailPlaceholder: "tu@correo.com",
+      emailHint: "Ingresa el correo asociado a tu cuenta.",
+      invalidEmail: "Por favor ingresa un correo electrónico válido.",
+      submitting: "Enviando enlace…",
+      submit: "Enviar enlace de restablecimiento",
+      requestFailed: "Error al enviar el enlace. Intenta de nuevo.",
+      successMessage:
+        "Si existe una cuenta con este correo, recibirás un enlace para restablecer tu contraseña en breve. Por favor revisa tu bandeja de entrada.",
+      backToLogin: "Volver al inicio de sesión",
+    },
+    resetPassword: {
+      title: "Restablece tu contraseña",
+      subtitle: "Elige una nueva contraseña segura para tu cuenta.",
+      newPassword: "Nueva contraseña",
+      confirmPassword: "Confirmar contraseña",
+      passwordHint:
+        "Mín. 12 caracteres con mayúscula, minúscula, número y carácter especial.",
+      passwordMismatch: "Las contraseñas no coinciden.",
+      submitting: "Restableciendo contraseña…",
+      submit: "Restablecer contraseña e iniciar sesión",
+      invalidToken:
+        "Este enlace de restablecimiento es inválido o ya fue usado.",
+      expiredToken:
+        "Este enlace de restablecimiento ha expirado. Solicita uno nuevo.",
+      success: "Contraseña restablecida exitosamente. Redirigiendo…",
+      missingToken: "No se encontró el token de restablecimiento en el enlace.",
     },
     setupPassword: {
       title: "Establece tu contraseña",
@@ -1169,6 +1486,7 @@ export const translations = {
       saving: "Guardando…",
       cancel: "Cancelar",
       confirm: "Confirmar",
+      edit: "Editar",
       signOut: "Cerrar sesión",
       newSimulation: "Nueva simulación",
       newUser: "Nuevo usuario",
@@ -1182,6 +1500,7 @@ export const translations = {
       duplicate: "Duplicar",
       link: "Enlace",
       archive: "Archivar",
+      delete: "Eliminar",
       activate: "Activar",
       deactivate: "Desactivar",
       rotatePin: "Rotar PIN",
@@ -1226,6 +1545,14 @@ export const translations = {
       baseValues: "Buscar conjuntos de valores base…",
       emptyAuditLogs: "No se encontraron entradas de auditoría.",
       emptyBaseValues: "No se encontraron conjuntos de valores base.",
+      allRoles: "Todos los roles",
+      allAgencies: "Todas las agencias",
+      allOwners: "Todos los propietarios",
+      allClients: "Todos los clientes",
+      allStatuses: "Todos los estados",
+    },
+    pagination: {
+      rowsPerPage: "Filas por página:",
     },
     simulationsModule: {
       subtitle:
@@ -1238,6 +1565,9 @@ export const translations = {
       archiveTitle: "Archivar simulación",
       archiveConfirm:
         "¿Archivar la simulación {id}? Se ocultará pero no se eliminará.",
+      deleteTitle: "Eliminar simulación",
+      deleteConfirm:
+        "¿Está seguro de que desea eliminar la simulación {id}? Esta acción no se puede deshacer.",
       expiresLabel: "Expira: {date}",
     },
     usersModule: {
@@ -1258,6 +1588,9 @@ export const translations = {
       rotateTitle: "Rotar PIN de usuario",
       rotateConfirm:
         "¿Generar un nuevo PIN para {name}? El PIN anterior dejará de funcionar inmediatamente.",
+      deleteTitle: "Eliminar usuario",
+      deleteConfirm:
+        "¿Está seguro de que desea eliminar a {name}? Esta acción desactivará al usuario.",
     },
     agenciesModule: {
       subtitle: "Crear y gestionar agencias.",
@@ -1267,6 +1600,9 @@ export const translations = {
       activateAgency_tooltip: "Activar agencia",
       toggleTitle: "agencia",
       toggleConfirm: "¿Estás seguro de que quieres {action} {name}?",
+      deleteTitle: "Eliminar agencia",
+      deleteConfirm:
+        "¿Está seguro de que desea eliminar {name}? Esta acción desactivará la agencia.",
     },
     clientsModule: {
       subtitle: "Gestiona clientes vinculados a simulaciones.",
@@ -1298,7 +1634,27 @@ export const translations = {
       noSimTrend: "No se crearon simulaciones en este período",
       noAccessTrend: "No hubo intentos de acceso en este período",
       loadingMessage: "Cargando analíticas…",
-      // KPI cards
+      // KPI cards - Admin View
+      kpiTotalAgencies: "Total de Agencias",
+      kpiTotalAgenciesSub: "Agencias activas",
+      kpiSimsCreated: "Simulaciones Creadas",
+      kpiSimsCreatedSub: "Todas las simulaciones",
+      kpiSimsSent: "Simulaciones Enviadas",
+      kpiSimsSentSub: "Enviadas a clientes",
+      kpiOpenRate: "Tasa de Apertura",
+      kpiOpenRateSub: "{count} aperturas totales",
+      kpiTotalOpens: "Total de Aperturas",
+      kpiTotalOpensSub: "{count} intentos",
+      kpiActiveUsers: "Usuarios Activos",
+      kpiActiveUsersSub: "Usuarios creando sims",
+      // KPI cards - Agent View
+      kpiCommercials: "Comerciales Gestionados",
+      kpiCommercialsSub: "Tamaño de tu equipo",
+      kpiSimsCreatedAgency: "Simulaciones Creadas",
+      kpiSimsCreatedAgencySub: "Total de tu agencia",
+      kpiPendingOpens: "Aperturas Pendientes",
+      kpiPendingOpensSub: "Enviadas pero no abiertas",
+      // KPI cards - legacy
       kpiTotalSims: "Total simulaciones",
       kpiTotalSimsSub: "Total histórico",
       kpiDraft: "Borrador",
@@ -1310,6 +1666,16 @@ export const translations = {
       kpiAccessRate: "Tasa de acceso",
       kpiAccessRateSub: "{count} intentos en total",
       // Chart panels
+      chartEngagementFunnel: "Embudo de Participación",
+      chartEngagementFunnelSub: "Métricas clave de negocio",
+      chartTeamEngagementFunnel: "Embudo de Participación del Equipo",
+      chartTeamEngagementFunnelSub: "Rendimiento de tu agencia",
+      chartSimsCreated: "Simulaciones Creadas",
+      chartSimsOpened: "Simulaciones Abiertas",
+      chartActivityOverTime: "Actividad a lo Largo del Tiempo",
+      chartStatusDistribution: "Distribución por Estado",
+      chartClientOpens: "Aperturas de Clientes a lo Largo del Tiempo",
+      chartClientOpensSub: "seguimiento de participación",
       chartSimTrend: "📈 Tendencia de creación de simulaciones",
       chartStatusDist: "🎯 Distribución por estado",
       chartFunnel: "🔄 Embudo de conversión",
@@ -1318,10 +1684,18 @@ export const translations = {
       chartAccessMetrics: "📊 Métricas de acceso",
       lastDays: "Últimos {days} días",
       noSimData: "Aún no hay datos de simulaciones",
-      // Pie / funnel labels
+      noSimulationsInPeriod: "No se crearon simulaciones en este período",
+      noOpensInPeriod: "No hubo aperturas en este período",
+      noActivityInPeriod: "No hubo actividad en este período",
+      noDataAvailable: "No hay datos disponibles",
+      // Funnel labels
+      funnelCreated: "Creadas",
+      funnelSent: "Enviadas",
+      funnelOpened: "Abiertas",
       labelDraft: "Borrador",
       labelShared: "Compartida",
       labelExpired: "Vencida",
+      labelSentNotOpened: "Enviada (No Abierta)",
       funnelTotalCreated: "Total creadas",
       funnelAccessed: "Accedidas",
       // Access metrics
@@ -1329,11 +1703,28 @@ export const translations = {
       accessSuccessful: "Exitosos",
       accessFailed: "Fallidos",
       accessSuccessRate: "Tasa de éxito",
-      // Table columns
+      // Table - Agency Performance
+      tableAgencyPerformance: "Ranking de Rendimiento de Agencias",
+      tableAgencyPerformanceSub:
+        "Qué agencias están generando simulaciones y logrando que los clientes las abran",
+      colAgencyName: "Nombre de Agencia",
+      colCreated: "Creadas",
+      colSent: "Enviadas",
+      colOpenRate: "Tasa de Apertura",
+      colExpired: "Vencidas",
+      emptyAgencyData: "No hay datos de agencias disponibles",
+      pillAgencies: "{count} agencias",
+      // Table - Commercial Performance
+      tableCommercialPerformance: "Rendimiento de Comerciales",
+      tableCommercialPerformanceSub:
+        "Desglose de actividad de los comerciales de tu agencia",
+      colCommercialName: "Nombre del Comercial",
+      emptyCommercialData: "No hay datos de comerciales disponibles",
+      pillCommercials: "{count} comerciales",
+      // Table columns - legacy
       colAgency: "Agencia",
       colTotal: "Total",
       colShared: "Compartidas",
-      colExpired: "Vencidas",
       colShareRate: "Tasa de compartición",
       colUser: "Usuario",
       colSimulations: "Simulaciones",
@@ -1342,6 +1733,30 @@ export const translations = {
       emptyUsers: "Sin datos por usuario.",
       pillByAgency: "Por agencia",
       pillTopUsers: "Top usuarios",
+      // Alerts & Insights
+      alertLowOpenRate: "⚠️ Baja Tasa de Apertura",
+      alertLowOpenRateAction: "Acción Requerida",
+      alertLowOpenRateGood: "Se Ve Bien",
+      alertLowOpenRateMsgBad:
+        "Muchas simulaciones enviadas no se están abriendo",
+      alertLowOpenRateMsgGood: "La tasa de apertura es saludable",
+      alertSentRate: "🎯 Tasa de Envío",
+      alertSentRateMsgLow: "Muchos borradores no se están enviando",
+      alertSentRateMsgGood: "Buena conversión a enviadas",
+      alertPendingOpens: "📊 Aperturas Pendientes",
+      alertPendingOpensSub: "Enviadas pero aún no abiertas",
+      // Follow-ups (Agent View)
+      followUpsRequired: "Seguimientos Requeridos",
+      followUpsRequiredSub:
+        "Simulaciones enviadas pero aún no abiertas - se requiere acción",
+      followUpsTotalPending: "Total Pendiente",
+      followUpsTotalPendingSub: "Necesitan seguimiento",
+      followUpsRecentlySent: "Enviadas Recientemente",
+      followUpsRecentlySentSub: "Últimos 7 días",
+      followUpsDeadLeads: "Leads Probablemente Perdidos",
+      followUpsDeadLeadsSub: "> 30 días de antigüedad",
+      followUpsActionItems:
+        "💡 Elementos de acción: Llamar a clientes con aperturas pendientes • Reenviar simulaciones a leads antiguos • Entrenar comerciales con bajas tasas de apertura",
     },
     baseValuesModule: {
       subtitle:
@@ -1360,6 +1775,7 @@ export const translations = {
       colVersion: "Versión",
       colItems: "Elementos",
       colStatus: "Estado",
+      colProduction: "Producción",
       colActions: "Acciones",
       scopeAgency: "Agencia",
       scopeGlobal: "Global",
@@ -1369,6 +1785,8 @@ export const translations = {
       activate_tooltip: "Activar",
       archive_tooltip: "Archivar",
       restore_tooltip: "Restaurar",
+      production_tooltip_on: "Desmarcar como versión de producción",
+      production_tooltip_off: "Marcar como versión de producción",
       newTitle: "Nuevo Conjunto de Valores Base",
       newSubtitle:
         "Crea un nuevo conjunto de valores económicos de referencia para simulaciones.",
@@ -1476,6 +1894,16 @@ export const translations = {
       code: "Código",
       contact: "Contacto",
     },
+    agencyTariffs: {
+      title: "Disponibilidad de Tarifas",
+      description:
+        "Configura qué tarifas están disponibles para las simulaciones de esta agencia",
+      electricity: "Tarifas Eléctricas",
+      gas: "Tarifas de Gas",
+      loading: "Cargando configuración de tarifas...",
+      saveSuccess: "Configuración de tarifas guardada exitosamente",
+      saveError: "Error al guardar la configuración de tarifas",
+    },
     user: {
       title: "Usuarios",
       newUser: "Nuevo Usuario",
@@ -1511,6 +1939,7 @@ export const translations = {
       metaCups: "CUPS",
       metaExpires: "Expira",
       metaCreated: "Creado",
+      invoiceFile: "Factura",
       shareTitle: "Compartir Simulación",
     },
     simulationView: {
@@ -1696,6 +2125,13 @@ export const translations = {
       passwordStrengthFair: "Regular",
       passwordStrengthGood: "Buena",
       passwordStrengthStrong: "Fuerte",
+      regeneratePin: "Regenerar PIN",
+      fieldIsActive: "Estado",
+      statusActive: "Activo",
+      statusInactive: "Inactivo",
+      cannotDeactivateSelf: "No puedes desactivar tu propia cuenta",
+      tabDetails: "Detalles",
+      tabPreferences: "Preferencias",
     },
     agencyFormPage: {
       newTitle: "Nueva agencia",
@@ -1716,6 +2152,27 @@ export const translations = {
       provinceLabel: "Provincia",
       countryLabel: "País",
       createSubmit: "Crear agencia",
+      assignedUsers: "Usuarios asignados",
+      assignedUsersSubtitle: "Usuarios que pertenecen a esta agencia",
+      noUsers: "No hay usuarios asignados a esta agencia.",
+      tabDetails: "Detalles",
+      tabUsers: "Usuarios",
+      tabTariffs: "Tarifas",
+    },
+    userPreferences: {
+      title: "Preferencias de Usuario",
+      description:
+        "Personaliza tus preferencias de visualización y formato. Estos ajustes anularán los valores predeterminados del sistema.",
+      loading: "Cargando preferencias...",
+      saveSuccess: "Preferencias guardadas correctamente",
+      saveError: "Error al guardar las preferencias",
+      overridden: "Valor personalizado",
+      resetToDefault: "Restablecer al valor predeterminado",
+      tabPreferences: "Preferencias",
+    },
+    profilePage: {
+      tabDetails: "Detalles",
+      tabPreferences: "Preferencias",
     },
     addressForm: {
       streetLabel: "Dirección",
@@ -1784,6 +2241,7 @@ export const translations = {
       fieldTariff: "Tarifa de acceso",
       fieldZone: "Zona geográfica",
       fieldLoadProfile: "Perfil de carga",
+      fieldBillingPeriod: "Período de facturación",
       fieldStartDate: "Fecha inicio",
       fieldEndDate: "Fecha fin",
       fieldDays: "Días",
@@ -1968,6 +2426,8 @@ export const translations = {
       confirmCancel: "Cancelar",
       confirmSaving: "Guardando...",
       confirmButton: "✓ Confirmar Selección",
+      monthSelectorLabel: "Mes de facturación",
+      monthSelectorRecalculating: "Recalculando…",
     },
     downloadHistory: {
       buttonLabel: "Descargar Histórico",
@@ -1985,28 +2445,58 @@ export const translations = {
     configurationsModule: {
       title: "Configuraciones",
       subtitle:
-        "Gestiona configuraciones del sistema, plantillas PDF, plantillas de correo y permisos por rol",
+        "Gestiona plantillas, configuraciones del sistema, experiencia de usuario e integraciones",
+      tabTemplatesCommunications: "Plantillas y Comunicaciones",
+      tabSystemBusiness: "Sistema y Lógica de Negocio",
+      tabUserExperience: "Experiencia de Usuario",
+      tabIntegrations: "Integraciones",
       tabSystemSettings: "Ajustes del Sistema",
       tabPdfTemplates: "Plantillas PDF",
       tabEmailTemplates: "Plantillas de Correo",
       tabRolePermissions: "Permisos por Rol",
+      tabLlmSettings: "Ajustes LLM",
     },
     systemSettings: {
       loading: "Cargando configuración...",
       tabSimulation: "Simulación",
       tabClients: "Clientes",
+      tabCalculation: "Cálculo",
+      tabPdfDefaults: "Plantillas PDF",
+      tabPreferences: "Preferencias de Usuario",
       tabSmtp: "Correo SMTP",
       tabAutomatedEmails: "Correos Automáticos",
       titleSimulation: "Configuración de Simulación",
       titleClients: "Configuración de Gestión de Clientes",
+      titleCalculation: "Parámetros de Fórmulas de Cálculo",
+      titlePreferences: "Preferencias de Usuario Predeterminadas",
       titleSmtp: "Configuración de Correo SMTP",
       titleAutomatedEmails: "Configuración de Correos Automáticos",
+      preferencesDescription:
+        "Establece valores predeterminados para las preferencias de usuario. Los usuarios pueden anularlos en su configuración personal.",
       fieldExpirationDays: "Expiración de Simulación (Días)",
       fieldExpirationDesc:
         "Número de días antes de que una simulación expire y quede en modo lectura",
       fieldAutoCreate: "Crear Cliente Automáticamente al Crear Simulación",
       fieldAutoCreateDesc:
         "Crear automáticamente un registro de cliente cuando se crea una simulación sin seleccionar un cliente existente",
+      fieldIvaRate: "Tasa IVA",
+      fieldIvaRateDesc:
+        "Tasa del Impuesto sobre el Valor Añadido como decimal (ej. 0.21 para 21%)",
+      fieldElectricityTaxRate: "Tasa Impuesto Electricidad",
+      fieldElectricityTaxRateDesc:
+        "Tasa del impuesto eléctrico como decimal (ej. 0.051127 para 5.1127%)",
+      fieldDateFormat: "Formato de Fecha",
+      fieldDateFormatDesc: "Formato predeterminado para mostrar fechas",
+      fieldTimeFormat: "Formato de Hora",
+      fieldTimeFormatDesc: "Formato predeterminado para mostrar la hora",
+      fieldTimezone: "Zona Horaria",
+      fieldTimezoneDesc: "Zona horaria predeterminada para mostrar fecha/hora",
+      fieldNumberFormat: "Formato de Número",
+      fieldNumberFormatDesc:
+        "Formato predeterminado para mostrar números y decimales",
+      fieldItemsPerPage: "Elementos Por Página",
+      fieldItemsPerPageDesc:
+        "Número predeterminado de filas a mostrar en tablas",
       fieldSmtpHost: "Servidor SMTP",
       fieldSmtpHostDesc:
         "Nombre de host del servidor SMTP (p. ej., smtp.gmail.com)",
@@ -2029,6 +2519,23 @@ export const translations = {
       fieldUserCreationTemplate: "Plantilla de Correo de Creación de Usuario",
       fieldUserCreationTemplateDesc:
         "Plantilla de correo para enviar cuando se crea un nuevo usuario (dejar vacío para deshabilitar)",
+      fieldPasswordResetTemplate:
+        "Plantilla de Correo de Restablecimiento de Contraseña",
+      fieldPasswordResetTemplateDesc:
+        "Plantilla de correo para enviar cuando un usuario solicita restablecer su contraseña (dejar vacío para deshabilitar)",
+      titlePdfDefaults: "Plantillas PDF Predeterminadas",
+      titlePdfDefaultsDesc:
+        "Configura qué plantillas PDF se usan por defecto al compartir simulaciones",
+      fieldDefaultPdfGas: "Plantilla Predeterminada para Gas",
+      fieldDefaultPdfGasDesc:
+        "Plantilla PDF usada por defecto para simulaciones de gas",
+      fieldDefaultPdfElectricity: "Plantilla Predeterminada para Electricidad",
+      fieldDefaultPdfElectricityDesc:
+        "Plantilla PDF usada por defecto para simulaciones de electricidad",
+      fieldSetupTokenValidity:
+        "Validez del Token de Configuración de Contraseña",
+      fieldSetupTokenValidityDesc:
+        "Tiempo que los enlaces de configuración de contraseña permanecen válidos antes de expirar",
       noTemplateSelected: "— Ninguna plantilla seleccionada (deshabilitado) —",
       btnSave: "Guardar Cambios",
       btnReset: "Restablecer Valores Predeterminados",
@@ -2042,12 +2549,78 @@ export const translations = {
       savedSuccess: "Configuración del sistema guardada correctamente",
       savedError: "Error al guardar la configuración del sistema",
     },
+    llmSettings: {
+      title: "Configuración LLM",
+      description:
+        "Configura ajustes de IA/LLM para la extracción y procesamiento de datos de simulaciones",
+      generalSettings: "Configuración General",
+      enableLlm: "Habilitar Funciones LLM",
+      enableLlmDesc:
+        "Habilitar funciones impulsadas por IA para leer y extraer datos al crear simulaciones",
+      provider: "Proveedor LLM",
+      providerDesc: "Selecciona el proveedor del servicio de IA/LLM",
+      apiKey: "Clave API",
+      apiKeyDesc: "Clave API para autenticación (no requerida para Ollama)",
+      apiKeyPlaceholder: "Introduce tu clave API",
+      baseUrl: "URL Base",
+      baseUrlDesc: "URL base para el endpoint de la API LLM",
+      modelName: "Nombre del Modelo",
+      modelNameDesc: "Nombre del modelo de IA a utilizar para el procesamiento",
+      customModel: "Nombre de Modelo Personalizado",
+      customModelDesc:
+        "Introduce un nombre de modelo personalizado si no está en la lista",
+      temperature: "Temperatura",
+      temperatureDesc:
+        "Controla la aleatoriedad: valores bajos (0.0-0.3) son más precisos, valores altos (0.7-2.0) son más creativos",
+      maxTokens: "Tokens Máximos",
+      maxTokensDesc:
+        "Número máximo de tokens en la respuesta (mayor = respuestas más largas pero mayor costo)",
+      usageInfo: "Información de Uso",
+      usageInfoDesc:
+        "Las funciones LLM se utilizarán en los siguientes escenarios:",
+      usageExample1:
+        "Extracción de datos de documentos cargados al crear simulaciones",
+      usageExample2:
+        "Procesamiento y comprensión de información compleja de tarifas energéticas",
+      usageExample3:
+        "Asistencia con validación de datos y detección de errores",
+      testConnection: "Probar Conexión",
+      testConnectionDesc: "Verifica tu configuración LLM probando la conexión",
+      btnTest: "Probar Conexión",
+      testing: "Probando...",
+      testSuccess: "Conexión Exitosa",
+      testError: "Conexión Fallida",
+      saveSuccess: "Configuración LLM guardada correctamente",
+      saveError: "Error al guardar la configuración LLM",
+      errorLoading: "Error al cargar la configuración LLM",
+    },
+    invoiceExtractor: {
+      title: "Extracción de Datos de Factura",
+      description:
+        "Sube una factura energética (PDF o imagen) para extraer automáticamente datos de simulación",
+      uploadPrompt: "Seleccionar Archivo de Factura",
+      uploadHint:
+        "Compatibles: PDF, JPG, PNG, WEBP (máx. 10MB). PDFs se convierten automáticamente a imágenes para Ollama. Mejor con facturas españolas.",
+      extracting: "Extrayendo datos de la factura...",
+      extract: "Extraer Datos",
+      remove: "Eliminar Archivo",
+      success: "Datos de factura extraídos correctamente",
+      error: "Error al extraer datos de la factura",
+      noFile: "Por favor selecciona un archivo primero",
+      fileTooLarge: "El tamaño del archivo excede el límite de 10MB",
+      invalidFormat: "Formato de archivo no válido",
+      llmNotConfigured:
+        "LLM no está configurado. Por favor configúralo en Ajustes.",
+      llmNotEnabled:
+        "Las funciones LLM no están habilitadas. Por favor habilítalas en Ajustes.",
+    },
     pdfTemplatesModule: {
       loading: "Cargando plantillas...",
       title: "Plantillas PDF",
       btnNew: "+ Nueva Plantilla",
       colName: "Nombre",
       colType: "Tipo",
+      colCommodity: "Suministro",
       colDescription: "Descripción",
       colStatus: "Estado",
       colUpdated: "Última Actualización",
@@ -2063,6 +2636,7 @@ export const translations = {
       fieldName: "Nombre de Plantilla",
       fieldNamePlaceholder: "Ingresa el nombre de la plantilla",
       fieldType: "Tipo de Plantilla",
+      fieldCommodity: "Suministro",
       fieldDescription: "Descripción",
       fieldDescriptionPlaceholder: "Breve descripción de esta plantilla",
       fieldActive: "Activo",
@@ -2080,6 +2654,9 @@ export const translations = {
       typePriceHistory: "Historial de Precios",
       typeInvoice: "Factura",
       typeReport: "Informe",
+      commodityBoth: "Ambos (Electricidad y Gas)",
+      commodityElectricity: "Solo Electricidad",
+      commodityGas: "Solo Gas",
       deletedSuccess: "Plantilla eliminada correctamente",
       deletedError: "Error al eliminar la plantilla",
       statusUpdated: "Estado de la plantilla actualizado",

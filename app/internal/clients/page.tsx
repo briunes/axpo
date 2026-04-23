@@ -5,11 +5,15 @@ import { loadSession } from "../lib/authSession";
 import { useClients } from "../components/hooks/useClients";
 import { ClientsModule } from "../components/modules";
 import { useAlerts } from "../components/shared";
+import { useActionButtons } from "../components/InternalWorkspace";
+import { useUserPreferences } from "../components/providers/UserPreferencesProvider";
 
 export default function ClientsPage() {
   const [session] = useState(loadSession());
   const { showSuccess, showError } = useAlerts();
-  const clientsActions = useClients(session);
+  const onActionButtons = useActionButtons();
+  const { preferences } = useUserPreferences();
+  const clientsActions = useClients(session, preferences.itemsPerPage);
   const fetchedRef = useRef(false);
 
   const handleNotify = (text: string, tone: "success" | "error") => {
@@ -23,6 +27,7 @@ export default function ClientsPage() {
       session={session}
       actions={clientsActions}
       onNotify={handleNotify}
+      onActionButtons={onActionButtons || undefined}
     />
   );
 }

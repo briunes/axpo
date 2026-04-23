@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useImperativeHandle, forwardRef } from "react";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import { SimulationResultsCards } from "./SimulationResultsCards";
 import type { SimulationItem, ClientItem, CupsLookupEntry } from "../../lib/internalApi";
 import { calculateSimulation, updateSimulation, fetchCupsLookup } from "../../lib/internalApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { FormSelect } from "../ui/FormSelect";
+import { DateInput } from "../ui/DateInput";
+import { DateRangePicker } from "../ui/DateRangePicker";
+import { FormInput } from "../ui/FormInput";
+import { CurrencyInput } from "../ui/CurrencyInput";
+import { Autocomplete, TextField, Collapse } from "@mui/material";
 import type {
     SimulationPayload,
     ElectricityInputs,
@@ -36,7 +42,7 @@ const ELEC_EXCESS_PERIODS: Record<ElecTarifa, string[]> = {
 };
 
 type PeriodMap = Record<string, number>;
-type SimType = "ELECTRICITY" | "GAS" | "BOTH";
+type SimType = "ELECTRICITY" | "GAS";
 
 function emptyPeriods(periods: string[]): PeriodMap {
     return Object.fromEntries(periods.map((p) => [p, 0]));
@@ -86,6 +92,12 @@ interface GasFormState {
 function daysBetween(from: string, to: string): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
     return Math.max(1, d + 1); // inclusive end date, matching Excel E25 = (E24-D24)+1
+}
+
+function parseLocalDate(isoDateString: string): Date {
+    // Parse YYYY-MM-DD as local date instead of UTC
+    const [y, m, d] = isoDateString.split('-').map(Number);
+    return new Date(y, m - 1, d);
 }
 
 function prevMonthRange() {
@@ -216,6 +228,58 @@ function validateGas(s: GasFormState): Record<string, string> {
 
 function hydrateElec(p: SimulationPayload): ElecFormState | null {
     const e = p.electricity;
+    const invoiceData = (p as any).invoiceData;
+
+    // If no existing electricity data but invoiceData exists for electricity, pre-fill from invoice
+    if (!e && invoiceData && invoiceData.invoiceType === "ELECTRICITY") {
+        const tariff = (invoiceData.tarifaAcceso || "3.0TD") as ElecTarifa;
+        const ep = ELEC_ENERGY_PERIODS[tariff] ?? [];
+        const pp = ELEC_POWER_PERIODS[tariff] ?? [];
+
+        // Build consumption map from invoice periods
+        const consumo: PeriodMap = {};
+        ep.forEach((p) => {
+            const key = `consumo${p}` as keyof typeof invoiceData;
+            consumo[p] = invoiceData[key] ?? 0;
+        });
+
+        // Build power map from invoice periods
+        const potencia: PeriodMap = {};
+        pp.forEach((p) => {
+            const key = `potencia${p}` as keyof typeof invoiceData;
+            potencia[p] = invoiceData[key] ?? 0;
+        });
+
+        const { fechaInicio, fechaFin } = invoiceData.fechaInicio && invoiceData.fechaFin
+            ? { fechaInicio: invoiceData.fechaInicio, fechaFin: invoiceData.fechaFin }
+            : prevMonthRange();
+
+        return {
+            cups: invoiceData.cups || "",
+            consumoAnual: invoiceData.consumoTotal || 0,
+            nombreTitular: invoiceData.nombreTitular || "",
+            personaContacto: "",
+            comercial: "",
+            direccion: invoiceData.direccion || "",
+            comercializadorActual: invoiceData.comercializadorActual || "",
+            tarifaAcceso: tariff,
+            zonaGeografica: "Peninsula",
+            perfilCarga: "NORMAL",
+            fechaInicio,
+            fechaFin,
+            consumo,
+            potencia,
+            exceso: 0,
+            omie: emptyPeriods(ep),
+            facturaActual: invoiceData.facturaActual ?? 0,
+            reactiva: invoiceData.reactiva ?? 0,
+            alquiler: invoiceData.alquiler ?? 0,
+            otrosCargos: invoiceData.otrosCargos ?? 0,
+            ivaTasa: 21,
+            impuestoElectricoTasa: 5.11269,
+        };
+    }
+
     if (!e) return null;
     const ep = ELEC_ENERGY_PERIODS[e.tarifaAcceso] ?? [];
     const pp = ELEC_POWER_PERIODS[e.tarifaAcceso] ?? [];
@@ -251,6 +315,27 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
 
 function hydrateGas(p: SimulationPayload): GasFormState | null {
     const g = p.gas;
+    const invoiceData = (p as any).invoiceData;
+
+    // If no existing gas data but invoiceData exists for gas, pre-fill from invoice
+    if (!g && invoiceData && invoiceData.invoiceType === "GAS") {
+        const { fechaInicio, fechaFin } = invoiceData.fechaInicio && invoiceData.fechaFin
+            ? { fechaInicio: invoiceData.fechaInicio, fechaFin: invoiceData.fechaFin }
+            : prevMonthRange();
+
+        return {
+            tarifaAcceso: (invoiceData.tarifaAcceso || "RL01") as GasTarifa,
+            zonaGeografica: "Peninsula",
+            consumo: invoiceData.consumoTotal || 0,
+            telemedida: "NO",
+            fechaInicio,
+            fechaFin,
+            facturaActual: invoiceData.facturaActual ?? 0,
+            alquiler: invoiceData.alquiler ?? 0,
+            otrosCargos: invoiceData.otrosCargos ?? 0,
+        };
+    }
+
     if (!g) return null;
     return {
         tarifaAcceso: g.tarifaAcceso,
@@ -344,10 +429,12 @@ function Sec({ title, children, block, collapsible, defaultOpen = true, optional
                     {complete && <span style={{ fontSize: 16, color: "var(--scheme-brand-500, #4ade80)" }}>✓</span>}
                 </span>
                 {collapsible && (
-                    <span style={{ fontSize: 12, color: "var(--scheme-neutral-500)", transition: "transform 0.2s", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+                    <span style={{ fontSize: 12, color: "var(--scheme-neutral-500)", transition: "transform 0.3s ease", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
                 )}
             </div>
-            {isOpen && children}
+            <Collapse in={isOpen} timeout={300}>
+                <div>{children}</div>
+            </Collapse>
         </div>
     );
 }
@@ -382,19 +469,26 @@ function Field({ label, hint, flex, error, required, help, children }: {
 
 function Sel({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
     return (
-        <select className="sp-form-input" value={value} onChange={(e) => onChange(e.target.value)}>
-            {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <FormSelect
+            label=""
+            options={options}
+            value={value}
+            onChange={(v) => onChange(v as string)}
+        />
     );
 }
 
 function Num({ value, onChange, step }: { value: number; onChange: (v: number) => void; step?: number }) {
     return (
-        <input
-            className="sp-form-input"
+        <FormInput
+            label=""
             type="number"
-            step={step ?? 1}
-            min={0}
+            slotProps={{
+                htmlInput: {
+                    step: step ?? 1,
+                    min: 0
+                }
+            }}
             value={value}
             onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
         />
@@ -417,14 +511,19 @@ function PeriodGrid({ label, periods, values, onChange, step, hint, errorPeriods
                     return (
                         <div key={p} style={{ flex: "1 1 90px", minWidth: 75 }}>
                             <div style={{ fontSize: 10, textAlign: "center", marginBottom: 3, ...(isInvalid ? { color: "var(--scheme-error-400, #f87171)", fontWeight: 600 } : { opacity: 0.5 }) }}>{p}</div>
-                            <input
-                                className="sp-form-input"
+                            <FormInput
+                                label=""
                                 type="number"
-                                step={step ?? 1}
-                                min={0}
+                                slotProps={{
+                                    htmlInput: {
+                                        step: step ?? 1,
+                                        min: 0
+                                    }
+                                }}
                                 value={values[p] ?? 0}
                                 onChange={(e) => onChange(p, parseFloat(e.target.value) || 0)}
-                                style={{ textAlign: "right", padding: "5px 8px", fontSize: 13, ...(isInvalid ? { borderColor: "var(--scheme-error-400, #f87171)", outline: "1px solid var(--scheme-error-400, #f87171)" } : {}) }}
+                                error={isInvalid}
+
                             />
                         </div>
                     );
@@ -520,23 +619,46 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                 <Row>
                     <Field label={t("simulationForm", "fieldCups")} flex="1 1 280px" required help={t("simulationForm", "helpCups")}
                         hint={cupsHistory.length > 0 ? t("simulationForm", "cupsLookupHint", { count: cupsHistory.length }) : undefined}>
-                        <input
-                            className="sp-form-input"
-                            type="text"
-                            list="cups-history-list"
+                        <Autocomplete
+                            freeSolo
+                            options={cupsHistory.map((entry) => entry.cups)}
                             value={state.cups}
-                            onChange={(e) => handleCupsChange(e.target.value)}
-                            placeholder={t("simulationForm", "placeholderCups")}
+                            onChange={(_, newValue) => {
+                                handleCupsChange(newValue || "");
+                            }}
+                            onInputChange={(_, newInputValue) => {
+                                handleCupsChange(newInputValue);
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    placeholder={t("simulationForm", "placeholderCups")}
+                                    size="small"
+                                    sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                            backgroundColor: '#fafafa',
+                                            borderRadius: '6px',
+                                            fontSize: '14px',
+                                            '& fieldset': {
+                                                borderWidth: '1px',
+                                                borderColor: 'rgba(0, 0, 0, 0.23)',
+                                            },
+                                            '&:hover fieldset': {
+                                                borderColor: 'rgba(0, 0, 0, 0.4)',
+                                            },
+                                            '&.Mui-focused fieldset': {
+                                                borderWidth: '1px',
+                                            },
+                                        },
+                                    }}
+                                />
+                            )}
+                            ListboxProps={{
+                                style: {
+                                    maxHeight: '240px',
+                                }
+                            }}
                         />
-                        {cupsHistory.length > 0 && (
-                            <datalist id="cups-history-list">
-                                {cupsHistory.map((entry) => (
-                                    <option key={entry.cups} value={entry.cups}>
-                                        {entry.nombreTitular ? `${entry.cups} — ${entry.nombreTitular}` : entry.cups}
-                                    </option>
-                                ))}
-                            </datalist>
-                        )}
                     </Field>
                     <Field label={t("simulationForm", "fieldAnnualConsumption")} flex="1 1 180px" hint={t("simulationForm", "fieldAnnualConsumptionHint")} help={t("simulationForm", "helpAnnualConsumption")}>
                         <Num value={state.consumoAnual} onChange={(v) => up("consumoAnual", v)} step={1000} />
@@ -548,8 +670,8 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginTop: 20, marginBottom: 12, paddingBottom: 6, borderBottom: "1px solid var(--scheme-neutral-900)" }}>{t("simulationForm", "clientDetailsSubtitle")}</div>
                 <Row>
                     <Field label={t("simulationForm", "fieldClientName")} required>
-                        <input
-                            className="sp-form-input"
+                        <FormInput
+                            label=""
                             type="text"
                             value={state.nombreTitular}
                             onChange={(e) => up("nombreTitular", e.target.value)}
@@ -558,8 +680,8 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                         />
                     </Field>
                     <Field label={t("simulationForm", "fieldContactPerson")}>
-                        <input
-                            className="sp-form-input"
+                        <FormInput
+                            label=""
                             type="text"
                             value={state.personaContacto}
                             onChange={(e) => up("personaContacto", e.target.value)}
@@ -570,15 +692,15 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                 </Row>
                 <Row>
                     <Field label={t("simulationForm", "fieldSalesAgent")}>
-                        <input className="sp-form-input" type="text" value={state.comercial} onChange={(e) => up("comercial", e.target.value)} placeholder={t("simulationForm", "placeholderSalesAgent")} />
+                        <FormInput label="" type="text" value={state.comercial} onChange={(e) => up("comercial", e.target.value)} placeholder={t("simulationForm", "placeholderSalesAgent")} />
                     </Field>
                     <Field label={t("simulationForm", "fieldAddress")}>
-                        <input className="sp-form-input" type="text" value={state.direccion} onChange={(e) => up("direccion", e.target.value)} placeholder={t("simulationForm", "placeholderAddress")} />
+                        <FormInput label="" type="text" value={state.direccion} onChange={(e) => up("direccion", e.target.value)} placeholder={t("simulationForm", "placeholderAddress")} />
                     </Field>
                 </Row>
                 <Row>
                     <Field label={t("simulationForm", "fieldCurrentSupplier")} flex="1 1 280px" help={t("simulationForm", "helpCurrentSupplier")}>
-                        <input className="sp-form-input" type="text" value={state.comercializadorActual} onChange={(e) => up("comercializadorActual", e.target.value)} placeholder={t("simulationForm", "placeholderCurrentSupplier")} />
+                        <FormInput label="" type="text" value={state.comercializadorActual} onChange={(e) => up("comercializadorActual", e.target.value)} placeholder={t("simulationForm", "placeholderCurrentSupplier")} />
                     </Field>
                 </Row>
             </Sec>
@@ -617,14 +739,40 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
 
                 <Sec title={t("simulationForm", "sectionBillingPeriod")}>
                     <Row>
-                        <Field label={t("simulationForm", "fieldStartDate")} error={errors.fechaInicio} required help={t("simulationForm", "helpStartDate")}>
-                            <input className="sp-form-input" type="date" value={state.fechaInicio} onChange={(e) => up("fechaInicio", e.target.value)} />
-                        </Field>
-                        <Field label={t("simulationForm", "fieldEndDate")} error={errors.fechaFin} required help={t("simulationForm", "helpEndDate")}>
-                            <input className="sp-form-input" type="date" value={state.fechaFin} onChange={(e) => up("fechaFin", e.target.value)} />
+                        <Field label={t("simulationForm", "fieldBillingPeriod")} error={errors.fechaInicio || errors.fechaFin} required>
+                            <DateRangePicker
+                                startDate={state.fechaInicio ? parseLocalDate(state.fechaInicio) : null}
+                                endDate={state.fechaFin ? parseLocalDate(state.fechaFin) : null}
+                                onChange={(start, end) => {
+                                    const formatDate = (date: Date) => {
+                                        const y = date.getFullYear();
+                                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                                        const d = String(date.getDate()).padStart(2, '0');
+                                        return `${y}-${m}-${d}`;
+                                    };
+
+                                    const newState: Partial<ElecFormState> = {};
+
+                                    if (start) {
+                                        newState.fechaInicio = formatDate(start);
+                                    }
+
+                                    if (end) {
+                                        newState.fechaFin = formatDate(end);
+                                    } else if (start && !end) {
+                                        // When starting a new selection, clear the end date
+                                        newState.fechaFin = "";
+                                    }
+
+                                    onChange({ ...state, ...newState });
+                                }}
+                                error={!!errors.fechaInicio || !!errors.fechaFin}
+                                nopadding
+                                months={2}
+                            />
                         </Field>
                         <Field label={t("simulationForm", "fieldDays")} flex="0 0 70px">
-                            <input className="sp-form-input" type="number" readOnly value={daysBetween(state.fechaInicio, state.fechaFin)} style={{ opacity: 0.6 }} />
+                            <FormInput label="" type="number" slotProps={{ htmlInput: { readOnly: true } }} value={daysBetween(state.fechaInicio, state.fechaFin)} sx={{ opacity: 0.6 }} />
                         </Field>
                     </Row>
                 </Sec>
@@ -654,26 +802,26 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
 
             <Sec title={t("simulationForm", "sectionInvoiceBreakdown")} block collapsible defaultOpen={false} complete={invoiceComplete}>
                 <Row>
-                    <Field label={t("simulationForm", "fieldReactiveEnergy")} hint={t("simulationForm", "fieldReactiveHint")}>
-                        <Num value={state.reactiva} onChange={(v) => up("reactiva", v)} step={1} />
+                    <Field label={t("simulationForm", "fieldReactiveEnergy")} hint={t("simulationForm", "fieldReactiveHint")} flex="1 1 0">
+                        <CurrencyInput value={state.reactiva} onChange={(v) => up("reactiva", isNaN(v) ? 0 : v)} />
                     </Field>
-                    <Field label={t("simulationForm", "fieldMeterRental")} hint={t("simulationForm", "fieldMeterRentalHint")}>
-                        <Num value={state.alquiler} onChange={(v) => up("alquiler", v)} step={0.5} />
+                    <Field label={t("simulationForm", "fieldMeterRental")} hint={t("simulationForm", "fieldMeterRentalHint")} flex="1 1 0">
+                        <CurrencyInput value={state.alquiler} onChange={(v) => up("alquiler", isNaN(v) ? 0 : v)} />
                     </Field>
-                    <Field label={t("simulationForm", "fieldOtherCharges")} hint={t("simulationForm", "fieldOtherChargesHint")}>
-                        <Num value={state.otrosCargos} onChange={(v) => up("otrosCargos", v)} step={1} />
+                    <Field label={t("simulationForm", "fieldOtherCharges")} hint={t("simulationForm", "fieldOtherChargesHint")} flex="1 1 0">
+                        <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
                     </Field>
                 </Row>
                 <div style={{ height: 6 }} />
                 <Row>
-                    <Field label={t("simulationForm", "fieldVat")} hint={t("simulationForm", "fieldVatHint")} flex="1 1 120px">
+                    <Field label={t("simulationForm", "fieldVat")} hint={t("simulationForm", "fieldVatHint")} flex="1 1 0">
                         <Num value={state.ivaTasa} onChange={(v) => up("ivaTasa", v)} step={0.01} />
                     </Field>
-                    <Field label={t("simulationForm", "fieldElecTax")} hint={t("simulationForm", "fieldElecTaxHint")} flex="1 1 160px">
+                    <Field label={t("simulationForm", "fieldElecTax")} hint={t("simulationForm", "fieldElecTaxHint")} flex="1 1 0">
                         <Num value={state.impuestoElectricoTasa} onChange={(v) => up("impuestoElectricoTasa", v)} step={0.001} />
                     </Field>
-                    <Field label={t("simulationForm", "fieldInvoiceTotal")} hint={t("simulationForm", "fieldCurrentInvoiceHint")} error={errors.facturaActual} flex="1 1 160px" required help={t("simulationForm", "helpInvoiceTotal")}>
-                        <Num value={state.facturaActual} onChange={(v) => up("facturaActual", v)} step={10} />
+                    <Field label={t("simulationForm", "fieldInvoiceTotal")} hint={t("simulationForm", "fieldCurrentInvoiceHint")} error={errors.facturaActual} flex="1 1 0" required help={t("simulationForm", "helpInvoiceTotal")}>
+                        <CurrencyInput value={state.facturaActual} onChange={(v) => up("facturaActual", isNaN(v) ? 0 : v)} error={!!errors.facturaActual} />
                     </Field>
                 </Row>
             </Sec>
@@ -700,8 +848,47 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
 function GasForm({ state, onChange, errors = {} }: { state: GasFormState; onChange: (s: GasFormState) => void; errors?: Record<string, string> }) {
     const { t } = useI18n();
     const up = <K extends keyof GasFormState>(k: K, v: GasFormState[K]) => onChange({ ...state, [k]: v });
+
+    // Completion checks for gas
+    const invoiceComplete = !!state.fechaInicio && !!state.fechaFin && state.facturaActual > 0;
+    const consumptionComplete = state.consumo > 0;
+
+    const requiredSteps = [invoiceComplete, consumptionComplete];
+    const completedCount = requiredSteps.filter(Boolean).length;
+    const totalSteps = requiredSteps.length;
+    const progressPercent = (completedCount / totalSteps) * 100;
+
     return (
         <>
+            {/* Progress indicator */}
+            <div style={{
+                marginBottom: 28,
+                padding: "16px 20px",
+                background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",
+                border: "1px solid var(--scheme-neutral-900)",
+                borderRadius: 8,
+            }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
+                        {t("simulationForm", "formCompletion", { completed: completedCount, total: totalSteps })}
+                    </span>
+                    <span style={{ fontSize: 12, color: "var(--scheme-neutral-400)" }}>{Math.round(progressPercent)}%</span>
+                </div>
+                <div style={{
+                    height: 6,
+                    background: "var(--scheme-neutral-950)",
+                    borderRadius: 3,
+                    overflow: "hidden",
+                }}>
+                    <div style={{
+                        height: "100%",
+                        width: `${progressPercent}%`,
+                        background: progressPercent === 100 ? "var(--scheme-brand-500, #4ade80)" : "var(--scheme-brand-600, #22c55e)",
+                        transition: "width 0.3s ease",
+                    }} />
+                </div>
+            </div>
+
             {/* Contract + Billing period side by side */}
             <div style={{
                 display: "grid",
@@ -729,26 +916,52 @@ function GasForm({ state, onChange, errors = {} }: { state: GasFormState; onChan
                     </Row>
                 </Sec>
 
-                <Sec title={t("simulationForm", "sectionBillingPeriod")}>
+                <Sec title={t("simulationForm", "sectionBillingPeriod")} complete={invoiceComplete}>
                     <Row>
-                        <Field label={t("simulationForm", "fieldGasFrom")} error={errors.fechaInicio}>
-                            <input className="sp-form-input" type="date" value={state.fechaInicio} onChange={(e) => up("fechaInicio", e.target.value)} />
-                        </Field>
-                        <Field label={t("simulationForm", "fieldGasTo")} error={errors.fechaFin}>
-                            <input className="sp-form-input" type="date" value={state.fechaFin} onChange={(e) => up("fechaFin", e.target.value)} />
+                        <Field label={t("simulationForm", "fieldBillingPeriod")} error={errors.fechaInicio || errors.fechaFin}>
+                            <DateRangePicker
+                                startDate={state.fechaInicio ? parseLocalDate(state.fechaInicio) : null}
+                                endDate={state.fechaFin ? parseLocalDate(state.fechaFin) : null}
+                                onChange={(start, end) => {
+                                    const formatDate = (date: Date) => {
+                                        const y = date.getFullYear();
+                                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                                        const d = String(date.getDate()).padStart(2, '0');
+                                        return `${y}-${m}-${d}`;
+                                    };
+
+                                    const newState: Partial<GasFormState> = {};
+
+                                    if (start) {
+                                        newState.fechaInicio = formatDate(start);
+                                    }
+
+                                    if (end) {
+                                        newState.fechaFin = formatDate(end);
+                                    } else if (start && !end) {
+                                        // When starting a new selection, clear the end date
+                                        newState.fechaFin = "";
+                                    }
+
+                                    onChange({ ...state, ...newState });
+                                }}
+                                error={!!errors.fechaInicio || !!errors.fechaFin}
+                                nopadding
+                                months={2}
+                            />
                         </Field>
                         <Field label={t("simulationForm", "fieldDays")} flex="0 0 70px">
-                            <input className="sp-form-input" type="number" readOnly value={daysBetween(state.fechaInicio, state.fechaFin)} style={{ opacity: 0.6 }} />
+                            <FormInput label="" type="number" slotProps={{ htmlInput: { readOnly: true } }} value={daysBetween(state.fechaInicio, state.fechaFin)} sx={{ opacity: 0.6 }} />
                         </Field>
                     </Row>
                     <div style={{ height: 10 }} />
                     <Field label={t("simulationForm", "fieldCurrentInvoice")} hint={t("simulationForm", "fieldGasCurrentInvoiceHint")} error={errors.facturaActual}>
-                        <Num value={state.facturaActual} onChange={(v) => up("facturaActual", v)} step={10} />
+                        <CurrencyInput value={state.facturaActual} onChange={(v) => up("facturaActual", isNaN(v) ? 0 : v)} error={!!errors.facturaActual} />
                     </Field>
                 </Sec>
             </div>
 
-            <Sec title={t("simulationForm", "sectionGasConsumption")} block>
+            <Sec title={t("simulationForm", "sectionGasConsumption")} block complete={consumptionComplete}>
                 <Row>
                     <Field label={t("simulationForm", "fieldConsumption")} hint={t("simulationForm", "fieldTotalConsumptionHint")} flex="1 1 260px" error={errors.consumo}>
                         <Num value={state.consumo} onChange={(v) => up("consumo", v)} step={500} />
@@ -759,10 +972,10 @@ function GasForm({ state, onChange, errors = {} }: { state: GasFormState; onChan
             <Sec title={t("simulationForm", "sectionExtraCharges")} block>
                 <Row>
                     <Field label={t("simulationForm", "fieldMeterRental")} hint={t("simulationForm", "fieldMeterRentalMonthlyHint")}>
-                        <Num value={state.alquiler} onChange={(v) => up("alquiler", v)} step={0.5} />
+                        <CurrencyInput value={state.alquiler} onChange={(v) => up("alquiler", isNaN(v) ? 0 : v)} />
                     </Field>
                     <Field label={t("simulationForm", "fieldOtherCharges")} hint={t("simulationForm", "fieldOtherChargesLineHint")}>
-                        <Num value={state.otrosCargos} onChange={(v) => up("otrosCargos", v)} step={1} />
+                        <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
                     </Field>
                 </Row>
             </Sec>
@@ -796,18 +1009,24 @@ function TypeButton({ active, onClick, children }: { active: boolean; onClick: (
 
 // ─── Main export ───────────────────────────────────────────────────────────────
 
+export interface SimulationFormHandle {
+    calculate: () => void;
+}
+
 export interface SimulationFormProps {
     simulation: SimulationItem;
     token: string;
     clients?: ClientItem[];
     onClientFieldsChanged?: (clientId: string, data: { name?: string; contactName?: string }) => void;
-    onSuccess?: (results: SimulationResults) => void;
+    onSuccess?: (results: SimulationResults, baseValueSetId?: string) => void;
     onNotify?: (text: string, tone: "success" | "error") => void;
     onOfferSelected?: (productKey: string) => void;
     readOnly?: boolean;
+    /** ID of the base value set to use for calculation (Admin override) */
+    baseValueSetId?: string;
 }
 
-export function SimulationForm({ simulation, token, clients, onClientFieldsChanged, onSuccess, onNotify, onOfferSelected, readOnly }: SimulationFormProps) {
+export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormProps>(function SimulationForm({ simulation, token, clients, onClientFieldsChanged, onSuccess, onNotify, onOfferSelected, readOnly, baseValueSetId }: SimulationFormProps, ref) {
     const { t } = useI18n();
     const existingPayload = (simulation.payloadJson ?? {}) as SimulationPayload;
 
@@ -920,10 +1139,10 @@ export function SimulationForm({ simulation, token, clients, onClientFieldsChang
                 ...(selectedOffer ? { selectedOffer } : {}),
             };
             await updateSimulation(token, simulation.id, { payloadJson: payload as Record<string, unknown> });
-            const calcResult = await calculateSimulation(token, simulation.id);
+            const calcResult = await calculateSimulation(token, simulation.id, baseValueSetId ? { baseValueSetId } : undefined);
             setResults(calcResult.results);
             setActiveTab("results");
-            onSuccess?.(calcResult.results);
+            onSuccess?.(calcResult.results, calcResult.baseValueSetId);
             onNotify?.(t("simulationForm", "calculationComplete", { count: (calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0) }), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "calculationFailed");
@@ -932,7 +1151,47 @@ export function SimulationForm({ simulation, token, clients, onClientFieldsChang
         } finally {
             setCalculating(false);
         }
-    }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify]);
+    }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify, baseValueSetId]);
+
+    const calculateWithMonth = useCallback(async (month: string) => {
+        const [year, mon] = month.split('-').map(Number);
+        const fechaInicio = `${year}-${String(mon).padStart(2, '0')}-01`;
+        const lastDay = new Date(year, mon, 0).getDate();
+        const fechaFin = `${year}-${String(mon).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+        const newElecState: ElecFormState = { ...elecState, fechaInicio, fechaFin };
+        const newGasState: GasFormState = { ...gasState, fechaInicio, fechaFin };
+
+        // Update state so inputs tab stays in sync
+        if (simType !== "GAS") setElecState(newElecState);
+        if (simType !== "ELECTRICITY") setGasState(newGasState);
+
+        setError(null);
+        setCalculating(true);
+        try {
+            const payload: SimulationPayload = {
+                schemaVersion: "1",
+                type: simType,
+                electricity: simType !== "GAS" ? buildElecInputs(newElecState) : undefined,
+                gas: simType !== "ELECTRICITY" ? buildGasInputs(newGasState) : undefined,
+                ...(selectedOffer ? { selectedOffer } : {}),
+            };
+            await updateSimulation(token, simulation.id, { payloadJson: payload as Record<string, unknown> });
+            const calcResult = await calculateSimulation(token, simulation.id, baseValueSetId ? { baseValueSetId } : undefined);
+            setResults(calcResult.results);
+            setActiveTab("results");
+            onSuccess?.(calcResult.results, calcResult.baseValueSetId);
+            onNotify?.(t("simulationForm", "calculationComplete", { count: (calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0) }), "success");
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : t("simulationForm", "calculationFailed");
+            setError(msg);
+            onNotify?.(msg, "error");
+        } finally {
+            setCalculating(false);
+        }
+    }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify, baseValueSetId]);
+
+    useImperativeHandle(ref, () => ({ calculate: handleCalculate }), [handleCalculate]);
 
     const handleSelectOffer = useCallback(async (productKey: string, commodity: "ELECTRICITY" | "GAS", pricingType: "FIXED" | "INDEXED") => {
         const offerData: SimulationPayload["selectedOffer"] = { productKey, commodity, pricingType, selectedAt: new Date().toISOString() };
@@ -965,6 +1224,17 @@ export function SimulationForm({ simulation, token, clients, onClientFieldsChang
 
     const facturaActual = simType === "ELECTRICITY" ? elecState.facturaActual
         : simType === "GAS" ? gasState.facturaActual : undefined;
+
+    const selectedMonth = (simType !== "GAS" ? elecState.fechaInicio : gasState.fechaInicio).slice(0, 7);
+    const availableMonths = (() => {
+        const today = new Date();
+        const months: string[] = [];
+        for (let delta = 0; delta <= 17; delta++) {
+            const d = new Date(today.getFullYear(), today.getMonth() - delta, 1);
+            months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
+        return months; // most recent first
+    })();
 
     const resultCount = (results?.electricity?.length ?? 0) + (results?.gas?.length ?? 0);
 
@@ -1015,15 +1285,12 @@ export function SimulationForm({ simulation, token, clients, onClientFieldsChang
                         <span style={{ fontSize: 14, fontWeight: 600, color: "var(--scheme-neutral-200)", display: "flex", alignItems: "center", gap: 6 }}>
                             {simType === "ELECTRICITY" && <><BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} /> {t("simulationForm", "electricity")}</>}
                             {simType === "GAS" && <><LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444" }} /> {t("simulationForm", "gas")}</>}
-                            {simType === "BOTH" && <><BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} /><LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444" }} /> {t("simulationForm", "electricityAndGasLabel")}</>}
                         </span>
                     </div>
 
-                    {(simType === "ELECTRICITY" || simType === "BOTH") && (
+                    {(simType === "ELECTRICITY") && (
                         <div>
-                            {simType === "BOTH" && (
-                                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 16, color: "var(--scheme-neutral-300)", display: "flex", alignItems: "center", gap: 6 }}><BoltIcon sx={{ fontSize: 16, color: "#f59e0b" }} /> {t("simulationForm", "electricity")}</div>
-                            )}
+
                             <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, opacity: readOnly ? 0.7 : 1 }}>
                                 <ElecForm
                                     state={elecState}
@@ -1040,13 +1307,9 @@ export function SimulationForm({ simulation, token, clients, onClientFieldsChang
                         </div>
                     )}
 
-                    {simType === "BOTH" && <div style={{ height: 8 }} />}
 
-                    {(simType === "GAS" || simType === "BOTH") && (
+                    {(simType === "GAS") && (
                         <div>
-                            {simType === "BOTH" && (
-                                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 16, color: "var(--scheme-neutral-300)", display: "flex", alignItems: "center", gap: 6 }}><LocalFireDepartmentIcon sx={{ fontSize: 16, color: "#ef4444" }} /> {t("simulationForm", "gas")}</div>
-                            )}
                             <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, opacity: readOnly ? 0.7 : 1 }}>
                                 <GasForm state={gasState} onChange={setGasState} errors={gasErrors} />
                             </fieldset>
@@ -1126,6 +1389,9 @@ export function SimulationForm({ simulation, token, clients, onClientFieldsChang
                             selectedOffer={selectedOffer}
                             onSelectOffer={readOnly ? undefined : handleSelectOffer}
                             readOnly={readOnly}
+                            selectedMonth={selectedMonth}
+                            availableMonths={readOnly ? undefined : availableMonths}
+                            onMonthChange={readOnly ? undefined : calculateWithMonth}
                         />
                     ) : (
                         <div style={{ padding: "60px 20px", textAlign: "center", opacity: 0.5 }}>
@@ -1141,4 +1407,4 @@ export function SimulationForm({ simulation, token, clients, onClientFieldsChang
             )}
         </div>
     );
-}
+});

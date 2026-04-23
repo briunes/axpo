@@ -36,6 +36,7 @@ async function main() {
         description:
           "Histórico de márgenes indexados últimos 12 meses. Usa {{HISTORY_TABLES}} para insertar las tablas de todas las tarifas, o {{HISTORY_TABLE_2TD}} / {{HISTORY_TABLE_3TD}} / {{HISTORY_TABLE_6TD}} para insertar cada tarifa por separado.",
         type: "price-history",
+        commodity: "ELECTRICITY",
         active: true,
         htmlContent,
       },

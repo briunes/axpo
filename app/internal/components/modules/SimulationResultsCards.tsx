@@ -3,6 +3,16 @@
 import { useState } from "react";
 import type { SimulationResults, ProductResult } from "@/domain/types";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { FormSelect } from "../ui/FormSelect";
+
+const MESES_ES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+
+function fmtMonth(yyyyMM: string, locale: string = "en"): string {
+    const [year, mon] = yyyyMM.split('-').map(Number);
+    const intlLocale = locale === "es" ? "es-ES" : "en-US";
+    const monthName = new Intl.DateTimeFormat(intlLocale, { month: "long" }).format(new Date(year, mon - 1, 1));
+    return `${monthName.charAt(0).toUpperCase()}${monthName.slice(1)} - ${year}`;
+}
 
 interface SimulationResultsCardsProps {
     results: SimulationResults;
@@ -18,6 +28,12 @@ interface SimulationResultsCardsProps {
     selectedOffer?: { productKey: string; commodity: "ELECTRICITY" | "GAS" };
     onSelectOffer?: (productKey: string, commodity: "ELECTRICITY" | "GAS", pricingType: "FIXED" | "INDEXED") => Promise<void>;
     readOnly?: boolean;
+    /** Currently displayed billing month (YYYY-MM) */
+    selectedMonth?: string;
+    /** Selectable months (YYYY-MM[]) */
+    availableMonths?: string[];
+    /** Called when user picks a different month */
+    onMonthChange?: (month: string) => void;
 }
 
 interface PendingOffer {
@@ -301,6 +317,10 @@ function EditableInputPanel({
     onRecalculate,
     calculating,
     readOnly,
+    selectedMonth,
+    availableMonths,
+    onMonthChange,
+    locale,
 }: {
     facturaActual?: number;
     tarifaAcceso?: string;
@@ -312,6 +332,10 @@ function EditableInputPanel({
     onRecalculate?: () => void;
     calculating?: boolean;
     readOnly?: boolean;
+    selectedMonth?: string;
+    availableMonths?: string[];
+    onMonthChange?: (month: string) => void;
+    locale?: string;
 }) {
     const { t } = useI18n();
     const [expandedSection, setExpandedSection] = useState<"energy" | "power" | "omie" | null>(null);
@@ -397,6 +421,22 @@ function EditableInputPanel({
                         }}>
                             {fmt(facturaActual)} €
                         </div>
+                    </div>
+                )}
+
+                {availableMonths && availableMonths.length > 0 && onMonthChange && (
+                    <div>
+                        <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
+                            {t("simulationOffersCards", "monthSelectorLabel")}
+                        </div>
+                        <FormSelect
+                            label=""
+                            value={selectedMonth ?? ""}
+                            options={availableMonths.map((m) => ({ value: m, label: fmtMonth(m, locale) }))}
+                            onChange={(v) => v && onMonthChange(String(v))}
+                            disabled={calculating}
+                            fullWidth={true}
+                        />
                     </div>
                 )}
             </div>
@@ -628,8 +668,11 @@ export function SimulationResultsCards({
     selectedOffer,
     onSelectOffer,
     readOnly,
+    selectedMonth,
+    availableMonths,
+    onMonthChange,
 }: SimulationResultsCardsProps) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const [elecTab, setElecTab] = useState<"all" | "fixed" | "indexed">("all");
     const [gasTab, setGasTab] = useState<"all" | "fixed" | "indexed">("all");
     const [pendingOffer, setPendingOffer] = useState<PendingOffer | null>(null);
@@ -674,263 +717,269 @@ export function SimulationResultsCards({
     }
 
     return (
-        <div style={{
-            display: "grid",
-            gridTemplateColumns: "300px 1fr",
-            gap: 16,
-            alignItems: "start",
-        }}>
-            {/* Left sidebar - Editable input panel */}
-            <EditableInputPanel
-                facturaActual={facturaActual}
-                tarifaAcceso={tarifaAcceso}
-                consumoAnual={consumoAnual}
-                energyPeriods={energyPeriods}
-                powerPeriods={powerPeriods}
-                omiePeriods={omiePeriods}
-                onUpdatePeriod={onUpdatePeriod}
-                onRecalculate={onRecalculate}
-                calculating={calculating}
-                readOnly={readOnly}
-            />
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{
+                display: "grid",
+                gridTemplateColumns: "300px 1fr",
+                gap: 16,
+                alignItems: "start",
+            }}>
+                {/* Left sidebar - Editable input panel */}
+                <EditableInputPanel
+                    facturaActual={facturaActual}
+                    tarifaAcceso={tarifaAcceso}
+                    consumoAnual={consumoAnual}
+                    energyPeriods={energyPeriods}
+                    powerPeriods={powerPeriods}
+                    omiePeriods={omiePeriods}
+                    onUpdatePeriod={onUpdatePeriod}
+                    onRecalculate={onRecalculate}
+                    calculating={calculating}
+                    readOnly={readOnly}
+                    selectedMonth={selectedMonth}
+                    availableMonths={availableMonths}
+                    onMonthChange={onMonthChange}
+                    locale={locale}
+                />
 
-            {/* Right side - Product tables */}
-            <div>
-                {/* Electricity section */}
-                {hasElec && (() => {
-                    const elecProducts = results.electricity!;
-                    const fixedProducts = elecProducts.filter(p => p.pricingType === "FIXED");
-                    const indexedProducts = elecProducts.filter(p => p.pricingType === "INDEXED");
+                {/* Right side - Product tables */}
+                <div>
+                    {/* Electricity section */}
+                    {hasElec && (() => {
+                        const elecProducts = results.electricity!;
+                        const fixedProducts = elecProducts.filter(p => p.pricingType === "FIXED");
+                        const indexedProducts = elecProducts.filter(p => p.pricingType === "INDEXED");
 
-                    // Find the best offer (highest savings) across all electricity products
-                    const bestElecProduct = elecProducts.reduce((best, current) =>
-                        current.ahorro > best.ahorro ? current : best
-                        , elecProducts[0]);
+                        const bestElecProduct = elecProducts.reduce((best, current) =>
+                            current.ahorro > best.ahorro ? current : best
+                            , elecProducts[0]);
 
-                    const displayProducts = elecTab === "all"
-                        ? elecProducts
-                        : elecTab === "fixed"
-                            ? fixedProducts
-                            : indexedProducts;
+                        const displayProducts = elecTab === "all"
+                            ? elecProducts
+                            : elecTab === "fixed"
+                                ? fixedProducts
+                                : indexedProducts;
 
-                    return (
-                        <div style={{ marginBottom: 40 }}>
-                            <h2 style={{
-                                margin: "0 0 16px 0",
-                                fontSize: 20,
-                                fontWeight: 700,
-                                color: "#111827",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 10,
-                            }}>
-                                <span>⚡</span>
-                                <span>{t("simulationOffersCards", "electricityOffers")}</span>
-                                <span style={{
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    color: "#6b7280",
-                                    background: "#f3f4f6",
-                                    padding: "4px 12px",
-                                    borderRadius: 12,
+                        return (
+                            <div style={{ marginBottom: 40 }}>
+                                <h2 style={{
+                                    margin: "0 0 16px 0",
+                                    fontSize: 20,
+                                    fontWeight: 700,
+                                    color: "#111827",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 10,
                                 }}>
-                                    {t("simulationOffersCards", "productsCount", { count: elecProducts.length })}
-                                </span>
-                            </h2>
+                                    <span>⚡</span>
+                                    <span>{t("simulationOffersCards", "electricityOffers")}</span>
+                                    <span style={{
+                                        fontSize: 13,
+                                        fontWeight: 600,
+                                        color: "#6b7280",
+                                        background: "#f3f4f6",
+                                        padding: "4px 12px",
+                                        borderRadius: 12,
+                                    }}>
+                                        {t("simulationOffersCards", "productsCount", { count: elecProducts.length })}
+                                    </span>
+                                </h2>
 
-                            {/* Tabs */}
-                            <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e5e7eb", marginBottom: 16 }}>
-                                {[
-                                    { key: "all" as const, label: t("simulationOffersCards", "tabAll"), count: elecProducts.length },
-                                    { key: "fixed" as const, label: t("simulationOffersCards", "tabFixed"), count: fixedProducts.length },
-                                    { key: "indexed" as const, label: t("simulationOffersCards", "tabIndexed"), count: indexedProducts.length },
-                                ].map((tab) => (
-                                    <button
-                                        key={tab.key}
-                                        type="button"
-                                        onClick={() => setElecTab(tab.key)}
-                                        disabled={tab.count === 0}
-                                        style={{
-                                            padding: "10px 20px",
-                                            fontSize: 13,
-                                            fontWeight: elecTab === tab.key ? 600 : 400,
-                                            background: "none",
-                                            border: "none",
-                                            cursor: tab.count === 0 ? "not-allowed" : "pointer",
-                                            color: tab.count === 0
-                                                ? "#d1d5db"
-                                                : elecTab === tab.key
-                                                    ? "#111827"
-                                                    : "#6b7280",
-                                            borderBottom: elecTab === tab.key ? "3px solid #4ade80" : "3px solid transparent",
-                                            marginBottom: -2,
-                                            opacity: tab.count === 0 ? 0.4 : 1,
-                                        }}
-                                    >
-                                        {tab.label} <span style={{
-                                            fontSize: 11,
-                                            fontWeight: 600,
-                                            background: elecTab === tab.key ? "#e0e7ff" : "#f3f4f6",
-                                            color: elecTab === tab.key ? "#4338ca" : "#6b7280",
-                                            padding: "2px 6px",
-                                            borderRadius: 8,
-                                            marginLeft: 6,
-                                        }}>
-                                            {tab.count}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {displayProducts.length > 0 ? (
-                                <ProductTable
-                                    products={displayProducts}
-                                    facturaActual={facturaActual}
-                                    selectedOffer={selectedOffer}
-                                    onOfferClick={readOnly ? undefined : handleOfferClick}
-                                    commodity="ELECTRICITY"
-                                    bestProductKey={bestElecProduct.productKey}
-                                />
-                            ) : (
-                                <div style={{ padding: 40, textAlign: "center", background: "#f9fafb", borderRadius: 12 }}>
-                                    <div style={{ fontSize: 14, color: "#6b7280" }}>
-                                        {t("simulationOffersCards", "noProductsAvailable")}
-                                    </div>
+                                {/* Tabs */}
+                                <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e5e7eb", marginBottom: 16 }}>
+                                    {[
+                                        { key: "all" as const, label: t("simulationOffersCards", "tabAll"), count: elecProducts.length },
+                                        { key: "fixed" as const, label: t("simulationOffersCards", "tabFixed"), count: fixedProducts.length },
+                                        { key: "indexed" as const, label: t("simulationOffersCards", "tabIndexed"), count: indexedProducts.length },
+                                    ].map((tab) => (
+                                        <button
+                                            key={tab.key}
+                                            type="button"
+                                            onClick={() => setElecTab(tab.key)}
+                                            disabled={tab.count === 0}
+                                            style={{
+                                                padding: "10px 20px",
+                                                fontSize: 13,
+                                                fontWeight: elecTab === tab.key ? 600 : 400,
+                                                background: "none",
+                                                border: "none",
+                                                cursor: tab.count === 0 ? "not-allowed" : "pointer",
+                                                color: tab.count === 0
+                                                    ? "#d1d5db"
+                                                    : elecTab === tab.key
+                                                        ? "#111827"
+                                                        : "#6b7280",
+                                                borderBottom: elecTab === tab.key ? "3px solid #4ade80" : "3px solid transparent",
+                                                marginBottom: -2,
+                                                opacity: tab.count === 0 ? 0.4 : 1,
+                                            }}
+                                        >
+                                            {tab.label} <span style={{
+                                                fontSize: 11,
+                                                fontWeight: 600,
+                                                background: elecTab === tab.key ? "#e0e7ff" : "#f3f4f6",
+                                                color: elecTab === tab.key ? "#4338ca" : "#6b7280",
+                                                padding: "2px 6px",
+                                                borderRadius: 8,
+                                                marginLeft: 6,
+                                            }}>
+                                                {tab.count}
+                                            </span>
+                                        </button>
+                                    ))}
                                 </div>
-                            )}
-                        </div>
-                    );
-                })()}
 
-                {/* Gas section */}
-                {hasGas && (() => {
-                    const gasProducts = results.gas!;
-                    const fixedProducts = gasProducts.filter(p => p.pricingType === "FIXED");
-                    const indexedProducts = gasProducts.filter(p => p.pricingType === "INDEXED");
+                                {displayProducts.length > 0 ? (
+                                    <ProductTable
+                                        products={displayProducts}
+                                        facturaActual={facturaActual}
+                                        selectedOffer={selectedOffer}
+                                        onOfferClick={readOnly ? undefined : handleOfferClick}
+                                        commodity="ELECTRICITY"
+                                        bestProductKey={bestElecProduct.productKey}
+                                    />
+                                ) : (
+                                    <div style={{ padding: 40, textAlign: "center", background: "#f9fafb", borderRadius: 12 }}>
+                                        <div style={{ fontSize: 14, color: "#6b7280" }}>
+                                            {t("simulationOffersCards", "noProductsAvailable")}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
 
-                    // Find the best offer (highest savings) across all gas products
-                    const bestGasProduct = gasProducts.reduce((best, current) =>
-                        current.ahorro > best.ahorro ? current : best
-                        , gasProducts[0]);
+                    {/* Gas section */}
+                    {hasGas && (() => {
+                        const gasProducts = results.gas!;
+                        const fixedProducts = gasProducts.filter(p => p.pricingType === "FIXED");
+                        const indexedProducts = gasProducts.filter(p => p.pricingType === "INDEXED");
 
-                    const displayProducts = gasTab === "all"
-                        ? gasProducts
-                        : gasTab === "fixed"
-                            ? fixedProducts
-                            : indexedProducts;
+                        // Find the best offer (highest savings) across all gas products
+                        const bestGasProduct = gasProducts.reduce((best, current) =>
+                            current.ahorro > best.ahorro ? current : best
+                            , gasProducts[0]);
 
-                    return (
+                        const displayProducts = gasTab === "all"
+                            ? gasProducts
+                            : gasTab === "fixed"
+                                ? fixedProducts
+                                : indexedProducts;
+
+                        return (
+                            <div>
+                                <h2 style={{
+                                    margin: "0 0 16px 0",
+                                    fontSize: 20,
+                                    fontWeight: 700,
+                                    color: "#111827",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 10,
+                                }}>
+                                    <span>🔥</span>
+                                    <span>{t("simulationOffersCards", "gasOffers")}</span>
+                                    <span style={{
+                                        fontSize: 13,
+                                        fontWeight: 600,
+                                        color: "#6b7280",
+                                        background: "#f3f4f6",
+                                        padding: "4px 12px",
+                                        borderRadius: 12,
+                                    }}>
+                                        {t("simulationOffersCards", "productsCount", { count: gasProducts.length })}
+                                    </span>
+                                </h2>
+
+                                {/* Tabs */}
+                                <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e5e7eb", marginBottom: 16 }}>
+                                    {[
+                                        { key: "all" as const, label: t("simulationOffersCards", "tabAll"), count: gasProducts.length },
+                                        { key: "fixed" as const, label: t("simulationOffersCards", "tabFixed"), count: fixedProducts.length },
+                                        { key: "indexed" as const, label: t("simulationOffersCards", "tabIndexed"), count: indexedProducts.length },
+                                    ].map((tab) => (
+                                        <button
+                                            key={tab.key}
+                                            type="button"
+                                            onClick={() => setGasTab(tab.key)}
+                                            disabled={tab.count === 0}
+                                            style={{
+                                                padding: "10px 20px",
+                                                fontSize: 13,
+                                                fontWeight: gasTab === tab.key ? 600 : 400,
+                                                background: "none",
+                                                border: "none",
+                                                cursor: tab.count === 0 ? "not-allowed" : "pointer",
+                                                color: tab.count === 0
+                                                    ? "#d1d5db"
+                                                    : gasTab === tab.key
+                                                        ? "#111827"
+                                                        : "#6b7280",
+                                                borderBottom: gasTab === tab.key ? "3px solid #4ade80" : "3px solid transparent",
+                                                marginBottom: -2,
+                                                opacity: tab.count === 0 ? 0.4 : 1,
+                                            }}
+                                        >
+                                            {tab.label} <span style={{
+                                                fontSize: 11,
+                                                fontWeight: 600,
+                                                background: gasTab === tab.key ? "#e0e7ff" : "#f3f4f6",
+                                                color: gasTab === tab.key ? "#4338ca" : "#6b7280",
+                                                padding: "2px 6px",
+                                                borderRadius: 8,
+                                                marginLeft: 6,
+                                            }}>
+                                                {tab.count}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {displayProducts.length > 0 ? (
+                                    <ProductTable
+                                        products={displayProducts}
+                                        facturaActual={facturaActual}
+                                        selectedOffer={selectedOffer}
+                                        onOfferClick={readOnly ? undefined : handleOfferClick}
+                                        commodity="GAS"
+                                        bestProductKey={bestGasProduct.productKey}
+                                    />
+                                ) : (
+                                    <div style={{ padding: 40, textAlign: "center", background: "#f9fafb", borderRadius: 12 }}>
+                                        <div style={{ fontSize: 14, color: "#6b7280" }}>
+                                            {t("simulationOffersCards", "noProductsAvailable")}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+
+                    {/* Footer info */}
+                    <div style={{
+                        marginTop: 32,
+                        padding: 16,
+                        background: "#f9fafb",
+                        borderRadius: 8,
+                        border: "1px solid #e5e7eb",
+                        fontSize: 11,
+                        color: "#6b7280",
+                        fontWeight: 500,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                    }}>
                         <div>
-                            <h2 style={{
-                                margin: "0 0 16px 0",
-                                fontSize: 20,
-                                fontWeight: 700,
-                                color: "#111827",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 10,
-                            }}>
-                                <span>🔥</span>
-                                <span>{t("simulationOffersCards", "gasOffers")}</span>
-                                <span style={{
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    color: "#6b7280",
-                                    background: "#f3f4f6",
-                                    padding: "4px 12px",
-                                    borderRadius: 12,
-                                }}>
-                                    {t("simulationOffersCards", "productsCount", { count: gasProducts.length })}
-                                </span>
-                            </h2>
-
-                            {/* Tabs */}
-                            <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e5e7eb", marginBottom: 16 }}>
-                                {[
-                                    { key: "all" as const, label: t("simulationOffersCards", "tabAll"), count: gasProducts.length },
-                                    { key: "fixed" as const, label: t("simulationOffersCards", "tabFixed"), count: fixedProducts.length },
-                                    { key: "indexed" as const, label: t("simulationOffersCards", "tabIndexed"), count: indexedProducts.length },
-                                ].map((tab) => (
-                                    <button
-                                        key={tab.key}
-                                        type="button"
-                                        onClick={() => setGasTab(tab.key)}
-                                        disabled={tab.count === 0}
-                                        style={{
-                                            padding: "10px 20px",
-                                            fontSize: 13,
-                                            fontWeight: gasTab === tab.key ? 600 : 400,
-                                            background: "none",
-                                            border: "none",
-                                            cursor: tab.count === 0 ? "not-allowed" : "pointer",
-                                            color: tab.count === 0
-                                                ? "#d1d5db"
-                                                : gasTab === tab.key
-                                                    ? "#111827"
-                                                    : "#6b7280",
-                                            borderBottom: gasTab === tab.key ? "3px solid #4ade80" : "3px solid transparent",
-                                            marginBottom: -2,
-                                            opacity: tab.count === 0 ? 0.4 : 1,
-                                        }}
-                                    >
-                                        {tab.label} <span style={{
-                                            fontSize: 11,
-                                            fontWeight: 600,
-                                            background: gasTab === tab.key ? "#e0e7ff" : "#f3f4f6",
-                                            color: gasTab === tab.key ? "#4338ca" : "#6b7280",
-                                            padding: "2px 6px",
-                                            borderRadius: 8,
-                                            marginLeft: 6,
-                                        }}>
-                                            {tab.count}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {displayProducts.length > 0 ? (
-                                <ProductTable
-                                    products={displayProducts}
-                                    facturaActual={facturaActual}
-                                    selectedOffer={selectedOffer}
-                                    onOfferClick={readOnly ? undefined : handleOfferClick}
-                                    commodity="GAS"
-                                    bestProductKey={bestGasProduct.productKey}
-                                />
-                            ) : (
-                                <div style={{ padding: 40, textAlign: "center", background: "#f9fafb", borderRadius: 12 }}>
-                                    <div style={{ fontSize: 14, color: "#6b7280" }}>
-                                        {t("simulationOffersCards", "noProductsAvailable")}
-                                    </div>
-                                </div>
-                            )}
+                            {t("simulationOffersCards", "calculatedAt")} {new Date(results.calculatedAt).toLocaleString()}
                         </div>
-                    );
-                })()}
-
-                {/* Footer info */}
-                <div style={{
-                    marginTop: 32,
-                    padding: 16,
-                    background: "#f9fafb",
-                    borderRadius: 8,
-                    border: "1px solid #e5e7eb",
-                    fontSize: 11,
-                    color: "#6b7280",
-                    fontWeight: 500,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                }}>
-                    <div>
-                        {t("simulationOffersCards", "calculatedAt")} {new Date(results.calculatedAt).toLocaleString()}
-                    </div>
-                    <div>
-                        {t("simulationOffersCards", "priceBase")} <span style={{ color: "#374151", fontWeight: 700, fontFamily: "monospace" }}>
-                            {results.baseValueSetId.slice(0, 12)}…
-                        </span>
+                        <div>
+                            {t("simulationOffersCards", "priceBase")} <span style={{ color: "#374151", fontWeight: 700, fontFamily: "monospace" }}>
+                                {results.baseValueSetId.slice(0, 12)}…
+                            </span>
+                        </div>
                     </div>
                 </div>
+
             </div>
 
             {/* Confirmation Modal */}

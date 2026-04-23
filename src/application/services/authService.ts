@@ -75,10 +75,16 @@ export class AuthService {
       passwordHash = await PasswordService.hash(input.password);
     }
 
+    // Get system configuration for token validity
+    const systemConfig = await prisma.systemConfig.findFirst();
+    const tokenValidityHours = systemConfig?.setupTokenValidityHours ?? 72;
+
     // Always generate a setup token so the user can set/reset their password
-    // via the first-time setup link (valid for 72 hours).
+    // via the first-time setup link (configurable validity from system config).
     const setupToken = crypto.randomBytes(32).toString("hex");
-    const setupTokenExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+    const setupTokenExpiresAt = new Date(
+      Date.now() + tokenValidityHours * 60 * 60 * 1000,
+    );
 
     const generated = input.pin ?? PinService.generate();
     const pinHash = await PinService.hash(generated);
@@ -110,6 +116,7 @@ export class AuthService {
         userName: user.fullName,
         userPin: generated,
         userPassword: input.password,
+        setupToken,
         userId: user.id,
         triggeredByUserId: input.createdByUserId,
       });
@@ -167,6 +174,118 @@ export class AuthService {
         passwordHash,
         setupToken: null,
         setupTokenExpiresAt: null,
+        updatedByUserId: user.id,
+      },
+    });
+
+    const authToken = JwtService.signAccessToken({
+      sub: user.id,
+      role: user.role as UserRole,
+      agencyId: user.agencyId,
+      email: user.email,
+    });
+
+    return {
+      token: authToken,
+      user: {
+        id: user.id,
+        agencyId: user.agencyId,
+        role: user.role,
+        fullName: user.fullName,
+        email: user.email,
+      },
+    };
+  }
+
+  /**
+   * Request a password reset by sending an email with a reset token.
+   * Creates a token even if the email doesn't exist (to prevent email enumeration).
+   */
+  static async requestPasswordReset(email: string) {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    // Don't reveal whether the email exists or not (security best practice)
+    if (!user) {
+      // Silently succeed - don't tell attackers the email doesn't exist
+      return { success: true };
+    }
+
+    if (!user.isActive) {
+      // Silently succeed for inactive users too
+      return { success: true };
+    }
+
+    // Get system configuration for token validity
+    const systemConfig = await prisma.systemConfig.findFirst();
+    const tokenValidityHours =
+      systemConfig?.passwordResetTokenValidityHours ?? 24;
+
+    // Generate a secure reset token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenExpiresAt = new Date(
+      Date.now() + tokenValidityHours * 60 * 60 * 1000,
+    );
+
+    // Save the reset token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetToken: resetToken,
+        passwordResetTokenExpiresAt: resetTokenExpiresAt,
+      },
+    });
+
+    // Send password reset email
+    try {
+      await EmailService.sendPasswordResetEmail({
+        userEmail: user.email,
+        userName: user.fullName,
+        resetToken,
+        userId: user.id,
+      });
+    } catch (error) {
+      console.error("Failed to send password reset email:", error);
+      // Don't fail the request if email fails, just log it
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * Reset password using a valid reset token.
+   * The token is consumed (cleared) after successful use.
+   */
+  static async resetPassword(token: string, newPassword: string) {
+    const user = await prisma.user.findUnique({
+      where: { passwordResetToken: token },
+    });
+
+    if (!user) {
+      throw new ValidationError("Invalid or already used reset link");
+    }
+
+    if (
+      !user.passwordResetTokenExpiresAt ||
+      user.passwordResetTokenExpiresAt < new Date()
+    ) {
+      throw new ValidationError("This reset link has expired");
+    }
+
+    if (!user.isActive) {
+      throw new ForbiddenError("User account is inactive");
+    }
+
+    PasswordService.validatePolicy(newPassword);
+    const passwordHash = await PasswordService.hash(newPassword);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        passwordResetToken: null,
+        passwordResetTokenExpiresAt: null,
         updatedByUserId: user.id,
       },
     });

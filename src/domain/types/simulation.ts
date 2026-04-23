@@ -238,7 +238,7 @@ export interface SimulationPayload {
   schemaVersion?: "1";
 
   /** Which commodities this simulation covers */
-  type?: "ELECTRICITY" | "GAS" | "BOTH";
+  type?: "ELECTRICITY" | "GAS";
 
   electricity?: ElectricityInputs;
 

@@ -67,13 +67,25 @@ export class EmailService {
   private static async createTransporter() {
     const config = await this.getSMTPConfig();
 
+    // Port 465 uses direct SSL (secure: true)
+    // Port 587 uses STARTTLS (secure: false, requireTLS: true)
+    // Automatically determine the correct settings based on port
+    const isPort465 = config.port === 465;
+    const useSecure = isPort465;
+    const useRequireTLS = !isPort465;
+
     return nodemailer.createTransport({
       host: config.host,
       port: config.port,
-      secure: config.secure,
+      secure: useSecure, // true for port 465, false for port 587
+      requireTLS: useRequireTLS, // true for port 587, false for port 465
       auth: {
         user: config.user,
         pass: config.password,
+      },
+      tls: {
+        // Do not fail on invalid certs (for self-signed certificates in development)
+        rejectUnauthorized: process.env.NODE_ENV === "production",
       },
     });
   }
@@ -196,6 +208,7 @@ export class EmailService {
     userName: string;
     userPin: string;
     userPassword?: string;
+    setupToken?: string;
     userId?: string;
     triggeredByUserId?: string;
   }): Promise<void> {
@@ -209,12 +222,22 @@ export class EmailService {
         return;
       }
 
+      // Generate the setup password URL if a token is provided
+      const baseUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL ||
+        process.env.VERCEL_URL ||
+        "http://localhost:3000";
+      const setupPasswordUrl = options.setupToken
+        ? `${baseUrl}/internal/setup-password?token=${options.setupToken}`
+        : "";
+
       const variables = {
         USER_NAME: options.userName,
         USER_EMAIL: options.userEmail,
         USER_PIN: options.userPin,
         USER_PASSWORD:
           options.userPassword || "Please check with your administrator",
+        SETUP_PASSWORD_URL: setupPasswordUrl,
       };
 
       await this.sendTemplateEmail({
@@ -230,6 +253,54 @@ export class EmailService {
     } catch (error) {
       // Log the error but don't fail user creation if email fails
       console.error("Failed to send user creation email:", error);
+    }
+  }
+
+  /**
+   * Send a password reset email
+   */
+  static async sendPasswordResetEmail(options: {
+    userEmail: string;
+    userName: string;
+    resetToken: string;
+    userId?: string;
+  }): Promise<void> {
+    try {
+      const config = await prisma.systemConfig.findFirst();
+
+      if (!config?.passwordResetEmailTemplateId) {
+        console.warn(
+          "Password reset email template not configured. Skipping email.",
+        );
+        return;
+      }
+
+      // Generate the reset password URL
+      const baseUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL ||
+        process.env.VERCEL_URL ||
+        "http://localhost:3000";
+      const resetPasswordUrl = `${baseUrl}/internal/reset-password?token=${options.resetToken}`;
+
+      const variables = {
+        USER_NAME: options.userName,
+        USER_EMAIL: options.userEmail,
+        RESET_PASSWORD_URL: resetPasswordUrl,
+      };
+
+      await this.sendTemplateEmail({
+        to: options.userEmail,
+        templateId: config.passwordResetEmailTemplateId,
+        variables,
+        triggeredBy: "password-reset-request",
+        relatedUserId: options.userId,
+      });
+
+      console.log(`Password reset email sent to ${options.userEmail}`);
+    } catch (error) {
+      // Log the error but don't fail the reset request if email fails
+      console.error("Failed to send password reset email:", error);
+      throw error; // Re-throw to let caller know email failed
     }
   }
 

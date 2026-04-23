@@ -125,6 +125,19 @@ export const POST = withErrorHandler(
       );
     }
 
+    // Fetch simulation to get agencyId for tariff validation
+    const simulation = await prisma.simulation.findUnique({
+      where: { id },
+      select: { agencyId: true },
+    });
+
+    if (!simulation) {
+      throw new ValidationError("Simulation not found");
+    }
+
+    // Validate tariff availability for agency
+    await validateTariffAvailability(simulation.agencyId, payload);
+
     // Run calculation
     const results = CalculationService.calculate(
       payload,
@@ -172,12 +185,80 @@ export const POST = withErrorHandler(
   },
 );
 
-/** Find the latest active global BaseValueSet. */
+/**
+ * Find the default BaseValueSet to use for calculations.
+ * Prioritizes production sets, falls back to active sets.
+ */
 async function resolveDefaultBaseValueSetId(): Promise<string | null> {
+  // Try production set first
+  const productionSet = await prisma.baseValueSet.findFirst({
+    where: {
+      isProduction: true,
+      isActive: true,
+      isDeleted: false,
+      scopeType: "GLOBAL",
+    },
+    orderBy: { version: "desc" },
+    select: { id: true },
+  });
+
+  if (productionSet) return productionSet.id;
+
+  // Fallback to any active set
   const set = await prisma.baseValueSet.findFirst({
     where: { isActive: true, isDeleted: false, scopeType: "GLOBAL" },
     orderBy: { version: "desc" },
     select: { id: true },
   });
   return set?.id ?? null;
+}
+
+/**
+ * Validate that the tariffs used in the simulation are enabled for the agency.
+ * Throws ValidationError if any tariff is disabled.
+ */
+async function validateTariffAvailability(
+  agencyId: string,
+  payload: SimulationPayload,
+): Promise<void> {
+  const tariffsToCheck: string[] = [];
+
+  // Collect electricity tariffs
+  if (payload.electricity?.tarifaAcceso) {
+    tariffsToCheck.push(`ELEC:${payload.electricity.tarifaAcceso}`);
+  }
+
+  // Collect gas tariffs
+  if (payload.gas?.tarifaAcceso) {
+    tariffsToCheck.push(`GAS:${payload.gas.tarifaAcceso}`);
+  }
+
+  if (tariffsToCheck.length === 0) {
+    return; // Nothing to validate
+  }
+
+  // Load tariff settings for this agency
+  const agencyTariffs = await prisma.agencyTariff.findMany({
+    where: {
+      agencyId,
+      tariffType: { in: tariffsToCheck },
+    },
+  });
+
+  // Check each tariff
+  const disabledTariffs: string[] = [];
+  for (const tariffType of tariffsToCheck) {
+    const setting = agencyTariffs.find((t) => t.tariffType === tariffType);
+    // If no setting exists, tariff is enabled by default
+    // If setting exists and isEnabled = false, tariff is disabled
+    if (setting && !setting.isEnabled) {
+      disabledTariffs.push(tariffType);
+    }
+  }
+
+  if (disabledTariffs.length > 0) {
+    throw new ValidationError(
+      `The following tariffs are not enabled for this agency: ${disabledTariffs.join(", ")}`,
+    );
+  }
 }

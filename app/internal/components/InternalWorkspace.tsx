@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
 import { Text } from "@once-ui-system/core";
 import { clearSession, loadSession, type SessionState } from "../lib/authSession";
@@ -21,13 +21,13 @@ import {
   useUsers,
 } from "./hooks";
 import { TopBar, SectionMenu, SidebarHeader, type AppSection } from "./layout";
+import { useUserPreferences } from "./providers/UserPreferencesProvider";
 import {
   AgenciesModule,
   AnalyticsModule,
-  AuditLogsModule,
+  SystemLogsModule,
   BaseValuesModule,
   ClientsModule,
-  EmailLogsModule,
   SimulationsModule,
   UsersModule,
   ConfigurationsModule,
@@ -36,6 +36,13 @@ import { ForbiddenState, LoadingState } from "./shared";
 import { Toast, useToast } from "./ui";
 
 export type { AppSection };
+
+// Context for action buttons
+const ActionButtonsContext = createContext<((buttons: React.ReactNode) => void) | null>(null);
+
+export function useActionButtons() {
+  return useContext(ActionButtonsContext);
+}
 
 export function InternalWorkspace({ section, children }: { section: AppSection; children?: React.ReactNode }) {
   const router = useRouter();
@@ -46,6 +53,12 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
   const [mounted, setMounted] = useState(false);
   const [permItems, setPermItems] = useState<RolePermissionItem[]>([]);
   const [permLoaded, setPermLoaded] = useState(false);
+  const [actionButtons, setActionButtons] = useState<React.ReactNode>(null);
+
+  const handleActionButtons = useCallback((buttons: React.ReactNode) => {
+    console.log('Setting action buttons:', buttons);
+    setActionButtons(buttons);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -84,10 +97,13 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
     });
   };
 
-  const simulationsActions = useSimulations(session);
-  const agenciesActions = useAgencies(session);
-  const clientsActions = useClients(session);
-  const usersActions = useUsers(session);
+  const { preferences } = useUserPreferences();
+  const itemsPerPage = preferences.itemsPerPage;
+
+  const simulationsActions = useSimulations(session, itemsPerPage);
+  const agenciesActions = useAgencies(session, itemsPerPage);
+  const clientsActions = useClients(session, itemsPerPage);
+  const usersActions = useUsers(session, itemsPerPage);
   const baseValuesActions = useBaseValues(session);
   const auditLogsActions = useAuditLogs(session);
   const analyticsActions = useAnalytics(session);
@@ -116,7 +132,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
       case "agencies": agenciesActions.refresh(); break;
       case "clients": clientsActions.refresh(); break;
       case "base-values": baseValuesActions.refresh(); break;
-      case "audit-logs": auditLogsActions.refresh(); break;
+      case "logs": auditLogsActions.refresh(); break;
       case "analytics": analyticsActions.refresh(); break;
       case "configurations": /* Configurations don't need refresh */ break;
     }
@@ -129,8 +145,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
       agencies: "/internal/agencies",
       clients: "/internal/clients",
       "base-values": "/internal/base-values",
-      "audit-logs": "/internal/audit-logs",
-      "email-logs": "/internal/email-logs",
+      logs: "/internal/logs",
       analytics: "/internal/analytics",
       configurations: "/internal/configurations",
     };
@@ -166,8 +181,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
     agencies: canDo(role, "section.agencies"),
     clients: canDo(role, "section.clients"),
     "base-values": canDo(role, "section.base-values"),
-    "audit-logs": canDo(role, "section.audit-logs"),
-    "email-logs": canDo(role, "section.email-logs"),
+    logs: canDo(role, "section.audit-logs") || canDo(role, "section.email-logs"),
     analytics: canDo(role, "section.analytics"),
     configurations: canDo(role, "section.configurations"),
   };
@@ -182,8 +196,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
             canSeeAgenciesSection={canDo(role, "section.agencies")}
             canSeeClientsSection={canDo(role, "section.clients")}
             canSeeBaseValuesSection={canDo(role, "section.base-values")}
-            canSeeAuditLogsSection={canDo(role, "section.audit-logs")}
-            canSeeEmailLogsSection={canDo(role, "section.email-logs")}
+            canSeeLogsSection={canDo(role, "section.audit-logs") || canDo(role, "section.email-logs")}
             canViewAnalytics={canDo(role, "section.analytics")}
             canSeeConfigurationsSection={canDo(role, "section.configurations")}
             onNavigate={handleNavigate}
@@ -197,6 +210,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
             section={section}
             onRefresh={() => { }}
             onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
+            actionButtons={null}
           />
           <main className="app-content">
             <ForbiddenState section={section} />
@@ -215,7 +229,9 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
             actions={simulationsActions}
             agencies={agenciesActions.agencies}
             clients={clientsActions.clients}
+            users={usersActions.users}
             onNotify={handleNotify}
+            onActionButtons={handleActionButtons}
           />
         );
       case "users":
@@ -225,20 +241,19 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
             actions={usersActions}
             agencies={agenciesActions.agencies}
             onNotify={handleNotify}
+            onActionButtons={handleActionButtons}
           />
         );
       case "agencies":
-        return <AgenciesModule session={session} actions={agenciesActions} onNotify={handleNotify} />;
+        return <AgenciesModule session={session} actions={agenciesActions} onNotify={handleNotify} onActionButtons={handleActionButtons} />;
       case "clients":
-        return <ClientsModule session={session} actions={clientsActions} onNotify={handleNotify} />;
+        return <ClientsModule session={session} actions={clientsActions} onNotify={handleNotify} onActionButtons={handleActionButtons} />;
       case "base-values":
-        return <BaseValuesModule session={session} actions={baseValuesActions} onNotify={handleNotify} />;
-      case "audit-logs":
-        return <AuditLogsModule session={session} actions={auditLogsActions} onNotify={handleNotify} />;
-      case "email-logs":
-        return <EmailLogsModule session={session} onNotify={handleNotify} />;
+        return <BaseValuesModule session={session} actions={baseValuesActions} onNotify={handleNotify} onActionButtons={handleActionButtons} />;
+      case "logs":
+        return <SystemLogsModule session={session} auditLogsActions={auditLogsActions} onNotify={handleNotify} onActionButtons={handleActionButtons} />;
       case "analytics":
-        return <AnalyticsModule session={session} actions={analyticsActions} onNotify={handleNotify} />;
+        return <AnalyticsModule session={session} actions={analyticsActions} onNotify={handleNotify} onActionButtons={handleActionButtons} />;
       case "configurations":
         return <ConfigurationsModule session={session} onNotify={handleNotify} />;
       default:
@@ -258,46 +273,48 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
 
   return (
     <PermissionsContext.Provider value={permissionsContextValue}>
-      <div className="app-shell">
-        <Toast messages={toastMessages} onDismiss={dismissToast} />
-        {mobileMenuOpen && (
-          <div
-            className="app-sidebar-overlay visible"
-            onClick={() => setMobileMenuOpen(false)}
-            aria-hidden="true"
-          />
-        )}
+      <ActionButtonsContext.Provider value={handleActionButtons}>
+        <div className="app-shell">
+          <Toast messages={toastMessages} onDismiss={dismissToast} />
+          {mobileMenuOpen && (
+            <div
+              className="app-sidebar-overlay visible"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+          )}
 
-        <aside className={`app-sidebar${collapsed ? " collapsed" : ""}${mobileMenuOpen ? " mobile-open" : ""}`}>
-          <SidebarHeader collapsed={collapsed} onToggle={handleToggle} />
-          <SectionMenu
-            section={section}
-            canSeeUsersSection={canDo(role, "section.users")}
-            canSeeAgenciesSection={canDo(role, "section.agencies")}
-            canSeeClientsSection={canDo(role, "section.clients")}
-            canSeeBaseValuesSection={canDo(role, "section.base-values")}
-            canSeeAuditLogsSection={canDo(role, "section.audit-logs")}
-            canSeeEmailLogsSection={canDo(role, "section.email-logs")}
-            canViewAnalytics={canDo(role, "section.analytics")}
-            canSeeConfigurationsSection={canDo(role, "section.configurations")}
-            onNavigate={handleNavigate}
-            onLogout={handleLogout}
-            session={session}
-            collapsed={collapsed}
-          />
-        </aside>
+          <aside className={`app-sidebar${collapsed ? " collapsed" : ""}${mobileMenuOpen ? " mobile-open" : ""}`}>
+            <SidebarHeader collapsed={collapsed} onToggle={handleToggle} />
+            <SectionMenu
+              section={section}
+              canSeeUsersSection={canDo(role, "section.users")}
+              canSeeAgenciesSection={canDo(role, "section.agencies")}
+              canSeeClientsSection={canDo(role, "section.clients")}
+              canSeeBaseValuesSection={canDo(role, "section.base-values")}
+              canSeeLogsSection={canDo(role, "section.audit-logs") || canDo(role, "section.email-logs")}
+              canViewAnalytics={canDo(role, "section.analytics")}
+              canSeeConfigurationsSection={canDo(role, "section.configurations")}
+              onNavigate={handleNavigate}
+              onLogout={handleLogout}
+              session={session}
+              collapsed={collapsed}
+            />
+          </aside>
 
-        <div className="app-main">
-          <TopBar
-            section={section}
-            onRefresh={handleRefresh}
-            onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
-          />
-          <main className="app-content">
-            {children || renderSection()}
-          </main>
+          <div className="app-main">
+            <TopBar
+              section={section}
+              onRefresh={handleRefresh}
+              onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
+              actionButtons={actionButtons}
+            />
+            <main className="app-content">
+              {children || renderSection()}
+            </main>
+          </div>
         </div>
-      </div>
+      </ActionButtonsContext.Provider>
     </PermissionsContext.Provider>
   );
 }

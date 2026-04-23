@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   createAgency,
   listAgencies,
@@ -32,6 +32,8 @@ export interface AgenciesActions {
   // search
   search: string;
   setSearch: (v: string) => void;
+  showArchived: boolean;
+  setShowArchived: (v: boolean) => void;
   // create
   newAgencyName: string;
   setNewAgencyName: (v: string) => void;
@@ -44,9 +46,13 @@ export interface AgenciesActions {
   closeAgencyEditor: () => void;
   handleUpdateAgency: (e: React.FormEvent) => Promise<void>;
   handleToggleAgencyStatus: (agency: AgencyItem) => Promise<void>;
+  handleDeleteAgency: (agency: AgencyItem) => Promise<void>;
 }
 
-export function useAgencies(session: SessionState | null): AgenciesActions {
+export function useAgencies(
+  session: SessionState | null,
+  initialPageSize = 25,
+): AgenciesActions {
   const [agencies, setAgencies] = useState<AgencyItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -55,8 +61,13 @@ export function useAgencies(session: SessionState | null): AgenciesActions {
 
   // pagination
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [total, setTotal] = useState(0);
+  // sync pageSize when user preferences load
+  useEffect(() => {
+    setPageSize(initialPageSize);
+    setPage(1);
+  }, [initialPageSize]);
   // sort
   const [sortColumn, setSortColumn] = useState("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -66,6 +77,7 @@ export function useAgencies(session: SessionState | null): AgenciesActions {
   };
   // search
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const [newAgencyName, setNewAgencyName] = useState("");
   const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
@@ -99,6 +111,7 @@ export function useAgencies(session: SessionState | null): AgenciesActions {
           search: search || undefined,
           orderBy: sortColumn,
           sortDir,
+          includeDeleted: showArchived || undefined,
           ...overrides,
         };
         const result = await listAgencies(session.token, params);
@@ -112,7 +125,7 @@ export function useAgencies(session: SessionState | null): AgenciesActions {
         setLoading(false);
       }
     },
-    [session, page, pageSize, search, sortColumn, sortDir],
+    [session, page, pageSize, search, sortColumn, sortDir, showArchived],
   );
 
   const handleCreateAgency = async (e: React.FormEvent) => {
@@ -164,6 +177,15 @@ export function useAgencies(session: SessionState | null): AgenciesActions {
     });
   };
 
+  const handleDeleteAgency = async (agency: AgencyItem): Promise<void> => {
+    if (!session) return;
+    await runAction(`delete-agency-${agency.id}`, async () => {
+      await deleteAgency(session.token, agency.id);
+      await refresh();
+      setSuccessText("Agency deleted.");
+    });
+  };
+
   return {
     agencies,
     loading,
@@ -182,6 +204,8 @@ export function useAgencies(session: SessionState | null): AgenciesActions {
     setSort,
     search,
     setSearch,
+    showArchived,
+    setShowArchived,
     newAgencyName,
     setNewAgencyName,
     handleCreateAgency,
@@ -192,5 +216,6 @@ export function useAgencies(session: SessionState | null): AgenciesActions {
     closeAgencyEditor,
     handleUpdateAgency,
     handleToggleAgencyStatus,
+    handleDeleteAgency,
   };
 }

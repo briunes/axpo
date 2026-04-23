@@ -1,6 +1,5 @@
 "use client";
 
-import { MenuItem } from "@mui/material";
 import { useState } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, UserRole } from "../../lib/internalApi";
@@ -20,6 +19,7 @@ export interface UserFormData {
     currentPassword?: string;
     role?: UserRole;
     agencyId?: string;
+    isActive?: boolean;
 }
 
 interface ValidationErrors {
@@ -48,6 +48,7 @@ export interface UserFormProps {
     onCancel?: () => void;
     mode: "create" | "edit";
     isEditingSelf?: boolean;
+    onRenderActions?: (actions: React.ReactNode) => void;
 }
 
 /**
@@ -68,6 +69,7 @@ export function UserForm({
     onCancel,
     mode,
     isEditingSelf,
+    onRenderActions,
 }: UserFormProps) {
     const { t } = useI18n();
     const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
@@ -161,6 +163,7 @@ export function UserForm({
             cancelLabel={cancelLabel}
             onCancel={onCancel}
             isSubmitting={isSubmitting}
+            onRenderActions={onRenderActions}
         >
             <CrudFormRow>
                 <FormInput
@@ -234,26 +237,41 @@ export function UserForm({
                     error={!!validationErrors.commercialEmail}
                     helperText={validationErrors.commercialEmail}
                 />
+
+                {mode === "edit" && (
+                    <FormSelect
+                        label={t("userFormPage", "fieldIsActive")}
+                        options={[
+                            { value: "active", label: t("userFormPage", "statusActive") },
+                            { value: "inactive", label: t("userFormPage", "statusInactive") }
+                        ]}
+                        value={data.isActive ? "active" : "inactive"}
+                        onChange={(value) => onChange({ ...data, isActive: value === "active" })}
+                        disabled={isSubmitting || isEditingSelf}
+                        helperText={isEditingSelf ? t("userFormPage", "cannotDeactivateSelf") : undefined}
+                    />
+                )}
             </CrudFormRow>
 
             {canManageRole && (
                 <CrudFormRow>
                     <FormSelect
                         label={t("userFormPage", "fieldRole")}
+                        options={[
+                            { value: "COMMERCIAL", label: t("userFormPage", "roleCommercial") },
+                            { value: "AGENT", label: t("userFormPage", "roleAgent") },
+                            ...(isAdmin(session.user.role) ? [{ value: "ADMIN", label: t("userFormPage", "roleAdmin") }] : [])
+                        ]}
                         value={data.role || "COMMERCIAL"}
-                        onChange={(e) => {
-                            onChange({ ...data, role: e.target.value as UserRole });
+                        onChange={(value) => {
+                            onChange({ ...data, role: value as UserRole });
                             clearError('role');
                         }}
                         required={mode === "create"}
                         disabled={isSubmitting || (mode === "edit" && data.role === "ADMIN")}
                         error={!!validationErrors.role}
                         helperText={validationErrors.role || (mode === "edit" && data.role === "ADMIN" ? t("userFormPage", "adminRoleCannotBeChanged") : undefined)}
-                    >
-                        <MenuItem value="COMMERCIAL">{t("userFormPage", "roleCommercial")}</MenuItem>
-                        <MenuItem value="AGENT">{t("userFormPage", "roleAgent")}</MenuItem>
-                        {isAdmin(session.user.role) && <MenuItem value="ADMIN">{t("userFormPage", "roleAdmin")}</MenuItem>}
-                    </FormSelect>
+                    />
 
                     {canManageAgency && (
                         <FormAutocomplete

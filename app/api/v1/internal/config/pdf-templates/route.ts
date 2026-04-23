@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
       name: body.name,
       description: body.description,
       type: body.type,
+      commodity: body.commodity ?? null,
       active: body.active ?? true,
       htmlContent: body.htmlContent,
       editableSections: body.editableSections ?? undefined,

@@ -87,7 +87,12 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
         ])
             .then(async ([simData, pdfTpl, emailTpl, variables]) => {
                 setSimulation(simData.simulation);
-                const payload = simData.simulation.payloadJson as { results?: any; selectedOffer?: { productKey: string } } | null;
+                const payload = simData.simulation.payloadJson as {
+                    type?: "ELECTRICITY" | "GAS";
+                    results?: any;
+                    selectedOffer?: { productKey: string }
+                } | null;
+
                 if (payload?.results) setHasResults(true);
                 const productKey =
                     payload?.selectedOffer?.productKey ??
@@ -95,7 +100,24 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                         ?.find((v) => v.payloadJson?.selectedOffer?.productKey)
                         ?.payloadJson?.selectedOffer?.productKey;
                 if (productKey) setSelectedOfferProductKey(productKey);
-                setPdfTemplates(pdfTpl.filter((t) => t.active && (t.type === "simulation-output" || t.type === "simulation-detailed")));
+
+                // Get simulation type from payload (defaults to ELECTRICITY if not specified)
+                const simulationType = payload?.type || "ELECTRICITY";
+
+                // Filter PDF templates by commodity and type
+                const filteredPdfTemplates = pdfTpl.filter((t) => {
+                    // Must be active
+                    if (!t.active) return false;
+
+                    // Must be simulation template type
+                    if (t.type !== "simulation-output" && t.type !== "simulation-detailed") return false;
+
+                    // Filter by commodity - treat null/undefined as ELECTRICITY
+                    const templateCommodity = t.commodity || "ELECTRICITY";
+                    return templateCommodity === simulationType;
+                });
+
+                setPdfTemplates(filteredPdfTemplates);
                 setEmailTemplates(emailTpl.filter((t) => t.active && t.type === "simulation-share"));
                 setTemplateVariables(variables);
 

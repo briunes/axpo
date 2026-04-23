@@ -87,6 +87,8 @@ export const GET = withErrorHandler(
         commercialEmail: true,
         otherDetails: true,
         isActive: true,
+        isDeleted: true,
+        deletedAt: true,
         createdAt: true,
         updatedAt: true,
         pinRotatedAt: true,
@@ -95,7 +97,7 @@ export const GET = withErrorHandler(
       },
     });
 
-    if (!user) {
+    if (!user || user.isDeleted) {
       throw new NotFoundError("User", id);
     }
 
@@ -118,7 +120,7 @@ export const PATCH = withErrorHandler(
     }
 
     const existing = await prisma.user.findUnique({ where: { id } });
-    if (!existing) {
+    if (!existing || existing.isDeleted) {
       throw new NotFoundError("User", id);
     }
 
@@ -242,5 +244,73 @@ export const PATCH = withErrorHandler(
     });
 
     return ResponseHandler.ok(updated, 200);
+  },
+);
+
+/**
+ * @swagger
+ * /api/v1/internal/users/{id}:
+ *   delete:
+ *     tags: [Users]
+ *     summary: Delete user (sets isDeleted for admin, isArchived for agent/commercial)
+ *     security:
+ *       - bearerAuth: []
+ */
+export const DELETE = withErrorHandler(
+  async (
+    request: NextRequest,
+    context?: { params?: Record<string, string> },
+  ) => {
+    const auth = await requireAuth(request);
+    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+
+    const id = context?.params?.id;
+    if (!id) {
+      throw new ValidationError("User id parameter is required");
+    }
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing || existing.isDeleted) {
+      throw new NotFoundError("User", id);
+    }
+
+    assertUserReadable(auth, existing);
+
+    // Admin sets isDeleted = true (soft delete)
+    // Agent/Commercial can only delete their own user
+    if (auth.role === UserRole.ADMIN) {
+      await prisma.user.update({
+        where: { id },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          isActive: false,
+          updatedByUserId: auth.userId,
+        },
+      });
+    } else {
+      // Agent/Commercial can only delete their own user
+      if (id !== auth.userId) {
+        throw new ForbiddenError("You can only delete your own user");
+      }
+      await prisma.user.update({
+        where: { id },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          isActive: false,
+          updatedByUserId: auth.userId,
+        },
+      });
+    }
+
+    await AuditService.logEvent({
+      actorUserId: auth.userId,
+      eventType: "USER_DELETED",
+      targetType: "USER",
+      targetId: id,
+    });
+
+    return ResponseHandler.ok({ userId: id, deleted: true }, 200);
   },
 );

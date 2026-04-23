@@ -6,6 +6,7 @@ import { LayoutProvider } from "@once-ui-system/core";
 import { muiTheme } from "./lib/muiTheme";
 import { InternalErrorBoundary } from "./components/shared/InternalErrorBoundary";
 import { AlertProvider } from "./components/shared/AlertProvider";
+import { UserPreferencesProvider } from "./components/providers/UserPreferencesProvider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -13,7 +14,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <CssBaseline />
       <LayoutProvider>
         <AlertProvider>
-          <InternalErrorBoundary>{children}</InternalErrorBoundary>
+          <UserPreferencesProvider>
+            <InternalErrorBoundary>{children}</InternalErrorBoundary>
+          </UserPreferencesProvider>
         </AlertProvider>
       </LayoutProvider>
     </ThemeProvider>

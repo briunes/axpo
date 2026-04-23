@@ -14,16 +14,17 @@ const I18nContext = createContext<I18nContextType | undefined>(undefined);
 const LOCALE_STORAGE_KEY = 'axpo-locale';
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-    const [locale, setLocaleState] = useState<Locale>(() => {
-        // Load locale from localStorage on client side
-        if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-            if (stored === 'en' || stored === 'es') {
-                return stored;
-            }
+    const [locale, setLocaleState] = useState<Locale>('en');
+    const [isHydrated, setIsHydrated] = useState(false);
+
+    // Load locale from localStorage after hydration
+    useEffect(() => {
+        const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+        if (stored === 'en' || stored === 'es') {
+            setLocaleState(stored);
         }
-        return 'en';
-    });
+        setIsHydrated(true);
+    }, []);
 
     const setLocale = useCallback((newLocale: Locale) => {
         setLocaleState(newLocale);
@@ -54,10 +55,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
     // Update HTML lang attribute on locale change
     useEffect(() => {
-        if (typeof window !== 'undefined') {
+        if (isHydrated && typeof window !== 'undefined') {
             document.documentElement.lang = locale;
         }
-    }, [locale]);
+    }, [locale, isHydrated]);
 
     return (
         <I18nContext.Provider value={{ locale, setLocale, t }}>

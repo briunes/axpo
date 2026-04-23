@@ -62,6 +62,7 @@ export async function PUT(
       name: body.name,
       description: body.description,
       type: body.type,
+      commodity: body.commodity ?? null,
       active: body.active,
       htmlContent: body.htmlContent,
       editableSections: body.editableSections ?? undefined,

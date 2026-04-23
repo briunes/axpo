@@ -1,6 +1,6 @@
 "use client";
 
-import { Box } from "@mui/material";
+import { Box, useTheme } from "@mui/material";
 import {
     PhoneInput as BasePhoneInput,
     defaultCountries,
@@ -34,6 +34,8 @@ export function PhoneInput({
     helperText,
     defaultCountry = "es",
 }: PhoneInputProps) {
+    const theme = useTheme();
+    
     // Only show countries that have a phone code (filter none out)
     const countries = defaultCountries.filter((c) => {
         const parsed = parseCountry(c);
@@ -42,6 +44,24 @@ export function PhoneInput({
 
     return (
         <Box sx={{ width: "100%" }}>
+            <style jsx>{`
+                .phone-input-wrapper .react-international-phone-input:focus {
+                    border-color: ${error ? "#d32f2f" : theme.palette.primary.main} !important;
+                }
+                
+                .phone-input-wrapper:has(.react-international-phone-input:focus) .react-international-phone-country-selector-button {
+                    border-color: ${error ? "#d32f2f" : theme.palette.primary.main} !important;
+                }
+                
+                .phone-input-wrapper .react-international-phone-input:hover:not(:focus) {
+                    border-color: rgba(0, 0, 0, 0.4);
+                }
+                
+                .phone-input-wrapper:has(.react-international-phone-input:hover:not(:focus)) .react-international-phone-country-selector-button {
+                    border-color: rgba(0, 0, 0, 0.4);
+                }
+            `}</style>
+            
             <label
                 style={{
                     display: "block",
@@ -59,7 +79,8 @@ export function PhoneInput({
                 )}
             </label>
 
-            <BasePhoneInput
+            <Box className="phone-input-wrapper">
+                <BasePhoneInput
                 defaultCountry={defaultCountry}
                 value={value}
                 onChange={onChange}
@@ -67,14 +88,13 @@ export function PhoneInput({
                 countries={countries}
                 style={
                     {
-                        "--react-international-phone-height": "40px",
                         "--react-international-phone-border-radius": "6px",
                         "--react-international-phone-border-color": error
                             ? "#d32f2f"
                             : "rgba(0, 0, 0, 0.23)",
                         "--react-international-phone-background-color": disabled
                             ? "rgba(0,0,0,0.04)"
-                            : "#fff",
+                            : "#fafafa",
                         "--react-international-phone-text-color": "#333",
                         "--react-international-phone-selected-dropdown-item-background-color": "#f5f5f5",
                         "--react-international-phone-font-size": "14px",
@@ -88,16 +108,19 @@ export function PhoneInput({
                     borderRadius: "0 6px 6px 0",
                     outline: "none",
                     transition: "border-color 0.2s",
+                    backgroundColor: disabled ? "rgba(0,0,0,0.04)" : "#fafafa",
                 }}
+                inputClassName="phone-input-field"
                 countrySelectorStyleProps={{
                     buttonStyle: {
                         borderRadius: "6px 0 0 6px",
                         borderColor: error ? "#d32f2f" : "rgba(0, 0, 0, 0.23)",
-                        backgroundColor: "transparent",
+                        backgroundColor: disabled ? "rgba(0,0,0,0.04)" : "#fafafa",
                         padding: "0 8px",
                     },
                 }}
             />
+            </Box>
 
             {helperText && (
                 <Box

@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   createUser,
   listUsers,
   rotateUserPin,
   updateUser,
   updateUserStatus,
+  deleteUser,
   type CreateUserResult,
   type ListUsersParams,
   type RotatePinResult,
@@ -22,7 +23,7 @@ export interface UsersActions {
   errorText: string | null;
   successText: string | null;
   clearFeedback: () => void;
-  refresh: () => Promise<void>;
+  refresh: (overrides?: ListUsersParams) => Promise<void>;
   // pagination
   page: number;
   pageSize: number;
@@ -36,6 +37,13 @@ export interface UsersActions {
   // search
   search: string;
   setSearch: (v: string) => void;
+  // filters
+  roleFilter: string;
+  setRoleFilter: (v: string) => void;
+  agencyFilter: string;
+  setAgencyFilter: (v: string) => void;
+  showArchived: boolean;
+  setShowArchived: (v: boolean) => void;
   // create form
   newUserName: string;
   setNewUserName: (v: string) => void;
@@ -98,9 +106,13 @@ export interface UsersActions {
   // actions
   handleToggleUserStatus: (user: UserItem) => Promise<void>;
   handleRotateUserPin: (user: UserItem) => Promise<RotatePinResult | null>;
+  handleDeleteUser: (user: UserItem) => Promise<void>;
 }
 
-export function useUsers(session: SessionState | null): UsersActions {
+export function useUsers(
+  session: SessionState | null,
+  initialPageSize = 25,
+): UsersActions {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -109,8 +121,13 @@ export function useUsers(session: SessionState | null): UsersActions {
 
   // pagination
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [total, setTotal] = useState(0);
+  // sync pageSize when user preferences load
+  useEffect(() => {
+    setPageSize(initialPageSize);
+    setPage(1);
+  }, [initialPageSize]);
   // sort
   const [sortColumn, setSortColumn] = useState("createdAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -120,6 +137,10 @@ export function useUsers(session: SessionState | null): UsersActions {
   };
   // search
   const [search, setSearch] = useState("");
+  // filters
+  const [roleFilter, setRoleFilter] = useState("");
+  const [agencyFilter, setAgencyFilter] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -172,8 +193,11 @@ export function useUsers(session: SessionState | null): UsersActions {
           page,
           pageSize,
           search: search || undefined,
+          role: roleFilter || undefined,
+          agencyId: agencyFilter || undefined,
           orderBy: sortColumn,
           sortDir,
+          includeDeleted: showArchived || undefined,
           ...overrides,
         };
         const result = await listUsers(session.token, params);
@@ -191,7 +215,17 @@ export function useUsers(session: SessionState | null): UsersActions {
         setLoading(false);
       }
     },
-    [session, page, pageSize, search, sortColumn, sortDir],
+    [
+      session,
+      page,
+      pageSize,
+      search,
+      roleFilter,
+      agencyFilter,
+      sortColumn,
+      sortDir,
+      showArchived,
+    ],
   );
 
   const handleCreateUser = async (
@@ -317,6 +351,7 @@ export function useUsers(session: SessionState | null): UsersActions {
       currentPassword: string;
       role?: string;
       agencyId?: string;
+      isActive?: boolean;
     },
   ) => {
     e.preventDefault();
@@ -333,6 +368,7 @@ export function useUsers(session: SessionState | null): UsersActions {
     const currentPassword = data?.currentPassword ?? editUserCurrentPassword;
     const role = data?.role as UserRole | undefined;
     const agencyId = data?.agencyId;
+    const isActive = data?.isActive;
 
     if (!userId) return;
     if (
@@ -373,6 +409,7 @@ export function useUsers(session: SessionState | null): UsersActions {
         otherDetails: otherDetails?.trim() || "",
         ...(role ? { role } : {}),
         ...(agencyId ? { agencyId } : {}),
+        ...(isActive !== undefined ? { isActive } : {}),
         ...(changingPassword
           ? {
               password: password,
@@ -429,6 +466,15 @@ export function useUsers(session: SessionState | null): UsersActions {
     return result;
   };
 
+  const handleDeleteUser = async (user: UserItem): Promise<void> => {
+    if (!session) return;
+    await runAction(`delete-user-${user.id}`, async () => {
+      await deleteUser(session.token, user.id);
+      await refresh();
+      setSuccessText("User deleted.");
+    });
+  };
+
   return {
     users,
     loading,
@@ -447,6 +493,12 @@ export function useUsers(session: SessionState | null): UsersActions {
     setSort,
     search,
     setSearch,
+    roleFilter,
+    setRoleFilter,
+    agencyFilter,
+    setAgencyFilter,
+    showArchived,
+    setShowArchived,
     newUserName,
     setNewUserName,
     newUserEmail,
@@ -477,5 +529,6 @@ export function useUsers(session: SessionState | null): UsersActions {
     handleUpdateOwnProfile,
     handleToggleUserStatus,
     handleRotateUserPin,
+    handleDeleteUser,
   };
 }

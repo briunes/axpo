@@ -25,3 +25,6 @@ xls/
 .env.vercel.production
 .env.vercel.*.local
 backend/tsconfig.tsbuildinfo
+
+# Docker volumes
+docker-data/

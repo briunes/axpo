@@ -36,6 +36,7 @@ export interface ClientFormProps {
     cancelLabel?: string;
     onCancel?: () => void;
     mode: "create" | "edit";
+    onRenderActions?: (actions: React.ReactNode) => void;
 }
 
 export function ClientForm({
@@ -51,6 +52,7 @@ export function ClientForm({
     cancelLabel = "Cancel",
     onCancel,
     mode,
+    onRenderActions,
 }: ClientFormProps) {
     const { t } = useI18n();
     const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
@@ -95,6 +97,7 @@ export function ClientForm({
             cancelLabel={cancelLabel}
             onCancel={onCancel}
             isSubmitting={isSubmitting}
+            onRenderActions={onRenderActions}
         >
             {/* Company info */}
             <CrudFormRow>

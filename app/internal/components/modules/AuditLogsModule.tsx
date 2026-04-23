@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Column } from "@once-ui-system/core";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AuditLogItem } from "../../lib/internalApi";
 import type { AuditLogsActions } from "../hooks/useAuditLogs";
@@ -11,6 +11,7 @@ interface AuditLogsModuleProps {
   session: SessionState;
   actions: AuditLogsActions;
   onNotify?: (text: string, tone: "success" | "error") => void;
+  onActionButtons?: (buttons: React.ReactNode) => void;
 }
 
 // ─── Event registry ──────────────────────────────────────────────────────────
@@ -285,7 +286,7 @@ function LogTable({ rows, expandedId, onToggle }: {
 
 const PAGE_SIZE = 25;
 
-export function AuditLogsModule({ session: _session, actions, onNotify: _onNotify }: AuditLogsModuleProps) {
+export function AuditLogsModule({ session: _session, actions, onNotify: _onNotify, onActionButtons }: AuditLogsModuleProps) {
   const { t } = useI18n();
   const {
     loading, errorText, refresh,
@@ -302,6 +303,17 @@ export function AuditLogsModule({ session: _session, actions, onNotify: _onNotif
   useEffect(() => { refresh(); }, []);
   useEffect(() => { setPage(1); setExpandedId(null); }, [searchQuery, filterEventType, filterDateFrom, filterDateTo]);
 
+  // Render action buttons for topbar
+  useLayoutEffect(() => {
+    onActionButtons?.(
+      <>
+        <Button variant="secondary" size="s" onClick={handleExportCsv} label={t("auditLogsModule", "exportCsv")} disabled={filteredLogs.length === 0} />
+        <Button variant="secondary" size="s" onClick={() => refresh()} label={t("actions", "refresh")} loading={loading} />
+      </>
+    );
+    return () => onActionButtons?.(null);
+  }, [onActionButtons, handleExportCsv, t, filteredLogs.length, refresh, loading]);
+
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageRows = filteredLogs.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
@@ -313,18 +325,6 @@ export function AuditLogsModule({ session: _session, actions, onNotify: _onNotif
 
   return (
     <Column gap="24">
-      {/* Header */}
-      <div className="section-header">
-        <div>
-          <h2 className="section-title">{t("nav", "auditLogs")}</h2>
-          <p className="section-subtitle">{t("auditLogsModule", "subtitle")}</p>
-        </div>
-        <div className="section-actions">
-          <Button variant="secondary" size="s" onClick={handleExportCsv} label={t("auditLogsModule", "exportCsv")} disabled={filteredLogs.length === 0} />
-          <Button variant="secondary" size="s" onClick={() => refresh()} label={t("actions", "refresh")} loading={loading} />
-        </div>
-      </div>
-
       {errorText && <div className="sp-panel-error" style={{ marginBottom: 0 }}>{errorText}</div>}
 
       {/* Toolbar */}

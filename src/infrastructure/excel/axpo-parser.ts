@@ -359,7 +359,7 @@ function parseIndex(rows: SheetData): BaseValueItem[] {
 
         if (v !== null) {
           items.push({
-            key: `ELEC:INDEX:${slug}:${tier}:${tariff}:P${i + 1}:MARGEN`,
+            key: `ELEC:INDEX:${slug}:${tier}:${tariff}:P${i + 1}:ENERGIA`,
             valueNumeric: Math.round(v * 1e10) / 1e10,
             unit: "€/kWh",
           });

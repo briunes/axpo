@@ -12,6 +12,11 @@ import { PinService } from "@/application/services/pinService";
 import { SimulationService } from "@/application/services/simulationService";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
+import {
+  extractVariableValues,
+  replaceVariables,
+} from "@/infrastructure/pdf/variableReplacer";
+import type { SimulationPayload } from "@/domain/types/simulation";
 
 const accessSchema = z.object({
   token: z.string().min(16),
@@ -174,6 +179,56 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           : {}),
       }
     : null;
+  // Determine commodity from the merged payload inputs
+  const commodity = mergedPayload?.type as "ELECTRICITY" | "GAS" | undefined;
+
+  // Fetch the default PDF template for this simulation's commodity
+  let defaultPdfTemplate: {
+    id: string;
+    name: string;
+    htmlContent: string;
+  } | null = null;
+  if (commodity) {
+    const systemConfig = await prisma.systemConfig.findFirst({
+      select: {
+        defaultPdfTemplateGasId: true,
+        defaultPdfTemplateElectricityId: true,
+      },
+    });
+
+    const templateId =
+      commodity === "GAS"
+        ? systemConfig?.defaultPdfTemplateGasId
+        : systemConfig?.defaultPdfTemplateElectricityId;
+
+    if (templateId) {
+      const template = await prisma.pdfTemplate.findFirst({
+        where: { id: templateId, isDeleted: false, active: true },
+        select: {
+          id: true,
+          name: true,
+          htmlContent: true,
+          editableSections: true,
+        },
+      });
+      if (template) {
+        const editableSections = template.editableSections as
+          | import("@/infrastructure/templates/editableSections").EditableSectionsConfig
+          | null;
+        const variableValues = extractVariableValues(
+          simulation,
+          mergedPayload as SimulationPayload | undefined,
+          undefined,
+          editableSections ?? undefined,
+        );
+        defaultPdfTemplate = {
+          id: template.id,
+          name: template.name,
+          htmlContent: replaceVariables(template.htmlContent, variableValues),
+        };
+      }
+    }
+  }
 
   return ResponseHandler.ok(
     {
@@ -192,6 +247,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
             createdAt: baseVersion.createdAt,
           }
         : null,
+      defaultPdfTemplate,
     },
     200,
   );

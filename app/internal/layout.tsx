@@ -21,8 +21,9 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
     if (pathname.startsWith("/internal/agencies")) return "agencies";
     if (pathname.startsWith("/internal/clients")) return "clients";
     if (pathname.startsWith("/internal/base-values")) return "base-values";
-    if (pathname.startsWith("/internal/audit-logs")) return "audit-logs";
-    if (pathname.startsWith("/internal/email-logs")) return "email-logs";
+    if (pathname.startsWith("/internal/logs")) return "logs";
+    if (pathname.startsWith("/internal/audit-logs")) return "logs"; // Redirect old route
+    if (pathname.startsWith("/internal/email-logs")) return "logs"; // Redirect old route
     if (pathname.startsWith("/internal/analytics")) return "analytics";
     if (pathname.startsWith("/internal/configurations")) return "configurations";
     return "simulations";
@@ -30,10 +31,12 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
 
   const section = getSection();
 
-  // Login and setup-password pages should not have the workspace wrapper
+  // Login, setup-password, forgot-password, and reset-password pages should not have the workspace wrapper
   if (
     pathname === "/internal/login" ||
     pathname === "/internal/setup-password" ||
+    pathname === "/internal/forgot-password" ||
+    pathname === "/internal/reset-password" ||
     pathname === "/internal"
   ) {
     return <>{children}</>;

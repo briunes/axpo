@@ -16,21 +16,26 @@ import {
   Box,
   Menu,
   MenuItem,
+  ButtonGroup,
+  IconButton,
+  Stack,
 } from "@mui/material";
 import SyncIcon from "@mui/icons-material/Sync";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { useEffect, useState } from "react";
+import SearchIcon from "@mui/icons-material/Search";
+import CloseIcon from "@mui/icons-material/Close";
+import { useEffect, useState, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import type { SessionState } from "../../lib/authSession";
-import type { AgencyItem, ClientItem, SimulationItem } from "../../lib/internalApi";
+import type { AgencyItem, ClientItem, SimulationItem, UserItem } from "../../lib/internalApi";
 import { isAdmin, simulationStatusTone } from "../../lib/internalApi";
 import { usePermissions } from "../../lib/permissionsContext";
 import type { SimulationsActions } from "../hooks/useSimulations";
 import { ConfirmDialog } from "../shared";
-import { DataTable, SlidePanel, StatusBadge } from "../ui";
+import { DataTable, SlidePanel, StatusBadge, FormInput, FormSelect } from "../ui";
 import type { ColumnDef } from "../ui";
 
 interface SimulationsModuleProps {
@@ -38,24 +43,33 @@ interface SimulationsModuleProps {
   actions: SimulationsActions;
   agencies: AgencyItem[];
   clients: ClientItem[];
+  users: UserItem[];
   onNotify?: (text: string, tone: "success" | "error") => void;
+  onActionButtons?: (buttons: React.ReactNode) => void;
 }
 
-export function SimulationsModule({ session, actions, agencies, clients, onNotify }: SimulationsModuleProps) {
+export function SimulationsModule({ session, actions, agencies, clients, users, onNotify, onActionButtons }: SimulationsModuleProps) {
   const router = useRouter();
   const { t } = useI18n();
   const { canDo } = usePermissions();
   const {
     simulations, loading, busyAction, errorText, successText, clearFeedback, refresh,
+    page, pageSize, total, setPage, setPageSize, sortColumn, sortDir, setSort,
+    showArchived, setShowArchived,
+    filterSearch, setFilterSearch,
+    filterOwnerUserId, setFilterOwnerUserId,
+    filterClientId, setFilterClientId,
+    filterCups, setFilterCups,
+    filterStatus, setFilterStatus,
+    applyFilters, filtersAppliedAt,
     selectedSimulationId, editPayloadJson, setEditPayloadJson,
     openSimulationEditor, closeSimulationEditor, handleUpdateSimulation,
     handleShare, handleClone, handleRotatePin, handleOcrPrefill, handlePdfDownload, handleArchive,
   } = actions;
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
   const [shareSim, setShareSim] = useState<SimulationItem | null>(null);
   const [confirmArchiveSim, setConfirmArchiveSim] = useState<SimulationItem | null>(null);
+  const [confirmDeleteSim, setConfirmDeleteSim] = useState<SimulationItem | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [dropdownState, setDropdownState] = useState<{
     anchorEl: HTMLElement | null;
@@ -63,7 +77,11 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
 
-  useEffect(() => { refresh(); }, []);
+  // Refresh when pagination, sort, archived toggle, or filters are applied
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, sortColumn, sortDir, showArchived, filtersAppliedAt]);
 
   useEffect(() => {
     if (successText) {
@@ -72,18 +90,34 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
     }
   }, [successText]);
 
-  const filtered = simulations.filter((s) => {
-    if (!showArchived && s.isDeleted) return false;
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      s.id.toLowerCase().includes(q) ||
-      s.status.toLowerCase().includes(q) ||
-      (s.ownerUser?.fullName ?? "").toLowerCase().includes(q) ||
-      (s.ownerUser?.email ?? "").toLowerCase().includes(q) ||
-      (s.cupsNumber ?? "").toLowerCase().includes(q)
+  // Render action buttons for topbar
+  useLayoutEffect(() => {
+    onActionButtons?.(
+      <>
+        <Button variant="outlined" size="small" onClick={() => refresh()} disabled={loading}>
+          <SyncIcon fontSize="small" /> {t("actions", "refresh")}
+        </Button>
+        {isAdmin(session.user.role) && (
+          <Button
+            variant={showArchived ? "contained" : "outlined"}
+            size="small"
+            onClick={() => setShowArchived(!showArchived)}
+          >
+            {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+          </Button>
+        )}
+        {canDo(session.user.role, "simulations.create") && (
+          <Button variant="contained" size="small" onClick={() => router.push("/internal/simulations/new")}>
+            {t("actions", "newSimulation")}
+          </Button>
+        )}
+      </>
     );
-  });
+    return () => onActionButtons?.(null);
+  }, [onActionButtons, showArchived, loading, session.user.role, t, refresh, router, setShowArchived]);
+
+  // Filter out archived unless showArchived is true (only client-side filter for isDeleted)
+  const displayData = showArchived ? simulations : simulations.filter(s => !s.isDeleted);
 
   const handleShareAction = async (sim: SimulationItem) => {
     if (sim.publicToken) { setShareSim(sim); return; }
@@ -109,16 +143,6 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
 
   const columns: ColumnDef<SimulationItem>[] = [
     {
-      key: "id",
-      label: t("columns", "id"),
-      width: "100",
-      renderCell: (s) => (
-        <span className="dt-cell-mono" style={{ opacity: s.isDeleted ? 0.5 : 1 }}>
-          {s.id.slice(0, 8)}…
-        </span>
-      ),
-    },
-    {
       key: "owner",
       label: t("columns", "owner"),
       width: "150",
@@ -140,15 +164,6 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
           commodityIcon = <BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} />;
         } else if (payload?.type === "GAS") {
           commodityIcon = <LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444" }} />;
-        } else if (payload?.type === "BOTH") {
-          commodityIcon = (
-            <>
-              <BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} />
-              <LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444" }} />
-            </>
-          );
-        } else {
-          commodityIcon = <BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} />;
         }
 
         return (
@@ -164,17 +179,30 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
     {
       key: "cups",
       label: t("columns", "cups"),
-      width: "130",
-      renderCell: (s) => (
-        <span className="dt-cell-mono" style={{ opacity: s.isDeleted ? 0.5 : 1, fontSize: 12, whiteSpace: "nowrap" }}>
-          {s.cupsNumber || <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
-        </span>
-      ),
+      renderCell: (s) => {
+        const payload = s.payloadJson as { electricity?: { clientData?: { cups?: string } }; gas?: { clientData?: { cups?: string } } } | null;
+        const cupsElec = payload?.electricity?.clientData?.cups;
+        const cupsGas = payload?.gas?.clientData?.cups;
+        const cups = s.cupsNumber || cupsElec || cupsGas;
+
+        return (
+          <span className="dt-cell-mono" style={{ opacity: s.isDeleted ? 0.5 : 1, fontSize: 12, whiteSpace: "nowrap" }}>
+            {cups ? (
+              <span style={{ display: 'block' }}>
+                {cupsElec && <div>{cupsElec}</div>}
+                {cupsGas && cupsElec && <div style={{ fontSize: 11, opacity: 0.7 }}>{cupsGas}</div>}
+                {!cupsElec && cupsGas && <div>{cupsGas}</div>}
+              </span>
+            ) : (
+              <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>
+            )}
+          </span>
+        );
+      },
     },
     {
       key: "status",
       label: t("columns", "status"),
-      width: "110",
       renderCell: (s) => <StatusBadge label={s.status} tone={simulationStatusTone(s.status)} />,
     },
     {
@@ -190,7 +218,6 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
     {
       key: "expiresAt",
       label: t("columns", "expires"),
-      width: "120",
       renderCell: (s) => (
         <span style={{ whiteSpace: "nowrap", fontSize: 13 }}>
           {s.expiresAt ? new Date(s.expiresAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—"}
@@ -200,7 +227,6 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
     {
       key: "createdAt",
       label: t("columns", "created"),
-      width: "220",
       renderCell: (s) => (
         <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
           {s.createdAt ? new Date(s.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—"}
@@ -214,7 +240,6 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
     {
       key: "updatedAt",
       label: t("columns", "updated"),
-      width: "220",
       renderCell: (s) => (
         <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
           {s.updatedAt ? new Date(s.updatedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—"}
@@ -228,16 +253,16 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
     {
       key: "actions",
       label: t("columns", "actions"),
-      width: "160",
       renderCell: (s) => {
         const isShared = s.status === "SHARED";
         const canArchive = !s.isDeleted && canDo(session.user.role, "simulations.archive");
+        const canDelete = !s.isDeleted && canDo(session.user.role, "simulations.delete");
         const canShare = canDo(session.user.role, "simulations.share");
         const canDuplicate = canDo(session.user.role, "simulations.duplicate");
         const canCreate = canDo(session.user.role, "simulations.create");
 
         const primaryLabel = isShared ? t("actions", "view") : t("actions", "simulate");
-        const primaryClass = isShared ? "dt-action-btn" : "dt-action-btn dt-action-btn--primary";
+        const primaryVariant = isShared ? "outlined" : "outlined";
         const primaryOnClick = () => router.push(
           isShared ? `/internal/simulations/${s.id}/view` : `/internal/simulations/${s.id}`
         );
@@ -249,28 +274,29 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
         if (canArchive) {
           secondaryItems.push({ label: t("actions", "archive"), onClick: () => setConfirmArchiveSim(s), danger: true });
         }
+        if (canDelete) {
+          secondaryItems.push({ label: t("actions", "delete"), onClick: () => setConfirmDeleteSim(s), danger: true });
+        }
 
         const hasDropdown = secondaryItems.length > 0;
 
         return (
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <button
-              className={primaryClass}
-              style={hasDropdown ? { borderRadius: "6px 0 0 6px", borderRight: "none" } : undefined}
-              onClick={primaryOnClick}
-            >
-              {primaryLabel}
-            </button>
-            {hasDropdown && (
-              <button
-                className="dt-action-btn"
-                style={{ borderRadius: "0 6px 6px 0", padding: "0 5px", minWidth: 24 }}
-                onClick={(e) => setDropdownState({ anchorEl: e.currentTarget, items: secondaryItems })}
-                aria-label="More actions"
-              >
-                <KeyboardArrowDownIcon sx={{ fontSize: 14, display: "block" }} />
-              </button>
-            )}
+          <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
+            <ButtonGroup variant={primaryVariant} size="small">
+              <Button onClick={primaryOnClick}>
+                {primaryLabel}
+              </Button>
+              {hasDropdown && (
+                <Button
+                  size="small"
+                  onClick={(e) => setDropdownState({ anchorEl: e.currentTarget, items: secondaryItems })}
+                  aria-label="More actions"
+                  sx={{ px: 0.5, minWidth: 32 }}
+                >
+                  <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
+                </Button>
+              )}
+            </ButtonGroup>
           </div>
         );
       },
@@ -278,40 +304,146 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
   ];
 
   return (
-    <Column gap="24">
-      <div className="section-header">
-        <div>
-          <h2 className="section-title">{t("nav", "simulations")}</h2>
-          <p className="section-subtitle">{t("simulationsModule", "subtitle")}</p>
-        </div>
-        <div className="section-actions">
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => setShowArchived((v) => !v)}
-          >
-            {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
-          </Button>
-          <Button variant="outlined" size="small" onClick={() => refresh()} disabled={loading}>
-            <SyncIcon fontSize="small" /> {t("actions", "refresh")}
-          </Button>
-          {canDo(session.user.role, "simulations.create") && (
-            <Button variant="contained" size="small" onClick={() => router.push("/internal/simulations/new")}>
-              {t("actions", "newSimulation")}
-            </Button>
-          )}
-        </div>
-      </div>
-
+    <Stack spacing={3}>
       <DataTable<SimulationItem>
         columns={columns}
-        rows={filtered}
-        loading={loading && !simulations.length}
-        searchValue={searchQuery}
-        onSearch={setSearchQuery}
+        rows={displayData}
+        loading={loading}
+        searchValue={filterSearch}
+        onSearch={(v) => { setFilterSearch(v); }}
         searchPlaceholder={t("search", "simulations")}
         emptyMessage={t("search", "emptySimulations")}
-        headerRight={<span className="dt-meta-pill">{simulations.length} total</span>}
+        pagination={{
+          page,
+          pageSize,
+          total,
+          onPageChange: setPage,
+          onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
+        }}
+        t={t}
+        renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
+          <>
+            <Box sx={{ width: 280 }}>
+              <FormInput
+                label=""
+                placeholder={searchPlaceholder}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { setFilterSearch(draft); applyFilters(); } }}
+                size="small"
+                slotProps={{
+                  input: {
+                    endAdornment: draft ? (
+                      <IconButton
+                        size="small"
+                        onClick={() => { setDraft(""); setFilterSearch(""); applyFilters(); }}
+                        aria-label="Clear"
+                        edge="end"
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    ) : null,
+                  },
+                }}
+              />
+            </Box>
+            <Box sx={{ width: 280 }}>
+              <FormSelect
+                label=""
+                options={[
+                  { value: "", label: t("search", "allOwners") },
+                  ...users
+                    .filter(u => u.isActive)
+                    .map(user => ({
+                      value: user.id,
+                      label: user.fullName || user.email,
+                    }))
+                    .sort((a, b) => a.label.localeCompare(b.label)),
+                ]}
+                value={filterOwnerUserId}
+                onChange={(val) => {
+                  setFilterOwnerUserId(val as string);
+                }}
+                placeholder="Owner"
+                onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
+                textFieldProps={{ size: "small" }}
+              />
+            </Box>
+            <Box sx={{ width: 280 }}>
+              <FormSelect
+                label=""
+                options={[
+                  { value: "", label: t("search", "allClients") },
+                  ...clients
+                    .filter(c => !c.isDeleted)
+                    .map(client => ({
+                      value: client.id,
+                      label: client.name,
+                    }))
+                    .sort((a, b) => a.label.localeCompare(b.label)),
+                ]}
+                value={filterClientId}
+                onChange={(val) => {
+                  setFilterClientId(val as string);
+                }}
+                placeholder="Client"
+                onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
+                textFieldProps={{ size: "small" }}
+              />
+            </Box>
+            <Box sx={{ width: 280 }}>
+              <FormInput
+                label=""
+                placeholder="CUPS"
+                value={filterCups}
+                onChange={(e) => { setFilterCups(e.target.value); }}
+                onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
+                size="small"
+                slotProps={{
+                  input: {
+                    endAdornment: filterCups ? (
+                      <IconButton
+                        size="small"
+                        onClick={() => { setFilterCups(""); applyFilters(); }}
+                        aria-label="Clear"
+                        edge="end"
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    ) : null,
+                  },
+                }}
+              />
+            </Box>
+            <Box sx={{ width: 280 }}>
+              <FormSelect
+                label=""
+                options={[
+                  { value: "", label: t("search", "allStatuses") },
+                  { value: "DRAFT", label: "DRAFT" },
+                  { value: "SHARED", label: "SHARED" },
+                  { value: "EXPIRED", label: "EXPIRED" },
+                ]}
+                value={filterStatus}
+                onChange={(val) => {
+                  setFilterStatus(val as string);
+                }}
+                placeholder="Status"
+                onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
+                textFieldProps={{ size: "small" }}
+              />
+            </Box>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => { setFilterSearch(draft); applyFilters(); }}
+              aria-label="Search"
+            >
+              <SearchIcon />
+              {t('common', 'search')}
+            </Button>
+          </>
+        )}
       />
 
       {/* ── Edit payload panel ── */}
@@ -384,7 +516,7 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
                   </Box>
                   {shareSim.expiresAt && (
                     <Typography variant="caption" color="text.secondary">
-                      Expires: {new Date(shareSim.expiresAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                      Expires: {new Date(shareSim.expiresAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </Typography>
                   )}
                 </>
@@ -427,6 +559,20 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
         />
       )}
 
+      {confirmDeleteSim && (
+        <ConfirmDialog
+          title={t("simulationsModule", "deleteTitle")}
+          message={t("simulationsModule", "deleteConfirm", { id: confirmDeleteSim.id.slice(0, 8) + "…" })}
+          confirmLabel={t("actions", "delete")}
+          busy={busyAction === `delete-${confirmDeleteSim.id}`}
+          onConfirm={async () => {
+            await handleArchive(confirmDeleteSim);
+            setConfirmDeleteSim(null);
+          }}
+          onCancel={() => setConfirmDeleteSim(null)}
+        />
+      )}
+
       {/* ── Actions dropdown menu ── */}
       <Menu
         open={!!dropdownState.anchorEl}
@@ -460,6 +606,6 @@ export function SimulationsModule({ session, actions, agencies, clients, onNotif
           </MenuItem>
         ))}
       </Menu>
-    </Column>
+    </Stack>
   );
 }

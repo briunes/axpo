@@ -152,6 +152,7 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
             name: "",
             description: "",
             type: "simulation-output",
+            commodity: "ELECTRICITY",
             active: true,
             htmlContent: `<!DOCTYPE html>
 <html>
@@ -169,7 +170,8 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
     };
 
     const handleEdit = (template: PdfTemplate) => {
-        setFormData({ ...template });
+        debugger;
+        setFormData({ ...template, commodity: template.commodity || "ELECTRICITY" });
         setEditingTemplate(template);
     };
 
@@ -202,11 +204,13 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
 
     const handleSave = async () => {
         try {
+            debugger;
             if (isCreating) {
                 const newTemplate = await createPdfTemplate({
                     name: formData.name!,
                     description: formData.description!,
                     type: formData.type!,
+                    commodity: formData.commodity || "ELECTRICITY",
                     active: formData.active ?? true,
                     htmlContent: formData.htmlContent!,
                 });
@@ -268,6 +272,7 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                 <tr>
                                     <th>{t("pdfTemplatesModule", "colName")}</th>
                                     <th>{t("pdfTemplatesModule", "colType")}</th>
+                                    <th>{t("pdfTemplatesModule", "colCommodity") || "Commodity"}</th>
                                     <th>{t("pdfTemplatesModule", "colDescription")}</th>
                                     <th>{t("pdfTemplatesModule", "colStatus")}</th>
                                     <th>{t("pdfTemplatesModule", "colUpdated")}</th>
@@ -281,6 +286,13 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                         <td>
                                             <span className="template-type-badge">
                                                 {TEMPLATE_TYPE_LABELS[template.type as PdfTemplateType]}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span style={{ fontSize: "13px", color: "#6b7280" }}>
+                                                {template.commodity === "ELECTRICITY" ? "⚡ Electricity"
+                                                    : template.commodity === "GAS" ? "🔥 Gas"
+                                                        : "⚡ Electricity"}
                                             </span>
                                         </td>
                                         <td style={{ color: "#6b7280", fontSize: "13px" }}>
@@ -342,47 +354,64 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                 </div>
 
                                 <div className="template-editor-body">
-                                    <div className="config-field">
-                                        <label className="config-field-label">{t("pdfTemplatesModule", "fieldName")}</label>
-                                        <input
-                                            type="text"
-                                            value={formData.name || ""}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            placeholder={t("pdfTemplatesModule", "fieldNamePlaceholder")}
-                                        />
-                                    </div>
-
-                                    <div className="config-field">
-                                        <label className="config-field-label">{t("pdfTemplatesModule", "fieldType")}</label>
-                                        <select
-                                            value={formData.type || "simulation-output"}
-                                            onChange={(e) => setFormData({ ...formData, type: e.target.value as PdfTemplateType })}
-                                        >
-                                            {Object.entries(TEMPLATE_TYPE_LABELS).map(([value, label]) => (
-                                                <option key={value} value={value}>{label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div className="config-field">
-                                        <label className="config-field-label">{t("pdfTemplatesModule", "fieldDescription")}</label>
-                                        <input
-                                            type="text"
-                                            value={formData.description || ""}
-                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                            placeholder={t("pdfTemplatesModule", "fieldDescriptionPlaceholder")}
-                                        />
-                                    </div>
-
-                                    <div className="config-field">
-                                        <label className="config-field-inline">
+                                    {/* Row 1: Name, Type, and Commodity */}
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 200px 200px", gap: "12px", marginBottom: "12px" }}>
+                                        <div className="config-field" style={{ marginBottom: 0 }}>
+                                            <label className="config-field-label">{t("pdfTemplatesModule", "fieldName")}</label>
                                             <input
-                                                type="checkbox"
-                                                checked={formData.active ?? true}
-                                                onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                                                type="text"
+                                                value={formData.name || ""}
+                                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                placeholder={t("pdfTemplatesModule", "fieldNamePlaceholder")}
                                             />
-                                            <span>{t("pdfTemplatesModule", "fieldActive")}</span>
-                                        </label>
+                                        </div>
+
+                                        <div className="config-field" style={{ marginBottom: 0 }}>
+                                            <label className="config-field-label">{t("pdfTemplatesModule", "fieldType")}</label>
+                                            <select
+                                                value={formData.type || "simulation-output"}
+                                                onChange={(e) => setFormData({ ...formData, type: e.target.value as PdfTemplateType })}
+                                            >
+                                                {Object.entries(TEMPLATE_TYPE_LABELS).map(([value, label]) => (
+                                                    <option key={value} value={value}>{label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="config-field" style={{ marginBottom: 0 }}>
+                                            <label className="config-field-label">{t("pdfTemplatesModule", "fieldCommodity") || "Commodity"}</label>
+                                            <select
+                                                value={formData.commodity || "ELECTRICITY"}
+                                                onChange={(e) => setFormData({ ...formData, commodity: e.target.value })}
+                                            >
+                                                <option value="ELECTRICITY">{t("pdfTemplatesModule", "commodityElectricity") || "Electricity Only"}</option>
+                                                <option value="GAS">{t("pdfTemplatesModule", "commodityGas") || "Gas Only"}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Row 2: Description and Active */}
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "12px", alignItems: "end", marginBottom: "12px" }}>
+                                        <div className="config-field" style={{ marginBottom: 0 }}>
+                                            <label className="config-field-label">{t("pdfTemplatesModule", "fieldDescription")}</label>
+                                            <input
+                                                type="text"
+                                                value={formData.description || ""}
+                                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                                placeholder={t("pdfTemplatesModule", "fieldDescriptionPlaceholder")}
+                                            />
+                                        </div>
+
+                                        <div className="config-field" style={{ marginBottom: 0, paddingBottom: "8px" }}>
+                                            <label className="config-field-inline">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.active ?? true}
+                                                    onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                                                />
+                                                <span>{t("pdfTemplatesModule", "fieldActive")}</span>
+                                            </label>
+                                        </div>
                                     </div>
 
                                     <div className="config-field">
@@ -394,15 +423,22 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                                 onChange={(html) => setFormData({ ...formData, htmlContent: html })}
                                                 height="500px"
                                             />
-                                            <DraggableVariables variables={
-                                                formData.type === "price-history"
+                                            <DraggableVariables variables={[
+                                                // Regular template variables (price-history or simulation variables)
+                                                ...(formData.type === "price-history"
                                                     ? PRICE_HISTORY_VARIABLES
                                                     : variables.map(v => ({
                                                         name: v.key,
                                                         label: v.label,
                                                         description: v.description || "",
-                                                    }))
-                                            } />
+                                                    }))),
+                                                // Editable sections as variables
+                                                ...Object.entries((formData.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
+                                                    name: key,
+                                                    label: `📝 ${section.label || key}`,
+                                                    description: section.description || "Editable section",
+                                                }))
+                                            ]} />
                                         </div>
                                     </div>
 

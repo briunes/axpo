@@ -15,7 +15,9 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import UnarchiveIcon from "@mui/icons-material/Unarchive";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import { useEffect, useRef, useState } from "react";
+import StarIcon from "@mui/icons-material/Star";
+import StarOutlineIcon from "@mui/icons-material/StarOutline";
+import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { BaseValueSetItem } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
@@ -30,11 +32,12 @@ interface BaseValuesModuleProps {
   session: SessionState;
   actions: BaseValuesActions;
   onNotify?: (text: string, tone: "success" | "error") => void;
+  onActionButtons?: (buttons: React.ReactNode) => void;
 }
 
 // ─── Main module ─────────────────────────────────────────────────────────────
 
-export function BaseValuesModule({ session, actions, onNotify }: BaseValuesModuleProps) {
+export function BaseValuesModule({ session, actions, onNotify, onActionButtons }: BaseValuesModuleProps) {
   const { t } = useI18n();
   const {
     baseValueSets, loading, busyAction, errorText, successText, clearFeedback, refresh,
@@ -42,7 +45,7 @@ export function BaseValuesModule({ session, actions, onNotify }: BaseValuesModul
     sortColumn, sortDir, setSort,
     search, setSearch,
     showArchived, setShowArchived,
-    handleActivateBaseValueSet, handleArchiveBaseValueSet, handleUploadFile,
+    handleActivateBaseValueSet, handleArchiveBaseValueSet, handleToggleProduction, handleUploadFile,
   } = actions;
 
   const [confirmAction, setConfirmAction] = useState<{ id: string; type: "activate" | "archive" | "restore" } | null>(null);
@@ -135,7 +138,7 @@ export function BaseValuesModule({ session, actions, onNotify }: BaseValuesModul
       label: "Created",
       renderCell: (s) => (
         <Typography variant="body2" color="text.secondary">
-          {new Date(s.createdAt).toLocaleDateString()}
+          {new Date(s.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
         </Typography>
       ),
     },
@@ -147,6 +150,30 @@ export function BaseValuesModule({ session, actions, onNotify }: BaseValuesModul
           label={s.isDeleted ? t("baseValuesModule", "statusArchived") : s.isActive ? t("baseValuesModule", "statusActive") : t("baseValuesModule", "statusDraft")}
           tone={s.isDeleted ? "neutral" : s.isActive ? "success" : "neutral"}
         />
+      ),
+    },
+    {
+      key: "production",
+      label: t("baseValuesModule", "colProduction"),
+      width: "100",
+      renderCell: (s) => (
+        <Tooltip
+          title={s.isProduction ? t("baseValuesModule", "production_tooltip_on") : t("baseValuesModule", "production_tooltip_off")}
+          arrow
+          placement="top"
+        >
+          <IconButton
+            onClick={() => !s.isProduction && handleToggleProduction(s)}
+            size="small"
+            disabled={s.isDeleted}
+            sx={{
+              color: s.isProduction ? "warning.main" : "text.disabled",
+              cursor: s.isProduction ? "default" : "pointer",
+            }}
+          >
+            {s.isProduction ? <StarIcon fontSize="small" /> : <StarOutlineIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
       ),
     },
     {
@@ -203,56 +230,57 @@ export function BaseValuesModule({ session, actions, onNotify }: BaseValuesModul
     },
   ];
 
+  const canManage = isAdmin(session.user.role);
+
+  // Render action buttons for topbar
+  useLayoutEffect(() => {
+    onActionButtons?.(
+      <>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => { setShowArchived(!showArchived); setPage(1); }}
+        >
+          {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => refresh()}
+          disabled={loading}
+        >
+          <SyncIcon fontSize="small" />&nbsp;{t("actions", "refresh")}
+        </Button>
+        {canManage && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsm,.xlsx"
+              style={{ display: "none" }}
+              onChange={handleFileSelect}
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={busyAction === "upload-base-value-file"}
+            >
+              <UploadFileIcon fontSize="small" />&nbsp;
+              {busyAction === "upload-base-value-file" ? "Uploading..." : "Upload Excel"}
+            </Button>
+            {/* <Link href="/internal/base-values/new" style={{ textDecoration: "none" }}>
+              <Button variant="contained" size="small">{t("baseValuesModule", "newSet")}</Button>
+            </Link> */}
+          </>
+        )}
+      </>
+    );
+    return () => onActionButtons?.(null);
+  }, [onActionButtons, showArchived, loading, canManage, refresh, t, busyAction, handleFileSelect, fileInputRef]);
+
   return (
     <Stack spacing={3}>
-      <div className="section-header">
-        <div>
-          <h2 className="section-title">{t("nav", "baseValues")}</h2>
-          <p className="section-subtitle">{t("baseValuesModule", "subtitle")}</p>
-        </div>
-        <div className="section-actions">
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => { setShowArchived(!showArchived); setPage(1); }}
-          >
-            {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => refresh()}
-            disabled={loading}
-          >
-            <SyncIcon fontSize="small" />&nbsp;{t("actions", "refresh")}
-          </Button>
-          {isAdmin(session.user.role) && (
-            <>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsm,.xlsx"
-                style={{ display: "none" }}
-                onChange={handleFileSelect}
-              />
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={busyAction === "upload-base-value-file"}
-              >
-                <UploadFileIcon fontSize="small" />&nbsp;
-                {busyAction === "upload-base-value-file" ? "Uploading..." : "Upload Excel"}
-              </Button>
-              <Link href="/internal/base-values/new" style={{ textDecoration: "none" }}>
-                <Button variant="contained" size="small">{t("baseValuesModule", "newSet")}</Button>
-              </Link>
-            </>
-          )}
-
-        </div>
-      </div>
-
       <DataTable<BaseValueSetItem>
         columns={columns}
         rows={baseValueSets}
@@ -274,7 +302,7 @@ export function BaseValuesModule({ session, actions, onNotify }: BaseValuesModul
           onPageChange: setPage,
           onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
         }}
-        headerRight={<span className="dt-meta-pill">{total} total</span>}
+        t={t}
       />
 
       {confirmAction && confirmTarget && (

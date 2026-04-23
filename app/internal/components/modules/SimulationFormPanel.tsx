@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { SlidePanel } from "../ui";
+import { SlidePanel, CurrencyInput } from "../ui";
 import { SimulationResultsTable } from "./SimulationResultsTable";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import type { SimulationItem } from "../../lib/internalApi";
@@ -69,7 +69,7 @@ interface GasFormState {
     otrosCargos: number;
 }
 
-type SimType = "ELECTRICITY" | "GAS" | "BOTH";
+type SimType = "ELECTRICITY" | "GAS";
 
 function daysBetween(from: string, to: string): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
@@ -375,16 +375,16 @@ function ElectricityForm({
             <FormSection title={t("simulationForm", "sectionCurrentInvoice")}>
                 <FieldRow>
                     <Field label={t("simulationForm", "fieldCurrentInvoice")} hint={t("simulationForm", "fieldCurrentInvoiceHint")}>
-                        <Num value={state.facturaActual} onChange={(v) => up("facturaActual", v)} step={10} />
+                        <CurrencyInput value={state.facturaActual} onChange={(v) => up("facturaActual", isNaN(v) ? 0 : v)} />
                     </Field>
                     <Field label={t("simulationForm", "fieldReactiveEnergy")}>
-                        <Num value={state.reactiva} onChange={(v) => up("reactiva", v)} step={1} />
+                        <CurrencyInput value={state.reactiva} onChange={(v) => up("reactiva", isNaN(v) ? 0 : v)} />
                     </Field>
                     <Field label={t("simulationForm", "fieldMeterRental")}>
-                        <Num value={state.alquiler} onChange={(v) => up("alquiler", v)} step={0.5} />
+                        <CurrencyInput value={state.alquiler} onChange={(v) => up("alquiler", isNaN(v) ? 0 : v)} />
                     </Field>
                     <Field label={t("simulationForm", "fieldOtherCharges")}>
-                        <Num value={state.otrosCargos} onChange={(v) => up("otrosCargos", v)} step={1} />
+                        <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
                     </Field>
                 </FieldRow>
             </FormSection>
@@ -493,13 +493,13 @@ function GasForm({
             <FormSection title={t("simulationForm", "sectionCurrentInvoice")}>
                 <FieldRow>
                     <Field label={t("simulationForm", "fieldCurrentInvoice")} hint={t("simulationForm", "fieldCurrentInvoiceHint")}>
-                        <Num value={state.facturaActual} onChange={(v) => up("facturaActual", v)} step={10} />
+                        <CurrencyInput value={state.facturaActual} onChange={(v) => up("facturaActual", isNaN(v) ? 0 : v)} />
                     </Field>
                     <Field label={t("simulationForm", "fieldMeterRental")}>
-                        <Num value={state.alquiler} onChange={(v) => up("alquiler", v)} step={0.5} />
+                        <CurrencyInput value={state.alquiler} onChange={(v) => up("alquiler", isNaN(v) ? 0 : v)} />
                     </Field>
                     <Field label={t("simulationForm", "fieldOtherCharges")}>
-                        <Num value={state.otrosCargos} onChange={(v) => up("otrosCargos", v)} step={1} />
+                        <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
                     </Field>
                 </FieldRow>
             </FormSection>
@@ -737,7 +737,7 @@ export function SimulationFormPanel({
                     {/* Commodity type */}
                     <FormSection title={t("simulationForm", "simTypeSection")}>
                         <FieldRow>
-                            {(["ELECTRICITY", "GAS", "BOTH"] as SimType[]).map((stype) => (
+                            {(["ELECTRICITY", "GAS"] as SimType[]).map((stype) => (
                                 <button
                                     key={stype}
                                     onClick={() => setSimType(stype)}
@@ -752,26 +752,20 @@ export function SimulationFormPanel({
                                         color: simType === stype ? "var(--scheme-neutral-100)" : "var(--scheme-neutral-400)",
                                     }}
                                 >
-                                    {stype === "ELECTRICITY" ? t("simulationForm", "electricity") : stype === "GAS" ? t("simulationForm", "gas") : t("simulationForm", "both")}
+                                    {stype === "ELECTRICITY" ? t("simulationForm", "electricity") : t("simulationForm", "gas")}
                                 </button>
                             ))}
                         </FieldRow>
                     </FormSection>
 
-                    {(simType === "ELECTRICITY" || simType === "BOTH") && (
-                        <div style={{ marginBottom: simType === "BOTH" ? 16 : 0 }}>
-                            {simType === "BOTH" && (
-                                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 12, opacity: 0.7 }}>{t("simulationForm", "electricityLabel")}</div>
-                            )}
+                    {simType === "ELECTRICITY" && (
+                        <div>
                             <ElectricityForm state={elecState} onChange={setElecState} />
                         </div>
                     )}
 
-                    {(simType === "GAS" || simType === "BOTH") && (
+                    {simType === "GAS" && (
                         <div>
-                            {simType === "BOTH" && (
-                                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 12, marginTop: 8, opacity: 0.7 }}>{t("simulationForm", "gasLabel")}</div>
-                            )}
                             <GasForm state={gasState} onChange={setGasState} />
                         </div>
                     )}

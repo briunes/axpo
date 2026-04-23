@@ -6,6 +6,7 @@ import { PieChart } from "@mui/x-charts/PieChart";
 import type { AnalyticsOverview, AnalyticsAgencyStat, AnalyticsUserStat } from "../../lib/internalApi";
 import { DataTable } from "../ui";
 import type { ColumnDef } from "../ui";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 interface KpiCardProps {
     title: string;
@@ -101,6 +102,7 @@ interface AdminAnalyticsViewProps {
 }
 
 export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsViewProps) {
+    const { t } = useI18n();
     const chartSx = {
         "& .MuiChartsAxis-tickLabel": { fontSize: 10, fill: "var(--scheme-neutral-400)" },
         "& .MuiChartsGrid-line": { strokeDasharray: "4 4", opacity: 0.2, stroke: "var(--scheme-neutral-800)" },
@@ -128,19 +130,19 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
     const agencyColumns: ColumnDef<AnalyticsAgencyStat & { id: string }>[] = [
         {
             key: "agencyName",
-            label: "Agency Name",
+            label: t("analyticsModule", "colAgencyName"),
             sortable: true,
             renderCell: (r) => <span className="dt-cell-primary">{r.agencyName}</span>,
         },
         {
             key: "total",
-            label: "Created",
+            label: t("analyticsModule", "colCreated"),
             sortable: true,
             renderCell: (r) => <span style={{ fontWeight: 600 }}>{r.total}</span>
         },
         {
             key: "shared",
-            label: "Sent",
+            label: t("analyticsModule", "colSent"),
             sortable: true,
             renderCell: (r) => (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -164,7 +166,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
         },
         {
             key: "openRate",
-            label: "Open Rate",
+            label: t("analyticsModule", "colOpenRate"),
             renderCell: (r) => {
                 // For now we don't have per-agency open data, so we show a placeholder
                 // You might need to update the API to return this
@@ -191,7 +193,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
         },
         {
             key: "expired",
-            label: "Expired",
+            label: t("analyticsModule", "colExpired"),
             sortable: true,
             renderCell: (r) => <span style={{ color: r.expired > 0 ? "#f59e0b" : "inherit" }}>{r.expired}</span>,
         },
@@ -202,54 +204,54 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
             {/* ── Admin KPIs ─────────────────────────────────────────────── */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
                 <KpiCard
-                    title="Total Agencies"
+                    title={t("analyticsModule", "kpiTotalAgencies")}
                     value={analytics.byAgency?.length || 0}
                     accent="#8b5cf6"
-                    sub="Active agencies"
+                    sub={t("analyticsModule", "kpiTotalAgenciesSub")}
                 />
                 <KpiCard
-                    title="Simulations Created"
+                    title={t("analyticsModule", "kpiSimsCreated")}
                     value={analytics.totalSimulations}
                     accent="#3b82f6"
-                    sub="All simulations"
+                    sub={t("analyticsModule", "kpiSimsCreatedSub")}
                 />
                 <KpiCard
-                    title="Simulations Sent"
+                    title={t("analyticsModule", "kpiSimsSent")}
                     value={analytics.sharedSimulations}
-                    sub="Sent to clients"
+                    sub={t("analyticsModule", "kpiSimsSentSub")}
                     accent="#10b981"
                     percentage={sentRate}
                     trend={sentRate > 70 ? "up" : sentRate < 40 ? "down" : "neutral"}
                 />
                 <KpiCard
-                    title="Open Rate"
+                    title={t("analyticsModule", "kpiOpenRate")}
                     value={`${openRate}%`}
-                    sub={`${analytics.successfulAccess} total opens`}
+                    sub={t("analyticsModule", "kpiOpenRateSub").replace("{count}", String(analytics.successfulAccess))}
                     accent="#06b6d4"
                     percentage={openRate}
                     trend={openRate > 60 ? "up" : openRate < 30 ? "down" : "neutral"}
                 />
                 <KpiCard
-                    title="Total Opens"
+                    title={t("analyticsModule", "kpiTotalOpens")}
                     value={analytics.successfulAccess || 0}
                     accent="#14b8a6"
-                    sub={`${analytics.accessAttempts} attempts`}
+                    sub={t("analyticsModule", "kpiTotalOpensSub").replace("{count}", String(analytics.accessAttempts))}
                 />
                 <KpiCard
-                    title="Active Users"
+                    title={t("analyticsModule", "kpiActiveUsers")}
                     value={analytics.byUser?.length || 0}
                     accent="#a78bfa"
-                    sub="Users creating sims"
+                    sub={t("analyticsModule", "kpiActiveUsersSub")}
                 />
             </div>
 
             {/* ── Core Funnel (MOST IMPORTANT) ──────────────────────────────── */}
-            <ChartPanel title="Engagement Funnel" subtitle="Core business metrics">
+            <ChartPanel title={t("analyticsModule", "chartEngagementFunnel")} subtitle={t("analyticsModule", "chartEngagementFunnelSub")}>
                 <div style={{ display: "flex", gap: 12, alignItems: "stretch", padding: "12px 0", position: "relative" }}>
                     {[
-                        { label: "Created", value: analytics.totalSimulations, color: "#3b82f6", percent: 100 },
-                        { label: "Sent", value: analytics.sharedSimulations, color: "#10b981", percent: sentRate },
-                        { label: "Opened", value: analytics.successfulAccess || 0, color: "#06b6d4", percent: openRate },
+                        { label: t("analyticsModule", "funnelCreated"), value: analytics.totalSimulations, color: "#3b82f6", percent: 100 },
+                        { label: t("analyticsModule", "funnelSent"), value: analytics.sharedSimulations, color: "#10b981", percent: sentRate },
+                        { label: t("analyticsModule", "funnelOpened"), value: analytics.successfulAccess || 0, color: "#06b6d4", percent: openRate },
                     ].map((stage, idx) => (
                         <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, position: "relative" }}>
                             <div style={{
@@ -282,15 +284,15 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
             {/* ── Activity Trends ──────────────────────────────────────────── */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <ChartPanel
-                    title="Simulations Created"
-                    subtitle={`Last ${selectedDays} days`}
+                    title={t("analyticsModule", "chartSimsCreated")}
+                    subtitle={t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))}
                 >
                     {hasSimTrend ? (
                         <LineChart
                             xAxis={[{ data: simDates, scaleType: "time" }]}
                             series={[{
                                 data: simCounts,
-                                label: "Created",
+                                label: t("analyticsModule", "funnelCreated"),
                                 color: "#3b82f6",
                                 area: true,
                                 showMark: true,
@@ -302,21 +304,21 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                         />
                     ) : (
                         <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
-                            No simulations created in this period
+                            {t("analyticsModule", "noSimulationsInPeriod")}
                         </div>
                     )}
                 </ChartPanel>
 
                 <ChartPanel
-                    title="Simulations Opened"
-                    subtitle={`Last ${selectedDays} days`}
+                    title={t("analyticsModule", "chartSimsOpened")}
+                    subtitle={t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))}
                 >
                     {hasAccessTrend ? (
                         <LineChart
                             xAxis={[{ data: accessDates, scaleType: "time" }]}
                             series={[{
                                 data: opensPerDay,
-                                label: "Opened",
+                                label: t("analyticsModule", "funnelOpened"),
                                 color: "#06b6d4",
                                 area: true,
                                 showMark: true,
@@ -328,7 +330,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                         />
                     ) : (
                         <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
-                            No opens in this period
+                            {t("analyticsModule", "noOpensInPeriod")}
                         </div>
                     )}
                 </ChartPanel>
@@ -339,18 +341,18 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                 <div>
                     <div style={{ marginBottom: 12 }}>
                         <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--scheme-neutral-100)", marginBottom: 4 }}>
-                            Agency Performance Ranking
+                            {t("analyticsModule", "tableAgencyPerformance")}
                         </h3>
                         <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
-                            Which agencies are generating simulations and getting clients to open them
+                            {t("analyticsModule", "tableAgencyPerformanceSub")}
                         </p>
                     </div>
                     <DataTable<AnalyticsAgencyStat & { id: string }>
                         columns={agencyColumns}
                         rows={(analytics.byAgency ?? []).map((r) => ({ ...r, id: r.agencyId }))}
                         loading={false}
-                        emptyMessage="No agency data available"
-                        headerRight={<span className="dt-meta-pill">{analytics.byAgency.length} agencies</span>}
+                        emptyMessage={t("analyticsModule", "emptyAgencyData")}
+                        headerRight={<span className="dt-meta-pill">{t("analyticsModule", "pillAgencies").replace("{count}", String(analytics.byAgency.length))}</span>}
                     />
                 </div>
             )}
@@ -363,12 +365,12 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                     border: "1px solid #f59e0b40",
                     borderRadius: 8,
                 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "#f59e0b", marginBottom: 6 }}>⚠️ Low Open Rate</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "#f59e0b", marginBottom: 6 }}>{t("analyticsModule", "alertLowOpenRate")}</div>
                     <div style={{ fontSize: 24, fontWeight: 700, color: "#f59e0b" }}>
-                        {openRate < 30 ? "Action Needed" : "Looking Good"}
+                        {openRate < 30 ? t("analyticsModule", "alertLowOpenRateAction") : t("analyticsModule", "alertLowOpenRateGood")}
                     </div>
                     <div style={{ fontSize: 11, color: "var(--scheme-neutral-400)", marginTop: 4 }}>
-                        {openRate < 30 ? "Many sent simulations not being opened" : "Open rate is healthy"}
+                        {openRate < 30 ? t("analyticsModule", "alertLowOpenRateMsgBad") : t("analyticsModule", "alertLowOpenRateMsgGood")}
                     </div>
                 </div>
 
@@ -378,12 +380,12 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                     border: "1px solid #10b98140",
                     borderRadius: 8,
                 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "#10b981", marginBottom: 6 }}>🎯 Sent Rate</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "#10b981", marginBottom: 6 }}>{t("analyticsModule", "alertSentRate")}</div>
                     <div style={{ fontSize: 24, fontWeight: 700, color: "#10b981" }}>
                         {sentRate}%
                     </div>
                     <div style={{ fontSize: 11, color: "var(--scheme-neutral-400)", marginTop: 4 }}>
-                        {sentRate < 50 ? "Many drafts not being sent" : "Good conversion to sent"}
+                        {sentRate < 50 ? t("analyticsModule", "alertSentRateMsgLow") : t("analyticsModule", "alertSentRateMsgGood")}
                     </div>
                 </div>
 
@@ -393,12 +395,12 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                     border: "1px solid #8b5cf640",
                     borderRadius: 8,
                 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "#8b5cf6", marginBottom: 6 }}>📊 Pending Opens</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "#8b5cf6", marginBottom: 6 }}>{t("analyticsModule", "alertPendingOpens")}</div>
                     <div style={{ fontSize: 24, fontWeight: 700, color: "#8b5cf6" }}>
                         {analytics.sharedSimulations - (analytics.successfulAccess || 0)}
                     </div>
                     <div style={{ fontSize: 11, color: "var(--scheme-neutral-400)", marginTop: 4 }}>
-                        Sent but not yet opened
+                        {t("analyticsModule", "alertPendingOpensSub")}
                     </div>
                 </div>
             </div>

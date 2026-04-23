@@ -8,7 +8,7 @@ body {
   margin: 0;
   background: #ffffff;
   color: var(--scheme-neutral-200);
-  font-family: Inter, "Segoe UI", sans-serif;
+  font-family: var(--font-montserrat, "Montserrat"), "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -422,15 +422,22 @@ textarea {
 .app-shell {
   display: flex;
   height: 100vh;
+  max-height: 100vh;
   overflow: hidden;
   background: #ffffff;
+}
+
+/* Adjust app-shell height when environment banner exists */
+.environment-indicator ~ .environment-content .app-shell {
+  height: calc(100vh - 38px); /* Subtract environment banner height */
+  max-height: calc(100vh - 38px);
 }
 
 /* ─── Sidebar ─────────────────────────────────────────────── */
 .app-sidebar {
   width: 240px;
   min-width: 240px;
-  height: 100vh;
+  height: 100%;
   background: var(--scheme-neutral-1200);
   border-right: 1px solid var(--scheme-neutral-900);
   display: flex;
@@ -1750,6 +1757,54 @@ textarea {
   justify-content: center;
   padding: 24px;
   background: var(--scheme-neutral-1000);
+  position: relative;
+}
+
+/* Adjust login-shell-v2 height when environment banner exists */
+.environment-indicator ~ .environment-content .login-shell-v2 {
+  min-height: calc(100vh - 38px);
+  max-height: calc(100vh - 38px);
+}
+
+.login-lang-switcher-v2 {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.login-lang-btn-v2 {
+  min-width: 44px;
+  height: 36px;
+  border: 1px solid var(--scheme-neutral-800);
+  border-radius: 6px;
+  background: var(--scheme-neutral-1100);
+  color: var(--scheme-neutral-400);
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+  padding: 0 12px;
+  line-height: 1;
+}
+
+.login-lang-btn-v2:hover {
+  background: var(--scheme-neutral-1000);
+  border-color: var(--scheme-neutral-700);
+}
+
+.login-lang-btn-v2.active {
+  background: var(--scheme-brand-600);
+  border-color: var(--scheme-brand-600);
+  color: white;
+}
+
+.login-lang-btn-v2.active:hover {
+  background: var(--scheme-brand-500);
+  border-color: var(--scheme-brand-500);
 }
 
 .login-grid-v2 {
@@ -1946,6 +2001,24 @@ textarea {
   cursor: default;
 }
 
+.login-link-v2 {
+  background: none;
+  border: none;
+  color: var(--scheme-neutral-400);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  padding: 0;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.login-link-v2:hover {
+  color: var(--scheme-brand-600);
+  text-decoration: underline;
+}
+
 @media (max-width: 768px) {
   .login-grid-v2 {
     grid-template-columns: 1fr;
@@ -2067,4 +2140,22 @@ textarea {
   font-size: 13px;
   line-height: 1.4;
   margin-bottom: 16px;
+}
+
+/* Phone Input Focus Styles */
+.react-international-phone-input-container .react-international-phone-input:focus {
+  border-color: #FF3254 !important;
+  outline: none;
+}
+
+.react-international-phone-input-container:has(.react-international-phone-input:focus) .react-international-phone-country-selector-button {
+  border-color: #FF3254 !important;
+}
+
+.react-international-phone-input-container .react-international-phone-input:hover:not(:focus) {
+  border-color: rgba(0, 0, 0, 0.4);
+}
+
+.react-international-phone-input-container:has(.react-international-phone-input:hover:not(:focus)) .react-international-phone-country-selector-button {
+  border-color: rgba(0, 0, 0, 0.4);
 }

@@ -112,23 +112,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       data: {
         sourceWorkbookRef: parsed.sourceWorkbookRef,
         sourceScope: parsed.sourceScope,
-        isActive: true,
         updatedAt: new Date(),
       },
       include: {
         _count: { select: { items: true } },
       },
-    });
-
-    // Deactivate ALL other base value sets (not just same name)
-    await prisma.baseValueSet.updateMany({
-      where: {
-        id: { not: set.id },
-        isActive: true,
-        scopeType: parsed.scopeType,
-        agencyId: null,
-      },
-      data: { isActive: false },
     });
 
     await AuditService.logEvent({
@@ -154,7 +142,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         sourceWorkbookRef: parsed.sourceWorkbookRef,
         sourceScope: parsed.sourceScope,
         version: nextVersion,
-        isActive: true, // Always activate newly uploaded set
+        isActive: false, // Uploaded sets start as Draft; activate manually
         createdBy: auth.userId,
         items: {
           create: parsed.items.map((item) => ({
@@ -181,17 +169,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         itemCount: parsed.items.length,
         filename: file.name,
       },
-    });
-
-    // Deactivate ALL other base value sets to ensure simulations use latest
-    await prisma.baseValueSet.updateMany({
-      where: {
-        id: { not: set.id },
-        isActive: true,
-        scopeType: parsed.scopeType,
-        agencyId: null,
-      },
-      data: { isActive: false },
     });
   }
 

@@ -256,6 +256,7 @@ async function main() {
       name: "Simulation Output - Default",
       description: "Standard simulation output template with product details and comparison",
       type: "simulation-output",
+      commodity: "ELECTRICITY",
       active: true,
       htmlContent: `<style>
   #axpo-sim-tpl {
@@ -455,6 +456,7 @@ async function main() {
       name: "Price History - Default",
       description: "Price history report template with indexed prices for last 12 months",
       type: "price-history",
+      commodity: "ELECTRICITY",
       active: true,
       htmlContent: `<!DOCTYPE html>
 <html lang="es">

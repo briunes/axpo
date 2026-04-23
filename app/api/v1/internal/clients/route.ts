@@ -139,6 +139,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     Math.max(1, parseInt(searchParams.get("pageSize") ?? "25", 10)),
   );
   const search = searchParams.get("search") ?? undefined;
+  const includeDeleted =
+    searchParams.get("includeDeleted") === "true" &&
+    auth.role === UserRole.ADMIN;
   const orderBy = searchParams.get("orderBy") ?? "name";
   const sortDir =
     (searchParams.get("sortDir") ?? "asc") === "asc" ? "asc" : "desc";
@@ -152,7 +155,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const baseWhere =
     auth.role === UserRole.ADMIN
-      ? { isDeleted: false }
+      ? includeDeleted
+        ? {}
+        : { isDeleted: false }
       : { agencyId: auth.agencyId, isDeleted: false };
 
   const where = search

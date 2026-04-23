@@ -1,14 +1,17 @@
 "use client";
 
-import { Chip, Divider, Stack, Box } from "@mui/material";
+import { Chip, Divider, Stack, Box, Tabs, Tab } from "@mui/material";
 import { useEffect, useState } from "react";
 import { loadSession } from "../lib/authSession";
 import { getUser, updateUser, isAdmin, type UserItem } from "../lib/internalApi";
 import { useAgencies } from "../components/hooks/useAgencies";
 import { UserForm, type UserFormData } from "../components/modules/UserForm";
 import { CrudPageLayout, LoadingState, useAlerts } from "../components/shared";
+import { UserPreferencesForm } from "../components/ui/UserPreferencesForm";
+import { useI18n } from "../../../src/lib/i18n-context";
 
 export default function ProfilePage() {
+    const { t } = useI18n();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const agenciesActions = useAgencies(session);
@@ -18,6 +21,7 @@ export default function ProfilePage() {
     const [submitting, setSubmitting] = useState(false);
     const [errorText, setErrorText] = useState<string | null>(null);
     const [successText, setSuccessText] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState(0);
 
     const [formData, setFormData] = useState<UserFormData>({
         fullName: "",
@@ -106,51 +110,70 @@ export default function ProfilePage() {
             {loading ? (
                 <LoadingState message="Loading profile..." size={100} />
             ) : (
-                <Stack spacing={3}>
-                    {/* Read-only identity row — visible to all roles */}
-                    <Stack direction="row" spacing={3} alignItems="flex-end" flexWrap="wrap">
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            <span style={{ fontSize: 11, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
-                                Role
-                            </span>
-                            <Chip
-                                label={user?.role}
-                                size="small"
-                                color={roleTone[user?.role ?? "COMMERCIAL"]}
-                                sx={{ fontWeight: 600, fontSize: 12, width: "fit-content" }}
+                <>
+                    <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+                        <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+                            <Tab label={t("profilePage", "tabDetails")} />
+                            <Tab label={t("userPreferences", "tabPreferences")} />
+                        </Tabs>
+                    </Box>
+
+                    {activeTab === 0 && (
+                        <Stack spacing={3}>
+                            {/* Read-only identity row — visible to all roles */}
+                            <Stack direction="row" spacing={3} alignItems="flex-end" flexWrap="wrap">
+                                <Box sx={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                    <span style={{ fontSize: 11, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
+                                        Role
+                                    </span>
+                                    <Chip
+                                        label={user?.role}
+                                        size="small"
+                                        color={roleTone[user?.role ?? "COMMERCIAL"]}
+                                        sx={{ fontWeight: 600, fontSize: 12, width: "fit-content" }}
+                                    />
+                                </Box>
+                                {agencyName && (
+                                    <Box sx={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                        <span style={{ fontSize: 11, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
+                                            Agency
+                                        </span>
+                                        <Chip
+                                            label={agencyName}
+                                            size="small"
+                                            sx={{ fontSize: 12, width: "fit-content" }}
+                                        />
+                                    </Box>
+                                )}
+                            </Stack>
+
+                            <Divider />
+
+                            {/* Edit form — role/agency selects visible to admins only, handled by UserForm */}
+                            <UserForm
+                                session={session}
+                                agencies={agenciesActions.agencies}
+                                data={formData}
+                                onChange={setFormData}
+                                onSubmit={handleSubmit}
+                                errorMessage={errorText}
+                                successMessage={successText}
+                                isSubmitting={submitting}
+                                submitLabel="Save Changes"
+                                mode="edit"
+                                isEditingSelf
                             />
-                        </Box>
-                        {agencyName && (
-                            <Box sx={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                <span style={{ fontSize: 11, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
-                                    Agency
-                                </span>
-                                <Chip
-                                    label={agencyName}
-                                    size="small"
-                                    sx={{ fontSize: 12, width: "fit-content" }}
-                                />
-                            </Box>
-                        )}
-                    </Stack>
+                        </Stack>
+                    )}
 
-                    <Divider />
-
-                    {/* Edit form — role/agency selects visible to admins only, handled by UserForm */}
-                    <UserForm
-                        session={session}
-                        agencies={agenciesActions.agencies}
-                        data={formData}
-                        onChange={setFormData}
-                        onSubmit={handleSubmit}
-                        errorMessage={errorText}
-                        successMessage={successText}
-                        isSubmitting={submitting}
-                        submitLabel="Save Changes"
-                        mode="edit"
-                        isEditingSelf={true}
-                    />
-                </Stack>
+                    {activeTab === 1 && session && (
+                        <UserPreferencesForm
+                            userId={session.user.id}
+                            token={session.token}
+                            onNotify={(msg, tone) => tone === "error" ? showError(msg) : showSuccess(msg)}
+                        />
+                    )}
+                </>
             )}
         </CrudPageLayout>
     );

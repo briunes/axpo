@@ -51,12 +51,14 @@ type ShareMode = "pdf" | "email";
 interface ShareSimulationViewProps {
     simulation: any;
     token: string;
+    isTestingMode?: boolean;
+    loggedUserEmail?: string;
     onSuccess?: (message: string) => void;
     onError?: (message: string) => void;
     onStatusChange?: () => void;
 }
 
-export function ShareSimulationView({ simulation, token, onSuccess, onError, onStatusChange }: ShareSimulationViewProps) {
+export function ShareSimulationView({ simulation, token, isTestingMode, loggedUserEmail, onSuccess, onError, onStatusChange }: ShareSimulationViewProps) {
     const { t } = useI18n();
 
     const [shareMode, setShareMode] = useState<ShareMode>("pdf");
@@ -90,13 +92,31 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
             getTemplateVariables(),
         ])
             .then(async ([pdfTpl, emailTpl, variables]) => {
-                setPdfTemplates(pdfTpl);
-                setEmailTemplates(emailTpl);
+                // Get simulation type from payload (defaults to ELECTRICITY if not specified)
+                const payload = simulation.payloadJson as { type?: "ELECTRICITY" | "GAS" } | null;
+                const simulationType = payload?.type || "ELECTRICITY";
+
+                // Filter PDF templates by commodity and type
+                const simulationPdfTemplates = pdfTpl.filter((t) => {
+                    // Must be simulation template type
+                    if (t.type !== "simulation-output" && t.type !== "simulation-detailed") return false;
+
+                    // Filter by commodity - treat null/undefined as ELECTRICITY
+                    const templateCommodity = t.commodity || "ELECTRICITY";
+                    return templateCommodity === simulationType;
+                });
+
+                const simulationEmailTemplates = emailTpl.filter(
+                    (t) => t.type === "simulation-share"
+                );
+
+                setPdfTemplates(simulationPdfTemplates);
+                setEmailTemplates(simulationEmailTemplates);
                 setTemplateVariables(variables);
 
                 // Set default selections
-                const defaultPdf = pdfTpl.find((t) => t.active);
-                const defaultEmail = emailTpl.find((t) => t.active);
+                const defaultPdf = simulationPdfTemplates.find((t) => t.active);
+                const defaultEmail = simulationEmailTemplates.find((t) => t.active);
                 if (defaultPdf) {
                     setSelectedPdfTemplate(defaultPdf.id);
                     setEditedPdfContent(defaultPdf.htmlContent);
@@ -124,8 +144,11 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
                     }
                 }
 
-                // Pre-fill recipient email if client exists
-                if (simulation.clientId) {
+                // Pre-fill recipient email
+                if (isTestingMode && loggedUserEmail) {
+                    // Testing mode: always use the logged-in user's email
+                    setRecipientEmail(loggedUserEmail);
+                } else if (simulation.clientId) {
                     try {
                         const clientData = await getClient(token, simulation.clientId);
                         if (clientData.contactEmail) {
@@ -288,7 +311,7 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
                 },
                 body: JSON.stringify({
                     htmlContent: processedContent,
-                    watermark: !markAsShared ? 'DRAFT' : undefined,
+                    watermark: isTestingMode ? 'TESTING' : (!markAsShared ? 'DRAFT' : undefined),
                 }),
             });
 
@@ -341,7 +364,13 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
 
             const processedContent = replaceVariables(editedEmailContent, simulationLink, emailEditableOverrides);
             const processedSubject = replaceVariables(editedSubject, simulationLink);
-            const processedPdfContent = attachPdfToEmail ? replaceVariables(editedEmailPdfContent, simulationLink, emailPdfEditableOverrides) : undefined;
+            let processedPdfContent = attachPdfToEmail ? replaceVariables(editedEmailPdfContent, simulationLink, emailPdfEditableOverrides) : undefined;
+            if (processedPdfContent && isTestingMode) {
+                const watermarkCss = `<style>@media print{body::before{content:"TESTING";position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-45deg);font-size:120px;font-weight:bold;color:rgba(0,0,0,0.08);z-index:9999;pointer-events:none;white-space:nowrap;font-family:Arial,sans-serif;letter-spacing:0.1em;}}</style>`;
+                processedPdfContent = processedPdfContent.includes("</head>")
+                    ? processedPdfContent.replace("</head>", `${watermarkCss}\n</head>`)
+                    : `${watermarkCss}\n${processedPdfContent}`;
+            }
 
             const response = await fetch(`/api/v1/internal/simulations/${simulation.id}/send-email`, {
                 method: "POST",
@@ -466,8 +495,10 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
                                 type="email"
                                 label={t("shareSimulation", "recipientEmail") || "Email"}
                                 value={recipientEmail}
-                                onChange={(e) => setRecipientEmail(e.target.value)}
+                                onChange={(e) => !isTestingMode && setRecipientEmail(e.target.value)}
                                 placeholder="client@example.com"
+                                disabled={isTestingMode}
+                                helperText={isTestingMode ? "Testing mode: email will be sent to your account only" : undefined}
                             />
                         </CardContent>
                     </Card>
@@ -568,11 +599,20 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
                                                             height="500px"
                                                         />
                                                         <DraggableVariables
-                                                            variables={templateVariables.map(v => ({
-                                                                name: v.key,
-                                                                label: v.label,
-                                                                description: v.description || "",
-                                                            }))}
+                                                            variables={[
+                                                                // Regular template variables
+                                                                ...templateVariables.map(v => ({
+                                                                    name: v.key,
+                                                                    label: v.label,
+                                                                    description: v.description || "",
+                                                                })),
+                                                                // Editable sections from current template
+                                                                ...Object.entries((currentTemplate?.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
+                                                                    name: key,
+                                                                    label: `📝 ${section.label || key}`,
+                                                                    description: section.description || "Editable section",
+                                                                }))
+                                                            ]}
                                                         />
                                                     </Box>
                                                 </>
@@ -626,11 +666,20 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
                                                             height="500px"
                                                         />
                                                         <DraggableVariables
-                                                            variables={templateVariables.map(v => ({
-                                                                name: v.key,
-                                                                label: v.label,
-                                                                description: v.description || "",
-                                                            }))}
+                                                            variables={[
+                                                                // Regular template variables
+                                                                ...templateVariables.map(v => ({
+                                                                    name: v.key,
+                                                                    label: v.label,
+                                                                    description: v.description || "",
+                                                                })),
+                                                                // Editable sections from current PDF template
+                                                                ...Object.entries((emailPdfTpl?.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
+                                                                    name: key,
+                                                                    label: `📝 ${section.label || key}`,
+                                                                    description: section.description || "Editable section",
+                                                                }))
+                                                            ]}
                                                         />
                                                     </Box>
                                                 ) : (
@@ -687,11 +736,20 @@ export function ShareSimulationView({ simulation, token, onSuccess, onError, onS
                                                 height="500px"
                                             />
                                             <DraggableVariables
-                                                variables={templateVariables.map(v => ({
-                                                    name: v.key,
-                                                    label: v.label,
-                                                    description: v.description || "",
-                                                }))}
+                                                variables={[
+                                                    // Regular template variables
+                                                    ...templateVariables.map(v => ({
+                                                        name: v.key,
+                                                        label: v.label,
+                                                        description: v.description || "",
+                                                    })),
+                                                    // Editable sections from current template
+                                                    ...Object.entries((currentTemplate?.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
+                                                        name: key,
+                                                        label: `📝 ${section.label || key}`,
+                                                        description: section.description || "Editable section",
+                                                    }))
+                                                ]}
                                             />
                                         </Box>
                                     ) : (

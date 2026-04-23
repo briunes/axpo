@@ -18,7 +18,7 @@ export default function SetupPasswordPage() {
 function SetupPasswordContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { t } = useI18n();
+    const { t, locale, setLocale } = useI18n();
 
     const token = searchParams.get("token") ?? "";
 
@@ -74,6 +74,22 @@ function SetupPasswordContent() {
 
     return (
         <div className="login-shell-v2">
+            <div className="login-lang-switcher-v2">
+                <button
+                    onClick={() => setLocale("en")}
+                    className={`login-lang-btn-v2 ${locale === "en" ? "active" : ""}`}
+                    title="English"
+                >
+                    🇬🇧
+                </button>
+                <button
+                    onClick={() => setLocale("es")}
+                    className={`login-lang-btn-v2 ${locale === "es" ? "active" : ""}`}
+                    title="Español"
+                >
+                    🇪🇸
+                </button>
+            </div>
             <div className="login-grid-v2">
 
                 {/* ── Brand panel ── */}

@@ -41,6 +41,7 @@ export default function EditBaseValueSetPage({
     const [items, setItems] = useState<BaseValueItem[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [formActions, setFormActions] = useState<React.ReactNode>(null);
 
     useEffect(() => {
         if (!session) return;
@@ -125,6 +126,7 @@ export default function EditBaseValueSetPage({
                 version: set.version,
             })}
             backHref="/internal/base-values"
+            actions={formActions}
         >
             <CrudFormContainer
                 onSubmit={handleSubmit}
@@ -133,6 +135,7 @@ export default function EditBaseValueSetPage({
                 cancelLabel={t("actions", "cancel")}
                 onCancel={() => router.push("/internal/base-values")}
                 isSubmitting={isSubmitting}
+                onRenderActions={setFormActions}
             >
                 <Stack spacing={2.5}>
                     <FormInput

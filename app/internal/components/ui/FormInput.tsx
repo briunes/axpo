@@ -56,18 +56,29 @@ export function FormInput({ label, required, helperText, type, ...props }: TextF
                 }}
                 sx={{
                     '& .MuiOutlinedInput-root': {
+                        backgroundColor: '#fafafa',
                         borderRadius: '6px',
+                        fontSize: '14px',
                         '& fieldset': {
                             borderWidth: '1px',
-                            borderColor: props.error ? 'error.main' : 'rgba(0, 0, 0, 0.23)',
+                            borderColor: props.error ? '#d32f2f' : 'rgba(0, 0, 0, 0.23)',
                         },
                         '&:hover fieldset': {
-                            borderColor: props.error ? 'error.main' : 'rgba(0, 0, 0, 0.4)',
+                            borderColor: props.error ? '#d32f2f' : 'rgba(0, 0, 0, 0.4)',
                         },
                         '&.Mui-focused fieldset': {
                             borderWidth: '1px',
-                            borderColor: props.error ? 'error.main' : 'primary.main',
+                            borderColor: props.error ? '#d32f2f' : 'primary.main',
                         },
+                    },
+                    '& .MuiFormHelperText-root': {
+                        color: props.error ? '#d32f2f' : '#666',
+                        marginLeft: 0,
+                        marginTop: '4px',
+                        fontSize: '12px',
+                    },
+                    '& .MuiInputBase-input': {
+                        padding: '8.5px 14px',
                     },
                     ...props.sx,
                 }}

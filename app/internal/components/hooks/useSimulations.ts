@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   cloneSimulation,
   applySimulationOcrPrefill,
@@ -34,7 +34,34 @@ export interface SimulationsActions {
   errorText: string | null;
   successText: string | null;
   clearFeedback: () => void;
-  refresh: () => Promise<void>;
+  refresh: (
+    overrides?: import("../../lib/internalApi").ListSimulationsParams,
+  ) => Promise<void>;
+  // pagination
+  page: number;
+  pageSize: number;
+  total: number;
+  setPage: (page: number) => void;
+  setPageSize: (size: number) => void;
+  // sort
+  sortColumn: string;
+  sortDir: "asc" | "desc";
+  setSort: (column: string, dir: "asc" | "desc") => void;
+  showArchived: boolean;
+  setShowArchived: (v: boolean) => void;
+  // filters
+  filterSearch: string;
+  setFilterSearch: (v: string) => void;
+  filterOwnerUserId: string;
+  setFilterOwnerUserId: (v: string) => void;
+  filterClientId: string;
+  setFilterClientId: (v: string) => void;
+  filterCups: string;
+  setFilterCups: (v: string) => void;
+  filterStatus: string;
+  setFilterStatus: (v: string) => void;
+  applyFilters: () => void;
+  filtersAppliedAt: number;
   // create form state
   clientName: string;
   setClientName: (v: string) => void;
@@ -82,12 +109,45 @@ export interface SimulationsActions {
 
 export function useSimulations(
   session: SessionState | null,
+  initialPageSize = 25,
 ): SimulationsActions {
   const [simulations, setSimulations] = useState<SimulationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
+
+  // pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialPageSize);
+  const [total, setTotal] = useState(0);
+  // sync pageSize when user preferences load
+  useEffect(() => {
+    setPageSize(initialPageSize);
+    setPage(1);
+  }, [initialPageSize]);
+  // sort
+  const [sortColumn, setSortColumn] = useState("updatedAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const setSort = (column: string, dir: "asc" | "desc") => {
+    setSortColumn(column);
+    setSortDir(dir);
+  };
+  const [showArchived, setShowArchived] = useState(false);
+
+  // filters — pending = what the user is typing; applied = what was last submitted
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterOwnerUserId, setFilterOwnerUserId] = useState("");
+  const [filterClientId, setFilterClientId] = useState("");
+  const [filterCups, setFilterCups] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [appliedOwnerUserId, setAppliedOwnerUserId] = useState("");
+  const [appliedClientId, setAppliedClientId] = useState("");
+  const [appliedCups, setAppliedCups] = useState("");
+  const [appliedStatus, setAppliedStatus] = useState("");
+  const [filtersAppliedAt, setFiltersAppliedAt] = useState(0);
 
   // create form
   const [clientName, setClientName] = useState("");
@@ -131,20 +191,69 @@ export function useSimulations(
     }
   };
 
-  const refresh = useCallback(async () => {
-    if (!session) return;
-    setLoading(true);
-    try {
-      const items = await listSimulations(session.token);
-      setSimulations(items.filter((item) => !item.isDeleted));
-    } catch (error) {
-      setErrorText(
-        error instanceof Error ? error.message : "Could not load simulations.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [session]);
+  const refresh = useCallback(
+    async (
+      overrides?: import("../../lib/internalApi").ListSimulationsParams,
+    ) => {
+      if (!session) return;
+      setLoading(true);
+      try {
+        const params = {
+          page,
+          pageSize,
+          orderBy: sortColumn,
+          sortDir,
+          includeDeleted: showArchived || undefined,
+          search: appliedSearch || undefined,
+          ownerUserId: appliedOwnerUserId || undefined,
+          clientId: appliedClientId || undefined,
+          cups: appliedCups || undefined,
+          status: appliedStatus || undefined,
+          ...overrides,
+        };
+        const result = await listSimulations(session.token, params);
+        setSimulations(result.items);
+        setTotal(result.total);
+      } catch (error) {
+        setErrorText(
+          error instanceof Error
+            ? error.message
+            : "Could not load simulations.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      session,
+      page,
+      pageSize,
+      sortColumn,
+      sortDir,
+      showArchived,
+      appliedSearch,
+      appliedOwnerUserId,
+      appliedClientId,
+      appliedCups,
+      appliedStatus,
+    ],
+  );
+
+  const applyFilters = useCallback(() => {
+    setAppliedSearch(filterSearch);
+    setAppliedOwnerUserId(filterOwnerUserId);
+    setAppliedClientId(filterClientId);
+    setAppliedCups(filterCups);
+    setAppliedStatus(filterStatus);
+    setFiltersAppliedAt((n) => n + 1);
+    setPage(1);
+  }, [
+    filterSearch,
+    filterOwnerUserId,
+    filterClientId,
+    filterCups,
+    filterStatus,
+  ]);
 
   const handleValidateCups = async () => {
     if (!session) return;
@@ -328,6 +437,28 @@ export function useSimulations(
     successText,
     clearFeedback,
     refresh,
+    page,
+    pageSize,
+    total,
+    setPage,
+    setPageSize,
+    sortColumn,
+    sortDir,
+    setSort,
+    showArchived,
+    setShowArchived,
+    filterSearch,
+    setFilterSearch,
+    filterOwnerUserId,
+    setFilterOwnerUserId,
+    filterClientId,
+    setFilterClientId,
+    filterCups,
+    setFilterCups,
+    filterStatus,
+    setFilterStatus,
+    applyFilters,
+    filtersAppliedAt,
     clientName,
     setClientName,
     clientId,

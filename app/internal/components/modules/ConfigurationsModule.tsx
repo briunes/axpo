@@ -3,10 +3,10 @@
 import { useState } from "react";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { SystemSettingsNew } from "./SystemSettingsNew";
-import { PdfTemplatesNew } from "./PdfTemplatesNew";
-import { EmailTemplatesNew } from "./EmailTemplatesNew";
-import { RolePermissionsEditor } from "./RolePermissionsEditor";
+import { TemplatesCommunications } from "./TemplatesCommunications";
+import { SystemBusinessSettings } from "./SystemBusinessSettings";
+import { UserExperienceSettings } from "./UserExperienceSettings";
+import { IntegrationsSettings } from "./IntegrationsSettings";
 import "./configurations.css";
 
 export interface ConfigurationsModuleProps {
@@ -14,27 +14,21 @@ export interface ConfigurationsModuleProps {
     onNotify: (message: string, tone: "success" | "error") => void;
 }
 
-type ConfigTab = "system-settings" | "pdf-templates" | "email-templates" | "role-permissions";
+type ConfigTab = "templates-communications" | "system-business" | "user-experience" | "integrations";
 
 export function ConfigurationsModule({ session, onNotify }: ConfigurationsModuleProps) {
     const { t } = useI18n();
-    const [activeTab, setActiveTab] = useState<ConfigTab>("system-settings");
+    const [activeTab, setActiveTab] = useState<ConfigTab>("templates-communications");
 
     const TAB_LABELS: Record<ConfigTab, string> = {
-        "system-settings": t("configurationsModule", "tabSystemSettings"),
-        "pdf-templates": t("configurationsModule", "tabPdfTemplates"),
-        "email-templates": t("configurationsModule", "tabEmailTemplates"),
-        "role-permissions": t("configurationsModule", "tabRolePermissions"),
+        "templates-communications": t("configurationsModule", "tabTemplatesCommunications"),
+        "system-business": t("configurationsModule", "tabSystemBusiness"),
+        "user-experience": t("configurationsModule", "tabUserExperience"),
+        "integrations": t("configurationsModule", "tabIntegrations"),
     };
 
     return (
         <div className="configurations-container">
-            <div className="configurations-header">
-                <h1 className="configurations-title">{t("configurationsModule", "title")}</h1>
-                <p className="configurations-subtitle">
-                    {t("configurationsModule", "subtitle")}
-                </p>
-            </div>
 
             <div className="configurations-tabs">
                 {(Object.keys(TAB_LABELS) as ConfigTab[]).map((tab) => (
@@ -50,17 +44,17 @@ export function ConfigurationsModule({ session, onNotify }: ConfigurationsModule
             </div>
 
             <div className="configurations-content">
-                {activeTab === "system-settings" && (
-                    <SystemSettingsNew session={session} onNotify={onNotify} />
+                {activeTab === "templates-communications" && (
+                    <TemplatesCommunications session={session} onNotify={onNotify} />
                 )}
-                {activeTab === "pdf-templates" && (
-                    <PdfTemplatesNew session={session} onNotify={onNotify} />
+                {activeTab === "system-business" && (
+                    <SystemBusinessSettings session={session} onNotify={onNotify} />
                 )}
-                {activeTab === "email-templates" && (
-                    <EmailTemplatesNew session={session} onNotify={onNotify} />
+                {activeTab === "user-experience" && (
+                    <UserExperienceSettings session={session} onNotify={onNotify} />
                 )}
-                {activeTab === "role-permissions" && (
-                    <RolePermissionsEditor session={session} onNotify={onNotify} />
+                {activeTab === "integrations" && (
+                    <IntegrationsSettings session={session} onNotify={onNotify} />
                 )}
             </div>
         </div>

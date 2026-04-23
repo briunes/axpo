@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   listClients,
   updateClient,
@@ -31,12 +31,17 @@ export interface ClientsActions {
   // search
   search: string;
   setSearch: (v: string) => void;
+  showArchived: boolean;
+  setShowArchived: (v: boolean) => void;
   // actions
   handleToggleClientStatus: (client: ClientItem) => Promise<void>;
   handleSoftDeleteClient: (client: ClientItem) => Promise<void>;
 }
 
-export function useClients(session: SessionState | null): ClientsActions {
+export function useClients(
+  session: SessionState | null,
+  initialPageSize = 25,
+): ClientsActions {
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -45,8 +50,13 @@ export function useClients(session: SessionState | null): ClientsActions {
 
   // pagination
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [total, setTotal] = useState(0);
+  // sync pageSize when user preferences load
+  useEffect(() => {
+    setPageSize(initialPageSize);
+    setPage(1);
+  }, [initialPageSize]);
   // sort
   const [sortColumn, setSortColumn] = useState("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -56,6 +66,7 @@ export function useClients(session: SessionState | null): ClientsActions {
   };
   // search
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const clearFeedback = () => {
     setErrorText(null);
@@ -85,6 +96,7 @@ export function useClients(session: SessionState | null): ClientsActions {
           search: search || undefined,
           orderBy: sortColumn,
           sortDir,
+          includeDeleted: showArchived || undefined,
           ...overrides,
         };
         const result = await listClients(session.token, params);
@@ -98,7 +110,7 @@ export function useClients(session: SessionState | null): ClientsActions {
         setLoading(false);
       }
     },
-    [session, page, pageSize, search, sortColumn, sortDir],
+    [session, page, pageSize, search, sortColumn, sortDir, showArchived],
   );
 
   const handleToggleClientStatus = async (client: ClientItem) => {
@@ -141,6 +153,8 @@ export function useClients(session: SessionState | null): ClientsActions {
     setSort,
     search,
     setSearch,
+    showArchived,
+    setShowArchived,
     handleToggleClientStatus,
     handleSoftDeleteClient,
   };

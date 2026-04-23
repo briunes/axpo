@@ -353,64 +353,70 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                 </div>
 
                                 <div className="template-editor-body">
-                                    <div className="config-field">
-                                        <label className="config-field-label">{t("emailTemplatesModule", "fieldName")}</label>
-                                        <input
-                                            type="text"
-                                            value={formData.name || ""}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            placeholder={t("emailTemplatesModule", "fieldNamePlaceholder")}
-                                        />
-                                    </div>
-
-                                    <div className="config-field">
-                                        <label className="config-field-label">{t("emailTemplatesModule", "fieldType")}</label>
-                                        <select
-                                            value={formData.type || "simulation-share"}
-                                            onChange={(e) => setFormData({ ...formData, type: e.target.value as EmailTemplateType })}
-                                        >
-                                            {Object.entries(TEMPLATE_TYPE_LABELS).map(([value, label]) => (
-                                                <option key={value} value={value}>{label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div className="config-field">
-                                        <label className="config-field-label">{t("emailTemplatesModule", "fieldDescription")}</label>
-                                        <input
-                                            type="text"
-                                            value={formData.description || ""}
-                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                            placeholder={t("emailTemplatesModule", "fieldDescriptionPlaceholder")}
-                                        />
-                                    </div>
-
-                                    <div className="config-field">
-                                        <label className="config-field-inline">
+                                    {/* Row 1: Name, Type, Description */}
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 200px 1fr", gap: "12px", marginBottom: "12px" }}>
+                                        <div className="config-field" style={{ marginBottom: 0 }}>
+                                            <label className="config-field-label">{t("emailTemplatesModule", "fieldName")}</label>
                                             <input
-                                                type="checkbox"
-                                                checked={formData.active ?? true}
-                                                onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                                                type="text"
+                                                value={formData.name || ""}
+                                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                placeholder={t("emailTemplatesModule", "fieldNamePlaceholder")}
                                             />
-                                            <span>{t("emailTemplatesModule", "fieldActive")}</span>
-                                        </label>
+                                        </div>
+
+                                        <div className="config-field" style={{ marginBottom: 0 }}>
+                                            <label className="config-field-label">{t("emailTemplatesModule", "fieldType")}</label>
+                                            <select
+                                                value={formData.type || "simulation-share"}
+                                                onChange={(e) => setFormData({ ...formData, type: e.target.value as EmailTemplateType })}
+                                            >
+                                                {Object.entries(TEMPLATE_TYPE_LABELS).map(([value, label]) => (
+                                                    <option key={value} value={value}>{label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="config-field" style={{ marginBottom: 0 }}>
+                                            <label className="config-field-label">{t("emailTemplatesModule", "fieldDescription")}</label>
+                                            <input
+                                                type="text"
+                                                value={formData.description || ""}
+                                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                                placeholder={t("emailTemplatesModule", "fieldDescriptionPlaceholder")}
+                                            />
+                                        </div>
                                     </div>
 
-                                    <div className="config-field">
-                                        <label className="config-field-label">{t("emailTemplatesModule", "fieldSubject")}</label>
-                                        <input
-                                            type="text"
-                                            value={formData.subject || ""}
-                                            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                                            onDrop={handleSubjectDrop}
-                                            onDragOver={handleSubjectDragOver}
-                                            placeholder={t("emailTemplatesModule", "fieldSubjectPlaceholder")}
-                                        />
-                                        {formData.subject && (
-                                            <div style={{ marginTop: "8px", padding: "8px", background: "#f9fafb", borderRadius: "6px", fontSize: "13px", color: "#6b7280" }}>
-                                                {t("emailTemplatesModule", "subjectPreviewLabel")} <strong>{renderSubjectPreview()}</strong>
-                                            </div>
-                                        )}
+                                    {/* Row 2: Subject and Active */}
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "12px", alignItems: "center", marginBottom: "12px" }}>
+                                        <div className="config-field" style={{ marginBottom: 0 }}>
+                                            <label className="config-field-label">{t("emailTemplatesModule", "fieldSubject")}</label>
+                                            <input
+                                                type="text"
+                                                value={formData.subject || ""}
+                                                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                                                onDrop={handleSubjectDrop}
+                                                onDragOver={handleSubjectDragOver}
+                                                placeholder={t("emailTemplatesModule", "fieldSubjectPlaceholder")}
+                                            />
+                                            {formData.subject && (
+                                                <div style={{ marginTop: "8px", padding: "8px", background: "#f9fafb", borderRadius: "6px", fontSize: "13px", color: "#6b7280" }}>
+                                                    {t("emailTemplatesModule", "subjectPreviewLabel")} <strong>{renderSubjectPreview()}</strong>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="config-field" style={{ marginBottom: 0, paddingBottom: "8px" }}>
+                                            <label className="config-field-inline">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.active ?? true}
+                                                    onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                                                />
+                                                <span>{t("emailTemplatesModule", "fieldActive")}</span>
+                                            </label>
+                                        </div>
                                     </div>
 
                                     <div className="config-field">
@@ -422,11 +428,20 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                                 onChange={(html) => setFormData({ ...formData, htmlContent: html })}
                                                 height="500px"
                                             />
-                                            <DraggableVariables variables={variables.map(v => ({
-                                                name: v.key,
-                                                label: v.label,
-                                                description: v.description || "",
-                                            }))} />
+                                            <DraggableVariables variables={[
+                                                // Regular template variables
+                                                ...variables.map(v => ({
+                                                    name: v.key,
+                                                    label: v.label,
+                                                    description: v.description || "",
+                                                })),
+                                                // Editable sections as variables
+                                                ...Object.entries((formData.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
+                                                    name: key,
+                                                    label: `📝 ${section.label || key}`,
+                                                    description: section.description || "Editable section",
+                                                }))
+                                            ]} />
                                         </div>
                                     </div>
 

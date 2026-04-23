@@ -6,6 +6,7 @@ import {
   listBaseValueSets,
   updateBaseValueSet,
   uploadBaseValueFile,
+  toggleBaseValueSetProduction,
   type BaseValueSetItem,
   type ListBaseValueSetsParams,
 } from "../../lib/internalApi";
@@ -38,6 +39,7 @@ export interface BaseValuesActions {
   // actions
   handleActivateBaseValueSet: (setItem: BaseValueSetItem) => Promise<void>;
   handleArchiveBaseValueSet: (setItem: BaseValueSetItem) => Promise<void>;
+  handleToggleProduction: (setItem: BaseValueSetItem) => Promise<void>;
   handleUploadFile: (file: File, replace?: boolean) => Promise<void>;
 }
 
@@ -138,6 +140,21 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
     });
   };
 
+  const handleToggleProduction = async (setItem: BaseValueSetItem) => {
+    await runAction(`toggle-production-${setItem.id}`, async () => {
+      if (!session) return;
+      await toggleBaseValueSetProduction(
+        session.token,
+        setItem.id,
+        !setItem.isProduction,
+      );
+      await refresh();
+      setSuccessText(
+        "Base value set set as production. Others marked as draft.",
+      );
+    });
+  };
+
   return {
     baseValueSets,
     loading,
@@ -160,6 +177,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
     setShowArchived,
     handleActivateBaseValueSet,
     handleArchiveBaseValueSet,
+    handleToggleProduction,
     handleUploadFile,
   };
 }

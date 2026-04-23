@@ -11,6 +11,9 @@ export { PhoneInput } from "./PhoneInput";
 export { PasswordStrengthInput } from "./PasswordStrengthInput";
 export { BaseValueItemBuilder } from "./BaseValueItemBuilder";
 export { BaseValueItemsViewer } from "./BaseValueItemsViewer";
+export { AgencyTariffConfig } from "./AgencyTariffConfig";
+export { CurrencyInput } from "./CurrencyInput";
+export type { CurrencyInputProps } from "./CurrencyInput";
 export type {
   ColumnDef,
   SortState,

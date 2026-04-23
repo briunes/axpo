@@ -9,7 +9,7 @@ import "../globals.css";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale, setLocale } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -45,6 +45,22 @@ export default function LoginPage() {
 
   return (
     <div className="login-shell-v2">
+      <div className="login-lang-switcher-v2">
+        <button
+          onClick={() => setLocale("en")}
+          className={`login-lang-btn-v2 ${locale === "en" ? "active" : ""}`}
+          title="English"
+        >
+          🇬🇧
+        </button>
+        <button
+          onClick={() => setLocale("es")}
+          className={`login-lang-btn-v2 ${locale === "es" ? "active" : ""}`}
+          title="Español"
+        >
+          🇪🇸
+        </button>
+      </div>
       <div className="login-grid-v2">
 
         {/* ── Brand panel ── */}
@@ -97,6 +113,15 @@ export default function LoginPage() {
                   data-testid="login-password"
                   autoComplete="current-password"
                 />
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -4, marginBottom: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => router.push("/internal/forgot-password")}
+                  className="login-link-v2"
+                >
+                  {t("login", "forgotPassword")}
+                </button>
               </div>
               {errorText && (
                 <div className="login-error-v2">{errorText}</div>

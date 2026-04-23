@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Stack } from "@mui/material";
+import { useLayoutEffect, useMemo, useRef, useId } from "react";
 
 export interface CrudFormContainerProps {
     children: React.ReactNode;
@@ -12,6 +13,7 @@ export interface CrudFormContainerProps {
     cancelLabel?: string;
     onCancel?: () => void;
     isSubmitting?: boolean;
+    onRenderActions?: (actions: React.ReactNode) => void;
 }
 
 /**
@@ -26,7 +28,52 @@ export function CrudFormContainer({
     cancelLabel = "Cancel",
     onCancel,
     isSubmitting,
+    onRenderActions,
 }: CrudFormContainerProps) {
+    const onRenderActionsRef = useRef(onRenderActions);
+    const formId = useId();
+
+    useLayoutEffect(() => {
+        onRenderActionsRef.current = onRenderActions;
+    });
+
+    const actionButtons = useMemo(() => (
+        <>
+            {onCancel && (
+                <Button
+                    variant="outlined"
+                    size="small"
+                    type="button"
+                    onClick={onCancel}
+                    disabled={isSubmitting}
+                >
+                    {cancelLabel}
+                </Button>
+            )}
+            <Button
+                type="submit"
+                form={formId}
+                variant="contained"
+                size="small"
+                disabled={isSubmitting}
+                loading={isSubmitting}
+            >
+                {submitLabel}
+            </Button>
+        </>
+    ), [submitLabel, cancelLabel, isSubmitting, onCancel, formId]);
+
+    useLayoutEffect(() => {
+        if (onRenderActionsRef.current) {
+            onRenderActionsRef.current(actionButtons);
+        }
+        return () => {
+            if (onRenderActionsRef.current) {
+                onRenderActionsRef.current(null);
+            }
+        };
+    }, [submitLabel, cancelLabel, isSubmitting]);
+
     return (
         <Stack spacing={3}>
             {/* Error/Success messages */}
@@ -42,33 +89,18 @@ export function CrudFormContainer({
             )}
 
             {/* Form */}
-            <form onSubmit={onSubmit} className="crud-form" noValidate>
+            <form id={formId} onSubmit={onSubmit} className="crud-form" noValidate>
                 <Stack spacing={2.5}>
                     {children}
                 </Stack>
-
-                {/* Footer actions */}
-                <div className="crud-form-footer">
-                    {onCancel && (
-                        <Button
-                            variant="outlined"
-                            type="button"
-                            onClick={onCancel}
-                            disabled={isSubmitting}
-                        >
-                            {cancelLabel}
-                        </Button>
-                    )}
-                    <Button
-                        type="submit"
-                        variant="contained"
-                        disabled={isSubmitting}
-                        loading={isSubmitting}
-                    >
-                        {submitLabel}
-                    </Button>
-                </div>
             </form>
+
+            {/* Render action buttons directly if onRenderActions is not provided */}
+            {!onRenderActions && (
+                <Stack direction="row" spacing={1.5} justifyContent="flex-end">
+                    {actionButtons}
+                </Stack>
+            )}
         </Stack>
     );
 }

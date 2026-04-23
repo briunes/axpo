@@ -27,6 +27,14 @@ export interface SystemConfig {
   enableAuditLogsModule: boolean;
   defaultDashboardView: string;
   enableRealtimeReports: boolean;
+  ivaRate?: number;
+  electricityTaxRate?: number;
+  defaultDateFormat?: string;
+  defaultTimeFormat?: string;
+  defaultTimezone?: string;
+  defaultNumberFormat?: string;
+  defaultItemsPerPage?: number;
+  setupTokenValidityHours?: number;
   smtpHost?: string;
   smtpPort?: number;
   smtpSecure?: boolean;
@@ -35,6 +43,15 @@ export interface SystemConfig {
   smtpFromEmail?: string;
   smtpFromName?: string;
   userCreationEmailTemplateId?: string;
+  passwordResetEmailTemplateId?: string;
+  // LLM settings
+  llmProvider?: string;
+  llmApiKey?: string;
+  llmModelName?: string;
+  llmBaseUrl?: string;
+  llmTemperature?: number;
+  llmMaxTokens?: number;
+  llmEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +61,7 @@ export interface PdfTemplate {
   name: string;
   description: string;
   type: string;
+  commodity?: string | null; // ELECTRICITY, GAS - filters which simulations can use this template
   active: boolean;
   htmlContent: string;
   editableSections?: Record<
@@ -121,6 +139,40 @@ export async function testSmtpConnection(): Promise<SmtpTestResult> {
     return {
       success: false,
       message: error.message || "Failed to test SMTP connection",
+    };
+  }
+  return res.json();
+}
+
+export interface LlmTestResult {
+  success: boolean;
+  message: string;
+  details?: {
+    provider: string;
+    model: string;
+    baseUrl: string;
+    [key: string]: any;
+  };
+}
+
+export async function testLlmConnection(config: {
+  provider: string;
+  apiKey: string;
+  baseUrl: string;
+  modelName: string;
+}): Promise<LlmTestResult> {
+  const res = await fetch("/api/v1/internal/config/llm/test", {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ message: "Failed to test LLM connection" }));
+    return {
+      success: false,
+      message: error.message || "Failed to test LLM connection",
     };
   }
   return res.json();
@@ -204,12 +256,17 @@ export async function deletePdfTemplate(id: string): Promise<void> {
 
 // Email Templates
 export async function getEmailTemplates(params?: {
-  type?: string;
+  type?: string | string[];
   active?: boolean;
   excludeType?: string;
 }): Promise<EmailTemplate[]> {
   const queryParams = new URLSearchParams();
-  if (params?.type) queryParams.set("type", params.type);
+  if (params?.type) {
+    const typeValue = Array.isArray(params.type)
+      ? params.type.join(",")
+      : params.type;
+    queryParams.set("type", typeValue);
+  }
   if (params?.active !== undefined)
     queryParams.set("active", String(params.active));
   if (params?.excludeType) queryParams.set("excludeType", params.excludeType);

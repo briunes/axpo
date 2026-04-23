@@ -34,7 +34,11 @@ export async function GET(req: NextRequest) {
   const excludeType = searchParams.get("excludeType");
 
   const where: any = {};
-  if (type) where.type = type;
+  if (type) {
+    // Support comma-separated types for filtering multiple types
+    const types = type.split(",").map((t) => t.trim());
+    where.type = types.length > 1 ? { in: types } : types[0];
+  }
   if (active !== null) where.active = active === "true";
   if (excludeType) where.type = { not: excludeType };
 

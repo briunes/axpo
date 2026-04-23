@@ -177,7 +177,7 @@ function calcElecFijo(
   const total = r2(baseIva + iva);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
-  const ahorroAnual = r2(ahorro * (365 / dias));
+  const ahorroAnual = r2(ahorro * 12);
 
   return {
     productKey: `${product}:${tier}`,
@@ -229,13 +229,22 @@ function calcElecIndex(
 
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
-    const margen = priceOf(
+    const energyPrice = priceOf(
       map,
-      `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:MARGEN`,
+      `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:ENERGIA`,
     );
-    if (margen === undefined) return null;
-    const omieP = pv(omieMap, p);
-    terminoEnergia += (omieP + margen) * pv(consumoMap, p);
+    if (energyPrice === undefined) {
+      // Fallback for old MARGEN key if ENERGIA is not found
+      const margen = priceOf(
+        map,
+        `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:MARGEN`,
+      );
+      if (margen === undefined) return null;
+      const omieP = pv(omieMap, p);
+      terminoEnergia += (omieP + margen) * pv(consumoMap, p);
+    } else {
+      terminoEnergia += energyPrice * pv(consumoMap, p);
+    }
   }
 
   let terminoPotencia = 0;
@@ -271,7 +280,7 @@ function calcElecIndex(
   const total = r2(baseIva + iva);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
-  const ahorroAnual = r2(ahorro * (365 / dias));
+  const ahorroAnual = r2(ahorro * 12);
 
   return {
     productKey: `${product}:${tier}`,
@@ -338,7 +347,7 @@ function calcGasFijo(
   const total = r2(baseIva + iva);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
-  const ahorroAnual = r2(ahorro * (365 / dias));
+  const ahorroAnual = r2(ahorro * 12);
 
   return {
     productKey: `${product}:${tier}`,
@@ -398,7 +407,7 @@ function calcGasIndex(
   const total = r2(baseIva + iva);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
-  const ahorroAnual = r2(ahorro * (365 / dias));
+  const ahorroAnual = r2(ahorro * 12);
 
   return {
     productKey: `${product}:${tier}`,

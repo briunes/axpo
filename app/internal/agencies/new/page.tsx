@@ -19,6 +19,7 @@ export default function NewAgencyPage() {
     const [address, setAddress] = useState<AddressData>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [formActions, setFormActions] = useState<React.ReactNode>(null);
 
     if (!session) return null;
 
@@ -55,6 +56,7 @@ export default function NewAgencyPage() {
             title={t("agencyFormPage", "newTitle")}
             subtitle={t("agencyFormPage", "newSubtitle")}
             backHref="/internal/agencies"
+            actions={formActions}
         >
             <CrudFormContainer
                 onSubmit={handleSubmit}
@@ -63,6 +65,7 @@ export default function NewAgencyPage() {
                 cancelLabel={t("actions", "cancel")}
                 onCancel={() => router.push("/internal/agencies")}
                 isSubmitting={isSubmitting}
+                onRenderActions={setFormActions}
             >
                 <Stack spacing={2}>
                     <FormInput

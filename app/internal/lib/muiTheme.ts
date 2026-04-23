@@ -54,8 +54,7 @@ export const muiTheme = createTheme({
     },
   },
   typography: {
-    fontFamily:
-      'var(--font-family-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif)',
+    fontFamily: 'var(--font-montserrat, "Montserrat"), "Segoe UI", sans-serif',
     fontSize: 14,
     h1: {
       fontSize: "2rem",

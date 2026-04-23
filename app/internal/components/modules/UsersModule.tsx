@@ -8,15 +8,21 @@ import {
   Typography,
   IconButton,
   Tooltip,
+  Menu,
+  MenuItem,
+  ButtonGroup,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import CloseIcon from "@mui/icons-material/Close";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, RotatePinResult } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
 import type { UsersActions } from "../hooks/useUsers";
 import { ConfirmDialog, PinResultDialog } from "../shared";
-import { DataTable, StatusBadge } from "../ui";
+import { DataTable, StatusBadge, FormSelect, FormInput } from "../ui";
 import type { ColumnDef } from "../ui";
 import { RefreshIcon } from "../ui/icons";
 import SyncIcon from '@mui/icons-material/Sync';
@@ -31,38 +37,49 @@ interface UsersModuleProps {
   actions: UsersActions;
   agencies: AgencyItem[];
   onNotify?: (text: string, tone: "success" | "error") => void;
+  onActionButtons?: (buttons: React.ReactNode) => void;
 }
 
 type UserItem = UsersActions["users"] extends (infer T)[] ? T : never;
 
-export function UsersModule({ session, actions, agencies, onNotify }: UsersModuleProps) {
+export function UsersModule({ session, actions, agencies, onNotify, onActionButtons }: UsersModuleProps) {
   const { t } = useI18n();
   const {
     users, loading, busyAction, errorText, successText, clearFeedback, refresh,
     page, pageSize, total, setPage, setPageSize,
     sortColumn, sortDir, setSort,
     search, setSearch,
+    roleFilter, setRoleFilter,
+    agencyFilter, setAgencyFilter,
+    showArchived, setShowArchived,
     selectedUserId, editUserName, setEditUserName, editUserEmail, setEditUserEmail,
     editUserPassword, setEditUserPassword, editUserCurrentPassword, setEditUserCurrentPassword,
     openUserEditor, closeUserEditor, handleUpdateUser,
     handleToggleUserStatus, handleRotateUserPin,
+    handleDeleteUser,
   } = actions;
 
   const [lastPinResult, setLastPinResult] = useState<RotatePinResult | null>(null);
   const [confirmToggleUser, setConfirmToggleUser] = useState<UserItem | null>(null);
   const [confirmPinRotateUser, setConfirmPinRotateUser] = useState<UserItem | null>(null);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<UserItem | null>(null);
+  const [dropdownState, setDropdownState] = useState<{
+    anchorEl: HTMLElement | null;
+    items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }>;
+  }>({ anchorEl: null, items: [] });
+  const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
 
   // Single effect handles both the initial fetch and pagination/sort/search changes.
   // Using a params-key ref makes it safe under React 18 Strict Mode double-mounting:
   // on the second mount the key is already set so the duplicate call is skipped.
   const paramsRef = useRef("");
   useEffect(() => {
-    const key = `${page}|${pageSize}|${sortColumn}|${sortDir}|${search}`;
+    const key = `${page}|${pageSize}|${sortColumn}|${sortDir}|${search}|${roleFilter}|${agencyFilter}|${showArchived}`;
     if (paramsRef.current === key) return;
     paramsRef.current = key;
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, sortColumn, sortDir, search]);
+  }, [page, pageSize, sortColumn, sortDir, search, roleFilter, agencyFilter, showArchived]);
 
   // Bubble success up
   useEffect(() => {
@@ -82,6 +99,33 @@ export function UsersModule({ session, actions, agencies, onNotify }: UsersModul
   }, [errorText]);
 
   const canCreateUsers = isAdmin(session.user.role) || session.user.role === "AGENT";
+  const isAdminUser = isAdmin(session.user.role);
+
+  // Render action buttons for topbar
+  useLayoutEffect(() => {
+    console.log('UsersModule setting buttons, onActionButtons:', onActionButtons);
+    onActionButtons?.(
+      <>
+        <Button variant="outlined" size="small" onClick={() => refresh()} disabled={loading} loading={loading}><SyncIcon fontSize="small" /> {t("actions", "refresh")}</Button>
+        {isAdminUser && (
+          <Button
+            variant={showArchived ? "contained" : "outlined"}
+            size="small"
+            onClick={() => setShowArchived(!showArchived)}
+          >
+            {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+          </Button>
+        )}
+        {canCreateUsers && (
+          <Link href="/internal/users/new" style={{ textDecoration: "none" }}>
+            <Button variant="contained" size="small">{t("actions", "newUser")}</Button>
+          </Link>
+        )}
+      </>
+    );
+    return () => onActionButtons?.(null);
+  }, [onActionButtons, refresh, loading, canCreateUsers, isAdminUser, showArchived, setShowArchived, t]);
+
   const editingOwnUser = selectedUserId === session.user.id;
 
   const columns: ColumnDef<UserItem>[] = [
@@ -133,7 +177,7 @@ export function UsersModule({ session, actions, agencies, onNotify }: UsersModul
       sortable: true,
       renderCell: (u) => (
         <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
-          {new Date(u.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
+          {new Date(u.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
           <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {u.createdByUser?.fullName ?? "—"}
@@ -148,7 +192,7 @@ export function UsersModule({ session, actions, agencies, onNotify }: UsersModul
       sortable: true,
       renderCell: (u) => (
         <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
-          {new Date(u.updatedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
+          {new Date(u.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
           <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {u.updatedByUser?.fullName ?? "—"}
@@ -159,59 +203,64 @@ export function UsersModule({ session, actions, agencies, onNotify }: UsersModul
     {
       key: "actions",
       label: t("columns", "actions"),
-      width: "140",
-      renderCell: (u) => (
-        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-          <Tooltip title={t("usersModule", "editUser_tooltip")} placement="top">
-            <IconButton
-              component={Link}
-              href={`/internal/users/${u.id}/edit`}
-              size="small"
-              sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={u.isActive ? t("usersModule", "deactivateUser_tooltip") : t("usersModule", "activateUser_tooltip")} placement="top">
-            <IconButton
-              size="small"
-              onClick={() => setConfirmToggleUser(u)}
-              sx={{ color: u.isActive ? 'error.main' : 'success.main', '&:hover': { bgcolor: u.isActive ? 'error.50' : 'success.50' } }}
-            >
-              {u.isActive ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={t("usersModule", "rotatePin_tooltip")} placement="top">
-            <IconButton
-              size="small"
-              onClick={() => setConfirmPinRotateUser(u)}
-              sx={{ color: 'info.main', '&:hover': { bgcolor: 'info.50' } }}
-            >
-              <FiberPinIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
+      renderCell: (u) => {
+        const canEdit = true; // All users can see edit action based on their role
+        const canToggle = true; // Can activate/deactivate
+        const canRotatePin = true; // Can rotate PIN
+        const canDelete = canEdit; // For now, same permission as edit
+
+        const primaryLabel = t("actions", "edit");
+        const primaryOnClick = () => window.location.href = `/internal/users/${u.id}/edit`;
+
+        const secondaryItems: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
+        if (canToggle) {
+          secondaryItems.push({
+            label: u.isActive ? t("actions", "deactivate") : t("actions", "activate"),
+            onClick: () => setConfirmToggleUser(u),
+            danger: u.isActive,
+          });
+        }
+        if (canRotatePin) {
+          secondaryItems.push({
+            label: t("actions", "rotatePin"),
+            onClick: () => setConfirmPinRotateUser(u),
+          });
+        }
+        if (canDelete) {
+          secondaryItems.push({
+            label: t("actions", "delete"),
+            onClick: () => setConfirmDeleteUser(u),
+            danger: true,
+          });
+        }
+
+        const hasDropdown = secondaryItems.length > 0;
+
+        return (
+          <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
+            <ButtonGroup variant="outlined" size="small">
+              <Button onClick={primaryOnClick}>
+                {primaryLabel}
+              </Button>
+              {hasDropdown && (
+                <Button
+                  size="small"
+                  onClick={(e) => setDropdownState({ anchorEl: e.currentTarget, items: secondaryItems })}
+                  aria-label="More actions"
+                  sx={{ px: 0.5, minWidth: 32 }}
+                >
+                  <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
+                </Button>
+              )}
+            </ButtonGroup>
+          </div>
+        );
+      },
     },
   ];
 
   return (
     <Stack spacing={3}>
-      <div className="section-header">
-        <div>
-          <h2 className="section-title">{t("nav", "users")}</h2>
-          <p className="section-subtitle">{t("usersModule", "subtitle")}</p>
-        </div>
-        <div className="section-actions">
-          <Button variant="outlined" size="small" onClick={() => refresh()} disabled={loading} loading={loading}><SyncIcon fontSize="small" /> {t("actions", "refresh")}</Button>
-          {canCreateUsers && (
-            <Link href="/internal/users/new" style={{ textDecoration: "none" }}>
-              <Button variant="contained" size="small">{t("actions", "newUser")}</Button>
-            </Link>
-          )}
-        </div>
-      </div>
-
       {lastPinResult && (
         <PinResultDialog
           pin={lastPinResult.newPin}
@@ -240,7 +289,86 @@ export function UsersModule({ session, actions, agencies, onNotify }: UsersModul
           onPageChange: setPage,
           onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
         }}
-        headerRight={<span className="dt-meta-pill">{total} total</span>}
+        t={t}
+        renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
+          <>
+            <Box sx={{ width: 280 }}>
+              <FormInput
+                label=""
+                placeholder={searchPlaceholder}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
+                size="small"
+                slotProps={{
+                  input: {
+                    endAdornment: draft ? (
+                      <IconButton
+                        size="small"
+                        onClick={() => { setDraft(""); setSearch(""); setPage(1); }}
+                        aria-label="Clear"
+                        edge="end"
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    ) : null,
+                  },
+                }}
+              />
+            </Box>
+            <Box sx={{ width: 280 }}>
+              <FormSelect
+                label=""
+                options={[
+                  { value: "", label: t("search", "allRoles") },
+                  { value: "ADMIN", label: "ADMIN" },
+                  { value: "AGENT", label: "AGENT" },
+                  { value: "COMMERCIAL", label: "COMMERCIAL" },
+                ]}
+                value={roleFilter}
+                onChange={(val) => {
+                  setRoleFilter(val as string);
+                  setPage(1);
+                }}
+                placeholder={t("columns", "role")}
+                textFieldProps={{ size: "small" }}
+              />
+            </Box>
+            {isAdmin(session.user.role) && (
+              <Box sx={{ width: 280 }}>
+                <FormSelect
+                  label=""
+                  options={[
+                    { value: "", label: t("search", "allAgencies") },
+                    ...agencies.map((agency) => ({
+                      value: agency.id,
+                      label: agency.name,
+                    })),
+                  ]}
+                  value={agencyFilter}
+                  onChange={(val) => {
+                    setAgencyFilter(val as string);
+                    setPage(1);
+                  }}
+                  placeholder={t("columns", "agency")}
+                  textFieldProps={{ size: "small" }}
+                />
+              </Box>
+            )}
+            <Button
+              variant="contained"
+              size="small"
+              onClick={commitSearch}
+              aria-label="Search"
+              sx={{
+                minWidth: 'auto',
+              }}
+            >
+              <SearchIcon />
+              {t("common", "search")}
+            </Button>
+          </>
+        )}
       />
 
       <Drawer
@@ -318,6 +446,54 @@ export function UsersModule({ session, actions, agencies, onNotify }: UsersModul
           onCancel={() => setConfirmPinRotateUser(null)}
         />
       )}
+
+      {confirmDeleteUser && (
+        <ConfirmDialog
+          title={t("usersModule", "deleteTitle")}
+          message={t("usersModule", "deleteConfirm", { name: confirmDeleteUser.fullName })}
+          confirmLabel={t("actions", "delete")}
+          busy={busyAction === `delete-user-${confirmDeleteUser.id}`}
+          onConfirm={async () => {
+            await handleDeleteUser(confirmDeleteUser);
+            setConfirmDeleteUser(null);
+          }}
+          onCancel={() => setConfirmDeleteUser(null)}
+        />
+      )}
+
+      {/* Actions dropdown menu */}
+      <Menu
+        open={!!dropdownState.anchorEl}
+        anchorEl={dropdownState.anchorEl}
+        onClose={closeDropdown}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 0.5,
+              minWidth: 150,
+              borderRadius: "8px",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+            },
+          },
+        }}
+      >
+        {dropdownState.items.map((item, i) => (
+          <MenuItem
+            key={i}
+            onClick={() => { item.onClick(); closeDropdown(); }}
+            disabled={item.disabled}
+            sx={{
+              fontSize: 13,
+              color: item.danger ? "error.main" : "text.primary",
+              py: 0.75,
+            }}
+          >
+            {item.label}
+          </MenuItem>
+        ))}
+      </Menu>
     </Stack>
   );
 }

@@ -6,6 +6,7 @@ import { PieChart } from "@mui/x-charts/PieChart";
 import type { AnalyticsOverview, AnalyticsUserStat } from "../../lib/internalApi";
 import { DataTable } from "../ui";
 import type { ColumnDef } from "../ui";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 interface KpiCardProps {
     title: string;
@@ -101,6 +102,7 @@ interface AgentAnalyticsViewProps {
 }
 
 export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsViewProps) {
+    const { t } = useI18n();
     const chartSx = {
         "& .MuiChartsAxis-tickLabel": { fontSize: 10, fill: "var(--scheme-neutral-400)" },
         "& .MuiChartsGrid-line": { strokeDasharray: "4 4", opacity: 0.2, stroke: "var(--scheme-neutral-800)" },
@@ -132,22 +134,22 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
     // Status breakdown for pie chart
     const draftCount = analytics.draftSimulations ?? (analytics.totalSimulations - analytics.sharedSimulations - analytics.expiredSimulations);
     const pieData = [
-        { id: 0, value: draftCount, label: "Draft", color: "#6366f1" },
-        { id: 1, value: pendingOpens, label: "Sent (Not Opened)", color: "#f59e0b" },
-        { id: 2, value: analytics.successfulAccess || 0, label: "Opened", color: "#10b981" },
+        { id: 0, value: draftCount, label: t("analyticsModule", "labelDraft"), color: "#6366f1" },
+        { id: 1, value: pendingOpens, label: t("analyticsModule", "labelSentNotOpened"), color: "#f59e0b" },
+        { id: 2, value: analytics.successfulAccess || 0, label: t("analyticsModule", "funnelOpened"), color: "#10b981" },
     ].filter((d) => d.value > 0);
 
     // Commercial performance columns
     const commercialColumns: ColumnDef<AnalyticsUserStat & { id: string }>[] = [
         {
             key: "userName",
-            label: "Commercial Name",
+            label: t("analyticsModule", "colCommercialName"),
             sortable: true,
             renderCell: (r) => <span className="dt-cell-primary">{r.userName}</span>,
         },
         {
             key: "total",
-            label: "Created",
+            label: t("analyticsModule", "colCreated"),
             sortable: true,
             renderCell: (r) => (
                 <span style={{
@@ -160,7 +162,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
         },
         {
             key: "shared",
-            label: "Sent",
+            label: t("analyticsModule", "colSent"),
             sortable: true,
             renderCell: (r) => (
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -184,7 +186,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
         },
         {
             key: "openRate",
-            label: "Open Rate",
+            label: t("analyticsModule", "colOpenRate"),
             renderCell: (r) => {
                 // For now we don't have per-user open data, so we show a placeholder
                 // You might need to update the API to return this
@@ -217,54 +219,54 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             {/* ── Agent KPIs ─────────────────────────────────────────────── */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
                 <KpiCard
-                    title="Commercials Managed"
+                    title={t("analyticsModule", "kpiCommercials")}
                     value={analytics.byUser?.length || 0}
                     accent="#8b5cf6"
-                    sub="Your team size"
+                    sub={t("analyticsModule", "kpiCommercialsSub")}
                 />
                 <KpiCard
-                    title="Simulations Created"
+                    title={t("analyticsModule", "kpiSimsCreatedAgency")}
                     value={analytics.totalSimulations}
                     accent="#3b82f6"
-                    sub="Total by your agency"
+                    sub={t("analyticsModule", "kpiSimsCreatedAgencySub")}
                 />
                 <KpiCard
-                    title="Simulations Sent"
+                    title={t("analyticsModule", "kpiSimsSent")}
                     value={analytics.sharedSimulations}
-                    sub="Sent to clients"
+                    sub={t("analyticsModule", "kpiSimsSentSub")}
                     accent="#10b981"
                     percentage={sentRate}
                     trend={sentRate > 70 ? "up" : sentRate < 40 ? "down" : "neutral"}
                 />
                 <KpiCard
-                    title="Open Rate"
+                    title={t("analyticsModule", "kpiOpenRate")}
                     value={`${openRate}%`}
-                    sub={`${analytics.successfulAccess} opens`}
+                    sub={t("analyticsModule", "kpiOpenRateSub").replace("{count}", String(analytics.successfulAccess))}
                     accent="#06b6d4"
                     percentage={openRate}
                     trend={openRate > 60 ? "up" : openRate < 30 ? "down" : "neutral"}
                 />
                 <KpiCard
-                    title="Pending Opens"
+                    title={t("analyticsModule", "kpiPendingOpens")}
                     value={pendingOpens}
                     accent="#f59e0b"
-                    sub="Sent but not opened"
+                    sub={t("analyticsModule", "kpiPendingOpensSub")}
                 />
                 <KpiCard
-                    title="Total Opens"
+                    title={t("analyticsModule", "kpiTotalOpens")}
                     value={analytics.successfulAccess || 0}
                     accent="#14b8a6"
-                    sub={`${analytics.accessAttempts} attempts`}
+                    sub={t("analyticsModule", "kpiTotalOpensSub").replace("{count}", String(analytics.accessAttempts))}
                 />
             </div>
 
             {/* ── Team Funnel ───────────────────────────────────────────────── */}
-            <ChartPanel title="Team Engagement Funnel" subtitle="Your agency's performance">
+            <ChartPanel title={t("analyticsModule", "chartTeamEngagementFunnel")} subtitle={t("analyticsModule", "chartTeamEngagementFunnelSub")}>
                 <div style={{ display: "flex", gap: 12, alignItems: "stretch", padding: "12px 0", position: "relative" }}>
                     {[
-                        { label: "Created", value: analytics.totalSimulations, color: "#3b82f6", percent: 100 },
-                        { label: "Sent", value: analytics.sharedSimulations, color: "#10b981", percent: sentRate },
-                        { label: "Opened", value: analytics.successfulAccess || 0, color: "#06b6d4", percent: openRate },
+                        { label: t("analyticsModule", "funnelCreated"), value: analytics.totalSimulations, color: "#3b82f6", percent: 100 },
+                        { label: t("analyticsModule", "funnelSent"), value: analytics.sharedSimulations, color: "#10b981", percent: sentRate },
+                        { label: t("analyticsModule", "funnelOpened"), value: analytics.successfulAccess || 0, color: "#06b6d4", percent: openRate },
                     ].map((stage, idx) => (
                         <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, position: "relative" }}>
                             <div style={{
@@ -297,15 +299,15 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             {/* ── Activity Trends + Status ──────────────────────────────────── */}
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
                 <ChartPanel
-                    title="Activity Over Time"
-                    subtitle={`Last ${selectedDays} days`}
+                    title={t("analyticsModule", "chartActivityOverTime")}
+                    subtitle={t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))}
                 >
                     {hasSimTrend ? (
                         <BarChart
                             xAxis={[{ data: simDates, scaleType: "band" }]}
                             series={[
-                                { data: simCounts, label: "Created", color: "#3b82f6", stack: "sims" },
-                                { data: sentCounts, label: "Sent", color: "#10b981", stack: "sims" },
+                                { data: simCounts, label: t("analyticsModule", "funnelCreated"), color: "#3b82f6", stack: "sims" },
+                                { data: sentCounts, label: t("analyticsModule", "funnelSent"), color: "#10b981", stack: "sims" },
                             ]}
                             height={220}
                             sx={chartSx}
@@ -314,12 +316,12 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         />
                     ) : (
                         <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
-                            No activity in this period
+                            {t("analyticsModule", "noActivityInPeriod")}
                         </div>
                     )}
                 </ChartPanel>
 
-                <ChartPanel title="Status Distribution">
+                <ChartPanel title={t("analyticsModule", "chartStatusDistribution")}>
                     {pieData.length > 0 ? (
                         <PieChart
                             series={[{
@@ -342,7 +344,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         />
                     ) : (
                         <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
-                            No data available
+                            {t("analyticsModule", "noDataAvailable")}
                         </div>
                     )}
                 </ChartPanel>
@@ -359,10 +361,10 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                     <div style={{ fontSize: 24 }}>🔔</div>
                     <div>
                         <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f59e0b", marginBottom: 2 }}>
-                            Follow-ups Required
+                            {t("analyticsModule", "followUpsRequired")}
                         </h3>
                         <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
-                            Simulations sent but not yet opened - action needed
+                            {t("analyticsModule", "followUpsRequiredSub")}
                         </p>
                     </div>
                 </div>
@@ -375,13 +377,13 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         border: "1px solid var(--scheme-neutral-800)",
                     }}>
                         <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginBottom: 6 }}>
-                            Total Pending
+                            {t("analyticsModule", "followUpsTotalPending")}
                         </div>
                         <div style={{ fontSize: 28, fontWeight: 700, color: "#f59e0b" }}>
                             {pendingOpens}
                         </div>
                         <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginTop: 4 }}>
-                            Need follow-up
+                            {t("analyticsModule", "followUpsTotalPendingSub")}
                         </div>
                     </div>
 
@@ -392,13 +394,13 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         border: "1px solid var(--scheme-neutral-800)",
                     }}>
                         <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginBottom: 6 }}>
-                            Recently Sent
+                            {t("analyticsModule", "followUpsRecentlySent")}
                         </div>
                         <div style={{ fontSize: 28, fontWeight: 700, color: "#06b6d4" }}>
                             ~{Math.round(pendingOpens * 0.3)}
                         </div>
                         <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginTop: 4 }}>
-                            Last 7 days
+                            {t("analyticsModule", "followUpsRecentlySentSub")}
                         </div>
                     </div>
 
@@ -409,13 +411,13 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         border: "1px solid var(--scheme-neutral-800)",
                     }}>
                         <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginBottom: 6 }}>
-                            Likely Dead Leads
+                            {t("analyticsModule", "followUpsDeadLeads")}
                         </div>
                         <div style={{ fontSize: 28, fontWeight: 700, color: "#ef4444" }}>
                             ~{Math.round(pendingOpens * 0.4)}
                         </div>
                         <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginTop: 4 }}>
-                            {">"} 30 days old
+                            {t("analyticsModule", "followUpsDeadLeadsSub")}
                         </div>
                     </div>
                 </div>
@@ -428,7 +430,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                     fontSize: 12,
                     color: "var(--scheme-neutral-400)",
                 }}>
-                    💡 <strong>Action items:</strong> Call clients with pending opens • Resend simulations to old leads • Coach commercials with low open rates
+                    {t("analyticsModule", "followUpsActionItems")}
                 </div>
             </div>
 
@@ -437,18 +439,18 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                 <div>
                     <div style={{ marginBottom: 12 }}>
                         <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--scheme-neutral-100)", marginBottom: 4 }}>
-                            Commercial Performance
+                            {t("analyticsModule", "tableCommercialPerformance")}
                         </h3>
                         <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
-                            Activity breakdown for your agency's commercials
+                            {t("analyticsModule", "tableCommercialPerformanceSub")}
                         </p>
                     </div>
                     <DataTable<AnalyticsUserStat & { id: string }>
                         columns={commercialColumns}
                         rows={(analytics.byUser ?? []).map((r) => ({ ...r, id: r.userId }))}
                         loading={false}
-                        emptyMessage="No commercial data available"
-                        headerRight={<span className="dt-meta-pill">{analytics.byUser.length} commercials</span>}
+                        emptyMessage={t("analyticsModule", "emptyCommercialData")}
+                        headerRight={<span className="dt-meta-pill">{t("analyticsModule", "pillCommercials").replace("{count}", String(analytics.byUser.length))}</span>}
                     />
                 </div>
             )}
@@ -456,14 +458,14 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             {/* ── Open Rate Trends ──────────────────────────────────────────── */}
             {hasAccessTrend && (
                 <ChartPanel
-                    title="Client Opens Over Time"
-                    subtitle={`Last ${selectedDays} days - tracking engagement`}
+                    title={t("analyticsModule", "chartClientOpens")}
+                    subtitle={`${t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))} - ${t("analyticsModule", "chartClientOpensSub")}`}
                 >
                     <LineChart
                         xAxis={[{ data: accessDates, scaleType: "time" }]}
                         series={[{
                             data: opensPerDay,
-                            label: "Opens",
+                            label: t("analyticsModule", "funnelOpened"),
                             color: "#06b6d4",
                             area: true,
                             showMark: true,
