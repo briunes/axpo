@@ -177,6 +177,22 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       orderBy: { [safeOrderBy]: sortDir },
       skip: (page - 1) * pageSize,
       take: pageSize,
+      include: {
+        createdByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+        updatedByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+      },
     }),
     prisma.client.count({ where }),
   ]);
@@ -205,6 +221,16 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       contactEmail: payload.contactEmail?.trim() || null,
       contactPhone: payload.contactPhone?.trim() || null,
       otherDetails: payload.otherDetails?.trim() || null,
+      createdByUserId: auth.userId,
+    },
+    include: {
+      createdByUser: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
     },
   });
 

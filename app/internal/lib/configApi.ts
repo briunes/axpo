@@ -35,6 +35,8 @@ export interface SystemConfig {
   defaultNumberFormat?: string;
   defaultItemsPerPage?: number;
   setupTokenValidityHours?: number;
+  defaultPdfTemplateGasId?: string;
+  defaultPdfTemplateElectricityId?: string;
   smtpHost?: string;
   smtpPort?: number;
   smtpSecure?: boolean;

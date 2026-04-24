@@ -6,6 +6,7 @@ import {
   listAgencies,
   updateAgency,
   updateAgencyStatus,
+  deleteAgency,
   type AgencyItem,
   type ListAgenciesParams,
 } from "../../lib/internalApi";

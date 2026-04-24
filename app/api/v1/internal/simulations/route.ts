@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { UserRole } from "@/domain/types";
+import { UserRole, SimulationStatus } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
@@ -128,7 +128,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const ownerUserId = sp.get("ownerUserId") || undefined;
   const clientId = sp.get("clientId") || undefined;
   const cups = sp.get("cups") || undefined;
-  const status = sp.get("status") || undefined;
+  const status = sp.get("status") as SimulationStatus | undefined;
 
   const baseWhere = SimulationService.buildSimulationFilter(
     auth,

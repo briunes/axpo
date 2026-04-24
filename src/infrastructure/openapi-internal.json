@@ -797,6 +797,144 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Agencies"
+        ],
+        "summary": "Delete agency (Admin only - deactivates the agency)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/agencies/{id}/tariffs": {
+      "get": {
+        "tags": [
+          "Agencies"
+        ],
+        "summary": "Get agency tariff availability settings",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agency tariff settings"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Agencies"
+        ],
+        "summary": "Create or update agency tariff availability",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "tariffType",
+                  "isEnabled"
+                ],
+                "properties": {
+                  "tariffType": {
+                    "type": "string"
+                  },
+                  "isEnabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created or updated tariff setting"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Agencies"
+        ],
+        "summary": "Bulk update agency tariff availability",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "tariffType",
+                    "isEnabled"
+                  ],
+                  "properties": {
+                    "tariffType": {
+                      "type": "string"
+                    },
+                    "isEnabled": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated tariff settings"
+          }
+        }
       }
     },
     "/api/v1/internal/agencies": {
@@ -1114,6 +1252,43 @@
         ]
       }
     },
+    "/api/v1/internal/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Request a password reset",
+        "description": "Sends a password reset email with a one-time token. Always returns success to prevent email enumeration.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reset email sent (or email not found - response is the same for security)"
+          },
+          "400": {
+            "description": "Invalid email format"
+          }
+        }
+      }
+    },
     "/api/v1/internal/auth/login": {
       "post": {
         "tags": [
@@ -1306,6 +1481,48 @@
         }
       }
     },
+    "/api/v1/internal/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Reset password using a reset token",
+        "description": "Validates the one-time reset token and saves the new password. The token is consumed after use.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "password"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 12,
+                    "maxLength": 128
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully — returns JWT + user info"
+          },
+          "400": {
+            "description": "Invalid token or password does not meet policy"
+          }
+        }
+      }
+    },
     "/api/v1/internal/auth/setup-password": {
       "post": {
         "tags": [
@@ -1383,6 +1600,53 @@
             "bearerAuth": []
           }
         ]
+      }
+    },
+    "/api/v1/internal/base-values/{id}/production": {
+      "post": {
+        "tags": [
+          "BaseValues"
+        ],
+        "summary": "Toggle production flag for base value set",
+        "description": "Marks a base value set as production version (and optionally unmarks others in same scope)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "isProduction"
+                ],
+                "properties": {
+                  "isProduction": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated base value set"
+          }
+        }
       }
     },
     "/api/v1/internal/base-values/{id}": {
@@ -2140,6 +2404,48 @@
         }
       }
     },
+    "/api/v1/internal/config/llm/test": {
+      "post": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Test LLM connection",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "type": "string"
+                  },
+                  "apiKey": {
+                    "type": "string"
+                  },
+                  "baseUrl": {
+                    "type": "string"
+                  },
+                  "modelName": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "LLM test result"
+          }
+        }
+      }
+    },
     "/api/v1/internal/config/pdf-templates/{id}": {
       "get": {
         "tags": [
@@ -2416,6 +2722,37 @@
         }
       }
     },
+    "/api/v1/internal/cron-logs": {
+      "get": {
+        "tags": [
+          "Cron"
+        ],
+        "summary": "List cron job execution logs",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 25
+            }
+          }
+        ]
+      }
+    },
     "/api/v1/internal/cups/lookup": {
       "get": {
         "tags": [
@@ -2563,6 +2900,40 @@
         "responses": {
           "200": {
             "description": "Healthy response"
+          }
+        }
+      }
+    },
+    "/api/v1/internal/invoices/extract": {
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Extract data from invoice using LLM",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Extracted invoice data"
           }
         }
       }
@@ -3081,6 +3452,82 @@
         ]
       }
     },
+    "/api/v1/internal/users/{id}/preferences": {
+      "get": {
+        "summary": "Get user preferences merged with system defaults",
+        "tags": [
+          "Users"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User preferences (merged with system defaults)"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update user preferences",
+        "tags": [
+          "Users"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "dateFormat": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "timeFormat": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "numberFormat": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "itemsPerPage": {
+                    "type": "integer",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user preferences"
+          }
+        }
+      }
+    },
     "/api/v1/internal/users/{id}": {
       "get": {
         "tags": [
@@ -3098,6 +3545,17 @@
           "Users"
         ],
         "summary": "Update user by id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Delete user (sets isDeleted for admin, isArchived for agent/commercial)",
         "security": [
           {
             "bearerAuth": []
@@ -3157,6 +3615,14 @@
               ]
             },
             "description": "Filter by role"
+          },
+          {
+            "in": "query",
+            "name": "agencyId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by agency ID"
           },
           {
             "in": "query",

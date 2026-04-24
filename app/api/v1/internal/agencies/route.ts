@@ -171,6 +171,20 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
             role: true,
           },
         },
+        createdByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+        updatedByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
       },
     }),
     prisma.agency.count({ where }),
@@ -251,6 +265,16 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       postalCode: payload.postalCode,
       province: payload.province,
       country: payload.country,
+      createdByUserId: auth.userId,
+    },
+    include: {
+      createdByUser: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      },
     },
   });
 

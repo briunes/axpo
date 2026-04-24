@@ -76,7 +76,12 @@ export const withErrorHandler = (
     req: NextRequest,
     context?: { params?: Record<string, string> },
   ) => Promise<NextResponse>,
-) => {
+): ((
+  req: NextRequest,
+  context?: {
+    params?: Promise<Record<string, string>> | Record<string, string>;
+  },
+) => Promise<NextResponse>) => {
   return async (
     req: NextRequest,
     context?: {

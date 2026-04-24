@@ -192,7 +192,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
           {new Date(a.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
           <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
-            System
+            {a.createdByUser ? `${a.createdByUser.fullName}` : "System"}
           </span>
         </Typography>
       ),
@@ -207,7 +207,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
           {new Date(a.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
           <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
-            System
+            {a.updatedByUser ? `${a.updatedByUser.fullName}` : "System"}
           </span>
         </Typography>
       ),

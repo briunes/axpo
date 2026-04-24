@@ -120,7 +120,7 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
           {new Date(c.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
           <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
-            System
+            {c.createdByUser ? `${c.createdByUser.fullName}` : "System"}
           </span>
         </Typography>
       ),
@@ -135,7 +135,7 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
           {new Date(c.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
           <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
-            System
+            {c.updatedByUser ? `${c.updatedByUser.fullName}` : "System"}
           </span>
         </Typography>
       ),

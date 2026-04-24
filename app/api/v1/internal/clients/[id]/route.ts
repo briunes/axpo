@@ -221,7 +221,25 @@ export const GET = withErrorHandler(
     const id = context?.params?.id;
     if (!id) throw new NotFoundError("Client");
 
-    const client = await prisma.client.findUnique({ where: { id } });
+    const client = await prisma.client.findUnique({
+      where: { id },
+      include: {
+        createdByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+        updatedByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+    });
     if (!client || client.isDeleted) {
       throw new NotFoundError("Client", id);
     }
@@ -278,6 +296,23 @@ export const PATCH = withErrorHandler(
           otherDetails: payload.otherDetails.trim() || null,
         }),
         ...(payload.isActive !== undefined && { isActive: payload.isActive }),
+        updatedByUserId: auth.userId,
+      },
+      include: {
+        createdByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+        updatedByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
       },
     });
 

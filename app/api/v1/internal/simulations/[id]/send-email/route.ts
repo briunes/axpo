@@ -50,12 +50,12 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 export const POST = withErrorHandler(
   async (
     request: NextRequest,
-    context?: { params?: Promise<Record<string, string>> },
+    context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
     assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
 
-    const params = context?.params ? await context.params : {};
+    const params = context?.params || {};
     const id = params?.id || "";
 
     let body;

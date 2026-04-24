@@ -58,6 +58,13 @@ interface ElecFormState {
 }
 
 interface GasFormState {
+    cups?: string;
+    consumoAnual?: number;
+    nombreTitular?: string;
+    personaContacto?: string;
+    comercial?: string;
+    direccion?: string;
+    comercializadorActual?: string;
     tarifaAcceso: GasTarifa;
     zonaGeografica: GasZona;
     consumo: number;
@@ -67,6 +74,8 @@ interface GasFormState {
     facturaActual: number;
     alquiler: number;
     otrosCargos: number;
+    ivaTasa?: number;
+    impuestoHidrocarburo?: number;
 }
 
 type SimType = "ELECTRICITY" | "GAS";

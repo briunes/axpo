@@ -28,7 +28,10 @@ model Agency {
   deletedAt    DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-
+  createdByUserId String?
+  createdByUser   User?    @relation("AgencyCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUserId String?
+  updatedByUser   User?    @relation("AgencyUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   // Relations
   users               User[]
   simulations         Simulation[]
@@ -69,6 +72,11 @@ model Client {
   deletedAt    DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+
+  createdByUserId String?
+  createdByUser   User?    @relation("ClientCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUserId String?
+  updatedByUser   User?    @relation("ClientUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   // Relations
   simulations Simulation[]
@@ -115,6 +123,10 @@ model User {
   triggeredEmailLogs  EmailLog[]   // Emails triggered by this user
   createdUsers        User[]   @relation("UserCreatedBy")
   updatedUsers        User[]   @relation("UserUpdatedBy")
+  createdAgencies     Agency[] @relation("AgencyCreatedBy")
+  updatedAgencies     Agency[] @relation("AgencyUpdatedBy")
+  createdClients      Client[] @relation("ClientCreatedBy")
+  updatedClients      Client[] @relation("ClientUpdatedBy")
   preferences         UserPreferences?
 
   @@map("users")

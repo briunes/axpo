@@ -115,7 +115,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
             role: formData.role,
             agencyId: formData.agencyId,
             isActive: formData.isActive,
-        });
+        } as Parameters<typeof usersActions.handleUpdateUser>[1]);
     };
 
     const handleRegeneratePin = async () => {

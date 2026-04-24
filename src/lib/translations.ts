@@ -873,7 +873,6 @@ export const translations = {
       placeholderCups: "ES0000000000000000XX",
       cupsLookupHint: "{count} known CUPS — select to auto-fill client details",
       fieldAnnualConsumption: "Annual consumption (kWh)",
-      fieldAnnualConsumptionHint: "Total annual consumption",
       helpAnnualConsumption: "Your yearly total electricity usage",
       clientDetailsSubtitle: "Client details",
       fieldClientName: "Client name",
@@ -2291,7 +2290,6 @@ export const translations = {
       cupsLookupHint:
         "{count} CUPS conocidos — selecciona para rellenar automáticamente",
       fieldAnnualConsumption: "Consumo anual (kWh)",
-      fieldAnnualConsumptionHint: "Consumo total anual",
       helpAnnualConsumption: "Consumo total de electricidad al año",
       clientDetailsSubtitle: "Datos del cliente",
       fieldClientName: "Nombre del cliente",

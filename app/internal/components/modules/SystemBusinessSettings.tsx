@@ -96,8 +96,8 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                 autoCreateClientOnSim: config.autoCreateClientOnSimulation,
                 ivaRate: config.ivaRate,
                 electricityTaxRate: config.electricityTaxRate,
-                defaultPdfTemplateGasId: config.defaultPdfTemplateGasId,
-                defaultPdfTemplateElectricityId: config.defaultPdfTemplateElectricityId,
+                defaultPdfTemplateGasId: config.defaultPdfTemplateGasId ?? undefined,
+                defaultPdfTemplateElectricityId: config.defaultPdfTemplateElectricityId ?? undefined,
             });
             onNotify(t("systemSettings", "savedSuccess"), "success");
             setIsDirty(false);

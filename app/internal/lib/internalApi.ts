@@ -63,6 +63,12 @@ export interface AgencyItem {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  updatedByUser: {
+    fullName: string;
+  };
+  createdByUser: {
+    fullName: string;
+  };
   _count?: {
     users: number;
   };
@@ -111,6 +117,12 @@ export interface ClientItem {
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  updatedByUser: {
+    fullName: string;
+  };
+  createdByUser: {
+    fullName: string;
+  };
 }
 
 interface ListClientsResult {

@@ -185,7 +185,7 @@ export function UserForm({
                     type="email"
                     value={data.email}
                     onChange={(e) => {
-                        onChange({ ...data, email: e.target.value });
+                        onChange({ ...data, email: e.target.value.toLocaleLowerCase() });
                         clearError('email');
                     }}
                     required

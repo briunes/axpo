@@ -158,7 +158,25 @@ export const GET = withErrorHandler(
       throw new NotFoundError("Agency", id);
     }
 
-    const agency = await prisma.agency.findUnique({ where: { id } });
+    const agency = await prisma.agency.findUnique({
+      where: { id },
+      include: {
+        createdByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+        updatedByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+    });
     if (!agency || agency.isDeleted) {
       throw new NotFoundError("Agency", id);
     }
@@ -198,6 +216,23 @@ export const PATCH = withErrorHandler(
         province: payload.province,
         country: payload.country,
         isActive: payload.isActive,
+        updatedByUserId: auth.userId,
+      },
+      include: {
+        createdByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+        updatedByUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
       },
     });
 
