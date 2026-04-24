@@ -22,6 +22,18 @@ body {
   border-bottom: 1px solid transparent;
 }
 
+.env-local {
+  background: #E8F4FD;
+  color: #0B5394;
+  border-bottom-color: #A8D3F5;
+}
+
+.env-dev {
+  background: #E6F7E6;
+  color: #2D7E2D;
+  border-bottom-color: #9FE09F;
+}
+
 .env-preview {
   background: #fff7e6;
   color: #8a4b08;

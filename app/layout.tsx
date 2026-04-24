@@ -30,16 +30,25 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const vercelEnv = process.env.VERCEL_ENV ?? "development";
-  const isProduction = vercelEnv === "production";
-  const envLabel = isProduction ? "PRD / PRODUCTION" : "DEV / PREVIEW";
+  const appEnv = process.env.APP_ENV ?? "local";
+  const isProduction = appEnv === "prod";
+
+  // Map environment to display labels
+  const envLabelMap: Record<string, string> = {
+    local: "LOCAL",
+    dev: "DEV",
+    preview: "PREVIEW",
+    prod: "PRODUCTION",
+  };
+
+  const envLabel = envLabelMap[appEnv] || "LOCAL";
 
   return (
     <html lang="en" data-theme="light" data-brand="custom" data-accent="custom" data-neutral="gray" className={montserrat.variable}>
       <body className={montserrat.className}>
         <I18nProvider>
           <div
-            className={`environment-indicator ${isProduction ? "env-production" : "env-preview"}`}
+            className={`environment-indicator env-${appEnv}`}
             role="status"
             aria-live="polite"
           >

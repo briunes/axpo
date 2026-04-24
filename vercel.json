@@ -3,6 +3,7 @@
   "buildCommand": "pnpm run build",
   "outputDirectory": ".next",
   "installCommand": "pnpm install",
+  "toolbar": false,
   "functions": {
     "app/api/v1/internal/simulations/[id]/generate-pdf/route.ts": {
       "memory": 1024,
