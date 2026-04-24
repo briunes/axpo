@@ -1,30 +1,61 @@
+# IDE
 .vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
 
 # Dependencies
-/node_modules/
+node_modules/
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+.nyc_output
 
 # Build artifacts
 .next/
+out/
 dist/
 build/
 *.tsbuildinfo
 
-# Env files
+# Environment files
 .env
-*.env
-*.env.local
-
-# Logs
-*.log
-
-# Workbook source files (local reference only)
-xls/
-.vercel
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.preview
 .env*.local
 .env.vercel.preview
 .env.vercel.production
 .env.vercel.*.local
-backend/tsconfig.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Workbook source files (local reference only)
+*.xlsm
+xls/
+
+# Vercel
+.vercel
 
 # Docker volumes
 docker-data/
+
+# Temporary files
+*.tmp
+.cache/
+temp/
