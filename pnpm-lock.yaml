@@ -50,6 +50,9 @@ importers:
       country-state-city:
         specifier: ^3.2.1
         version: 3.2.1
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
       grapesjs:
         specifier: ^0.22.14
         version: 0.22.15
