@@ -137,6 +137,27 @@ export interface ElectricityInputs {
 // ─── Gas inputs ───────────────────────────────────────────────────────────── //
 
 export interface GasInputs {
+  /** CUPS identifier */
+  cups?: string;
+
+  /** Annual consumption in kWh */
+  consumoAnual?: number;
+
+  /** Account holder name */
+  nombreTitular?: string;
+
+  /** Contact person */
+  personaContacto?: string;
+
+  /** Sales representative */
+  comercial?: string;
+
+  /** Supply address */
+  direccion?: string;
+
+  /** Current supplier/marketer */
+  comercializadorActual?: string;
+
   /** Access tariff */
   tarifaAcceso: GasTarifa;
 
@@ -164,6 +185,12 @@ export interface GasInputs {
     alquilerEquipoMedida?: number; // €
     otrosCargos?: number; // €
   };
+
+  /** VAT rate as percentage (e.g., 21 for 21%) */
+  ivaTasa?: number;
+
+  /** Hydrocarbon tax in €/kWh */
+  impuestoHidrocarburo?: number;
 }
 
 // ─── Calculation results ─────────────────────────────────────────────────── //

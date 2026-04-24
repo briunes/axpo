@@ -78,6 +78,15 @@ interface ElecFormState {
 }
 
 interface GasFormState {
+    // Client data
+    cups: string;
+    consumoAnual: number;
+    nombreTitular: string;
+    personaContacto: string;
+    comercial: string;
+    direccion: string;
+    comercializadorActual: string;
+    // Access tariff
     tarifaAcceso: GasTarifa;
     zonaGeografica: GasZona;
     consumo: number;
@@ -87,6 +96,8 @@ interface GasFormState {
     facturaActual: number;
     alquiler: number;
     otrosCargos: number;
+    ivaTasa: number;
+    impuestoHidrocarburo: number;
 }
 
 function daysBetween(from: string, to: string): number {
@@ -141,6 +152,13 @@ function defaultElecState(): ElecFormState {
 function defaultGasState(): GasFormState {
     const { fechaInicio, fechaFin } = prevMonthRange();
     return {
+        cups: "",
+        consumoAnual: 0,
+        nombreTitular: "",
+        personaContacto: "",
+        comercial: "",
+        direccion: "",
+        comercializadorActual: "",
         tarifaAcceso: "RL01",
         zonaGeografica: "Peninsula",
         consumo: 0,
@@ -150,6 +168,8 @@ function defaultGasState(): GasFormState {
         facturaActual: 0,
         alquiler: 0,
         otrosCargos: 0,
+        ivaTasa: 21,
+        impuestoHidrocarburo: 0.00234,
     };
 }
 
@@ -189,6 +209,13 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
 function buildGasInputs(s: GasFormState): GasInputs {
     const dias = daysBetween(s.fechaInicio, s.fechaFin);
     return {
+        cups: s.cups || undefined,
+        consumoAnual: s.consumoAnual || undefined,
+        nombreTitular: s.nombreTitular || undefined,
+        personaContacto: s.personaContacto || undefined,
+        comercial: s.comercial || undefined,
+        direccion: s.direccion || undefined,
+        comercializadorActual: s.comercializadorActual || undefined,
         tarifaAcceso: s.tarifaAcceso,
         zonaGeografica: s.zonaGeografica,
         consumo: s.consumo,
@@ -199,6 +226,8 @@ function buildGasInputs(s: GasFormState): GasInputs {
             alquilerEquipoMedida: s.alquiler || undefined,
             otrosCargos: s.otrosCargos || undefined,
         },
+        ivaTasa: s.ivaTasa || undefined,
+        impuestoHidrocarburo: s.impuestoHidrocarburo || undefined,
     };
 }
 
@@ -324,6 +353,13 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
             : prevMonthRange();
 
         return {
+            cups: invoiceData.cups || "",
+            consumoAnual: invoiceData.consumoAnual || 0,
+            nombreTitular: invoiceData.nombreTitular || "",
+            personaContacto: invoiceData.personaContacto || "",
+            comercial: invoiceData.comercial || "",
+            direccion: invoiceData.direccion || "",
+            comercializadorActual: invoiceData.comercializadorActual || "",
             tarifaAcceso: (invoiceData.tarifaAcceso || "RL01") as GasTarifa,
             zonaGeografica: "Peninsula",
             consumo: invoiceData.consumoTotal || 0,
@@ -333,11 +369,20 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
             facturaActual: invoiceData.facturaActual ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
             otrosCargos: invoiceData.otrosCargos ?? 0,
+            ivaTasa: 21,
+            impuestoHidrocarburo: 0.00234,
         };
     }
 
     if (!g) return null;
     return {
+        cups: g.cups || "",
+        consumoAnual: g.consumoAnual || 0,
+        nombreTitular: g.nombreTitular || "",
+        personaContacto: g.personaContacto || "",
+        comercial: g.comercial || "",
+        direccion: g.direccion || "",
+        comercializadorActual: g.comercializadorActual || "",
         tarifaAcceso: g.tarifaAcceso,
         zonaGeografica: g.zonaGeografica,
         consumo: g.consumo,
@@ -347,6 +392,8 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
         facturaActual: g.facturaActual,
         alquiler: g.extras?.alquilerEquipoMedida ?? 0,
         otrosCargos: g.extras?.otrosCargos ?? 0,
+        ivaTasa: g.ivaTasa ?? 21,
+        impuestoHidrocarburo: g.impuestoHidrocarburo ?? 0.00234,
     };
 }
 
@@ -889,6 +936,55 @@ function GasForm({ state, onChange, errors = {} }: { state: GasFormState; onChan
                 </div>
             </div>
 
+            {/* CLIENT INFORMATION section */}
+            <Sec title={t("simulationForm", "sectionClientInfo")} block>
+                <Row>
+                    <Field label={t("simulationForm", "fieldCups")} flex="1 1 260px" error={errors.cups}>
+                        <FormInput label="" value={state.cups} onChange={(e) => up("cups", e.target.value)} placeholder={t("simulationForm", "placeholderCups")} />
+                    </Field>
+                    <Field label={t("simulationForm", "fieldAnnualConsumption")} flex="1 1 180px" hint={t("simulationForm", "fieldAnnualConsumptionHint")} error={errors.consumoAnual}>
+                        <Num value={state.consumoAnual} onChange={(v) => up("consumoAnual", v)} step={1000} />
+                    </Field>
+                    <Field label={t("simulationForm", "fieldZone")} flex="1 1 160px" required>
+                        <Sel value={state.zonaGeografica} onChange={(v) => up("zonaGeografica", v as GasZona)} options={[{ value: "Peninsula", label: t("simulationForm", "peninsula") }, { value: "Baleares", label: t("simulationForm", "balearics") }]} />
+                    </Field>
+                </Row>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginTop: 20, marginBottom: 12, paddingBottom: 6, borderBottom: "1px solid var(--scheme-neutral-900)" }}>{t("simulationForm", "clientDetailsSubtitle")}</div>
+                <Row>
+                    <Field label={t("simulationForm", "fieldClientName")} error={errors.nombreTitular}>
+                        <FormInput
+                            label=""
+                            type="text"
+                            value={state.nombreTitular}
+                            onChange={(e) => up("nombreTitular", e.target.value)}
+                            placeholder={t("simulationForm", "placeholderClientName")}
+                        />
+                    </Field>
+                    <Field label={t("simulationForm", "fieldContactPerson")} error={errors.personaContacto}>
+                        <FormInput
+                            label=""
+                            type="text"
+                            value={state.personaContacto}
+                            onChange={(e) => up("personaContacto", e.target.value)}
+                            placeholder={t("simulationForm", "placeholderContactPerson")}
+                        />
+                    </Field>
+                </Row>
+                <Row>
+                    <Field label={t("simulationForm", "fieldSalesAgent")} error={errors.comercial}>
+                        <FormInput label="" type="text" value={state.comercial} onChange={(e) => up("comercial", e.target.value)} placeholder={t("simulationForm", "placeholderSalesAgent")} />
+                    </Field>
+                    <Field label={t("simulationForm", "fieldAddress")} error={errors.direccion}>
+                        <FormInput label="" type="text" value={state.direccion} onChange={(e) => up("direccion", e.target.value)} placeholder={t("simulationForm", "placeholderAddress")} />
+                    </Field>
+                </Row>
+                <Row>
+                    <Field label={t("simulationForm", "fieldCurrentSupplier")} flex="1 1 280px" error={errors.comercializadorActual}>
+                        <FormInput label="" type="text" value={state.comercializadorActual} onChange={(e) => up("comercializadorActual", e.target.value)} placeholder={t("simulationForm", "placeholderCurrentSupplier")} />
+                    </Field>
+                </Row>
+            </Sec>
+
             {/* Contract + Billing period side by side */}
             <div style={{
                 display: "grid",
@@ -906,14 +1002,9 @@ function GasForm({ state, onChange, errors = {} }: { state: GasFormState; onChan
                         <Sel value={state.tarifaAcceso} onChange={(v) => up("tarifaAcceso", v as GasTarifa)} options={["RL01", "RL02", "RL03", "RL04", "RL05", "RL06", "RLPS1", "RLPS2", "RLPS3", "RLPS4", "RLPS5", "RLPS6"].map((v) => ({ value: v, label: v }))} />
                     </Field>
                     <div style={{ height: 10 }} />
-                    <Row>
-                        <Field label={t("simulationForm", "fieldZone")}>
-                            <Sel value={state.zonaGeografica} onChange={(v) => up("zonaGeografica", v as GasZona)} options={[{ value: "Peninsula", label: t("simulationForm", "peninsula") }, { value: "Baleares", label: t("simulationForm", "balearics") }]} />
-                        </Field>
-                        <Field label={t("simulationForm", "fieldTelemetering")}>
-                            <Sel value={state.telemedida} onChange={(v) => up("telemedida", v as "SI" | "NO")} options={[{ value: "NO", label: t("simulationForm", "no") }, { value: "SI", label: t("simulationForm", "yes") }]} />
-                        </Field>
-                    </Row>
+                    <Field label={t("simulationForm", "fieldTelemetering")}>
+                        <Sel value={state.telemedida} onChange={(v) => up("telemedida", v as "SI" | "NO")} options={[{ value: "NO", label: t("simulationForm", "no") }, { value: "SI", label: t("simulationForm", "yes") }]} />
+                    </Field>
                 </Sec>
 
                 <Sec title={t("simulationForm", "sectionBillingPeriod")} complete={invoiceComplete}>
@@ -976,6 +1067,20 @@ function GasForm({ state, onChange, errors = {} }: { state: GasFormState; onChan
                     </Field>
                     <Field label={t("simulationForm", "fieldOtherCharges")} hint={t("simulationForm", "fieldOtherChargesLineHint")}>
                         <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
+                    </Field>
+                </Row>
+            </Sec>
+
+            <Sec title={t("simulationForm", "sectionTaxes")} block collapsible defaultOpen={false} optional>
+                <div style={{ fontSize: 12, color: "var(--scheme-neutral-400)", marginBottom: 12 }}>
+                    {t("simulationForm", "taxesDescription")}
+                </div>
+                <Row>
+                    <Field label={t("simulationForm", "fieldIVA")} hint={t("simulationForm", "fieldIVAHint")}>
+                        <Num value={state.ivaTasa} onChange={(v) => up("ivaTasa", v)} step={0.1} />
+                    </Field>
+                    <Field label={t("simulationForm", "fieldHydrocarbonTax")} hint={t("simulationForm", "fieldHydrocarbonTaxHint")}>
+                        <Num value={state.impuestoHidrocarburo} onChange={(v) => up("impuestoHidrocarburo", v)} step={0.00001} />
                     </Field>
                 </Row>
             </Sec>
@@ -1108,6 +1213,13 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         }
         if (simType !== "ELECTRICITY") {
             const testGas: GasFormState = {
+                cups: "ES0230901000023635SW",
+                consumoAnual: 4343455,
+                nombreTitular: "CCPP EXTERIORS ONDARRETA 2",
+                personaContacto: "",
+                comercial: "",
+                direccion: "",
+                comercializadorActual: "",
                 tarifaAcceso: "RL01",
                 zonaGeografica: "Peninsula",
                 consumo: 5000,
@@ -1117,6 +1229,8 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 facturaActual: 285.50,
                 alquiler: 1.5,
                 otrosCargos: 0,
+                ivaTasa: 21,
+                impuestoHidrocarburo: 0.00234,
             };
             setGasState(testGas);
         }

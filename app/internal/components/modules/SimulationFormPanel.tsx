@@ -536,6 +536,13 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
 function buildGasInputs(s: GasFormState): GasInputs {
     const dias = daysBetween(s.fechaInicio, s.fechaFin);
     return {
+        cups: s.cups || undefined,
+        consumoAnual: s.consumoAnual || undefined,
+        nombreTitular: s.nombreTitular || undefined,
+        personaContacto: s.personaContacto || undefined,
+        comercial: s.comercial || undefined,
+        direccion: s.direccion || undefined,
+        comercializadorActual: s.comercializadorActual || undefined,
         tarifaAcceso: s.tarifaAcceso,
         zonaGeografica: s.zonaGeografica,
         consumo: s.consumo,
@@ -550,6 +557,8 @@ function buildGasInputs(s: GasFormState): GasInputs {
             alquilerEquipoMedida: s.alquiler || undefined,
             otrosCargos: s.otrosCargos || undefined,
         },
+        ivaTasa: s.ivaTasa || undefined,
+        impuestoHidrocarburo: s.impuestoHidrocarburo || undefined,
     };
 }
 
@@ -586,6 +595,13 @@ function hydrateGas(payload: SimulationPayload): GasFormState | null {
     const g = payload.gas;
     if (!g) return null;
     return {
+        cups: g.cups || "",
+        consumoAnual: g.consumoAnual || 0,
+        nombreTitular: g.nombreTitular || "",
+        personaContacto: g.personaContacto || "",
+        comercial: g.comercial || "",
+        direccion: g.direccion || "",
+        comercializadorActual: g.comercializadorActual || "",
         tarifaAcceso: g.tarifaAcceso,
         zonaGeografica: g.zonaGeografica,
         consumo: g.consumo,
@@ -595,6 +611,8 @@ function hydrateGas(payload: SimulationPayload): GasFormState | null {
         facturaActual: g.facturaActual,
         alquiler: g.extras?.alquilerEquipoMedida ?? 0,
         otrosCargos: g.extras?.otrosCargos ?? 0,
+        ivaTasa: g.ivaTasa ?? 21,
+        impuestoHidrocarburo: g.impuestoHidrocarburo ?? 0.00234,
     };
 }
 
