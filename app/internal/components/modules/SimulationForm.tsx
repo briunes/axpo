@@ -970,10 +970,6 @@ function GasForm({ state, onChange, errors = {} }: { state: GasFormState; onChan
                         />
                     </Field>
                 </Row>
-
-
-
-                
                 <Row>
                     <Field label={t("simulationForm", "fieldSalesAgent")} error={errors.comercial}>
                         <FormInput label="" type="text" value={state.comercial} onChange={(e) => up("comercial", e.target.value)} placeholder={t("simulationForm", "placeholderSalesAgent")} />
