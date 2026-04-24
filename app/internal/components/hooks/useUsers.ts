@@ -5,6 +5,7 @@ import {
   createUser,
   listUsers,
   rotateUserPin,
+  requestUserPasswordReset,
   updateUser,
   updateUserStatus,
   deleteUser,
@@ -106,6 +107,7 @@ export interface UsersActions {
   // actions
   handleToggleUserStatus: (user: UserItem) => Promise<void>;
   handleRotateUserPin: (user: UserItem) => Promise<RotatePinResult | null>;
+  handleRequestPasswordReset: (user: UserItem) => Promise<void>;
   handleDeleteUser: (user: UserItem) => Promise<void>;
 }
 
@@ -475,6 +477,14 @@ export function useUsers(
     });
   };
 
+  const handleRequestPasswordReset = async (user: UserItem): Promise<void> => {
+    if (!session) return;
+    await runAction(`request-password-reset-${user.id}`, async () => {
+      await requestUserPasswordReset(session.token, user.id);
+      setSuccessText(`Password reset email sent to ${user.email}`);
+    });
+  };
+
   return {
     users,
     loading,
@@ -529,6 +539,7 @@ export function useUsers(
     handleUpdateOwnProfile,
     handleToggleUserStatus,
     handleRotateUserPin,
+    handleRequestPasswordReset,
     handleDeleteUser,
   };
 }

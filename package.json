@@ -5,7 +5,9 @@
   "private": true,
   "packageManager": "pnpm@10.28.1",
   "scripts": {
-    "dev": "next dev",
+    "dev": "rm -f .env.local && cp .env.local.example .env.local && next dev",
+    "dev:dev": "rm -f .env.local && cp .env.dev .env.local && next dev",
+    "dev:preview": "rm -f .env.local && cp .env.preview .env.local && next dev",
     "build": "node scripts/sync-postman-artifacts.js && node scripts/generate-openapi.js && prisma generate && next build",
     "sync:postman": "node scripts/sync-postman-artifacts.js",
     "openapi:generate": "node scripts/generate-openapi.js",

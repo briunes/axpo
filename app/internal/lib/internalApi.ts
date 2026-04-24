@@ -420,11 +420,13 @@ const baseUrl =
 async function parseApiResponse<T>(
   response: Response,
   fallbackMessage: string,
+  skipAuthRedirect = false,
 ): Promise<T> {
   const body = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok || !body.success || !body.data) {
     // Token expired / revoked → clear session and force login redirect
-    if (response.status === 401) {
+    // Skip redirect for login/auth endpoints to avoid page reload
+    if (response.status === 401 && !skipAuthRedirect) {
       if (typeof window !== "undefined") {
         window.localStorage.removeItem("axpo.internal.auth.token");
         window.localStorage.removeItem("axpo.internal.auth.user");
@@ -460,7 +462,7 @@ export async function login(
     body: JSON.stringify({ email, password }),
   });
 
-  return parseApiResponse<LoginResult>(response, "Login failed");
+  return parseApiResponse<LoginResult>(response, "Login failed", true);
 }
 
 export async function setupPassword(
@@ -475,7 +477,7 @@ export async function setupPassword(
       body: JSON.stringify({ token, password }),
     },
   );
-  return parseApiResponse<LoginResult>(response, "Password setup failed");
+  return parseApiResponse<LoginResult>(response, "Password setup failed", true);
 }
 
 export async function forgotPassword(
@@ -492,6 +494,7 @@ export async function forgotPassword(
   return parseApiResponse<{ success: boolean }>(
     response,
     "Password reset request failed",
+    true,
   );
 }
 
@@ -507,7 +510,7 @@ export async function resetPassword(
       body: JSON.stringify({ token, password }),
     },
   );
-  return parseApiResponse<LoginResult>(response, "Password reset failed");
+  return parseApiResponse<LoginResult>(response, "Password reset failed", true);
 }
 
 export interface ListSimulationsParams {
@@ -908,6 +911,25 @@ export async function rotateUserPin(
   );
 
   return parseApiResponse<RotatePinResult>(response, "Rotate user PIN failed");
+}
+
+export async function requestUserPasswordReset(
+  token: string,
+  userId: string,
+): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/users/${userId}/reset-password`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify({}),
+    },
+  );
+
+  return parseApiResponse<{ success: boolean; message: string }>(
+    response,
+    "Request password reset failed",
+  );
 }
 
 export async function deleteUser(token: string, userId: string): Promise<void> {

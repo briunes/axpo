@@ -28,6 +28,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const [showPinDialog, setShowPinDialog] = useState(false);
     const [newPin, setNewPin] = useState<string | null>(null);
     const [isRegeneratingPin, setIsRegeneratingPin] = useState(false);
+    const [isSendingPasswordReset, setIsSendingPasswordReset] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
     const [formData, setFormData] = useState<UserFormData>({
         fullName: "",
@@ -130,6 +131,16 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
         }
     };
 
+    const handleSendPasswordReset = async () => {
+        if (!user) return;
+        setIsSendingPasswordReset(true);
+        try {
+            await usersActions.handleRequestPasswordReset(user);
+        } finally {
+            setIsSendingPasswordReset(false);
+        }
+    };
+
     if (!session || !user) {
         return (
             <CrudPageLayout
@@ -151,7 +162,14 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                 maxWidth={undefined}
                 actions={
                     <>
-                        {formActions}
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={handleSendPasswordReset}
+                            disabled={usersActions.busyAction !== null || isSendingPasswordReset}
+                        >
+                            {isSendingPasswordReset ? t("common", "loading") : t("userFormPage", "sendPasswordReset")}
+                        </Button>
                         <Button
                             variant="outlined"
                             size="small"
@@ -160,6 +178,8 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                         >
                             {isRegeneratingPin ? t("common", "loading") : t("userFormPage", "regeneratePin")}
                         </Button>
+                        {formActions}
+
                     </>
                 }
             >

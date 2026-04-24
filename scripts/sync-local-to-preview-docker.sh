@@ -15,10 +15,10 @@ LOCAL_USER="axpo"
 LOCAL_DB="axpo_simulator"
 LOCAL_PASSWORD="axpo_dev_password"
 
-# Preview database credentials (from .env.preview)
-PREVIEW_USER="postgres.phgcujuexybguiducwcs"
-PREVIEW_PASSWORD="LPhwzkppwZhPmjjO"
-PREVIEW_HOST="aws-1-eu-west-1.pooler.supabase.com"
+# Preview database credentials (from .env.preview - QLD Supabase)
+PREVIEW_USER="postgres.tqfrbokmqqzamdcvpwhu"
+PREVIEW_PASSWORD="z8yrmaaKArH2q2Bj"
+PREVIEW_HOST="aws-0-eu-west-1.pooler.supabase.com"
 PREVIEW_PORT="5432"
 PREVIEW_DB="postgres"
 

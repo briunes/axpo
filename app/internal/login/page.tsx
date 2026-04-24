@@ -2,6 +2,9 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@mui/material";
+import { FormInput } from "../components/ui/FormInput";
+import { useAlerts } from "../components/shared";
 import { loadSession, saveSession } from "../lib/authSession";
 import { login } from "../lib/internalApi";
 import { useI18n } from "../../../src/lib/i18n-context";
@@ -10,10 +13,10 @@ import "../globals.css";
 export default function LoginPage() {
   const router = useRouter();
   const { t, locale, setLocale } = useI18n();
+  const { showError } = useAlerts();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [errorText, setErrorText] = useState<string | null>(null);
 
   useEffect(() => {
     const restored = loadSession();
@@ -28,18 +31,17 @@ export default function LoginPage() {
     event.preventDefault();
     if (!canLogin) {
       setStatus("error");
-      setErrorText(t("login", "validationError"));
+      showError(t("login", "validationError"));
       return;
     }
     setStatus("loading");
-    setErrorText(null);
     try {
       const logged = await login(email.trim(), password);
       saveSession({ token: logged.token, user: logged.user });
       router.replace("/internal/simulations");
     } catch (error) {
       setStatus("error");
-      setErrorText(error instanceof Error ? error.message : t("login", "authFailed"));
+      showError(error instanceof Error ? error.message : t("login", "authFailed"));
     }
   };
 
@@ -91,49 +93,44 @@ export default function LoginPage() {
           </p>
 
           <form onSubmit={handleLogin} style={{ width: "100%" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div className="login-form-field-v2">
-                <label htmlFor="login-email">{t("login", "email")}</label>
-                <input
-                  id="login-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  data-testid="login-email"
-                  autoComplete="email"
-                />
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <FormInput
+                id="login-email"
+                label={t("login", "email")}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                data-testid="login-email"
+                autoComplete="email"
+                required
+              />
+
+              <FormInput
+                id="login-password"
+                label={t("login", "password")}
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                data-testid="login-password"
+                autoComplete="current-password"
+                required
+              />
+
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -8, marginBottom: 4 }}>
+               
               </div>
-              <div className="login-form-field-v2">
-                <label htmlFor="login-password">{t("login", "password")}</label>
-                <input
-                  id="login-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  data-testid="login-password"
-                  autoComplete="current-password"
-                />
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -4, marginBottom: 4 }}>
-                <button
-                  type="button"
-                  onClick={() => router.push("/internal/forgot-password")}
-                  className="login-link-v2"
-                >
-                  {t("login", "forgotPassword")}
-                </button>
-              </div>
-              {errorText && (
-                <div className="login-error-v2">{errorText}</div>
-              )}
-              <button
+
+              <Button
                 type="submit"
-                className="login-submit-v2"
+                variant="contained"
                 disabled={!canLogin || status === "loading"}
                 data-testid="login-submit"
+                fullWidth
+                size="large"
+
               >
                 {status === "loading" ? t("login", "signingIn") : t("login", "signIn")}
-              </button>
+              </Button>
             </div>
           </form>
         </div>
