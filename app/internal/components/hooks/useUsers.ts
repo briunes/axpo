@@ -70,7 +70,7 @@ export interface UsersActions {
       commercialPhone: string;
       commercialEmail: string;
       otherDetails?: string;
-      password: string;
+      password?: string;
       role: UserRole;
       agencyId: string;
     },
@@ -97,8 +97,6 @@ export interface UsersActions {
       commercialPhone: string;
       commercialEmail: string;
       otherDetails?: string;
-      password: string;
-      currentPassword: string;
       role?: string;
       agencyId?: string;
     },
@@ -354,8 +352,8 @@ export function useUsers(
       commercialPhone: string;
       commercialEmail: string;
       otherDetails?: string;
-      password: string;
-      currentPassword: string;
+      password?: string;
+      currentPassword?: string;
       role?: string;
       agencyId?: string;
       isActive?: boolean;

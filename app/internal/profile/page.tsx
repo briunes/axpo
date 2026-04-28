@@ -30,8 +30,6 @@ export default function ProfilePage() {
         commercialPhone: "",
         commercialEmail: "",
         otherDetails: "",
-        password: "",
-        currentPassword: "",
     });
 
     useEffect(() => {
@@ -47,8 +45,6 @@ export default function ProfilePage() {
                     commercialPhone: u.commercialPhone || "",
                     commercialEmail: u.commercialEmail || "",
                     otherDetails: u.otherDetails || "",
-                    password: "",
-                    currentPassword: "",
                     role: u.role,
                     agencyId: u.agencyId || "",
                 });
@@ -75,10 +71,7 @@ export default function ProfilePage() {
                 ...(isAdmin(session.user.role) && formData.role ? { role: formData.role } : {}),
                 ...(isAdmin(session.user.role) && formData.agencyId ? { agencyId: formData.agencyId } : {}),
                 // Password change requires currentPassword
-                ...(formData.password ? {
-                    password: formData.password,
-                    currentPassword: formData.currentPassword,
-                } : {}),
+             
             });
             setSuccessText("Profile updated successfully.");
             showSuccess("Profile updated successfully.");
