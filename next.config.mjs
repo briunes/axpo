@@ -8,6 +8,8 @@ const nextConfig = {
     "puppeteer-core",
     "@napi-rs/canvas",
   ],
+
+  
   // Ensure the Chromium brotli binaries (which live deep in pnpm's
   // node_modules layout) are included in the serverless function bundle.
   // Without this, Vercel's file-tracer doesn't follow the .pnpm symlinks
