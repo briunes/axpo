@@ -16,6 +16,9 @@ const nextConfig = {
     "/api/v1/internal/simulations/[id]/generate-pdf": [
       "./node_modules/.pnpm/@sparticuz+chromium@147.0.0/node_modules/@sparticuz/chromium/bin/**/*",
     ],
+    "/api/v1/internal/invoices/extract": [
+      "./node_modules/pdfjs-dist/legacy/build/**/*",
+    ],
   },
   images: {
     remotePatterns: [

@@ -28,16 +28,19 @@ export async function convertPdfToImages(
   const { createCanvas } = await import("@napi-rs/canvas");
   const path = await import("path");
 
-  // Set worker path to the actual worker file in node_modules
+  // Use an absolute file:// URL so that pdfjs loads the worker via Node's
+  // native ESM loader rather than Turbopack's bundler (which rewrites dynamic
+  // import paths to '[project]' placeholders and breaks resolution). On Vercel
+  // the file is present because outputFileTracingIncludes copies it.
   const workerPath = path.resolve(
     process.cwd(),
     "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
   );
-  (pdfjsLib as any).GlobalWorkerOptions.workerSrc = workerPath;
+  (pdfjsLib as any).GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
 
   try {
     // Load PDF document
-    const loadingTask = pdfjsLib.getDocument({
+    const loadingTask = (pdfjsLib as any).getDocument({
       data: new Uint8Array(pdfBuffer),
       verbosity: 0,
     });
