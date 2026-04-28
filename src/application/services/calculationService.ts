@@ -591,6 +591,8 @@ function calcGasIndex(
   const mibgasKey = `MIBGAS:${periodo.fechaInicio.slice(0, 7)}`;
   const mibgas = priceOf(map, mibgasKey) ?? 0;
 
+
+  
   const margen = priceOf(
     map,
     `GAS:INDEX:${product}:${tier}:${tarifaAcceso}:${zonaKey}:MARGEN`,
