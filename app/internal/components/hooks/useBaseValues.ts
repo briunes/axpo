@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   activateBaseValueSet,
   listBaseValueSets,
@@ -44,15 +45,13 @@ export interface BaseValuesActions {
 }
 
 export function useBaseValues(session: SessionState | null): BaseValuesActions {
-  const [baseValueSets, setBaseValueSets] = useState<BaseValueSetItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [total, setTotal] = useState(0);
   const [sortColumn, setSortColumn] = useState("updatedAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const setSort = (column: string, dir: "asc" | "desc") => {
@@ -67,6 +66,38 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
     setSuccessText(null);
   };
 
+  // ── TanStack Query ──────────────────────────────────────────────────────
+  const queryParams: ListBaseValueSetsParams = {
+    page,
+    pageSize,
+    search: search || undefined,
+    orderBy: sortColumn,
+    sortDir,
+    showArchived,
+  };
+
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: ["base-values", session?.token ?? "", queryParams],
+    queryFn: () => listBaseValueSets(session!.token, queryParams),
+    enabled: !!session,
+    placeholderData: keepPreviousData,
+  });
+
+  const baseValueSets = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const loading = isFetching;
+
+  const invalidate = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["base-values", session?.token ?? ""],
+    });
+  }, [queryClient, session?.token]);
+
+  const refresh = useCallback(async (_overrides?: ListBaseValueSetsParams) => {
+    await refetch();
+  }, [refetch]);
+  // ────────────────────────────────────────────────────────────────────────
+
   const runAction = async (id: string, fn: () => Promise<void>) => {
     try {
       setBusyAction(id);
@@ -79,41 +110,11 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
     }
   };
 
-  const refresh = useCallback(
-    async (overrides?: ListBaseValueSetsParams) => {
-      if (!session) return;
-      setLoading(true);
-      try {
-        const params: ListBaseValueSetsParams = {
-          page,
-          pageSize,
-          search: search || undefined,
-          orderBy: sortColumn,
-          sortDir,
-          showArchived,
-          ...overrides,
-        };
-        const result = await listBaseValueSets(session.token, params);
-        setBaseValueSets(result.items);
-        setTotal(result.total);
-      } catch (error) {
-        setErrorText(
-          error instanceof Error
-            ? error.message
-            : "Could not load base value sets.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [session, page, pageSize, search, sortColumn, sortDir, showArchived],
-  );
-
   const handleActivateBaseValueSet = async (setItem: BaseValueSetItem) => {
     await runAction(`activate-base-value-${setItem.id}`, async () => {
       if (!session) return;
       await activateBaseValueSet(session.token, setItem.id);
-      await refresh();
+      await invalidate();
       setSuccessText("Base value set activated.");
     });
   };
@@ -124,7 +125,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
       await updateBaseValueSet(session.token, setItem.id, {
         isDeleted: !setItem.isDeleted,
       });
-      await refresh();
+      await invalidate();
       setSuccessText(
         `Base value set ${setItem.isDeleted ? "restored" : "archived"}.`,
       );
@@ -135,7 +136,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
     await runAction("upload-base-value-file", async () => {
       if (!session) return;
       const result = await uploadBaseValueFile(session.token, file, replace);
-      await refresh();
+      await invalidate();
       setSuccessText(result.message);
     });
   };
@@ -148,7 +149,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
         setItem.id,
         !setItem.isProduction,
       );
-      await refresh();
+      await invalidate();
       setSuccessText(
         "Base value set set as production. Others marked as draft.",
       );

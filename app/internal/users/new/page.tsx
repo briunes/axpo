@@ -27,7 +27,6 @@ export default function NewUserPage() {
         commercialPhone: "",
         commercialEmail: "",
         otherDetails: "",
-        password: "",
         role: "COMMERCIAL",
         agencyId: session?.user.agencyId || "",
     });
@@ -64,7 +63,6 @@ export default function NewUserPage() {
             commercialPhone: formData.commercialPhone,
             commercialEmail: formData.commercialEmail,
             otherDetails: formData.otherDetails,
-            password: formData.password || "",
             role: (formData.role || "COMMERCIAL") as UserRole,
             agencyId: formData.agencyId || "",
         });

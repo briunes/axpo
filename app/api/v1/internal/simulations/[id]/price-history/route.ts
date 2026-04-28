@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/application/middleware/auth";
-import { UserRole } from "@/domain/types";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 
@@ -73,7 +72,7 @@ export async function GET(
 ) {
   try {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+    await assertPermission(auth, "section.simulations");
 
     const { id } = await params;
 

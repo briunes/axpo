@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
-import { UserRole } from "@/domain/types";
+import { assertPermission } from "@/application/middleware/rbac";
 import { EmailService } from "@/application/services/emailService";
 
 /**
@@ -19,7 +18,7 @@ import { EmailService } from "@/application/services/emailService";
  */
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
-  assertRole(auth, [UserRole.ADMIN]);
+  await assertPermission(auth, "section.configurations");
 
   const result = await EmailService.testSMTPConnection();
 

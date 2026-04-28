@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/application/middleware/auth";
-import { UserRole } from "@/domain/types";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
 import { EmailService } from "@/application/services/emailService";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
@@ -53,7 +52,7 @@ export const POST = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+    await assertPermission(auth, "simulations.share");
 
     const params = context?.params || {};
     const id = params?.id || "";
@@ -94,6 +93,9 @@ export const POST = withErrorHandler(
             *  { box-sizing: border-box; }
             body { margin: 0; padding: 0; }
             table, figure, img,
+            .asim-comparison,
+            .asim-plan-card, .asim-plan-body,
+            .asim-data-section,
             .asim-period-grid, .asim-period-item,
             .asim-cost-breakdown, .asim-cost-item,
             .asim-total-section, .asim-savings-badge,

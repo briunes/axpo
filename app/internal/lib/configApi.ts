@@ -29,6 +29,7 @@ export interface SystemConfig {
   enableRealtimeReports: boolean;
   ivaRate?: number;
   electricityTaxRate?: number;
+  hydrocarbonTaxRate?: number;
   defaultDateFormat?: string;
   defaultTimeFormat?: string;
   defaultTimezone?: string;

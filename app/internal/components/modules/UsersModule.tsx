@@ -20,6 +20,7 @@ import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, RotatePinResult } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
+import { usePermissions } from "../../lib/permissionsContext";
 import type { UsersActions } from "../hooks/useUsers";
 import { ConfirmDialog, PinResultDialog } from "../shared";
 import { DataTable, StatusBadge, FormSelect, FormInput } from "../ui";
@@ -27,6 +28,7 @@ import type { ColumnDef } from "../ui";
 import { RefreshIcon } from "../ui/icons";
 import SyncIcon from '@mui/icons-material/Sync';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
 import FiberPinIcon from '@mui/icons-material/FiberPin';
@@ -56,10 +58,11 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
     editUserPassword, setEditUserPassword, editUserCurrentPassword, setEditUserCurrentPassword,
     openUserEditor, closeUserEditor, handleUpdateUser,
     handleToggleUserStatus, handleRotateUserPin,
-    handleDeleteUser,
+    handleDeleteUser, handleBulkDeleteUsers,
   } = actions;
 
   const [lastPinResult, setLastPinResult] = useState<RotatePinResult | null>(null);
+  const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
   const [confirmToggleUser, setConfirmToggleUser] = useState<UserItem | null>(null);
   const [confirmPinRotateUser, setConfirmPinRotateUser] = useState<UserItem | null>(null);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<UserItem | null>(null);
@@ -98,8 +101,11 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
     }
   }, [errorText]);
 
-  const canCreateUsers = isAdmin(session.user.role) || session.user.role === "AGENT";
-  const isAdminUser = isAdmin(session.user.role);
+  const { canDo } = usePermissions();
+  const role = session.user.role;
+
+  const canCreateUsers = canDo(role, "users.create");
+  const isAdminUser = isAdmin(role);
 
   // Render action buttons for topbar
   useLayoutEffect(() => {
@@ -204,10 +210,10 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       key: "actions",
       label: t("columns", "actions"),
       renderCell: (u) => {
-        const canEdit = true; // All users can see edit action based on their role
-        const canToggle = true; // Can activate/deactivate
-        const canRotatePin = true; // Can rotate PIN
-        const canDelete = canEdit; // For now, same permission as edit
+        const canEdit = canDo(role, "users.edit");
+        const canToggle = canDo(role, "users.deactivate");
+        const canRotatePin = canDo(role, "users.edit");
+        const canDelete = canDo(role, "users.edit");
 
         const primaryLabel = t("actions", "edit");
         const primaryOnClick = () => window.location.href = `/internal/users/${u.id}/edit`;
@@ -238,21 +244,23 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
 
         return (
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
-            <ButtonGroup variant="outlined" size="small">
-              <Button onClick={primaryOnClick}>
-                {primaryLabel}
-              </Button>
-              {hasDropdown && (
-                <Button
-                  size="small"
-                  onClick={(e) => setDropdownState({ anchorEl: e.currentTarget, items: secondaryItems })}
-                  aria-label="More actions"
-                  sx={{ px: 0.5, minWidth: 32 }}
-                >
-                  <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
+            {canEdit ? (
+              <ButtonGroup variant="outlined" size="small">
+                <Button onClick={primaryOnClick}>
+                  {primaryLabel}
                 </Button>
-              )}
-            </ButtonGroup>
+                {hasDropdown && (
+                  <Button
+                    size="small"
+                    onClick={(e) => setDropdownState({ anchorEl: e.currentTarget, items: secondaryItems })}
+                    aria-label="More actions"
+                    sx={{ px: 0.5, minWidth: 32 }}
+                  >
+                    <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
+                  </Button>
+                )}
+              </ButtonGroup>
+            ) : null}
           </div>
         );
       },
@@ -290,6 +298,14 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
         }}
         t={t}
+        massActions={[
+          {
+            label: t("actions", "delete"),
+            color: "error",
+            icon: <DeleteOutlineIcon fontSize="small" />,
+            onClick: (ids) => setConfirmBulkDeleteIds(ids),
+          },
+        ]}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
           <>
             <Box sx={{ width: 280 }}>
@@ -334,7 +350,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
                 textFieldProps={{ size: "small" }}
               />
             </Box>
-            {isAdmin(session.user.role) && (
+            {isAdmin(role) && (
               <Box sx={{ width: 280 }}>
                 <FormSelect
                   label=""
@@ -370,6 +386,20 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           </>
         )}
       />
+
+      {confirmBulkDeleteIds && (
+        <ConfirmDialog
+          title={t("usersModule", "bulkDeleteTitle")}
+          message={t("usersModule", "bulkDeleteConfirm", { count: confirmBulkDeleteIds.length })}
+          confirmLabel={t("actions", "delete")}
+          busy={busyAction === "bulk-delete-users"}
+          onConfirm={async () => {
+            await handleBulkDeleteUsers(confirmBulkDeleteIds);
+            setConfirmBulkDeleteIds(null);
+          }}
+          onCancel={() => setConfirmBulkDeleteIds(null)}
+        />
+      )}
 
       <Drawer
         anchor="right"

@@ -26,6 +26,8 @@ import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
+import DeleteIcon from "@mui/icons-material/Delete";
+import ArchiveIcon from "@mui/icons-material/Archive";
 import { useEffect, useState, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -65,11 +67,14 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     selectedSimulationId, editPayloadJson, setEditPayloadJson,
     openSimulationEditor, closeSimulationEditor, handleUpdateSimulation,
     handleShare, handleClone, handleRotatePin, handleOcrPrefill, handlePdfDownload, handleArchive,
+    handleBulkDelete, handleBulkArchive,
   } = actions;
 
   const [shareSim, setShareSim] = useState<SimulationItem | null>(null);
   const [confirmArchiveSim, setConfirmArchiveSim] = useState<SimulationItem | null>(null);
   const [confirmDeleteSim, setConfirmDeleteSim] = useState<SimulationItem | null>(null);
+  const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
+  const [confirmBulkArchiveIds, setConfirmBulkArchiveIds] = useState<string[] | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [dropdownState, setDropdownState] = useState<{
     anchorEl: HTMLElement | null;
@@ -444,6 +449,20 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             </Button>
           </>
         )}
+        massActions={[
+          {
+            label: t("actions", "delete"),
+            color: "error",
+            icon: <DeleteIcon />,
+            onClick: (ids) => setConfirmBulkDeleteIds(ids),
+          },
+          {
+            label: t("actions", "archive"),
+            color: "warning",
+            icon: <ArchiveIcon />,
+            onClick: (ids) => setConfirmBulkArchiveIds(ids),
+          },
+        ]}
       />
 
       {/* ── Edit payload panel ── */}
@@ -570,6 +589,34 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             setConfirmDeleteSim(null);
           }}
           onCancel={() => setConfirmDeleteSim(null)}
+        />
+      )}
+
+      {confirmBulkDeleteIds && (
+        <ConfirmDialog
+          title={t("simulationsModule", "bulkDeleteTitle")}
+          message={t("simulationsModule", "bulkDeleteConfirm", { count: confirmBulkDeleteIds.length })}
+          confirmLabel={t("simulationsModule", "bulkDeleteConfirmLabel")}
+          busy={busyAction === "bulk-delete"}
+          onConfirm={async () => {
+            await handleBulkDelete(confirmBulkDeleteIds);
+            setConfirmBulkDeleteIds(null);
+          }}
+          onCancel={() => setConfirmBulkDeleteIds(null)}
+        />
+      )}
+
+      {confirmBulkArchiveIds && (
+        <ConfirmDialog
+          title={t("simulationsModule", "bulkArchiveTitle")}
+          message={t("simulationsModule", "bulkArchiveConfirm", { count: confirmBulkArchiveIds.length })}
+          confirmLabel={t("simulationsModule", "bulkArchiveConfirmLabel")}
+          busy={busyAction === "bulk-archive"}
+          onConfirm={async () => {
+            await handleBulkArchive(confirmBulkArchiveIds);
+            setConfirmBulkArchiveIds(null);
+          }}
+          onCancel={() => setConfirmBulkArchiveIds(null)}
         />
       )}
 

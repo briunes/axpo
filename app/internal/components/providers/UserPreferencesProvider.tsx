@@ -26,6 +26,26 @@ const DEFAULT_PREFERENCES: UserPreferences = {
     itemsPerPage: 10,
 };
 
+const PREFS_CACHE_KEY = "axpo_user_preferences";
+
+function loadCachedPreferences(): UserPreferences {
+    if (typeof window === "undefined") return DEFAULT_PREFERENCES;
+    try {
+        const raw = localStorage.getItem(PREFS_CACHE_KEY);
+        if (!raw) return DEFAULT_PREFERENCES;
+        const parsed = JSON.parse(raw) as Partial<UserPreferences>;
+        return {
+            dateFormat: parsed.dateFormat ?? DEFAULT_PREFERENCES.dateFormat,
+            timeFormat: parsed.timeFormat ?? DEFAULT_PREFERENCES.timeFormat,
+            timezone: parsed.timezone ?? DEFAULT_PREFERENCES.timezone,
+            numberFormat: parsed.numberFormat ?? DEFAULT_PREFERENCES.numberFormat,
+            itemsPerPage: parsed.itemsPerPage ?? DEFAULT_PREFERENCES.itemsPerPage,
+        };
+    } catch {
+        return DEFAULT_PREFERENCES;
+    }
+}
+
 interface UserPreferencesContextValue {
     preferences: UserPreferences;
     loading: boolean;
@@ -40,7 +60,7 @@ const UserPreferencesContext = createContext<UserPreferencesContextValue>({
 
 export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     const [preferences, setPreferences] =
-        useState<UserPreferences>(DEFAULT_PREFERENCES);
+        useState<UserPreferences>(loadCachedPreferences);
     const [loading, setLoading] = useState(false);
 
     const refresh = useCallback(async () => {
@@ -55,13 +75,15 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
             );
             if (!res.ok) return;
             const data = await res.json();
-            setPreferences({
+            const updated: UserPreferences = {
                 dateFormat: data.dateFormat ?? DEFAULT_PREFERENCES.dateFormat,
                 timeFormat: data.timeFormat ?? DEFAULT_PREFERENCES.timeFormat,
                 timezone: data.timezone ?? DEFAULT_PREFERENCES.timezone,
                 numberFormat: data.numberFormat ?? DEFAULT_PREFERENCES.numberFormat,
                 itemsPerPage: data.itemsPerPage ?? DEFAULT_PREFERENCES.itemsPerPage,
-            });
+            };
+            setPreferences(updated);
+            try { localStorage.setItem(PREFS_CACHE_KEY, JSON.stringify(updated)); } catch { /* ignore */ }
         } catch {
             // silently fall back to defaults
         } finally {

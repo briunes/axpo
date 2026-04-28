@@ -5,7 +5,7 @@ import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { AuthService } from "@/application/services/authService";
 import { prisma } from "@/infrastructure/database/prisma";
 
@@ -22,7 +22,8 @@ const createUserSchema = z.object({
     .string()
     .min(12)
     .max(128)
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/),
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/)
+    .optional(),
   pin: z.string().regex(/^\d+$/).optional(),
 });
 
@@ -119,7 +120,7 @@ const createUserSchema = z.object({
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN]);
+  await assertPermission(auth, "users.view");
 
   const sp = request.nextUrl.searchParams;
   const page = Math.max(1, parseInt(sp.get("page") || "1", 10));
@@ -248,7 +249,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN]);
+  await assertPermission(auth, "users.create");
 
   const body = await request.json();
   const payload = createUserSchema.parse(body);

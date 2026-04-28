@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/application/middleware/auth";
-import { UserRole } from "@/domain/types";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
 
 /**
@@ -53,7 +52,7 @@ export async function POST(
   try {
     // Verify authentication
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+    await assertPermission(auth, "section.simulations");
 
     const { id } = await params;
     const body = await request.json();
@@ -98,8 +97,11 @@ export async function POST(
         @media print {
           *  { box-sizing: border-box; }
           body { margin: 0; padding: 0; }
-          /* Only prevent breaks inside small leaf elements — not large containers */
+          /* Prevent page breaks inside key layout containers and leaf elements */
           table, figure, img,
+          .asim-comparison,
+          .asim-plan-card, .asim-plan-body,
+          .asim-data-section,
           .asim-period-grid, .asim-period-item,
           .asim-cost-breakdown, .asim-cost-item,
           .asim-total-section, .asim-savings-badge,

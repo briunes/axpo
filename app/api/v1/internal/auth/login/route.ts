@@ -62,6 +62,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   const body = await request.json();
   const payload = loginSchema.parse(body);
+  
+  payload.email = payload.email.toLowerCase();
 
   const result = await AuthService.loginWithEmailAndPassword(
     payload.email,

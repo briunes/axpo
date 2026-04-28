@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   cloneSimulation,
   applySimulationOcrPrefill,
@@ -14,11 +15,14 @@ import {
   updateSimulation,
   validateCups,
   calculateSimulation,
+  bulkDeleteSimulations,
+  bulkArchiveSimulations,
   type CupsValidationResult,
   type SimulationItem,
 } from "../../lib/internalApi";
 import type { SimulationPayload, SimulationResults } from "@/domain/types";
 import type { SessionState } from "../../lib/authSession";
+import { keepPreviousData } from "@tanstack/react-query";
 
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "N/A";
@@ -95,6 +99,8 @@ export interface SimulationsActions {
   handleOcrPrefill: (sim: SimulationItem) => Promise<void>;
   handlePdfDownload: (sim: SimulationItem) => Promise<void>;
   handleArchive: (sim: SimulationItem) => Promise<void>;
+  handleBulkDelete: (ids: string[]) => Promise<void>;
+  handleBulkArchive: (ids: string[]) => Promise<void>;
   handleSaveAndCalculate: (
     simId: string,
     payload: SimulationPayload,
@@ -111,8 +117,7 @@ export function useSimulations(
   session: SessionState | null,
   initialPageSize = 25,
 ): SimulationsActions {
-  const [simulations, setSimulations] = useState<SimulationItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
@@ -120,7 +125,6 @@ export function useSimulations(
   // pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
-  const [total, setTotal] = useState(0);
   // sync pageSize when user preferences load
   useEffect(() => {
     setPageSize(initialPageSize);
@@ -179,6 +183,42 @@ export function useSimulations(
     setSuccessText(null);
   };
 
+  // ── TanStack Query ──────────────────────────────────────────────────────
+  const queryParams = {
+    page,
+    pageSize,
+    orderBy: sortColumn,
+    sortDir,
+    includeDeleted: showArchived || undefined,
+    search: appliedSearch || undefined,
+    ownerUserId: appliedOwnerUserId || undefined,
+    clientId: appliedClientId || undefined,
+    cups: appliedCups || undefined,
+    status: appliedStatus || undefined,
+  };
+
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: ["simulations", session?.token ?? "", queryParams],
+    queryFn: () => listSimulations(session!.token, queryParams),
+    enabled: !!session,
+    placeholderData: keepPreviousData,
+  });
+
+  const simulations = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const loading = isFetching;
+
+  const invalidate = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["simulations", session?.token ?? ""],
+    });
+  }, [queryClient, session?.token]);
+
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+  // ────────────────────────────────────────────────────────────────────────
+
   const runAction = async (id: string, fn: () => Promise<void>) => {
     try {
       setBusyAction(id);
@@ -190,54 +230,6 @@ export function useSimulations(
       setBusyAction(null);
     }
   };
-
-  const refresh = useCallback(
-    async (
-      overrides?: import("../../lib/internalApi").ListSimulationsParams,
-    ) => {
-      if (!session) return;
-      setLoading(true);
-      try {
-        const params = {
-          page,
-          pageSize,
-          orderBy: sortColumn,
-          sortDir,
-          includeDeleted: showArchived || undefined,
-          search: appliedSearch || undefined,
-          ownerUserId: appliedOwnerUserId || undefined,
-          clientId: appliedClientId || undefined,
-          cups: appliedCups || undefined,
-          status: appliedStatus || undefined,
-          ...overrides,
-        };
-        const result = await listSimulations(session.token, params);
-        setSimulations(result.items);
-        setTotal(result.total);
-      } catch (error) {
-        setErrorText(
-          error instanceof Error
-            ? error.message
-            : "Could not load simulations.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [
-      session,
-      page,
-      pageSize,
-      sortColumn,
-      sortDir,
-      showArchived,
-      appliedSearch,
-      appliedOwnerUserId,
-      appliedClientId,
-      appliedCups,
-      appliedStatus,
-    ],
-  );
 
   const applyFilters = useCallback(() => {
     setAppliedSearch(filterSearch);
@@ -296,7 +288,7 @@ export function useSimulations(
         ...(clientId && { clientId }),
         payloadJson: { clientName, cups, offerType, source: "internal-ui" },
       });
-      await refresh();
+      await invalidate();
       setSuccessText("Simulation created as draft.");
     });
   };
@@ -333,7 +325,7 @@ export function useSimulations(
         expiresAt,
         payloadJson: parsedPayload,
       });
-      await refresh();
+      await invalidate();
       setSuccessText("Simulation updated.");
       setSelectedSimulationId(null);
     });
@@ -342,7 +334,7 @@ export function useSimulations(
   const handleShare = async (sim: SimulationItem): Promise<SimulationItem> => {
     if (!session) throw new Error("No session.");
     const shared = await shareSimulation(session.token, sim.id);
-    await refresh();
+    await invalidate();
     setSuccessText(
       shared.publicToken
         ? `Shared. Token: ${shared.publicToken.slice(0, 14)}...`
@@ -355,7 +347,7 @@ export function useSimulations(
     await runAction(`clone-${sim.id}`, async () => {
       if (!session) return;
       await cloneSimulation(session.token, sim.id);
-      await refresh();
+      await invalidate();
       setSuccessText("Simulation cloned.");
     });
   };
@@ -364,7 +356,7 @@ export function useSimulations(
     await runAction(`rotate-sim-pin-${sim.id}`, async () => {
       if (!session) return;
       await rotateSimulationPinSnapshot(session.token, sim.id);
-      await refresh();
+      await invalidate();
       setSuccessText("PIN snapshot refreshed.");
     });
   };
@@ -376,7 +368,7 @@ export function useSimulations(
         ocrClientName: sim.ownerUser?.fullName ?? "AXPO OCR",
         ocrValidation: "manual-sample",
       });
-      await refresh();
+      await invalidate();
       setSuccessText("OCR prefill version created.");
     });
   };
@@ -393,8 +385,30 @@ export function useSimulations(
     await runAction(`delete-${sim.id}`, async () => {
       if (!session) return;
       await softDeleteSimulation(session.token, sim.id);
-      await refresh();
+      await invalidate();
       setSuccessText("Simulation archived.");
+    });
+  };
+
+  const handleBulkDelete = async (ids: string[]) => {
+    await runAction("bulk-delete", async () => {
+      if (!session) return;
+      const result = await bulkDeleteSimulations(session.token, ids);
+      await invalidate();
+      setSuccessText(
+        `Deleted ${result.succeeded} of ${result.total} simulation(s).`,
+      );
+    });
+  };
+
+  const handleBulkArchive = async (ids: string[]) => {
+    await runAction("bulk-archive", async () => {
+      if (!session) return;
+      const result = await bulkArchiveSimulations(session.token, ids);
+      await invalidate();
+      setSuccessText(
+        `Archived ${result.succeeded} of ${result.total} simulation(s).`,
+      );
     });
   };
 
@@ -409,8 +423,8 @@ export function useSimulations(
     });
     // Run calculation
     const calcResult = await calculateSimulation(session.token, simId);
-    // Refresh list so payloadJson is up to date
-    await refresh();
+    // Invalidate so list shows latest payloadJson
+    await invalidate();
     // Update calcSim with fresh data so the panel can show latest payload
     setCalcSim((prev) =>
       prev?.id === simId
@@ -489,6 +503,8 @@ export function useSimulations(
     handleOcrPrefill,
     handlePdfDownload,
     handleArchive,
+    handleBulkDelete,
+    handleBulkArchive,
     handleSaveAndCalculate,
     calcSim,
     openCalcPanel,

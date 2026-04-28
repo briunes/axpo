@@ -170,6 +170,14 @@ export const translations = {
       deleteTitle: "Delete simulation",
       deleteConfirm:
         "Are you sure you want to delete simulation {id}? This action cannot be undone.",
+      bulkDeleteTitle: "Delete simulations",
+      bulkDeleteConfirm:
+        "Are you sure you want to permanently delete {count} simulation(s)? This action cannot be undone.",
+      bulkDeleteConfirmLabel: "Delete all",
+      bulkArchiveTitle: "Archive simulations",
+      bulkArchiveConfirm:
+        "Are you sure you want to archive {count} simulation(s)? They will be hidden but not deleted.",
+      bulkArchiveConfirmLabel: "Archive all",
       expiresLabel: "Expires: {date}",
     },
     usersModule: {
@@ -193,6 +201,9 @@ export const translations = {
       deleteTitle: "Delete user",
       deleteConfirm:
         "Are you sure you want to delete {name}? This action will delete the user.",
+      bulkDeleteTitle: "Delete users",
+      bulkDeleteConfirm:
+        "Delete {count} selected user{count, plural, one {} other {s}}? This action cannot be undone.",
     },
     agenciesModule: {
       subtitle: "Create and manage agencies.",
@@ -205,6 +216,9 @@ export const translations = {
       deleteTitle: "Delete agency",
       deleteConfirm:
         "Are you sure you want to delete {name}? This action will deactivate the agency.",
+      bulkDeleteTitle: "Delete agencies",
+      bulkDeleteConfirm:
+        "Delete {count} selected agenc{count, plural, one {y} other {ies}}? This action cannot be undone.",
     },
     clientsModule: {
       subtitle: "Manage company clients linked to simulations.",
@@ -217,6 +231,9 @@ export const translations = {
       deleteTitle: "Delete client",
       deleteConfirm:
         "Are you sure you want to delete {name}? This action cannot be undone.",
+      bulkDeleteTitle: "Delete clients",
+      bulkDeleteConfirm:
+        "Delete {count} selected client(s)? This cannot be undone.",
     },
     auditLogsModule: {
       subtitle: "Track all system events and user actions.",
@@ -925,6 +942,28 @@ export const translations = {
       omieSpotLabel: "OMIE spot price (€/kWh) per period",
       omieSpotHint:
         "Estimated OMIE spot price — only relevant for indexed products",
+      // Personalizada Index section
+      sectionPersonalizadaIndex: "Personalizada Index (custom)",
+      personalizadaIndexDescription:
+        "Custom indexed offer — fills the 'Personalizada Index' result row. Fill the energy margin (€/MWh) and optionally power margin (€/kW/year) per period. Leave all at 0 to omit this row from results.",
+      personalizadaIndexMargenEnergiaLabel: "Energy margin (€/MWh) per period",
+      personalizadaIndexMargenEnergiaHint:
+        "Custom energy margin added on top of OMIE spot price — €/MWh (Margen Venta Energía)",
+      personalizadaIndexMargenPotenciaLabel:
+        "Power margin (€/kW/year) per period",
+      personalizadaIndexMargenPotenciaHint:
+        "Custom power margin — €/kW/year (Margen Venta Potencia)",
+      // Personalizada OMIE + B section
+      sectionPersonalizadaOmieB: "Personalizada OMIE + B (custom)",
+      personalizadaOmieBDescription:
+        "Custom OMIE + B offer — fills the 'Personalizada OMIE + B' result row. Fill the B term (€/MWh) per period. Leave all at 0 to omit this row from results.",
+      personalizadaOmieBTerminoBLabel: "B term (€/MWh) per period",
+      personalizadaOmieBTerminoBHint:
+        "Custom B term added on top of OMIE spot price — €/MWh (Término Bi Oferta Personalizada)",
+      personalizadaOmieBMargenPotenciaLabel:
+        "Power margin (€/kW/year) per period",
+      personalizadaOmieBMargenPotenciaHint:
+        "Custom power margin — €/kW/year (Margen Venta Potencia)",
       // Form progress
       formCompletion:
         "Form completion: {completed} of {total} required sections",
@@ -1082,6 +1121,9 @@ export const translations = {
       fieldElectricityTaxRate: "Electricity Tax Rate",
       fieldElectricityTaxRateDesc:
         "Electricity tax rate as decimal (e.g., 0.051127 for 5.1127%)",
+      fieldHydrocarbonTaxRate: "Hydrocarbon Tax Rate (Gas)",
+      fieldHydrocarbonTaxRateDesc:
+        "Hydrocarbon tax rate for gas in €/kWh (e.g., 0.00234 for €0.00234/kWh)",
       fieldDateFormat: "Date Format",
       fieldDateFormatDesc: "Default format for displaying dates",
       fieldTimeFormat: "Time Format",
@@ -1577,6 +1619,14 @@ export const translations = {
       deleteTitle: "Eliminar simulación",
       deleteConfirm:
         "¿Está seguro de que desea eliminar la simulación {id}? Esta acción no se puede deshacer.",
+      bulkDeleteTitle: "Eliminar simulaciones",
+      bulkDeleteConfirm:
+        "¿Está seguro de que desea eliminar permanentemente {count} simulación(es)? Esta acción no se puede deshacer.",
+      bulkDeleteConfirmLabel: "Eliminar todas",
+      bulkArchiveTitle: "Archivar simulaciones",
+      bulkArchiveConfirm:
+        "¿Está seguro de que desea archivar {count} simulación(es)? Se ocultarán pero no se eliminarán.",
+      bulkArchiveConfirmLabel: "Archivar todas",
       expiresLabel: "Expira: {date}",
     },
     usersModule: {
@@ -1600,6 +1650,9 @@ export const translations = {
       deleteTitle: "Eliminar usuario",
       deleteConfirm:
         "¿Está seguro de que desea eliminar a {name}? Esta acción desactivará al usuario.",
+      bulkDeleteTitle: "Eliminar usuarios",
+      bulkDeleteConfirm:
+        "¿Eliminar {count} usuario(s) seleccionado(s)? Esta acción no se puede deshacer.",
     },
     agenciesModule: {
       subtitle: "Crear y gestionar agencias.",
@@ -1612,6 +1665,9 @@ export const translations = {
       deleteTitle: "Eliminar agencia",
       deleteConfirm:
         "¿Está seguro de que desea eliminar {name}? Esta acción desactivará la agencia.",
+      bulkDeleteTitle: "Eliminar agencias",
+      bulkDeleteConfirm:
+        "¿Eliminar {count} agencia(s) seleccionada(s)? Esta acción no se puede deshacer.",
     },
     clientsModule: {
       subtitle: "Gestiona clientes vinculados a simulaciones.",
@@ -1624,6 +1680,9 @@ export const translations = {
       deleteTitle: "Eliminar cliente",
       deleteConfirm:
         "¿Estás seguro de que quieres eliminar {name}? Esta acción no se puede deshacer.",
+      bulkDeleteTitle: "Eliminar clientes",
+      bulkDeleteConfirm:
+        "¿Eliminar {count} cliente(s) seleccionado(s)? Esta acción no se puede deshacer.",
     },
     auditLogsModule: {
       subtitle: "Registra todos los eventos del sistema y acciones de usuario.",
@@ -2344,6 +2403,29 @@ export const translations = {
       omieSpotLabel: "Precio spot OMIE (€/kWh) por período",
       omieSpotHint:
         "Precio spot OMIE estimado — solo relevante para productos indexados",
+      // Sección Personalizada Index
+      sectionPersonalizadaIndex: "Personalizada Index (personalizada)",
+      personalizadaIndexDescription:
+        "Oferta indexada personalizada — genera la fila 'Personalizada Index' en los resultados. Rellena el margen de energía (€/MWh) y opcionalmente el margen de potencia (€/kW/año) por período. Deja todo en 0 para no incluir esta fila.",
+      personalizadaIndexMargenEnergiaLabel:
+        "Margen energía (€/MWh) por período",
+      personalizadaIndexMargenEnergiaHint:
+        "Margen de venta de energía sobre precio OMIE — €/MWh (Margen Venta Energía)",
+      personalizadaIndexMargenPotenciaLabel:
+        "Margen potencia (€/kW/año) por período",
+      personalizadaIndexMargenPotenciaHint:
+        "Margen de venta de potencia — €/kW/año (Margen Venta Potencia)",
+      // Sección Personalizada OMIE + B
+      sectionPersonalizadaOmieB: "Personalizada OMIE + B (personalizada)",
+      personalizadaOmieBDescription:
+        "Oferta OMIE + B personalizada — genera la fila 'Personalizada OMIE + B' en los resultados. Rellena el término B (€/MWh) por período. Deja todo en 0 para no incluir esta fila.",
+      personalizadaOmieBTerminoBLabel: "Término B (€/MWh) por período",
+      personalizadaOmieBTerminoBHint:
+        "Término Bi Oferta Personalizada sobre precio OMIE — €/MWh",
+      personalizadaOmieBMargenPotenciaLabel:
+        "Margen potencia (€/kW/año) por período",
+      personalizadaOmieBMargenPotenciaHint:
+        "Margen de venta de potencia — €/kW/año (Margen Venta Potencia)",
       // Form progress
       formCompletion: "Completado: {completed} de {total} secciones requeridas",
       allPeriodsFilled: "Todos los períodos deben estar completados",
@@ -2504,6 +2586,9 @@ export const translations = {
       fieldElectricityTaxRate: "Tasa Impuesto Electricidad",
       fieldElectricityTaxRateDesc:
         "Tasa del impuesto eléctrico como decimal (ej. 0.051127 para 5.1127%)",
+      fieldHydrocarbonTaxRate: "Tasa Impuesto Hidrocarburos (Gas)",
+      fieldHydrocarbonTaxRateDesc:
+        "Tasa del impuesto de hidrocarburos para gas en €/kWh (ej. 0.00234 para €0,00234/kWh)",
       fieldDateFormat: "Formato de Fecha",
       fieldDateFormatDesc: "Formato predeterminado para mostrar fechas",
       fieldTimeFormat: "Formato de Hora",

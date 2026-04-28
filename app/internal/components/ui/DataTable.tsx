@@ -1,7 +1,7 @@
 "use client";
 
 import { DataGrid, type GridColDef, type GridSortModel } from "@mui/x-data-grid";
-import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl } from "@mui/material";
+import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl, Checkbox, Button, Tooltip, useTheme, Collapse } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import { useEffect, useMemo, useState } from "react";
@@ -30,6 +30,13 @@ export interface PaginationState {
   onPageSizeChange: (size: number) => void;
 }
 
+export interface MassAction {
+  label: string;
+  icon?: React.ReactNode;
+  onClick: (selectedIds: string[]) => void;
+  color?: "inherit" | "primary" | "secondary" | "error" | "info" | "success" | "warning";
+}
+
 export interface DataTableProps<T extends { id: string }> {
   columns: ColumnDef<T>[];
   rows: T[];
@@ -54,6 +61,7 @@ export interface DataTableProps<T extends { id: string }> {
   footerLeft?: React.ReactNode;
   emptyMessage?: string;
   t?: (namespace: any, key: string) => string;
+  massActions?: MassAction[];
 }
 
 const BASE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -79,8 +87,44 @@ export function DataTable<T extends { id: string }>({
   footerLeft,
   emptyMessage = "No records found.",
   t,
+  massActions,
 }: DataTableProps<T>) {
   const { preferences } = useUserPreferences();
+  const theme = useTheme()
+  // Row selection state (only active when massActions provided)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const hasMassActions = Boolean(massActions && massActions.length > 0);
+
+  const visibleRowIds = useMemo(
+    () => (loading ? [] : rows.map((r) => r.id)),
+    [loading, rows]
+  );
+
+  const allSelected =
+    visibleRowIds.length > 0 && visibleRowIds.every((id) => selectedIds.has(id));
+  const someSelected = visibleRowIds.some((id) => selectedIds.has(id));
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(visibleRowIds));
+    }
+  };
+
+  const toggleRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  // Clear selection when rows change (e.g. page change)
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [rows]);
 
   // Build page size options, ensuring the user's preferred size is always included
   const PAGE_SIZE_OPTIONS = useMemo(() => {
@@ -93,7 +137,38 @@ export function DataTable<T extends { id: string }>({
 
   // Convert custom ColumnDef to MUI GridColDef
   const muiColumns: GridColDef<T>[] = useMemo(() => {
-    const cols: GridColDef<T>[] = columns.map((col) => ({
+    const cols: GridColDef<T>[] = [];
+
+    // Checkbox column
+    if (hasMassActions) {
+      cols.push({
+        field: "__select",
+        headerName: "",
+        sortable: false,
+        width: 52,
+        renderHeader: () => (
+          <Checkbox
+            size="small"
+            checked={allSelected}
+            indeterminate={!allSelected && someSelected}
+            onChange={toggleSelectAll}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ),
+        renderCell: (params: import("@mui/x-data-grid").GridRenderCellParams<T>) => {
+          return (
+            <Checkbox
+              size="small"
+              checked={selectedIds.has(params.row.id)}
+              onChange={() => toggleRow(params.row.id)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          );
+        },
+      } as GridColDef<T>);
+    }
+
+    cols.push(...columns.map((col): GridColDef<T> => ({
       field: col.key,
       headerName: col.label.toUpperCase(),
       sortable: col.sortable ?? false,
@@ -106,7 +181,7 @@ export function DataTable<T extends { id: string }>({
         }
         return col.renderCell(params.row);
       },
-    }));
+    })));
 
     // Add actions column if rowActions provided
     if (rowActions) {
@@ -131,7 +206,7 @@ export function DataTable<T extends { id: string }>({
     }
 
     return cols;
-  }, [columns, rowActions, loading]);
+  }, [columns, rowActions, loading, hasMassActions, allSelected, someSelected, selectedIds, toggleSelectAll, toggleRow]);
 
   // Create skeleton rows when loading
   const skeletonRows = useMemo(() => {
@@ -223,7 +298,47 @@ export function DataTable<T extends { id: string }>({
 
       {/* Error */}
       {error && <div className="dt-error-banner">{error}</div>}
-
+      <Collapse in={hasMassActions && someSelected}>
+        {/* Mass-actions bar */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            px: 2,
+            py: 1,
+            backgroundColor: 'primary.50',
+            borderBottom: '1px solid',
+            borderColor: 'primary.100',
+          }}
+        >
+          <span style={{ fontSize: 14, color: 'inherit', marginRight: 8 }}>
+            {selectedIds.size} selected
+          </span>
+          {massActions?.map((action) => (
+            <Tooltip key={action.label} title={action.label}>
+              <Button
+                size="small"
+                variant="outlined"
+                color={action.color ?? 'primary'}
+                startIcon={action.icon}
+                onClick={() => action.onClick(Array.from(selectedIds))}
+              >
+                {action.label}
+              </Button>
+            </Tooltip>
+          ))}
+          <Button
+            size="small"
+            variant="text"
+            color="inherit"
+            sx={{ ml: 'auto' }}
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Clear selection
+          </Button>
+        </Box>
+      </Collapse>
       {/* MUI DataGrid */}
       <Box sx={{ height: 600, width: '100%' }}>
         <DataGrid
@@ -242,6 +357,9 @@ export function DataTable<T extends { id: string }>({
           disableRowSelectionOnClick
           disableColumnMenu
           hideFooter
+          getRowClassName={(params) =>
+            hasMassActions && selectedIds.has(params.row.id) ? 'dt-row-selected' : ''
+          }
           sx={{
             border: '0px solid rgba(0, 0, 0, 0.12)',
             borderRadius: '8px',
@@ -261,6 +379,12 @@ export function DataTable<T extends { id: string }>({
               borderBottom: '0px solid rgba(0, 0, 0, 0.08)',
               '&:last-child': {
                 borderBottom: 'none',
+              },
+              '&.dt-row-selected': {
+                backgroundColor: theme.palette.primary.main + "20",
+              },
+              '&.dt-row-selected:hover': {
+                backgroundColor: theme.palette.primary.main + "30",
               },
             },
             '& .MuiDataGrid-columnHeaders': {

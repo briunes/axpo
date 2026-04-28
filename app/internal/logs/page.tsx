@@ -5,12 +5,13 @@ import { loadSession } from "../lib/authSession";
 import { useAuditLogs } from "../components/hooks/useAuditLogs";
 import { SystemLogsModule } from "../components/modules";
 import { useAlerts } from "../components/shared";
-import { useActionButtons } from "../components/InternalWorkspace";
+import { useActionButtons, useRegisterRefresh } from "../components/InternalWorkspace";
 
 export default function LogsPage() {
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const auditLogsActions = useAuditLogs(session);
+    useRegisterRefresh(() => auditLogsActions.refresh());
     const onActionButtons = useActionButtons();
 
     const handleNotify = (text: string, tone: "success" | "error") => {

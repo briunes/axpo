@@ -106,6 +106,7 @@ export interface ListAgenciesResponse {
 export interface ClientItem {
   id: string;
   agencyId: string;
+  agency?: { id: string; name: string } | null;
   name: string;
   cif?: string | null;
   contactName?: string | null;
@@ -139,6 +140,7 @@ export interface ListClientsParams {
   orderBy?: string;
   sortDir?: "asc" | "desc";
   includeDeleted?: boolean;
+  agencyId?: string;
 }
 
 export interface ListClientsResponse {
@@ -317,7 +319,7 @@ interface CreateUserInput {
   commercialPhone: string;
   commercialEmail: string;
   otherDetails?: string;
-  password: string;
+  password?: string;
 }
 
 interface CreateAgencyInput {
@@ -778,6 +780,50 @@ export async function softDeleteSimulation(
   );
 }
 
+export interface BulkActionResult {
+  id: string;
+  success: boolean;
+  error?: string;
+}
+
+export interface BulkActionResponse {
+  results: BulkActionResult[];
+  total: number;
+  succeeded: number;
+}
+
+export async function bulkDeleteSimulations(
+  token: string,
+  ids: string[],
+): Promise<BulkActionResponse> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulations/bulk`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+    body: JSON.stringify({ ids }),
+  });
+
+  return parseApiResponse<BulkActionResponse>(
+    response,
+    "Bulk delete simulations failed",
+  );
+}
+
+export async function bulkArchiveSimulations(
+  token: string,
+  ids: string[],
+): Promise<BulkActionResponse> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulations/bulk`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ ids }),
+  });
+
+  return parseApiResponse<BulkActionResponse>(
+    response,
+    "Bulk archive simulations failed",
+  );
+}
+
 export interface CupsLookupEntry {
   cups: string;
   nombreTitular: string;
@@ -1049,6 +1095,7 @@ export async function listClients(
   if (params?.orderBy) qs.set("orderBy", params.orderBy);
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
   if (params?.includeDeleted) qs.set("includeDeleted", "true");
+  if (params?.agencyId) qs.set("agencyId", params.agencyId);
   const url = `${baseUrl}/api/v1/internal/clients${qs.toString() ? `?${qs}` : ""}`;
   const response = await fetch(url, {
     method: "GET",

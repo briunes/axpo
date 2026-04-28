@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Axpo Simulation – Formula Guide</title>
+  <style>
+    :root {
+      --axpo-red: #e2001a;
+      --axpo-dark: #1a1a2e;
+      --axpo-mid: #16213e;
+      --axpo-blue: #0f3460;
+      --axpo-accent: #e94560;
+      --card-bg: #ffffff;
+      --text: #1a1a2e;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --purple: #8b5cf6;
+      --teal: #06b6d4;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8f9fb;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--axpo-dark) 0%, var(--axpo-blue) 100%);
+      color: white;
+      padding: 48px 40px 40px;
+    }
+    header .badge {
+      display: inline-block;
+      background: var(--axpo-red);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+    header h1 { font-size: 36px; font-weight: 800; margin-bottom: 8px; }
+    header p { font-size: 16px; opacity: 0.75; max-width: 620px; }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--axpo-dark);
+      margin: 48px 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 .icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    h3 { font-size: 16px; font-weight: 600; color: var(--axpo-dark); margin-bottom: 8px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+    @media(max-width: 700px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    /* ── Flow diagram ── */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      margin: 24px 0;
+    }
+    .flow-box {
+      background: var(--card-bg);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      text-align: center;
+      min-width: 130px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .flow-box.input  { border-color: var(--teal);   background: #ecfeff; }
+    .flow-box.db     { border-color: var(--purple);  background: #f5f3ff; }
+    .flow-box.calc   { border-color: var(--yellow);  background: #fffbeb; }
+    .flow-box.output { border-color: var(--green);   background: #ecfdf5; }
+    .flow-box.excel  { border-color: var(--axpo-red); background: #fff1f2; }
+    .flow-box small  { display: block; font-weight: 400; color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .arrow {
+      font-size: 24px; color: var(--muted); padding: 0 8px; user-select: none;
+    }
+
+    /* ── Bill waterfall chart ── */
+    .waterfall {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      height: 220px;
+      padding: 0 8px;
+      margin: 24px 0 8px;
+    }
+    .wf-bar-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      min-width: 70px;
+    }
+    .wf-bar {
+      width: 100%;
+      border-radius: 6px 6px 0 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+      padding-bottom: 6px;
+      transition: opacity .2s;
+    }
+    .wf-label {
+      font-size: 11px;
+      text-align: center;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.3;
+    }
+    .wf-bar.pot   { background: var(--purple); }
+    .wf-bar.ener  { background: var(--teal); }
+    .wf-bar.exce  { background: var(--yellow); }
+    .wf-bar.ie    { background: var(--axpo-red); }
+    .wf-bar.iva   { background: #f97316; }
+    .wf-bar.alq   { background: var(--muted); }
+    .wf-bar.total { background: var(--green); }
+
+    /* ── Key-map table ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead tr { background: var(--axpo-dark); color: white; }
+    thead th { padding: 10px 14px; text-align: left; font-weight: 600; }
+    tbody tr:nth-child(even) { background: #f9fafb; }
+    tbody tr:hover { background: #f0f4ff; }
+    td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    td code {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 12px;
+      font-family: 'SF Mono', Consolas, monospace;
+      color: var(--axpo-blue);
+    }
+    td.formula code {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      color: #c2410c;
+    }
+
+    /* ── Period grid ── */
+    .period-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin: 16px 0;
+    }
+    .period-cell {
+      border-radius: 8px;
+      padding: 12px 8px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .period-cell small {
+      display: block;
+      font-weight: 400;
+      font-size: 11px;
+      opacity: .8;
+      margin-top: 2px;
+    }
+    .period-cell.active { color: white; }
+    .period-cell.inactive { background: #f1f5f9; color: #9ca3af; border: 2px dashed #d1d5db; }
+
+    /* ── Product type pills ── */
+    .pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    .pill.fixed   { background: #dbeafe; color: #1d4ed8; }
+    .pill.index   { background: #d1fae5; color: #065f46; }
+    .pill.custom  { background: #ede9fe; color: #5b21b6; }
+
+    /* ── Formula box ── */
+    .formula-block {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 10px;
+      padding: 20px 24px;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 13px;
+      line-height: 2;
+      overflow-x: auto;
+    }
+    .formula-block .comment { color: #64748b; }
+    .formula-block .var     { color: #7dd3fc; }
+    .formula-block .op      { color: #f472b6; }
+    .formula-block .num     { color: #fbbf24; }
+    .formula-block .fn      { color: #a78bfa; }
+
+    /* ── Side-by-side compare ── */
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin: 16px 0;
+    }
+    .compare-col { padding: 20px; }
+    .compare-col.excel { background: #fff1f2; border-right: 1px solid var(--border); }
+    .compare-col.app   { background: #f0fdf4; }
+    .compare-col h4    { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+    .compare-col.excel h4 { color: #b91c1c; }
+    .compare-col.app h4   { color: #065f46; }
+    .compare-col code  {
+      display: block;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.9;
+      white-space: pre-wrap;
+    }
+
+    @media(max-width: 600px) {
+      .compare { grid-template-columns: 1fr; }
+      .compare-col.excel { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+
+    /* ── Callout ── */
+    .callout {
+      border-left: 4px solid;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    .callout.info  { border-color: var(--teal);   background: #ecfeff; }
+    .callout.warn  { border-color: var(--yellow);  background: #fffbeb; }
+    .callout.tip   { border-color: var(--green);   background: #ecfdf5; }
+    .callout strong { display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .8px; }
+
+    /* ── Key-price diagram ── */
+    .key-diagram {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      background: #f8faff;
+      border: 1px solid #c7d2fe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 14px;
+      margin: 16px 0;
+    }
+    .key-segment {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 700;
+      color: white;
+    }
+    .key-sep { padding: 0 6px; color: var(--muted); font-weight: 700; font-size: 18px; }
+    .ks1 { background: #3b82f6; }
+    .ks2 { background: #8b5cf6; }
+    .ks3 { background: #f59e0b; }
+    .ks4 { background: var(--axpo-red); }
+    .ks5 { background: var(--teal); }
+    .ks6 { background: var(--green); }
+    .ks7 { background: #6b7280; }
+    .key-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .key-legend span {
+      font-size: 12px;
+      font-family: sans-serif;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .key-legend .dot {
+      width: 10px; height: 10px; border-radius: 3px; display: inline-block;
+    }
+
+    footer {
+      text-align: center;
+      padding: 32px;
+      color: var(--muted);
+      font-size: 12px;
+      border-top: 1px solid var(--border);
+      margin-top: 60px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Internal Reference</div>
+  <h1>⚡ Simulation Formula Guide</h1>
+  <p>How values flow from the Excel workbook (sim_open.xlsm) through the app's calculation engine to produce a final electricity bill estimate.</p>
+</header>
+
+<main>
+
+  <!-- ═══════════════════════════════════════════════ 1. OVERVIEW ══ -->
+  <h2><span class="icon" style="background:#ecfeff">🗺️</span> 1. End-to-End Flow</h2>
+  <div class="card">
+    <div class="flow">
+      <div class="flow-box excel">📋 Agent inputs<small>SimulationForm.tsx</small></div>
+      <div class="arrow">→</div>
+      <div class="flow-box input">📡 API call<small>/api/v1/simulate</small></div>
+      <div class="arrow">→</div>
+      <div class="flow-box db">🗄️ Price DB<small>base_values table</small></div>
+      <div class="arrow">→</div>
+      <div class="flow-box calc">⚙️ calculationService<small>.ts</small></div>
+      <div class="arrow">→</div>
+      <div class="flow-box output">📊 ProductResult[]<small>per product</small></div>
+    </div>
+    <div class="callout info">
+      <strong>📌 Excel equivalent</strong>
+      The Excel file <em>sim_open.xlsm</em> does the exact same thing: user enters data in
+      <strong>PETICION DATOS LUZ</strong> → prices come from sheet <strong>"." (BASE DE DATOS)</strong>
+      → <strong>COMPARATIVA LUZ</strong> computes and displays results.
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ 2. INPUT FIELDS ══ -->
+  <h2><span class="icon" style="background:#fff1f2">📋</span> 2. Input Fields: Excel → App</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Excel Cell<br><small style="font-weight:400;opacity:.7">PETICION DATOS LUZ</small></th>
+          <th>What it stores</th>
+          <th>App field<br><small style="font-weight:400;opacity:.7">ElectricityInputs</small></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>E8</code></td><td>Access tariff (2.0TD / 3.0TD / 6.1TD)</td><td><code>tarifaAcceso</code></td></tr>
+        <tr><td><code>E11</code></td><td>Geography (Peninsula / Baleares / Canarias)</td><td><code>geografia</code></td></tr>
+        <tr><td><code>E14</code></td><td>Client name</td><td><code>clientName</code></td></tr>
+        <tr><td><code>E25</code></td><td>Billing days in period</td><td><code>periodo.dias</code></td></tr>
+        <tr><td><code>E28–E33</code></td><td>Contracted power P1–P6 (kW)</td><td><code>potenciaContratada.P1–P6</code></td></tr>
+        <tr><td><code>E39–E44</code></td><td>Monthly energy P1–P6 (kWh)</td><td><code>consumo.P1–P6</code></td></tr>
+        <tr><td><code>E35 + E47</code></td><td>Excess power charge (€) — pass-through from real invoice</td><td><code>excesoPotencia</code></td></tr>
+        <tr><td><code>E48</code></td><td>Meter rental / alquiler equipo medida (€)</td><td><code>extras.alquilerEquipoMedida</code></td></tr>
+        <tr><td><code>E49</code></td><td>Other charges / IMP RDL (€)</td><td><code>extras.otrosCargos</code></td></tr>
+        <tr><td><code>E50</code></td><td>IVA rate (default 0.21 = 21%)</td><td><code>extras.ivaTasa</code></td></tr>
+        <tr><td><code>E51</code></td><td>Impuesto Eléctrico rate (default 0.0511269 = 5.11%)</td><td><code>extras.impuestoElectricoTasa</code></td></tr>
+        <tr><td><code>E53</code></td><td>Client's current bill total (€) — used to compute <em>ahorro</em></td><td><code>facturaActual</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ 3. PERIOD RULES ══ -->
+  <h2><span class="icon" style="background:#f5f3ff">📅</span> 3. Period Rules by Tariff</h2>
+  <div class="card">
+    <p style="margin-bottom:16px;color:var(--muted);font-size:14px">
+      Not all 6 periods are active for every tariff. The Excel annotates this as
+      <em>"*2.0 solo P1 y P2"</em> and <em>"*2.0 solo P1, P2 y P3"</em>.
+      The app mirrors this with <code>ENERGY_PERIODS</code> and <code>POWER_PERIODS</code> maps.
+    </p>
+
+    <h3 style="margin-bottom:12px">🔌 Energy consumption periods</h3>
+    <div style="margin-bottom:8px;font-size:12px;color:var(--muted)">2.0TD — 3 active energy periods</div>
+    <div class="period-grid">
+      <div class="period-cell active" style="background:#06b6d4">P1<small>Peak</small></div>
+      <div class="period-cell active" style="background:#0891b2">P2<small>Mid</small></div>
+      <div class="period-cell active" style="background:#0e7490">P3<small>Off-peak</small></div>
+      <div class="period-cell inactive">P4</div>
+      <div class="period-cell inactive">P5</div>
+      <div class="period-cell inactive">P6</div>
+    </div>
+    <div style="margin-bottom:8px;font-size:12px;color:var(--muted)">3.0TD / 6.1TD — all 6 energy periods</div>
+    <div class="period-grid">
+      <div class="period-cell active" style="background:#8b5cf6">P1</div>
+      <div class="period-cell active" style="background:#7c3aed">P2</div>
+      <div class="period-cell active" style="background:#6d28d9">P3</div>
+      <div class="period-cell active" style="background:#5b21b6">P4</div>
+      <div class="period-cell active" style="background:#4c1d95">P5</div>
+      <div class="period-cell active" style="background:#3b0764">P6</div>
+    </div>
+
+    <h3 style="margin-top:20px;margin-bottom:12px">⚡ Power (contracted) periods</h3>
+    <div style="margin-bottom:8px;font-size:12px;color:var(--muted)">2.0TD — only 2 power periods</div>
+    <div class="period-grid">
+      <div class="period-cell active" style="background:#f59e0b">P1</div>
+      <div class="period-cell active" style="background:#d97706">P2</div>
+      <div class="period-cell inactive">P3</div>
+      <div class="period-cell inactive">P4</div>
+      <div class="period-cell inactive">P5</div>
+      <div class="period-cell inactive">P6</div>
+    </div>
+    <div style="margin-bottom:8px;font-size:12px;color:var(--muted)">3.0TD / 6.1TD — all 6 power periods</div>
+    <div class="period-grid">
+      <div class="period-cell active" style="background:#10b981">P1</div>
+      <div class="period-cell active" style="background:#059669">P2</div>
+      <div class="period-cell active" style="background:#047857">P3</div>
+      <div class="period-cell active" style="background:#065f46">P4</div>
+      <div class="period-cell active" style="background:#064e3b">P5</div>
+      <div class="period-cell active" style="background:#022c22">P6</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ 4. BILL FORMULA ══ -->
+  <h2><span class="icon" style="background:#fffbeb">🧮</span> 4. Bill Calculation Formula</h2>
+  <div class="card">
+    <p style="color:var(--muted);font-size:14px;margin-bottom:20px">
+      Every product type uses the same bill structure. Only how the energy price is determined changes.
+    </p>
+
+    <!-- Waterfall chart -->
+    <h3 style="margin-bottom:4px">Bill component waterfall</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Relative size of each component in a typical 2.0TD residential/SME bill</p>
+    <div class="waterfall">
+      <div class="wf-bar-wrap">
+        <div class="wf-bar pot" style="height:85px">~34%</div>
+        <div class="wf-label">Término<br>Potencia</div>
+      </div>
+      <div class="wf-bar-wrap">
+        <div class="wf-bar ener" style="height:140px">~56%</div>
+        <div class="wf-label">Término<br>Energía</div>
+      </div>
+      <div class="wf-bar-wrap">
+        <div class="wf-bar exce" style="height:5px"></div>
+        <div class="wf-label">Excesos/<br>Reactiva</div>
+      </div>
+      <div class="wf-bar-wrap">
+        <div class="wf-bar ie" style="height:22px">5%</div>
+        <div class="wf-label">Impuesto<br>Eléctrico</div>
+      </div>
+      <div class="wf-bar-wrap">
+        <div class="wf-bar alq" style="height:6px"></div>
+        <div class="wf-label">Alquiler<br>Medida</div>
+      </div>
+      <div class="wf-bar-wrap">
+        <div class="wf-bar iva" style="height:40px">21%</div>
+        <div class="wf-label">IVA<br>21%</div>
+      </div>
+      <div class="wf-bar-wrap">
+        <div class="wf-bar total" style="height:200px">TOTAL</div>
+        <div class="wf-label">Total<br>Factura</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin:8px 0 24px;font-size:12px">
+      <span>🟣 T. Potencia</span>
+      <span>🩵 T. Energía</span>
+      <span>🟡 Excesos</span>
+      <span>🔴 Imp. Eléctrico</span>
+      <span>⬜ Alquiler</span>
+      <span>🟠 IVA</span>
+      <span>🟢 Total</span>
+    </div>
+
+    <!-- Formula block -->
+    <div class="formula-block">
+<span class="comment">// ── Step 1: Power term ──────────────────────────────────────────────</span>
+<span class="var">terminoPotencia</span> <span class="op">=</span> <span class="fn">Σ</span> ( <span class="var">precioP_Pi</span> <span class="op">×</span> <span class="var">kW_Pi</span> <span class="op">×</span> <span class="var">dias</span> <span class="op">/</span> <span class="num">365</span> )   <span class="comment">// for each active power period</span>
+
+<span class="comment">// ── Step 2: Energy term ─────────────────────────────────────────────</span>
+<span class="var">terminoEnergia</span>  <span class="op">=</span> <span class="fn">Σ</span> ( <span class="var">precioE_Pi</span> <span class="op">×</span> <span class="var">kWh_Pi</span> )                  <span class="comment">// for each active energy period</span>
+
+<span class="comment">// ── Step 3: Base imponible (IE base) ────────────────────────────────</span>
+<span class="var">baseImponible</span>   <span class="op">=</span> <span class="var">terminoEnergia</span> <span class="op">+</span> <span class="var">terminoPotencia</span> <span class="op">+</span> <span class="var">excesos</span> <span class="op">+</span> <span class="var">reactiva</span> <span class="op">+</span> <span class="var">otrosCargos</span>
+
+<span class="comment">// ── Step 4: Impuesto Eléctrico ──────────────────────────────────────</span>
+<span class="var">impuestoElectrico</span> <span class="op">=</span> <span class="var">baseImponible</span> <span class="op">×</span> <span class="num">0.0511269</span>               <span class="comment">// 5.11269% — fixed by law</span>
+
+<span class="comment">// ── Step 5: IVA base (alquiler added here, not in IE base) ──────────</span>
+<span class="var">baseIva</span>         <span class="op">=</span> <span class="var">baseImponible</span> <span class="op">+</span> <span class="var">impuestoElectrico</span> <span class="op">+</span> <span class="var">alquilerMedida</span>
+
+<span class="comment">// ── Step 6: IVA ─────────────────────────────────────────────────────</span>
+<span class="var">iva</span>             <span class="op">=</span> <span class="var">baseIva</span> <span class="op">×</span> <span class="num">0.21</span>                                 <span class="comment">// 21% (or override)</span>
+
+<span class="comment">// ── Step 7: Total ───────────────────────────────────────────────────</span>
+<span class="var">total</span>           <span class="op">=</span> <span class="var">baseIva</span> <span class="op">+</span> <span class="var">iva</span>
+
+<span class="comment">// ── Step 8: Savings vs current bill ─────────────────────────────────</span>
+<span class="var">ahorro</span>          <span class="op">=</span> <span class="var">facturaActual</span> <span class="op">-</span> <span class="var">total</span>
+<span class="var">pctAhorro</span>       <span class="op">=</span> ( <span class="var">ahorro</span> <span class="op">/</span> <span class="var">facturaActual</span> ) <span class="op">×</span> <span class="num">100</span>
+    </div>
+
+    <!-- Excel vs App side by side -->
+    <div class="compare">
+      <div class="compare-col excel">
+        <h4>📗 Excel (COMPARATIVA LUZ, col Q)</h4>
+        <code>Q40 = Σ(kW_Pi × I43_Pi) × Q23        ← T.POTENCIA
+Q41 = Σ(kWh_Pi × I48_Pi)             ← T.ENERGIA
+Q42 = Q24                             ← EXCESOS
+Q43 = (Q40+Q41+Q42+Q44) × E51        ← IMPUESTOS (IE)
+Q44 = Q26                             ← OTROS CARGOS
+Q45 = E48                             ← ALQUILER
+Q46 = (Q40+Q41+Q42+Q43+Q44+Q45)×E50  ← IVA
+Q49 = Q40+Q41+Q42+Q43+Q44+Q45+Q46    ← TOTAL</code>
+      </div>
+      <div class="compare-col app">
+        <h4>💻 App (calculationService.ts)</h4>
+        <code>terminoPotencia = Σ price×kW×(dias/365)
+terminoEnergia  = Σ price×kWh
+exceso          = excesoPotencia
+baseImponible   = ener+pot+exce+otros
+impElec         = baseImponible × 0.0511269
+baseIva         = baseImponible+IE+alquiler
+iva             = baseIva × 0.21
+total           = baseIva + iva</code>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <strong>💡 Key insight: alquiler is outside the IE base</strong>
+      Meter rental (<em>alquiler equipo medida</em>) is NOT included in the Impuesto Eléctrico calculation base — it goes directly into the IVA base. This matches the Excel formula exactly (Q45 is added to Q46 but not Q43).
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ 5. PRODUCT TYPES ══ -->
+  <h2><span class="icon" style="background:#ecfdf5">🏷️</span> 5. Product Types & How Energy Price Is Determined</h2>
+  <div class="grid-3">
+
+    <div class="card">
+      <span class="pill fixed">Fixed</span>
+      <h3 style="margin-top:12px">FIJO Products</h3>
+      <p style="font-size:13px;color:var(--muted);margin:8px 0 16px">
+        Estable, Estable Plus, 1P Plus, 1P Plus XL, Estable Talleres, Estable Plus Talleres
+      </p>
+      <div class="formula-block" style="font-size:12px;padding:14px">
+<span class="var">precioE</span> <span class="op">=</span> DB lookup
+<span class="comment">// key: ELEC:FIJO:{PRODUCT}:
+//      {TIER}:{TARIFF}:{P}:ENERGIA</span>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:10px">Price is fixed per period — doesn't change with OMIE market.</p>
+    </div>
+
+    <div class="card">
+      <span class="pill index">Indexed</span>
+      <h3 style="margin-top:12px">INDEX Products</h3>
+      <p style="font-size:13px;color:var(--muted);margin:8px 0 16px">
+        Dinámica, Dinámica Plus, Dinámica Control, Dinámica Control Plus, Dinámica Control Techo
+      </p>
+      <div class="formula-block" style="font-size:12px;padding:14px">
+<span class="var">precioE</span> <span class="op">=</span> <span class="var">OMIE_Pi</span> <span class="op">+</span> <span class="var">margen</span>
+<span class="comment">// OMIE: user-entered estimate
+// margen: from DB lookup
+// key: ELEC:INDEX:{PRODUCT}:
+//      {TIER}:{TARIFF}:{P}:MARGEN</span>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:10px">Energy price tracks the wholesale OMIE market + a fixed margin.</p>
+    </div>
+
+    <div class="card">
+      <span class="pill custom">Custom</span>
+      <h3 style="margin-top:12px">Personalizada Products</h3>
+      <p style="font-size:13px;color:var(--muted);margin:8px 0 16px">
+        Personalizada Index &amp; Personalizada OMIE + B
+      </p>
+      <div class="formula-block" style="font-size:12px;padding:14px">
+<span class="comment">// Personalizada Index:</span>
+<span class="var">precioE</span> <span class="op">=</span> <span class="var">OMIE_Pi</span> <span class="op">+</span> <span class="var">margenEnergia_Pi</span><span class="op">/</span><span class="num">1000</span>
+
+<span class="comment">// Personalizada OMIE+B:</span>
+<span class="var">precioE</span> <span class="op">=</span> <span class="var">OMIE_Pi</span> <span class="op">+</span> <span class="var">terminoB_Pi</span><span class="op">/</span><span class="num">1000</span>
+<span class="comment">// margins entered per-period by agent</span>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:10px">Agent manually enters per-period margins. No DB lookup needed for energy.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ 6. PRICE KEY STRUCTURE ══ -->
+  <h2><span class="icon" style="background:#f5f3ff">🔑</span> 6. Price Lookup Key Structure</h2>
+  <div class="card">
+    <p style="font-size:14px;color:var(--muted);margin-bottom:16px">
+      The Excel uses VLOOKUP into sheet <strong>"."</strong> (BASE DE DATOS) with a concatenated key like
+      <code>TARIFF &amp; MONTH &amp; PRODUCT</code>. The app uses a flat string key stored in the
+      <code>base_values</code> database table.
+    </p>
+
+    <div class="key-diagram">
+      <div class="key-segment ks1">ELEC</div>
+      <div class="key-sep">:</div>
+      <div class="key-segment ks2">FIJO</div>
+      <div class="key-sep">:</div>
+      <div class="key-segment ks3">ESTABLE_PLUS</div>
+      <div class="key-sep">:</div>
+      <div class="key-segment ks4">N1</div>
+      <div class="key-sep">:</div>
+      <div class="key-segment ks5">2.0TD</div>
+      <div class="key-sep">:</div>
+      <div class="key-segment ks6">P1</div>
+      <div class="key-sep">:</div>
+      <div class="key-segment ks7">ENERGIA</div>
+    </div>
+    <div class="key-legend">
+      <span><span class="dot" style="background:#3b82f6"></span>Commodity</span>
+      <span><span class="dot" style="background:#8b5cf6"></span>Pricing type (FIJO / INDEX)</span>
+      <span><span class="dot" style="background:#f59e0b"></span>Product name</span>
+      <span><span class="dot" style="background:#e2001a"></span>Tier (N1 / N2 / N3)</span>
+      <span><span class="dot" style="background:#06b6d4"></span>Access tariff</span>
+      <span><span class="dot" style="background:#10b981"></span>Period</span>
+      <span><span class="dot" style="background:#6b7280"></span>Component (ENERGIA / POTENCIA / MARGEN)</span>
+    </div>
+
+    <table style="margin-top:20px">
+      <thead><tr><th>Component suffix</th><th>Unit</th><th>Used in</th></tr></thead>
+      <tbody>
+        <tr><td><code>ENERGIA</code></td><td>€/kWh</td><td>FIJO products energy price</td></tr>
+        <tr><td><code>POTENCIA</code></td><td>€/kW·año → divided by 365×days</td><td>All products power price</td></tr>
+        <tr><td><code>MARGEN</code></td><td>€/kWh</td><td>INDEX products — added to OMIE</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ 7. SAVINGS ══ -->
+  <h2><span class="icon" style="background:#ecfdf5">💰</span> 7. Savings Calculation</h2>
+  <div class="card">
+    <div class="grid-2">
+      <div>
+        <h3>How ahorro is computed</h3>
+        <div class="formula-block" style="margin-top:12px;font-size:12px">
+<span class="var">ahorro</span>     <span class="op">=</span> <span class="var">facturaActual</span> <span class="op">-</span> <span class="var">total</span>
+<span class="var">pctAhorro</span>  <span class="op">=</span> (<span class="var">ahorro</span> <span class="op">/</span> <span class="var">facturaActual</span>) <span class="op">×</span> <span class="num">100</span>
+<span class="var">ahorroAnual</span> <span class="op">=</span> <span class="var">ahorro</span> <span class="op">×</span> <span class="num">12</span>
+        </div>
+        <div class="callout warn" style="margin-top:12px">
+          <strong>⚠️ Annual savings</strong>
+          <code>ahorroAnual</code> is simply <code>ahorro × 12</code> — it assumes all months are identical. For full-year simulations (365 days) the Excel uses the actual 12-month sum.
+        </div>
+      </div>
+      <div>
+        <h3>Excel equivalent</h3>
+        <div class="formula-block" style="margin-top:12px;font-size:12px">
+<span class="comment">// Q10 = AHORRO ANUAL</span>
+<span class="fn">IF</span>(<span class="var">E25</span><span class="op">=</span><span class="num">365</span>, <span class="var">Q32</span><span class="op">-</span><span class="var">Q49</span>, <span class="var">Q16</span><span class="op">×</span><span class="num">12</span>)
+<span class="comment">// E25 = dias; Q32 = competencia total
+// Q49 = Axpo total; Q16 = monthly saving</span>
+
+<span class="comment">// Q15 = % saving</span>
+<span class="var">Q15</span> <span class="op">=</span> <span class="var">Q16</span> <span class="op">/</span> <span class="var">Q32</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ 8. PERSONALIZADA ══ -->
+  <h2><span class="icon" style="background:#ede9fe">🛠️</span> 8. Personalizada Products — Deep Dive</h2>
+  <div class="card">
+    <p style="font-size:14px;color:var(--muted);margin-bottom:20px">
+      These are fully customisable products where the commercial agent enters per-period margins manually.
+      The Excel has dedicated sheets <strong>PERSONALIZADA INDEX</strong> and <strong>PERSONALIZADA OMIE + B</strong>.
+    </p>
+
+    <div class="grid-2">
+      <div>
+        <h3>Personalizada Index</h3>
+        <p style="font-size:13px;color:var(--muted);margin:8px 0">
+          Agent sets a <em>margen energía</em> (€/MWh) and <em>margen potencia</em> per period.
+        </p>
+        <div class="formula-block" style="font-size:12px">
+<span class="comment">// Energy cost per period:</span>
+<span class="var">e_Pi</span> <span class="op">=</span> (<span class="var">OMIE_Pi</span> <span class="op">+</span> <span class="var">margenE_Pi</span><span class="op">/</span><span class="num">1000</span>) <span class="op">×</span> <span class="var">kWh_Pi</span>
+
+<span class="comment">// Power cost per period:</span>
+<span class="var">p_Pi</span> <span class="op">=</span> (<span class="var">margenPot_Pi</span><span class="op">/</span><span class="num">1000</span>) <span class="op">×</span> <span class="var">kW_Pi</span> <span class="op">×</span> <span class="var">dias</span><span class="op">/</span><span class="num">365</span>
+        </div>
+      </div>
+      <div>
+        <h3>Personalizada OMIE + B</h3>
+        <p style="font-size:13px;color:var(--muted);margin:8px 0">
+          Agent sets a <em>término B</em> (€/MWh) and <em>margen potencia</em> per period.
+        </p>
+        <div class="formula-block" style="font-size:12px">
+<span class="comment">// Energy cost per period:</span>
+<span class="var">e_Pi</span> <span class="op">=</span> (<span class="var">OMIE_Pi</span> <span class="op">+</span> <span class="var">terminoB_Pi</span><span class="op">/</span><span class="num">1000</span>) <span class="op">×</span> <span class="var">kWh_Pi</span>
+
+<span class="comment">// Power cost per period:</span>
+<span class="var">p_Pi</span> <span class="op">=</span> (<span class="var">margenPot_Pi</span><span class="op">/</span><span class="num">1000</span>) <span class="op">×</span> <span class="var">kW_Pi</span> <span class="op">×</span> <span class="var">dias</span><span class="op">/</span><span class="num">365</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout info" style="margin-top:16px">
+      <strong>📐 /1000 conversion</strong>
+      Margins are entered in <strong>€/MWh</strong> (as shown in the Excel sheets) but all calculation
+      is done in <strong>€/kWh</strong>, so they are divided by 1000.
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ 9. QUICK REF ══ -->
+  <h2><span class="icon" style="background:#fff1f2">📖</span> 9. Quick Reference — Code Locations</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>Concept</th><th>File</th><th>Where</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Bill formula (all products)</td>
+          <td><code>calculationService.ts</code></td>
+          <td><code>calcElecFijo()</code> / <code>calcElecIndex()</code></td>
+        </tr>
+        <tr>
+          <td>Personalizada Index calc</td>
+          <td><code>calculationService.ts</code></td>
+          <td><code>calcPersonalizadaIndex()</code></td>
+        </tr>
+        <tr>
+          <td>Personalizada OMIE+B calc</td>
+          <td><code>calculationService.ts</code></td>
+          <td><code>calcPersonalizadaOmieB()</code></td>
+        </tr>
+        <tr>
+          <td>Period maps (ENERGY / POWER)</td>
+          <td><code>calculationService.ts</code></td>
+          <td><code>ENERGY_PERIODS</code> / <code>POWER_PERIODS</code> constants</td>
+        </tr>
+        <tr>
+          <td>Input types</td>
+          <td><code>src/domain/types/simulation.ts</code></td>
+          <td><code>ElectricityInputs</code> interface</td>
+        </tr>
+        <tr>
+          <td>Form UI + state</td>
+          <td><code>app/internal/components/modules/SimulationForm.tsx</code></td>
+          <td><code>ElecFormState</code> + <code>buildElecInputs()</code></td>
+        </tr>
+        <tr>
+          <td>Price keys stored</td>
+          <td>Database</td>
+          <td><code>base_values</code> table — seeded from Excel BASE DE DATOS sheets</td>
+        </tr>
+        <tr>
+          <td>IE rate constant</td>
+          <td><code>calculationService.ts</code></td>
+          <td><code>IMPUESTO_ELECTRICO = 0.0511269</code></td>
+        </tr>
+        <tr>
+          <td>IVA rate constant</td>
+          <td><code>calculationService.ts</code></td>
+          <td><code>IVA_RATE = 0.21</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<footer>
+  Axpo Internal — Simulation Formula Guide · Generated April 2026
+</footer>
+
+</body>
+</html>

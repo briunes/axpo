@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Box, Tabs, Tab } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { SmtpSettings } from "./SmtpSettings";
@@ -24,19 +25,23 @@ export function IntegrationsSettings({ session, onNotify }: IntegrationsSettings
         llm: t("configurationsModule", "tabLlmSettings"),
     };
 
+    const tabIndex = (Object.keys(INTEGRATION_TABS) as IntegrationTab[]).indexOf(activeTab);
+
     return (
         <div className="system-settings-container">
-            <div className="system-settings-tabs">
-                {(Object.keys(INTEGRATION_TABS) as IntegrationTab[]).map((tab) => (
-                    <button
-                        key={tab}
-                        className={`settings-subtab${activeTab === tab ? " active" : ""}`}
-                        onClick={() => setActiveTab(tab)}
-                    >
-                        {INTEGRATION_TABS[tab]}
-                    </button>
-                ))}
-            </div>
+            <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+                <Tabs
+                    value={tabIndex}
+                    onChange={(_, newValue) => {
+                        const tabs = Object.keys(INTEGRATION_TABS) as IntegrationTab[];
+                        setActiveTab(tabs[newValue]);
+                    }}
+                >
+                    {(Object.keys(INTEGRATION_TABS) as IntegrationTab[]).map((tab) => (
+                        <Tab key={tab} label={INTEGRATION_TABS[tab]} sx={{textTransform: 'none'}}/>
+                    ))}
+                </Tabs>
+            </Box>
 
             <div className="system-settings-content">
                 {activeTab === "smtp" && (

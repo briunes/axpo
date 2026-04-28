@@ -37,8 +37,6 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
         commercialPhone: "",
         commercialEmail: "",
         otherDetails: "",
-        password: "",
-        currentPassword: "",
     });
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
 
@@ -64,8 +62,6 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                     commercialPhone: foundUser.commercialPhone || "",
                     commercialEmail: foundUser.commercialEmail || "",
                     otherDetails: foundUser.otherDetails || "",
-                    password: "",
-                    currentPassword: "",
                     role: foundUser.role,
                     agencyId: foundUser.agencyId,
                     isActive: foundUser.isActive,
@@ -111,8 +107,6 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
             commercialPhone: formData.commercialPhone,
             commercialEmail: formData.commercialEmail,
             otherDetails: formData.otherDetails,
-            password: formData.password || "",
-            currentPassword: formData.currentPassword || "",
             role: formData.role,
             agencyId: formData.agencyId,
             isActive: formData.isActive,

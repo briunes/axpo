@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Box, Tabs, Tab } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { PdfTemplatesNew } from "./PdfTemplatesNew";
@@ -22,19 +23,23 @@ export function TemplatesCommunications({ session, onNotify }: TemplatesCommunic
         email: t("configurationsModule", "tabEmailTemplates"),
     };
 
+    const tabIndex = (Object.keys(TEMPLATE_TABS) as TemplateTab[]).indexOf(activeTab);
+
     return (
         <div className="system-settings-container">
-            <div className="system-settings-tabs">
-                {(Object.keys(TEMPLATE_TABS) as TemplateTab[]).map((tab) => (
-                    <button
-                        key={tab}
-                        className={`settings-subtab${activeTab === tab ? " active" : ""}`}
-                        onClick={() => setActiveTab(tab)}
-                    >
-                        {TEMPLATE_TABS[tab]}
-                    </button>
-                ))}
-            </div>
+            <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+                <Tabs
+                    value={tabIndex}
+                    onChange={(_, newValue) => {
+                        const tabs = Object.keys(TEMPLATE_TABS) as TemplateTab[];
+                        setActiveTab(tabs[newValue]);
+                    }}
+                >
+                    {(Object.keys(TEMPLATE_TABS) as TemplateTab[]).map((tab) => (
+                        <Tab key={tab} label={TEMPLATE_TABS[tab]} sx={{textTransform: 'none'}} />
+                    ))}
+                </Tabs>
+            </Box>
 
             <div className="system-settings-content">
                 {activeTab === "pdf" && (

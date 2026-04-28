@@ -4,7 +4,7 @@ import { UserRole, SimulationStatus } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 
@@ -115,7 +115,7 @@ const createSimulationSchema = z.object({
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+  await assertPermission(auth, "section.simulations");
 
   const sp = request.nextUrl.searchParams;
   const page = parseInt(sp.get("page") || "1", 10);
@@ -237,7 +237,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+  await assertPermission(auth, "simulations.create");
 
   const body = await request.json();
   const payload = createSimulationSchema.parse(body);

@@ -5,7 +5,7 @@ import { AlreadyExistsError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 
 const createAgencySchema = z.object({
@@ -245,7 +245,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN]);
+  await assertPermission(auth, "agencies.create");
 
   const body = await request.json();
   const payload = createAgencySchema.parse(body);

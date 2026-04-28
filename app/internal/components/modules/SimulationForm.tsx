@@ -69,6 +69,12 @@ interface ElecFormState {
     potencia: PeriodMap;
     exceso: number;
     omie: PeriodMap;
+    // Personalizada Index
+    personalizadaIndexMargenEnergia: PeriodMap;
+    personalizadaIndexMargenPotencia: PeriodMap;
+    // Personalizada OMIE + B
+    personalizadaOmieBTerminoB: PeriodMap;
+    personalizadaOmieBMargenPotencia: PeriodMap;
     facturaActual: number;
     reactiva: number;
     alquiler: number;
@@ -140,6 +146,10 @@ function defaultElecState(): ElecFormState {
         potencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
         exceso: 0,
         omie: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+        personalizadaIndexMargenEnergia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+        personalizadaIndexMargenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+        personalizadaOmieBTerminoB: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+        personalizadaOmieBMargenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
         facturaActual: 0,
         reactiva: 0,
         alquiler: 0,
@@ -194,6 +204,14 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
         excesoPotencia: s.exceso,
         consumo: s.consumo as ElectricityInputs["consumo"],
         omieEstimado: s.omie,
+        personalizadaIndex: {
+            margenEnergia: s.personalizadaIndexMargenEnergia,
+            margenPotencia: s.personalizadaIndexMargenPotencia,
+        },
+        personalizadaOmieB: {
+            terminoB: s.personalizadaOmieBTerminoB,
+            margenPotencia: s.personalizadaOmieBMargenPotencia,
+        },
         periodo: { fechaInicio: s.fechaInicio, fechaFin: s.fechaFin, dias },
         facturaActual: s.facturaActual,
         extras: {
@@ -300,6 +318,10 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
             potencia,
             exceso: 0,
             omie: emptyPeriods(ep),
+            personalizadaIndexMargenEnergia: emptyPeriods(ep),
+            personalizadaIndexMargenPotencia: emptyPeriods(ep),
+            personalizadaOmieBTerminoB: emptyPeriods(ep),
+            personalizadaOmieBMargenPotencia: emptyPeriods(ep),
             facturaActual: invoiceData.facturaActual ?? 0,
             reactiva: invoiceData.reactiva ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
@@ -333,6 +355,10 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
         potencia: Object.fromEntries(pp.map((p) => [p, potMap[p] ?? 0])),
         exceso: typeof e.excesoPotencia === "number" ? e.excesoPotencia : 0,
         omie: Object.fromEntries(ep.map((p) => [p, omieMap[p] ?? 0])),
+        personalizadaIndexMargenEnergia: Object.fromEntries(ep.map((p) => [p, ((e.personalizadaIndex?.margenEnergia ?? {}) as Record<string, number>)[p] ?? 0])),
+        personalizadaIndexMargenPotencia: Object.fromEntries(pp.map((p) => [p, ((e.personalizadaIndex?.margenPotencia ?? {}) as Record<string, number>)[p] ?? 0])),
+        personalizadaOmieBTerminoB: Object.fromEntries(ep.map((p) => [p, ((e.personalizadaOmieB?.terminoB ?? {}) as Record<string, number>)[p] ?? 0])),
+        personalizadaOmieBMargenPotencia: Object.fromEntries(pp.map((p) => [p, ((e.personalizadaOmieB?.margenPotencia ?? {}) as Record<string, number>)[p] ?? 0])),
         facturaActual: e.facturaActual,
         reactiva: e.extras?.reactiva ?? 0,
         alquiler: e.extras?.alquilerEquipoMedida ?? 0,
@@ -594,7 +620,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
 }) {
     const { t } = useI18n();
     const up = <K extends keyof ElecFormState>(k: K, v: ElecFormState[K]) => onChange({ ...state, [k]: v });
-    const upP = (field: "consumo" | "potencia" | "omie") => (p: string, v: number) => up(field, { ...state[field], [p]: v });
+    const upP = (field: "consumo" | "potencia" | "omie" | "personalizadaIndexMargenEnergia" | "personalizadaIndexMargenPotencia" | "personalizadaOmieBTerminoB" | "personalizadaOmieBMargenPotencia") => (p: string, v: number) => up(field, { ...state[field], [p]: v });
     const ep = ELEC_ENERGY_PERIODS[state.tarifaAcceso];
     const pp = ELEC_POWER_PERIODS[state.tarifaAcceso];
     const xp = ELEC_EXCESS_PERIODS[state.tarifaAcceso];
@@ -885,6 +911,24 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                     {t("simulationForm", "omieDescription")}
                 </div>
                 <PeriodGrid label={t("simulationForm", "omieSpotLabel")} periods={ep} values={state.omie} onChange={upP("omie")} step={0.001} hint={t("simulationForm", "omieSpotHint")} />
+            </Sec>
+
+            <Sec title={t("simulationForm", "sectionPersonalizadaIndex")} block collapsible defaultOpen={false} optional>
+                <div style={{ fontSize: 12, color: "var(--scheme-neutral-400)", marginBottom: 12 }}>
+                    {t("simulationForm", "personalizadaIndexDescription")}
+                </div>
+                <PeriodGrid label={t("simulationForm", "personalizadaIndexMargenEnergiaLabel")} periods={ep} values={state.personalizadaIndexMargenEnergia} onChange={upP("personalizadaIndexMargenEnergia")} step={0.1} hint={t("simulationForm", "personalizadaIndexMargenEnergiaHint")} />
+                <div style={{ height: 12 }} />
+                <PeriodGrid label={t("simulationForm", "personalizadaIndexMargenPotenciaLabel")} periods={pp} values={state.personalizadaIndexMargenPotencia} onChange={upP("personalizadaIndexMargenPotencia")} step={0.1} hint={t("simulationForm", "personalizadaIndexMargenPotenciaHint")} />
+            </Sec>
+
+            <Sec title={t("simulationForm", "sectionPersonalizadaOmieB")} block collapsible defaultOpen={false} optional>
+                <div style={{ fontSize: 12, color: "var(--scheme-neutral-400)", marginBottom: 12 }}>
+                    {t("simulationForm", "personalizadaOmieBDescription")}
+                </div>
+                <PeriodGrid label={t("simulationForm", "personalizadaOmieBTerminoBLabel")} periods={ep} values={state.personalizadaOmieBTerminoB} onChange={upP("personalizadaOmieBTerminoB")} step={0.1} hint={t("simulationForm", "personalizadaOmieBTerminoBHint")} />
+                <div style={{ height: 12 }} />
+                <PeriodGrid label={t("simulationForm", "personalizadaOmieBMargenPotenciaLabel")} periods={pp} values={state.personalizadaOmieBMargenPotencia} onChange={upP("personalizadaOmieBMargenPotencia")} step={0.1} hint={t("simulationForm", "personalizadaOmieBMargenPotenciaHint")} />
             </Sec>
         </>
     );
@@ -1208,6 +1252,10 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 otrosCargos: 0,
                 ivaTasa: 21,
                 impuestoElectricoTasa: 5.11269,
+                personalizadaIndexMargenEnergia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+                personalizadaIndexMargenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+                personalizadaOmieBTerminoB: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+                personalizadaOmieBMargenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
             };
             setElecState(testElec);
         }

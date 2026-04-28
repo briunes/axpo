@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import SyncIcon from "@mui/icons-material/Sync";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import BlockIcon from "@mui/icons-material/Block";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
@@ -44,10 +45,12 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     showArchived, setShowArchived,
     handleToggleAgencyStatus,
     handleDeleteAgency,
+    handleBulkDeleteAgencies,
   } = actions;
 
   const [confirmToggle, setConfirmToggle] = useState<AgencyItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AgencyItem | null>(null);
+  const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
   const [dropdownState, setDropdownState] = useState<{
     anchorEl: HTMLElement | null;
     items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }>;
@@ -322,7 +325,30 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
           onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
         }}
         t={t}
+        massActions={[
+          {
+            label: t("actions", "delete"),
+            color: "error",
+            icon: <DeleteOutlineIcon fontSize="small" />,
+            onClick: (ids) => setConfirmBulkDeleteIds(ids),
+          },
+        ]}
       />
+
+      {/* ── Confirm bulk delete ──────────────────────────────────── */}
+      {confirmBulkDeleteIds && (
+        <ConfirmDialog
+          title={t("agenciesModule", "bulkDeleteTitle")}
+          message={t("agenciesModule", "bulkDeleteConfirm", { count: confirmBulkDeleteIds.length })}
+          confirmLabel={t("actions", "delete")}
+          busy={busyAction === "bulk-delete-agencies"}
+          onConfirm={async () => {
+            await handleBulkDeleteAgencies(confirmBulkDeleteIds);
+            setConfirmBulkDeleteIds(null);
+          }}
+          onCancel={() => setConfirmBulkDeleteIds(null)}
+        />
+      )}
 
       {/* ── Confirm toggle ────────────────────────────────────────── */}
       {confirmToggle && (

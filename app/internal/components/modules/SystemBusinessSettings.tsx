@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Box, Tabs, Tab, Button, Stack } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { getSystemConfig, updateSystemConfig } from "../../lib/configApi";
 import { LoadingState } from "../shared/LoadingState";
 import { CronSettings } from "./CronSettings";
+import { FormInput, FormSelect } from "../ui";
 
 export interface SystemBusinessSettingsProps {
     session: SessionState;
@@ -19,6 +21,7 @@ interface BusinessConfig {
     autoCreateClientOnSimulation: boolean;
     ivaRate: number;
     electricityTaxRate: number;
+    hydrocarbonTaxRate: number;
     defaultPdfTemplateGasId: string | null;
     defaultPdfTemplateElectricityId: string | null;
 }
@@ -28,6 +31,7 @@ const DEFAULT_CONFIG: BusinessConfig = {
     autoCreateClientOnSimulation: true,
     ivaRate: 0.21,
     electricityTaxRate: 0.051127,
+    hydrocarbonTaxRate: 0.00234,
     defaultPdfTemplateGasId: null,
     defaultPdfTemplateElectricityId: null,
 };
@@ -74,6 +78,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                 autoCreateClientOnSimulation: data.autoCreateClientOnSim,
                 ivaRate: (data as any).ivaRate || 0.21,
                 electricityTaxRate: (data as any).electricityTaxRate || 0.051127,
+                hydrocarbonTaxRate: (data as any).hydrocarbonTaxRate || 0.00234,
                 defaultPdfTemplateGasId: (data as any).defaultPdfTemplateGasId || null,
                 defaultPdfTemplateElectricityId: (data as any).defaultPdfTemplateElectricityId || null,
             });
@@ -96,6 +101,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                 autoCreateClientOnSim: config.autoCreateClientOnSimulation,
                 ivaRate: config.ivaRate,
                 electricityTaxRate: config.electricityTaxRate,
+                hydrocarbonTaxRate: config.hydrocarbonTaxRate,
                 defaultPdfTemplateGasId: config.defaultPdfTemplateGasId ?? undefined,
                 defaultPdfTemplateElectricityId: config.defaultPdfTemplateElectricityId ?? undefined,
             });
@@ -111,42 +117,45 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
         setIsDirty(false);
     };
 
+    const tabIndex = (Object.keys(BUSINESS_TABS) as BusinessTab[]).indexOf(activeTab);
+
     return (
         <div className="system-settings-container">
             {isLoading ? (
                 <LoadingState message={t("systemSettings", "loading")} />
             ) : (
                 <>
-                    <div className="system-settings-tabs">
-                        {(Object.keys(BUSINESS_TABS) as BusinessTab[]).map((tab) => (
-                            <button
-                                key={tab}
-                                className={`settings-subtab${activeTab === tab ? " active" : ""}`}
-                                onClick={() => setActiveTab(tab)}
-                            >
-                                {BUSINESS_TABS[tab]}
-                            </button>
-                        ))}
-                    </div>
+                    <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+                        <Tabs
+                            value={tabIndex}
+                            onChange={(_, newValue) => {
+                                const tabs = Object.keys(BUSINESS_TABS) as BusinessTab[];
+                                setActiveTab(tabs[newValue]);
+                            }}
+                        >
+                            {(Object.keys(BUSINESS_TABS) as BusinessTab[]).map((tab) => (
+                                <Tab key={tab} label={BUSINESS_TABS[tab]} sx={{textTransform: 'none'}}/>
+                            ))}
+                        </Tabs>
+                    </Box>
 
                     <div className="system-settings-content">
                         {activeTab === "simulation" && (
                             <div className="settings-panel">
                                 <h3 className="settings-panel-title">{t("systemSettings", "titleSimulation")}</h3>
 
-                                <div className="config-field">
-                                    <label className="config-field-label">{t("systemSettings", "fieldExpirationDays")}</label>
-                                    <span className="config-field-description">
-                                        {t("systemSettings", "fieldExpirationDesc")}
-                                    </span>
-                                    <input
+                                <Box sx={{ mb: 3 }}>
+                                    <FormInput
+                                        label={t("systemSettings", "fieldExpirationDays")}
+                                        helperText={t("systemSettings", "fieldExpirationDesc")}
                                         type="number"
-                                        min="1"
-                                        max="365"
+                                        slotProps={{
+                                            htmlInput: { min: 1, max: 365 }
+                                        }}
                                         value={config.simulationExpirationDays}
                                         onChange={(e) => handleChange("simulationExpirationDays", parseInt(e.target.value, 10))}
                                     />
-                                </div>
+                                </Box>
                             </div>
                         )}
 
@@ -154,7 +163,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                             <div className="settings-panel">
                                 <h3 className="settings-panel-title">{t("systemSettings", "titleClients")}</h3>
 
-                                <div className="config-field">
+                                <Box sx={{ mb: 3 }}>
                                     <label className="config-field-inline">
                                         <input
                                             type="checkbox"
@@ -166,7 +175,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                                     <span className="config-field-description" style={{ marginLeft: "32px" }}>
                                         {t("systemSettings", "fieldAutoCreateDesc")}
                                     </span>
-                                </div>
+                                </Box>
                             </div>
                         )}
 
@@ -174,35 +183,40 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                             <div className="settings-panel">
                                 <h3 className="settings-panel-title">{t("systemSettings", "titleCalculation")}</h3>
 
-                                <div className="config-field">
-                                    <label className="config-field-label">{t("systemSettings", "fieldIvaRate")}</label>
-                                    <span className="config-field-description">
-                                        {t("systemSettings", "fieldIvaRateDesc")}
-                                    </span>
-                                    <input
+                                <Stack spacing={3}>
+                                    <FormInput
+                                        label={t("systemSettings", "fieldIvaRate")}
+                                        helperText={t("systemSettings", "fieldIvaRateDesc")}
                                         type="number"
-                                        min="0"
-                                        max="1"
-                                        step="0.01"
+                                        slotProps={{
+                                            htmlInput: { min: 0, max: 1, step: 0.01 }
+                                        }}
                                         value={config.ivaRate}
                                         onChange={(e) => handleChange("ivaRate", parseFloat(e.target.value))}
                                     />
-                                </div>
 
-                                <div className="config-field">
-                                    <label className="config-field-label">{t("systemSettings", "fieldElectricityTaxRate")}</label>
-                                    <span className="config-field-description">
-                                        {t("systemSettings", "fieldElectricityTaxRateDesc")}
-                                    </span>
-                                    <input
+                                    <FormInput
+                                        label={t("systemSettings", "fieldElectricityTaxRate")}
+                                        helperText={t("systemSettings", "fieldElectricityTaxRateDesc")}
                                         type="number"
-                                        min="0"
-                                        max="1"
-                                        step="0.000001"
+                                        slotProps={{
+                                            htmlInput: { min: 0, max: 1, step: 0.000001 }
+                                        }}
                                         value={config.electricityTaxRate}
                                         onChange={(e) => handleChange("electricityTaxRate", parseFloat(e.target.value))}
                                     />
-                                </div>
+
+                                    <FormInput
+                                        label={t("systemSettings", "fieldHydrocarbonTaxRate")}
+                                        helperText={t("systemSettings", "fieldHydrocarbonTaxRateDesc")}
+                                        type="number"
+                                        slotProps={{
+                                            htmlInput: { min: 0, step: 0.000001 }
+                                        }}
+                                        value={config.hydrocarbonTaxRate}
+                                        onChange={(e) => handleChange("hydrocarbonTaxRate", parseFloat(e.target.value))}
+                                    />
+                                </Stack>
                             </div>
                         )}
 
@@ -211,45 +225,39 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                                 <h3 className="settings-panel-title">{t("systemSettings", "titlePdfDefaults")}</h3>
                                 <p className="settings-panel-description">{t("systemSettings", "titlePdfDefaultsDesc")}</p>
 
-                                <div className="config-field">
-                                    <label className="config-field-label">{t("systemSettings", "fieldDefaultPdfGas")}</label>
-                                    <span className="config-field-description">
-                                        {t("systemSettings", "fieldDefaultPdfGasDesc")}
-                                    </span>
-                                    <select
+                                <Stack spacing={3}>
+                                    <FormSelect
+                                        label={t("systemSettings", "fieldDefaultPdfGas")}
+                                        helperText={t("systemSettings", "fieldDefaultPdfGasDesc")}
                                         value={config.defaultPdfTemplateGasId || ""}
-                                        onChange={(e) => handleChange("defaultPdfTemplateGasId", e.target.value || null)}
-                                    >
-                                        <option value="">{t("systemSettings", "noTemplateSelected")}</option>
-                                        {pdfTemplates
-                                            .filter((t) => !t.commodity || t.commodity === "GAS")
-                                            .map((template) => (
-                                                <option key={template.id} value={template.id}>
-                                                    {template.name}
-                                                </option>
-                                            ))}
-                                    </select>
-                                </div>
+                                        onChange={(value) => handleChange("defaultPdfTemplateGasId", value || null)}
+                                        options={[
+                                            { value: "", label: t("systemSettings", "noTemplateSelected") },
+                                            ...pdfTemplates
+                                                .filter((t) => !t.commodity || t.commodity === "GAS")
+                                                .map((template) => ({
+                                                    value: template.id,
+                                                    label: template.name
+                                                }))
+                                        ]}
+                                    />
 
-                                <div className="config-field">
-                                    <label className="config-field-label">{t("systemSettings", "fieldDefaultPdfElectricity")}</label>
-                                    <span className="config-field-description">
-                                        {t("systemSettings", "fieldDefaultPdfElectricityDesc")}
-                                    </span>
-                                    <select
+                                    <FormSelect
+                                        label={t("systemSettings", "fieldDefaultPdfElectricity")}
+                                        helperText={t("systemSettings", "fieldDefaultPdfElectricityDesc")}
                                         value={config.defaultPdfTemplateElectricityId || ""}
-                                        onChange={(e) => handleChange("defaultPdfTemplateElectricityId", e.target.value || null)}
-                                    >
-                                        <option value="">{t("systemSettings", "noTemplateSelected")}</option>
-                                        {pdfTemplates
-                                            .filter((t) => !t.commodity || t.commodity === "ELECTRICITY")
-                                            .map((template) => (
-                                                <option key={template.id} value={template.id}>
-                                                    {template.name}
-                                                </option>
-                                            ))}
-                                    </select>
-                                </div>
+                                        onChange={(value) => handleChange("defaultPdfTemplateElectricityId", value || null)}
+                                        options={[
+                                            { value: "", label: t("systemSettings", "noTemplateSelected") },
+                                            ...pdfTemplates
+                                                .filter((t) => !t.commodity || t.commodity === "ELECTRICITY")
+                                                .map((template) => ({
+                                                    value: template.id,
+                                                    label: template.name
+                                                }))
+                                        ]}
+                                    />
+                                </Stack>
                             </div>
                         )}
 
@@ -258,22 +266,22 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                         )}
 
                         {activeTab !== "cron" && (
-                            <div className="config-actions">
-                                <button
-                                    className="config-btn config-btn-primary"
+                            <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
+                                <Button
+                                    variant="contained"
                                     onClick={handleSave}
                                     disabled={!isDirty}
                                 >
                                     {t("systemSettings", "btnSave")}
-                                </button>
-                                <button
-                                    className="config-btn config-btn-secondary"
+                                </Button>
+                                <Button
+                                    variant="outlined"
                                     onClick={handleReset}
                                     disabled={!isDirty}
                                 >
                                     {t("systemSettings", "btnReset")}
-                                </button>
-                            </div>
+                                </Button>
+                            </Box>
                         )}
                     </div>
                 </>

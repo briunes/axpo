@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, createContext, useContext } from "react";
+import { useCallback, useEffect, useState, createContext, useContext, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Text } from "@once-ui-system/core";
 import { clearSession, loadSession, type SessionState } from "../lib/authSession";
@@ -11,27 +11,8 @@ import {
   type RolePermissionItem,
 } from "../lib/permissionsContext";
 import { ROLE_PERMISSION_DEFAULTS, type PermissionKey } from "../lib/permissionsDefinitions";
-import {
-  useAgencies,
-  useAnalytics,
-  useAuditLogs,
-  useBaseValues,
-  useClients,
-  useSimulations,
-  useUsers,
-} from "./hooks";
 import { TopBar, SectionMenu, SidebarHeader, type AppSection } from "./layout";
 import { useUserPreferences } from "./providers/UserPreferencesProvider";
-import {
-  AgenciesModule,
-  AnalyticsModule,
-  SystemLogsModule,
-  BaseValuesModule,
-  ClientsModule,
-  SimulationsModule,
-  UsersModule,
-  ConfigurationsModule,
-} from "./modules";
 import { ForbiddenState, LoadingState } from "./shared";
 import { Toast, useToast } from "./ui";
 
@@ -42,6 +23,21 @@ const ActionButtonsContext = createContext<((buttons: React.ReactNode) => void) 
 
 export function useActionButtons() {
   return useContext(ActionButtonsContext);
+}
+
+// Context for the TopBar Refresh button — pages register their own refresh fn
+const RefreshContext = createContext<((handler: () => void) => void) | null>(null);
+
+/** Call this inside a page to wire its refresh handler to the TopBar Refresh button. */
+export function useRegisterRefresh(handler: () => void) {
+  const register = useContext(RefreshContext);
+  // Use a ref so changes to handler don't cause re-registration loops
+  const handlerRef = useRef(handler);
+  handlerRef.current = handler;
+  useEffect(() => {
+    if (!register) return;
+    register(() => handlerRef.current());
+  }, [register]);
 }
 
 export function InternalWorkspace({ section, children }: { section: AppSection; children?: React.ReactNode }) {
@@ -98,44 +94,19 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
   };
 
   const { preferences } = useUserPreferences();
-  const itemsPerPage = preferences.itemsPerPage;
 
-  const simulationsActions = useSimulations(session, itemsPerPage);
-  const agenciesActions = useAgencies(session, itemsPerPage);
-  const clientsActions = useClients(session, itemsPerPage);
-  const usersActions = useUsers(session, itemsPerPage);
-  const baseValuesActions = useBaseValues(session);
-  const auditLogsActions = useAuditLogs(session);
-  const analyticsActions = useAnalytics(session);
+  // Pages register their refresh handler via useRegisterRefresh so the TopBar
+  // Refresh button delegates to the currently active page's data hook.
+  const [refreshHandler, setRefreshHandler] = useState<(() => void) | null>(null);
+  const handleRegisterRefresh = useCallback((handler: () => void) => {
+    setRefreshHandler(() => handler);
+  }, []);
 
-  // Preload clients when the simulations section is active (needed for client picker)
-  useEffect(() => {
-    if (session && section === "simulations") {
-      clientsActions.refresh();
-    }
-  }, [session, section]);
   const { messages: toastMessages, dismissToast, showSuccess, showError } = useToast();
-
-  const handleNotify = (text: string, tone: "success" | "error") => {
-    tone === "success" ? showSuccess(text) : showError(text);
-  };
 
   const handleLogout = () => {
     clearSession();
     router.replace("/internal/login");
-  };
-
-  const handleRefresh = () => {
-    switch (section) {
-      case "simulations": simulationsActions.refresh(); break;
-      case "users": usersActions.refresh(); break;
-      case "agencies": agenciesActions.refresh(); break;
-      case "clients": clientsActions.refresh(); break;
-      case "base-values": baseValuesActions.refresh(); break;
-      case "logs": auditLogsActions.refresh(); break;
-      case "analytics": analyticsActions.refresh(); break;
-      case "configurations": /* Configurations don't need refresh */ break;
-    }
   };
 
   const handleNavigate = (target: AppSection) => {
@@ -220,51 +191,6 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
     );
   }
 
-  const renderSection = () => {
-    switch (section) {
-      case "simulations":
-        return (
-          <SimulationsModule
-            session={session}
-            actions={simulationsActions}
-            agencies={agenciesActions.agencies}
-            clients={clientsActions.clients}
-            users={usersActions.users}
-            onNotify={handleNotify}
-            onActionButtons={handleActionButtons}
-          />
-        );
-      case "users":
-        return (
-          <UsersModule
-            session={session}
-            actions={usersActions}
-            agencies={agenciesActions.agencies}
-            onNotify={handleNotify}
-            onActionButtons={handleActionButtons}
-          />
-        );
-      case "agencies":
-        return <AgenciesModule session={session} actions={agenciesActions} onNotify={handleNotify} onActionButtons={handleActionButtons} />;
-      case "clients":
-        return <ClientsModule session={session} actions={clientsActions} onNotify={handleNotify} onActionButtons={handleActionButtons} />;
-      case "base-values":
-        return <BaseValuesModule session={session} actions={baseValuesActions} onNotify={handleNotify} onActionButtons={handleActionButtons} />;
-      case "logs":
-        return <SystemLogsModule session={session} auditLogsActions={auditLogsActions} onNotify={handleNotify} onActionButtons={handleActionButtons} />;
-      case "analytics":
-        return <AnalyticsModule session={session} actions={analyticsActions} onNotify={handleNotify} onActionButtons={handleActionButtons} />;
-      case "configurations":
-        return <ConfigurationsModule session={session} onNotify={handleNotify} />;
-      default:
-        return (
-          <Text variant="body-default-m" onBackground="neutral-weak">
-            Select a section from the navigation menu.
-          </Text>
-        );
-    }
-  };
-
   const permissionsContextValue = {
     canDo,
     loaded: permLoaded,
@@ -273,48 +199,50 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
 
   return (
     <PermissionsContext.Provider value={permissionsContextValue}>
-      <ActionButtonsContext.Provider value={handleActionButtons}>
-        <div className="app-shell">
-          <Toast messages={toastMessages} onDismiss={dismissToast} />
-          {mobileMenuOpen && (
-            <div
-              className="app-sidebar-overlay visible"
-              onClick={() => setMobileMenuOpen(false)}
-              aria-hidden="true"
-            />
-          )}
+      <RefreshContext.Provider value={handleRegisterRefresh}>
+        <ActionButtonsContext.Provider value={handleActionButtons}>
+          <div className="app-shell">
+            <Toast messages={toastMessages} onDismiss={dismissToast} />
+            {mobileMenuOpen && (
+              <div
+                className="app-sidebar-overlay visible"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-hidden="true"
+              />
+            )}
 
-          <aside className={`app-sidebar${collapsed ? " collapsed" : ""}${mobileMenuOpen ? " mobile-open" : ""}`}>
-            <SidebarHeader collapsed={collapsed} onToggle={handleToggle} />
-            <SectionMenu
-              section={section}
-              canSeeUsersSection={canDo(role, "section.users")}
-              canSeeAgenciesSection={canDo(role, "section.agencies")}
-              canSeeClientsSection={canDo(role, "section.clients")}
-              canSeeBaseValuesSection={canDo(role, "section.base-values")}
-              canSeeLogsSection={canDo(role, "section.audit-logs") || canDo(role, "section.email-logs")}
-              canViewAnalytics={canDo(role, "section.analytics")}
-              canSeeConfigurationsSection={canDo(role, "section.configurations")}
-              onNavigate={handleNavigate}
-              onLogout={handleLogout}
-              session={session}
-              collapsed={collapsed}
-            />
-          </aside>
+            <aside className={`app-sidebar${collapsed ? " collapsed" : ""}${mobileMenuOpen ? " mobile-open" : ""}`}>
+              <SidebarHeader collapsed={collapsed} onToggle={handleToggle} />
+              <SectionMenu
+                section={section}
+                canSeeUsersSection={canDo(role, "section.users")}
+                canSeeAgenciesSection={canDo(role, "section.agencies")}
+                canSeeClientsSection={canDo(role, "section.clients")}
+                canSeeBaseValuesSection={canDo(role, "section.base-values")}
+                canSeeLogsSection={canDo(role, "section.audit-logs") || canDo(role, "section.email-logs")}
+                canViewAnalytics={canDo(role, "section.analytics")}
+                canSeeConfigurationsSection={canDo(role, "section.configurations")}
+                onNavigate={handleNavigate}
+                onLogout={handleLogout}
+                session={session}
+                collapsed={collapsed}
+              />
+            </aside>
 
-          <div className="app-main">
-            <TopBar
-              section={section}
-              onRefresh={handleRefresh}
-              onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
-              actionButtons={actionButtons}
-            />
-            <main className="app-content">
-              {children || renderSection()}
-            </main>
+            <div className="app-main">
+              <TopBar
+                section={section}
+                onRefresh={() => refreshHandler?.()}
+                onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
+                actionButtons={actionButtons}
+              />
+              <main className="app-content">
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
-      </ActionButtonsContext.Provider>
+        </ActionButtonsContext.Provider>
+      </RefreshContext.Provider>
     </PermissionsContext.Provider>
   );
 }

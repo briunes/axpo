@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
+import {
   createAgency,
   listAgencies,
   updateAgency,
@@ -48,14 +53,14 @@ export interface AgenciesActions {
   handleUpdateAgency: (e: React.FormEvent) => Promise<void>;
   handleToggleAgencyStatus: (agency: AgencyItem) => Promise<void>;
   handleDeleteAgency: (agency: AgencyItem) => Promise<void>;
+  handleBulkDeleteAgencies: (ids: string[]) => Promise<void>;
 }
 
 export function useAgencies(
   session: SessionState | null,
   initialPageSize = 25,
 ): AgenciesActions {
-  const [agencies, setAgencies] = useState<AgencyItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
@@ -63,7 +68,6 @@ export function useAgencies(
   // pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
-  const [total, setTotal] = useState(0);
   // sync pageSize when user preferences load
   useEffect(() => {
     setPageSize(initialPageSize);
@@ -89,6 +93,38 @@ export function useAgencies(
     setSuccessText(null);
   };
 
+  // ── TanStack Query ──────────────────────────────────────────────────────
+  const queryParams: ListAgenciesParams = {
+    page,
+    pageSize,
+    search: search || undefined,
+    orderBy: sortColumn,
+    sortDir,
+    includeDeleted: showArchived || undefined,
+  };
+
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: ["agencies", session?.token ?? "", queryParams],
+    queryFn: () => listAgencies(session!.token, queryParams),
+    enabled: !!session,
+    placeholderData: keepPreviousData,
+  });
+
+  const agencies = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const loading = isFetching;
+
+  const invalidate = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["agencies", session?.token ?? ""],
+    });
+  }, [queryClient, session?.token]);
+
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+  // ────────────────────────────────────────────────────────────────────────
+
   const runAction = async (id: string, fn: () => Promise<void>) => {
     try {
       setBusyAction(id);
@@ -101,34 +137,6 @@ export function useAgencies(
     }
   };
 
-  const refresh = useCallback(
-    async (overrides?: ListAgenciesParams) => {
-      if (!session) return;
-      setLoading(true);
-      try {
-        const params: ListAgenciesParams = {
-          page,
-          pageSize,
-          search: search || undefined,
-          orderBy: sortColumn,
-          sortDir,
-          includeDeleted: showArchived || undefined,
-          ...overrides,
-        };
-        const result = await listAgencies(session.token, params);
-        setAgencies(result.items);
-        setTotal(result.total);
-      } catch (error) {
-        setErrorText(
-          error instanceof Error ? error.message : "Could not load agencies.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [session, page, pageSize, search, sortColumn, sortDir, showArchived],
-  );
-
   const handleCreateAgency = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session || !newAgencyName.trim()) {
@@ -138,7 +146,7 @@ export function useAgencies(
     await runAction("create-agency", async () => {
       await createAgency(session.token, { name: newAgencyName.trim() });
       setNewAgencyName("");
-      await refresh();
+      await invalidate();
       setSuccessText("Agency created.");
     });
   };
@@ -161,7 +169,7 @@ export function useAgencies(
       await updateAgency(session.token, selectedAgencyId, {
         name: editAgencyName.trim(),
       });
-      await refresh();
+      await invalidate();
       setSuccessText("Agency updated.");
       setSelectedAgencyId(null);
     });
@@ -171,7 +179,7 @@ export function useAgencies(
     await runAction(`toggle-agency-${agency.id}`, async () => {
       if (!session) return;
       await updateAgencyStatus(session.token, agency.id, !agency.isActive);
-      await refresh();
+      await invalidate();
       setSuccessText(
         `Agency ${agency.isActive ? "deactivated" : "activated"}.`,
       );
@@ -182,8 +190,19 @@ export function useAgencies(
     if (!session) return;
     await runAction(`delete-agency-${agency.id}`, async () => {
       await deleteAgency(session.token, agency.id);
-      await refresh();
+      await invalidate();
       setSuccessText("Agency deleted.");
+    });
+  };
+
+  const handleBulkDeleteAgencies = async (ids: string[]): Promise<void> => {
+    await runAction("bulk-delete-agencies", async () => {
+      if (!session) return;
+      await Promise.all(ids.map((id) => deleteAgency(session.token, id)));
+      await invalidate();
+      setSuccessText(
+        `${ids.length} agenc${ids.length !== 1 ? "ies" : "y"} deleted.`,
+      );
     });
   };
 
@@ -218,5 +237,6 @@ export function useAgencies(
     handleUpdateAgency,
     handleToggleAgencyStatus,
     handleDeleteAgency,
+    handleBulkDeleteAgencies,
   };
 }

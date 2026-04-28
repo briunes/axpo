@@ -359,7 +359,7 @@ function parseIndex(rows: SheetData): BaseValueItem[] {
 
         if (v !== null) {
           items.push({
-            key: `ELEC:INDEX:${slug}:${tier}:${tariff}:P${i + 1}:ENERGIA`,
+            key: `ELEC:INDEX:${slug}:${tier}:${tariff}:P${i + 1}:MARGEN`,
             valueNumeric: Math.round(v * 1e10) / 1e10,
             unit: "€/kWh",
           });
@@ -448,7 +448,15 @@ function parseGasFijo(rows: SheetData): BaseValueItem[] {
       }
 
       // RL fixed terms
-      const tariffRl = String(cells["I"] || "").trim();
+      // Note: ESTABLE PLUS uses "RLTB5"/"RLTB6" as aliases for RL05/RL06 in the
+      // terminoDia column; normalise them to the canonical tariff names.
+      const tariffRlRaw = String(cells["I"] || "").trim();
+      const tariffRl =
+        tariffRlRaw === "RLTB5"
+          ? "RL05"
+          : tariffRlRaw === "RLTB6"
+            ? "RL06"
+            : tariffRlRaw;
       if (tariffRl.startsWith("RL") && GAS_TARIFFS.has(tariffRl)) {
         const vDia = safeFloat(cells["J"]);
         const vAnio = safeFloat(cells["K"]);
@@ -576,6 +584,172 @@ function parseGasIndex(rows: SheetData): BaseValueItem[] {
   return items;
 }
 
+// ─── DINAMICA / DINAMICA PLUS individual sheet parsers ──────────────────────
+//
+// Each product sheet (e.g. "DINAMICA N1", "DINAMICA PLUS N2") contains a
+// "PROMEDIO 12 MESES" row with the full all-in 12-month average "Precio TE"
+// per tariff per period (€/MWh).  This value includes:
+//   PMDh (OMIE pool price) + Sobrecostes + ATRe + CMi + CG
+//
+// We store these as the canonical MARGEN key (overwriting the placeholder
+// CG-only values that BASE DE DATOS INDEX stores for DINAMICA products).
+// Column layout in the "Precio TE" section (rows ~44-58 in each sheet):
+//   6.1TD : P1-P6 at 0-indexed cols 6,7,8,9,10,11
+//   3.0TD : P1-P6 at 0-indexed cols 25,26,27,28,29,30
+//   2.0TD : P1-P3 at 0-indexed cols 45,46,47
+
+// Sheet name → [product slug, tier]
+// Sheet names are trimmed before lookup (some have trailing spaces in the workbook).
+const DINAMICA_SHEET_MAP: Record<string, [string, string]> = {
+  "DINAMICA N1": ["DINAMICA", "N1"],
+  "DINAMICA N2": ["DINAMICA", "N2"],
+  "DINAMICA N3": ["DINAMICA", "N3"],
+  "DINAMICA PLUS N1": ["DINAMICA_PLUS", "N1"],
+  "DINAMICA PLUS N2": ["DINAMICA_PLUS", "N2"],
+  "DINAMICA PLUS N3": ["DINAMICA_PLUS", "N3"],
+  "DINAMICA CONTROL N1": ["DINAMICA_CONTROL", "N1"],
+  "DINAMICA CONTROL N2": ["DINAMICA_CONTROL", "N2"],
+  "DINAMICA CONTROL N3": ["DINAMICA_CONTROL", "N3"],
+  "DINAMICA CONTROL PLUS N1": ["DINAMICA_CONTROL_PLUS", "N1"],
+  "DINAMICA CONTROL PLUS N2": ["DINAMICA_CONTROL_PLUS", "N2"],
+  "DINAMICA CONTROL PLUS N3": ["DINAMICA_CONTROL_PLUS", "N3"],
+  "DINAMICA CONTROL TECHO N1": ["DINAMICA_CONTROL_TECHO", "N1"],
+  "DINAMICA CONTROL TECHO N2": ["DINAMICA_CONTROL_TECHO", "N2"],
+  "DINAMICA CONTROL TECHO N3": ["DINAMICA_CONTROL_TECHO", "N3"],
+};
+
+// Per-tariff column positions (0-indexed) for the Precio TE average values.
+// Layout confirmed from DINAMICA N1 sheet analysis.
+const PRECIO_TE_COLS: Array<{
+  tariff: string;
+  periods: string[];
+  cols: number[];
+}> = [
+  {
+    tariff: "6.1TD",
+    periods: ["P1", "P2", "P3", "P4", "P5", "P6"],
+    cols: [6, 7, 8, 9, 10, 11],
+  },
+  {
+    tariff: "3.0TD",
+    periods: ["P1", "P2", "P3", "P4", "P5", "P6"],
+    cols: [25, 26, 27, 28, 29, 30],
+  },
+  { tariff: "2.0TD", periods: ["P1", "P2", "P3"], cols: [45, 46, 47] },
+];
+
+// Spanish month name → zero-padded month number
+const SPANISH_MONTH_MAP: Record<string, string> = {
+  ENERO: "01",
+  FEBRERO: "02",
+  MARZO: "03",
+  ABRIL: "04",
+  MAYO: "05",
+  JUNIO: "06",
+  JULIO: "07",
+  AGOSTO: "08",
+  SEPTIEMBRE: "09",
+  OCTUBRE: "10",
+  NOVIEMBRE: "11",
+  DICIEMBRE: "12",
+};
+
+/**
+ * Parse a Spanish month-year label like "ENERO-26" or "MARZO-26" into an
+ * ISO year-month string like "2026-01" / "2026-03".
+ */
+function parseSpanishMonthYear(s: string): string | null {
+  const m = s
+    .trim()
+    .toUpperCase()
+    .match(/^([A-ZÁÉÍÓÚ]+)-(\d{2})$/);
+  if (!m) return null;
+  const month = SPANISH_MONTH_MAP[m[1]];
+  if (!month) return null;
+  const year = 2000 + parseInt(m[2], 10);
+  return `${year}-${month}`;
+}
+
+/**
+ * Parse a DINAMICA / DINAMICA PLUS product sheet.
+ *
+ * The "Precio TE" section (rows ~45-58) contains:
+ *   - One row per billing month (label like "ENERO-26") with the actual
+ *     all-in energy price (PMDh + ATRe + CMi + Sobrecostes + CG) in €/MWh.
+ *   - A "PROMEDIO 12 MESES" summary row with the 12-month average.
+ *
+ * We store:
+ *   - Per-month keys:  ELEC:INDEX:<product>:<tier>:<tariff>:<P>:MARGEN:YYYY-MM
+ *     (used by the calculation to match the simulation's billing month exactly,
+ *      which is what the Excel simulator does)
+ *   - PROMEDIO key:    ELEC:INDEX:<product>:<tier>:<tariff>:<P>:MARGEN
+ *     (used as a fallback when no month-specific key is available)
+ */
+function parseDinamicaSheet(
+  sheet: XLSX.WorkSheet,
+  product: string,
+  tier: string,
+): BaseValueItem[] {
+  const items: BaseValueItem[] = [];
+  const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
+
+  // The "Precio TE" section starts after the header row that has "Precio TE" at
+  // col 4.  Each subsequent row either holds a month ("ENERO-26" etc.) or is the
+  // PROMEDIO summary row.  We stop after the PROMEDIO row.
+  let inSection = false;
+
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    const labelCell = sheet[XLSX.utils.encode_cell({ r: R, c: 4 })];
+    const labelRaw = labelCell?.v != null ? String(labelCell.v).trim() : "";
+    const labelUp = labelRaw.toUpperCase();
+
+    // Detect the header that begins the Precio TE section
+    if (!inSection) {
+      if (labelUp.startsWith("PRECIO TE")) {
+        inSection = true;
+      }
+      continue;
+    }
+
+    // Determine row type
+    const isPromedio = labelUp.includes("PROMEDIO");
+    const monthKey = isPromedio ? null : parseSpanishMonthYear(labelRaw);
+
+    // Skip rows that are neither a month row nor the PROMEDIO row
+    if (!isPromedio && monthKey === null) continue;
+
+    // Extract prices for each tariff × period using the known column layout
+    for (const { tariff, periods, cols } of PRECIO_TE_COLS) {
+      for (let i = 0; i < periods.length; i++) {
+        const cell = sheet[XLSX.utils.encode_cell({ r: R, c: cols[i] })];
+        if (!cell || cell.v === undefined || cell.v === null) continue;
+        const v = safeFloat(cell.v);
+        if (v === null || v <= 0) continue;
+        // €/MWh → €/kWh
+        const numVal = Math.round((v / 1000) * 1e10) / 1e10;
+        const baseKey = `ELEC:INDEX:${product}:${tier}:${tariff}:${periods[i]}:MARGEN`;
+
+        if (isPromedio) {
+          // 12-month average — stored as the un-suffixed fallback key
+          items.push({ key: baseKey, valueNumeric: numVal, unit: "€/kWh" });
+        } else {
+          // Month-specific price — stored with YYYY-MM suffix
+          items.push({
+            key: `${baseKey}:${monthKey}`,
+            valueNumeric: numVal,
+            unit: "€/kWh",
+          });
+        }
+      }
+    }
+
+    // Stop scanning after the PROMEDIO row
+    if (isPromedio) break;
+  }
+
+  return items;
+}
+
 // ─── Main Parser ─────────────────────────────────────────────────────────────
 
 export function parseAxpoExcel(
@@ -600,6 +774,24 @@ export function parseAxpoExcel(
     const rows = worksheetToRows(sheet);
     const indexItems = parseIndex(rows);
     allItems.push(...indexItems);
+  }
+
+  // Parse individual DINAMICA / DINAMICA PLUS / DINAMICA CONTROL product sheets.
+  // These store the full 12-month average "Precio TE" per period and OVERRIDE
+  // the placeholder CG-only values that BASE DE DATOS INDEX has for these products.
+  // Sheet names are trimmed before lookup to handle trailing spaces in the workbook.
+  const trimmedSheetNames = new Map(
+    workbook.SheetNames.map((n) => [n.trim(), n]),
+  );
+  for (const [sheetName, [product, tier]] of Object.entries(
+    DINAMICA_SHEET_MAP,
+  )) {
+    const actualSheetName = trimmedSheetNames.get(sheetName);
+    if (actualSheetName) {
+      const sheet = workbook.Sheets[actualSheetName];
+      const dinamicaItems = parseDinamicaSheet(sheet, product, tier);
+      allItems.push(...dinamicaItems);
+    }
   }
 
   // Parse GAS FIJO sheet (note: sheet name is "PRECIOS FIJOS GAS" in actual files)

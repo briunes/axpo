@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
-import { UserRole } from "@/domain/types";
+import { assertPermission } from "@/application/middleware/rbac";
 
 /**
  * @swagger
@@ -33,7 +32,7 @@ import { UserRole } from "@/domain/types";
  */
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
-  assertRole(auth, [UserRole.ADMIN]);
+  await assertPermission(auth, "section.configurations");
 
   const body = await req.json();
   const { provider, apiKey, baseUrl, modelName } = body;

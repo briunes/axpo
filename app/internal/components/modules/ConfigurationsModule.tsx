@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Box, Tabs, Tab } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { TemplatesCommunications } from "./TemplatesCommunications";
@@ -27,21 +28,28 @@ export function ConfigurationsModule({ session, onNotify }: ConfigurationsModule
         "integrations": t("configurationsModule", "tabIntegrations"),
     };
 
+    const tabIndex = (Object.keys(TAB_LABELS) as ConfigTab[]).indexOf(activeTab);
+
     return (
         <div className="configurations-container">
-
-            <div className="configurations-tabs">
-                {(Object.keys(TAB_LABELS) as ConfigTab[]).map((tab) => (
-                    <button
-                        key={tab}
-                        className={`config-tab${activeTab === tab ? " active" : ""}`}
-                        onClick={() => setActiveTab(tab)}
-                        data-testid={`config-tab-${tab}`}
-                    >
-                        {TAB_LABELS[tab]}
-                    </button>
-                ))}
-            </div>
+            <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+                <Tabs
+                    value={tabIndex}
+                    onChange={(_, newValue) => {
+                        const tabs = Object.keys(TAB_LABELS) as ConfigTab[];
+                        setActiveTab(tabs[newValue]);
+                    }}
+                >
+                    {(Object.keys(TAB_LABELS) as ConfigTab[]).map((tab) => (
+                        <Tab
+                            key={tab}
+                            label={TAB_LABELS[tab]}
+                            data-testid={`config-tab-${tab}`}
+                            sx={{textTransform: 'none'}}
+                        />
+                    ))}
+                </Tabs>
+            </Box>
 
             <div className="configurations-content">
                 {activeTab === "templates-communications" && (

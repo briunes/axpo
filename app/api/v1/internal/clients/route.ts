@@ -4,7 +4,7 @@ import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 
@@ -130,7 +130,7 @@ const createClientSchema = z.object({
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.AGENT]);
+  await assertPermission(auth, "clients.view");
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
@@ -142,6 +142,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const includeDeleted =
     searchParams.get("includeDeleted") === "true" &&
     auth.role === UserRole.ADMIN;
+  const agencyIdFilter =
+    auth.role === UserRole.ADMIN
+      ? (searchParams.get("agencyId") ?? undefined)
+      : undefined;
   const orderBy = searchParams.get("orderBy") ?? "name";
   const sortDir =
     (searchParams.get("sortDir") ?? "asc") === "asc" ? "asc" : "desc";
@@ -155,9 +159,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const baseWhere =
     auth.role === UserRole.ADMIN
-      ? includeDeleted
-        ? {}
-        : { isDeleted: false }
+      ? {
+          ...(includeDeleted ? {} : { isDeleted: false }),
+          ...(agencyIdFilter ? { agencyId: agencyIdFilter } : {}),
+        }
       : { agencyId: auth.agencyId, isDeleted: false };
 
   const where = search
@@ -178,6 +183,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: {
+        agency: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         createdByUser: {
           select: {
             id: true,
@@ -202,7 +213,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.AGENT]);
+  await assertPermission(auth, "clients.create");
 
   const body = await request.json();
   const payload = createClientSchema.parse(body);

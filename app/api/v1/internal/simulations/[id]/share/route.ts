@@ -1,10 +1,9 @@
 import { NextRequest } from "next/server";
-import { UserRole } from "@/domain/types";
 import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { SimulationService } from "@/application/services/simulationService";
 
 /**
@@ -17,9 +16,12 @@ import { SimulationService } from "@/application/services/simulationService";
  *       - bearerAuth: []
  */
 export const POST = withErrorHandler(
-  async (request: NextRequest, context?: { params?: Record<string, string> }) => {
+  async (
+    request: NextRequest,
+    context?: { params?: Record<string, string> },
+  ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+    await assertPermission(auth, "simulations.share");
 
     const id = context?.params?.id;
     if (!id) {
@@ -28,5 +30,5 @@ export const POST = withErrorHandler(
 
     const shared = await SimulationService.shareSimulation(auth, id);
     return ResponseHandler.ok(shared, 200);
-  }
+  },
 );

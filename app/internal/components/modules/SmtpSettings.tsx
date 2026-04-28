@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Box, Button, Stack } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { getSystemConfig, updateSystemConfig, testSmtpConnection, type SmtpTestResult } from "../../lib/configApi";
 import { LoadingState } from "../shared/LoadingState";
+import { FormInput } from "../ui";
 
 export interface SmtpSettingsProps {
     session: SessionState;
@@ -120,143 +122,121 @@ export function SmtpSettings({ session, onNotify }: SmtpSettingsProps) {
                     <div className="settings-panel">
                         <h3 className="settings-panel-title">{t("systemSettings", "titleSmtp")}</h3>
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("systemSettings", "fieldSmtpHost")}</label>
-                            <span className="config-field-description">
-                                {t("systemSettings", "fieldSmtpHostDesc")}
-                            </span>
-                            <input
+                        <Stack spacing={3}>
+                            <FormInput
+                                label={t("systemSettings", "fieldSmtpHost")}
+                                helperText={t("systemSettings", "fieldSmtpHostDesc")}
                                 type="text"
                                 placeholder="smtp.example.com"
                                 value={config.smtpHost}
                                 onChange={(e) => handleChange("smtpHost", e.target.value)}
                             />
-                        </div>
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("systemSettings", "fieldSmtpPort")}</label>
-                            <span className="config-field-description">
-                                {t("systemSettings", "fieldSmtpPortDesc")}
-                            </span>
-                            <input
+                            <FormInput
+                                label={t("systemSettings", "fieldSmtpPort")}
+                                helperText={t("systemSettings", "fieldSmtpPortDesc")}
                                 type="number"
-                                min="1"
-                                max="65535"
+                                slotProps={{
+                                    htmlInput: { min: 1, max: 65535 }
+                                }}
                                 value={config.smtpPort}
                                 onChange={(e) => handleChange("smtpPort", parseInt(e.target.value, 10))}
                             />
-                        </div>
 
-                        <div className="config-field">
-                            <label className="config-field-inline">
-                                <input
-                                    type="checkbox"
-                                    checked={config.smtpSecure}
-                                    onChange={(e) => handleChange("smtpSecure", e.target.checked)}
-                                />
-                                <span>{t("systemSettings", "fieldSmtpSecure")}</span>
-                            </label>
-                            <span className="config-field-description" style={{ marginLeft: "32px" }}>
-                                {t("systemSettings", "fieldSmtpSecureDesc")}
-                            </span>
-                        </div>
+                            <Box>
+                                <label className="config-field-inline">
+                                    <input
+                                        type="checkbox"
+                                        checked={config.smtpSecure}
+                                        onChange={(e) => handleChange("smtpSecure", e.target.checked)}
+                                    />
+                                    <span>{t("systemSettings", "fieldSmtpSecure")}</span>
+                                </label>
+                                <span className="config-field-description" style={{ marginLeft: "32px" }}>
+                                    {t("systemSettings", "fieldSmtpSecureDesc")}
+                                </span>
+                            </Box>
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("systemSettings", "fieldSmtpUser")}</label>
-                            <span className="config-field-description">
-                                {t("systemSettings", "fieldSmtpUserDesc")}
-                            </span>
-                            <input
+                            <FormInput
+                                label={t("systemSettings", "fieldSmtpUser")}
+                                helperText={t("systemSettings", "fieldSmtpUserDesc")}
                                 type="text"
                                 placeholder="user@example.com"
                                 value={config.smtpUser}
                                 onChange={(e) => handleChange("smtpUser", e.target.value)}
                             />
-                        </div>
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("systemSettings", "fieldSmtpPassword")}</label>
-                            <span className="config-field-description">
-                                {t("systemSettings", "fieldSmtpPasswordDesc")}
-                            </span>
-                            <input
+                            <FormInput
+                                label={t("systemSettings", "fieldSmtpPassword")}
+                                helperText={t("systemSettings", "fieldSmtpPasswordDesc")}
                                 type="password"
                                 placeholder="••••••••"
                                 value={config.smtpPassword}
                                 onChange={(e) => handleChange("smtpPassword", e.target.value)}
                             />
-                        </div>
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("systemSettings", "fieldFromEmail")}</label>
-                            <span className="config-field-description">
-                                {t("systemSettings", "fieldFromEmailDesc")}
-                            </span>
-                            <input
+                            <FormInput
+                                label={t("systemSettings", "fieldFromEmail")}
+                                helperText={t("systemSettings", "fieldFromEmailDesc")}
                                 type="email"
                                 placeholder="noreply@example.com"
                                 value={config.smtpFromEmail}
                                 onChange={(e) => handleChange("smtpFromEmail", e.target.value)}
                             />
-                        </div>
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("systemSettings", "fieldFromName")}</label>
-                            <span className="config-field-description">
-                                {t("systemSettings", "fieldFromNameDesc")}
-                            </span>
-                            <input
+                            <FormInput
+                                label={t("systemSettings", "fieldFromName")}
+                                helperText={t("systemSettings", "fieldFromNameDesc")}
                                 type="text"
                                 placeholder="Axpo Simulator"
                                 value={config.smtpFromName}
                                 onChange={(e) => handleChange("smtpFromName", e.target.value)}
                             />
-                        </div>
 
-                        <div className="config-field" style={{ marginTop: "24px", paddingTop: "16px", borderTop: "1px solid var(--axpo-border)" }}>
-                            <label className="config-field-label">{t("systemSettings", "smtpTestTitle")}</label>
-                            <span className="config-field-description">
-                                {t("systemSettings", "smtpTestDesc")}
-                            </span>
-                            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "8px" }}>
-                                <button
-                                    type="button"
-                                    className="config-btn config-btn-secondary"
-                                    onClick={handleTestSmtp}
-                                    disabled={isTestingSmtp || !config.smtpHost}
-                                >
-                                    {isTestingSmtp ? t("systemSettings", "smtpTesting") : t("systemSettings", "btnTestConnection")}
-                                </button>
-                                {smtpTestResult && (
-                                    <span style={{
-                                        color: smtpTestResult.success ? "var(--axpo-success, #10b981)" : "var(--axpo-error, #ef4444)",
-                                        fontSize: "14px",
-                                        fontWeight: 500
-                                    }}>
-                                        {smtpTestResult.success ? "✓ " : "✗ "}
-                                        {smtpTestResult.message}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
+                            <Box sx={{ marginTop: "24px", paddingTop: "16px", borderTop: "1px solid var(--axpo-border)" }}>
+                                <label className="config-field-label">{t("systemSettings", "smtpTestTitle")}</label>
+                                <span className="config-field-description">
+                                    {t("systemSettings", "smtpTestDesc")}
+                                </span>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, marginTop: 1 }}>
+                                    <Button
+                                        variant="outlined"
+                                        onClick={handleTestSmtp}
+                                        disabled={isTestingSmtp || !config.smtpHost}
+                                    >
+                                        {isTestingSmtp ? t("systemSettings", "smtpTesting") : t("systemSettings", "btnTestConnection")}
+                                    </Button>
+                                    {smtpTestResult && (
+                                        <span style={{
+                                            color: smtpTestResult.success ? "var(--axpo-success, #10b981)" : "var(--axpo-error, #ef4444)",
+                                            fontSize: "14px",
+                                            fontWeight: 500
+                                        }}>
+                                            {smtpTestResult.success ? "✓ " : "✗ "}
+                                            {smtpTestResult.message}
+                                        </span>
+                                    )}
+                                </Box>
+                            </Box>
+                        </Stack>
                     </div>
 
-                    <div className="config-actions">
-                        <button
-                            className="config-btn config-btn-primary"
+                    <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
+                        <Button
+                            variant="contained"
                             onClick={handleSave}
                             disabled={!isDirty}
                         >
                             {t("systemSettings", "btnSave")}
-                        </button>
-                        <button
-                            className="config-btn config-btn-secondary"
+                        </Button>
+                        <Button
+                            variant="outlined"
                             onClick={handleReset}
                             disabled={!isDirty}
                         >
                             {t("systemSettings", "btnReset")}
-                        </button>
-                    </div>
+                        </Button>
+                    </Box>
                 </>
             )}
         </>

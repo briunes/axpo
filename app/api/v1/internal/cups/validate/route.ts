@@ -1,10 +1,9 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 
 const cupsSchema = z.object({
   cups: z.string().min(10),
@@ -24,7 +23,7 @@ const cupsRegex = /^ES[0-9A-Z]{16,20}$/;
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+  await assertPermission(auth, "section.simulations");
 
   const body = await request.json();
   const payload = cupsSchema.parse(body);
@@ -39,6 +38,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       valid,
       reason: valid ? "VALID_FORMAT" : "INVALID_FORMAT",
     },
-    200
+    200,
   );
 });

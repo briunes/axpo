@@ -99,7 +99,7 @@ export default function LoginPage() {
                 label={t("login", "email")}
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value.toLocaleLowerCase())}
                 data-testid="login-email"
                 autoComplete="email"
                 required

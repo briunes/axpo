@@ -37,6 +37,8 @@
     "@once-ui-system/core": "^1.6.4",
     "@prisma/client": "5.22.0",
     "@sparticuz/chromium": "147.0.0",
+    "@tanstack/react-query": "^5.100.5",
+    "@tanstack/react-query-devtools": "^5.100.5",
     "bcrypt": "5.1.1",
     "bcryptjs": "^3.0.3",
     "country-state-city": "^3.2.1",

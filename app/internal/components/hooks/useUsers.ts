@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
+import {
   createUser,
   listUsers,
   rotateUserPin,
@@ -109,14 +114,14 @@ export interface UsersActions {
   handleRotateUserPin: (user: UserItem) => Promise<RotatePinResult | null>;
   handleRequestPasswordReset: (user: UserItem) => Promise<void>;
   handleDeleteUser: (user: UserItem) => Promise<void>;
+  handleBulkDeleteUsers: (ids: string[]) => Promise<void>;
 }
 
 export function useUsers(
   session: SessionState | null,
   initialPageSize = 25,
 ): UsersActions {
-  const [users, setUsers] = useState<UserItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
@@ -124,7 +129,6 @@ export function useUsers(
   // pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
-  const [total, setTotal] = useState(0);
   // sync pageSize when user preferences load
   useEffect(() => {
     setPageSize(initialPageSize);
@@ -174,6 +178,51 @@ export function useUsers(
     setSuccessText(null);
   };
 
+  // ── TanStack Query ──────────────────────────────────────────────────────
+  const queryParams: ListUsersParams = {
+    page,
+    pageSize,
+    search: search || undefined,
+    role: roleFilter || undefined,
+    agencyId: agencyFilter || undefined,
+    orderBy: sortColumn,
+    sortDir,
+    includeDeleted: showArchived || undefined,
+  };
+
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: ["users", session?.token ?? "", queryParams],
+    queryFn: async () => {
+      const result = await listUsers(session!.token, queryParams);
+      // seed the agencyId for the create form if not yet set
+      setNewUserAgencyId(
+        (curr) =>
+          curr || session!.user.agencyId || result.items[0]?.agencyId || "",
+      );
+      return result;
+    },
+    enabled: !!session,
+    placeholderData: keepPreviousData,
+  });
+
+  const users = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const loading = isFetching;
+
+  const invalidate = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["users", session?.token ?? ""],
+    });
+  }, [queryClient, session?.token]);
+
+  const refresh = useCallback(
+    async (_overrides?: ListUsersParams) => {
+      await refetch();
+    },
+    [refetch],
+  );
+  // ────────────────────────────────────────────────────────────────────────
+
   const runAction = async (id: string, fn: () => Promise<void>) => {
     try {
       setBusyAction(id);
@@ -186,50 +235,6 @@ export function useUsers(
     }
   };
 
-  const refresh = useCallback(
-    async (overrides?: ListUsersParams) => {
-      if (!session) return;
-      setLoading(true);
-      try {
-        const params: ListUsersParams = {
-          page,
-          pageSize,
-          search: search || undefined,
-          role: roleFilter || undefined,
-          agencyId: agencyFilter || undefined,
-          orderBy: sortColumn,
-          sortDir,
-          includeDeleted: showArchived || undefined,
-          ...overrides,
-        };
-        const result = await listUsers(session.token, params);
-        setUsers(result.items);
-        setTotal(result.total);
-        setNewUserAgencyId(
-          (curr) =>
-            curr || session.user.agencyId || result.items[0]?.agencyId || "",
-        );
-      } catch (error) {
-        setErrorText(
-          error instanceof Error ? error.message : "Could not load users.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [
-      session,
-      page,
-      pageSize,
-      search,
-      roleFilter,
-      agencyFilter,
-      sortColumn,
-      sortDir,
-      showArchived,
-    ],
-  );
-
   const handleCreateUser = async (
     e: React.FormEvent,
     data?: {
@@ -239,7 +244,7 @@ export function useUsers(
       commercialPhone: string;
       commercialEmail: string;
       otherDetails?: string;
-      password: string;
+      password?: string;
       role: UserRole;
       agencyId: string;
     },
@@ -263,15 +268,15 @@ export function useUsers(
       !email.trim() ||
       !mobilePhone.trim() ||
       !commercialPhone.trim() ||
-      !commercialEmail.trim() ||
-      !password
+      !commercialEmail.trim()
     ) {
       setErrorText(
-        "Name, email, mobile phone, commercial contact, password and agency are required.",
+        "Name, email, mobile phone, commercial contact and agency are required.",
       );
       return null;
     }
     if (
+      password &&
       !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,128}$/.test(
         password,
       )
@@ -302,7 +307,7 @@ export function useUsers(
         commercialPhone: commercialPhone.trim(),
         commercialEmail: commercialEmail.trim(),
         otherDetails: otherDetails.trim() || undefined,
-        password,
+        ...(password ? { password } : {}),
       });
       setNewUserName("");
       setNewUserEmail("");
@@ -311,7 +316,7 @@ export function useUsers(
       setNewUserCommercialEmail("");
       setNewUserOtherDetails("");
       setNewUserPassword("");
-      await refresh();
+      await invalidate();
       setSuccessText(
         result?.generatedPinMasked
           ? `User created. Temporary PIN: ${result.generatedPinMasked}`
@@ -420,7 +425,7 @@ export function useUsers(
             }
           : {}),
       });
-      await refresh();
+      await invalidate();
       setSuccessText(
         changingPassword ? "User and password updated." : "User updated.",
       );
@@ -450,7 +455,7 @@ export function useUsers(
     await runAction(`toggle-user-${user.id}`, async () => {
       if (!session) return;
       await updateUserStatus(session.token, user.id, !user.isActive);
-      await refresh();
+      await invalidate();
       setSuccessText("User status updated.");
     });
   };
@@ -462,7 +467,7 @@ export function useUsers(
     let result: RotatePinResult | null = null;
     await runAction(`rotate-user-${user.id}`, async () => {
       result = await rotateUserPin(session.token, user.id);
-      await refresh();
+      await invalidate();
       setSuccessText(`PIN rotated: ${result?.newPinMasked}`);
     });
     return result;
@@ -472,8 +477,19 @@ export function useUsers(
     if (!session) return;
     await runAction(`delete-user-${user.id}`, async () => {
       await deleteUser(session.token, user.id);
-      await refresh();
+      await invalidate();
       setSuccessText("User deleted.");
+    });
+  };
+
+  const handleBulkDeleteUsers = async (ids: string[]): Promise<void> => {
+    await runAction("bulk-delete-users", async () => {
+      if (!session) return;
+      await Promise.all(ids.map((id) => deleteUser(session.token, id)));
+      await invalidate();
+      setSuccessText(
+        `${ids.length} user${ids.length !== 1 ? "s" : ""} deleted.`,
+      );
     });
   };
 
@@ -541,5 +557,6 @@ export function useUsers(
     handleRotateUserPin,
     handleRequestPasswordReset,
     handleDeleteUser,
+    handleBulkDeleteUsers,
   };
 }

@@ -1,0 +1,33 @@
+# Preview/Staging Environment Variables
+
+# Database
+DATABASE_URL=postgresql://postgres.setjontjekewboeovprv:VsKbQ8KdtPTA2uHA@aws-1-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+DIRECT_URL=postgresql://postgres.setjontjekewboeovprv:VsKbQ8KdtPTA2uHA@aws-1-eu-west-1.pooler.supabase.com:5432/postgres
+
+# JWT Configuration
+JWT_SECRET=5d99876217d166b5337cffedabb63082add0157c2a9d84307374bb0db01f8bc7
+JWT_EXPIRES_IN=24h
+
+# Swagger Basic Auth
+SWAGGER_BASIC_AUTH_USER="axpo"
+SWAGGER_BASIC_AUTH_PASS="cdvRBH#3tenrwbvCE#WVB"
+
+# CORS
+CORS_ORIGIN="*"
+
+# Node Environment
+NODE_ENV=preview
+
+# Rate Limiting
+RATE_LIMIT_MAX_REQUESTS=100
+RATE_LIMIT_WINDOW=15m
+
+# Token Configuration
+PUBLIC_TOKEN_LENGTH=64
+PIN_LENGTH=4
+PIN_SALT_ROUNDS=10
+
+# Feature Flags
+FEATURE_OCR_ENABLED="false"
+FEATURE_PDF_EXPORT_ENABLED="false"
+FEATURE_ANALYTICS_ENABLED="true"

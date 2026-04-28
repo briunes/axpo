@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
-import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 
@@ -28,7 +27,7 @@ import { SimulationService } from "@/application/services/simulationService";
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+  await assertPermission(auth, "section.simulations");
 
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("clientId") || undefined;

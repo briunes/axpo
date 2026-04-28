@@ -202,7 +202,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
     return (
         <>
             {/* ── Admin KPIs ─────────────────────────────────────────────── */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 14}}>
                 <KpiCard
                     title={t("analyticsModule", "kpiTotalAgencies")}
                     value={analytics.byAgency?.length || 0}
@@ -394,6 +394,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                     background: "linear-gradient(135deg, #8b5cf615 0%, #8b5cf605 100%)",
                     border: "1px solid #8b5cf640",
                     borderRadius: 8,
+                    paddingBottom: '10px' 
                 }}>
                     <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "#8b5cf6", marginBottom: 6 }}>{t("analyticsModule", "alertPendingOpens")}</div>
                     <div style={{ fontSize: 24, fontWeight: 700, color: "#8b5cf6" }}>

@@ -5,7 +5,7 @@ import { loadSession } from "../lib/authSession";
 import { useClients } from "../components/hooks/useClients";
 import { ClientsModule } from "../components/modules";
 import { useAlerts } from "../components/shared";
-import { useActionButtons } from "../components/InternalWorkspace";
+import { useActionButtons, useRegisterRefresh } from "../components/InternalWorkspace";
 import { useUserPreferences } from "../components/providers/UserPreferencesProvider";
 
 export default function ClientsPage() {
@@ -14,6 +14,7 @@ export default function ClientsPage() {
   const onActionButtons = useActionButtons();
   const { preferences } = useUserPreferences();
   const clientsActions = useClients(session, preferences.itemsPerPage);
+  useRegisterRefresh(() => clientsActions.refresh());
   const fetchedRef = useRef(false);
 
   const handleNotify = (text: string, tone: "success" | "error") => {

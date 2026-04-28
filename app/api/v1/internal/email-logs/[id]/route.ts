@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
-import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { NotFoundError } from "@/domain/errors/errors";
 import { prisma } from "@/infrastructure/database/prisma";
 
@@ -27,7 +26,7 @@ export const GET = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN]);
+    await assertPermission(auth, "section.email-logs");
 
     const id = context?.params?.id as string;
     const log = await prisma.emailLog.findUnique({

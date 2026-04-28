@@ -1,12 +1,11 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
-import { UserRole } from "@/domain/types";
 import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 import { AuditService } from "@/application/services/auditService";
@@ -27,9 +26,12 @@ const ocrPrefillSchema = z.object({
  *       - bearerAuth: []
  */
 export const POST = withErrorHandler(
-  async (request: NextRequest, context?: { params?: Record<string, string> }) => {
+  async (
+    request: NextRequest,
+    context?: { params?: Record<string, string> },
+  ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+    await assertPermission(auth, "simulations.create");
 
     const id = context?.params?.id;
     if (!id) {
@@ -46,7 +48,10 @@ export const POST = withErrorHandler(
       orderBy: { createdAt: "desc" },
     });
 
-    const currentPayload = (latestVersion?.payloadJson ?? {}) as Record<string, unknown>;
+    const currentPayload = (latestVersion?.payloadJson ?? {}) as Record<
+      string,
+      unknown
+    >;
     const mergedPayload: Prisma.InputJsonValue = {
       ...currentPayload,
       ...payload.fields,
@@ -82,7 +87,7 @@ export const POST = withErrorHandler(
         versionId: version.id,
         prefillApplied: true,
       },
-      200
+      200,
     );
-  }
+  },
 );

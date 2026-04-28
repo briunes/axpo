@@ -122,6 +122,38 @@ export interface ElectricityInputs {
     Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>
   >;
 
+  /**
+   * Personalizada Index: user-supplied energy margins (€/MWh) and power margins
+   * (€/kW/year) per period.  When present and at least one energy margin is > 0,
+   * the calculation emits a single "PERSONALIZADA_INDEX" result row using
+   * formula: energyCost = (omieEstimado[p] + margenEnergia[p]/1000) × consumo[p].
+   */
+  personalizadaIndex?: {
+    /** Energy margin in €/MWh per period (filled by user in the form) */
+    margenEnergia: Partial<
+      Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>
+    >;
+    /** Power margin in €/kW/year per period (filled by user in the form) */
+    margenPotencia: Partial<
+      Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>
+    >;
+  };
+
+  /**
+   * Personalizada OMIE + B: user-supplied "B" term (€/MWh) per period plus
+   * power margins (€/kW/year).  When present and at least one B value is > 0,
+   * the calculation emits a single "PERSONALIZADA_OMIE_B" result row using
+   * formula: energyCost = (omieEstimado[p] + terminoB[p]/1000) × consumo[p].
+   */
+  personalizadaOmieB?: {
+    /** B term in €/MWh per period (Término Bi Oferta Personalizada) */
+    terminoB: Partial<Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>>;
+    /** Power margin in €/kW/year per period */
+    margenPotencia: Partial<
+      Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>
+    >;
+  };
+
   /** Extra line items on the current bill */
   extras: {
     reactiva?: number; // €  reactive energy charge

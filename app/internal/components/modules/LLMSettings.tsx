@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Box, Button, Stack } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { getSystemConfig, updateSystemConfig, testLlmConnection, type LlmTestResult } from "../../lib/configApi";
 import { LoadingState } from "../shared/LoadingState";
+import { FormInput, FormSelect } from "../ui";
 
 export interface LLMSettingsProps {
     session: SessionState;
@@ -216,22 +218,22 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                     <p className="settings-description">{t("llmSettings", "description")}</p>
                 </div>
                 {isDirty && (
-                    <div className="settings-actions">
-                        <button
-                            className="btn-secondary"
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button
+                            variant="outlined"
                             onClick={handleReset}
                             disabled={isSaving}
                         >
                             {t("common", "cancel")}
-                        </button>
-                        <button
-                            className="btn-primary"
+                        </Button>
+                        <Button
+                            variant="contained"
                             onClick={handleSave}
                             disabled={isSaving}
                         >
                             {isSaving ? t("common", "saving") : t("common", "save")}
-                        </button>
-                    </div>
+                        </Button>
+                    </Box>
                 )}
             </div>
 
@@ -253,110 +255,89 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                 </div>
 
                 {config.llmEnabled && (
-                    <>
-                        <div className="config-field">
-                            <label className="config-field-label">{t("llmSettings", "provider")}</label>
-                            <span className="config-field-description">
-                                {t("llmSettings", "providerDesc")}
-                            </span>
-                            <select
-                                value={config.llmProvider}
-                                onChange={(e) => handleProviderChange(e.target.value)}
-                            >
-                                {Object.entries(LLM_PROVIDERS).map(([key, provider]) => (
-                                    <option key={key} value={key}>
-                                        {provider.name} - {provider.description}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                    <Stack spacing={3}>
+                        <FormSelect
+                            label={t("llmSettings", "provider")}
+                            helperText={t("llmSettings", "providerDesc")}
+                            value={config.llmProvider}
+                            onChange={(value) => handleProviderChange(String(value))}
+                            options={Object.entries(LLM_PROVIDERS).map(([key, provider]) => ({
+                                value: key,
+                                label: `${provider.name} - ${provider.description}`
+                            }))}
+                        />
 
                         {selectedProvider?.requiresApiKey && (
-                            <div className="config-field">
-                                <label className="config-field-label">{t("llmSettings", "apiKey")}</label>
-                                <span className="config-field-description">
-                                    {t("llmSettings", "apiKeyDesc")}
-                                </span>
-                                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                    <input
-                                        type={showApiKey ? "text" : "password"}
-                                        value={config.llmApiKey}
-                                        onChange={(e) => handleChange("llmApiKey", e.target.value)}
-                                        placeholder={t("llmSettings", "apiKeyPlaceholder")}
-                                        style={{ flex: 1 }}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="btn-secondary"
-                                        onClick={() => setShowApiKey(!showApiKey)}
-                                        style={{ padding: "8px 16px" }}
-                                    >
-                                        {showApiKey ? "👁️ Hide" : "👁️ Show"}
-                                    </button>
-                                </div>
-                            </div>
+                            <Box>
+                                <FormInput
+                                    label={t("llmSettings", "apiKey")}
+                                    helperText={t("llmSettings", "apiKeyDesc")}
+                                    type={showApiKey ? "text" : "password"}
+                                    value={config.llmApiKey}
+                                    onChange={(e) => handleChange("llmApiKey", e.target.value)}
+                                    placeholder={t("llmSettings", "apiKeyPlaceholder")}
+                                />
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => setShowApiKey(!showApiKey)}
+                                    sx={{ mt: 1 }}
+                                    size="small"
+                                >
+                                    {showApiKey ? "👁️ Hide" : "👁️ Show"}
+                                </Button>
+                            </Box>
                         )}
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("llmSettings", "baseUrl")}</label>
-                            <span className="config-field-description">
-                                {t("llmSettings", "baseUrlDesc")}
-                                {config.llmProvider === "ollama-cloud" && (
-                                    <><br /><strong>Common endpoints:</strong> https://api.ollama.com, https://ollama.ai/api, or your custom URL</>
-                                )}
-                            </span>
-                            <input
-                                type="text"
-                                value={config.llmBaseUrl}
-                                onChange={(e) => handleChange("llmBaseUrl", e.target.value)}
-                                placeholder={selectedProvider?.defaultBaseUrl || "https://api.example.com/v1"}
-                            />
-                        </div>
+                        <FormInput
+                            label={t("llmSettings", "baseUrl")}
+                            helperText={
+                                t("llmSettings", "baseUrlDesc") +
+                                (config.llmProvider === "ollama-cloud" ? "\nCommon endpoints: https://api.ollama.com, https://ollama.ai/api, or your custom URL" : "")
+                            }
+                            type="text"
+                            value={config.llmBaseUrl}
+                            onChange={(e) => handleChange("llmBaseUrl", e.target.value)}
+                            placeholder={selectedProvider?.defaultBaseUrl || "https://api.example.com/v1"}
+                        />
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("llmSettings", "modelName")}</label>
-                            <span className="config-field-description">
-                                {t("llmSettings", "modelNameDesc")}
-                            </span>
-                            {selectedProvider?.commonModels.length > 0 ? (
-                                <select
-                                    value={config.llmModelName}
-                                    onChange={(e) => handleChange("llmModelName", e.target.value)}
-                                >
-                                    {selectedProvider.commonModels.map((model) => (
-                                        <option key={model} value={model}>
-                                            {model}
-                                        </option>
-                                    ))}
-                                    <option value="">-- Custom Model --</option>
-                                </select>
-                            ) : (
-                                <input
-                                    type="text"
-                                    value={config.llmModelName}
-                                    onChange={(e) => handleChange("llmModelName", e.target.value)}
-                                    placeholder="model-name"
-                                />
-                            )}
-                        </div>
+                        {selectedProvider?.commonModels.length > 0 ? (
+                            <FormSelect
+                                label={t("llmSettings", "modelName")}
+                                helperText={t("llmSettings", "modelNameDesc")}
+                                value={config.llmModelName}
+                                onChange={(value) => handleChange("llmModelName", String(value))}
+                                options={[
+                                    ...selectedProvider.commonModels.map((model) => ({
+                                        value: model,
+                                        label: model
+                                    })),
+                                    { value: "", label: "-- Custom Model --" }
+                                ]}
+                            />
+                        ) : (
+                            <FormInput
+                                label={t("llmSettings", "modelName")}
+                                helperText={t("llmSettings", "modelNameDesc")}
+                                type="text"
+                                value={config.llmModelName}
+                                onChange={(e) => handleChange("llmModelName", e.target.value)}
+                                placeholder="model-name"
+                            />
+                        )}
 
                         {!selectedProvider?.commonModels.includes(config.llmModelName) &&
                             selectedProvider?.commonModels.length > 0 && (
-                                <div className="config-field">
-                                    <label className="config-field-label">{t("llmSettings", "customModel")}</label>
-                                    <span className="config-field-description">
-                                        {t("llmSettings", "customModelDesc")}
-                                    </span>
-                                    <input
-                                        type="text"
-                                        value={config.llmModelName}
-                                        onChange={(e) => handleChange("llmModelName", e.target.value)}
-                                        placeholder="custom-model-name"
-                                    />
-                                </div>
+                                <FormInput
+                                    label={t("llmSettings", "customModel")}
+                                    helperText={t("llmSettings", "customModelDesc")}
+                                    type="text"
+                                    value={config.llmModelName}
+                                    onChange={(e) => handleChange("llmModelName", e.target.value)}
+                                    placeholder="custom-model-name"
+                                />
                             )}
 
-                        <div className="config-field">
+                        <Box>
                             <label className="config-field-label">
                                 {t("llmSettings", "temperature")} ({config.llmTemperature})
                             </label>
@@ -377,23 +358,19 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                 <span>1.0 (Balanced)</span>
                                 <span>2.0 (Creative)</span>
                             </div>
-                        </div>
+                        </Box>
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("llmSettings", "maxTokens")}</label>
-                            <span className="config-field-description">
-                                {t("llmSettings", "maxTokensDesc")}
-                            </span>
-                            <input
-                                type="number"
-                                min="100"
-                                max="128000"
-                                step="100"
-                                value={config.llmMaxTokens}
-                                onChange={(e) => handleChange("llmMaxTokens", parseInt(e.target.value, 10))}
-                            />
-                        </div>
-                    </>
+                        <FormInput
+                            label={t("llmSettings", "maxTokens")}
+                            helperText={t("llmSettings", "maxTokensDesc")}
+                            type="number"
+                            slotProps={{
+                                htmlInput: { min: 100, max: 128000, step: 100 }
+                            }}
+                            value={config.llmMaxTokens}
+                            onChange={(e) => handleChange("llmMaxTokens", parseInt(e.target.value, 10))}
+                        />
+                    </Stack>
                 )}
             </div>
 
@@ -405,14 +382,14 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                         <p style={{ marginBottom: "16px", color: "var(--axpo-text-secondary)" }}>
                             {t("llmSettings", "testConnectionDesc")}
                         </p>
-                        <button
-                            className="btn-secondary"
+                        <Button
+                            variant="outlined"
                             onClick={handleTestConnection}
                             disabled={isTestingConnection || !config.llmProvider || !config.llmModelName || !config.llmBaseUrl}
-                            style={{ marginBottom: testResult ? "16px" : "0" }}
+                            sx={{ marginBottom: testResult ? 2 : 0 }}
                         >
                             {isTestingConnection ? t("llmSettings", "testing") : t("llmSettings", "btnTest")}
-                        </button>
+                        </Button>
 
                         {testResult && (
                             <div

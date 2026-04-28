@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
-import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 
 /**
@@ -24,7 +23,7 @@ import { prisma } from "@/infrastructure/database/prisma";
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN]);
+  await assertPermission(auth, "section.configurations");
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(parseInt(searchParams.get("page") ?? "1", 10), 1);

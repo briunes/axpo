@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Box, Button, Stack } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { getSystemConfig, updateSystemConfig } from "../../lib/configApi";
 import { LoadingState } from "../shared/LoadingState";
+import { FormSelect } from "../ui";
 
 export interface UserPreferencesSettingsProps {
     session: SessionState;
@@ -93,102 +95,89 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
                             {t("systemSettings", "preferencesDescription")}
                         </p>
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("systemSettings", "fieldDateFormat")}</label>
-                            <span className="config-field-description">
-                                {t("systemSettings", "fieldDateFormatDesc")}
-                            </span>
-                            <select
+                        <Stack spacing={3}>
+                            <FormSelect
+                                label={t("systemSettings", "fieldDateFormat")}
+                                helperText={t("systemSettings", "fieldDateFormatDesc")}
                                 value={config.defaultDateFormat}
-                                onChange={(e) => handleChange("defaultDateFormat", e.target.value)}
-                            >
-                                <option value="DD/MM/YYYY">DD/MM/YYYY (17/04/2026)</option>
-                                <option value="MM/DD/YYYY">MM/DD/YYYY (04/17/2026)</option>
-                                <option value="YYYY-MM-DD">YYYY-MM-DD (2026-04-17)</option>
-                            </select>
-                        </div>
+                                onChange={(value) => handleChange("defaultDateFormat", value)}
+                                options={[
+                                    { value: "DD/MM/YYYY", label: `DD/MM/YYYY (${new Date().toLocaleDateString("en-GB")})` },
+                                    { value: "MM/DD/YYYY", label: `MM/DD/YYYY (${new Date().toLocaleDateString("en-US")})` },
+                                    { value: "YYYY-MM-DD", label: `YYYY-MM-DD (${new Date().toISOString().split("T")[0]})` }
+                                ]}
+                            />
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("systemSettings", "fieldTimeFormat")}</label>
-                            <span className="config-field-description">
-                                {t("systemSettings", "fieldTimeFormatDesc")}
-                            </span>
-                            <select
+                            <FormSelect
+                                label={t("systemSettings", "fieldTimeFormat")}
+                                helperText={t("systemSettings", "fieldTimeFormatDesc")}
                                 value={config.defaultTimeFormat}
-                                onChange={(e) => handleChange("defaultTimeFormat", e.target.value)}
-                            >
-                                <option value="24h">24-hour (14:30)</option>
-                                <option value="12h">12-hour (2:30 PM)</option>
-                            </select>
-                        </div>
+                                onChange={(value) => handleChange("defaultTimeFormat", value)}
+                                options={[
+                                    { value: "24h", label: `24-hour (${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })})` },
+                                    { value: "12h", label: `12-hour (${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })})` }
+                                ]}
+                            />
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("systemSettings", "fieldTimezone")}</label>
-                            <span className="config-field-description">
-                                {t("systemSettings", "fieldTimezoneDesc")}
-                            </span>
-                            <select
+                            <FormSelect
+                                label={t("systemSettings", "fieldTimezone")}
+                                helperText={t("systemSettings", "fieldTimezoneDesc")}
                                 value={config.defaultTimezone}
-                                onChange={(e) => handleChange("defaultTimezone", e.target.value)}
-                            >
-                                <option value="Europe/Madrid">Europe/Madrid (CET/CEST)</option>
-                                <option value="Europe/London">Europe/London (GMT/BST)</option>
-                                <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
-                                <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
-                                <option value="America/New_York">America/New York (EST/EDT)</option>
-                                <option value="America/Chicago">America/Chicago (CST/CDT)</option>
-                                <option value="America/Los_Angeles">America/Los Angeles (PST/PDT)</option>
-                                <option value="UTC">UTC</option>
-                            </select>
-                        </div>
+                                onChange={(value) => handleChange("defaultTimezone", value)}
+                                options={[
+                                    { value: "Europe/Madrid", label: "Europe/Madrid (CET/CEST)" },
+                                    { value: "Europe/London", label: "Europe/London (GMT/BST)" },
+                                    { value: "Europe/Paris", label: "Europe/Paris (CET/CEST)" },
+                                    { value: "Europe/Berlin", label: "Europe/Berlin (CET/CEST)" },
+                                    { value: "America/New_York", label: "America/New York (EST/EDT)" },
+                                    { value: "America/Chicago", label: "America/Chicago (CST/CDT)" },
+                                    { value: "America/Los_Angeles", label: "America/Los Angeles (PST/PDT)" },
+                                    { value: "UTC", label: "UTC" }
+                                ]}
+                            />
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("systemSettings", "fieldNumberFormat")}</label>
-                            <span className="config-field-description">
-                                {t("systemSettings", "fieldNumberFormatDesc")}
-                            </span>
-                            <select
+                            <FormSelect
+                                label={t("systemSettings", "fieldNumberFormat")}
+                                helperText={t("systemSettings", "fieldNumberFormatDesc")}
                                 value={config.defaultNumberFormat}
-                                onChange={(e) => handleChange("defaultNumberFormat", e.target.value)}
-                            >
-                                <option value="eu">European (1.234,56)</option>
-                                <option value="us">US/UK (1,234.56)</option>
-                            </select>
-                        </div>
+                                onChange={(value) => handleChange("defaultNumberFormat", value)}
+                                options={[
+                                    { value: "eu", label: "European (1.234,56)" },
+                                    { value: "us", label: "US/UK (1,234.56)" }
+                                ]}
+                            />
 
-                        <div className="config-field">
-                            <label className="config-field-label">{t("systemSettings", "fieldItemsPerPage")}</label>
-                            <span className="config-field-description">
-                                {t("systemSettings", "fieldItemsPerPageDesc")}
-                            </span>
-                            <select
+                            <FormSelect
+                                label={t("systemSettings", "fieldItemsPerPage")}
+                                helperText={t("systemSettings", "fieldItemsPerPageDesc")}
                                 value={config.defaultItemsPerPage}
-                                onChange={(e) => handleChange("defaultItemsPerPage", parseInt(e.target.value, 10))}
-                            >
-                                <option value={10}>10</option>
-                                <option value={25}>25</option>
-                                <option value={50}>50</option>
-                                <option value={100}>100</option>
-                            </select>
-                        </div>
+                                onChange={(value) => handleChange("defaultItemsPerPage", parseInt(String(value), 10))}
+                                options={[
+                                    { value: 10, label: "10" },
+                                    { value: 25, label: "25" },
+                                    { value: 50, label: "50" },
+                                    { value: 100, label: "100" }
+                                ]}
+                            />
+                        </Stack>
                     </div>
 
-                    <div className="config-actions">
-                        <button
-                            className="config-btn config-btn-primary"
+                    <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
+                        <Button
+                            variant="contained"
                             onClick={handleSave}
                             disabled={!isDirty}
                         >
                             {t("systemSettings", "btnSave")}
-                        </button>
-                        <button
-                            className="config-btn config-btn-secondary"
+                        </Button>
+                        <Button
+                            variant="outlined"
                             onClick={handleReset}
                             disabled={!isDirty}
                         >
                             {t("systemSettings", "btnReset")}
-                        </button>
-                    </div>
+                        </Button>
+                    </Box>
                 </>
             )}
         </>

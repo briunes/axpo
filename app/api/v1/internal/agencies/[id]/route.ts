@@ -5,7 +5,7 @@ import { NotFoundError, ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertRole, assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 
@@ -191,7 +191,7 @@ export const PATCH = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN]);
+    await assertPermission(auth, "agencies.edit");
 
     const id = context?.params?.id;
     if (!id) {
@@ -270,7 +270,7 @@ export const DELETE = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN]);
+    await assertPermission(auth, "agencies.deactivate");
 
     const id = context?.params?.id;
     if (!id) {

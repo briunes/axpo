@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { UserRole } from "@/domain/types";
 import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 
 const escapePdfText = (text: string): string => {
-  return text.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
 };
 
 const buildSimplePdf = (lines: string[]): Buffer => {
@@ -16,7 +18,11 @@ const buildSimplePdf = (lines: string[]): Buffer => {
     "BT",
     "/F1 12 Tf",
     "50 780 Td",
-    ...lines.map((line, index) => (index === 0 ? `(${escapePdfText(line)}) Tj` : `0 -18 Td (${escapePdfText(line)}) Tj`)),
+    ...lines.map((line, index) =>
+      index === 0
+        ? `(${escapePdfText(line)}) Tj`
+        : `0 -18 Td (${escapePdfText(line)}) Tj`,
+    ),
     "ET",
   ].join("\n");
 
@@ -57,9 +63,12 @@ const buildSimplePdf = (lines: string[]): Buffer => {
  *       - bearerAuth: []
  */
 export const GET = withErrorHandler(
-  async (request: NextRequest, context?: { params?: Record<string, string> }) => {
+  async (
+    request: NextRequest,
+    context?: { params?: Record<string, string> },
+  ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+    await assertPermission(auth, "section.simulations");
 
     const id = context?.params?.id;
     if (!id) {
@@ -89,5 +98,5 @@ export const GET = withErrorHandler(
         "Cache-Control": "no-store",
       },
     });
-  }
+  },
 );
