@@ -466,6 +466,7 @@ export const translations = {
       auditLogs: "Audit Logs",
       emailLogs: "Email Logs",
       baseValues: "Base Values",
+      logs: "Logs",
     },
     auth: {
       login: "Login",
@@ -1919,6 +1920,7 @@ export const translations = {
       auditLogs: "Registros de Auditoría",
       emailLogs: "Registros de Correos",
       baseValues: "Valores Base",
+      logs: "Registros",
     },
     auth: {
       login: "Iniciar Sesión",
