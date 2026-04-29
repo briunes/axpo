@@ -84,8 +84,11 @@ export class EmailService {
         pass: config.password,
       },
       tls: {
-        // Do not fail on invalid certs (for self-signed certificates in development)
-        rejectUnauthorized: process.env.NODE_ENV === "production",
+        // The SMTP server's TLS certificate may be issued for a shared hosting
+        // hostname (e.g. *.servidor-correo.net) rather than the branded host
+        // (e.g. mail.axpoiberia.es). Setting rejectUnauthorized to false allows
+        // the connection while still using TLS encryption.
+        rejectUnauthorized: false,
       },
     });
   }
