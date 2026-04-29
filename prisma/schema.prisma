@@ -364,8 +364,19 @@ model EmailLog {
   variables           Json?
   status              String   @default("sent")
   errorMessage        String?
+  errorStack          String?
   relatedUserId       String?
   relatedSimulationId String?
+  // SMTP delivery details
+  smtpHost            String?
+  smtpPort            Int?
+  fromEmail           String?
+  fromName            String?
+  messageId           String?
+  smtpResponse        String?
+  durationMs          Int?
+  hasAttachments      Boolean  @default(false)
+  attachmentsCount    Int      @default(0)
   triggeredByUser     User?    @relation(fields: [triggeredByUserId], references: [id])
 
   @@index([sentAt])

@@ -41,8 +41,19 @@ interface EmailLog {
     variables?: Record<string, string>;
     status: string;
     errorMessage?: string;
+    errorStack?: string;
     relatedUserId?: string;
     relatedSimulationId?: string;
+    // SMTP delivery details
+    smtpHost?: string;
+    smtpPort?: number;
+    fromEmail?: string;
+    fromName?: string;
+    messageId?: string;
+    smtpResponse?: string;
+    durationMs?: number;
+    hasAttachments?: boolean;
+    attachmentsCount?: number;
 }
 
 interface EmailLogsModuleProps {
@@ -399,6 +410,73 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                     {selectedLog.subject}
                                 </Typography>
 
+                                {/* SMTP delivery info */}
+                                {selectedLog.fromEmail && (
+                                    <>
+                                        <Typography variant="body2" color="text.secondary">
+                                            From
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
+                                            {selectedLog.fromName ? `"${selectedLog.fromName}" <${selectedLog.fromEmail}>` : selectedLog.fromEmail}
+                                        </Typography>
+                                    </>
+                                )}
+
+                                {selectedLog.smtpHost && (
+                                    <>
+                                        <Typography variant="body2" color="text.secondary">
+                                            SMTP Server
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
+                                            {selectedLog.smtpHost}:{selectedLog.smtpPort ?? "—"}
+                                        </Typography>
+                                    </>
+                                )}
+
+                                {selectedLog.messageId && (
+                                    <>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Message ID
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 11, wordBreak: "break-all" }}>
+                                            {selectedLog.messageId}
+                                        </Typography>
+                                    </>
+                                )}
+
+                                {selectedLog.smtpResponse && (
+                                    <>
+                                        <Typography variant="body2" color="text.secondary">
+                                            SMTP Response
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 11, wordBreak: "break-all" }}>
+                                            {selectedLog.smtpResponse}
+                                        </Typography>
+                                    </>
+                                )}
+
+                                {selectedLog.durationMs !== undefined && selectedLog.durationMs !== null && (
+                                    <>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Duration
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            {selectedLog.durationMs} ms
+                                        </Typography>
+                                    </>
+                                )}
+
+                                {(selectedLog.hasAttachments || (selectedLog.attachmentsCount ?? 0) > 0) && (
+                                    <>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Attachments
+                                        </Typography>
+                                        <Typography variant="body2">
+                                            {selectedLog.attachmentsCount ?? 0} file(s)
+                                        </Typography>
+                                    </>
+                                )}
+
                                 {selectedLog.errorMessage && (
                                     <>
                                         <Typography variant="body2" color="error">
@@ -407,6 +485,32 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                         <Typography variant="body2" color="error" sx={{ fontFamily: "monospace", fontSize: 12 }}>
                                             {selectedLog.errorMessage}
                                         </Typography>
+                                    </>
+                                )}
+
+                                {selectedLog.errorStack && (
+                                    <>
+                                        <Typography variant="body2" color="error">
+                                            Error Stack
+                                        </Typography>
+                                        <Box
+                                            sx={{
+                                                bgcolor: "#fff5f5",
+                                                border: "1px solid",
+                                                borderColor: "error.light",
+                                                borderRadius: 1,
+                                                p: 1.5,
+                                                fontFamily: "monospace",
+                                                fontSize: 11,
+                                                whiteSpace: "pre-wrap",
+                                                wordBreak: "break-all",
+                                                maxHeight: 200,
+                                                overflow: "auto",
+                                                gridColumn: "2",
+                                            }}
+                                        >
+                                            {selectedLog.errorStack}
+                                        </Box>
                                     </>
                                 )}
                             </Box>

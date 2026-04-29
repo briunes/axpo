@@ -112,7 +112,28 @@ export class EmailService {
    * Send an email with custom content and log it
    */
   static async sendEmail(options: EmailOptions): Promise<void> {
-    const logData = {
+    const attachmentsCount = options.attachments?.length ?? 0;
+    const tag = `[EmailService][${options.triggeredBy ?? "manual"}]`;
+
+    console.log(`${tag} ── START sendEmail ──────────────────────────────────`);
+    console.log(`${tag} to            : ${options.to}`);
+    console.log(`${tag} subject       : ${options.subject}`);
+    console.log(`${tag} templateId    : ${options.templateId ?? "(none)"}`);
+    console.log(`${tag} templateName  : ${options.templateName ?? "(none)"}`);
+    console.log(`${tag} triggeredBy   : ${options.triggeredBy ?? "(none)"}`);
+    console.log(
+      `${tag} triggeredByUserId: ${options.triggeredByUserId ?? "(none)"}`,
+    );
+    console.log(`${tag} relatedUserId : ${options.relatedUserId ?? "(none)"}`);
+    console.log(
+      `${tag} relatedSimulationId: ${options.relatedSimulationId ?? "(none)"}`,
+    );
+    console.log(`${tag} attachments   : ${attachmentsCount}`);
+    if (options.variables && Object.keys(options.variables).length > 0) {
+      console.log(`${tag} variables     :`, JSON.stringify(options.variables));
+    }
+
+    const baseLogData = {
       recipientEmail: options.to,
       subject: options.subject,
       htmlBody: options.html,
@@ -123,15 +144,25 @@ export class EmailService {
       variables: options.variables || {},
       relatedUserId: options.relatedUserId,
       relatedSimulationId: options.relatedSimulationId,
-      status: "sent" as const,
-      errorMessage: null,
+      hasAttachments: attachmentsCount > 0,
+      attachmentsCount,
     };
 
-    try {
-      const transporter = await this.createTransporter();
-      const config = await this.getSMTPConfig();
+    const startedAt = Date.now();
 
-      await transporter.sendMail({
+    try {
+      console.log(`${tag} [1/4] Loading SMTP config from database…`);
+      const config = await this.getSMTPConfig();
+      console.log(
+        `${tag} [1/4] SMTP config loaded — host=${config.host} port=${config.port} secure=${config.secure ?? false} from="${config.fromName}" <${config.fromEmail}>`,
+      );
+
+      console.log(`${tag} [2/4] Creating nodemailer transporter…`);
+      const transporter = await this.createTransporter();
+      console.log(`${tag} [2/4] Transporter created`);
+
+      console.log(`${tag} [3/4] Calling transporter.sendMail…`);
+      const info = await transporter.sendMail({
         from: `"${config.fromName}" <${config.fromEmail}>`,
         to: options.to,
         subject: options.subject,
@@ -140,22 +171,83 @@ export class EmailService {
         attachments: options.attachments,
       });
 
-      // Log successful send
-      await prisma.emailLog.create({ data: logData });
+      const durationMs = Date.now() - startedAt;
+      console.log(
+        `${tag} [3/4] sendMail returned — messageId=${info.messageId} response="${info.response}" accepted=${JSON.stringify(info.accepted)} rejected=${JSON.stringify(info.rejected)} duration=${durationMs}ms`,
+      );
 
-      console.log(`Email sent successfully to ${options.to}`);
-    } catch (error) {
-      // Log failed send
+      console.log(`${tag} [4/4] Writing success log to database…`);
       await prisma.emailLog.create({
         data: {
-          ...logData,
+          ...baseLogData,
+          status: "sent",
+          errorMessage: null,
+          smtpHost: config.host,
+          smtpPort: config.port,
+          fromEmail: config.fromEmail,
+          fromName: config.fromName,
+          messageId: info.messageId ?? null,
+          smtpResponse: info.response ?? null,
+          durationMs,
+        },
+      });
+      console.log(`${tag} [4/4] Log saved to database`);
+
+      console.log(
+        `${tag} ── DONE (success) ${durationMs}ms ─────────────────────────`,
+      );
+    } catch (error) {
+      const durationMs = Date.now() - startedAt;
+      console.error(
+        `${tag} ── ERROR after ${durationMs}ms ─────────────────────────────`,
+      );
+      console.error(
+        `${tag} error message :`,
+        error instanceof Error ? error.message : error,
+      );
+      console.error(
+        `${tag} error stack   :`,
+        error instanceof Error ? error.stack : "(no stack)",
+      );
+
+      // Try to capture SMTP config even on failure (best-effort)
+      let smtpHost: string | undefined;
+      let smtpPort: number | undefined;
+      let fromEmail: string | undefined;
+      let fromName: string | undefined;
+      try {
+        const config = await this.getSMTPConfig();
+        smtpHost = config.host;
+        smtpPort = config.port;
+        fromEmail = config.fromEmail;
+        fromName = config.fromName;
+      } catch (configError) {
+        console.error(
+          `${tag} could not fetch SMTP config for error log:`,
+          configError instanceof Error ? configError.message : configError,
+        );
+      }
+
+      console.log(`${tag} Writing failure log to database…`);
+      await prisma.emailLog.create({
+        data: {
+          ...baseLogData,
           status: "failed",
           errorMessage:
             error instanceof Error ? error.message : "Unknown error",
+          errorStack: error instanceof Error ? (error.stack ?? null) : null,
+          smtpHost: smtpHost ?? null,
+          smtpPort: smtpPort ?? null,
+          fromEmail: fromEmail ?? null,
+          fromName: fromName ?? null,
+          durationMs,
         },
       });
+      console.log(`${tag} Failure log saved to database`);
+      console.error(
+        `${tag} ── END (failed) ─────────────────────────────────────────`,
+      );
 
-      console.error("Failed to send email:", error);
       throw new Error(
         `Failed to send email: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
@@ -228,7 +320,7 @@ export class EmailService {
       // Generate the setup password URL if a token is provided
       const baseUrl =
         process.env.NEXT_PUBLIC_BACKEND_URL ||
-        process.env.VERCEL_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
         "http://localhost:3000";
       const setupPasswordUrl = options.setupToken
         ? `${baseUrl}/internal/setup-password?token=${options.setupToken}`
@@ -281,7 +373,7 @@ export class EmailService {
       // Generate the reset password URL
       const baseUrl =
         process.env.NEXT_PUBLIC_BACKEND_URL ||
-        process.env.VERCEL_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
         "http://localhost:3000";
       const resetPasswordUrl = `${baseUrl}/internal/reset-password?token=${options.resetToken}`;
 
