@@ -381,6 +381,8 @@ export class EmailService {
         RESET_PASSWORD_URL: resetPasswordUrl,
       };
 
+
+      
       await this.sendTemplateEmail({
         to: options.userEmail,
         templateId: config.passwordResetEmailTemplateId,
