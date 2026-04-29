@@ -319,9 +319,7 @@ export class EmailService {
 
       // Generate the setup password URL if a token is provided
       const baseUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL ||
-        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-        "http://localhost:3000";
+        process.env.NEXT_PUBLIC_BACKEND_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) || "http://localhost:3000";
       const setupPasswordUrl = options.setupToken
         ? `${baseUrl}/internal/setup-password?token=${options.setupToken}`
         : "";
