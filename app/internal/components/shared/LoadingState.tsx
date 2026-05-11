@@ -1,6 +1,6 @@
 "use client";
 
-import { Paper, Stack, Typography } from "@mui/material";
+import { CircularProgress, Paper, Stack, Typography } from "@mui/material";
 import Image from "next/image";
 
 interface LoadingStateProps {
@@ -14,14 +14,15 @@ export function LoadingState({ message = "Loading...", variant = "default", rows
   return (
     <Paper sx={{ width: "100%", p: 3, boxShadow: "none" }}>
       <Stack alignItems="center" spacing={2}>
-        <Image
+        <CircularProgress  size={size}/>
+       {false &&  <Image
           src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiYXhwb1wvZmlsZVwvWFdydWluVmNaS2JEUmo1RGJWSkMuZ2lmIn0:axpo:qPyTcxxV9tma-GNp8_KdV4a_JWFXGylEOusDzhFQm1U?width=200"
           alt="Loading..."
           width={size}
           height={size}
           unoptimized
           style={{ width: 'auto', height: size, maxWidth: '100%' }}
-        />
+        />}
         <Typography color="text.secondary">{message}</Typography>
         {variant === "table" && (
           <Stack sx={{ width: "100%", mt: 1 }} spacing={1}>

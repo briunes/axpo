@@ -30,10 +30,21 @@ import { LoadingState } from "../../../components/shared";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+/** Per-period data: avg = 12-month PROMEDIO, monthly = { YYYY-MM -> value } (all in €/kWh) */
+interface PeriodData {
+    avg: number;
+    monthly: Record<string, number>;
+}
+
 interface HistoryProduct {
     productKey: string;
     productLabel: string;
-    tariffs: Record<string, Record<string, number>>;
+    /**
+     * Electricity: tariff -> period -> PeriodData
+     * Gas:         tariff -> zone (PEN/BAL) -> { avg: number; monthly: {} }
+     */
+    tariffs: Record<string, Record<string, PeriodData | number>>;
+    type?: "GAS";
 }
 
 interface HistoryData {
@@ -41,7 +52,23 @@ interface HistoryData {
     perfilCarga: string;
     products: HistoryProduct[];
     months: { label: string; key: string }[];
-    omieHistory: Record<string, number>;
+    // Gas-specific
+    isGas?: boolean;
+    gasTarifaAcceso?: string;
+    gasProducts?: HistoryProduct[];
+}
+
+/** Safely extract a numeric value from either a PeriodData or a plain number */
+function periodAvg(v: PeriodData | number | undefined): number {
+    if (v === undefined || v === null) return 0;
+    if (typeof v === "number") return v;
+    return v.avg ?? 0;
+}
+
+function periodMonthly(v: PeriodData | number | undefined, monthKey: string): number {
+    if (v === undefined || v === null) return 0;
+    if (typeof v === "number") return v;
+    return v.monthly?.[monthKey] ?? v.avg ?? 0;
 }
 
 export interface DownloadHistoryDialogProps {
@@ -56,7 +83,95 @@ export interface DownloadHistoryDialogProps {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-/** Canonical period counts per tariff */
+/** Gas tariff display order */
+const GAS_TARIFF_ORDER = [
+    "RL01", "RL02", "RL03", "RL04", "RL05", "RL06",
+    "RLPS1", "RLPS2", "RLPS3", "RLPS4", "RLPS5", "RLPS6",
+];
+
+function buildGasHistoryHtml(
+    data: HistoryData,
+    product: HistoryProduct,
+    template: PdfTemplate | null,
+    axpoPrimary: string,
+    simulation?: any,
+): string {
+    // Build a table showing all tariffs x zones (PEN / BAL)
+    const allTariffs = GAS_TARIFF_ORDER.filter((t) => product.tariffs[t]);
+    const allZones = Array.from(
+        new Set(allTariffs.flatMap((t) => Object.keys(product.tariffs[t] ?? {})))
+    ).sort();
+
+    const headerCells = allZones
+        .map(
+            (z) =>
+                `<th style="background:${axpoPrimary};color:#fff;padding:5px 10px;text-align:center;font-weight:bold;font-size:11px;border:1px solid rgba(255,255,255,0.15);">${z}</th>`,
+        )
+        .join("");
+
+    const tariffRows = allTariffs
+        .map(
+            (tariff) =>
+                `<tr>
+          <td style="background:${axpoPrimary};color:#fff;font-weight:bold;padding:5px 10px;font-size:11px;border:1px solid rgba(255,255,255,0.15);white-space:nowrap;">${tariff}</td>
+          ${allZones
+                    .map(
+                        (z) =>
+                            `<td style="padding:5px 10px;text-align:center;font-size:11px;border:1px solid #f0f0f0;background:#fff;">${fmtMargin(periodAvg(product.tariffs[tariff]?.[z]))}</td>`,
+                    )
+                    .join("")}
+        </tr>`,
+        )
+        .join("");
+
+    const gasTableHtml = allTariffs.length === 0
+        ? `<p style="color:#aaa;text-align:center;">No hay datos de histórico de gas disponibles.</p>`
+        : `<table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
+        <thead>
+          <tr>
+            <th style="background:${axpoPrimary};color:#fff;padding:5px 10px;text-align:center;font-weight:bold;font-size:11px;border:1px solid rgba(255,255,255,0.15);">Tarifa</th>
+            ${headerCells}
+          </tr>
+        </thead>
+        <tbody>${tariffRows}</tbody>
+      </table>`;
+
+    if (template?.htmlContent) {
+        const createdAt = simulation?.createdAt
+            ? new Date(simulation.createdAt).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+            : "";
+
+        return template.htmlContent
+            .replace(/\{\{HISTORY_TABLES_GAS\}\}/g, gasTableHtml)
+            .replace(/\{\{HISTORY_TABLE_GAS\}\}/g, gasTableHtml)
+            .replace(/\{\{GAS_PRODUCT_LABEL\}\}/g, product.productLabel)
+            .replace(/\{\{GAS_TARIFA\}\}/g, data.gasTarifaAcceso ?? "")
+            .replace(/\{\{CLIENT_NAME\}\}/g, simulation?.client?.name ?? "")
+            .replace(/\{\{SIMULATION_ID\}\}/g, simulation?.id ?? "")
+            .replace(/\{\{CREATED_AT\}\}/g, createdAt)
+            .replace(/\{\{OWNER_NAME\}\}/g, simulation?.ownerUser?.fullName ?? "")
+            .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "");
+    }
+
+    // Built-in default template for gas
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #333; padding: 36px 40px; background: #fff; }
+    h2 { text-align: center; font-size: 14px; font-weight: bold; color: #333; margin-bottom: 28px; padding-bottom: 14px; border-bottom: 2px solid ${axpoPrimary}; }
+  </style>
+</head>
+<body>
+  <h2>Histórico Gas — ${product.productLabel}</h2>
+  ${gasTableHtml}
+</body>
+</html>`;
+}
+
+/** Canonical period counts per electricity tariff */
 const TARIFF_PERIODS: Record<string, string[]> = {
     "2.0TD": ["P1", "P2", "P3"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
@@ -81,20 +196,22 @@ function buildHistoryHtml(
     const perfilLabel =
         data.perfilCarga === "NORMAL" ? "Perfil Normal" : "Perfil Diurno";
 
-    // Sort months Jan → Dec (by calendar month number, year as tiebreaker)
+    // Sort months chronologically (oldest → newest)
     const sortedMonths = [...data.months].sort((a, b) => {
         const [ay, am] = a.key.split("-").map(Number);
         const [by, bm] = b.key.split("-").map(Number);
-        return am !== bm ? am - bm : ay - by;
+        return ay !== by ? ay - by : am - bm;
     });
 
-    // Build one <table> block per tariff
+    // Build one <table> block per tariff.
+    // Each cell shows the full all-in Precio TE (€/kWh) for that month+period,
+    // taken from the per-month MARGEN key stored in the base value set.
     const buildTariffBlock = (tariff: string): string => {
-        const margins = product.tariffs[tariff];
-        if (!margins) return "";
+        const tariffData = product.tariffs[tariff];
+        if (!tariffData) return "";
         const canonicalPeriods = TARIFF_PERIODS[tariff] ?? [];
         const activePeriods = canonicalPeriods.filter(
-            (p) => margins[p] !== undefined,
+            (p) => tariffData[p] !== undefined,
         );
         if (activePeriods.length === 0) return "";
 
@@ -113,18 +230,22 @@ function buildHistoryHtml(
               ${activePeriods
                         .map(
                             (p) =>
-                                `<td style="padding:5px 10px;text-align:center;font-size:11px;border:1px solid #f0f0f0;background:#fff;">${fmtMargin(margins[p] ?? 0)}</td>`,
+                                `<td style="padding:5px 10px;text-align:center;font-size:11px;border:1px solid #f0f0f0;background:#fff;">${fmtMargin(periodMonthly(tariffData[p], month.key))}</td>`,
                         )
                         .join("")}
             </tr>`,
             )
             .join("");
 
+        // Average row: compute arithmetic mean from the displayed monthly values
         const avgCells = activePeriods
-            .map(
-                (p) =>
-                    `<td style="padding:5px 10px;text-align:center;font-size:11px;border:1px solid #e8e8e8;font-weight:bold;background:#f5f5f5;">${fmtMargin(margins[p] ?? 0)}</td>`,
-            )
+            .map((p) => {
+                const vals = sortedMonths
+                    .map((m) => periodMonthly(tariffData[p], m.key))
+                    .filter((v) => v > 0);
+                const mean = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+                return `<td style="padding:5px 10px;text-align:center;font-size:11px;border:1px solid #e8e8e8;font-weight:bold;background:#f5f5f5;">${fmtMargin(mean)}</td>`;
+            })
             .join("");
 
         return `
@@ -271,15 +392,24 @@ export function DownloadHistoryDialog({
             }),
         ])
             .then(([templates, histData]) => {
+                const data = histData as HistoryData;
                 const historyTpls = templates.filter(
                     (tpl) => tpl.active && tpl.type === "price-history",
                 );
                 setHistoryTemplates(historyTpls);
-                setHistoryData(histData as HistoryData);
 
-                // Default template: first available price-history template
+                // For gas simulations use gasProducts as the product list
+                if (data.isGas && data.gasProducts && data.gasProducts.length > 0) {
+                    setHistoryData({ ...data, products: data.gasProducts });
+                } else {
+                    setHistoryData(data);
+                }
+
+                // Default template: prefer commodity-matching template
                 if (historyTpls.length > 0) {
-                    setSelectedTemplateId(historyTpls[0].id);
+                    const commodity = data.isGas ? "GAS" : "ELECTRICITY";
+                    const match = historyTpls.find((tpl) => (tpl as any).commodity === commodity);
+                    setSelectedTemplateId((match ?? historyTpls[0]).id);
                 }
             })
             .catch((err) => {
@@ -313,6 +443,9 @@ export function DownloadHistoryDialog({
 
     const previewHtml = useMemo(() => {
         if (!historyData || !selectedProduct) return "";
+        if (selectedProduct.type === "GAS" || historyData.isGas) {
+            return buildGasHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation);
+        }
         return buildHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation);
     }, [historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation]);
 
@@ -321,7 +454,9 @@ export function DownloadHistoryDialog({
 
         setIsDownloading(true);
         try {
-            const html = buildHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation);
+            const html = (selectedProduct.type === "GAS" || historyData.isGas)
+                ? buildGasHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation)
+                : buildHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation);
 
             const response = await fetch(
                 `/api/v1/internal/simulations/${simulation.id}/generate-pdf`,

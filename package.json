@@ -26,11 +26,13 @@
     "test:security": "jest --testPathPattern=security"
   },
   "dependencies": {
+    "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@hookform/resolvers": "^3.3.4",
     "@mui/icons-material": "^7.3.9",
     "@mui/material": "^7.3.9",
+    "@mui/material-nextjs": "^9.0.0",
     "@mui/x-charts": "^8.28.2",
     "@mui/x-data-grid": "^8.28.2",
     "@napi-rs/canvas": "^0.1.99",

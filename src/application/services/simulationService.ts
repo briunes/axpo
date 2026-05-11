@@ -126,17 +126,46 @@ export class SimulationService {
       );
     }
 
-    const created = await prisma.simulation.create({
-      data: {
-        agencyId:
-          actor.role === UserRole.ADMIN ? ownerUser.agencyId : actor.agencyId,
-        ownerUserId,
-        clientId: input.clientId ?? null,
-        expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
-        pinHashSnapshot: ownerUser.pinHash,
-        pinSnapshot: ownerUser.pinCurrent ?? null,
-      },
-    });
+    // Generate unique reference number: 00001/YYYY
+    // Uses a retry loop to handle the unlikely race condition where two
+    // simulations are created simultaneously and get the same count.
+    let created: Awaited<ReturnType<typeof prisma.simulation.create>>;
+    let attempts = 0;
+    while (true) {
+      attempts++;
+      const year = new Date().getFullYear();
+      const yearStart = new Date(`${year}-01-01T00:00:00.000Z`);
+      const yearEnd = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+      const countThisYear = await prisma.simulation.count({
+        where: { createdAt: { gte: yearStart, lt: yearEnd } },
+      });
+      const referenceNumber = `${String(countThisYear + 1 + (attempts - 1)).padStart(5, "0")}/${year}`;
+
+      try {
+        created = await prisma.simulation.create({
+          data: {
+            agencyId:
+              actor.role === UserRole.ADMIN
+                ? ownerUser.agencyId
+                : actor.agencyId,
+            ownerUserId,
+            clientId: input.clientId ?? null,
+            expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+            pinHashSnapshot: ownerUser.pinHash,
+            pinSnapshot: ownerUser.pinCurrent ?? null,
+            referenceNumber,
+          },
+        });
+        break;
+      } catch (err: unknown) {
+        const isUniqueViolation =
+          err instanceof Error &&
+          "code" in err &&
+          (err as { code: string }).code === "P2002";
+        if (isUniqueViolation && attempts < 5) continue;
+        throw err;
+      }
+    }
 
     await prisma.simulationVersion.create({
       data: {
@@ -279,7 +308,11 @@ export class SimulationService {
     return cloned;
   }
 
-  static async shareSimulation(actor: ActorContext, simulationId: string) {
+  static async shareSimulation(
+    actor: ActorContext,
+    simulationId: string,
+    sharedVia?: string,
+  ) {
     const simulation = await this.assertSimulationAccess(actor, simulationId);
     const owner = await prisma.user.findUnique({
       where: { id: simulation.ownerUserId },
@@ -299,6 +332,7 @@ export class SimulationService {
         pinSnapshot: owner.pinCurrent ?? null,
         status: SimulationStatus.SHARED,
         sharedAt: new Date(),
+        ...(sharedVia ? { sharedVia } : {}),
       },
     });
 

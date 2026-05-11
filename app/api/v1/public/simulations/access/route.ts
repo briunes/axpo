@@ -82,6 +82,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           id: true,
           fullName: true,
           email: true,
+          agency: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       },
     },
@@ -143,6 +149,14 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       reason: "SUCCESS",
     },
   });
+
+  // Record the first time the client opens the simulation
+  if (!simulation.clientOpenedAt) {
+    await prisma.simulation.update({
+      where: { id: simulation.id },
+      data: { clientOpenedAt: new Date() },
+    });
+  }
 
   await AuditService.logEvent({
     eventType: "PUBLIC_ACCESS_GRANTED",
@@ -230,6 +244,50 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     }
   }
 
+  // Build a lean payload: keep inputs + only the selected plan result
+  let leanPayload: Record<string, unknown> | null = null;
+  if (mergedPayload) {
+    const selectedOffer = mergedPayload.selectedOffer as
+      | { productKey?: string; commodity?: string }
+      | undefined;
+
+    // Resolve the selected result from the full results list
+    const rawResults = mergedPayload.results as
+      | Record<string, unknown>
+      | undefined;
+    let selectedResult: unknown = null;
+    if (rawResults && selectedOffer?.productKey) {
+      const commodity = (
+        selectedOffer.commodity ?? "electricity"
+      ).toLowerCase() as string;
+      const allResults = rawResults[commodity] as
+        | Array<{ productKey: string }>
+        | undefined;
+      selectedResult =
+        allResults?.find((r) => r.productKey === selectedOffer.productKey) ??
+        null;
+    }
+
+    // Strip the full results array; expose only the selected plan result
+    const { results: _results, ...payloadWithoutResults } = mergedPayload;
+    leanPayload = {
+      ...payloadWithoutResults,
+      ...(selectedResult !== null
+        ? {
+            selectedResult,
+            results: rawResults
+              ? {
+                  calculatedAt: (rawResults as Record<string, unknown>)
+                    .calculatedAt,
+                  baseValueSetId: (rawResults as Record<string, unknown>)
+                    .baseValueSetId,
+                }
+              : undefined,
+          }
+        : {}),
+    };
+  }
+
   return ResponseHandler.ok(
     {
       accessSessionToken: issuePublicSessionToken(simulation.id, payload.token),
@@ -243,7 +301,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       latestVersion: baseVersion
         ? {
             id: baseVersion.id,
-            payloadJson: mergedPayload,
+            payloadJson: leanPayload,
             createdAt: baseVersion.createdAt,
           }
         : null,

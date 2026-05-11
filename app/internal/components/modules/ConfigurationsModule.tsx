@@ -32,12 +32,25 @@ export function ConfigurationsModule({ session, onNotify }: ConfigurationsModule
 
     return (
         <div className="configurations-container">
-            <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+            <Box
+                sx={{
+                    borderBottom: "1px solid var(--scheme-neutral-900)",
+                    px: 2,
+                    background: "linear-gradient(180deg, var(--scheme-neutral-1200) 0%, var(--scheme-neutral-1100) 100%)",
+                }}
+            >
                 <Tabs
                     value={tabIndex}
                     onChange={(_, newValue) => {
                         const tabs = Object.keys(TAB_LABELS) as ConfigTab[];
                         setActiveTab(tabs[newValue]);
+                    }}
+                    sx={{
+                        minHeight: 56,
+                        '& .MuiTabs-indicator': {
+                            backgroundColor: 'var(--scheme-brand-600)',
+                            height: 2,
+                        },
                     }}
                 >
                     {(Object.keys(TAB_LABELS) as ConfigTab[]).map((tab) => (
@@ -45,7 +58,15 @@ export function ConfigurationsModule({ session, onNotify }: ConfigurationsModule
                             key={tab}
                             label={TAB_LABELS[tab]}
                             data-testid={`config-tab-${tab}`}
-                            sx={{textTransform: 'none'}}
+                            sx={{
+                                textTransform: 'none',
+                                minHeight: 56,
+                                color: 'var(--scheme-neutral-500)',
+                                fontWeight: 600,
+                                '&.Mui-selected': {
+                                    color: 'var(--scheme-brand-600)',
+                                },
+                            }}
                         />
                     ))}
                 </Tabs>

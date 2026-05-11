@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Box, Chip, Typography } from "@mui/material";
+import { alpha, Box, Chip, Typography, useTheme } from "@mui/material";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { SessionState } from "../../lib/authSession";
 import { DataTable, type ColumnDef, StatusBadge } from "../ui";
 import { formatDistanceToNow } from "date-fns";
@@ -32,19 +33,13 @@ export interface CronLogsPanelProps {
 }
 
 export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
-    const [logs, setLogs] = useState<CronLogEntry[]>([]);
-    const [loading, setLoading] = useState(true);
+    const theme = useTheme();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
-    const [total, setTotal] = useState(0);
 
-    useEffect(() => {
-        fetchLogs();
-    }, [page, pageSize]);
-
-    const fetchLogs = async () => {
-        setLoading(true);
-        try {
+    const { data, isFetching, error } = useQuery({
+        queryKey: ["cron-logs", session.token, page, pageSize],
+        queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: pageSize.toString(),
@@ -57,19 +52,24 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
             if (!response.ok) throw new Error("Failed to fetch cron logs");
 
             const data = await response.json();
-            console.log("[CronLogsPanel] Response data:", data);
-            console.log("[CronLogsPanel] Items:", data.data?.items);
-            console.log("[CronLogsPanel] Total:", data.data?.pagination?.total);
+            return {
+                items: data.data?.items || [],
+                total: data.data?.pagination?.total || 0,
+            };
+        },
+        placeholderData: keepPreviousData,
+        staleTime: 60_000,
+    });
 
-            setLogs(data.data?.items || []);
-            setTotal(data.data?.pagination?.total || 0);
-        } catch (error) {
-            console.error("Error fetching cron logs:", error);
+    useEffect(() => {
+        if (error) {
             onNotify?.("Failed to load cron logs", "error");
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [error, onNotify]);
+
+    const logs = data?.items ?? [];
+    const total = data?.total ?? 0;
+    const loading = isFetching;
 
     const columns: ColumnDef<CronLogEntry>[] = [
         {
@@ -107,10 +107,12 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                             fontWeight: 600,
                             fontSize: 12,
                             height: 26,
-                            color: isSuccess ? "#059669" : "#dc2626",
-                            backgroundColor: isSuccess ? "#d1fae5" : "#fee2e2",
+                            color: isSuccess ? theme.palette.success.main : theme.palette.error.main,
+                            backgroundColor: isSuccess
+                                ? alpha(theme.palette.success.main, theme.palette.mode === "dark" ? 0.18 : 0.14)
+                                : alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.18 : 0.12),
                             "& .MuiChip-icon": {
-                                color: isSuccess ? "#059669" : "#dc2626",
+                                color: isSuccess ? theme.palette.success.main : theme.palette.error.main,
                             },
                         }}
                     />
@@ -173,8 +175,10 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                             fontSize: 11,
                             fontWeight: 600,
                             height: 24,
-                            backgroundColor: isApi ? "#fef3c7" : "#dbeafe",
-                            color: isApi ? "#92400e" : "#1e40af",
+                            backgroundColor: isApi
+                                ? alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.2 : 0.16)
+                                : alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.2 : 0.14),
+                            color: isApi ? theme.palette.warning.light : theme.palette.info.light,
                         }}
                     />
                 );
@@ -208,9 +212,9 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
     ];
 
     return (
-        <div style={{ padding: "24px" }}>
+        <div style={{ padding: "24px", color: "var(--scheme-neutral-100)" }}>
             <div style={{ marginBottom: "20px" }}>
-                <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>
+                <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px", color: "var(--scheme-neutral-100)" }}>
                     Simulation Expiration Jobs
                 </h2>
                 <p style={{ fontSize: "14px", color: "var(--scheme-neutral-600)" }}>

@@ -232,7 +232,7 @@ export function RolePermissionsEditor({
         }
         .rpe-description {
           font-size: 14px;
-          color: #6b7280;
+                    color: var(--scheme-neutral-500);
           margin: 0;
           line-height: 1.6;
           max-width: 560px;
@@ -240,9 +240,9 @@ export function RolePermissionsEditor({
         .rpe-save-btn {
           padding: 9px 22px;
           border-radius: 8px;
-          border: 1px solid #d1d5db;
-          background: #f9fafb;
-          color: #6b7280;
+                    border: 1px solid var(--scheme-neutral-900);
+                    background: var(--scheme-neutral-1100);
+                    color: var(--scheme-neutral-500);
           font-size: 14px;
           font-weight: 600;
           cursor: default;
@@ -253,13 +253,13 @@ export function RolePermissionsEditor({
           flex-shrink: 0;
         }
         .rpe-save-btn--active {
-          background: #1d4ed8;
-          border-color: #1d4ed8;
+                    background: var(--scheme-brand-600);
+                    border-color: var(--scheme-brand-600);
           color: #fff;
           cursor: pointer;
         }
         .rpe-save-btn--active:hover:not(:disabled) {
-          background: #1e40af;
+                    background: var(--scheme-brand-700);
         }
         .rpe-save-btn:disabled {
           opacity: 0.7;
@@ -270,20 +270,20 @@ export function RolePermissionsEditor({
           align-items: center;
           gap: 12px;
           padding: 40px 0;
-          color: #6b7280;
+          color: var(--scheme-neutral-500);
           font-size: 14px;
         }
         .rpe-matrix {
-          border: 1px solid #e5e7eb;
+                    border: 1px solid var(--scheme-neutral-900);
           border-radius: 12px;
           overflow: hidden;
-          background: #fff;
+                    background: var(--scheme-neutral-1200);
         }
         .rpe-matrix-header {
           display: grid;
           grid-template-columns: 1fr 120px 120px 120px;
-          background: #f9fafb;
-          border-bottom: 2px solid #e5e7eb;
+                    background: var(--scheme-neutral-1100);
+                    border-bottom: 1px solid var(--scheme-neutral-900);
           padding: 12px 20px;
           align-items: center;
           gap: 8px;
@@ -313,25 +313,25 @@ export function RolePermissionsEditor({
           text-transform: uppercase;
         }
         .rpe-role-chip--admin {
-          background: #fef3c7;
-          color: #92400e;
+                    background: rgba(245, 158, 11, 0.16);
+                    color: #fbbf24;
         }
         .rpe-role-chip--agent {
-          background: #dbeafe;
-          color: #1e40af;
+                    background: rgba(59, 130, 246, 0.16);
+                    color: #60a5fa;
         }
         .rpe-role-chip--commercial {
-          background: #f3e8ff;
-          color: #6b21a8;
+                    background: rgba(168, 85, 247, 0.16);
+                    color: #c084fc;
         }
         .rpe-role-locked {
           font-size: 10px;
-          color: #9ca3af;
+                    color: var(--scheme-neutral-600);
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
         .rpe-group {
-          border-bottom: 1px solid #f3f4f6;
+                    border-bottom: 1px solid var(--scheme-neutral-900);
         }
         .rpe-group:last-child {
           border-bottom: none;
@@ -341,10 +341,10 @@ export function RolePermissionsEditor({
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.06em;
-          color: #9ca3af;
+                    color: var(--scheme-neutral-600);
           padding: 12px 20px 6px;
-          background: #fafafa;
-          border-bottom: 1px solid #f3f4f6;
+                    background: var(--scheme-neutral-1100);
+                    border-bottom: 1px solid var(--scheme-neutral-900);
         }
         .rpe-row {
           display: grid;
@@ -352,19 +352,19 @@ export function RolePermissionsEditor({
           align-items: center;
           padding: 4px 20px;
           gap: 8px;
-          border-bottom: 1px solid #f9fafb;
+                    border-bottom: 1px solid var(--scheme-neutral-900);
           transition: background 0.1s;
         }
         .rpe-row:last-child {
           border-bottom: none;
         }
         .rpe-row:hover {
-          background: #f9fafb;
+                    background: var(--scheme-neutral-1100);
         }
         .rpe-perm-name {
           font-size: 14px;
           font-weight: 500;
-          color: #374151;
+                    color: var(--scheme-neutral-300);
         }
         .rpe-admin-badge {
           display: inline-flex;

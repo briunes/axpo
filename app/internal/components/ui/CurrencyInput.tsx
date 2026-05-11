@@ -177,7 +177,7 @@ export function CurrencyInput({
                         marginBottom: "8px",
                         fontSize: "14px",
                         fontWeight: 500,
-                        color: "#333",
+                        color: "inherit",
                     }}
                 >
                     {label}
@@ -227,27 +227,10 @@ export function CurrencyInput({
                 }}
                 sx={{
                     "& .MuiOutlinedInput-root": {
-                        backgroundColor: "#fafafa",
                         borderRadius: "6px",
                         fontSize: "14px",
-                        "& fieldset": {
-                            borderWidth: "1px",
-                            borderColor: error
-                                ? "#d32f2f"
-                                : "rgba(0, 0, 0, 0.23)",
-                        },
-                        "&:hover fieldset": {
-                            borderColor: error
-                                ? "#d32f2f"
-                                : "rgba(0, 0, 0, 0.4)",
-                        },
-                        "&.Mui-focused fieldset": {
-                            borderWidth: "1px",
-                            borderColor: error ? "#d32f2f" : "primary.main",
-                        },
                     },
                     "& .MuiFormHelperText-root": {
-                        color: error ? "#d32f2f" : "#666",
                         marginLeft: 0,
                         marginTop: "4px",
                         fontSize: "12px",

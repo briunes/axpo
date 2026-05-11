@@ -61,6 +61,12 @@ model Client {
   contactEmail    String?
   contactPhone    String?
   otherDetails    String?
+  street          String?
+  city            String?
+  postalCode      String?
+  province        String?
+  country         String?
+  language        String?
   createdByUserId String?
   updatedByUserId String?
   agency          Agency       @relation(fields: [agencyId], references: [id], onDelete: Cascade)
@@ -118,6 +124,7 @@ model User {
 model UserPreferences {
   id           String   @id @default(cuid())
   userId       String   @unique
+  language     String?
   dateFormat   String?
   timeFormat   String?
   timezone     String?
@@ -132,6 +139,7 @@ model UserPreferences {
 
 model Simulation {
   id                  String              @id @default(cuid())
+  referenceNumber     String?             @unique
   agencyId            String
   ownerUserId         String
   status              SimulationStatus    @default(DRAFT)
@@ -141,6 +149,8 @@ model Simulation {
   isDeleted           Boolean             @default(false)
   deletedAt           DateTime?
   sharedAt            DateTime?
+  clientOpenedAt      DateTime?
+  sharedVia           String?
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   clientId            String?
@@ -188,6 +198,8 @@ model BaseValueSet {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   isProduction       Boolean             @default(false)
+  sourceFileName     String?
+  sourceFileData     Bytes?
   items              BaseValueItem[]
   agency             Agency?             @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   createdByUser      User                @relation(fields: [createdBy], references: [id])
@@ -265,6 +277,7 @@ model SystemConfig {
   ivaRate                         Decimal  @default(0.21)
   defaultDateFormat               String   @default("DD/MM/YYYY")
   defaultItemsPerPage             Int      @default(10)
+  defaultLanguage                 String   @default("en")
   defaultNumberFormat             String   @default("eu")
   defaultTimeFormat               String   @default("24h")
   defaultTimezone                 String   @default("Europe/Madrid")
@@ -284,42 +297,74 @@ model SystemConfig {
   cronExpirationSchedule          String   @default("0 2 * * *")
   cronExpirationTimezone          String   @default("UTC")
   hydrocarbonTaxRate              Decimal  @default(0.00234)
+  ivaRateOptions                  Json?
+  electricityTaxRateOptions       Json?
+  hydrocarbonTaxRateOptions       Json?
 
   @@map("system_config")
 }
 
 model PdfTemplate {
-  id               String    @id @default(cuid())
+  id               String                   @id @default(cuid())
   name             String
   description      String
   type             String
-  active           Boolean   @default(true)
+  active           Boolean                  @default(true)
   htmlContent      String
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
   editableSections Json?
   deletedAt        DateTime?
-  isDeleted        Boolean   @default(false)
+  isDeleted        Boolean                  @default(false)
   commodity        String?
+  translations     PdfTemplateTranslation[]
 
   @@map("pdf_templates")
 }
 
+model PdfTemplateTranslation {
+  id            String      @id @default(cuid())
+  pdfTemplateId String
+  languageCode  String
+  htmlContent   String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  pdfTemplate   PdfTemplate @relation(fields: [pdfTemplateId], references: [id], onDelete: Cascade)
+
+  @@unique([pdfTemplateId, languageCode])
+  @@map("pdf_template_translations")
+}
+
 model EmailTemplate {
-  id               String    @id @default(cuid())
+  id               String                     @id @default(cuid())
   name             String
   description      String
   type             String
-  active           Boolean   @default(true)
+  active           Boolean                    @default(true)
   subject          String
   htmlContent      String
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
   editableSections Json?
   deletedAt        DateTime?
-  isDeleted        Boolean   @default(false)
+  isDeleted        Boolean                    @default(false)
+  translations     EmailTemplateTranslation[]
 
   @@map("email_templates")
+}
+
+model EmailTemplateTranslation {
+  id              String        @id @default(cuid())
+  emailTemplateId String
+  languageCode    String
+  subject         String
+  htmlContent     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  emailTemplate   EmailTemplate @relation(fields: [emailTemplateId], references: [id], onDelete: Cascade)
+
+  @@unique([emailTemplateId, languageCode])
+  @@map("email_template_translations")
 }
 
 model RolePermission {
@@ -335,18 +380,22 @@ model RolePermission {
 }
 
 model TemplateVariable {
-  id          String    @id @default(cuid())
-  key         String    @unique
-  label       String
-  description String?
-  category    String
-  example     String?
-  sortOrder   Int       @default(0)
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
-  isDeleted   Boolean   @default(false)
+  id            String    @id @default(cuid())
+  key           String    @unique
+  label         String
+  description   String?
+  category      String
+  example       String?
+  sortOrder     Int       @default(0)
+  active        Boolean   @default(true)
+  /// Comma-separated template types this variable applies to (null = all types)
+  templateTypes String?
+  /// Commodity this variable applies to: ELECTRICITY, GAS (null = all commodities)
+  commodity     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  isDeleted     Boolean   @default(false)
 
   @@map("template_variables")
 }

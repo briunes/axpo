@@ -28,7 +28,15 @@ export const POST = withErrorHandler(
       throw new ValidationError("Simulation id parameter is required");
     }
 
-    const shared = await SimulationService.shareSimulation(auth, id);
+    let sharedVia: string | undefined;
+    try {
+      const body = await request.json();
+      sharedVia = body?.sharedVia;
+    } catch {
+      /* body is optional */
+    }
+
+    const shared = await SimulationService.shareSimulation(auth, id, sharedVia);
     return ResponseHandler.ok(shared, 200);
   },
 );

@@ -51,6 +51,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         select: {
           clientId: true,
           updatedAt: true,
+          status: true,
         },
       },
     },
@@ -67,6 +68,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       direccion: string;
       comercializadorActual: string;
       clientId: string | null;
+      lastUsed: string | null;
+      lastStatus: string | null;
     }
   >();
 
@@ -87,6 +90,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         direccion: clientData?.direccion ?? "",
         comercializadorActual: clientData?.comercializadorActual ?? "",
         clientId: v.simulation.clientId ?? null,
+        lastUsed: v.simulation.updatedAt
+          ? v.simulation.updatedAt.toISOString()
+          : null,
+        lastStatus: v.simulation.status ?? null,
       });
     }
   }

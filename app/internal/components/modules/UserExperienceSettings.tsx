@@ -27,16 +27,41 @@ export function UserExperienceSettings({ session, onNotify }: UserExperienceSett
 
     return (
         <div className="system-settings-container">
-            <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+            <Box
+                sx={{
+                    borderBottom: "1px solid var(--scheme-neutral-900)",
+                    px: 1,
+                    background: "linear-gradient(180deg, var(--scheme-neutral-1200) 0%, var(--scheme-neutral-1100) 100%)",
+                }}
+            >
                 <Tabs
                     value={tabIndex}
                     onChange={(_, newValue) => {
                         const tabs = Object.keys(UX_TABS) as UxTab[];
                         setActiveTab(tabs[newValue]);
                     }}
+                    sx={{
+                        minHeight: 52,
+                        '& .MuiTabs-indicator': {
+                            backgroundColor: 'var(--scheme-brand-600)',
+                            height: 2,
+                        },
+                    }}
                 >
                     {(Object.keys(UX_TABS) as UxTab[]).map((tab) => (
-                        <Tab key={tab} label={UX_TABS[tab]} sx={{textTransform: 'none'}}/>
+                        <Tab
+                            key={tab}
+                            label={UX_TABS[tab]}
+                            sx={{
+                                textTransform: 'none',
+                                minHeight: 52,
+                                color: 'var(--scheme-neutral-500)',
+                                fontWeight: 600,
+                                '&.Mui-selected': {
+                                    color: 'var(--scheme-brand-600)',
+                                },
+                            }}
+                        />
                     ))}
                 </Tabs>
             </Box>

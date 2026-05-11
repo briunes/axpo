@@ -19,11 +19,12 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import BlockIcon from "@mui/icons-material/Block";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { useEffect, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { ClientItem, AgencyItem } from "../../lib/internalApi";
-import { isAdmin, listAgencies } from "../../lib/internalApi";
+import { isAdmin } from "../../lib/internalApi";
 import type { ClientsActions } from "../hooks/useClients";
+import { useAgencies } from "../hooks/useAgencies";
 import { usePermissions } from "../../lib/permissionsContext";
 import { ConfirmDialog } from "../shared";
 import { DataTable, StatusBadge, FormSelect, FormInput } from "../ui";
@@ -55,30 +56,12 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
   const [confirmToggle, setConfirmToggle] = useState<ClientItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ClientItem | null>(null);
   const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
-  const [agencies, setAgencies] = useState<AgencyItem[]>([]);
+  const { agencies } = useAgencies(session, 1000, { queryEnabled: isAdmin(role) });
   const [dropdownState, setDropdownState] = useState<{
     anchorEl: HTMLElement | null;
     items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
-
-  // Load agencies for filter (admin only)
-  useEffect(() => {
-    if (isAdmin(role)) {
-      listAgencies(session.token)
-        .then((res) => setAgencies(res.items))
-        .catch(() => { });
-    }
-  }, [session]);
-
-  // Single params-key ref to avoid double-fetch in React 18 Strict Mode
-  const paramsRef = useRef<string | null>(null);
-  useEffect(() => {
-    const key = `${page}|${pageSize}|${sortColumn}|${sortDir}|${search}|${showArchived}|${agencyId}`;
-    if (paramsRef.current === key) return;
-    paramsRef.current = key;
-    refresh();
-  }, [page, pageSize, sortColumn, sortDir, search, showArchived, agencyId]);
 
   useEffect(() => {
     if (successText) { onNotify?.(successText, "success"); clearFeedback(); }
@@ -261,7 +244,7 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
   }
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
       <DataTable<ClientItem>
         columns={columns}
         rows={clients}

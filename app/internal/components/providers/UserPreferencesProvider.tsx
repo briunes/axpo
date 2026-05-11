@@ -9,8 +9,11 @@ import {
     type ReactNode,
 } from "react";
 import { loadSession } from "../../lib/authSession";
+import { useI18n } from "../../../../src/lib/i18n-context";
+import type { Locale } from "../../../../src/lib/translations";
 
 export interface UserPreferences {
+    language: string | null;
     dateFormat: string;
     timeFormat: string;
     timezone: string;
@@ -19,6 +22,7 @@ export interface UserPreferences {
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
+    language: null,
     dateFormat: "DD/MM/YYYY",
     timeFormat: "24h",
     timezone: "Europe/Madrid",
@@ -35,6 +39,7 @@ function loadCachedPreferences(): UserPreferences {
         if (!raw) return DEFAULT_PREFERENCES;
         const parsed = JSON.parse(raw) as Partial<UserPreferences>;
         return {
+            language: parsed.language ?? DEFAULT_PREFERENCES.language,
             dateFormat: parsed.dateFormat ?? DEFAULT_PREFERENCES.dateFormat,
             timeFormat: parsed.timeFormat ?? DEFAULT_PREFERENCES.timeFormat,
             timezone: parsed.timezone ?? DEFAULT_PREFERENCES.timezone,
@@ -62,6 +67,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     const [preferences, setPreferences] =
         useState<UserPreferences>(loadCachedPreferences);
     const [loading, setLoading] = useState(false);
+    const { setLocale } = useI18n();
 
     const refresh = useCallback(async () => {
         const session = loadSession();
@@ -76,12 +82,22 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
             if (!res.ok) return;
             const data = await res.json();
             const updated: UserPreferences = {
+                language: data.language ?? DEFAULT_PREFERENCES.language,
                 dateFormat: data.dateFormat ?? DEFAULT_PREFERENCES.dateFormat,
                 timeFormat: data.timeFormat ?? DEFAULT_PREFERENCES.timeFormat,
                 timezone: data.timezone ?? DEFAULT_PREFERENCES.timezone,
                 numberFormat: data.numberFormat ?? DEFAULT_PREFERENCES.numberFormat,
                 itemsPerPage: data.itemsPerPage ?? DEFAULT_PREFERENCES.itemsPerPage,
             };
+            // Apply saved language preference only if the user hasn't
+            // already made an explicit language selection in this browser
+            const LOCALE_STORAGE_KEY = "axpo-locale";
+            const hasLocalLocale =
+                typeof window !== "undefined" &&
+                !!localStorage.getItem(LOCALE_STORAGE_KEY);
+            if (!hasLocalLocale && (updated.language === "en" || updated.language === "es")) {
+                setLocale(updated.language as Locale);
+            }
             setPreferences(updated);
             try { localStorage.setItem(PREFS_CACHE_KEY, JSON.stringify(updated)); } catch { /* ignore */ }
         } catch {

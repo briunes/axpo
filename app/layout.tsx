@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Montserrat } from "next/font/google";
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { I18nProvider } from "../src/lib/i18n-context";
 import { initializeCronJobs } from "../src/lib/cron";
 
@@ -43,19 +44,46 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   const envLabel = envLabelMap[appEnv] || "LOCAL";
 
+  const themeInitScript = `
+    (function () {
+      try {
+        var stored = localStorage.getItem('theme-mode');
+        var mode = stored === 'dark' || stored === 'light' ? stored : 'light';
+        document.documentElement.setAttribute('data-theme', mode);
+        document.documentElement.style.colorScheme = mode;
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.documentElement.style.colorScheme = 'light';
+      }
+    })();
+  `;
+
   return (
-    <html lang="en" data-theme="light" data-brand="custom" data-accent="custom" data-neutral="gray" className={montserrat.variable}>
+    <html
+      lang="en"
+      data-theme="light"
+      data-brand="custom"
+      data-accent="custom"
+      data-neutral="gray"
+      className={montserrat.variable}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className={montserrat.className}>
-        <I18nProvider>
-          <div
-            className={`environment-indicator env-${appEnv}`}
-            role="status"
-            aria-live="polite"
-          >
-            Environment: {envLabel}
-          </div>
-          <div className="environment-content">{children}</div>
-        </I18nProvider>
+        <AppRouterCacheProvider>
+          <I18nProvider>
+            <div
+              className={`environment-indicator env-${appEnv}`}
+              role="status"
+              aria-live="polite"
+            >
+              Environment: {envLabel}
+            </div>
+            <div className="environment-content">{children}</div>
+          </I18nProvider>
+        </AppRouterCacheProvider>
       </body>
     </html>
   );

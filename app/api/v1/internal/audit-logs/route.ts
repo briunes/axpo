@@ -28,8 +28,11 @@ import { prisma } from "@/infrastructure/database/prisma";
  *         name: search
  *         schema: { type: string }
  *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
  *         name: limit
- *         schema: { type: integer, default: 500 }
+ *         schema: { type: integer, default: 25 }
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
@@ -40,10 +43,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const dateFrom = searchParams.get("dateFrom") ?? undefined;
   const dateTo = searchParams.get("dateTo") ?? undefined;
   const search = searchParams.get("search") ?? undefined;
+  const page = Math.max(parseInt(searchParams.get("page") ?? "1", 10), 1);
   const limit = Math.min(
-    parseInt(searchParams.get("limit") ?? "500", 10),
-    1000,
+    Math.max(parseInt(searchParams.get("limit") ?? "25", 10), 1),
+    100,
   );
+  const skip = (page - 1) * limit;
 
   // Build where clause
   const where: Record<string, unknown> = {};
@@ -90,16 +95,20 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     }
   }
 
-  const logs = await prisma.auditLog.findMany({
-    where,
-    include: {
-      actor: {
-        select: { email: true, fullName: true },
+  const [logs, total] = await Promise.all([
+    prisma.auditLog.findMany({
+      where,
+      include: {
+        actor: {
+          select: { email: true, fullName: true },
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.auditLog.count({ where }),
+  ]);
 
   return ResponseHandler.ok(
     {
@@ -114,6 +123,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         metadataJson: l.metadataJson,
         createdAt: l.createdAt.toISOString(),
       })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     },
     200,
   );

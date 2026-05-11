@@ -12,8 +12,29 @@ import { prisma } from "@/infrastructure/database/prisma";
  *         description: List of template variables
  */
 export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const commodity = searchParams.get("commodity"); // e.g. "ELECTRICITY" or "GAS"
+  const types = searchParams.get("types"); // e.g. "simulation-output,simulation-detailed"
+
   const templates = await prisma.templateVariable.findMany({
-    where: { active: true },
+    where: {
+      active: true,
+      // If commodity filter is given: return vars where commodity is null (universal) OR matches
+      ...(commodity
+        ? { OR: [{ commodity: null }, { commodity: commodity }] }
+        : {}),
+      // If types filter is given: return vars where templateTypes is null (universal) OR contains any of the requested types
+      ...(types
+        ? {
+            OR: [
+              { templateTypes: null },
+              ...types.split(",").map((t) => ({
+                templateTypes: { contains: t.trim() },
+              })),
+            ],
+          }
+        : {}),
+    },
     orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { key: "asc" }],
   });
 
@@ -49,6 +70,8 @@ export async function POST(req: NextRequest) {
       example: body.example,
       sortOrder: body.sortOrder ?? 0,
       active: body.active ?? true,
+      commodity: body.commodity ?? null,
+      templateTypes: body.templateTypes ?? null,
     },
   });
 

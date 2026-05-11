@@ -2,11 +2,22 @@
   color-scheme: light;
 }
 
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
   font-family: Inter, sans-serif;
+  min-height: 100%;
+  background: #ffffff;
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  background: #111111;
 }
 
 .environment-indicator {
@@ -46,5 +57,32 @@ body {
   border-bottom-color: #FFCAD5;
 }
 
+/* ─── Dark mode overrides ──────────────────────────────────────── */
+[data-theme="dark"] .env-local {
+  background: #0d1f2d;
+  color: #60aee8;
+  border-bottom-color: #1a3a52;
+}
+
+[data-theme="dark"] .env-dev {
+  background: #0d1f0d;
+  color: #5cba5c;
+  border-bottom-color: #1a3a1a;
+}
+
+[data-theme="dark"] .env-preview {
+  background: #1f1600;
+  color: #d48f3a;
+  border-bottom-color: #3a2a00;
+}
+
+[data-theme="dark"] .env-production {
+  background: #1f0a0e;
+  color: #e8607a;
+  border-bottom-color: #3a1520;
+}
+
 .environment-content {
+  min-height: calc(100vh - 38px);
+  background: inherit;
 }

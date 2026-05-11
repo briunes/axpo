@@ -236,7 +236,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
                 onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
                 actionButtons={actionButtons}
               />
-              <main className="app-content">
+              <main className="app-content" style={{ marginBottom: '2.4rem' }}>
                 {children}
               </main>
             </div>

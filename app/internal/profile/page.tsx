@@ -14,7 +14,7 @@ export default function ProfilePage() {
     const { t } = useI18n();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
-    const agenciesActions = useAgencies(session);
+    const agenciesActions = useAgencies(session, 1000);
 
     const [user, setUser] = useState<UserItem | null>(null);
     const [loading, setLoading] = useState(true);
@@ -34,7 +34,6 @@ export default function ProfilePage() {
 
     useEffect(() => {
         if (!session) return;
-        agenciesActions.refresh();
         getUser(session.token, session.user.id)
             .then((u) => {
                 setUser(u);
@@ -71,7 +70,7 @@ export default function ProfilePage() {
                 ...(isAdmin(session.user.role) && formData.role ? { role: formData.role } : {}),
                 ...(isAdmin(session.user.role) && formData.agencyId ? { agencyId: formData.agencyId } : {}),
                 // Password change requires currentPassword
-             
+
             });
             setSuccessText("Profile updated successfully.");
             showSuccess("Profile updated successfully.");

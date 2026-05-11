@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
 
   const templates = await prisma.emailTemplate.findMany({
     where,
+    include: { translations: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -79,7 +80,23 @@ export async function POST(req: NextRequest) {
       subject: body.subject,
       htmlContent: body.htmlContent,
       editableSections: body.editableSections ?? undefined,
+      translations: body.translations?.length
+        ? {
+            create: body.translations.map(
+              (tr: {
+                languageCode: string;
+                subject: string;
+                htmlContent: string;
+              }) => ({
+                languageCode: tr.languageCode,
+                subject: tr.subject,
+                htmlContent: tr.htmlContent,
+              }),
+            ),
+          }
+        : undefined,
     },
+    include: { translations: true },
   });
 
   return NextResponse.json(template, { status: 201 });

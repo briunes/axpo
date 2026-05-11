@@ -30,11 +30,15 @@ export interface SystemConfig {
   ivaRate?: number;
   electricityTaxRate?: number;
   hydrocarbonTaxRate?: number;
+  ivaRateOptions?: number[];
+  electricityTaxRateOptions?: number[];
+  hydrocarbonTaxRateOptions?: number[];
   defaultDateFormat?: string;
   defaultTimeFormat?: string;
   defaultTimezone?: string;
   defaultNumberFormat?: string;
   defaultItemsPerPage?: number;
+  defaultLanguage?: string;
   setupTokenValidityHours?: number;
   defaultPdfTemplateGasId?: string;
   defaultPdfTemplateElectricityId?: string;
@@ -59,6 +63,18 @@ export interface SystemConfig {
   updatedAt: string;
 }
 
+export interface PdfTemplateTranslationInput {
+  languageCode: string;
+  htmlContent: string;
+}
+
+export interface PdfTemplateTranslation extends PdfTemplateTranslationInput {
+  id: string;
+  pdfTemplateId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PdfTemplate {
   id: string;
   name: string;
@@ -78,6 +94,20 @@ export interface PdfTemplate {
       required?: boolean;
     }
   > | null;
+  translations?: PdfTemplateTranslation[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmailTemplateTranslationInput {
+  languageCode: string;
+  subject: string;
+  htmlContent: string;
+}
+
+export interface EmailTemplateTranslation extends EmailTemplateTranslationInput {
+  id: string;
+  emailTemplateId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -101,6 +131,7 @@ export interface EmailTemplate {
       required?: boolean;
     }
   > | null;
+  translations?: EmailTemplateTranslation[];
   createdAt: string;
   updatedAt: string;
 }
@@ -114,6 +145,10 @@ export interface TemplateVariable {
   example?: string;
   sortOrder: number;
   active: boolean;
+  /** Comma-separated template types this variable applies to (null = all types) */
+  templateTypes?: string | null;
+  /** Commodity this variable applies to: ELECTRICITY, GAS (null = all commodities) */
+  commodity?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -225,7 +260,9 @@ export async function getPdfTemplates(params?: {
 }
 
 export async function createPdfTemplate(
-  data: Omit<PdfTemplate, "id" | "createdAt" | "updatedAt">,
+  data: Omit<PdfTemplate, "id" | "createdAt" | "updatedAt" | "translations"> & {
+    translations?: PdfTemplateTranslationInput[];
+  },
 ): Promise<PdfTemplate> {
   const res = await fetch("/api/v1/internal/config/pdf-templates", {
     method: "POST",
@@ -238,7 +275,9 @@ export async function createPdfTemplate(
 
 export async function updatePdfTemplate(
   id: string,
-  data: Partial<PdfTemplate>,
+  data: Partial<Omit<PdfTemplate, "translations">> & {
+    translations?: PdfTemplateTranslationInput[];
+  },
 ): Promise<PdfTemplate> {
   const res = await fetch(`/api/v1/internal/config/pdf-templates/${id}`, {
     method: "PUT",
@@ -285,7 +324,10 @@ export async function getEmailTemplates(params?: {
 }
 
 export async function createEmailTemplate(
-  data: Omit<EmailTemplate, "id" | "createdAt" | "updatedAt">,
+  data: Omit<
+    EmailTemplate,
+    "id" | "createdAt" | "updatedAt" | "translations"
+  > & { translations?: EmailTemplateTranslationInput[] },
 ): Promise<EmailTemplate> {
   const res = await fetch("/api/v1/internal/config/email-templates", {
     method: "POST",
@@ -298,7 +340,9 @@ export async function createEmailTemplate(
 
 export async function updateEmailTemplate(
   id: string,
-  data: Partial<EmailTemplate>,
+  data: Partial<Omit<EmailTemplate, "translations">> & {
+    translations?: EmailTemplateTranslationInput[];
+  },
 ): Promise<EmailTemplate> {
   const res = await fetch(`/api/v1/internal/config/email-templates/${id}`, {
     method: "PUT",
@@ -341,8 +385,15 @@ export async function sendTestEmail(
 }
 
 // Template Variables
-export async function getTemplateVariables(): Promise<TemplateVariable[]> {
-  const res = await fetch("/api/v1/internal/config/template-variables", {
+export async function getTemplateVariables(filters?: {
+  commodity?: string;
+  types?: string;
+}): Promise<TemplateVariable[]> {
+  const params = new URLSearchParams();
+  if (filters?.commodity) params.set("commodity", filters.commodity);
+  if (filters?.types) params.set("types", filters.types);
+  const qs = params.toString() ? `?${params.toString()}` : "";
+  const res = await fetch(`/api/v1/internal/config/template-variables${qs}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch template variables");

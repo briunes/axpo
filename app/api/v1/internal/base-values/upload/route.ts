@@ -112,6 +112,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       data: {
         sourceWorkbookRef: parsed.sourceWorkbookRef,
         sourceScope: parsed.sourceScope,
+        sourceFileName: file.name,
+        sourceFileData: buffer,
         updatedAt: new Date(),
       },
       include: {
@@ -141,6 +143,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         agencyId: null,
         sourceWorkbookRef: parsed.sourceWorkbookRef,
         sourceScope: parsed.sourceScope,
+        sourceFileName: file.name,
+        sourceFileData: buffer,
         version: nextVersion,
         isActive: false, // Uploaded sets start as Draft; activate manually
         createdBy: auth.userId,

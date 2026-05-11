@@ -7,6 +7,7 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
+import { Button } from "@mui/material";
 
 export interface ExtractedInvoiceData {
     // Client/Holder Information
@@ -46,9 +47,24 @@ export interface ExtractedInvoiceData {
 
     // Financial
     facturaActual?: number;
+    excesoPotencia?: number;
     reactiva?: number;
     alquiler?: number;
     otrosCargos?: number;
+
+    // Current supplier unit prices (from invoice detail)
+    precioPotenciaP1?: number;
+    precioPotenciaP2?: number;
+    precioPotenciaP3?: number;
+    precioPotenciaP4?: number;
+    precioPotenciaP5?: number;
+    precioPotenciaP6?: number;
+    precioEnergiaP1?: number;
+    precioEnergiaP2?: number;
+    precioEnergiaP3?: number;
+    precioEnergiaP4?: number;
+    precioEnergiaP5?: number;
+    precioEnergiaP6?: number;
 
     // Gas specific
     telemedida?: string;
@@ -64,22 +80,73 @@ interface InvoiceExtractorProps {
 
 export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorProps) {
     const { t } = useI18n();
-    const [file, setFile] = useState<File | null>(null);
+    const [files, setFiles] = useState<File[]>([]);
     const [isExtracting, setIsExtracting] = useState(false);
     const [extractionStatus, setExtractionStatus] = useState<"idle" | "success" | "error">("idle");
     const [statusMessage, setStatusMessage] = useState("");
+    const [isDragging, setIsDragging] = useState(false);
+
+    const isPdf = (f: File) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+    const currentType: "pdf" | "image" | null = files.length === 0 ? null : isPdf(files[0]) ? "pdf" : "image";
+
+    const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent<HTMLLabelElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const droppedFiles = Array.from(e.dataTransfer.files ?? []);
+        if (droppedFiles.length === 0) return;
+        addFiles(droppedFiles);
+    };
+
+    const addFiles = (incoming: File[]) => {
+        if (incoming.length === 0) return;
+        const firstIncoming = incoming[0];
+        if (isPdf(firstIncoming)) {
+            // PDF: only 1 allowed, replace everything
+            setFiles([firstIncoming]);
+        } else {
+            // Images: accumulate, but don't mix with PDF
+            setFiles(prev => {
+                if (prev.length > 0 && isPdf(prev[0])) {
+                    // Currently a PDF selected — replace with images
+                    return incoming.filter(f => !isPdf(f));
+                }
+                const existingNames = new Set(prev.map(f => f.name));
+                const newOnes = incoming.filter(f => !isPdf(f) && !existingNames.has(f.name));
+                return [...prev, ...newOnes];
+            });
+        }
+        setExtractionStatus("idle");
+        setStatusMessage("");
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files?.[0];
-        if (selectedFile) {
-            setFile(selectedFile);
-            setExtractionStatus("idle");
-            setStatusMessage("");
-        }
+        const selected = Array.from(e.target.files ?? []);
+        if (selected.length > 0) addFiles(selected);
+        // Reset input so same file can be re-added after removal
+        e.target.value = "";
+    };
+
+    const handleRemoveFile = (index: number) => {
+        setFiles(prev => prev.filter((_, i) => i !== index));
+        setExtractionStatus("idle");
+        setStatusMessage("");
     };
 
     const handleExtract = async () => {
-        if (!file) return;
+        if (files.length === 0) return;
 
         setIsExtracting(true);
         setExtractionStatus("idle");
@@ -87,7 +154,7 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
 
         try {
             const formData = new FormData();
-            formData.append("file", file);
+            files.forEach(f => formData.append("file", f));
 
             console.log("Sending invoice extraction request...");
             const response = await fetch("/api/v1/internal/invoices/extract", {
@@ -114,7 +181,7 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
             if (result.success && result.data) {
                 setExtractionStatus("success");
                 setStatusMessage(result.message || "Data extracted successfully!");
-                onDataExtracted(result.data, file);
+                onDataExtracted(result.data, files[0]);
             } else {
                 throw new Error(result.message || "No data could be extracted");
             }
@@ -132,7 +199,7 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
     };
 
     const handleClear = () => {
-        setFile(null);
+        setFiles([]);
         setExtractionStatus("idle");
         setStatusMessage("");
     };
@@ -150,30 +217,56 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
             </div>
 
             <div className="extractor-content">
-                {!file ? (
-                    <label className="file-upload-area">
+                {/* Upload area — always visible for images so more can be added */}
+                {(files.length === 0 || currentType === "image") && (
+                    <label
+                        className={`file-upload-area${isDragging ? " dragging" : ""}${files.length > 0 ? " compact" : ""}`}
+                        onDragOver={handleDragOver}
+                        onDragEnter={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                    >
                         <input
                             type="file"
                             accept=".pdf,.jpg,.jpeg,.png,.webp"
+                            multiple={currentType !== "pdf"}
                             onChange={handleFileChange}
                             style={{ display: "none" }}
                         />
-                        <CloudUploadIcon sx={{ fontSize: 48, color: "#9ca3af", mb: 2 }} />
+                        <CloudUploadIcon sx={{ fontSize: files.length > 0 ? 28 : 48, color: "text.disabled", mb: files.length > 0 ? 0.5 : 2 }} />
                         <div className="upload-text">
-                            <strong>{t("invoiceExtractor", "uploadPrompt")}</strong>
-                            <span>{t("invoiceExtractor", "uploadHint")}</span>
+                            <strong>{files.length > 0 ? t("invoiceExtractor", "addMoreImages") ?? "Add more images" : t("invoiceExtractor", "uploadPrompt")}</strong>
+                            {files.length === 0 && <span>{t("invoiceExtractor", "uploadHint")}</span>}
                         </div>
                     </label>
-                ) : (
+                )}
+
+                {files.length > 0 && (
                     <div className="file-selected">
-                        <div className="file-info">
-                            <div className="file-name">{file.name}</div>
-                            <div className="file-size">
-                                {(file.size / 1024 / 1024).toFixed(2)} MB
-                            </div>
+                        <div className="file-list">
+                            {files.map((f, i) => (
+                                <div className="file-info" key={i}>
+                                    <div className="file-info-text">
+                                        <div className="file-name">{f.name}</div>
+                                        <div className="file-size">{(f.size / 1024 / 1024).toFixed(2)} MB</div>
+                                    </div>
+                                    {currentType === "image" && (
+                                        <button
+                                            type="button"
+                                            className="file-remove-btn"
+                                            onClick={() => handleRemoveFile(i)}
+                                            disabled={isExtracting}
+                                            title="Remove"
+                                        >
+                                            <DeleteIcon sx={{ fontSize: 16 }} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                         <div className="file-actions">
-                            <button
+                            <Button
+                                variant="contained"
                                 type="button"
                                 className="btn-primary"
                                 onClick={handleExtract}
@@ -190,16 +283,17 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
                                         {t("invoiceExtractor", "extract")}
                                     </>
                                 )}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 type="button"
                                 className="btn-secondary"
                                 onClick={handleClear}
                                 disabled={isExtracting}
+                                variant="outlined"
                             >
                                 <DeleteIcon sx={{ fontSize: 18, mr: 1 }} />
                                 {t("invoiceExtractor", "remove")}
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 )}
@@ -218,11 +312,11 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
 
             <style jsx>{`
                 .invoice-extractor {
-                    background: white;
-                    border: 1px solid var(--scheme-neutral-900, rgba(0,0,0,0.08));
+                    background: var(--scheme-neutral-1100);
+                    border: 1px solid var(--scheme-neutral-900);
                     border-radius: 12px;
                     padding: 0;
-                    color: #1f2937;
+                    color: var(--scheme-neutral-100);
                 }
 
                 .extractor-header {
@@ -246,10 +340,10 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
                 }
 
                 .extractor-content {
-                    background: white;
+                    background: var(--scheme-neutral-1100);
                     border-radius: 8px;
                     padding: 20px;
-                    color: #1f2937;
+                    color: var(--scheme-neutral-100);
                 }
 
                 .file-upload-area {
@@ -258,16 +352,17 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
                     align-items: center;
                     justify-content: center;
                     padding: 40px 20px;
-                    border: 2px dashed #d1d5db;
+                    border: 2px dashed var(--scheme-neutral-800);
                     border-radius: 8px;
                     cursor: pointer;
                     transition: all 0.2s;
-                    background: #f9fafb;
+                    background: var(--scheme-neutral-1000);
                 }
 
-                .file-upload-area:hover {
-                    border-color: #6b7280;
-                    background: #f3f4f6;
+                .file-upload-area:hover,
+                .file-upload-area.dragging {
+                    border-color: var(--scheme-primary-500);
+                    background: var(--scheme-neutral-900);
                 }
 
                 .upload-text {
@@ -279,12 +374,23 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
                 }
 
                 .upload-text strong {
-                    color: #111827;
+                    color: var(--scheme-neutral-100);
                     font-size: 16px;
                 }
 
                 .upload-text span {
-                    color: #6b7280;
+                    color: var(--scheme-neutral-500);
+                    font-size: 14px;
+                }
+
+                .file-upload-area.compact {
+                    padding: 14px 20px;
+                    flex-direction: row;
+                    gap: 10px;
+                    margin-bottom: 12px;
+                }
+
+                .file-upload-area.compact .upload-text strong {
                     font-size: 14px;
                 }
 
@@ -294,22 +400,57 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
                     gap: 16px;
                 }
 
+                .file-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
                 .file-info {
-                    padding: 16px;
-                    background: #f9fafb;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 12px 16px;
+                    background: var(--scheme-neutral-1000);
                     border-radius: 8px;
-                    border: 1px solid #e5e7eb;
+                    border: 1px solid var(--scheme-neutral-900);
+                }
+
+                .file-info-text {
+                    flex: 1;
+                    min-width: 0;
                 }
 
                 .file-name {
                     font-weight: 600;
-                    color: #111827;
+                    color: var(--scheme-neutral-100);
                     margin-bottom: 4px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
                 }
 
                 .file-size {
                     font-size: 13px;
-                    color: #6b7280;
+                    color: var(--scheme-neutral-500);
+                }
+
+                .file-remove-btn {
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    color: var(--scheme-neutral-500);
+                    display: flex;
+                    align-items: center;
+                    padding: 4px;
+                    border-radius: 4px;
+                    flex-shrink: 0;
+                    margin-left: 8px;
+                    transition: color 0.15s;
+                }
+
+                .file-remove-btn:hover:not(:disabled) {
+                    color: var(--scheme-error-400, #ef4444);
                 }
 
                 .file-actions {
@@ -331,6 +472,12 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
                     background: #ecfdf5;
                     color: #065f46;
                     border: 1px solid #10b981;
+                }
+
+                [data-theme="dark"] .status-success {
+                    background: #0d1f17;
+                    color: #9dd8bc;
+                    border: 1px solid #1b3a2a;
                 }
 
                 .status-error {

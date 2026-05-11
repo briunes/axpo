@@ -1,8 +1,9 @@
 "use client";
 
 import { Button, Box, Tabs, Tab } from "@mui/material";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
 import { useAgencies } from "../../../components/hooks/useAgencies";
@@ -10,7 +11,7 @@ import { useUsers } from "../../../components/hooks/useUsers";
 import { UserForm, type UserFormData } from "../../../components/modules/UserForm";
 import { CrudPageLayout, LoadingState, PinResultDialog, useAlerts } from "../../../components/shared";
 import { UserPreferencesForm } from "../../../components/ui/UserPreferencesForm";
-import type { UserItem } from "../../../lib/internalApi";
+import { getUser, type ListUsersResponse, type UserItem } from "../../../lib/internalApi";
 
 export default function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -18,10 +19,10 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const [session] = useState(loadSession());
     const { showSuccess: alertSuccess, showError: alertError } = useAlerts();
     const { t } = useI18n();
+    const queryClient = useQueryClient();
 
-    const usersActions = useUsers(session);
-    const { loading: loadingUsers } = usersActions;
-    const agenciesActions = useAgencies(session);
+    const usersActions = useUsers(session, 25, { queryEnabled: false });
+    const agenciesActions = useAgencies(session, 1000);
     const { loading: loadingAgencies } = agenciesActions;
 
     const [user, setUser] = useState<UserItem | null>(null);
@@ -42,36 +43,52 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
 
     const isEditingSelf = user?.id === session?.user.id;
 
-    const fetchedRef = useRef(false);
-    useEffect(() => {
-        if (!session || fetchedRef.current) return;
-        fetchedRef.current = true;
-        usersActions.refresh();
-        agenciesActions.refresh();
-    }, [session]);
+    const cachedUser = useMemo(() => {
+        if (!session) return null;
+        const cachedQueries = queryClient.getQueriesData<ListUsersResponse>({
+            queryKey: ["users", session.token],
+        });
 
-    useEffect(() => {
-        if (usersActions.users.length > 0) {
-            const foundUser = usersActions.users.find((u) => u.id === id);
+        for (const [, result] of cachedQueries) {
+            const foundUser = result?.items.find((item) => item.id === id);
             if (foundUser) {
-                setUser(foundUser);
-                setFormData({
-                    fullName: foundUser.fullName,
-                    email: foundUser.email,
-                    mobilePhone: foundUser.mobilePhone || "",
-                    commercialPhone: foundUser.commercialPhone || "",
-                    commercialEmail: foundUser.commercialEmail || "",
-                    otherDetails: foundUser.otherDetails || "",
-                    role: foundUser.role,
-                    agencyId: foundUser.agencyId,
-                    isActive: foundUser.isActive,
-                });
-            } else {
-                alertError(t("userFormPage", "notFound"));
-                router.push("/internal/users");
+                return foundUser;
             }
         }
-    }, [usersActions.users, id]);
+
+        return null;
+    }, [id, queryClient, session]);
+
+    useEffect(() => {
+        if (!session) return;
+
+        const applyUser = (foundUser: UserItem) => {
+            setUser(foundUser);
+            setFormData({
+                fullName: foundUser.fullName,
+                email: foundUser.email,
+                mobilePhone: foundUser.mobilePhone || "",
+                commercialPhone: foundUser.commercialPhone || "",
+                commercialEmail: foundUser.commercialEmail || "",
+                otherDetails: foundUser.otherDetails || "",
+                role: foundUser.role,
+                agencyId: foundUser.agencyId,
+                isActive: foundUser.isActive,
+            });
+        };
+
+        if (cachedUser) {
+            applyUser(cachedUser);
+            return;
+        }
+
+        getUser(session.token, id)
+            .then(applyUser)
+            .catch(() => {
+                alertError(t("userFormPage", "notFound"));
+                router.push("/internal/users");
+            });
+    }, [alertError, cachedUser, id, router, session, t]);
 
     useEffect(() => {
         if (usersActions.successText) {

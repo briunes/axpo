@@ -16,6 +16,7 @@ import { DraggableVariables } from "../../../components/modules/DraggableVariabl
 import { extractVariableValues, replaceVariables as replaceVars } from "@/infrastructure/pdf/variableReplacer";
 import type { EditableSectionOverrides, EditableSectionsConfig } from "@/infrastructure/templates/editableSections";
 import { mergeEditableSections } from "@/infrastructure/templates/editableSections";
+import { resolveTranslation, getLanguageFromCountry } from "@/lib/supportedLanguages";
 import {
     Box,
     Button,
@@ -84,6 +85,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
     const [pdfEditableOverrides, setPdfEditableOverrides] = useState<EditableSectionOverrides>({});
     const [emailEditableOverrides, setEmailEditableOverrides] = useState<EditableSectionOverrides>({});
     const [emailPdfEditableOverrides, setEmailPdfEditableOverrides] = useState<EditableSectionOverrides>({});
+    const [clientLanguage, setClientLanguage] = useState<string>("en");
 
     useEffect(() => {
         Promise.all([
@@ -114,14 +116,35 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 setEmailTemplates(simulationEmailTemplates);
                 setTemplateVariables(variables);
 
+                // Determine client language from language preference (falls back to country detection)
+                let detectedLanguage = "en";
+                if (!isTestingMode && simulation.clientId) {
+                    try {
+                        const clientData = await getClient(token, simulation.clientId);
+                        if (clientData.contactEmail) {
+                            setRecipientEmail(clientData.contactEmail);
+                        }
+                        detectedLanguage = clientData.language
+                            ? clientData.language
+                            : getLanguageFromCountry(clientData.country);
+                    } catch (err) {
+                        // Client data not available, that's okay
+                    }
+                } else if (isTestingMode && loggedUserEmail) {
+                    setRecipientEmail(loggedUserEmail);
+                }
+                setClientLanguage(detectedLanguage);
+
                 // Set default selections
                 const defaultPdf = simulationPdfTemplates.find((t) => t.active);
                 const defaultEmail = simulationEmailTemplates.find((t) => t.active);
                 if (defaultPdf) {
+                    const pdfTranslation = resolveTranslation(defaultPdf.translations ?? [], detectedLanguage);
+                    const pdfContent = pdfTranslation?.htmlContent ?? defaultPdf.htmlContent;
                     setSelectedPdfTemplate(defaultPdf.id);
-                    setEditedPdfContent(defaultPdf.htmlContent);
+                    setEditedPdfContent(pdfContent);
                     setSelectedEmailPdfTemplate(defaultPdf.id);
-                    setEditedEmailPdfContent(defaultPdf.htmlContent);
+                    setEditedEmailPdfContent(pdfContent);
                     // Seed editable section defaults so variables resolve immediately
                     if (defaultPdf.editableSections) {
                         const defaults = Object.fromEntries(
@@ -132,30 +155,16 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                     }
                 }
                 if (defaultEmail) {
+                    const emailTranslation = resolveTranslation(defaultEmail.translations ?? [], detectedLanguage);
                     setSelectedEmailTemplate(defaultEmail.id);
-                    setEditedEmailContent(defaultEmail.htmlContent);
-                    setEditedSubject(defaultEmail.subject);
+                    setEditedEmailContent(emailTranslation?.htmlContent ?? defaultEmail.htmlContent);
+                    setEditedSubject(emailTranslation?.subject ?? defaultEmail.subject);
                     // Seed editable section defaults
                     if (defaultEmail.editableSections) {
                         const defaults = Object.fromEntries(
                             Object.entries(defaultEmail.editableSections).map(([k, v]) => [k, v.default])
                         );
                         setEmailEditableOverrides(defaults);
-                    }
-                }
-
-                // Pre-fill recipient email
-                if (isTestingMode && loggedUserEmail) {
-                    // Testing mode: always use the logged-in user's email
-                    setRecipientEmail(loggedUserEmail);
-                } else if (simulation.clientId) {
-                    try {
-                        const clientData = await getClient(token, simulation.clientId);
-                        if (clientData.contactEmail) {
-                            setRecipientEmail(clientData.contactEmail);
-                        }
-                    } catch (err) {
-                        // Client data not available, that's okay
                     }
                 }
             })
@@ -172,7 +181,8 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             setSelectedPdfTemplate(templateId);
             const template = pdfTemplates.find((t) => t.id === templateId);
             if (template) {
-                setEditedPdfContent(template.htmlContent);
+                const translation = resolveTranslation(template.translations ?? [], clientLanguage);
+                setEditedPdfContent(translation?.htmlContent ?? template.htmlContent);
                 const defaults = template.editableSections
                     ? Object.fromEntries(Object.entries(template.editableSections).map(([k, v]) => [k, v.default]))
                     : {};
@@ -182,8 +192,9 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             setSelectedEmailTemplate(templateId);
             const template = emailTemplates.find((t) => t.id === templateId);
             if (template) {
-                setEditedEmailContent(template.htmlContent);
-                setEditedSubject(template.subject);
+                const translation = resolveTranslation(template.translations ?? [], clientLanguage);
+                setEditedEmailContent(translation?.htmlContent ?? template.htmlContent);
+                setEditedSubject(translation?.subject ?? template.subject);
                 const defaults = template.editableSections
                     ? Object.fromEntries(Object.entries(template.editableSections).map(([k, v]) => [k, v.default]))
                     : {};
@@ -290,7 +301,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             let simulationLink: string | undefined;
             if (markAsShared) {
                 try {
-                    const shared = await shareSimulation(token, simulation.id);
+                    const shared = await shareSimulation(token, simulation.id, "PDF");
                     const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
                     if (shared.publicToken) {
                         simulationLink = `${baseUrl}/simulador/?token=${shared.publicToken}`;
@@ -352,7 +363,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             // SIMULATION_LINK variable resolves to a real URL instead of N/A.
             let simulationLink: string | undefined;
             try {
-                const shared = await shareSimulation(token, simulation.id);
+                const shared = await shareSimulation(token, simulation.id, "EMAIL");
                 const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
                 if (shared.publicToken) {
                     simulationLink = `${baseUrl}/simulador/?token=${shared.publicToken}`;
@@ -667,6 +678,8 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                                         />
                                                         <DraggableVariables
                                                             variables={[
+                                                                // Charts
+                                                                { name: "CHART_COMPARATIVA", label: "📊 Gráfico Comparativa", description: "Bar chart: annual Competencia vs Axpo + savings stats" },
                                                                 // Regular template variables
                                                                 ...templateVariables.map(v => ({
                                                                     name: v.key,
@@ -737,6 +750,8 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                             />
                                             <DraggableVariables
                                                 variables={[
+                                                    // Charts
+                                                    { name: "CHART_COMPARATIVA", label: "📊 Gráfico Comparativa", description: "Bar chart: annual Competencia vs Axpo + savings stats" },
                                                     // Regular template variables
                                                     ...templateVariables.map(v => ({
                                                         name: v.key,

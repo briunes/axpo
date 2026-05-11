@@ -1,16 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Box, Button, FormControl, InputLabel, MenuItem, Select, Typography } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
+import { FormSelect } from "./FormSelect";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
 
 interface UserPreferences {
+    language: string | null;
     dateFormat: string;
     timeFormat: string;
     timezone: string;
     numberFormat: string;
     itemsPerPage: number;
     _overrides?: {
+        language: boolean;
         dateFormat: boolean;
         timeFormat: boolean;
         timezone: boolean;
@@ -26,8 +30,10 @@ interface UserPreferencesFormProps {
 }
 
 export function UserPreferencesForm({ userId, token, onNotify }: UserPreferencesFormProps) {
-    const { t } = useI18n();
+    const { t, setLocale } = useI18n();
+    const { refresh: refreshProviderPrefs } = useUserPreferences();
     const [preferences, setPreferences] = useState<UserPreferences>({
+        language: null,
         dateFormat: "DD/MM/YYYY",
         timeFormat: "24h",
         timezone: "Europe/Madrid",
@@ -89,6 +95,7 @@ export function UserPreferencesForm({ userId, token, onNotify }: UserPreferences
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
+                    language: preferences.language,
                     dateFormat: preferences.dateFormat,
                     timeFormat: preferences.timeFormat,
                     timezone: preferences.timezone,
@@ -103,6 +110,11 @@ export function UserPreferencesForm({ userId, token, onNotify }: UserPreferences
 
             onNotify?.(t("userPreferences", "saveSuccess"), "success");
             setIsDirty(false);
+            // Apply language change immediately and directly
+            if (preferences.language === "en" || preferences.language === "es") {
+                setLocale(preferences.language as "en" | "es");
+            }
+            await refreshProviderPrefs();
             loadPreferences(); // Reload to get updated override flags
         } catch (error) {
             onNotify?.(
@@ -130,83 +142,81 @@ export function UserPreferencesForm({ userId, token, onNotify }: UserPreferences
             </Box>
 
             <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                {/* Date Format */}
-                <FormControl fullWidth>
-                    <InputLabel>{t("systemSettings", "fieldDateFormat")}</InputLabel>
-                    <Select
-                        value={preferences.dateFormat}
-                        label={t("systemSettings", "fieldDateFormat")}
-                        onChange={(e) => handleChange("dateFormat", e.target.value)}
-                    >
-                        <MenuItem value="DD/MM/YYYY">DD/MM/YYYY (17/04/2026)</MenuItem>
-                        <MenuItem value="MM/DD/YYYY">MM/DD/YYYY (04/17/2026)</MenuItem>
-                        <MenuItem value="YYYY-MM-DD">YYYY-MM-DD (2026-04-17)</MenuItem>
-                    </Select>
+                {/* Language */}
+                <FormSelect
+                    label={t("userPreferences", "fieldLanguage")}
+                    value={preferences.language ?? ""}
+                    onChange={(value) => handleChange("language", value || null)}
+                    options={[
+                        { value: "", label: `— ${t("userPreferences", "languageSystemDefault")} —` },
+                        { value: "en", label: "🇬🇧 English" },
+                        { value: "es", label: "🇪🇸 Español" },
+                    ]}
+                />
 
-                </FormControl>
+                {/* Date Format */}
+                <FormSelect
+                    label={t("systemSettings", "fieldDateFormat")}
+                    value={preferences.dateFormat}
+                    onChange={(value) => handleChange("dateFormat", value)}
+                    options={[
+                        { value: "DD/MM/YYYY", label: "DD/MM/YYYY (17/04/2026)" },
+                        { value: "MM/DD/YYYY", label: "MM/DD/YYYY (04/17/2026)" },
+                        { value: "YYYY-MM-DD", label: "YYYY-MM-DD (2026-04-17)" },
+                    ]}
+                />
 
                 {/* Time Format */}
-                <FormControl fullWidth>
-                    <InputLabel>{t("systemSettings", "fieldTimeFormat")}</InputLabel>
-                    <Select
-                        value={preferences.timeFormat}
-                        label={t("systemSettings", "fieldTimeFormat")}
-                        onChange={(e) => handleChange("timeFormat", e.target.value)}
-                    >
-                        <MenuItem value="24h">24-hour (14:30)</MenuItem>
-                        <MenuItem value="12h">12-hour (2:30 PM)</MenuItem>
-                    </Select>
-
-                </FormControl>
+                <FormSelect
+                    label={t("systemSettings", "fieldTimeFormat")}
+                    value={preferences.timeFormat}
+                    onChange={(value) => handleChange("timeFormat", value)}
+                    options={[
+                        { value: "24h", label: "24-hour (14:30)" },
+                        { value: "12h", label: "12-hour (2:30 PM)" },
+                    ]}
+                />
 
                 {/* Timezone */}
-                <FormControl fullWidth>
-                    <InputLabel>{t("systemSettings", "fieldTimezone")}</InputLabel>
-                    <Select
-                        value={preferences.timezone}
-                        label={t("systemSettings", "fieldTimezone")}
-                        onChange={(e) => handleChange("timezone", e.target.value)}
-                    >
-                        <MenuItem value="Europe/Madrid">Europe/Madrid (CET/CEST)</MenuItem>
-                        <MenuItem value="Europe/London">Europe/London (GMT/BST)</MenuItem>
-                        <MenuItem value="Europe/Paris">Europe/Paris (CET/CEST)</MenuItem>
-                        <MenuItem value="Europe/Berlin">Europe/Berlin (CET/CEST)</MenuItem>
-                        <MenuItem value="America/New_York">America/New York (EST/EDT)</MenuItem>
-                        <MenuItem value="America/Chicago">America/Chicago (CST/CDT)</MenuItem>
-                        <MenuItem value="America/Los_Angeles">America/Los Angeles (PST/PDT)</MenuItem>
-                        <MenuItem value="UTC">UTC</MenuItem>
-                    </Select>
-
-                </FormControl>
+                <FormSelect
+                    label={t("systemSettings", "fieldTimezone")}
+                    value={preferences.timezone}
+                    onChange={(value) => handleChange("timezone", value)}
+                    options={[
+                        { value: "Europe/Madrid", label: "Europe/Madrid (CET/CEST)" },
+                        { value: "Europe/London", label: "Europe/London (GMT/BST)" },
+                        { value: "Europe/Paris", label: "Europe/Paris (CET/CEST)" },
+                        { value: "Europe/Berlin", label: "Europe/Berlin (CET/CEST)" },
+                        { value: "America/New_York", label: "America/New York (EST/EDT)" },
+                        { value: "America/Chicago", label: "America/Chicago (CST/CDT)" },
+                        { value: "America/Los_Angeles", label: "America/Los Angeles (PST/PDT)" },
+                        { value: "UTC", label: "UTC" },
+                    ]}
+                />
 
                 {/* Number Format */}
-                <FormControl fullWidth>
-                    <InputLabel>{t("systemSettings", "fieldNumberFormat")}</InputLabel>
-                    <Select
-                        value={preferences.numberFormat}
-                        label={t("systemSettings", "fieldNumberFormat")}
-                        onChange={(e) => handleChange("numberFormat", e.target.value)}
-                    >
-                        <MenuItem value="eu">European (1.234,56)</MenuItem>
-                        <MenuItem value="us">US/UK (1,234.56)</MenuItem>
-                    </Select>
-
-                </FormControl>
+                <FormSelect
+                    label={t("systemSettings", "fieldNumberFormat")}
+                    value={preferences.numberFormat}
+                    onChange={(value) => handleChange("numberFormat", value)}
+                    options={[
+                        { value: "eu", label: "European (1.234,56)" },
+                        { value: "us", label: "US/UK (1,234.56)" },
+                    ]}
+                />
 
                 {/* Items Per Page */}
-                <FormControl fullWidth>
-                    <InputLabel>{t("systemSettings", "fieldItemsPerPage")}</InputLabel>
-                    <Select
-                        value={preferences.itemsPerPage}
-                        label={t("systemSettings", "fieldItemsPerPage")}
-                        onChange={(e) => handleChange("itemsPerPage", Number(e.target.value))}
-                    >
-                        <MenuItem value={10}>10</MenuItem>
-                        <MenuItem value={25}>25</MenuItem>
-                        <MenuItem value={50}>50</MenuItem>
-                        <MenuItem value={100}>100</MenuItem>
-                    </Select>
-                </FormControl>
+                <FormSelect
+                    label={t("systemSettings", "fieldItemsPerPage")}
+                    value={preferences.itemsPerPage}
+                    onChange={(value) => handleChange("itemsPerPage", Number(value))}
+                    options={[
+                        { value: 10, label: "10" },
+                        { value: 25, label: "25" },
+                        { value: 50, label: "50" },
+                        { value: 100, label: "100" },
+                    ]}
+                />
 
                 {/* Save Button */}
                 <Box sx={{ display: "flex", justifyContent: "flex-start", pt: 1 }}>

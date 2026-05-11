@@ -29,7 +29,7 @@ export function SystemLogsModule({ session, auditLogsActions, onNotify, onAction
     };
 
     return (
-        <div className="configurations-container">
+        <div className="configurations-container logs-configurations-container">
             <div className="configurations-tabs">
                 {(Object.keys(TAB_LABELS) as LogType[]).map((tab) => (
                     <button
@@ -43,7 +43,7 @@ export function SystemLogsModule({ session, auditLogsActions, onNotify, onAction
                 ))}
             </div>
 
-            <div className="configurations-content" style={{ padding: 0 }}>
+            <div className="configurations-content logs-configurations-content" style={{ padding: 0 }}>
                 {activeTab === "audit" && (
                     <AuditLogsModule
                         session={session}

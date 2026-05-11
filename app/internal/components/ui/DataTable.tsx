@@ -1,10 +1,10 @@
 "use client";
 
-import { DataGrid, type GridColDef, type GridSortModel } from "@mui/x-data-grid";
-import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl, Checkbox, Button, Tooltip, useTheme, Collapse } from "@mui/material";
+import { DataGrid, useGridApiRef, type GridColDef, type GridSortModel } from "@mui/x-data-grid";
+import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl, Checkbox, Button, Tooltip, useTheme } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -66,6 +66,26 @@ export interface DataTableProps<T extends { id: string }> {
 
 const BASE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
+// Stable cell component so MUI DataGrid doesn't re-mount it on every render.
+function CheckboxCell({
+  id,
+  selectedIdsRef,
+  toggleRow,
+}: {
+  id: string;
+  selectedIdsRef: React.RefObject<Set<string>>;
+  toggleRow: (id: string) => void;
+}) {
+  return (
+    <Checkbox
+      size="small"
+      checked={selectedIdsRef.current?.has(id) ?? false}
+      onChange={() => toggleRow(id)}
+      onClick={(e) => e.stopPropagation()}
+    />
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function DataTable<T extends { id: string }>({
@@ -90,11 +110,29 @@ export function DataTable<T extends { id: string }>({
   massActions,
 }: DataTableProps<T>) {
   const { preferences } = useUserPreferences();
-  const theme = useTheme()
+  const theme = useTheme();
+  const apiRef = useGridApiRef();
+
+  // Helper to save scroll position before a selection state update and restore it after.
+  const withScrollPreserved = useCallback((fn: () => void) => {
+    const pos = apiRef.current?.getScrollPosition?.();
+    fn();
+    if (pos) {
+      requestAnimationFrame(() => {
+        apiRef.current?.scroll?.(pos);
+      });
+    }
+  }, [apiRef]);
+
   // Row selection state (only active when massActions provided)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const hasMassActions = Boolean(massActions && massActions.length > 0);
+
+  // Refs so that renderCell callbacks always read latest values without
+  // being listed as memo dependencies (avoids DataGrid re-mount on selection).
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
 
   const visibleRowIds = useMemo(
     () => (loading ? [] : rows.map((r) => r.id)),
@@ -105,21 +143,40 @@ export function DataTable<T extends { id: string }>({
     visibleRowIds.length > 0 && visibleRowIds.every((id) => selectedIds.has(id));
   const someSelected = visibleRowIds.some((id) => selectedIds.has(id));
 
-  const toggleSelectAll = () => {
-    if (allSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(visibleRowIds));
-    }
-  };
-
-  const toggleRow = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
+  const toggleSelectAll = useCallback(() => {
+    withScrollPreserved(() => {
+      if (allSelectedRef.current) {
+        setSelectedIds(new Set());
+      } else {
+        setSelectedIds(new Set(visibleRowIds));
+      }
     });
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [withScrollPreserved, visibleRowIds]);
+
+  const toggleRow = useCallback((id: string) => {
+    withScrollPreserved(() => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      });
+    });
+  }, [withScrollPreserved]);
+
+  const allSelectedRef = useRef(allSelected);
+  allSelectedRef.current = allSelected;
+  const someSelectedRef = useRef(someSelected);
+  someSelectedRef.current = someSelected;
+  const toggleSelectAllRef = useRef(toggleSelectAll);
+  toggleSelectAllRef.current = toggleSelectAll;
+
+  const getRowClassName = useCallback(
+    (params: import("@mui/x-data-grid").GridRowClassNameParams) =>
+      hasMassActions && selectedIdsRef.current.has(params.row.id) ? 'dt-row-selected' : '',
+    // hasMassActions is stable after mount; selectedIdsRef is always current
+    [hasMassActions]
+  );
 
   // Clear selection when rows change (e.g. page change)
   useEffect(() => {
@@ -149,19 +206,18 @@ export function DataTable<T extends { id: string }>({
         renderHeader: () => (
           <Checkbox
             size="small"
-            checked={allSelected}
-            indeterminate={!allSelected && someSelected}
-            onChange={toggleSelectAll}
+            checked={allSelectedRef.current}
+            indeterminate={!allSelectedRef.current && someSelectedRef.current}
+            onChange={() => toggleSelectAllRef.current()}
             onClick={(e) => e.stopPropagation()}
           />
         ),
         renderCell: (params: import("@mui/x-data-grid").GridRenderCellParams<T>) => {
           return (
-            <Checkbox
-              size="small"
-              checked={selectedIds.has(params.row.id)}
-              onChange={() => toggleRow(params.row.id)}
-              onClick={(e) => e.stopPropagation()}
+            <CheckboxCell
+              id={params.row.id}
+              selectedIdsRef={selectedIdsRef}
+              toggleRow={toggleRow}
             />
           );
         },
@@ -206,7 +262,11 @@ export function DataTable<T extends { id: string }>({
     }
 
     return cols;
-  }, [columns, rowActions, loading, hasMassActions, allSelected, someSelected, selectedIds, toggleSelectAll, toggleRow]);
+    // NOTE: selectedIds/toggleRow/toggleSelectAll are intentionally omitted – they
+    // are accessed via refs inside renderCell to prevent the grid from re-mounting
+    // (and scrolling to top) on every checkbox click.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columns, rowActions, loading, hasMassActions]);
 
   // Create skeleton rows when loading
   const skeletonRows = useMemo(() => {
@@ -238,14 +298,29 @@ export function DataTable<T extends { id: string }>({
     }
   };
 
-  const sortModel: GridSortModel = sortState
+  const sortModel: GridSortModel = useMemo(() => sortState
     ? [{ field: sortState.column, sort: sortState.direction }]
-    : [];
+    : [],
+    [sortState?.column, sortState?.direction]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const paginationModel = useMemo(() => ({
+    pageSize: pagination?.pageSize || preferences.itemsPerPage,
+    page: pagination ? pagination.page - 1 : 0,
+  }), [pagination?.pageSize, pagination?.page, preferences.itemsPerPage]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const tableHeaderBackground = 'var(--scheme-neutral-1200)';
+  const tableHoverBackground = 'var(--scheme-neutral-1100)';
+  const tableSelectedBackground = theme.palette.mode === 'dark'
+    ? theme.palette.primary.dark + '33'
+    : theme.palette.primary.main + '20';
+  const tableSelectedHoverBackground = theme.palette.mode === 'dark'
+    ? theme.palette.primary.dark + '44'
+    : theme.palette.primary.main + '30';
 
   return (
-    <div className="dt-root">
+    <div className="dt-root" style={{ height: '100%', minHeight: 0 }}>
       {/* Toolbar */}
-      <div className="dt-toolbar">
+      <div className="dt-toolbar" style={{ backgroundColor: tableHeaderBackground }}>
 
         <div className="dt-toolbar-left">
           {renderCustomSearch ? (
@@ -294,77 +369,84 @@ export function DataTable<T extends { id: string }>({
       </div>
 
       {/* Filter bar */}
-      {filterBar && <div className="dt-filter-bar">{filterBar}</div>}
+      {filterBar && (
+        <div className="dt-filter-bar" style={{ backgroundColor: tableHeaderBackground }}>
+          {filterBar}
+        </div>
+      )}
 
       {/* Error */}
       {error && <div className="dt-error-banner">{error}</div>}
-      <Collapse in={hasMassActions && someSelected}>
-        {/* Mass-actions bar */}
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            px: 2,
-            py: 1,
-            backgroundColor: 'primary.50',
-            borderBottom: '1px solid',
-            borderColor: 'primary.100',
-          }}
+      {/* Mass-actions bar – always rendered with fixed height to prevent layout shift */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          px: 2,
+          overflow: 'hidden',
+          height: hasMassActions && someSelected ? 44 : 0,
+          minHeight: hasMassActions && someSelected ? 44 : 0,
+          transition: 'height 0.2s, min-height 0.2s',
+          backgroundColor: 'primary.50',
+          borderBottom: hasMassActions && someSelected ? '1px solid' : 'none',
+          borderColor: 'primary.100',
+        }}
+      >
+        <span style={{ fontSize: 14, color: 'inherit', marginRight: 8 }}>
+          {selectedIds.size} selected
+        </span>
+        {massActions?.map((action) => (
+          <Tooltip key={action.label} title={action.label}>
+            <Button
+              size="small"
+              variant="outlined"
+              color={action.color ?? 'primary'}
+              startIcon={action.icon}
+              onClick={() => action.onClick(Array.from(selectedIds))}
+            >
+              {action.label}
+            </Button>
+          </Tooltip>
+        ))}
+        <Button
+          size="small"
+          variant="text"
+          color="inherit"
+          sx={{ ml: 'auto' }}
+          onClick={() => setSelectedIds(new Set())}
         >
-          <span style={{ fontSize: 14, color: 'inherit', marginRight: 8 }}>
-            {selectedIds.size} selected
-          </span>
-          {massActions?.map((action) => (
-            <Tooltip key={action.label} title={action.label}>
-              <Button
-                size="small"
-                variant="outlined"
-                color={action.color ?? 'primary'}
-                startIcon={action.icon}
-                onClick={() => action.onClick(Array.from(selectedIds))}
-              >
-                {action.label}
-              </Button>
-            </Tooltip>
-          ))}
-          <Button
-            size="small"
-            variant="text"
-            color="inherit"
-            sx={{ ml: 'auto' }}
-            onClick={() => setSelectedIds(new Set())}
-          >
-            Clear selection
-          </Button>
-        </Box>
-      </Collapse>
+          Clear selection
+        </Button>
+      </Box>
       {/* MUI DataGrid */}
-      <Box sx={{ height: 600, width: '100%' }}>
+      <Box sx={{ flex: 1, minHeight: 0, width: '100%', backgroundColor: 'transparent', display: 'flex' }}>
         <DataGrid
+          apiRef={apiRef}
           rows={displayRows}
           columns={muiColumns}
           loading={false}
           pageSizeOptions={PAGE_SIZE_OPTIONS}
           paginationMode="server"
-          paginationModel={{
-            pageSize: pagination?.pageSize || preferences.itemsPerPage,
-            page: pagination ? pagination.page - 1 : 0
-          }}
+          paginationModel={paginationModel}
           rowCount={pagination?.total || 0}
           sortModel={sortModel}
           onSortModelChange={handleSortModelChange}
           disableRowSelectionOnClick
           disableColumnMenu
           hideFooter
-          getRowClassName={(params) =>
-            hasMassActions && selectedIds.has(params.row.id) ? 'dt-row-selected' : ''
-          }
+          getRowClassName={getRowClassName}
           sx={{
+            height: '100%',
             border: '0px solid rgba(0, 0, 0, 0.12)',
             borderRadius: '8px',
+            backgroundColor: 'var(--scheme-neutral-1200)',
+            color: 'var(--scheme-neutral-100)',
             '& .MuiDataGrid-main': {
               border: 'none',
+            },
+            '& .MuiDataGrid-virtualScroller': {
+              backgroundColor: 'var(--scheme-neutral-1200)',
             },
             '& .MuiDataGrid-cell': {
               display: 'flex',
@@ -372,33 +454,40 @@ export function DataTable<T extends { id: string }>({
               minHeight: '52px !important',
               maxHeight: '52px !important',
               py: 0,
-              borderBottom: 'none',
+              borderBottom: '1px solid var(--scheme-neutral-900)',
               borderRight: 'none',
             },
             '& .MuiDataGrid-row': {
+              backgroundColor: 'var(--scheme-neutral-1200)',
               borderBottom: '0px solid rgba(0, 0, 0, 0.08)',
               '&:last-child': {
                 borderBottom: 'none',
               },
+              '&:hover': {
+                backgroundColor: tableHoverBackground,
+              },
               '&.dt-row-selected': {
-                backgroundColor: theme.palette.primary.main + "20",
+                backgroundColor: tableSelectedBackground,
               },
               '&.dt-row-selected:hover': {
-                backgroundColor: theme.palette.primary.main + "30",
+                backgroundColor: tableSelectedHoverBackground,
               },
             },
             '& .MuiDataGrid-columnHeaders': {
-              borderBottom: '0px solid rgba(0, 0, 0, 0.12)',
-              backgroundColor: 'rgba(0, 0, 0, 0.02)',
+              borderBottom: '0px solid',
+              backgroundColor: tableHeaderBackground,
               fontSize: '0.75rem',
               fontWeight: 600,
-              color: 'text.secondary',
+              color: 'var(--scheme-neutral-500)',
             },
             '& .MuiDataGrid-columnHeader': {
               borderRight: 'none',
             },
             '& .MuiDataGrid-columnHeaderTitle': {
               fontWeight: 600,
+            },
+            '& .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller': {
+              backgroundColor: 'var(--scheme-neutral-1200)',
             },
             '& .MuiDataGrid-columnSeparator': {
               display: 'none',
@@ -415,7 +504,8 @@ export function DataTable<T extends { id: string }>({
             alignItems: 'center',
             justifyContent: 'space-between',
             p: 1,
-            borderTop: '1px solid rgba(0, 0, 0, 0.12)',
+            borderTop: '1px solid',
+            borderColor: 'divider',
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

@@ -34,6 +34,10 @@ interface SimulationResultsCardsProps {
     availableMonths?: string[];
     /** Called when user picks a different month */
     onMonthChange?: (month: string) => void;
+    personalizadaIndexPeriods?: { margenEnergia: Record<string, number>; margenPotencia: Record<string, number> };
+    onUpdatePersonalizadaIndex?: (field: "margenEnergia" | "margenPotencia", period: string, value: number) => void;
+    personalizadaOmieBPeriods?: { terminoB: Record<string, number>; margenPotencia: Record<string, number> };
+    onUpdatePersonalizadaOmieB?: (field: "terminoB" | "margenPotencia", period: string, value: number) => void;
 }
 
 interface PendingOffer {
@@ -44,6 +48,17 @@ interface PendingOffer {
 function fmt(n: number, digits = 2): string {
     return n.toLocaleString("es-ES", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
+
+const uiColors = {
+    surface: "var(--scheme-neutral-1200)",
+    surfaceRaised: "var(--scheme-neutral-1100)",
+    surfaceMuted: "var(--scheme-neutral-1000)",
+    border: "var(--scheme-neutral-900)",
+    borderStrong: "var(--scheme-neutral-800)",
+    text: "var(--scheme-neutral-100)",
+    textMuted: "var(--scheme-neutral-500)",
+    textSoft: "var(--scheme-neutral-600)",
+};
 
 function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, commodity, bestProductKey }: {
     products: ProductResult[];
@@ -56,25 +71,25 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
     const { t } = useI18n();
     return (
         <div style={{
-            background: "#fff",
+            background: uiColors.surface,
             borderRadius: 12,
             overflow: "hidden",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-            border: "1px solid #e5e7eb",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.14)",
+            border: `1px solid ${uiColors.border}`,
         }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                    <tr style={{ background: "linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%)" }}>
+                    <tr style={{ background: `linear-gradient(180deg, ${uiColors.surfaceRaised} 0%, ${uiColors.surfaceMuted} 100%)` }}>
                         {onOfferClick && (
                             <th style={{
                                 padding: "14px 16px",
                                 textAlign: "center",
                                 fontSize: 11,
                                 fontWeight: 700,
-                                color: "#6b7280",
+                                color: uiColors.textMuted,
                                 textTransform: "uppercase",
                                 letterSpacing: "0.05em",
-                                borderBottom: "2px solid #e5e7eb",
+                                borderBottom: `2px solid ${uiColors.border}`,
                                 width: "80px",
                             }}>
                                 {t("simulationOffersCards", "colSelect")}
@@ -85,10 +100,10 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                             textAlign: "left",
                             fontSize: 11,
                             fontWeight: 700,
-                            color: "#6b7280",
+                            color: uiColors.textMuted,
                             textTransform: "uppercase",
                             letterSpacing: "0.05em",
-                            borderBottom: "2px solid #e5e7eb",
+                            borderBottom: `2px solid ${uiColors.border}`,
                         }}>
                             {t("simulationOffersCards", "colProduct")}
                         </th>
@@ -97,10 +112,10 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                             textAlign: "right",
                             fontSize: 11,
                             fontWeight: 700,
-                            color: "#6b7280",
+                            color: uiColors.textMuted,
                             textTransform: "uppercase",
                             letterSpacing: "0.05em",
-                            borderBottom: "2px solid #e5e7eb",
+                            borderBottom: `2px solid ${uiColors.border}`,
                         }}>
                             {t("simulationOffersCards", "colTotalInvoice")}
                         </th>
@@ -109,10 +124,10 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                             textAlign: "right",
                             fontSize: 11,
                             fontWeight: 700,
-                            color: "#6b7280",
+                            color: uiColors.textMuted,
                             textTransform: "uppercase",
                             letterSpacing: "0.05em",
-                            borderBottom: "2px solid #e5e7eb",
+                            borderBottom: `2px solid ${uiColors.border}`,
                         }}>
                             {t("simulationOffersCards", "colMonthlySavings")}
                         </th>
@@ -121,10 +136,10 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                             textAlign: "center",
                             fontSize: 11,
                             fontWeight: 700,
-                            color: "#6b7280",
+                            color: uiColors.textMuted,
                             textTransform: "uppercase",
                             letterSpacing: "0.05em",
-                            borderBottom: "2px solid #e5e7eb",
+                            borderBottom: `2px solid ${uiColors.border}`,
                         }}>
                             {t("simulationOffersCards", "colPctDifference")}
                         </th>
@@ -133,10 +148,10 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                             textAlign: "right",
                             fontSize: 11,
                             fontWeight: 700,
-                            color: "#6b7280",
+                            color: uiColors.textMuted,
                             textTransform: "uppercase",
                             letterSpacing: "0.05em",
-                            borderBottom: "2px solid #e5e7eb",
+                            borderBottom: `2px solid ${uiColors.border}`,
                         }}>
                             {t("simulationOffersCards", "colAnnualSavings")}
                         </th>
@@ -148,10 +163,10 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                         const isSelected = selectedOffer?.productKey === product.productKey && selectedOffer?.commodity === commodity;
                         const savingsColor = product.ahorro > 0 ? "#10b981" : product.ahorro < 0 ? "#ef4444" : "#6b7280";
                         const bgColor = isSelected
-                            ? "linear-gradient(90deg, #e0e7ff 0%, #f5f3ff 100%)"
+                            ? "linear-gradient(90deg, var(--scheme-brand-600-15) 0%, var(--scheme-accent-600-15) 100%)"
                             : isTop
-                                ? "linear-gradient(90deg, #d1fae5 0%, #ecfdf5 100%)"
-                                : idx % 2 === 0 ? "#ffffff" : "#f9fafb";
+                                ? "linear-gradient(90deg, rgba(16, 185, 129, 0.14) 0%, rgba(16, 185, 129, 0.08) 100%)"
+                                : idx % 2 === 0 ? uiColors.surface : uiColors.surfaceRaised;
 
                         return (
                             <tr key={product.productKey + product.pricingType} style={{
@@ -162,25 +177,38 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                     <td style={{
                                         padding: "14px 16px",
                                         textAlign: "center",
-                                        borderBottom: "1px solid #f3f4f6",
+                                        borderBottom: `1px solid ${uiColors.border}`,
                                     }}>
-                                        <input
-                                            type="radio"
-                                            name={`select-offer-${commodity}`}
-                                            checked={isSelected}
-                                            onChange={() => onOfferClick(product, commodity)}
+                                        <div
+                                            onClick={() => onOfferClick(product, commodity)}
                                             style={{
                                                 width: 18,
                                                 height: 18,
+                                                borderRadius: "50%",
+                                                border: `2px solid ${isSelected ? "#6366f1" : "var(--scheme-neutral-600, #9ca3af)"}`,
+                                                background: isSelected ? "#6366f1" : "transparent",
                                                 cursor: "pointer",
-                                                accentColor: "#6366f1",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                flexShrink: 0,
+                                                transition: "all 0.15s",
                                             }}
-                                        />
+                                        >
+                                            {isSelected && (
+                                                <div style={{
+                                                    width: 7,
+                                                    height: 7,
+                                                    borderRadius: "50%",
+                                                    background: "#fff",
+                                                }} />
+                                            )}
+                                        </div>
                                     </td>
                                 )}
                                 <td style={{
                                     padding: "14px 16px",
-                                    borderBottom: "1px solid #f3f4f6",
+                                    borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
                                     <div style={{
                                         display: "flex",
@@ -191,7 +219,7 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                             <div style={{
                                                 fontSize: 14,
                                                 fontWeight: 600,
-                                                color: "#111827",
+                                                color: uiColors.text,
                                                 marginBottom: 3,
                                             }}>
                                                 {product.productLabel}
@@ -200,14 +228,18 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                                 display: "inline-block",
                                                 fontSize: 10,
                                                 fontWeight: 600,
-                                                color: "#6b7280",
-                                                background: "#f3f4f6",
+                                                color: uiColors.textMuted,
+                                                background: uiColors.surfaceMuted,
                                                 padding: "2px 8px",
                                                 borderRadius: 10,
                                                 textTransform: "uppercase",
                                                 letterSpacing: "0.03em",
                                             }}>
-                                                {product.pricingType === "FIXED" ? t("simulationOffersCards", "pricingFixed") : t("simulationOffersCards", "pricingIndexed")}
+                                                {product.pricingType === "FIXED"
+                                                    ? t("simulationOffersCards", "pricingFixed")
+                                                    : (product.productKey === "PERSONALIZADA_INDEX" || product.productKey === "PERSONALIZADA_OMIE_B")
+                                                        ? t("simulationOffersCards", "pricingPersonalizada")
+                                                        : t("simulationOffersCards", "pricingIndexed")}
                                             </div>
                                         </div>
                                         {isTop && (
@@ -246,8 +278,8 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                     fontVariantNumeric: "tabular-nums",
                                     fontSize: 15,
                                     fontWeight: 700,
-                                    color: "#111827",
-                                    borderBottom: "1px solid #f3f4f6",
+                                    color: uiColors.text,
+                                    borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
                                     {fmt(product.totalFactura)} €
                                 </td>
@@ -258,14 +290,14 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                     fontSize: 15,
                                     fontWeight: 700,
                                     color: savingsColor,
-                                    borderBottom: "1px solid #f3f4f6",
+                                    borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
                                     {product.ahorro > 0 ? "+" : ""}{fmt(product.ahorro)} €
                                 </td>
                                 <td style={{
                                     padding: "14px 16px",
                                     textAlign: "center",
-                                    borderBottom: "1px solid #f3f4f6",
+                                    borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
                                     <div style={{
                                         display: "inline-flex",
@@ -292,8 +324,8 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                     fontVariantNumeric: "tabular-nums",
                                     fontSize: 14,
                                     fontWeight: 600,
-                                    color: "#4b5563",
-                                    borderBottom: "1px solid #f3f4f6",
+                                    color: uiColors.textSoft,
+                                    borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
                                     {product.ahorro > 0 ? "+" : ""}{fmt(product.ahorroAnual)} €
                                 </td>
@@ -321,6 +353,10 @@ function EditableInputPanel({
     availableMonths,
     onMonthChange,
     locale,
+    personalizadaIndexPeriods,
+    onUpdatePersonalizadaIndex,
+    personalizadaOmieBPeriods,
+    onUpdatePersonalizadaOmieB,
 }: {
     facturaActual?: number;
     tarifaAcceso?: string;
@@ -336,9 +372,13 @@ function EditableInputPanel({
     availableMonths?: string[];
     onMonthChange?: (month: string) => void;
     locale?: string;
+    personalizadaIndexPeriods?: { margenEnergia: Record<string, number>; margenPotencia: Record<string, number> };
+    onUpdatePersonalizadaIndex?: (field: "margenEnergia" | "margenPotencia", period: string, value: number) => void;
+    personalizadaOmieBPeriods?: { terminoB: Record<string, number>; margenPotencia: Record<string, number> };
+    onUpdatePersonalizadaOmieB?: (field: "terminoB" | "margenPotencia", period: string, value: number) => void;
 }) {
     const { t } = useI18n();
-    const [expandedSection, setExpandedSection] = useState<"energy" | "power" | "omie" | null>(null);
+    const [expandedSection, setExpandedSection] = useState<"energy" | "power" | "omie" | "personalizadaIndex" | "personalizadaOmieB" | null>(null);
 
     const handleInputChange = (type: "energy" | "power" | "omie", period: string, value: string) => {
         const numValue = parseFloat(value);
@@ -351,17 +391,17 @@ function EditableInputPanel({
         <div style={{
             position: "sticky",
             top: 20,
-            background: "#fff",
+            background: uiColors.surface,
             borderRadius: 12,
             padding: 16,
             boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.04)",
-            border: "1px solid #e5e7eb",
+            border: `1px solid ${uiColors.border}`,
         }}>
             <h3 style={{
                 margin: "0 0 12px 0",
                 fontSize: 14,
                 fontWeight: 700,
-                color: "#111827",
+                color: uiColors.text,
             }}>
                 {t("simulationOffersCards", "sectionTitle")}
             </h3>
@@ -369,7 +409,7 @@ function EditableInputPanel({
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {tarifaAcceso && (
                     <div>
-                        <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
+                        <div style={{ fontSize: 10, color: uiColors.textMuted, marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
                             {t("simulationOffersCards", "labelAccessTariff")}
                         </div>
                         <div style={{
@@ -388,7 +428,7 @@ function EditableInputPanel({
 
                 {consumoAnual ? (
                     <div>
-                        <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
+                        <div style={{ fontSize: 10, color: uiColors.textMuted, marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
                             {t("simulationOffersCards", "labelAnnualConsumption")}
                         </div>
                         <div style={{
@@ -407,7 +447,7 @@ function EditableInputPanel({
 
                 {facturaActual && (
                     <div>
-                        <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
+                        <div style={{ fontSize: 10, color: uiColors.textMuted, marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
                             {t("simulationOffersCards", "labelCurrentInvoice")}
                         </div>
                         <div style={{
@@ -450,10 +490,10 @@ function EditableInputPanel({
                             style={{
                                 width: "100%",
                                 padding: "8px 10px",
-                                background: expandedSection === "energy" ? "#f3f4f6" : "#fff",
-                                border: "1px solid #d1d5db",
+                                background: expandedSection === "energy" ? uiColors.surfaceMuted : uiColors.surface,
+                                border: `1px solid ${uiColors.borderStrong}`,
                                 borderRadius: 6,
-                                color: "#374151",
+                                color: uiColors.text,
                                 fontSize: 12,
                                 fontWeight: 600,
                                 cursor: "pointer",
@@ -467,10 +507,10 @@ function EditableInputPanel({
                             <span>{expandedSection === "energy" ? "▲" : "▼"}</span>
                         </button>
                         {expandedSection === "energy" && (
-                            <div style={{ marginTop: 8, padding: 12, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
                                 {Object.entries(energyPeriods).map(([period, value]) => (
                                     <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                        <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", minWidth: 30 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>
                                             {period}:
                                         </label>
                                         <input
@@ -480,12 +520,12 @@ function EditableInputPanel({
                                             style={{
                                                 flex: 1,
                                                 padding: "6px 10px",
-                                                border: "1px solid #d1d5db",
+                                                border: `1px solid ${uiColors.borderStrong}`,
                                                 borderRadius: 6,
                                                 fontSize: 13,
                                                 fontWeight: 600,
-                                                color: "#111827",
-                                                background: "#fff",
+                                                color: uiColors.text,
+                                                background: uiColors.surface,
                                             }}
                                         />
                                     </div>
@@ -502,10 +542,10 @@ function EditableInputPanel({
                             style={{
                                 width: "100%",
                                 padding: "8px 10px",
-                                background: expandedSection === "power" ? "#f3f4f6" : "#fff",
-                                border: "1px solid #d1d5db",
+                                background: expandedSection === "power" ? uiColors.surfaceMuted : uiColors.surface,
+                                border: `1px solid ${uiColors.borderStrong}`,
                                 borderRadius: 6,
-                                color: "#374151",
+                                color: uiColors.text,
                                 fontSize: 12,
                                 fontWeight: 600,
                                 cursor: "pointer",
@@ -519,10 +559,10 @@ function EditableInputPanel({
                             <span>{expandedSection === "power" ? "▲" : "▼"}</span>
                         </button>
                         {expandedSection === "power" && (
-                            <div style={{ marginTop: 8, padding: 12, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
                                 {Object.entries(powerPeriods).map(([period, value]) => (
                                     <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                        <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", minWidth: 30 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>
                                             {period}:
                                         </label>
                                         <input
@@ -533,12 +573,12 @@ function EditableInputPanel({
                                             style={{
                                                 flex: 1,
                                                 padding: "6px 10px",
-                                                border: "1px solid #d1d5db",
+                                                border: `1px solid ${uiColors.borderStrong}`,
                                                 borderRadius: 6,
                                                 fontSize: 13,
                                                 fontWeight: 600,
-                                                color: "#111827",
-                                                background: "#fff",
+                                                color: uiColors.text,
+                                                background: uiColors.surface,
                                             }}
                                         />
                                     </div>
@@ -548,17 +588,17 @@ function EditableInputPanel({
                     </div>
                 )}
 
-                {omiePeriods && Object.keys(omiePeriods).length > 0 && (
+                {personalizadaIndexPeriods && (Object.keys(personalizadaIndexPeriods.margenEnergia).length > 0 || Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0) && (
                     <div style={{ marginTop: 8 }}>
                         <button
-                            onClick={() => setExpandedSection(expandedSection === "omie" ? null : "omie")}
+                            onClick={() => setExpandedSection(expandedSection === "personalizadaIndex" ? null : "personalizadaIndex")}
                             style={{
                                 width: "100%",
                                 padding: "8px 10px",
-                                background: expandedSection === "omie" ? "#f3f4f6" : "#fff",
-                                border: "1px solid #d1d5db",
+                                background: expandedSection === "personalizadaIndex" ? uiColors.surfaceMuted : uiColors.surface,
+                                border: `1px solid ${uiColors.borderStrong}`,
                                 borderRadius: 6,
-                                color: "#374151",
+                                color: uiColors.text,
                                 fontSize: 12,
                                 fontWeight: 600,
                                 cursor: "pointer",
@@ -568,34 +608,109 @@ function EditableInputPanel({
                                 transition: "all 0.2s",
                             }}
                         >
-                            <span>{t("simulationOffersCards", "btnOmie")}</span>
-                            <span>{expandedSection === "omie" ? "▲" : "▼"}</span>
+                            <span>{t("simulationForm", "sectionPersonalizadaIndex")}</span>
+                            <span>{expandedSection === "personalizadaIndex" ? "▲" : "▼"}</span>
                         </button>
-                        {expandedSection === "omie" && (
-                            <div style={{ marginTop: 8, padding: 12, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-                                {Object.entries(omiePeriods).map(([period, value]) => (
-                                    <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                        <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", minWidth: 30 }}>
-                                            {period}:
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={value}
-                                            onChange={(e) => handleInputChange("omie", period, e.target.value)}
-                                            step="0.001"
-                                            style={{
-                                                flex: 1,
-                                                padding: "6px 10px",
-                                                border: "1px solid #d1d5db",
-                                                borderRadius: 6,
-                                                fontSize: 13,
-                                                fontWeight: 600,
-                                                color: "#111827",
-                                                background: "#fff",
-                                            }}
-                                        />
-                                    </div>
-                                ))}
+                        {expandedSection === "personalizadaIndex" && (
+                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
+                                {Object.keys(personalizadaIndexPeriods.margenEnergia).length > 0 && (
+                                    <>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaIndexMargenEnergiaLabel")}</div>
+                                        {Object.entries(personalizadaIndexPeriods.margenEnergia).map(([period, value]) => (
+                                            <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                                <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
+                                                <input
+                                                    type="number"
+                                                    value={value}
+                                                    onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenEnergia", period, v); }}
+                                                    step="0.1"
+                                                    style={{ flex: 1, padding: "6px 10px", border: `1px solid ${uiColors.borderStrong}`, borderRadius: 6, fontSize: 13, fontWeight: 600, color: uiColors.text, background: uiColors.surface }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
+                                {Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0 && (
+                                    <>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaIndexMargenPotenciaLabel")}</div>
+                                        {Object.entries(personalizadaIndexPeriods.margenPotencia).map(([period, value]) => (
+                                            <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                                <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
+                                                <input
+                                                    type="number"
+                                                    value={value}
+                                                    onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenPotencia", period, v); }}
+                                                    step="0.1"
+                                                    style={{ flex: 1, padding: "6px 10px", border: `1px solid ${uiColors.borderStrong}`, borderRadius: 6, fontSize: 13, fontWeight: 600, color: uiColors.text, background: uiColors.surface }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {personalizadaOmieBPeriods && (Object.keys(personalizadaOmieBPeriods.terminoB).length > 0 || Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0) && (
+                    <div style={{ marginTop: 8 }}>
+                        <button
+                            onClick={() => setExpandedSection(expandedSection === "personalizadaOmieB" ? null : "personalizadaOmieB")}
+                            style={{
+                                width: "100%",
+                                padding: "8px 10px",
+                                background: expandedSection === "personalizadaOmieB" ? uiColors.surfaceMuted : uiColors.surface,
+                                border: `1px solid ${uiColors.borderStrong}`,
+                                borderRadius: 6,
+                                color: uiColors.text,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                transition: "all 0.2s",
+                            }}
+                        >
+                            <span>{t("simulationForm", "sectionPersonalizadaOmieB")}</span>
+                            <span>{expandedSection === "personalizadaOmieB" ? "▲" : "▼"}</span>
+                        </button>
+                        {expandedSection === "personalizadaOmieB" && (
+                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
+                                {Object.keys(personalizadaOmieBPeriods.terminoB).length > 0 && (
+                                    <>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaOmieBTerminoBLabel")}</div>
+                                        {Object.entries(personalizadaOmieBPeriods.terminoB).map(([period, value]) => (
+                                            <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                                <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
+                                                <input
+                                                    type="number"
+                                                    value={value}
+                                                    onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("terminoB", period, v); }}
+                                                    step="0.1"
+                                                    style={{ flex: 1, padding: "6px 10px", border: `1px solid ${uiColors.borderStrong}`, borderRadius: 6, fontSize: 13, fontWeight: 600, color: uiColors.text, background: uiColors.surface }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
+                                {Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0 && (
+                                    <>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaOmieBMargenPotenciaLabel")}</div>
+                                        {Object.entries(personalizadaOmieBPeriods.margenPotencia).map(([period, value]) => (
+                                            <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                                <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
+                                                <input
+                                                    type="number"
+                                                    value={value}
+                                                    onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("margenPotencia", period, v); }}
+                                                    step="0.1"
+                                                    style={{ flex: 1, padding: "6px 10px", border: `1px solid ${uiColors.borderStrong}`, borderRadius: 6, fontSize: 13, fontWeight: 600, color: uiColors.text, background: uiColors.surface }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>
@@ -604,7 +719,7 @@ function EditableInputPanel({
                 <div style={{
                     marginTop: 16,
                     paddingTop: 12,
-                    borderTop: "2px solid #e5e7eb",
+                    borderTop: `2px solid ${uiColors.border}`,
                 }}>
                     <button
                         onClick={onRecalculate}
@@ -643,7 +758,7 @@ function EditableInputPanel({
                 <div style={{
                     marginTop: 8,
                     fontSize: 10,
-                    color: "#9ca3af",
+                    color: uiColors.textSoft,
                     textAlign: "center",
                     fontWeight: 500,
                 }}>
@@ -671,9 +786,13 @@ export function SimulationResultsCards({
     selectedMonth,
     availableMonths,
     onMonthChange,
+    personalizadaIndexPeriods,
+    onUpdatePersonalizadaIndex,
+    personalizadaOmieBPeriods,
+    onUpdatePersonalizadaOmieB,
 }: SimulationResultsCardsProps) {
     const { t, locale } = useI18n();
-    const [elecTab, setElecTab] = useState<"all" | "fixed" | "indexed">("all");
+    const [elecTab, setElecTab] = useState<"all" | "fixed" | "indexed" | "personalizadas">("all");
     const [gasTab, setGasTab] = useState<"all" | "fixed" | "indexed">("all");
     const [pendingOffer, setPendingOffer] = useState<PendingOffer | null>(null);
     const [saving, setSaving] = useState(false);
@@ -704,12 +823,12 @@ export function SimulationResultsCards({
 
     if (!hasElec && !hasGas) {
         return (
-            <div style={{ padding: 60, textAlign: "center", background: "#f9fafb", borderRadius: 12 }}>
+            <div style={{ padding: 60, textAlign: "center", background: uiColors.surfaceRaised, borderRadius: 12, border: `1px solid ${uiColors.border}` }}>
                 <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }}>📊</div>
-                <div style={{ fontSize: 16, color: "#6b7280", marginBottom: 8, fontWeight: 600 }}>
+                <div style={{ fontSize: 16, color: uiColors.textMuted, marginBottom: 8, fontWeight: 600 }}>
                     {t("simulationOffersCards", "noResults")}
                 </div>
-                <div style={{ fontSize: 14, color: "#9ca3af" }}>
+                <div style={{ fontSize: 14, color: uiColors.textSoft }}>
                     {t("simulationOffersCards", "noResultsHint")}
                 </div>
             </div>
@@ -740,15 +859,21 @@ export function SimulationResultsCards({
                     availableMonths={availableMonths}
                     onMonthChange={onMonthChange}
                     locale={locale}
+                    personalizadaIndexPeriods={personalizadaIndexPeriods}
+                    onUpdatePersonalizadaIndex={onUpdatePersonalizadaIndex}
+                    personalizadaOmieBPeriods={personalizadaOmieBPeriods}
+                    onUpdatePersonalizadaOmieB={onUpdatePersonalizadaOmieB}
                 />
 
                 {/* Right side - Product tables */}
                 <div>
                     {/* Electricity section */}
                     {hasElec && (() => {
-                        const elecProducts = results.electricity!;
+                        const elecProducts = [...results.electricity!].sort((a, b) => b.ahorro - a.ahorro);
                         const fixedProducts = elecProducts.filter(p => p.pricingType === "FIXED");
                         const indexedProducts = elecProducts.filter(p => p.pricingType === "INDEXED");
+                        const personalizadaProducts = elecProducts.filter(p => p.productKey === "PERSONALIZADA_INDEX" || p.productKey === "PERSONALIZADA_OMIE_B");
+                        const hasPersonalizadas = personalizadaProducts.length > 0;
 
                         const bestElecProduct = elecProducts.reduce((best, current) =>
                             current.ahorro > best.ahorro ? current : best
@@ -758,7 +883,9 @@ export function SimulationResultsCards({
                             ? elecProducts
                             : elecTab === "fixed"
                                 ? fixedProducts
-                                : indexedProducts;
+                                : elecTab === "personalizadas"
+                                    ? personalizadaProducts
+                                    : indexedProducts;
 
                         return (
                             <div style={{ marginBottom: 40 }}>
@@ -766,7 +893,7 @@ export function SimulationResultsCards({
                                     margin: "0 0 16px 0",
                                     fontSize: 20,
                                     fontWeight: 700,
-                                    color: "#111827",
+                                    color: uiColors.text,
                                     display: "flex",
                                     alignItems: "center",
                                     gap: 10,
@@ -776,8 +903,8 @@ export function SimulationResultsCards({
                                     <span style={{
                                         fontSize: 13,
                                         fontWeight: 600,
-                                        color: "#6b7280",
-                                        background: "#f3f4f6",
+                                        color: uiColors.textMuted,
+                                        background: uiColors.surfaceMuted,
                                         padding: "4px 12px",
                                         borderRadius: 12,
                                     }}>
@@ -786,12 +913,13 @@ export function SimulationResultsCards({
                                 </h2>
 
                                 {/* Tabs */}
-                                <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e5e7eb", marginBottom: 16 }}>
-                                    {[
+                                <div style={{ display: "flex", gap: 0, borderBottom: `2px solid ${uiColors.border}`, marginBottom: 16 }}>
+                                    {([
                                         { key: "all" as const, label: t("simulationOffersCards", "tabAll"), count: elecProducts.length },
                                         { key: "fixed" as const, label: t("simulationOffersCards", "tabFixed"), count: fixedProducts.length },
                                         { key: "indexed" as const, label: t("simulationOffersCards", "tabIndexed"), count: indexedProducts.length },
-                                    ].map((tab) => (
+                                        ...(hasPersonalizadas ? [{ key: "personalizadas" as const, label: t("simulationOffersCards", "tabPersonalizadas"), count: personalizadaProducts.length }] : []),
+                                    ] as { key: "all" | "fixed" | "indexed" | "personalizadas"; label: string; count: number }[]).map((tab) => (
                                         <button
                                             key={tab.key}
                                             type="button"
@@ -807,9 +935,9 @@ export function SimulationResultsCards({
                                                 color: tab.count === 0
                                                     ? "#d1d5db"
                                                     : elecTab === tab.key
-                                                        ? "#111827"
-                                                        : "#6b7280",
-                                                borderBottom: elecTab === tab.key ? "3px solid #4ade80" : "3px solid transparent",
+                                                        ? uiColors.text
+                                                        : uiColors.textMuted,
+                                                borderBottom: elecTab === tab.key ? "3px solid var(--scheme-brand-600)" : "3px solid transparent",
                                                 marginBottom: -2,
                                                 opacity: tab.count === 0 ? 0.4 : 1,
                                             }}
@@ -817,8 +945,8 @@ export function SimulationResultsCards({
                                             {tab.label} <span style={{
                                                 fontSize: 11,
                                                 fontWeight: 600,
-                                                background: elecTab === tab.key ? "#e0e7ff" : "#f3f4f6",
-                                                color: elecTab === tab.key ? "#4338ca" : "#6b7280",
+                                                background: elecTab === tab.key ? "var(--scheme-brand-600-15)" : uiColors.surfaceMuted,
+                                                color: elecTab === tab.key ? "var(--scheme-brand-300)" : uiColors.textMuted,
                                                 padding: "2px 6px",
                                                 borderRadius: 8,
                                                 marginLeft: 6,
@@ -839,8 +967,8 @@ export function SimulationResultsCards({
                                         bestProductKey={bestElecProduct.productKey}
                                     />
                                 ) : (
-                                    <div style={{ padding: 40, textAlign: "center", background: "#f9fafb", borderRadius: 12 }}>
-                                        <div style={{ fontSize: 14, color: "#6b7280" }}>
+                                    <div style={{ padding: 40, textAlign: "center", background: uiColors.surfaceRaised, borderRadius: 12, border: `1px solid ${uiColors.border}` }}>
+                                        <div style={{ fontSize: 14, color: uiColors.textMuted }}>
                                             {t("simulationOffersCards", "noProductsAvailable")}
                                         </div>
                                     </div>
@@ -851,7 +979,7 @@ export function SimulationResultsCards({
 
                     {/* Gas section */}
                     {hasGas && (() => {
-                        const gasProducts = results.gas!;
+                        const gasProducts = [...results.gas!].sort((a, b) => b.ahorro - a.ahorro);
                         const fixedProducts = gasProducts.filter(p => p.pricingType === "FIXED");
                         const indexedProducts = gasProducts.filter(p => p.pricingType === "INDEXED");
 
@@ -872,7 +1000,7 @@ export function SimulationResultsCards({
                                     margin: "0 0 16px 0",
                                     fontSize: 20,
                                     fontWeight: 700,
-                                    color: "#111827",
+                                    color: uiColors.text,
                                     display: "flex",
                                     alignItems: "center",
                                     gap: 10,
@@ -882,8 +1010,8 @@ export function SimulationResultsCards({
                                     <span style={{
                                         fontSize: 13,
                                         fontWeight: 600,
-                                        color: "#6b7280",
-                                        background: "#f3f4f6",
+                                        color: uiColors.textMuted,
+                                        background: uiColors.surfaceMuted,
                                         padding: "4px 12px",
                                         borderRadius: 12,
                                     }}>
@@ -892,7 +1020,7 @@ export function SimulationResultsCards({
                                 </h2>
 
                                 {/* Tabs */}
-                                <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e5e7eb", marginBottom: 16 }}>
+                                <div style={{ display: "flex", gap: 0, borderBottom: `2px solid ${uiColors.border}`, marginBottom: 16 }}>
                                     {[
                                         { key: "all" as const, label: t("simulationOffersCards", "tabAll"), count: gasProducts.length },
                                         { key: "fixed" as const, label: t("simulationOffersCards", "tabFixed"), count: fixedProducts.length },
@@ -913,9 +1041,9 @@ export function SimulationResultsCards({
                                                 color: tab.count === 0
                                                     ? "#d1d5db"
                                                     : gasTab === tab.key
-                                                        ? "#111827"
-                                                        : "#6b7280",
-                                                borderBottom: gasTab === tab.key ? "3px solid #4ade80" : "3px solid transparent",
+                                                        ? uiColors.text
+                                                        : uiColors.textMuted,
+                                                borderBottom: gasTab === tab.key ? "3px solid var(--scheme-brand-600)" : "3px solid transparent",
                                                 marginBottom: -2,
                                                 opacity: tab.count === 0 ? 0.4 : 1,
                                             }}
@@ -923,8 +1051,8 @@ export function SimulationResultsCards({
                                             {tab.label} <span style={{
                                                 fontSize: 11,
                                                 fontWeight: 600,
-                                                background: gasTab === tab.key ? "#e0e7ff" : "#f3f4f6",
-                                                color: gasTab === tab.key ? "#4338ca" : "#6b7280",
+                                                background: gasTab === tab.key ? "var(--scheme-brand-600-15)" : uiColors.surfaceMuted,
+                                                color: gasTab === tab.key ? "var(--scheme-brand-300)" : uiColors.textMuted,
                                                 padding: "2px 6px",
                                                 borderRadius: 8,
                                                 marginLeft: 6,
@@ -945,8 +1073,8 @@ export function SimulationResultsCards({
                                         bestProductKey={bestGasProduct.productKey}
                                     />
                                 ) : (
-                                    <div style={{ padding: 40, textAlign: "center", background: "#f9fafb", borderRadius: 12 }}>
-                                        <div style={{ fontSize: 14, color: "#6b7280" }}>
+                                    <div style={{ padding: 40, textAlign: "center", background: uiColors.surfaceRaised, borderRadius: 12, border: `1px solid ${uiColors.border}` }}>
+                                        <div style={{ fontSize: 14, color: uiColors.textMuted }}>
                                             {t("simulationOffersCards", "noProductsAvailable")}
                                         </div>
                                     </div>
@@ -959,11 +1087,11 @@ export function SimulationResultsCards({
                     <div style={{
                         marginTop: 32,
                         padding: 16,
-                        background: "#f9fafb",
+                        background: uiColors.surfaceRaised,
                         borderRadius: 8,
-                        border: "1px solid #e5e7eb",
+                        border: `1px solid ${uiColors.border}`,
                         fontSize: 11,
-                        color: "#6b7280",
+                        color: uiColors.textMuted,
                         fontWeight: 500,
                         display: "flex",
                         justifyContent: "space-between",
@@ -973,7 +1101,7 @@ export function SimulationResultsCards({
                             {t("simulationOffersCards", "calculatedAt")} {new Date(results.calculatedAt).toLocaleString()}
                         </div>
                         <div>
-                            {t("simulationOffersCards", "priceBase")} <span style={{ color: "#374151", fontWeight: 700, fontFamily: "monospace" }}>
+                            {t("simulationOffersCards", "priceBase")} <span style={{ color: uiColors.text, fontWeight: 700, fontFamily: "monospace" }}>
                                 {results.baseValueSetId.slice(0, 12)}…
                             </span>
                         </div>
@@ -997,18 +1125,19 @@ export function SimulationResultsCards({
                     zIndex: 9999,
                 }} onClick={handleCancelSelection}>
                     <div style={{
-                        background: "#fff",
+                        background: uiColors.surface,
                         borderRadius: 16,
                         padding: 32,
                         maxWidth: 500,
                         width: "90%",
-                        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.28), 0 10px 10px -5px rgba(0, 0, 0, 0.16)",
+                        border: `1px solid ${uiColors.border}`,
                     }} onClick={(e) => e.stopPropagation()}>
                         <h3 style={{
                             margin: "0 0 16px 0",
                             fontSize: 20,
                             fontWeight: 700,
-                            color: "#111827",
+                            color: uiColors.text,
                             display: "flex",
                             alignItems: "center",
                             gap: 10,
@@ -1019,15 +1148,15 @@ export function SimulationResultsCards({
 
                         <div style={{
                             padding: 20,
-                            background: "linear-gradient(135deg, #e0e7ff 0%, #f5f3ff 100%)",
+                            background: "linear-gradient(135deg, var(--scheme-brand-600-15) 0%, var(--scheme-accent-600-15) 100%)",
                             borderRadius: 12,
-                            border: "2px solid #6366f1",
+                            border: "2px solid var(--scheme-brand-600)",
                             marginBottom: 24,
                         }}>
                             <div style={{
                                 fontSize: 16,
                                 fontWeight: 700,
-                                color: "#111827",
+                                color: uiColors.text,
                                 marginBottom: 8,
                             }}>
                                 {pendingOffer.product.productLabel}
@@ -1040,8 +1169,8 @@ export function SimulationResultsCards({
                                 <span style={{
                                     fontSize: 11,
                                     fontWeight: 600,
-                                    color: "#6b7280",
-                                    background: "#fff",
+                                    color: uiColors.textMuted,
+                                    background: uiColors.surface,
                                     padding: "4px 10px",
                                     borderRadius: 12,
                                     textTransform: "uppercase",
@@ -1051,8 +1180,8 @@ export function SimulationResultsCards({
                                 <span style={{
                                     fontSize: 11,
                                     fontWeight: 600,
-                                    color: "#6b7280",
-                                    background: "#fff",
+                                    color: uiColors.textMuted,
+                                    background: uiColors.surface,
                                     padding: "4px 10px",
                                     borderRadius: 12,
                                     textTransform: "uppercase",
@@ -1067,13 +1196,13 @@ export function SimulationResultsCards({
                                 fontSize: 13,
                             }}>
                                 <div>
-                                    <div style={{ color: "#6b7280", marginBottom: 4 }}>{t("simulationOffersCards", "colTotalInvoice")}</div>
-                                    <div style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+                                    <div style={{ color: uiColors.textMuted, marginBottom: 4 }}>{t("simulationOffersCards", "colTotalInvoice")}</div>
+                                    <div style={{ fontSize: 18, fontWeight: 700, color: uiColors.text }}>
                                         {fmt(pendingOffer.product.totalFactura)} €
                                     </div>
                                 </div>
                                 <div>
-                                    <div style={{ color: "#6b7280", marginBottom: 4 }}>{t("simulationOffersCards", "colMonthlySavings")}</div>
+                                    <div style={{ color: uiColors.textMuted, marginBottom: 4 }}>{t("simulationOffersCards", "colMonthlySavings")}</div>
                                     <div style={{
                                         fontSize: 18,
                                         fontWeight: 700,
@@ -1088,7 +1217,7 @@ export function SimulationResultsCards({
                         <p style={{
                             margin: "0 0 24px 0",
                             fontSize: 14,
-                            color: "#6b7280",
+                            color: uiColors.textMuted,
                             lineHeight: 1.6,
                         }}>
                             {t("simulationOffersCards", "confirmDescription")}
@@ -1107,10 +1236,10 @@ export function SimulationResultsCards({
                                     padding: "12px 24px",
                                     fontSize: 14,
                                     fontWeight: 600,
-                                    background: "#fff",
-                                    border: "2px solid #d1d5db",
+                                    background: uiColors.surface,
+                                    border: `2px solid ${uiColors.borderStrong}`,
                                     borderRadius: 8,
-                                    color: "#6b7280",
+                                    color: uiColors.textMuted,
                                     cursor: saving ? "not-allowed" : "pointer",
                                     opacity: saving ? 0.5 : 1,
                                 }}

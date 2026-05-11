@@ -13,9 +13,12 @@ import {
     deletePdfTemplate,
     getTemplateVariables,
     type PdfTemplate,
+    type PdfTemplateTranslationInput,
     type TemplateVariable,
 } from "../../lib/configApi";
+import { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE } from "../../../../src/lib/supportedLanguages";
 import { LoadingState } from "../shared/LoadingState";
+import { AITemplateBuilder, type AIGeneratedTemplate } from "./AITemplateBuilder";
 
 export interface PdfTemplatesProps {
     session: SessionState;
@@ -30,44 +33,8 @@ export type PdfTemplateType =
     | "invoice"
     | "report";
 
-/** Hardcoded variables available in price-history templates.
- *  These are injected by DownloadHistoryDialog — they are NOT in the DB. */
-const PRICE_HISTORY_VARIABLES = [
-    {
-        name: "HISTORY_TABLES",
-        label: "History Tables (all tariffs)",
-        description: "All generated price-history tables (2.0TD + 3.0TD + 6.1TD). Place this where the tables should appear.",
-    },
-    {
-        name: "HISTORY_TABLE_2TD",
-        label: "History Table — 2.0 TD",
-        description: "Price-history table for tariff 2.0TD only (P1–P3).",
-    },
-    {
-        name: "HISTORY_TABLE_3TD",
-        label: "History Table — 3.0 TD",
-        description: "Price-history table for tariff 3.0TD only (P1–P6).",
-    },
-    {
-        name: "HISTORY_TABLE_6TD",
-        label: "History Table — 6.1 TD",
-        description: "Price-history table for tariff 6.1TD only (P1–P6).",
-    },
-    {
-        name: "PRODUCT_LABEL",
-        label: "Product Label",
-        description: "Product name, e.g. \"Dinámica N1 - Perfil Normal\"",
-    },
-    {
-        name: "PERFIL",
-        label: "Load Profile",
-        description: "Perfil Normal or Perfil Diurno",
-    },
-    {
-        name: "TARIFA",
-        label: "Access Tariff",
-        description: "Tariff code, e.g. 2.0TD",
-    },
+/** Common metadata variables shared across all price-history templates (injected by DownloadHistoryDialog — NOT in the DB). */
+const PRICE_HISTORY_COMMON_VARIABLES = [
     {
         name: "CLIENT_NAME",
         label: "Client Name",
@@ -95,6 +62,132 @@ const PRICE_HISTORY_VARIABLES = [
     },
 ];
 
+/** Electricity-specific price-history variables (injected by DownloadHistoryDialog — NOT in the DB). */
+const PRICE_HISTORY_ELECTRICITY_VARIABLES = [
+    {
+        name: "HISTORY_TABLES",
+        label: "History Tables (all electricity tariffs)",
+        description: "All generated price-history tables (2.0TD + 3.0TD + 6.1TD). Place this where the tables should appear.",
+    },
+    {
+        name: "HISTORY_TABLE_2TD",
+        label: "History Table — 2.0 TD",
+        description: "Price-history table for electricity tariff 2.0TD only (P1–P3).",
+    },
+    {
+        name: "HISTORY_TABLE_3TD",
+        label: "History Table — 3.0 TD",
+        description: "Price-history table for electricity tariff 3.0TD only (P1–P6).",
+    },
+    {
+        name: "HISTORY_TABLE_6TD",
+        label: "History Table — 6.1 TD",
+        description: "Price-history table for electricity tariff 6.1TD only (P1–P6).",
+    },
+    {
+        name: "PRODUCT_LABEL",
+        label: "Product Label",
+        description: "Product name, e.g. \"Dinámica N1 - Perfil Normal\"",
+    },
+    {
+        name: "PERFIL",
+        label: "Load Profile",
+        description: "Perfil Normal or Perfil Diurno",
+    },
+    {
+        name: "TARIFA",
+        label: "Access Tariff",
+        description: "Electricity access tariff code, e.g. 2.0TD",
+    },
+    ...PRICE_HISTORY_COMMON_VARIABLES,
+];
+
+/** Gas-specific price-history variables (injected by DownloadHistoryDialog — NOT in the DB). */
+const PRICE_HISTORY_GAS_VARIABLES = [
+    {
+        name: "HISTORY_TABLES_GAS",
+        label: "Gas History Tables (all tariffs)",
+        description: "All generated gas price-history tables. Place this where the tables should appear.",
+    },
+    {
+        name: "HISTORY_TABLE_GAS",
+        label: "Gas History Table",
+        description: "Gas price-history table (all consumption bands).",
+    },
+    {
+        name: "HISTORY_TABLE_GAS_R1",
+        label: "Gas History Table — R1 (low consumption)",
+        description: "Gas price-history for TUR band R1 — residential low consumption.",
+    },
+    {
+        name: "HISTORY_TABLE_GAS_R2",
+        label: "Gas History Table — R2 (medium consumption)",
+        description: "Gas price-history for TUR band R2 — residential medium consumption.",
+    },
+    {
+        name: "HISTORY_TABLE_GAS_R3",
+        label: "Gas History Table — R3 (high consumption)",
+        description: "Gas price-history for TUR band R3 — residential high consumption.",
+    },
+    {
+        name: "GAS_PRODUCT_LABEL",
+        label: "Gas Product Label",
+        description: "Gas product name, e.g. \"Gas Estable N1\"",
+    },
+    {
+        name: "GAS_TARIFA",
+        label: "Gas Access Tariff",
+        description: "Gas tariff code, e.g. TUR or RL3",
+    },
+    ...PRICE_HISTORY_COMMON_VARIABLES,
+];
+
+/**
+ * Returns the correct variable list for the DraggableVariables panel
+ * based on the selected template type and commodity.
+ */
+function getVariablesForTemplate(
+    type: string | undefined,
+    commodity: string | undefined,
+    dbVariables: TemplateVariable[],
+): Array<{ name: string; label: string; description: string }> {
+    const c = commodity || "ELECTRICITY";
+
+    if (type === "price-history") {
+        return c === "GAS" ? PRICE_HISTORY_GAS_VARIABLES : PRICE_HISTORY_ELECTRICITY_VARIABLES;
+    }
+
+    if (type === "simulation-output" || type === "simulation-detailed") {
+        // Filter DB variables: include those that match the commodity OR have no commodity set
+        const dbVars = dbVariables
+            .filter((v) => !v.commodity || v.commodity === c)
+            .map((v) => ({
+                name: v.key,
+                label: v.label,
+                description: v.description || "",
+            }));
+
+        // Prepend the Comparativa chart variable
+        return [
+            {
+                name: "CHART_COMPARATIVA",
+                label: "📊 Gráfico Comparativa",
+                description: "Bar chart comparing annual Competencia vs Axpo totals + savings stats",
+            },
+            ...dbVars,
+        ];
+    }
+
+    // For contract, invoice, report, etc. — show only generic (client/user/simulation) vars
+    return dbVariables
+        .filter((v) => !v.templateTypes && !v.commodity)
+        .map((v) => ({
+            name: v.key,
+            label: v.label,
+            description: v.description || "",
+        }));
+}
+
 export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
     const { t } = useI18n();
     const TEMPLATE_TYPE_LABELS: Record<PdfTemplateType, string> = {
@@ -110,6 +203,9 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
     const [editingTemplate, setEditingTemplate] = useState<PdfTemplate | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [formData, setFormData] = useState<Partial<PdfTemplate>>({});
+    // translations map: languageCode -> { htmlContent }
+    const [translationsMap, setTranslationsMap] = useState<Record<string, { htmlContent: string }>>({});
+    const [activeLanguage, setActiveLanguage] = useState<string>(DEFAULT_LANGUAGE);
     const [showPreview, setShowPreview] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -148,30 +244,48 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
     };
 
     const handleCreate = () => {
+        const defaultHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .mainbody { font-family: Arial, sans-serif; padding: 40px;  }
+    </style>
+</head>
+<body>
+<div class="mainbody">
+    <h1>New PDF Template</h1>
+</div>
+</body>
+</html>`;
+        const emptyMap = SUPPORTED_LANGUAGES.reduce<Record<string, { htmlContent: string }>>((acc, lang) => {
+            acc[lang.code] = { htmlContent: lang.code === DEFAULT_LANGUAGE ? defaultHtml : "" };
+            return acc;
+        }, {});
+        setTranslationsMap(emptyMap);
+        setActiveLanguage(DEFAULT_LANGUAGE);
         setFormData({
             name: "",
             description: "",
             type: "simulation-output",
             commodity: "ELECTRICITY",
             active: true,
-            htmlContent: `<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 40px; }
-    </style>
-</head>
-<body>
-    <h1>New PDF Template</h1>
-</body>
-</html>`,
+            htmlContent: defaultHtml,
         });
         setIsCreating(true);
     };
 
     const handleEdit = (template: PdfTemplate) => {
-        debugger;
         setFormData({ ...template, commodity: template.commodity || "ELECTRICITY" });
+        // Build translations map
+        const map = SUPPORTED_LANGUAGES.reduce<Record<string, { htmlContent: string }>>((acc, lang) => {
+            acc[lang.code] = { htmlContent: "" };
+            return acc;
+        }, {});
+        (template.translations ?? []).forEach((tr) => {
+            map[tr.languageCode] = { htmlContent: tr.htmlContent };
+        });
+        setTranslationsMap(map);
+        setActiveLanguage(DEFAULT_LANGUAGE);
         setEditingTemplate(template);
     };
 
@@ -204,20 +318,39 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
 
     const handleSave = async () => {
         try {
-            debugger;
+            const translations: PdfTemplateTranslationInput[] = Object.entries(translationsMap)
+                .filter(([, val]) => val.htmlContent.trim())
+                .map(([languageCode, val]) => ({
+                    languageCode,
+                    htmlContent: val.htmlContent,
+                }));
+
+            const primaryHtml =
+                translationsMap[DEFAULT_LANGUAGE]?.htmlContent ||
+                Object.values(translationsMap)[0]?.htmlContent ||
+                formData.htmlContent ||
+                "";
+
+            const payload = {
+                ...formData,
+                htmlContent: primaryHtml,
+                translations,
+            };
+
             if (isCreating) {
                 const newTemplate = await createPdfTemplate({
-                    name: formData.name!,
-                    description: formData.description!,
-                    type: formData.type!,
-                    commodity: formData.commodity || "ELECTRICITY",
-                    active: formData.active ?? true,
-                    htmlContent: formData.htmlContent!,
+                    name: payload.name!,
+                    description: payload.description!,
+                    type: payload.type!,
+                    commodity: payload.commodity || "ELECTRICITY",
+                    active: payload.active ?? true,
+                    htmlContent: primaryHtml,
+                    translations,
                 });
                 setTemplates([...templates, newTemplate]);
                 onNotify(t("pdfTemplatesModule", "createdSuccess"), "success");
             } else if (editingTemplate) {
-                const updated = await updatePdfTemplate(editingTemplate.id, formData);
+                const updated = await updatePdfTemplate(editingTemplate.id, payload);
                 setTemplates(templates.map(t =>
                     t.id === editingTemplate.id ? updated : t
                 ));
@@ -233,11 +366,36 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
         setEditingTemplate(null);
         setIsCreating(false);
         setFormData({});
+        setTranslationsMap({});
+        setActiveLanguage(DEFAULT_LANGUAGE);
         setShowPreview(false);
     };
 
+    const handleAIApply = (result: AIGeneratedTemplate) => {
+        // Fill in metadata fields if AI provided them
+        setFormData((prev) => ({
+            ...prev,
+            ...(result.name ? { name: result.name } : {}),
+            ...(result.description ? { description: result.description } : {}),
+            ...(result.type ? { type: result.type as PdfTemplateType } : {}),
+            ...(result.commodity ? { commodity: result.commodity } : {}),
+        }));
+        // Fill in HTML content per language
+        if (result.translations?.length) {
+            setTranslationsMap((prev) => {
+                const updated = { ...prev };
+                result.translations.forEach((tr) => {
+                    updated[tr.languageCode] = { htmlContent: tr.htmlContent };
+                });
+                return updated;
+            });
+            // Switch preview to first returned language
+            setActiveLanguage(result.translations[0].languageCode);
+        }
+    };
+
     const renderPreview = () => {
-        const html = formData.htmlContent || "";
+        const html = translationsMap[activeLanguage]?.htmlContent || formData.htmlContent || "";
         let sampleData = html;
 
         // Replace all variables with their example values
@@ -289,13 +447,13 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                             </span>
                                         </td>
                                         <td>
-                                            <span style={{ fontSize: "13px", color: "#6b7280" }}>
+                                            <span style={{ fontSize: "13px", color: "var(--scheme-neutral-500)" }}>
                                                 {template.commodity === "ELECTRICITY" ? "⚡ Electricity"
                                                     : template.commodity === "GAS" ? "🔥 Gas"
                                                         : "⚡ Electricity"}
                                             </span>
                                         </td>
-                                        <td style={{ color: "#6b7280", fontSize: "13px" }}>
+                                        <td style={{ color: "var(--scheme-neutral-500)", fontSize: "13px" }}>
                                             {template.description}
                                         </td>
                                         <td>
@@ -303,7 +461,7 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                                 {template.active ? t("pdfTemplatesModule", "statusActive") : t("pdfTemplatesModule", "statusInactive")}
                                             </span>
                                         </td>
-                                        <td style={{ fontSize: "13px", color: "#6b7280" }}>
+                                        <td style={{ fontSize: "13px", color: "var(--scheme-neutral-500)" }}>
                                             {(() => { const d = new Date(template.updatedAt); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; })()}
                                         </td>
                                         <td>
@@ -346,7 +504,7 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                             border: "none",
                                             fontSize: "24px",
                                             cursor: "pointer",
-                                            color: "#6b7280",
+                                            color: "var(--scheme-neutral-500)",
                                         }}
                                     >
                                         ×
@@ -354,6 +512,18 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                 </div>
 
                                 <div className="template-editor-body">
+                                    {/* AI Template Builder */}
+                                    <AITemplateBuilder
+                                        mode="pdf"
+                                        variables={variables}
+                                        isEditing={editingTemplate !== null}
+                                        currentFormData={formData as Record<string, any>}
+                                        currentTranslationsMap={translationsMap}
+                                        onApply={handleAIApply}
+                                        onNotify={onNotify}
+                                        session={session}
+                                    />
+
                                     {/* Row 1: Name, Type, and Commodity */}
                                     <div style={{ display: "grid", gridTemplateColumns: "1fr 200px 200px", gap: "12px", marginBottom: "12px" }}>
                                         <div className="config-field" style={{ marginBottom: 0 }}>
@@ -416,22 +586,52 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
 
                                     <div className="config-field">
                                         <label className="config-field-label">{t("pdfTemplatesModule", "fieldHtml")}</label>
+
+                                        {/* Language Tabs */}
+                                        <div style={{ display: "flex", gap: "4px", borderBottom: "1px solid var(--scheme-neutral-900)", marginBottom: "12px" }}>
+                                            {SUPPORTED_LANGUAGES.map((lang) => {
+                                                const hasContent = !!(translationsMap[lang.code]?.htmlContent);
+                                                return (
+                                                    <button
+                                                        key={lang.code}
+                                                        onClick={() => setActiveLanguage(lang.code)}
+                                                        style={{
+                                                            padding: "8px 16px",
+                                                            border: "none",
+                                                            borderBottom: activeLanguage === lang.code ? "2px solid var(--scheme-brand-600)" : "2px solid transparent",
+                                                            background: "none",
+                                                            cursor: "pointer",
+                                                            fontWeight: activeLanguage === lang.code ? 700 : 400,
+                                                            color: activeLanguage === lang.code ? "var(--scheme-brand-600)" : "var(--scheme-neutral-500)",
+                                                            fontSize: "14px",
+                                                            marginBottom: "-2px",
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            gap: "6px",
+                                                        }}
+                                                    >
+                                                        {lang.flag} {lang.label}
+                                                        {hasContent && (
+                                                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
                                         <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "16px" }}>
                                             <HtmlEditor
-                                                key={editingTemplate?.id || "new-template"}
-                                                initialHtml={formData.htmlContent || ""}
-                                                onChange={(html) => setFormData({ ...formData, htmlContent: html })}
+                                                key={`${editingTemplate?.id ?? "new"}-${activeLanguage}`}
+                                                initialHtml={translationsMap[activeLanguage]?.htmlContent ?? ""}
+                                                onChange={(html) => setTranslationsMap((prev) => ({
+                                                    ...prev,
+                                                    [activeLanguage]: { htmlContent: html },
+                                                }))}
                                                 height="500px"
                                             />
                                             <DraggableVariables variables={[
-                                                // Regular template variables (price-history or simulation variables)
-                                                ...(formData.type === "price-history"
-                                                    ? PRICE_HISTORY_VARIABLES
-                                                    : variables.map(v => ({
-                                                        name: v.key,
-                                                        label: v.label,
-                                                        description: v.description || "",
-                                                    }))),
+                                                // Variables filtered by template type and commodity
+                                                ...getVariablesForTemplate(formData.type, formData.commodity ?? undefined, variables),
                                                 // Editable sections as variables
                                                 ...Object.entries((formData.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
                                                     name: key,
@@ -461,9 +661,9 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                                 <div className="template-preview-title">{t("pdfTemplatesModule", "previewTitle")}</div>
                                                 <div
                                                     style={{
-                                                        border: "2px solid #e5e7eb",
+                                                        border: "1px solid var(--scheme-neutral-900)",
                                                         padding: "20px",
-                                                        background: "white",
+                                                        background: "var(--scheme-neutral-1200)",
                                                         minHeight: "400px",
                                                     }}
                                                     dangerouslySetInnerHTML={{ __html: renderPreview() }}

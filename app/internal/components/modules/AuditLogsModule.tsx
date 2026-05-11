@@ -284,11 +284,14 @@ function LogTable({ rows, expandedId, onToggle }: {
 
 // ─── Main module ──────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 25;
-
 export function AuditLogsModule({ session: _session, actions, onNotify: _onNotify, onActionButtons }: AuditLogsModuleProps) {
   const { t } = useI18n();
   const {
+    logs,
+    total,
+    page,
+    totalPages,
+    setPage,
     loading, errorText, refresh,
     searchQuery, setSearchQuery,
     filterEventType, setFilterEventType,
@@ -297,11 +300,11 @@ export function AuditLogsModule({ session: _session, actions, onNotify: _onNotif
     filteredLogs, handleExportCsv,
   } = actions;
 
-  const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => { refresh(); }, []);
-  useEffect(() => { setPage(1); setExpandedId(null); }, [searchQuery, filterEventType, filterDateFrom, filterDateTo]);
+  useEffect(() => {
+    setExpandedId(null);
+  }, [page, searchQuery, filterEventType, filterDateFrom, filterDateTo]);
 
   // Render action buttons for topbar
   useLayoutEffect(() => {
@@ -314,9 +317,7 @@ export function AuditLogsModule({ session: _session, actions, onNotify: _onNotif
     return () => onActionButtons?.(null);
   }, [onActionButtons, handleExportCsv, t, filteredLogs.length, refresh, loading]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageRows = filteredLogs.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const safePage = Math.min(page, Math.max(totalPages, 1));
 
   const handleToggle = (id: string, hasMeta: boolean) => {
     if (!hasMeta) return;
@@ -328,7 +329,16 @@ export function AuditLogsModule({ session: _session, actions, onNotify: _onNotif
       {errorText && <div className="sp-panel-error" style={{ marginBottom: 0 }}>{errorText}</div>}
 
       {/* Toolbar */}
-      <div className="panel-card" style={{ padding: 0, overflow: "hidden" }}>
+      <div
+        className="panel-card"
+        style={{
+          padding: 0,
+          overflow: "hidden",
+          background: "var(--scheme-neutral-1200)",
+          border: "1px solid var(--scheme-neutral-900)",
+          borderRadius: 10,
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid rgba(148,163,184,.1)", gap: 12, flexWrap: "wrap" }}>
           {/* Search */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -336,9 +346,9 @@ export function AuditLogsModule({ session: _session, actions, onNotify: _onNotif
               <span style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--scheme-neutral-600)", fontSize: 13, pointerEvents: "none" }}>🔍</span>
               <input
                 style={{
-                  background: "rgba(148,163,184,.07)", border: "1px solid rgba(148,163,184,.14)",
+                  background: "var(--scheme-neutral-1100)", border: "1px solid var(--scheme-neutral-900)",
                   borderRadius: 6, padding: "6px 10px 6px 30px", fontSize: 13,
-                  color: "var(--scheme-neutral-200)", outline: "none", width: 220,
+                  color: "var(--scheme-neutral-100)", outline: "none", width: 220,
                 }}
                 placeholder={t("search", "auditLogs")}
                 value={searchQuery}
@@ -379,14 +389,14 @@ export function AuditLogsModule({ session: _session, actions, onNotify: _onNotif
             )}
           </div>
 
-          <span className="dt-meta-pill">{filteredLogs.length} entries</span>
+          <span className="dt-meta-pill">{total} entries</span>
         </div>
 
         {/* Table */}
         {loading ? (
           <div style={{ padding: "40px", textAlign: "center", color: "var(--scheme-neutral-600)", fontSize: 13 }}>Loading…</div>
         ) : (
-          <LogTable rows={pageRows} expandedId={expandedId} onToggle={handleToggle} />
+          <LogTable rows={logs} expandedId={expandedId} onToggle={handleToggle} />
         )}
 
         {/* Pagination */}
@@ -394,12 +404,12 @@ export function AuditLogsModule({ session: _session, actions, onNotify: _onNotif
           <span>Page {safePage} of {totalPages}</span>
           <div style={{ display: "flex", gap: 6 }}>
             <button
-              onClick={() => { setPage((p) => Math.max(1, p - 1)); setExpandedId(null); }}
+              onClick={() => { setPage(Math.max(1, safePage - 1)); setExpandedId(null); }}
               disabled={safePage <= 1}
               style={{ padding: "4px 10px", borderRadius: 5, border: "1px solid rgba(148,163,184,.18)", background: "transparent", color: "var(--scheme-neutral-300)", cursor: safePage <= 1 ? "default" : "pointer", opacity: safePage <= 1 ? 0.4 : 1, fontSize: 12 }}
             >← Prev</button>
             <button
-              onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); setExpandedId(null); }}
+              onClick={() => { setPage(Math.min(totalPages, safePage + 1)); setExpandedId(null); }}
               disabled={safePage >= totalPages}
               style={{ padding: "4px 10px", borderRadius: 5, border: "1px solid rgba(148,163,184,.18)", background: "transparent", color: "var(--scheme-neutral-300)", cursor: safePage >= totalPages ? "default" : "pointer", opacity: safePage >= totalPages ? 0.4 : 1, fontSize: 12 }}
             >Next →</button>

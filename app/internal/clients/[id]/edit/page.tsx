@@ -26,6 +26,8 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
         contactPhone: "",
         otherDetails: "",
         agencyId: "",
+        address: {},
+        language: undefined,
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -47,6 +49,14 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
                     contactPhone: c.contactPhone ?? "",
                     otherDetails: c.otherDetails ?? "",
                     agencyId: c.agencyId ?? "",
+                    address: {
+                        street: c.street ?? "",
+                        city: c.city ?? "",
+                        postalCode: c.postalCode ?? "",
+                        province: c.province ?? "",
+                        country: c.country ?? "",
+                    },
+                    language: c.language ?? undefined,
                 });
             })
             .catch((err) => {
@@ -73,6 +83,12 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
                 contactPhone: formData.contactPhone.trim() || undefined,
                 otherDetails: formData.otherDetails.trim() || undefined,
                 agencyId: formData.agencyId || undefined,
+                language: formData.language || undefined,
+                street: formData.address.street?.trim() || undefined,
+                city: formData.address.city?.trim() || undefined,
+                postalCode: formData.address.postalCode?.trim() || undefined,
+                province: formData.address.province?.trim() || undefined,
+                country: formData.address.country?.trim() || undefined,
             });
             showSuccess(t("clientFormPage", "updated"));
             router.push("/internal/clients");

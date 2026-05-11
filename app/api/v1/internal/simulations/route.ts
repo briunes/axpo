@@ -120,7 +120,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const sp = request.nextUrl.searchParams;
   const page = parseInt(sp.get("page") || "1", 10);
   const pageSize = parseInt(sp.get("pageSize") || "25", 10);
-  const orderBy = sp.get("orderBy") || "updatedAt";
+  const rawOrderBy = sp.get("orderBy") || "updatedAt";
   const sortDir = (sp.get("sortDir") || "desc") as "asc" | "desc";
   const includeDeleted =
     sp.get("includeDeleted") === "true" && auth.role === UserRole.ADMIN;
@@ -129,6 +129,15 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const clientId = sp.get("clientId") || undefined;
   const cups = sp.get("cups") || undefined;
   const status = sp.get("status") as SimulationStatus | undefined;
+  const allowedOrderBy: Record<string, true> = {
+    updatedAt: true,
+    createdAt: true,
+    expiresAt: true,
+    status: true,
+    pinSnapshot: true,
+    referenceNumber: true,
+  };
+  const orderBy = allowedOrderBy[rawOrderBy] ? rawOrderBy : "updatedAt";
 
   const baseWhere = SimulationService.buildSimulationFilter(
     auth,
@@ -143,6 +152,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ...(search
       ? {
           OR: [
+            {
+              referenceNumber: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
             {
               client: {
                 name: { contains: search, mode: "insensitive" as const },
@@ -185,6 +200,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       where,
       select: {
         id: true,
+        referenceNumber: true,
         agencyId: true,
         ownerUserId: true,
         clientId: true,
@@ -192,6 +208,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         isDeleted: true,
         deletedAt: true,
         sharedAt: true,
+        clientOpenedAt: true,
+        sharedVia: true,
         publicToken: true,
         pinSnapshot: true,
         invoiceFilePath: true,

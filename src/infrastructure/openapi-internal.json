@@ -1243,10 +1243,18 @@
           },
           {
             "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "schema": {
               "type": "integer",
-              "default": 500
+              "default": 25
             }
           }
         ]
@@ -2222,71 +2230,6 @@
         }
       }
     },
-    "/api/v1/internal/config/email-templates/{id}": {
-      "get": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Get an email template by ID",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Email template"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Update an email template",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated email template"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Delete an email template",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Template deleted"
-          }
-        }
-      }
-    },
     "/api/v1/internal/config/email-templates": {
       "get": {
         "tags": [
@@ -2447,48 +2390,6 @@
       }
     },
     "/api/v1/internal/config/pdf-templates/{id}": {
-      "get": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Get a PDF template by ID",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "PDF template"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Update a PDF template",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated PDF template"
-          }
-        }
-      },
       "delete": {
         "tags": [
           "Configuration"
@@ -2546,33 +2447,6 @@
         "responses": {
           "200": {
             "description": "List of PDF templates"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Create a new PDF template",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "name",
-                  "type",
-                  "description",
-                  "htmlContent"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created PDF template"
           }
         }
       }

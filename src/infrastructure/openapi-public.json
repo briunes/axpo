@@ -678,6 +678,46 @@
           }
         }
       }
+    },
+    "/api/v1/public/simulations/init": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Retrieve basic simulation info by token (no PIN required)",
+        "description": "Returns the owner name, email, and agency name for the simulation identified by the token. Used to pre-populate the access screen before PIN entry.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 16
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Simulation info retrieved"
+          },
+          "401": {
+            "description": "Invalid token"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
     }
   },
   "tags": []

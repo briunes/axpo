@@ -1,8 +1,7 @@
 "use client";
 
-import { LineChart } from "@mui/x-charts/LineChart";
-import { BarChart } from "@mui/x-charts/BarChart";
 import { PieChart } from "@mui/x-charts/PieChart";
+import { GradientLineChart, GradientBarChart } from "../ui";
 import type { AnalyticsOverview, AnalyticsAgencyStat, AnalyticsUserStat } from "../../lib/internalApi";
 import { DataTable } from "../ui";
 import type { ColumnDef } from "../ui";
@@ -168,9 +167,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
             key: "openRate",
             label: t("analyticsModule", "colOpenRate"),
             renderCell: (r) => {
-                // For now we don't have per-agency open data, so we show a placeholder
-                // You might need to update the API to return this
-                const rate = 0; // TODO: Get actual open rate per agency from API
+                const rate = r.shared > 0 ? Math.round((r.opened / r.shared) * 100) : 0;
                 return (
                     <div style={{
                         display: "inline-flex",
@@ -202,7 +199,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
     return (
         <>
             {/* ── Admin KPIs ─────────────────────────────────────────────── */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 14}}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
                 <KpiCard
                     title={t("analyticsModule", "kpiTotalAgencies")}
                     value={analytics.byAgency?.length || 0}
@@ -287,52 +284,28 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                     title={t("analyticsModule", "chartSimsCreated")}
                     subtitle={t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))}
                 >
-                    {hasSimTrend ? (
-                        <LineChart
-                            xAxis={[{ data: simDates, scaleType: "time" }]}
-                            series={[{
-                                data: simCounts,
-                                label: t("analyticsModule", "funnelCreated"),
-                                color: "#3b82f6",
-                                area: true,
-                                showMark: true,
-                                curve: "natural",
-                            }]}
-                            height={200}
-                            sx={chartSx}
-                            margin={{ left: 36, right: 12, top: 12, bottom: 32 }}
-                        />
-                    ) : (
-                        <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
-                            {t("analyticsModule", "noSimulationsInPeriod")}
-                        </div>
-                    )}
+                    <GradientLineChart
+                        xData={simDates}
+                        yData={simCounts}
+                        label={t("analyticsModule", "funnelCreated")}
+                        color="#3b82f6"
+                        areaOpacityTop={0.5}
+                        emptyMessage={t("analyticsModule", "noSimulationsInPeriod")}
+                    />
                 </ChartPanel>
 
                 <ChartPanel
                     title={t("analyticsModule", "chartSimsOpened")}
                     subtitle={t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))}
                 >
-                    {hasAccessTrend ? (
-                        <LineChart
-                            xAxis={[{ data: accessDates, scaleType: "time" }]}
-                            series={[{
-                                data: opensPerDay,
-                                label: t("analyticsModule", "funnelOpened"),
-                                color: "#06b6d4",
-                                area: true,
-                                showMark: true,
-                                curve: "natural",
-                            }]}
-                            height={200}
-                            sx={chartSx}
-                            margin={{ left: 36, right: 12, top: 12, bottom: 32 }}
-                        />
-                    ) : (
-                        <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
-                            {t("analyticsModule", "noOpensInPeriod")}
-                        </div>
-                    )}
+                    <GradientLineChart
+                        xData={accessDates}
+                        yData={opensPerDay}
+                        label={t("analyticsModule", "funnelOpened")}
+                        color="#06b6d4"
+                        areaOpacityTop={0.5}
+                        emptyMessage={t("analyticsModule", "noOpensInPeriod")}
+                    />
                 </ChartPanel>
             </div>
 
@@ -357,8 +330,87 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                 </div>
             )}
 
+            {/* ── Simulation Content ─────────────────────────────────────────── */}
+            {(analytics.energyTypeSplit?.length || analytics.tariffBreakdown?.length || analytics.avgConsumoAnual != null) && (
+                <div>
+                    <div style={{ marginBottom: 12 }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--scheme-neutral-100)", marginBottom: 4 }}>
+                            {t("analyticsModule", "sectionSimContent")}
+                        </h3>
+                        <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
+                            {t("analyticsModule", "sectionSimContentSub")}
+                        </p>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+                        {/* Energy type split */}
+                        <ChartPanel title={t("analyticsModule", "chartEnergyType")} subtitle={t("analyticsModule", "chartEnergyTypeSub")}>
+                            {(analytics.energyTypeSplit?.length ?? 0) > 0 ? (
+                                <PieChart
+                                    series={[{
+                                        data: (analytics.energyTypeSplit ?? []).map((e, i) => ({
+                                            id: i,
+                                            value: e.count,
+                                            label: e.type === "ELECTRICITY"
+                                                ? t("analyticsModule", "labelElectricity")
+                                                : t("analyticsModule", "labelGas"),
+                                            color: e.type === "ELECTRICITY" ? "#f59e0b" : "#3b82f6",
+                                        })),
+                                        innerRadius: 40,
+                                        outerRadius: 70,
+                                        paddingAngle: 3,
+                                        cornerRadius: 4,
+                                        cx: 80,
+                                    }]}
+                                    height={180}
+                                    sx={chartSx}
+                                    slotProps={{ legend: { direction: "vertical" as const, position: { vertical: "middle" as const, horizontal: "end" as const } } }}
+                                    margin={{ left: 0, right: 120, top: 10, bottom: 10 }}
+                                />
+                            ) : (
+                                <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
+                                    {t("analyticsModule", "noDataAvailable")}
+                                </div>
+                            )}
+                        </ChartPanel>
+
+                        {/* Tariff breakdown */}
+                        <ChartPanel title={t("analyticsModule", "chartTariffBreakdown")} subtitle={t("analyticsModule", "chartTariffBreakdownSub")}>
+                            <GradientBarChart
+                                xData={(analytics.tariffBreakdown ?? []).map((r) => r.tariff)}
+                                series={[{
+                                    data: (analytics.tariffBreakdown ?? []).map((r) => r.count),
+                                    label: t("analyticsModule", "labelSimulations"),
+                                    color: "#8b5cf6",
+                                }]}
+                                margin={{ left: 32, right: 8, top: 12, bottom: 36 }}
+                                emptyMessage={t("analyticsModule", "noDataAvailable")}
+                            />
+                        </ChartPanel>
+
+                        {/* Avg consumption */}
+                        <ChartPanel title={t("analyticsModule", "kpiAvgConsumption")} subtitle={t("analyticsModule", "kpiAvgConsumptionSub")}>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 150, gap: 8 }}>
+                                {analytics.avgConsumoAnual != null ? (
+                                    <>
+                                        <div style={{ fontSize: 44, fontWeight: 700, color: "#10b981", lineHeight: 1 }}>
+                                            {analytics.avgConsumoAnual.toLocaleString()}
+                                        </div>
+                                        <div style={{ fontSize: 14, color: "var(--scheme-neutral-400)", fontWeight: 500 }}>kWh / año</div>
+                                        <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", textAlign: "center", marginTop: 4 }}>
+                                            {t("analyticsModule", "kpiAvgConsumptionContext")}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div style={{ opacity: 0.4, fontSize: 13 }}>{t("analyticsModule", "noDataAvailable")}</div>
+                                )}
+                            </div>
+                        </ChartPanel>
+                    </div>
+                </div>
+            )}
+
             {/* ── Alerts / Insights ──────────────────────────────────────────── */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, paddingBottom: '2rem' }}>
                 <div className="panel-card" style={{
                     padding: "16px",
                     background: "linear-gradient(135deg, #f59e0b15 0%, #f59e0b05 100%)",
@@ -394,7 +446,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                     background: "linear-gradient(135deg, #8b5cf615 0%, #8b5cf605 100%)",
                     border: "1px solid #8b5cf640",
                     borderRadius: 8,
-                    paddingBottom: '10px' 
+                    paddingBottom: '10px'
                 }}>
                     <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "#8b5cf6", marginBottom: 6 }}>{t("analyticsModule", "alertPendingOpens")}</div>
                     <div style={{ fontSize: 24, fontWeight: 700, color: "#8b5cf6" }}>

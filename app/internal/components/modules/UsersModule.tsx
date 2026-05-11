@@ -16,7 +16,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import Link from "next/link";
-import { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { useEffect, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, RotatePinResult } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
@@ -72,18 +72,6 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
 
-  // Single effect handles both the initial fetch and pagination/sort/search changes.
-  // Using a params-key ref makes it safe under React 18 Strict Mode double-mounting:
-  // on the second mount the key is already set so the duplicate call is skipped.
-  const paramsRef = useRef("");
-  useEffect(() => {
-    const key = `${page}|${pageSize}|${sortColumn}|${sortDir}|${search}|${roleFilter}|${agencyFilter}|${showArchived}`;
-    if (paramsRef.current === key) return;
-    paramsRef.current = key;
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, sortColumn, sortDir, search, roleFilter, agencyFilter, showArchived]);
-
   // Bubble success up
   useEffect(() => {
     if (successText) {
@@ -136,7 +124,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
 
   const columns: ColumnDef<UserItem>[] = [
     {
-      key: "name",
+      key: "fullName",
       label: t("columns", "name"),
       sortable: true,
       renderCell: (u) => (
@@ -153,6 +141,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
     {
       key: "role",
       label: t("columns", "role"),
+      sortable: true,
       renderCell: (u) => (
         <StatusBadge
           label={u.role}
@@ -268,7 +257,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
   ];
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
       {lastPinResult && (
         <PinResultDialog
           pin={lastPinResult.newPin}

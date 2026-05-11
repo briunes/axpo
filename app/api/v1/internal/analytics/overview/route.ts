@@ -5,6 +5,7 @@ import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
+import { Prisma } from "@prisma/client";
 
 /**
  * @swagger
@@ -33,15 +34,19 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   );
   const since = new Date(Date.now() - days * 86_400_000);
 
-  const simulationFilter =
+  // Admin can optionally scope to a specific agency
+  const filterAgencyId =
     auth.role === UserRole.ADMIN
-      ? { isDeleted: false }
-      : { isDeleted: false, agencyId: auth.agencyId! };
+      ? (searchParams.get("agencyId") ?? undefined)
+      : auth.agencyId!;
 
-  const accessFilter =
-    auth.role === UserRole.ADMIN
-      ? {}
-      : { simulation: { agencyId: auth.agencyId! } };
+  const simulationFilter = filterAgencyId
+    ? { isDeleted: false, agencyId: filterAgencyId }
+    : { isDeleted: false };
+
+  const accessFilter = filterAgencyId
+    ? { simulation: { agencyId: filterAgencyId } }
+    : {};
 
   // Period-scoped variants — used for all KPI counts so they respect the days filter
   const simulationPeriodFilter = {
@@ -52,10 +57,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   // Access counts are scoped to simulations created in the period (same cohort),
   // so that "opens" is always comparable to "sent" and open rate stays ≤ 100%
   // (unless a client opens multiple times, which is expected).
-  const accessOnPeriodSimsFilter =
-    auth.role === UserRole.ADMIN
-      ? { simulation: { createdAt: { gte: since } } }
-      : { simulation: { agencyId: auth.agencyId!, createdAt: { gte: since } } };
+  const accessOnPeriodSimsFilter = filterAgencyId
+    ? { simulation: { agencyId: filterAgencyId, createdAt: { gte: since } } }
+    : { simulation: { createdAt: { gte: since } } };
 
   const [
     totalSimulations,
@@ -87,7 +91,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         accessAttempts: { some: { success: true } },
       },
     }),
-    auth.role === UserRole.ADMIN
+    auth.role === UserRole.ADMIN && !filterAgencyId
       ? prisma.simulation.groupBy({
           by: ["agencyId"],
           where: simulationPeriodFilter,
@@ -100,7 +104,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       orderBy: { createdAt: "asc" },
     }),
     prisma.accessAttempt.findMany({
-      where: { ...accessOnPeriodSimsFilter, createdAt: { gte: since } },
+      where: { ...accessFilter, createdAt: { gte: since } },
       select: { createdAt: true, success: true, simulationId: true },
       orderBy: { createdAt: "asc" },
     }),
@@ -112,6 +116,83 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       take: 10,
     }),
   ]);
+
+  // ── Simulation content metrics (raw SQL — JSON payload extraction) ────────
+  const agencyClause = filterAgencyId
+    ? Prisma.sql`AND s."agencyId" = ${filterAgencyId}`
+    : Prisma.sql``;
+
+  const [energyTypeSplitRaw, tariffBreakdownRaw, avgConsumptionRaw] =
+    await Promise.all([
+      prisma.$queryRaw<Array<{ type: string | null; count: number }>>`
+        WITH latest AS (
+          SELECT DISTINCT ON ("simulationId") "simulationId", "payloadJson"
+          FROM simulation_versions
+          ORDER BY "simulationId", "createdAt" DESC
+        )
+        SELECT latest."payloadJson"->>'type' AS type, COUNT(*)::int AS count
+        FROM latest
+        INNER JOIN simulations s ON s.id = latest."simulationId"
+        WHERE s."isDeleted" = false
+          AND s."createdAt" >= ${since}
+          ${agencyClause}
+        GROUP BY latest."payloadJson"->>'type'
+      `,
+      prisma.$queryRaw<Array<{ tariff: string | null; count: number }>>`
+        WITH latest AS (
+          SELECT DISTINCT ON ("simulationId") "simulationId", "payloadJson"
+          FROM simulation_versions
+          ORDER BY "simulationId", "createdAt" DESC
+        )
+        SELECT
+          COALESCE(
+            latest."payloadJson"->'electricity'->>'tarifaAcceso',
+            latest."payloadJson"->'gas'->>'tarifaAcceso'
+          ) AS tariff,
+          COUNT(*)::int AS count
+        FROM latest
+        INNER JOIN simulations s ON s.id = latest."simulationId"
+        WHERE s."isDeleted" = false
+          AND s."createdAt" >= ${since}
+          ${agencyClause}
+        GROUP BY tariff
+        ORDER BY count DESC
+      `,
+      prisma.$queryRaw<Array<{ avg_consumption: number | null }>>`
+        WITH latest AS (
+          SELECT DISTINCT ON ("simulationId") "simulationId", "payloadJson"
+          FROM simulation_versions
+          ORDER BY "simulationId", "createdAt" DESC
+        )
+        SELECT AVG(
+          CASE
+            WHEN latest."payloadJson"->>'type' = 'ELECTRICITY'
+              THEN (latest."payloadJson"->'electricity'->'clientData'->>'consumoAnual')::float
+            WHEN latest."payloadJson"->>'type' = 'GAS'
+              THEN (latest."payloadJson"->'gas'->>'consumo')::float
+            ELSE NULL
+          END
+        ) AS avg_consumption
+        FROM latest
+        INNER JOIN simulations s ON s.id = latest."simulationId"
+        WHERE s."isDeleted" = false
+          AND s."createdAt" >= ${since}
+          ${agencyClause}
+      `,
+    ]);
+
+  const energyTypeSplit = energyTypeSplitRaw
+    .filter((r) => r.type)
+    .map((r) => ({ type: r.type as string, count: Number(r.count) }));
+
+  const tariffBreakdown = tariffBreakdownRaw
+    .filter((r) => r.tariff)
+    .map((r) => ({ tariff: r.tariff as string, count: Number(r.count) }));
+
+  const avgConsumoAnual =
+    avgConsumptionRaw[0]?.avg_consumption != null
+      ? Math.round(Number(avgConsumptionRaw[0].avg_consumption))
+      : null;
 
   // ── Build daily bucket arrays ─────────────────────────────────────────────
   const dayKeys: string[] = [];
@@ -169,36 +250,50 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     const agencyIds = byAgencyRaw
       .map((r) => r.agencyId)
       .filter(Boolean) as string[];
-    const [agencies, sharedByAgency, expiredByAgency] = await Promise.all([
-      prisma.agency.findMany({
-        where: { id: { in: agencyIds } },
-        select: { id: true, name: true },
-      }),
-      prisma.simulation.groupBy({
-        by: ["agencyId"],
-        where: {
-          isDeleted: false,
-          status: "SHARED",
-          createdAt: { gte: since },
-        },
-        _count: { _all: true },
-      }),
-      prisma.simulation.groupBy({
-        by: ["agencyId"],
-        where: {
-          isDeleted: false,
-          status: "EXPIRED",
-          createdAt: { gte: since },
-        },
-        _count: { _all: true },
-      }),
-    ]);
+    const [agencies, sharedByAgency, expiredByAgency, openedByAgency] =
+      await Promise.all([
+        prisma.agency.findMany({
+          where: { id: { in: agencyIds } },
+          select: { id: true, name: true },
+        }),
+        prisma.simulation.groupBy({
+          by: ["agencyId"],
+          where: {
+            isDeleted: false,
+            status: "SHARED",
+            createdAt: { gte: since },
+          },
+          _count: { _all: true },
+        }),
+        prisma.simulation.groupBy({
+          by: ["agencyId"],
+          where: {
+            isDeleted: false,
+            status: "EXPIRED",
+            createdAt: { gte: since },
+          },
+          _count: { _all: true },
+        }),
+        prisma.simulation.groupBy({
+          by: ["agencyId"],
+          where: {
+            isDeleted: false,
+            createdAt: { gte: since },
+            agencyId: { in: agencyIds },
+            accessAttempts: { some: { success: true } },
+          },
+          _count: { _all: true },
+        }),
+      ]);
     const agencyMap = new Map(agencies.map((a) => [a.id, a.name]));
     const sharedMap = new Map(
       sharedByAgency.map((r) => [r.agencyId, r._count._all]),
     );
     const expiredMap = new Map(
       expiredByAgency.map((r) => [r.agencyId, r._count._all]),
+    );
+    const openedMap = new Map(
+      openedByAgency.map((r) => [r.agencyId, r._count._all]),
     );
     byAgency = byAgencyRaw
       .filter((r) => r.agencyId)
@@ -209,17 +304,24 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         total: r._count._all,
         shared: sharedMap.get(r.agencyId as string) ?? 0,
         expired: expiredMap.get(r.agencyId as string) ?? 0,
+        opened: openedMap.get(r.agencyId as string) ?? 0,
       }))
       .sort((a, b) => b.total - a.total);
   }
 
   // ── By-user breakdown ─────────────────────────────────────────────────────
   let byUser:
-    | Array<{ userId: string; userName: string; total: number; shared: number }>
+    | Array<{
+        userId: string;
+        userName: string;
+        total: number;
+        shared: number;
+        opened: number;
+      }>
     | undefined;
   if (byUserRaw.length > 0) {
     const userIds = byUserRaw.map((r) => r.ownerUserId);
-    const [users, sharedByUser] = await Promise.all([
+    const [users, sharedByUser, openedByUser] = await Promise.all([
       prisma.user.findMany({
         where: { id: { in: userIds } },
         select: { id: true, fullName: true },
@@ -233,16 +335,29 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         },
         _count: { _all: true },
       }),
+      prisma.simulation.groupBy({
+        by: ["ownerUserId"],
+        where: {
+          ...simulationPeriodFilter,
+          ownerUserId: { in: userIds },
+          accessAttempts: { some: { success: true } },
+        },
+        _count: { _all: true },
+      }),
     ]);
     const userMap = new Map(users.map((u) => [u.id, u.fullName]));
     const sharedMap = new Map(
       sharedByUser.map((r) => [r.ownerUserId, r._count._all]),
+    );
+    const openedMap = new Map(
+      openedByUser.map((r) => [r.ownerUserId, r._count._all]),
     );
     byUser = byUserRaw.map((r) => ({
       userId: r.ownerUserId,
       userName: userMap.get(r.ownerUserId) ?? r.ownerUserId,
       total: r._count?._all ?? 0,
       shared: sharedMap.get(r.ownerUserId) ?? 0,
+      opened: openedMap.get(r.ownerUserId) ?? 0,
     }));
   }
 
@@ -257,6 +372,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       simulationTrend,
       accessTrend,
       periodDays: days,
+      energyTypeSplit,
+      tariffBreakdown,
+      avgConsumoAnual,
       ...(byAgency ? { byAgency } : {}),
       ...(byUser ? { byUser } : {}),
     },

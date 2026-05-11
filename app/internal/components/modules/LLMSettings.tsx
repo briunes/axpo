@@ -396,21 +396,21 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                 style={{
                                     padding: "16px",
                                     borderRadius: "8px",
-                                    border: testResult.success ? "2px solid #10b981" : "2px solid #ef4444",
-                                    backgroundColor: testResult.success ? "#f0fdf4" : "#fef2f2",
+                                    border: testResult.success ? "1px solid rgba(16, 185, 129, 0.35)" : "1px solid rgba(239, 68, 68, 0.35)",
+                                    backgroundColor: testResult.success ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.12)",
                                 }}
                             >
                                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                     <span style={{ fontSize: "20px" }}>{testResult.success ? "✅" : "❌"}</span>
-                                    <strong style={{ color: testResult.success ? "#065f46" : "#991b1b" }}>
+                                    <strong style={{ color: testResult.success ? "#34d399" : "#f87171" }}>
                                         {testResult.success ? t("llmSettings", "testSuccess") : t("llmSettings", "testError")}
                                     </strong>
                                 </div>
-                                <p style={{ margin: "0", color: testResult.success ? "#065f46" : "#991b1b" }}>
+                                <p style={{ margin: "0", color: testResult.success ? "#a7f3d0" : "#fecaca" }}>
                                     {testResult.message}
                                 </p>
                                 {testResult.details && (
-                                    <div style={{ marginTop: "12px", fontSize: "13px", color: "#6b7280" }}>
+                                    <div style={{ marginTop: "12px", fontSize: "13px", color: "var(--scheme-neutral-500)" }}>
                                         <div>Provider: {testResult.details.provider}</div>
                                         <div>Model: {testResult.details.model}</div>
                                         <div>Base URL: {testResult.details.baseUrl}</div>

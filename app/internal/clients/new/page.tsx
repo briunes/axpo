@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { createClient, isAdmin } from "../../lib/internalApi";
@@ -15,7 +15,7 @@ export default function NewClientPage() {
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
 
-    const agenciesActions = useAgencies(session);
+    const agenciesActions = useAgencies(session, 1000);
 
     const [formData, setFormData] = useState<ClientFormData>({
         name: "",
@@ -25,17 +25,12 @@ export default function NewClientPage() {
         contactPhone: "",
         otherDetails: "",
         agencyId: session?.user.agencyId ?? "",
+        address: {},
+        language: undefined,
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
-
-    const fetchedRef = useRef(false);
-    useEffect(() => {
-        if (!session || !isAdmin(session.user.role) || fetchedRef.current) return;
-        fetchedRef.current = true;
-        agenciesActions.refresh();
-    }, [session]);
 
     useEffect(() => {
         if (agenciesActions.agencies.length > 0 && !formData.agencyId) {
@@ -44,7 +39,7 @@ export default function NewClientPage() {
                 agencyId: session?.user.agencyId || agenciesActions.agencies[0].id,
             }));
         }
-    }, [agenciesActions.agencies]);
+    }, [agenciesActions.agencies, formData.agencyId, session]);
 
     if (!session) return null;
 
@@ -61,6 +56,12 @@ export default function NewClientPage() {
                 contactEmail: formData.contactEmail.trim() || undefined,
                 contactPhone: formData.contactPhone.trim() || undefined,
                 otherDetails: formData.otherDetails.trim() || undefined,
+                language: formData.language || undefined,
+                street: formData.address.street?.trim() || undefined,
+                city: formData.address.city?.trim() || undefined,
+                postalCode: formData.address.postalCode?.trim() || undefined,
+                province: formData.address.province?.trim() || undefined,
+                country: formData.address.country?.trim() || undefined,
             });
             showSuccess(t("clientFormPage", "created"));
             router.push("/internal/clients");

@@ -18,6 +18,12 @@ const updateClientSchema = z.object({
   contactPhone: z.string().max(50).optional(),
   otherDetails: z.string().max(5000).optional(),
   isActive: z.boolean().optional(),
+  street: z.string().max(300).optional(),
+  city: z.string().max(200).optional(),
+  postalCode: z.string().max(20).optional(),
+  province: z.string().max(200).optional(),
+  country: z.string().max(10).optional(),
+  language: z.string().max(10).optional(),
 });
 
 /**
@@ -296,6 +302,24 @@ export const PATCH = withErrorHandler(
           otherDetails: payload.otherDetails.trim() || null,
         }),
         ...(payload.isActive !== undefined && { isActive: payload.isActive }),
+        ...(payload.street !== undefined && {
+          street: payload.street.trim() || null,
+        }),
+        ...(payload.city !== undefined && {
+          city: payload.city.trim() || null,
+        }),
+        ...(payload.postalCode !== undefined && {
+          postalCode: payload.postalCode.trim() || null,
+        }),
+        ...(payload.province !== undefined && {
+          province: payload.province.trim() || null,
+        }),
+        ...(payload.country !== undefined && {
+          country: payload.country.trim() || null,
+        }),
+        ...(payload.language !== undefined && {
+          language: payload.language.trim() || null,
+        }),
         updatedByUserId: auth.userId,
       },
       include: {

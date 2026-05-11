@@ -5,11 +5,30 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { LayoutProvider } from "@once-ui-system/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { muiTheme } from "./lib/muiTheme";
+import { createMuiTheme } from "./lib/muiTheme";
+import { ThemeModeProvider, useThemeMode } from "./lib/ThemeModeContext";
 import { InternalErrorBoundary } from "./components/shared/InternalErrorBoundary";
 import { AlertProvider } from "./components/shared/AlertProvider";
 import { UserPreferencesProvider } from "./components/providers/UserPreferencesProvider";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+
+function ThemedProviders({ children }: { children: React.ReactNode }) {
+  const { mode } = useThemeMode();
+  const theme = useMemo(() => createMuiTheme(mode), [mode]);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <LayoutProvider>
+        <AlertProvider>
+          <UserPreferencesProvider>
+            <InternalErrorBoundary>{children}</InternalErrorBoundary>
+          </UserPreferencesProvider>
+        </AlertProvider>
+      </LayoutProvider>
+    </ThemeProvider>
+  );
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Create a stable QueryClient per browser session
@@ -29,18 +48,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={muiTheme}>
-        <CssBaseline />
-        <LayoutProvider>
-          <AlertProvider>
-            <UserPreferencesProvider>
-              <InternalErrorBoundary>{children}</InternalErrorBoundary>
-            </UserPreferencesProvider>
-          </AlertProvider>
-        </LayoutProvider>
-      </ThemeProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <ThemeModeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemedProviders>
+          {children}
+        </ThemedProviders>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </ThemeModeProvider>
   );
 }
+

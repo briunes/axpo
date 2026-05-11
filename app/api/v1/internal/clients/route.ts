@@ -16,6 +16,12 @@ const createClientSchema = z.object({
   contactEmail: z.string().email().optional().or(z.literal("")),
   contactPhone: z.string().max(50).optional(),
   otherDetails: z.string().max(5000).optional(),
+  street: z.string().max(300).optional(),
+  city: z.string().max(200).optional(),
+  postalCode: z.string().max(20).optional(),
+  province: z.string().max(200).optional(),
+  country: z.string().max(10).optional(),
+  language: z.string().max(10).optional(),
 });
 
 /**
@@ -232,6 +238,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       contactEmail: payload.contactEmail?.trim() || null,
       contactPhone: payload.contactPhone?.trim() || null,
       otherDetails: payload.otherDetails?.trim() || null,
+      street: payload.street?.trim() || null,
+      city: payload.city?.trim() || null,
+      postalCode: payload.postalCode?.trim() || null,
+      province: payload.province?.trim() || null,
+      country: payload.country?.trim() || null,
+      language: payload.language?.trim() || null,
       createdByUserId: auth.userId,
     },
     include: {

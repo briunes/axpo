@@ -56,9 +56,14 @@ export interface AgenciesActions {
   handleBulkDeleteAgencies: (ids: string[]) => Promise<void>;
 }
 
+interface UseAgenciesOptions {
+  queryEnabled?: boolean;
+}
+
 export function useAgencies(
   session: SessionState | null,
   initialPageSize = 25,
+  options?: UseAgenciesOptions,
 ): AgenciesActions {
   const queryClient = useQueryClient();
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -87,6 +92,7 @@ export function useAgencies(
   const [newAgencyName, setNewAgencyName] = useState("");
   const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
   const [editAgencyName, setEditAgencyName] = useState("");
+  const queryEnabled = options?.queryEnabled ?? true;
 
   const clearFeedback = () => {
     setErrorText(null);
@@ -106,7 +112,7 @@ export function useAgencies(
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["agencies", session?.token ?? "", queryParams],
     queryFn: () => listAgencies(session!.token, queryParams),
-    enabled: !!session,
+    enabled: !!session && queryEnabled,
     placeholderData: keepPreviousData,
   });
 

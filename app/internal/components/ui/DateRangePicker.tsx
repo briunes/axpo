@@ -1,18 +1,20 @@
 'use client';
 
 import { useState, useEffect, useRef, useId } from 'react';
-import { Box, IconButton, Popover, Typography, TextField, InputAdornment, InputLabel, styled } from '@mui/material';
+import { Box, IconButton, Popover, Typography, TextField, InputAdornment, styled } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CloseIcon from '@mui/icons-material/Close';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import { DateInput } from './DateInput';
 import { useUserPreferences } from '../providers/UserPreferencesProvider';
+import { useI18n } from '../../../../src/lib/i18n-context';
 import {
     formatDisplayDate,
     parseDisplayDate,
     autoFormatDateInput,
-    getDatePlaceholder,
 } from '../../lib/formatPreferences';
+import { getLocalizedDayNames, getLocalizedMonthNames } from '../../lib/datePickerLocalization';
 
 const StyledTextField = styled(TextField, {
     shouldForwardProp: (prop) => prop !== 'nopadding',
@@ -24,19 +26,11 @@ const StyledTextField = styled(TextField, {
         display: 'none',
     },
     '& .MuiOutlinedInput-root': {
-        backgroundColor: '#fafafa',
         borderRadius: '6px',
         fontSize: '14px',
-        '& fieldset': {
-            borderWidth: '1px',
-            borderColor: error ? '#d32f2f' : 'rgba(0, 0, 0, 0.23)',
-        },
-        '&:hover fieldset': {
-            borderColor: error ? '#d32f2f' : 'rgba(0, 0, 0, 0.4)',
-        },
         '&.Mui-focused fieldset': {
             borderWidth: '1px',
-            borderColor: error ? '#d32f2f' : theme.palette.primary.main,
+            borderColor: error ? theme.palette.error.main : theme.palette.primary.main,
         },
         '& .MuiInputAdornment-positionStart': {
             marginRight: '8px',
@@ -46,7 +40,6 @@ const StyledTextField = styled(TextField, {
         backgroundColor: 'transparent',
     },
     '& .MuiFormHelperText-root': {
-        color: error ? '#d32f2f' : '#666',
         marginLeft: 0,
         marginTop: '4px',
         fontSize: '12px',
@@ -62,6 +55,7 @@ export interface DateRangePickerProps {
     startDate?: Date | null;
     endDate?: Date | null;
     onChange?: (startDate: Date | null, endDate: Date | null) => void;
+    variant?: 'single' | 'inline';
     placeholder?: string;
     label?: string;
     labelPosition?: 'top' | 'default';
@@ -82,7 +76,8 @@ export function DateRangePicker({
     startDate: initialStartDate = null,
     endDate: initialEndDate = null,
     onChange,
-    placeholder = 'Selecionar período',
+    variant = 'single',
+    placeholder,
     label,
     labelPosition = 'default',
     required = false,
@@ -98,7 +93,10 @@ export function DateRangePicker({
     months = 1,
 }: DateRangePickerProps) {
     const { preferences } = useUserPreferences();
+    const { locale, t } = useI18n();
     const dateFormat = preferences.dateFormat;
+    const resolvedPlaceholder = placeholder ?? t('datePicker', 'selectRange');
+    const rangeSeparator = t('datePicker', 'rangeSeparator');
 
     const [isOpen, setIsOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -134,12 +132,31 @@ export function DateRangePicker({
         }
     }, [pickerMode]);
 
-    const monthNames = [
-        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-    ];
+    const monthNames = getLocalizedMonthNames(locale);
+    const dayNames = getLocalizedDayNames(locale);
 
-    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+    const splitRangeInput = (value: string) => {
+        const normalized = value.trim();
+        const separators = [rangeSeparator, 'até', 'hasta', 'to'];
+
+        for (const separator of separators) {
+            const separatorValue = separator.trim();
+            if (!separatorValue) continue;
+
+            const lowerValue = normalized.toLocaleLowerCase();
+            const lowerSeparator = separatorValue.toLocaleLowerCase();
+            const index = lowerValue.indexOf(lowerSeparator);
+
+            if (index >= 0) {
+                return [
+                    normalized.slice(0, index).trim(),
+                    normalized.slice(index + separatorValue.length).trim(),
+                ];
+            }
+        }
+
+        return [normalized];
+    };
 
     const getDaysInMonth = (date: Date) => {
         const year = date.getFullYear();
@@ -172,6 +189,49 @@ export function DateRangePicker({
 
     const isDateRangeEnd = (date: Date) => {
         return isSameDay(date, startDate) || isSameDay(date, endDate);
+    };
+
+    const parseIsoDate = (value: string): Date | null => {
+        if (!value) return null;
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+    };
+
+    const formatIsoDate = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const handleInlineStartChange = (value: string) => {
+        const parsedStart = parseIsoDate(value);
+        let nextStart: Date | null = parsedStart;
+        let nextEnd: Date | null = endDate;
+
+        if (nextStart && nextEnd && nextStart > nextEnd) {
+            [nextStart, nextEnd] = [nextEnd, nextStart];
+        }
+
+        setStartDate(nextStart);
+        setEndDate(nextEnd);
+        if (parsedStart) setCurrentMonth(parsedStart);
+        onChange?.(nextStart, nextEnd);
+    };
+
+    const handleInlineEndChange = (value: string) => {
+        const parsedEnd = parseIsoDate(value);
+        let nextStart: Date | null = startDate;
+        let nextEnd: Date | null = parsedEnd;
+
+        if (nextStart && nextEnd && nextStart > nextEnd) {
+            [nextStart, nextEnd] = [nextEnd, nextStart];
+        }
+
+        setStartDate(nextStart);
+        setEndDate(nextEnd);
+        if (parsedEnd) setCurrentMonth(parsedEnd);
+        onChange?.(nextStart, nextEnd);
     };
 
     const handleDateClick = (day: number, monthDate: Date) => {
@@ -260,6 +320,7 @@ export function DateRangePicker({
     const handleClear = () => {
         setStartDate(null);
         setEndDate(null);
+        setInputText('');
         if (onChange) {
             onChange(null, null);
         }
@@ -279,7 +340,7 @@ export function DateRangePicker({
         const d2 = digits.slice(8);
         let result = autoFormatDateInput(d1, dateFormat);
         if (d1.length === 8) {
-            result += ' até ';
+            result += ` ${rangeSeparator} `;
             if (d2.length > 0) result += autoFormatDateInput(d2, dateFormat);
         }
         setInputText(result);
@@ -291,7 +352,7 @@ export function DateRangePicker({
             handleClear();
             return;
         }
-        const parts = inputText.split(' até ');
+        const parts = splitRangeInput(inputText);
         const newStart = parseDisplayDate(parts[0]?.trim(), dateFormat);
         const newEnd = parts[1] ? parseDisplayDate(parts[1].trim(), dateFormat) : null;
         if (newStart) {
@@ -309,7 +370,7 @@ export function DateRangePicker({
             return formatDisplayDate(startDate, dateFormat);
         }
 
-        return `${formatDisplayDate(startDate, dateFormat)} até ${formatDisplayDate(endDate, dateFormat)}`;
+        return `${formatDisplayDate(startDate, dateFormat)} ${rangeSeparator} ${formatDisplayDate(endDate, dateFormat)}`;
     };
 
     const renderCalendar = (monthDate: Date) => {
@@ -541,7 +602,7 @@ export function DateRangePicker({
         <StyledTextField
             fullWidth
             value={isEditing ? inputText : formatDateRange()}
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
             onChange={handleTextChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
@@ -560,6 +621,39 @@ export function DateRangePicker({
                 formHelperText: { suppressHydrationWarning: true },
             }}
         />
+    );
+
+    const inlineTextFieldsContent = (
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+                <DateInput
+                    value={startDate ? formatIsoDate(startDate) : ''}
+                    placeholder={t('datePicker', 'from')}
+                    onChange={handleInlineStartChange}
+                    disabled={disabled}
+                    error={error}
+                    required={required}
+                    helperText={filterinput ? undefined : helperText}
+                    nopadding={nopadding}
+                    id={inputId}
+                    clearable={clearable}
+                />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+                <DateInput
+                    value={endDate ? formatIsoDate(endDate) : ''}
+                    placeholder={t('datePicker', 'to')}
+                    onChange={handleInlineEndChange}
+                    disabled={disabled}
+                    error={error}
+                    required={required}
+                    helperText={undefined}
+                    nopadding={nopadding}
+                    id={`${inputId}-end`}
+                    clearable={clearable}
+                />
+            </Box>
+        </Box>
     );
 
     // Shared calendar popover (portal-based, no overflow clipping)
@@ -641,7 +735,7 @@ export function DateRangePicker({
                                     {/* Day names */}
                                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, mb: 1 }}>
                                         {dayNames.map((day) => (
-                                            <Box key={day} sx={{ height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#666' }}>
+                                            <Box key={day} sx={{ height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: 'text.secondary' }}>
                                                 {day}
                                             </Box>
                                         ))}
@@ -659,16 +753,16 @@ export function DateRangePicker({
             </Box>
 
             {/* Footer */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, pt: 2, borderTop: '1px solid #e0e0e0' }}>
-                <Typography onClick={handleToday} sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}>Hoje</Typography>
-                <Typography onClick={handleWeek} sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}>Semana</Typography>
-                <Typography onClick={handleMonth} sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}>Mês</Typography>
-                <Typography onClick={handleYear} sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}>Ano</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Typography onClick={handleToday} sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}>{t('datePicker', 'today')}</Typography>
+                <Typography onClick={handleWeek} sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}>{t('datePicker', 'week')}</Typography>
+                <Typography onClick={handleMonth} sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}>{t('datePicker', 'month')}</Typography>
+                <Typography onClick={handleYear} sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}>{t('datePicker', 'year')}</Typography>
             </Box>
 
             {/* Selected range display */}
             {formatDateRange() && (
-                <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Typography variant="body2" sx={{ fontSize: '13px' }}>{formatDateRange()}</Typography>
                     <IconButton size="small" onClick={handleClear}><CloseIcon fontSize="small" /></IconButton>
                 </Box>
@@ -686,22 +780,23 @@ export function DateRangePicker({
                         marginBottom: '8px',
                         fontSize: '14px',
                         fontWeight: 500,
-                        color: disabled ? '#999' : '#333',
+                        color: 'inherit',
+                        opacity: disabled ? 0.5 : 1,
                     }}
                 >
                     {label}
                     {required && <span style={{ color: '#d32f2f', marginLeft: '4px' }}>*</span>}
                 </label>
-                {textFieldContent}
-                {calendarPopover}
+                {variant === 'inline' ? inlineTextFieldsContent : textFieldContent}
+                {variant === 'single' && calendarPopover}
             </Box>
         );
     }
 
     return (
         <Box sx={{ width: '100%' }} ref={anchorRef}>
-            {textFieldContent}
-            {calendarPopover}
+            {variant === 'inline' ? inlineTextFieldsContent : textFieldContent}
+            {variant === 'single' && calendarPopover}
         </Box>
     );
 }

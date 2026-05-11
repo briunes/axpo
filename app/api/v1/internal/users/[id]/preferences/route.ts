@@ -33,6 +33,7 @@ async function GET(
 
   // Merge with system defaults (user preferences override system defaults)
   const effectivePreferences = {
+    language: userPrefs?.language ?? systemConfig?.defaultLanguage ?? null,
     dateFormat:
       userPrefs?.dateFormat ?? systemConfig?.defaultDateFormat ?? "DD/MM/YYYY",
     timeFormat:
@@ -45,6 +46,8 @@ async function GET(
       userPrefs?.itemsPerPage ?? systemConfig?.defaultItemsPerPage ?? 10,
     // Include info about which values are overridden
     _overrides: {
+      language:
+        userPrefs?.language !== null && userPrefs?.language !== undefined,
       dateFormat:
         userPrefs?.dateFormat !== null && userPrefs?.dateFormat !== undefined,
       timeFormat:
@@ -122,6 +125,7 @@ async function PUT(
     where: { userId },
     create: {
       userId,
+      language: body.language,
       dateFormat: body.dateFormat,
       timeFormat: body.timeFormat,
       timezone: body.timezone,
@@ -129,6 +133,7 @@ async function PUT(
       itemsPerPage: body.itemsPerPage,
     },
     update: {
+      language: body.language,
       dateFormat: body.dateFormat,
       timeFormat: body.timeFormat,
       timezone: body.timezone,

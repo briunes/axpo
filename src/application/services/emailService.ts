@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { prisma } from "@/infrastructure/database/prisma";
+import { resolveTranslation, DEFAULT_LANGUAGE } from "@/lib/supportedLanguages";
 
 interface EmailOptions {
   to: string;
@@ -21,6 +22,7 @@ interface SendTemplateEmailOptions {
   to: string;
   templateId: string;
   variables?: Record<string, string>;
+  languageCode?: string;
   // Metadata for logging
   triggeredBy?: string;
   triggeredByUserId?: string;
@@ -263,6 +265,7 @@ export class EmailService {
     try {
       const template = await prisma.emailTemplate.findUnique({
         where: { id: options.templateId },
+        include: { translations: true },
       });
 
       if (!template) {
@@ -273,9 +276,18 @@ export class EmailService {
         throw new Error(`Email template is inactive: ${options.templateId}`);
       }
 
-      const variables = options.variables || {};
-      const subject = this.replaceVariables(template.subject, variables);
-      const html = this.replaceVariables(template.htmlContent, variables);
+      const preferredLang = options.languageCode ?? DEFAULT_LANGUAGE;
+      const translation = resolveTranslation(template.translations, preferredLang);
+
+      // Use translation if available, fall back to parent columns
+      const subject = this.replaceVariables(
+        translation?.subject ?? template.subject,
+        options.variables ?? {},
+      );
+      const html = this.replaceVariables(
+        translation?.htmlContent ?? template.htmlContent,
+        options.variables ?? {},
+      );
 
       await this.sendEmail({
         to: options.to,
@@ -285,7 +297,7 @@ export class EmailService {
         templateName: template.name,
         triggeredBy: options.triggeredBy,
         triggeredByUserId: options.triggeredByUserId,
-        variables,
+        variables: options.variables,
         relatedUserId: options.relatedUserId,
         relatedSimulationId: options.relatedSimulationId,
       });
@@ -306,6 +318,7 @@ export class EmailService {
     setupToken?: string;
     userId?: string;
     triggeredByUserId?: string;
+    languageCode?: string;
   }): Promise<void> {
     try {
       const config = await prisma.systemConfig.findFirst();
@@ -315,6 +328,17 @@ export class EmailService {
           "User creation email template not configured. Skipping email.",
         );
         return;
+      }
+
+      // Resolve language: explicit > user preferences > system default
+      let resolvedLanguage =
+        options.languageCode ?? config.defaultLanguage ?? "en";
+      if (!options.languageCode && options.userId) {
+        const prefs = await prisma.userPreferences.findUnique({
+          where: { userId: options.userId },
+          select: { language: true },
+        });
+        if (prefs?.language) resolvedLanguage = prefs.language;
       }
 
       // Generate the setup password URL if a token is provided
@@ -337,6 +361,7 @@ export class EmailService {
         to: options.userEmail,
         templateId: config.userCreationEmailTemplateId,
         variables,
+        languageCode: resolvedLanguage,
         triggeredBy: "user-creation",
         triggeredByUserId: options.triggeredByUserId,
         relatedUserId: options.userId,
@@ -357,6 +382,7 @@ export class EmailService {
     userName: string;
     resetToken: string;
     userId?: string;
+    languageCode?: string;
   }): Promise<void> {
     try {
       const config = await prisma.systemConfig.findFirst();
@@ -366,6 +392,17 @@ export class EmailService {
           "Password reset email template not configured. Skipping email.",
         );
         return;
+      }
+
+      // Resolve language: explicit > user preferences > system default
+      let resolvedLanguage =
+        options.languageCode ?? config.defaultLanguage ?? "en";
+      if (!options.languageCode && options.userId) {
+        const prefs = await prisma.userPreferences.findUnique({
+          where: { userId: options.userId },
+          select: { language: true },
+        });
+        if (prefs?.language) resolvedLanguage = prefs.language;
       }
 
       // Generate the reset password URL
@@ -381,12 +418,11 @@ export class EmailService {
         RESET_PASSWORD_URL: resetPasswordUrl,
       };
 
-
-      
       await this.sendTemplateEmail({
         to: options.userEmail,
         templateId: config.passwordResetEmailTemplateId,
         variables,
+        languageCode: resolvedLanguage,
         triggeredBy: "password-reset-request",
         relatedUserId: options.userId,
       });

@@ -189,9 +189,9 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
         .editable-sections-editor {
           margin-top: 1.5rem;
           padding: 1.25rem;
-          border: 1px solid #e5e7eb;
+          border: 1px solid var(--scheme-neutral-900);
           border-radius: 6px;
-          background: #ffffff;
+          background: var(--scheme-neutral-1200);
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
 
@@ -206,23 +206,23 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
           margin: 0;
           font-size: 0.9375rem;
           font-weight: 600;
-          color: #111827;
+          color: var(--scheme-neutral-100);
         }
 
         .btn-add-section {
           padding: 0.4rem 0.875rem;
           font-size: 0.8125rem;
           font-weight: 500;
-          border: 1px solid #dc2626;
-          background: #ffffff;
-          color: #dc2626;
+          border: 1px solid var(--scheme-brand-600);
+          background: var(--scheme-neutral-1200);
+          color: var(--scheme-brand-600);
           border-radius: 6px;
           cursor: pointer;
           transition: all 0.15s ease;
         }
 
         .btn-add-section:hover {
-          background: #dc2626;
+          background: var(--scheme-brand-600);
           color: #ffffff;
           box-shadow: 0 1px 3px rgba(220, 38, 38, 0.2);
         }
@@ -230,13 +230,13 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
         .sections-description {
           margin: 0.5rem 0 1rem;
           font-size: 0.8125rem;
-          color: #6b7280;
+          color: var(--scheme-neutral-500);
           line-height: 1.5;
         }
 
         .sections-description code {
-          background: #fef2f2;
-          color: #dc2626;
+          background: var(--scheme-brand-600-15);
+          color: var(--scheme-brand-600);
           padding: 0.125rem 0.375rem;
           border-radius: 4px;
           font-size: 0.75rem;
@@ -248,31 +248,32 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
           gap: 0.625rem;
           margin-bottom: 1rem;
           padding: 1rem;
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
+          background: var(--scheme-neutral-1100);
+          border: 1px solid var(--scheme-neutral-900);
           border-radius: 6px;
         }
 
         .add-section-form input {
           flex: 1;
           padding: 0.5rem 0.75rem;
-          border: 1px solid #d1d5db;
+          border: 1px solid var(--scheme-neutral-900);
           border-radius: 6px;
           font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
           font-size: 0.8125rem;
-          background: #ffffff;
+          background: var(--scheme-neutral-1200);
+          color: var(--scheme-neutral-100);
           transition: border-color 0.15s ease;
         }
 
         .add-section-form input:focus {
           outline: none;
-          border-color: #dc2626;
+          border-color: var(--scheme-brand-600);
           box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
         }
 
         .add-section-form button {
           padding: 0.5rem 1.125rem;
-          background: #dc2626;
+          background: var(--scheme-brand-600);
           color: #ffffff;
           border: none;
           border-radius: 6px;
@@ -283,7 +284,7 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
         }
 
         .add-section-form button:hover {
-          background: #b91c1c;
+          background: var(--scheme-brand-700);
           box-shadow: 0 1px 3px rgba(220, 38, 38, 0.3);
         }
 
@@ -296,23 +297,23 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
         .no-sections {
           padding: 2rem;
           text-align: center;
-          color: #9ca3af;
+          color: var(--scheme-neutral-600);
           font-size: 0.8125rem;
-          background: #f9fafb;
-          border: 1px dashed #d1d5db;
+          background: var(--scheme-neutral-1100);
+          border: 1px dashed var(--scheme-neutral-800);
           border-radius: 6px;
         }
 
         .section-item {
-          background: #f9fafb;
-          border: 1px solid #e5e7eb;
+          background: var(--scheme-neutral-1100);
+          border: 1px solid var(--scheme-neutral-900);
           border-radius: 6px;
           padding: 1rem;
           transition: border-color 0.15s ease;
         }
 
         .section-item:hover {
-          border-color: #d1d5db;
+          border-color: var(--scheme-neutral-800);
         }
 
         .section-header {
@@ -321,18 +322,18 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
           align-items: center;
           margin-bottom: 0.875rem;
           padding-bottom: 0.625rem;
-          border-bottom: 1px solid #e5e7eb;
+          border-bottom: 1px solid var(--scheme-neutral-900);
         }
 
         .section-key {
           font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
           font-size: 0.8125rem;
           font-weight: 600;
-          background: #fef2f2;
-          color: #dc2626;
+          background: var(--scheme-brand-600-15);
+          color: var(--scheme-brand-600);
           padding: 0.375rem 0.625rem;
           border-radius: 4px;
-          border: 1px solid #fecaca;
+          border: 1px solid rgba(255, 50, 84, 0.25);
         }
 
         .btn-remove {
@@ -350,7 +351,7 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
         }
 
         .btn-remove:hover {
-          background: #fee2e2;
+          background: rgba(239, 68, 68, 0.14);
           color: #dc2626;
         }
 
@@ -373,23 +374,24 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
           font-size: 0.75rem;
           font-weight: 600;
           margin-bottom: 0.375rem;
-          color: #374151;
+          color: var(--scheme-neutral-300);
         }
 
         .field input,
         .field textarea {
           padding: 0.5rem 0.75rem;
-          border: 1px solid #d1d5db;
+          border: 1px solid var(--scheme-neutral-900);
           border-radius: 6px;
           font-size: 0.8125rem;
-          background: #ffffff;
+          background: var(--scheme-neutral-1200);
+          color: var(--scheme-neutral-100);
           transition: border-color 0.15s ease;
         }
 
         .field input:focus,
         .field textarea:focus {
           outline: none;
-          border-color: #dc2626;
+          border-color: var(--scheme-brand-600);
           box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
         }
 
@@ -405,7 +407,7 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
           gap: 1.5rem;
           align-items: center;
           padding-top: 0.5rem;
-          border-top: 1px solid #e5e7eb;
+          border-top: 1px solid var(--scheme-neutral-900);
           margin-top: 0.25rem;
         }
 
@@ -414,7 +416,7 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
           align-items: center;
           gap: 0.5rem;
           font-size: 0.8125rem;
-          color: #374151;
+          color: var(--scheme-neutral-300);
           cursor: pointer;
           font-weight: 500;
         }

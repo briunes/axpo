@@ -62,7 +62,8 @@ export function FormSelect({
                         marginBottom: '8px',
                         fontSize: '14px',
                         fontWeight: 500,
-                        color: disabled ? '#999' : '#333',
+                        color: 'inherit',
+                        opacity: disabled ? 0.5 : 1,
                     }}
                 >
                     {label}
@@ -139,19 +140,7 @@ export function FormSelect({
                             }}
                             sx={{
                                 '& .MuiOutlinedInput-root': {
-                                    backgroundColor: '#fafafa',
                                     borderRadius: '6px',
-                                    '& fieldset': {
-                                        borderWidth: '1px',
-                                        borderColor: error ? 'error.main' : 'rgba(0, 0, 0, 0.23)',
-                                    },
-                                    '&:hover fieldset': {
-                                        borderColor: error ? 'error.main' : 'rgba(0, 0, 0, 0.4)',
-                                    },
-                                    '&.Mui-focused fieldset': {
-                                        borderWidth: '1px',
-                                        borderColor: error ? 'error.main' : 'primary.main',
-                                    },
                                 },
                                 ...textFieldProps?.sx,
                             }}

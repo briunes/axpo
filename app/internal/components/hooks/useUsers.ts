@@ -115,9 +115,14 @@ export interface UsersActions {
   handleBulkDeleteUsers: (ids: string[]) => Promise<void>;
 }
 
+interface UseUsersOptions {
+  queryEnabled?: boolean;
+}
+
 export function useUsers(
   session: SessionState | null,
   initialPageSize = 25,
+  options?: UseUsersOptions,
 ): UsersActions {
   const queryClient = useQueryClient();
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -165,6 +170,7 @@ export function useUsers(
   const [editUserOtherDetails, setEditUserOtherDetails] = useState("");
   const [editUserPassword, setEditUserPassword] = useState("");
   const [editUserCurrentPassword, setEditUserCurrentPassword] = useState("");
+  const queryEnabled = options?.queryEnabled ?? true;
 
   const [profileFullName, setProfileFullName] = useState(
     session?.user.fullName ?? "",
@@ -199,7 +205,7 @@ export function useUsers(
       );
       return result;
     },
-    enabled: !!session,
+    enabled: !!session && queryEnabled,
     placeholderData: keepPreviousData,
   });
 

@@ -138,6 +138,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const allowedOrderBy: Record<string, string> = {
     createdAt: "createdAt",
+    updatedAt: "updatedAt",
     fullName: "fullName",
     email: "email",
     role: "role",

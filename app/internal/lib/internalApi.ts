@@ -22,6 +22,7 @@ interface ApiEnvelope<T> {
 
 export interface SimulationItem {
   id: string;
+  referenceNumber?: string | null;
   agencyId?: string;
   ownerUserId?: string;
   clientId?: string | null;
@@ -30,6 +31,8 @@ export interface SimulationItem {
   isDeleted?: boolean;
   deletedAt?: string | null;
   sharedAt?: string | null;
+  clientOpenedAt?: string | null;
+  sharedVia?: string | null;
   publicToken?: string | null;
   pinSnapshot?: string | null;
   invoiceFilePath?: string | null;
@@ -113,6 +116,12 @@ export interface ClientItem {
   contactEmail?: string | null;
   contactPhone?: string | null;
   otherDetails?: string | null;
+  street?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+  province?: string | null;
+  country?: string | null;
+  language?: string | null;
   isActive: boolean;
   isDeleted: boolean;
   deletedAt?: string | null;
@@ -195,6 +204,7 @@ export interface AnalyticsAgencyStat {
   total: number;
   shared: number;
   expired: number;
+  opened: number;
 }
 
 export interface AnalyticsTrendPoint {
@@ -213,6 +223,7 @@ export interface AnalyticsUserStat {
   userName: string;
   total: number;
   shared: number;
+  opened: number;
 }
 
 export interface AnalyticsOverview {
@@ -227,6 +238,10 @@ export interface AnalyticsOverview {
   periodDays: number;
   byAgency?: AnalyticsAgencyStat[];
   byUser?: AnalyticsUserStat[];
+  // Simulation content metrics
+  energyTypeSplit?: Array<{ type: string; count: number }>;
+  tariffBreakdown?: Array<{ tariff: string; count: number }>;
+  avgConsumoAnual?: number | null;
 }
 
 export type BaseValueScopeType = "GLOBAL" | "AGENCY";
@@ -238,6 +253,7 @@ export interface BaseValueSetItem {
   name: string;
   sourceWorkbookRef?: string | null;
   sourceScope?: string | null;
+  sourceFileName?: string | null;
   version: number;
   isActive: boolean;
   isProduction: boolean;
@@ -308,6 +324,22 @@ export interface AuditLogItem {
 
 interface ListAuditLogsResult {
   items: AuditLogItem[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface ListAuditLogsResponse {
+  items: AuditLogItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 interface CreateUserInput {
@@ -349,6 +381,12 @@ interface CreateClientInput {
   contactEmail?: string;
   contactPhone?: string;
   otherDetails?: string;
+  street?: string;
+  city?: string;
+  postalCode?: string;
+  province?: string;
+  country?: string;
+  language?: string;
 }
 
 interface UpdateClientInput {
@@ -360,6 +398,12 @@ interface UpdateClientInput {
   contactPhone?: string;
   otherDetails?: string;
   isActive?: boolean;
+  street?: string;
+  city?: string;
+  postalCode?: string;
+  province?: string;
+  country?: string;
+  language?: string;
 }
 
 interface CreateBaseValueSetInput {
@@ -632,13 +676,14 @@ export async function updateSimulation(
 export async function shareSimulation(
   token: string,
   simulationId: string,
+  sharedVia?: string,
 ): Promise<SimulationItem> {
   const response = await fetch(
     `${baseUrl}/api/v1/internal/simulations/${simulationId}/share`,
     {
       method: "POST",
       headers: authHeaders(token),
-      body: JSON.stringify({}),
+      body: JSON.stringify(sharedVia ? { sharedVia } : {}),
     },
   );
 
@@ -832,6 +877,8 @@ export interface CupsLookupEntry {
   direccion: string;
   comercializadorActual: string;
   clientId: string | null;
+  lastUsed: string | null;
+  lastStatus: string | null;
 }
 
 export async function fetchCupsLookup(
@@ -1187,6 +1234,28 @@ export async function fetchAnalyticsOverview(
   );
 }
 
+export async function fetchAnalyticsForAgency(
+  token: string,
+  agencyId: string,
+  days = 30,
+): Promise<AnalyticsOverview> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/analytics/overview?days=${days}&agencyId=${encodeURIComponent(agencyId)}`,
+    {
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    },
+  );
+
+  return parseApiResponse<AnalyticsOverview>(
+    response,
+    "Analytics request failed",
+  );
+}
+
 export async function listBaseValueSets(
   token: string,
   params?: ListBaseValueSetsParams,
@@ -1387,24 +1456,55 @@ export async function uploadBaseValueFile(
   }>(response, "Upload base value file failed");
 }
 
+export async function downloadBaseValueFile(
+  token: string,
+  setId: string,
+): Promise<void> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/base-values/${setId}/download`,
+    {
+      method: "GET",
+      headers: authHeaders(token),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to download file");
+  }
+
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+  const filename = filenameMatch?.[1] ?? `base-values-${setId}.xlsm`;
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export interface ListAuditLogsParams {
+  page?: number;
+  limit?: number;
   eventType?: string;
   dateFrom?: string;
   dateTo?: string;
   search?: string;
-  limit?: number;
 }
 
 export async function listAuditLogs(
   token: string,
   params?: ListAuditLogsParams,
-): Promise<AuditLogItem[]> {
+): Promise<ListAuditLogsResponse> {
   const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.eventType) qs.set("eventType", params.eventType);
   if (params?.dateFrom) qs.set("dateFrom", params.dateFrom);
   if (params?.dateTo) qs.set("dateTo", params.dateTo);
   if (params?.search) qs.set("search", params.search);
-  if (params?.limit) qs.set("limit", String(params.limit));
   const queryString = qs.toString();
   const url = `${baseUrl}/api/v1/internal/audit-logs${queryString ? `?${queryString}` : ""}`;
 
@@ -1420,7 +1520,15 @@ export async function listAuditLogs(
     response,
     "Audit logs request failed",
   );
-  return body.items;
+  return {
+    items: body.items,
+    pagination: body.pagination ?? {
+      page: params?.page ?? 1,
+      limit: params?.limit ?? body.items.length,
+      total: body.items.length,
+      totalPages: 1,
+    },
+  };
 }
 
 export type AnalyticsSummary = AnalyticsOverview;

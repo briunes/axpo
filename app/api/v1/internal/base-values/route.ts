@@ -87,7 +87,22 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const [sets, total] = await Promise.all([
     prisma.baseValueSet.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        scopeType: true,
+        agencyId: true,
+        name: true,
+        sourceWorkbookRef: true,
+        sourceScope: true,
+        sourceFileName: true,
+        version: true,
+        isActive: true,
+        isProduction: true,
+        isDeleted: true,
+        deletedAt: true,
+        createdBy: true,
+        createdAt: true,
+        updatedAt: true,
         _count: { select: { items: true } },
         createdByUser: { select: { id: true, fullName: true, email: true } },
       },

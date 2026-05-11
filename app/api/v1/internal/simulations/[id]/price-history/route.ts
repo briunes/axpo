@@ -22,6 +22,15 @@ const PRODUCT_LABELS: Record<string, string> = {
   "DINAMICA_CONTROL_TECHO:N3": "Dinámica Control Techo N3",
 };
 
+const GAS_PRODUCT_LABELS: Record<string, string> = {
+  "INDEXADO:N1": "Gas Dinámica N1",
+  "INDEXADO:N2": "Gas Dinámica N2",
+  "INDEXADO:N3": "Gas Dinámica N3",
+  "DINAMICA_PLUS:N1": "Gas Dinámica Plus N1",
+  "DINAMICA_PLUS:N2": "Gas Dinámica Plus N2",
+  "DINAMICA_PLUS:N3": "Gas Dinámica Plus N3",
+};
+
 function generateLast12Months(): { label: string; key: string }[] {
   const now = new Date();
   const months: { label: string; key: string }[] = [];
@@ -120,25 +129,36 @@ export async function GET(
       baseValueItems = globalSet?.items ?? [];
     }
 
-    // Filter indexed electricity margin items
-    // Key format: ELEC:INDEX:{PRODUCT}:{TIER}:{TARIFA}:{PERIODO}:MARGEN
+    // Determine simulation type
+    const isGas = payload?.type === "GAS" || !!payload?.gas;
+
+    // Filter all indexed electricity margin items:
+    //   12-month average: ELEC:INDEX:{PRODUCT}:{TIER}:{TARIFA}:{PERIODO}:MARGEN
+    //   Per-month:        ELEC:INDEX:{PRODUCT}:{TIER}:{TARIFA}:{PERIODO}:MARGEN:{YYYY-MM}
     const marginItems = baseValueItems.filter(
       (item) =>
-        item.key.startsWith("ELEC:INDEX:") && item.key.endsWith(":MARGEN"),
+        item.key.startsWith("ELEC:INDEX:") && item.key.includes(":MARGEN"),
     );
 
-    // Build structure: productTierKey -> { productKey, productLabel, tariffs: { tariff -> { period -> value } } }
+    // Build electricity structure:
+    // productTierKey -> {
+    //   productKey, productLabel,
+    //   tariffs: { tariff -> { period -> { avg: number; monthly: { YYYY-MM: number } } } }
+    // }
     const productData: Record<
       string,
       {
         productKey: string;
         productLabel: string;
-        tariffs: Record<string, Record<string, number>>;
+        tariffs: Record<
+          string,
+          Record<string, { avg: number; monthly: Record<string, number> }>
+        >;
       }
     > = {};
 
     for (const item of marginItems) {
-      // Split: ELEC : INDEX : PRODUCT : TIER : TARIFA : PERIODO : MARGEN
+      // Split: ELEC : INDEX : PRODUCT : TIER : TARIFA : PERIODO : MARGEN [: YYYY-MM]
       const parts = item.key.split(":");
       if (parts.length < 7) continue;
 
@@ -146,6 +166,8 @@ export async function GET(
       const tier = parts[3];
       const tariff = parts[4];
       const period = parts[5];
+      // parts[6] === 'MARGEN'; parts[7] (if present) === 'YYYY-MM'
+      const monthKey = parts.length >= 8 ? parts[7] : null;
       const productTierKey = `${product}:${tier}`;
 
       if (!productData[productTierKey]) {
@@ -162,8 +184,21 @@ export async function GET(
         productData[productTierKey].tariffs[tariff] = {};
       }
 
-      productData[productTierKey].tariffs[tariff][period] =
-        Number(item.valueNumeric) ?? 0;
+      if (!productData[productTierKey].tariffs[tariff][period]) {
+        productData[productTierKey].tariffs[tariff][period] = {
+          avg: 0,
+          monthly: {},
+        };
+      }
+
+      const entry = productData[productTierKey].tariffs[tariff][period];
+      const v = Number(item.valueNumeric) ?? 0;
+
+      if (monthKey) {
+        entry.monthly[monthKey] = v;
+      } else {
+        entry.avg = v;
+      }
     }
 
     // Prioritise products that appear in the simulation results
@@ -178,26 +213,87 @@ export async function GET(
             .filter(Boolean)
         : Object.values(productData);
 
-    // Collect OMIE historical data (monthly averages)
-    const omieItems = baseValueItems.filter((item) =>
-      item.key.startsWith("OMIE:"),
+    // ── Gas indexed margin items ──────────────────────────────────────────
+    // Key format: GAS:INDEX:{PRODUCT}:{TIER}:{TARIFA}:{ZONE}:MARGEN
+    // Zone is PEN (Peninsula) or BAL (Baleares)
+    const gasMarginItems = baseValueItems.filter(
+      (item) =>
+        item.key.startsWith("GAS:INDEX:") && item.key.endsWith(":MARGEN"),
     );
-    const omieHistory: Record<string, number> = {};
-    for (const item of omieItems) {
-      const monthKey = item.key.replace("OMIE:", "");
-      omieHistory[monthKey] = Number(item.valueNumeric) ?? 0;
+
+    const gasProductData: Record<
+      string,
+      {
+        productKey: string;
+        productLabel: string;
+        /** tariff -> { zone -> margin } */
+        tariffs: Record<string, Record<string, number>>;
+        type: "GAS";
+      }
+    > = {};
+
+    for (const item of gasMarginItems) {
+      // Split: GAS : INDEX : PRODUCT : TIER : TARIFA : ZONE : MARGEN
+      const parts = item.key.split(":");
+      if (parts.length < 7) continue;
+
+      const product = parts[2];
+      const tier = parts[3];
+      const tariff = parts[4];
+      const zone = parts[5]; // PEN or BAL
+      const productTierKey = `GAS:${product}:${tier}`;
+
+      if (!gasProductData[productTierKey]) {
+        const labelKey = `${product}:${tier}`;
+        gasProductData[productTierKey] = {
+          productKey: productTierKey,
+          productLabel:
+            GAS_PRODUCT_LABELS[labelKey] ??
+            `Gas ${product.replace(/_/g, " ")} ${tier}`,
+          tariffs: {},
+          type: "GAS",
+        };
+      }
+
+      if (!gasProductData[productTierKey].tariffs[tariff]) {
+        gasProductData[productTierKey].tariffs[tariff] = {};
+      }
+
+      gasProductData[productTierKey].tariffs[tariff][zone] =
+        Number(item.valueNumeric) ?? 0;
     }
+
+    // Prioritise gas products that appear in simulation results
+    const gasIndexedResults = ((payload?.results as any)?.gas ?? []).filter(
+      (r: any) => r.pricingType === "INDEXED",
+    );
+
+    const gasSimulationProducts =
+      gasIndexedResults.length > 0
+        ? gasIndexedResults
+            .map((r: any) => {
+              const key = `GAS:${r.productKey}`;
+              return gasProductData[key] ?? null;
+            })
+            .filter(Boolean)
+        : Object.values(gasProductData);
 
     const electricity = payload?.electricity as any;
     const tarifaAcceso = electricity?.tarifaAcceso ?? "2.0TD";
     const perfilCarga = electricity?.perfilCarga ?? "NORMAL";
+
+    const gas = payload?.gas as any;
+    const gasTarifaAcceso = gas?.tarifaAcceso ?? "";
 
     return NextResponse.json({
       tarifaAcceso,
       perfilCarga,
       products: simulationProducts,
       months: generateLast12Months(),
-      omieHistory,
+      // Gas-specific fields
+      isGas,
+      gasTarifaAcceso,
+      gasProducts: gasSimulationProducts,
     });
   } catch (err: any) {
     const status = err?.status ?? err?.statusCode ?? 500;

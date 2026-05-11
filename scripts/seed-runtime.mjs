@@ -278,32 +278,43 @@ async function main() {
   #axpo-sim-tpl .asim-info-item { display: flex; flex-direction: column; }
   #axpo-sim-tpl .asim-info-label { font-size: 8pt; color: #999; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
   #axpo-sim-tpl .asim-info-value { font-size: 10pt; color: #333; font-weight: 500; }
-  #axpo-sim-tpl .asim-comparison { display: flex; gap: 20px; margin-bottom: 30px; }
-  #axpo-sim-tpl .asim-plan-card { flex: 1; border: 2px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
-  #axpo-sim-tpl .asim-plan-card--axpo { border-color: #4CAF50; }
-  #axpo-sim-tpl .asim-plan-header { padding: 15px; font-weight: bold; font-size: 11pt; }
-  #axpo-sim-tpl .asim-plan-header--current { background-color: #f5f5f5; color: #333; }
-  #axpo-sim-tpl .asim-plan-header--axpo { background-color: #4CAF50; color: white; }
-  #axpo-sim-tpl .asim-plan-subheader { font-size: 8pt; font-weight: normal; opacity: 0.8; margin-top: 2px; }
-  #axpo-sim-tpl .asim-plan-body { padding: 15px; }
-  #axpo-sim-tpl .asim-data-section { margin-bottom: 20px; }
-  #axpo-sim-tpl .asim-data-section-title { font-size: 9pt; font-weight: bold; color: #666; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #e0e0e0; }
-  #axpo-sim-tpl .asim-period-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
-  #axpo-sim-tpl .asim-period-item { text-align: center; padding: 8px; background: #f9f9f9; border-radius: 4px; }
-  #axpo-sim-tpl .asim-period-label { font-size: 8pt; color: #999; font-weight: bold; }
-  #axpo-sim-tpl .asim-period-value { font-size: 10pt; color: #333; margin-top: 3px; }
-  #axpo-sim-tpl .asim-cost-breakdown { margin-top: 15px; }
-  #axpo-sim-tpl .asim-cost-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  #axpo-sim-tpl .asim-comparison { display: flex; gap: 20px; margin-bottom: 30px; align-items: stretch; }
+  #axpo-sim-tpl .asim-plan-card { flex: 1; border: 2px solid transparent; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+  #axpo-sim-tpl .asim-plan-card--axpo { border-color: #4545CF; }
+  #axpo-sim-tpl .asim-plan-header { padding: 10px 16px; font-weight: 600; font-size: 10pt; text-align: center; }
+  #axpo-sim-tpl .asim-plan-header--current { display: none; }
+  #axpo-sim-tpl .asim-plan-header--axpo { background-color: #4545CF; color: white; }
+  #axpo-sim-tpl .asim-plan-subheader { font-size: 8pt; font-weight: normal; opacity: 0.85; margin-top: 2px; }
+  #axpo-sim-tpl .asim-plan-body { padding: 16px; flex: 1; }
+  #axpo-sim-tpl .asim-plan-card:not(.asim-plan-card--axpo) .asim-plan-body { background-color: #F4F4F5; }
+  #axpo-sim-tpl .asim-plan-card--axpo .asim-plan-body { background-color: #ECEEFF; }
+  #axpo-sim-tpl .asim-plan-title { font-weight: bold; font-size: 11pt; color: #1f2937; margin-bottom: 2px; }
+  #axpo-sim-tpl .asim-plan-card--axpo .asim-plan-title { color: #3640C8; }
+  #axpo-sim-tpl .asim-plan-tariff { font-size: 8pt; color: #9CA3AF; margin-bottom: 14px; }
+  #axpo-sim-tpl .asim-plan-card--axpo .asim-plan-tariff { color: #6B72E8; }
+  #axpo-sim-tpl .asim-data-section { margin-bottom: 16px; }
+  #axpo-sim-tpl .asim-data-section-title { font-size: 8pt; font-weight: 700; color: #6B7280; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; }
+  #axpo-sim-tpl .asim-plan-card--axpo .asim-data-section-title { color: #6B72E8; border-bottom-color: rgba(70,75,216,0.2); }
+  #axpo-sim-tpl .asim-period-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+  #axpo-sim-tpl .asim-period-item { text-align: center; padding: 8px 4px; background: #D9D9D9; border-radius: 20px; }
+  #axpo-sim-tpl .asim-plan-card--axpo .asim-period-item { background: #ffffff; }
+  #axpo-sim-tpl .asim-period-label { font-size: 8pt; color: #9CA3AF; font-weight: bold; }
+  #axpo-sim-tpl .asim-plan-card--axpo .asim-period-label { color: #4545CF; }
+  #axpo-sim-tpl .asim-period-value { font-size: 9pt; color: #374151; margin-top: 2px; }
+  #axpo-sim-tpl .asim-cost-breakdown { margin-top: 12px; }
+  #axpo-sim-tpl .asim-cost-item { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #E5E7EB; }
   #axpo-sim-tpl .asim-cost-item:last-child { border-bottom: none; }
-  #axpo-sim-tpl .asim-cost-label { font-size: 9pt; color: #666; }
-  #axpo-sim-tpl .asim-cost-value { font-size: 9pt; color: #333; font-weight: 500; }
-  #axpo-sim-tpl .asim-total-section { margin-top: 15px; padding-top: 15px; border-top: 2px solid #333; }
-  #axpo-sim-tpl .asim-total-item { display: flex; justify-content: space-between; padding: 5px 0; font-weight: bold; }
-  #axpo-sim-tpl .asim-total-label { font-size: 11pt; color: #333; }
-  #axpo-sim-tpl .asim-total-value { font-size: 14pt; color: #333; }
-  #axpo-sim-tpl .asim-total-value--savings { color: #4CAF50; }
-  #axpo-sim-tpl .asim-savings-badge { display: inline-block; background: #4CAF50; color: white; padding: 8px 15px; border-radius: 20px; font-size: 10pt; font-weight: bold; margin-top: 10px; }
-  #axpo-sim-tpl .asim-savings-center { text-align: center; }
+  #axpo-sim-tpl .asim-cost-label { font-size: 9pt; color: #3D3D3D; }
+  #axpo-sim-tpl .asim-cost-value { font-size: 9pt; color: #3D3D3D; font-weight: 500; }
+  #axpo-sim-tpl .asim-total-section { margin-top: 14px; }
+  #axpo-sim-tpl .asim-total-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-radius: 12px; background: #D9D9D9; }
+  #axpo-sim-tpl .asim-plan-card--axpo .asim-total-item { background: #ffffff; }
+  #axpo-sim-tpl .asim-total-label { font-size: 11pt; font-weight: bold; color: #1f2937; }
+  #axpo-sim-tpl .asim-plan-card--axpo .asim-total-label { color: #4545CF; }
+  #axpo-sim-tpl .asim-total-value { font-size: 13pt; font-weight: bold; color: #1f2937; }
+  #axpo-sim-tpl .asim-total-value--savings { color: #4545CF; }
+  #axpo-sim-tpl .asim-savings-badge { display: none; }
+  #axpo-sim-tpl .asim-savings-center { display: none; }
   #axpo-sim-tpl .asim-footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #e0e0e0; font-size: 8pt; color: #999; line-height: 1.6; }
   #axpo-sim-tpl .asim-footer-title { font-weight: bold; margin-bottom: 5px; color: #666; }
   @media print {
@@ -312,7 +323,6 @@ async function main() {
     #axpo-sim-tpl .asim-cost-breakdown,
     #axpo-sim-tpl .asim-cost-item,
     #axpo-sim-tpl .asim-total-section,
-    #axpo-sim-tpl .asim-savings-badge,
     #axpo-sim-tpl .asim-basic-data,
     #axpo-sim-tpl .asim-header { break-inside: avoid; page-break-inside: avoid; }
     #axpo-sim-tpl .asim-section-title,
@@ -359,6 +369,8 @@ async function main() {
     <div class="asim-plan-card">
       <div class="asim-plan-header asim-plan-header--current">Plano Atual<div class="asim-plan-subheader">Tarifa CUPS</div></div>
       <div class="asim-plan-body">
+        <div class="asim-plan-title">Plano Atual</div>
+        <div class="asim-plan-tariff">Tarifa CUPS</div>
         <div class="asim-data-section">
           <div class="asim-data-section-title">Potencia contratada (kW)</div>
           <div class="asim-period-grid">
@@ -397,8 +409,10 @@ async function main() {
     </div>
 
     <div class="asim-plan-card asim-plan-card--axpo">
-      <div class="asim-plan-header asim-plan-header--axpo">Plano Axpo<div class="asim-plan-subheader">Tarifa personalizada Index</div></div>
+      <div class="asim-plan-header asim-plan-header--axpo">Ahorro de {{SAVINGS_AMOUNT}} &euro;</div>
       <div class="asim-plan-body">
+        <div class="asim-plan-title">Plano Axpo</div>
+        <div class="asim-plan-tariff">Tarifa personalizada Index</div>
         <div class="asim-data-section">
           <div class="asim-data-section-title">Potencia contratada (kW)</div>
           <div class="asim-period-grid">
@@ -432,7 +446,6 @@ async function main() {
         </div>
         <div class="asim-total-section">
           <div class="asim-total-item"><div class="asim-total-label">Total</div><div class="asim-total-value asim-total-value--savings">{{AXPO_TOTAL}} &euro;</div></div>
-          <div class="asim-savings-center"><div class="asim-savings-badge">Ahorro de {{SAVINGS_AMOUNT}} &euro;</div></div>
         </div>
       </div>
     </div>

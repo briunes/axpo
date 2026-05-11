@@ -16,7 +16,8 @@ import {
     InputLabel,
     Chip,
 } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { DataTable, StatusBadge } from "../ui";
@@ -75,9 +76,7 @@ function TriggerBadge({ trigger }: { trigger?: string }) {
 
 export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
     const { t } = useI18n();
-    const [logs, setLogs] = useState<EmailLog[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedLog, setSelectedLog] = useState<EmailLog | null>(null);
+    const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
 
     // Filters
     const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -89,23 +88,26 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
     // Pagination
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
-    const [total, setTotal] = useState(0);
 
     // Sorting
     const [sortColumn, setSortColumn] = useState("sentAt");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-    const paramsRef = useRef("");
-    useEffect(() => {
-        const key = `${page}|${pageSize}|${sortColumn}|${sortDir}|${statusFilter}|${triggerFilter}|${searchTerm}|${dateFrom}|${dateTo}`;
-        if (paramsRef.current === key) return;
-        paramsRef.current = key;
-        fetchLogs();
-    }, [page, pageSize, sortColumn, sortDir, statusFilter, triggerFilter, searchTerm, dateFrom, dateTo]);
-
-    const fetchLogs = async () => {
-        setLoading(true);
-        try {
+    const { data, isFetching, error } = useQuery({
+        queryKey: [
+            "email-logs",
+            session.token,
+            page,
+            pageSize,
+            sortColumn,
+            sortDir,
+            statusFilter,
+            triggerFilter,
+            searchTerm,
+            dateFrom,
+            dateTo,
+        ],
+        queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: pageSize.toString(),
@@ -125,31 +127,52 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
 
             const result = await response.json();
             const data = result.data || result; // Handle both wrapped and unwrapped responses
-            setLogs(data.logs || []);
-            setTotal(data.pagination?.total || 0);
-        } catch (error) {
-            console.error("Error fetching email logs:", error);
-            onNotify?.("Failed to load email logs", "error");
-        } finally {
-            setLoading(false);
-        }
-    };
+            return {
+                logs: (data.logs || []) as EmailLog[],
+                total: data.pagination?.total || 0,
+            };
+        },
+        placeholderData: keepPreviousData,
+        staleTime: 60_000,
+    });
 
-    const viewDetails = async (logId: string) => {
-        try {
-            const response = await fetch(`/api/v1/internal/email-logs/${logId}`, {
+    const {
+        data: selectedLog,
+        error: selectedLogError,
+    } = useQuery({
+        queryKey: ["email-log", session.token, selectedLogId],
+        queryFn: async () => {
+            const response = await fetch(`/api/v1/internal/email-logs/${selectedLogId}`, {
                 headers: { Authorization: `Bearer ${session.token}` },
             });
 
             if (!response.ok) throw new Error("Failed to fetch email log details");
 
             const result = await response.json();
-            const log = result.data || result; // Handle both wrapped and unwrapped responses
-            setSelectedLog(log);
-        } catch (error) {
-            console.error("Error fetching email log details:", error);
+            return (result.data || result) as EmailLog;
+        },
+        enabled: !!selectedLogId,
+        staleTime: 300_000,
+    });
+
+    useEffect(() => {
+        if (error) {
+            onNotify?.("Failed to load email logs", "error");
+        }
+    }, [error, onNotify]);
+
+    useEffect(() => {
+        if (selectedLogError) {
             onNotify?.("Failed to load email details", "error");
         }
+    }, [selectedLogError, onNotify]);
+
+    const logs = data?.logs ?? [];
+    const total = data?.total ?? 0;
+    const loading = isFetching;
+
+    const viewDetails = async (logId: string) => {
+        setSelectedLogId(logId);
     };
 
     const formatDate = (dateStr: string) => {
@@ -350,7 +373,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             {/* Detail Dialog */}
             <Dialog
                 open={!!selectedLog}
-                onClose={() => setSelectedLog(null)}
+                onClose={() => setSelectedLogId(null)}
                 maxWidth="md"
                 fullWidth
             >
@@ -537,7 +560,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                     )}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setSelectedLog(null)}>Close</Button>
+                    <Button onClick={() => setSelectedLogId(null)}>Close</Button>
                 </DialogActions>
             </Dialog>
         </>

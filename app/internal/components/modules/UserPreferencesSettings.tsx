@@ -14,6 +14,7 @@ export interface UserPreferencesSettingsProps {
 }
 
 interface PreferencesConfig {
+    defaultLanguage: string;
     defaultDateFormat: string;
     defaultTimeFormat: string;
     defaultTimezone: string;
@@ -22,6 +23,7 @@ interface PreferencesConfig {
 }
 
 const DEFAULT_CONFIG: PreferencesConfig = {
+    defaultLanguage: "en",
     defaultDateFormat: "DD/MM/YYYY",
     defaultTimeFormat: "24h",
     defaultTimezone: "Europe/Madrid",
@@ -44,6 +46,7 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
             setIsLoading(true);
             const data = await getSystemConfig();
             setConfig({
+                defaultLanguage: (data as any).defaultLanguage || "en",
                 defaultDateFormat: (data as any).defaultDateFormat || "DD/MM/YYYY",
                 defaultTimeFormat: (data as any).defaultTimeFormat || "24h",
                 defaultTimezone: (data as any).defaultTimezone || "Europe/Madrid",
@@ -65,6 +68,7 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
     const handleSave = async () => {
         try {
             await updateSystemConfig({
+                defaultLanguage: config.defaultLanguage,
                 defaultDateFormat: config.defaultDateFormat,
                 defaultTimeFormat: config.defaultTimeFormat,
                 defaultTimezone: config.defaultTimezone,
@@ -96,6 +100,17 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
                         </p>
 
                         <Stack spacing={3}>
+                            <FormSelect
+                                label={t("systemSettings", "fieldLanguage")}
+                                helperText={t("systemSettings", "fieldLanguageDesc")}
+                                value={config.defaultLanguage}
+                                onChange={(value) => handleChange("defaultLanguage", value)}
+                                options={[
+                                    { value: "en", label: "🇬🇧 English" },
+                                    { value: "es", label: "🇪🇸 Español" }
+                                ]}
+                            />
+
                             <FormSelect
                                 label={t("systemSettings", "fieldDateFormat")}
                                 helperText={t("systemSettings", "fieldDateFormatDesc")}

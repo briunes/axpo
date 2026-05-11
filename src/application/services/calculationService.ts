@@ -87,9 +87,9 @@ const ELEC_PRODUCT_LABELS: Record<string, string> = {
 };
 
 const GAS_PRODUCT_LABELS: Record<string, string> = {
-  FIJO: "Gas Fijo",
+  FIJO: "Gas Estable",
   ESTABLE_PLUS: "Gas Estable Plus",
-  INDEXADO: "Gas Indexado",
+  INDEXADO: "Gas Dinámica",
   DINAMICA_PLUS: "Gas Dinámica Plus",
 };
 
@@ -134,22 +134,41 @@ function calcElecFijo(
     number | undefined
   >;
 
+  // "1P PLUS" products are "Periodo Único" — they publish a single P1 price that
+  // applies to all energy and power periods.  This allows them to work with any
+  // access tariff (2.0TD, 3.0TD, 6.1TD) without requiring separate per-period keys.
+  const isSinglePeriod = product === "1P_PLUS" || product === "1P_PLUS_XL";
+
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
-    const precioEn = priceOf(
-      map,
-      `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:${p}:ENERGIA`,
-    );
+    const precioEn =
+      priceOf(
+        map,
+        `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:${p}:ENERGIA`,
+      ) ??
+      (isSinglePeriod
+        ? priceOf(
+            map,
+            `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:P1:ENERGIA`,
+          )
+        : undefined);
     if (precioEn === undefined) return null; // missing price → product unavailable for this tier/tariff combo
     terminoEnergia += precioEn * pv(consumoMap, p);
   }
 
   let terminoPotencia = 0;
   for (const p of powerPeriods) {
-    const precioPot = priceOf(
-      map,
-      `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
-    );
+    const precioPot =
+      priceOf(
+        map,
+        `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
+      ) ??
+      (isSinglePeriod
+        ? priceOf(
+            map,
+            `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:P1:POTENCIA`,
+          )
+        : undefined);
     if (precioPot === undefined) return null;
     terminoPotencia += precioPot * pv(potenciaMap, p) * (dias / 365);
   }
@@ -591,8 +610,6 @@ function calcGasIndex(
   const mibgasKey = `MIBGAS:${periodo.fechaInicio.slice(0, 7)}`;
   const mibgas = priceOf(map, mibgasKey) ?? 0;
 
-
-  
   const margen = priceOf(
     map,
     `GAS:INDEX:${product}:${tier}:${tarifaAcceso}:${zonaKey}:MARGEN`,

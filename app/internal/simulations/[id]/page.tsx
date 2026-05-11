@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { getSimulation, listClients, updateClient, simulationStatusTone, type SimulationItem, type ClientItem } from "../../lib/internalApi";
@@ -41,6 +41,20 @@ function SimulationMeta({ sim, actions, canViewClients }: { sim: SimulationItem;
             borderRadius: 10,
         }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", flex: 1 }}>
+
+                {/* Reference Number */}
+                {sim.referenceNumber && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                        <span style={{ fontSize: 10, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("simulationDetail", "metaReference")}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--scheme-neutral-100)", fontFamily: "monospace", letterSpacing: "0.1em", background: "var(--scheme-neutral-900)", padding: "1px 7px", borderRadius: 4 }}>
+                            {sim.referenceNumber}
+                        </span>
+                    </span>
+                )}
+
+                {sim.referenceNumber && sim.client && (
+                    <span style={{ color: "var(--scheme-neutral-800)", fontSize: 14, userSelect: "none" }}>·</span>
+                )}
 
                 {/* Client */}
                 {sim.client && (
@@ -157,6 +171,7 @@ function SimulationMeta({ sim, actions, canViewClients }: { sim: SimulationItem;
 export default function SimulationDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
@@ -171,6 +186,7 @@ export default function SimulationDetailPage({ params }: { params: Promise<{ id:
     const [selectedBaseValueSetId, setSelectedBaseValueSetId] = useState<string | undefined>(undefined);
     const [usedBaseValueSetId, setUsedBaseValueSetId] = useState<string | null>(null);
     const [selectedBvsIsProduction, setSelectedBvsIsProduction] = useState<boolean | null>(null);
+    const didAutoOpenShareRef = useRef(false);
     const formRef = useRef<SimulationFormHandle>(null);
 
     // Auto-recalculate when the admin switches the base value set
@@ -229,6 +245,24 @@ export default function SimulationDetailPage({ params }: { params: Promise<{ id:
         }
         setShowShareDialog(true);
     };
+
+    useEffect(() => {
+        if (!session || !simulation || didAutoOpenShareRef.current) return;
+        if (searchParams.get("share") !== "1") return;
+        if (simulation.status !== "DRAFT") return;
+
+        didAutoOpenShareRef.current = true;
+
+        (async () => {
+            try {
+                const { simulation: freshSim } = await getSimulation(session.token, simulation.id);
+                setSimulation(freshSim);
+            } catch {
+                // Non-critical — fall back to existing simulation state.
+            }
+            setShowShareDialog(true);
+        })();
+    }, [searchParams, session, simulation]);
 
     const handleClientFieldsChanged = async (clientId: string, data: { name?: string; contactName?: string }) => {
         if (!session) return;
