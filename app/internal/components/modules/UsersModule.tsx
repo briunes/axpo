@@ -235,7 +235,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
             {canEdit ? (
               <ButtonGroup variant="outlined" size="small">
-                <Button onClick={primaryOnClick}>
+                <Button onClick={primaryOnClick} sx={{ minWidth: '80px !important' }}>
                   {primaryLabel}
                 </Button>
                 {hasDropdown && (
@@ -266,6 +266,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       )}
 
       <DataTable<UserItem>
+        tableId="users"
         columns={columns}
         rows={users}
         loading={loading}

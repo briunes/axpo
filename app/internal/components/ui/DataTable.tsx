@@ -1,9 +1,10 @@
 "use client";
 
 import { DataGrid, useGridApiRef, type GridColDef, type GridSortModel } from "@mui/x-data-grid";
-import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl, Checkbox, Button, Tooltip, useTheme } from "@mui/material";
+import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl, Checkbox, Button, Tooltip, useTheme, Popover, FormControlLabel, Divider, Typography } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
+import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 
@@ -38,6 +39,8 @@ export interface MassAction {
 }
 
 export interface DataTableProps<T extends { id: string }> {
+  /** Used to persist column visibility in localStorage. Should be unique per table. */
+  tableId?: string;
   columns: ColumnDef<T>[];
   rows: T[];
   loading?: boolean;
@@ -88,7 +91,26 @@ function CheckboxCell({
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+// ── Column visibility helpers ────────────────────────────────────────────────
+function loadHiddenCols(tableId: string): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(`axpo_dt_hidden_cols_${tableId}`);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch { return new Set(); }
+}
+
+function saveHiddenCols(tableId: string, hidden: Set<string>) {
+  try {
+    localStorage.setItem(`axpo_dt_hidden_cols_${tableId}`, JSON.stringify([...hidden]));
+  } catch { /* ignore */ }
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export function DataTable<T extends { id: string }>({
+  tableId,
   columns,
   rows,
   loading = false,
@@ -112,6 +134,26 @@ export function DataTable<T extends { id: string }>({
   const { preferences } = useUserPreferences();
   const theme = useTheme();
   const apiRef = useGridApiRef();
+
+  // ── Column visibility ───────────────────────────────────────────────────────
+  const [hiddenCols, setHiddenCols] = useState<Set<string>>(() =>
+    tableId ? loadHiddenCols(tableId) : new Set()
+  );
+  const [colMenuAnchor, setColMenuAnchor] = useState<HTMLElement | null>(null);
+
+  const toggleColVisibility = (key: string) => {
+    setHiddenCols((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      if (tableId) saveHiddenCols(tableId, next);
+      return next;
+    });
+  };
+
+  const showAllCols = () => {
+    setHiddenCols(new Set());
+    if (tableId) saveHiddenCols(tableId, new Set());
+  };
 
   // Helper to save scroll position before a selection state update and restore it after.
   const withScrollPreserved = useCallback((fn: () => void) => {
@@ -224,7 +266,7 @@ export function DataTable<T extends { id: string }>({
       } as GridColDef<T>);
     }
 
-    cols.push(...columns.map((col): GridColDef<T> => ({
+    cols.push(...columns.filter((col) => !hiddenCols.has(col.key)).map((col): GridColDef<T> => ({
       field: col.key,
       headerName: col.label.toUpperCase(),
       sortable: col.sortable ?? false,
@@ -266,7 +308,7 @@ export function DataTable<T extends { id: string }>({
     // are accessed via refs inside renderCell to prevent the grid from re-mounting
     // (and scrolling to top) on every checkbox click.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns, rowActions, loading, hasMassActions]);
+  }, [columns, rowActions, loading, hasMassActions, hiddenCols]);
 
   // Create skeleton rows when loading
   const skeletonRows = useMemo(() => {
@@ -364,11 +406,53 @@ export function DataTable<T extends { id: string }>({
           </div>
         )}
         <div className="dt-toolbar-right">
+          {/* Column visibility toggle */}
+          <Tooltip title="Show/hide columns">
+            <IconButton size="small" onClick={(e) => setColMenuAnchor(e.currentTarget)}>
+              <ViewColumnIcon fontSize="small" color="primary" />
+            </IconButton>
+          </Tooltip>
           {headerRight}
         </div>
       </div>
 
-      {/* Filter bar */}
+      {/* Column visibility popover */}
+      <Popover
+        open={Boolean(colMenuAnchor)}
+        anchorEl={colMenuAnchor}
+        onClose={() => setColMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Box sx={{ p: 1.5, minWidth: 200, maxHeight: 360, overflowY: 'auto' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="caption" fontWeight={600} sx={{ textTransform: 'uppercase', color: 'text.secondary' }}>
+              Columns
+            </Typography>
+            {hiddenCols.size > 0 && (
+              <Button size="small" variant="text" onClick={showAllCols} sx={{ fontSize: 11, py: 0, minWidth: 0 }}>
+                Show all
+              </Button>
+            )}
+          </Box>
+          <Divider sx={{ mb: 1 }} />
+          {columns.map((col) => (
+            <Box key={col.key} sx={{ display: 'flex', alignItems: 'center', py: 0.25 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={!hiddenCols.has(col.key)}
+                    onChange={() => toggleColVisibility(col.key)}
+                  />
+                }
+                label={<Typography variant="body2">{col.label}</Typography>}
+                sx={{ m: 0 }}
+              />
+            </Box>
+          ))}
+        </Box>
+      </Popover>
       {filterBar && (
         <div className="dt-filter-bar" style={{ backgroundColor: tableHeaderBackground }}>
           {filterBar}
@@ -490,7 +574,17 @@ export function DataTable<T extends { id: string }>({
               backgroundColor: 'var(--scheme-neutral-1200)',
             },
             '& .MuiDataGrid-columnSeparator': {
-              display: 'none',
+              display: 'flex',
+              opacity: 0,
+              transition: 'opacity 0.15s',
+              color: 'var(--scheme-neutral-700)',
+            },
+            '& .MuiDataGrid-columnHeader:hover .MuiDataGrid-columnSeparator': {
+              opacity: 1,
+            },
+            '& .MuiDataGrid-columnSeparator--resizing': {
+              opacity: 1,
+              color: 'var(--scheme-primary, #1976d2)',
             },
           }}
         />

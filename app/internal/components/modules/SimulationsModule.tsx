@@ -340,7 +340,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         return (
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
             <ButtonGroup variant={primaryVariant} size="small">
-              <Button onClick={primaryOnClick}>
+              <Button onClick={primaryOnClick} sx={{ minWidth: '80px !important' }}>
                 {primaryLabel}
               </Button>
               {hasDropdown && (
@@ -363,6 +363,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
   return (
     <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
       <DataTable<SimulationItem>
+        tableId="simulations"
         columns={columns}
         rows={displayData}
         loading={loading}

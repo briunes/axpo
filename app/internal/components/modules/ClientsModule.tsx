@@ -178,7 +178,7 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
             {canDo(role, "clients.edit") ? (
               <ButtonGroup variant="outlined" size="small">
-                <Button onClick={primaryOnClick}>
+                <Button onClick={primaryOnClick} sx={{ minWidth: '80px !important' }}>
                   {primaryLabel}
                 </Button>
                 {hasDropdown && (
@@ -246,6 +246,7 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
   return (
     <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
       <DataTable<ClientItem>
+        tableId="clients"
         columns={columns}
         rows={clients}
         loading={loading}
