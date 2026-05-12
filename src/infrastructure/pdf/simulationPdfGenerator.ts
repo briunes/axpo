@@ -149,8 +149,8 @@ export function extractTemplateVariables(
   const axpoTaxCost =
     (axpoDesglose.impuestoElectrico || 0) +
     (axpoDesglose.impuestoHidrocarburo || 0);
-  const axpoOtherCost = axpoDesglose.extras || 0;
-  const axpoRentalCost = electricity?.extras?.alquilerEquipoMedida || 0;
+  const axpoOtherCost = axpoDesglose.otrosCargos || 0;
+  const axpoRentalCost = axpoDesglose.alquiler || electricity?.extras?.alquilerEquipoMedida || 0;
   const axpoVat = axpoDesglose.iva || 0;
   const axpoTotal = selectedResult?.totalFactura || 0;
 

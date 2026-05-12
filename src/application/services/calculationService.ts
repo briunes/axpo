@@ -198,7 +198,8 @@ function calcElecFijo(
   const total = r2(baseIva + ivaRaw);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
-  const ahorroAnual = r2(ahorro * 12);
+  const ahorroAnual =
+    dias === 365 ? r2(facturaActual - total) : r2((ahorro / dias) * 365);
 
   return {
     productKey: `${product}:${tier}`,
@@ -213,7 +214,8 @@ function calcElecFijo(
       terminoEnergia: r2(terminoEnergia),
       terminoPotencia: r2(terminoPotencia),
       excesoPotencia: r2(terminoExceso),
-      extras: r2(reactiva + alquiler + otros),
+      otrosCargos: r2(reactiva + otros),
+      alquiler: r2(alquiler),
       impuestoElectrico: r2(impuestoElectricoRaw),
       iva: r2(ivaRaw),
     },
@@ -305,7 +307,8 @@ function calcElecIndex(
   const total = r2(baseIva + ivaRaw);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
-  const ahorroAnual = r2(ahorro * 12);
+  const ahorroAnual =
+    dias === 365 ? r2(facturaActual - total) : r2((ahorro / dias) * 365);
 
   return {
     productKey: `${product}:${tier}`,
@@ -320,7 +323,8 @@ function calcElecIndex(
       terminoEnergia: r2(terminoEnergia),
       terminoPotencia: r2(terminoPotencia),
       excesoPotencia: r2(terminoExceso),
-      extras: r2(reactiva + alquiler + otros),
+      otrosCargos: r2(reactiva + otros),
+      alquiler: r2(alquiler),
       impuestoElectrico: r2(impuestoElectricoRaw),
       iva: r2(ivaRaw),
     },
@@ -406,7 +410,8 @@ function calcPersonalizadaIndex(
   const total = r2(baseIva + ivaRaw);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
-  const ahorroAnual = r2(ahorro * 12);
+  const ahorroAnual =
+    dias === 365 ? r2(facturaActual - total) : r2((ahorro / dias) * 365);
 
   return {
     productKey: "PERSONALIZADA_INDEX",
@@ -421,7 +426,8 @@ function calcPersonalizadaIndex(
       terminoEnergia: r2(terminoEnergia),
       terminoPotencia: r2(terminoPotencia),
       excesoPotencia: r2(terminoExceso),
-      extras: r2(reactiva + alquiler + otros),
+      otrosCargos: r2(reactiva + otros),
+      alquiler: r2(alquiler),
       impuestoElectrico: r2(impuestoElectricoRaw),
       iva: r2(ivaRaw),
     },
@@ -502,7 +508,8 @@ function calcPersonalizadaOmieB(
   const total = r2(baseIva + ivaRaw);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
-  const ahorroAnual = r2(ahorro * 12);
+  const ahorroAnual =
+    dias === 365 ? r2(facturaActual - total) : r2((ahorro / dias) * 365);
 
   return {
     productKey: "PERSONALIZADA_OMIE_B",
@@ -517,7 +524,8 @@ function calcPersonalizadaOmieB(
       terminoEnergia: r2(terminoEnergia),
       terminoPotencia: r2(terminoPotencia),
       excesoPotencia: r2(terminoExceso),
-      extras: r2(reactiva + alquiler + otros),
+      otrosCargos: r2(reactiva + otros),
+      alquiler: r2(alquiler),
       impuestoElectrico: r2(impuestoElectricoRaw),
       iva: r2(ivaRaw),
     },
@@ -568,7 +576,8 @@ function calcGasFijo(
   const total = r2(baseIva + iva);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
-  const ahorroAnual = r2(ahorro * 12);
+  const ahorroAnual =
+    dias === 365 ? r2(facturaActual - total) : r2((ahorro / dias) * 365);
 
   return {
     productKey: `${product}:${tier}`,
@@ -582,7 +591,8 @@ function calcGasFijo(
     desglose: {
       terminoEnergia: r2(terminoEnergia),
       terminoFijo: r2(terminoFijoDia),
-      extras: r2(alquiler + otros),
+      otrosCargos: r2(otros),
+      alquiler: r2(alquiler),
       impuestoHidrocarburo,
       iva,
     },
@@ -650,7 +660,8 @@ function calcGasIndex(
   const total = r2(baseIva + iva);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
-  const ahorroAnual = r2(ahorro * 12);
+  const ahorroAnual =
+    dias === 365 ? r2(facturaActual - total) : r2((ahorro / dias) * 365);
 
   return {
     productKey: `${product}:${tier}`,
@@ -664,7 +675,8 @@ function calcGasIndex(
     desglose: {
       terminoEnergia: r2(terminoEnergia),
       terminoFijo: r2(terminoFijoDia),
-      extras: r2(alquiler + otros),
+      otrosCargos: r2(otros),
+      alquiler: r2(alquiler),
       impuestoHidrocarburo,
       iva,
     },

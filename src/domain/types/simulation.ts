@@ -259,7 +259,8 @@ export interface ProductResult {
     terminoPotencia?: number;
     excesoPotencia?: number;
     terminoFijo?: number;
-    extras?: number;
+    otrosCargos?: number;
+    alquiler?: number;
     impuestoElectrico?: number;
     impuestoHidrocarburo?: number;
     iva?: number;

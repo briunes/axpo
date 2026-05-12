@@ -155,8 +155,9 @@ export function extractVariableValues(
   const axpoTaxCost =
     (axpoDesglose.impuestoElectrico || 0) +
     (axpoDesglose.impuestoHidrocarburo || 0);
-  const axpoOtherCost = axpoDesglose.extras || 0;
-  const axpoRentalCost = electricity?.extras?.alquilerEquipoMedida || 0;
+  const axpoOtherCost = axpoDesglose.otrosCargos || 0;
+  const axpoRentalCost =
+    axpoDesglose.alquiler || electricity?.extras?.alquilerEquipoMedida || 0;
   const axpoVat = axpoDesglose.iva || 0;
   const axpoTotal = selectedResult?.totalFactura || 0;
 
@@ -339,6 +340,10 @@ export function extractVariableValues(
       isGas ? gasCurrentTotal : currentTotal,
       isGas ? gasAxpoTotal : axpoTotal,
       isGas ? gasSavingsAmount : savingsAmount,
+      isGas ? gas?.periodo?.dias || 30 : electricity?.periodo?.dias || 30,
+      isGas
+        ? (selectedGasResult?.ahorroAnual ?? null)
+        : (selectedResult?.ahorroAnual ?? null),
     ),
 
     // ─── Gas-specific variables ──────────────────────────────────────────────
@@ -374,17 +379,26 @@ export function extractVariableValues(
  * Builds a self-contained HTML snippet for the Comparativa bar chart.
  * Uses pure SVG + inline CSS — no JavaScript — so it renders in Puppeteer PDFs.
  *
- * Both currentTotal and axpoTotal are *monthly* figures (€).
- * The chart displays annual totals (× 12).
+ * Both currentTotal and axpoTotal are period figures (€).
+ * The chart displays annual totals using (value / dias) × 365 extrapolation.
+ * If dias = 365, uses the direct annual difference.
  */
 function buildComparativaChart(
   currentTotal: number,
   axpoTotal: number,
   savingsAmount: number,
+  dias: number = 30,
+  ahorroAnualOverride: number | null = null,
 ): string {
-  const annualCurrent = currentTotal * 12;
-  const annualAxpo = axpoTotal * 12;
-  const annualSavings = savingsAmount * 12;
+  const annualCurrent =
+    dias === 365 ? currentTotal : (currentTotal / dias) * 365;
+  const annualAxpo = dias === 365 ? axpoTotal : (axpoTotal / dias) * 365;
+  const annualSavings =
+    ahorroAnualOverride !== null
+      ? ahorroAnualOverride
+      : dias === 365
+        ? savingsAmount
+        : (savingsAmount / dias) * 365;
   const monthlySavings = savingsAmount;
   const savingsPct =
     currentTotal > 0 ? (savingsAmount / currentTotal) * 100 : 0;
