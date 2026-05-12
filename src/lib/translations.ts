@@ -166,6 +166,7 @@ export const translations = {
       contact: "Contact",
       company: "Company",
       created: "Created",
+      updated: "Updated",
       commercialUsers: "Commercial Users",
       actions: "Actions",
     },
@@ -196,6 +197,13 @@ export const translations = {
     },
     pagination: {
       rowsPerPage: "Rows per page:",
+    },
+    dataTable: {
+      showHideColumns: "Show/hide columns",
+      columnsTitle: "Columns",
+      showAll: "Show all",
+      selected: "{count} selected",
+      clearSelection: "Clear selection",
     },
     datePicker: {
       selectRange: "Select range",
@@ -1759,6 +1767,7 @@ export const translations = {
       contact: "Contacto",
       company: "Empresa",
       created: "Creado",
+      updated: "Actualizado",
       commercialUsers: "Usuarios Comerciales",
       actions: "Acciones",
     },
@@ -1789,6 +1798,13 @@ export const translations = {
     },
     pagination: {
       rowsPerPage: "Filas por página:",
+    },
+    dataTable: {
+      showHideColumns: "Mostrar/ocultar columnas",
+      columnsTitle: "Columnas",
+      showAll: "Mostrar todas",
+      selected: "{count} seleccionados",
+      clearSelection: "Limpiar selección",
     },
     datePicker: {
       selectRange: "Seleccionar rango",

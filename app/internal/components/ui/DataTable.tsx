@@ -7,6 +7,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -134,6 +135,7 @@ export function DataTable<T extends { id: string }>({
   const { preferences } = useUserPreferences();
   const theme = useTheme();
   const apiRef = useGridApiRef();
+  const { t: tI18n } = useI18n();
 
   // ── Column visibility ───────────────────────────────────────────────────────
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(() =>
@@ -407,7 +409,7 @@ export function DataTable<T extends { id: string }>({
         )}
         <div className="dt-toolbar-right">
           {/* Column visibility toggle */}
-          <Tooltip title="Show/hide columns">
+          <Tooltip title={tI18n('dataTable', 'showHideColumns')}>
             <IconButton size="small" onClick={(e) => setColMenuAnchor(e.currentTarget)}>
               <ViewColumnIcon fontSize="small" color="primary" />
             </IconButton>
@@ -427,11 +429,11 @@ export function DataTable<T extends { id: string }>({
         <Box sx={{ p: 1.5, minWidth: 200, maxHeight: 360, overflowY: 'auto' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="caption" fontWeight={600} sx={{ textTransform: 'uppercase', color: 'text.secondary' }}>
-              Columns
+              {tI18n('dataTable', 'columnsTitle')}
             </Typography>
             {hiddenCols.size > 0 && (
               <Button size="small" variant="text" onClick={showAllCols} sx={{ fontSize: 11, py: 0, minWidth: 0 }}>
-                Show all
+                {tI18n('dataTable', 'showAll')}
               </Button>
             )}
           </Box>
@@ -478,7 +480,7 @@ export function DataTable<T extends { id: string }>({
         }}
       >
         <span style={{ fontSize: 14, color: 'inherit', marginRight: 8 }}>
-          {selectedIds.size} selected
+          {tI18n('dataTable', 'selected').replace('{count}', String(selectedIds.size))}
         </span>
         {massActions?.map((action) => (
           <Tooltip key={action.label} title={action.label}>
@@ -500,7 +502,7 @@ export function DataTable<T extends { id: string }>({
           sx={{ ml: 'auto' }}
           onClick={() => setSelectedIds(new Set())}
         >
-          Clear selection
+          {tI18n('dataTable', 'clearSelection')}
         </Button>
       </Box>
       {/* MUI DataGrid */}
