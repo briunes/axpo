@@ -1,5 +1,7 @@
 export interface LoginResult {
-  token: string;
+  token?: string;
+  requiresOtp?: boolean;
+  otpSessionToken?: string;
   user: {
     id: string;
     agencyId: string;
@@ -557,6 +559,22 @@ export async function resetPassword(
     },
   );
   return parseApiResponse<LoginResult>(response, "Password reset failed", true);
+}
+
+export async function verifyOtp(
+  otpSessionToken: string,
+  code: string,
+): Promise<LoginResult> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/auth/otp/verify`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ otpSessionToken, code }),
+  });
+  return parseApiResponse<LoginResult>(
+    response,
+    "OTP verification failed",
+    true,
+  );
 }
 
 export interface ListSimulationsParams {

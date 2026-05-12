@@ -29,6 +29,7 @@ export interface EmailTemplatesProps {
 export type EmailTemplateType =
     | "simulation-share"
     | "magic-link"
+    | "otp"
     | "welcome"
     | "user-welcome"
     | "password-reset"
@@ -93,7 +94,7 @@ const BUTTON_SNIPPETS: Array<{ name: string; label: string; description: string;
  * Email template types that should ONLY show variables explicitly tagged for
  * them — no "universal" (untagged) variables.
  */
-const CLOSED_EMAIL_TYPES = new Set(["user-welcome", "welcome", "password-reset", "magic-link"]);
+const CLOSED_EMAIL_TYPES = new Set(["user-welcome", "welcome", "password-reset", "magic-link", "otp"]);
 
 /** Types that should include the button snippets panel */
 const BUTTON_SNIPPET_TYPES = new Set(["user-welcome", "welcome", "password-reset", "simulation-share", "expiring-soon", "converted", "notification"]);
@@ -136,6 +137,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
     const TEMPLATE_TYPE_LABELS: Record<EmailTemplateType, string> = {
         "simulation-share": t("emailTemplatesModule", "typeSimulationShare"),
         "magic-link": t("emailTemplatesModule", "typeMagicLink"),
+        "otp": t("emailTemplatesModule", "typeOtp"),
         "welcome": t("emailTemplatesModule", "typeWelcome"),
         "user-welcome": t("emailTemplatesModule", "typeUserWelcome"),
         "password-reset": t("emailTemplatesModule", "typePasswordReset"),

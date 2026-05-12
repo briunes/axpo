@@ -51,6 +51,12 @@ export interface SystemConfig {
   smtpFromName?: string;
   userCreationEmailTemplateId?: string;
   passwordResetEmailTemplateId?: string;
+  magicLinkEnabled?: boolean;
+  magicLinkEmailTemplateId?: string;
+  magicLinkTokenValidityMinutes?: number;
+  otpEnabled?: boolean;
+  otpEmailTemplateId?: string;
+  otpCodeValidityMinutes?: number;
   // LLM settings
   llmProvider?: string;
   llmApiKey?: string;

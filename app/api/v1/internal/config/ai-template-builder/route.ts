@@ -109,6 +109,7 @@ The correct gas price-history template MUST follow this structure exactly (use a
 - Header cell: background #f3f3f3, padding 20px, centered logo
 - Content cell: background #ffffff or #f9fafb, padding 30px
 - CTA Buttons: inline <a> with display:inline-block; padding:15px 40px; background-color:#FF3254; color:#ffffff; border-radius:6px; font-weight:bold
+- IMPORTANT: Whenever a CTA button links to a URL variable (e.g. reset password, magic link, OTP, setup URL, invitation link, or any action URL), you MUST also display the URL as a plain-text fallback directly below the button. Use a small paragraph like: "If the button doesn't work, copy and paste this link into your browser:" followed by the URL variable displayed as a styled anchor link (color:#FF3254; word-break:break-all). This is required for email client compatibility.
 - Footer: padding 20px, text-align:center, color:#6b7280, font-size:12px
 - Always end with: © {{CURRENT_YEAR}} AXPO Energy Solutions. All rights reserved.
 `;
@@ -334,7 +335,7 @@ ${variableCatalogue}`;
     : "";
 
   const typeOptions = isEmail
-    ? "simulation-share|user-welcome|password-reset|magic-link|notification|expiring-soon|converted|welcome"
+    ? "simulation-share|user-welcome|password-reset|magic-link|otp|notification|expiring-soon|converted|welcome"
     : "simulation-output|simulation-detailed|contract|price-history|invoice|report";
 
   const primaryUserMessage = `${metaContext}

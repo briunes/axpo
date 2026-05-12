@@ -103,7 +103,15 @@ export class EmailService {
     variables: Record<string, string>,
   ): string {
     let result = content;
-    for (const [key, value] of Object.entries(variables)) {
+
+    // Inject built-in system variables (can be overridden by caller-supplied variables)
+    const systemVars: Record<string, string> = {
+      CURRENT_YEAR: new Date().getFullYear().toString(),
+    };
+
+    const merged = { ...systemVars, ...variables };
+
+    for (const [key, value] of Object.entries(merged)) {
       const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "g");
       result = result.replace(regex, value || "");
     }
@@ -277,7 +285,10 @@ export class EmailService {
       }
 
       const preferredLang = options.languageCode ?? DEFAULT_LANGUAGE;
-      const translation = resolveTranslation(template.translations, preferredLang);
+      const translation = resolveTranslation(
+        template.translations,
+        preferredLang,
+      );
 
       // Use translation if available, fall back to parent columns
       const subject = this.replaceVariables(
@@ -343,7 +354,9 @@ export class EmailService {
 
       // Generate the setup password URL if a token is provided
       const baseUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) || "http://localhost:3000";
+        process.env.NEXT_PUBLIC_BACKEND_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+        "http://localhost:3000";
       const setupPasswordUrl = options.setupToken
         ? `${baseUrl}/internal/setup-password?token=${options.setupToken}`
         : "";
@@ -432,6 +445,116 @@ export class EmailService {
       // Log the error but don't fail the reset request if email fails
       console.error("Failed to send password reset email:", error);
       throw error; // Re-throw to let caller know email failed
+    }
+  }
+
+  /**
+   * Send a magic link login email
+   */
+  static async sendMagicLinkEmail(options: {
+    userEmail: string;
+    userName: string;
+    magicLinkToken: string;
+    userId?: string;
+    languageCode?: string;
+  }): Promise<void> {
+    try {
+      const config = await prisma.systemConfig.findFirst();
+
+      if (!config?.magicLinkEmailTemplateId) {
+        console.warn(
+          "Magic link email template not configured. Skipping email.",
+        );
+        return;
+      }
+
+      let resolvedLanguage =
+        options.languageCode ?? config.defaultLanguage ?? "en";
+      if (!options.languageCode && options.userId) {
+        const prefs = await prisma.userPreferences.findUnique({
+          where: { userId: options.userId },
+          select: { language: true },
+        });
+        if (prefs?.language) resolvedLanguage = prefs.language;
+      }
+
+      const baseUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+        "http://localhost:3000";
+      const magicLinkUrl = `${baseUrl}/internal/login/magic?token=${options.magicLinkToken}`;
+      const validityMinutes = config.magicLinkTokenValidityMinutes ?? 15;
+
+      const variables = {
+        USER_NAME: options.userName,
+        USER_EMAIL: options.userEmail,
+        MAGIC_LINK: magicLinkUrl,
+        MAGIC_LINK_VALIDITY_MINUTES: String(validityMinutes),
+      };
+
+      await this.sendTemplateEmail({
+        to: options.userEmail,
+        templateId: config.magicLinkEmailTemplateId,
+        variables,
+        languageCode: resolvedLanguage,
+        triggeredBy: "magic-link-request",
+        relatedUserId: options.userId,
+      });
+
+      console.log(`Magic link email sent to ${options.userEmail}`);
+    } catch (error) {
+      console.error("Failed to send magic link email:", error);
+      throw error;
+    }
+  }
+
+  static async sendOtpEmail(options: {
+    userEmail: string;
+    userName: string;
+    otpCode: string;
+    userId?: string;
+    languageCode?: string;
+  }): Promise<void> {
+    try {
+      const config = await prisma.systemConfig.findFirst();
+
+      if (!config?.otpEmailTemplateId) {
+        console.warn("OTP email template not configured. Skipping email.");
+        return;
+      }
+
+      let resolvedLanguage =
+        options.languageCode ?? config.defaultLanguage ?? "en";
+      if (!options.languageCode && options.userId) {
+        const prefs = await prisma.userPreferences.findUnique({
+          where: { userId: options.userId },
+          select: { language: true },
+        });
+        if (prefs?.language) resolvedLanguage = prefs.language;
+      }
+
+      const validityMinutes = config.otpCodeValidityMinutes ?? 10;
+
+      const variables = {
+        USER_NAME: options.userName,
+        USER_EMAIL: options.userEmail,
+        OTP_CODE: options.otpCode,
+        OTP_VALIDITY_MINUTES: String(validityMinutes),
+      };
+
+      await this.sendTemplateEmail({
+        to: options.userEmail,
+        templateId: config.otpEmailTemplateId,
+        variables,
+        languageCode: resolvedLanguage,
+        triggeredBy: "otp-login",
+        relatedUserId: options.userId,
+      });
+
+      console.log(`OTP email sent to ${options.userEmail}`);
+    } catch (error) {
+      console.error("Failed to send OTP email:", error);
+      throw error;
     }
   }
 

@@ -23,7 +23,7 @@ const EMAIL_VARIABLES = [
     category: "user",
     example: "João Silva",
     sortOrder: 10,
-    templateTypes: "user-welcome,welcome,password-reset,magic-link",
+    templateTypes: "user-welcome,welcome,password-reset,magic-link,otp",
   },
   {
     key: "USER_EMAIL",
@@ -32,7 +32,7 @@ const EMAIL_VARIABLES = [
     category: "user",
     example: "joao.silva@example.com",
     sortOrder: 11,
-    templateTypes: "user-welcome,welcome,password-reset,magic-link",
+    templateTypes: "user-welcome,welcome,password-reset,magic-link,otp",
   },
   {
     key: "USER_PIN",
@@ -78,6 +78,24 @@ const EMAIL_VARIABLES = [
     example: "https://app.axpo.com/auth/magic/xyz",
     sortOrder: 16,
     templateTypes: "magic-link",
+  },
+  {
+    key: "OTP_CODE",
+    label: "OTP Code",
+    description: "6-digit one-time verification code for two-factor authentication",
+    category: "user",
+    example: "483921",
+    sortOrder: 17,
+    templateTypes: "otp",
+  },
+  {
+    key: "OTP_VALIDITY_MINUTES",
+    label: "OTP Validity (Minutes)",
+    description: "Number of minutes the OTP code remains valid",
+    category: "user",
+    example: "10",
+    sortOrder: 18,
+    templateTypes: "otp",
   },
 
   // ── Simulation share / expiry ──────────────────────────────────────────────
@@ -125,6 +143,17 @@ const EMAIL_VARIABLES = [
     example: "+34 600 123 456",
     sortOrder: 220,
     templateTypes: "simulation-share,expiring-soon,converted",
+  },
+
+  // ── System ─────────────────────────────────────────────────────────────────
+  {
+    key: "CURRENT_YEAR",
+    label: "Current Year",
+    description: "Automatically replaced with the current calendar year (e.g. 2026)",
+    category: "system",
+    example: "2026",
+    sortOrder: 999,
+    templateTypes: null, // available in ALL template types
   },
 ];
 

@@ -100,6 +100,13 @@ model User {
   setupTokenExpiresAt         DateTime?
   passwordResetToken          String?             @unique
   passwordResetTokenExpiresAt DateTime?
+  magicLinkToken              String?             @unique
+  magicLinkTokenExpiresAt     DateTime?
+  otpCode                     String?
+  otpCodeExpiresAt            DateTime?
+  otpSessionToken             String?             @unique
+  otpSessionTokenExpiresAt    DateTime?
+  otpSecret                   String?
   deletedAt                   DateTime?
   isDeleted                   Boolean             @default(false)
   createdAgencies             Agency[]            @relation("AgencyCreatedBy")
@@ -291,6 +298,12 @@ model SystemConfig {
   setupTokenValidityHours         Int      @default(72)
   passwordResetEmailTemplateId    String?
   passwordResetTokenValidityHours Int      @default(24)
+  magicLinkEnabled                Boolean  @default(false)
+  magicLinkEmailTemplateId        String?
+  magicLinkTokenValidityMinutes   Int      @default(15)
+  otpEnabled                      Boolean  @default(false)
+  otpEmailTemplateId              String?
+  otpCodeValidityMinutes          Int      @default(10)
   defaultPdfTemplateElectricityId String?
   defaultPdfTemplateGasId         String?
   cronExpirationEnabled           Boolean  @default(true)

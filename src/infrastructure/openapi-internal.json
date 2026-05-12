@@ -1362,6 +1362,70 @@
         }
       }
     },
+    "/api/v1/internal/auth/magic-link/request": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Request a magic link login email",
+        "description": "Sends a magic link email with a one-time token. Always returns success to prevent email enumeration.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Magic link sent (or email not found — response is the same for security)"
+          },
+          "400": {
+            "description": "Invalid email format"
+          }
+        }
+      }
+    },
+    "/api/v1/internal/auth/magic-link/verify": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Verify a magic link token and return a session",
+        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Login successful, returns JWT and user info"
+          },
+          "400": {
+            "description": "Invalid or expired token"
+          }
+        }
+      }
+    },
     "/api/v1/internal/auth/register": {
       "post": {
         "tags": [

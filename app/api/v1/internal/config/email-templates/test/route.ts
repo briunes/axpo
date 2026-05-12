@@ -62,6 +62,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     userName: "Test User",
     userEmail: parsed.recipientEmail,
     magicLink: "https://axpo.example.com/login/magic-link-token",
+    otpCode: "483921",
+    otpValidityMinutes: "10",
     expirationDate: new Date(
       Date.now() + 30 * 24 * 60 * 60 * 1000,
     ).toLocaleDateString(),

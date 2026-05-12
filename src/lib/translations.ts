@@ -63,6 +63,45 @@ export const translations = {
       success: "Password set successfully. Redirecting…",
       missingToken: "No setup token found in the link.",
     },
+    magicLink: {
+      title: "Sign in with Magic Link",
+      subtitle: "Enter your email and we'll send you a one-click login link.",
+      emailLabel: "Email",
+      emailPlaceholder: "your@email.com",
+      submitting: "Sending magic link…",
+      submit: "Send magic link",
+      requestFailed: "Failed to send magic link. Please try again.",
+      successTitle: "Login Successfull",
+      successDesc:
+        "A magic link has been sent to your email. It expires in a few minutes.",
+      successSubtitle: "You are now logged in. Redirecting…",
+      backToPassword: "Sign in with password instead",
+      verifyingTitle: "Verifying your magic link…",
+      verifyingSubtitle: "Please wait, we are logging you in.",
+      successLogin: "Logged in successfully. Redirecting…",
+      errorTitle: "Magic link failed",
+      verifyFailed: "This magic link is invalid or has already been used.",
+      missingToken: "No token found in the link.",
+      backToLogin: "Back to login",
+      sendMagicLink: "Send me a magic link",
+      orSeparator: "or",
+    },
+    otp: {
+      title: "Two-Factor Authentication",
+      subtitle: "Enter the verification code sent to your email",
+      description:
+        "A 6-digit code was sent to your email address. Enter it below to complete login.",
+      codeLabel: "Verification Code",
+      verify: "Verify Code",
+      verifying: "Verifying…",
+      verifyFailed: "Invalid or expired verification code. Please try again.",
+      backToLogin: "Back to login",
+      attemptsRemaining: "{{n}} attempt(s) remaining",
+      noAttemptsLeft: "No attempts remaining. Request a new code.",
+      resendCode: "Resend Code",
+      resendCooldown: "Resend available in {{n}}s",
+      resending: "Sending…",
+    },
     sectionDescriptions: {
       simulations:
         "Create, update, share and archive simulation records with expiration control.",
@@ -1202,6 +1241,29 @@ export const translations = {
       fieldPasswordResetTemplate: "Password Reset Email Template",
       fieldPasswordResetTemplateDesc:
         "Email template to send when a user requests a password reset (leave empty to disable)",
+      titleMagicLink: "Magic Link Login",
+      titleMagicLinkDesc:
+        "Allow users to log in via a one-time link sent to their email instead of a password",
+      fieldMagicLinkEnabled: "Enable Magic Link Login",
+      fieldMagicLinkEnabledDesc:
+        "When enabled, users can request a magic link from the login page",
+      fieldMagicLinkTemplate: "Magic Link Email Template",
+      fieldMagicLinkTemplateDesc:
+        "Email template used to send the magic login link (required when magic link is enabled)",
+      fieldMagicLinkValidity: "Magic Link Validity",
+      fieldMagicLinkValidityDesc:
+        "How long magic links remain valid after being sent",
+      titleOtp: "Two-Factor Authentication (OTP)",
+      titleOtpDesc:
+        "Require users to verify their identity with a one-time code sent to their email after entering their password",
+      fieldOtpEnabled: "Enable Two-Factor Authentication",
+      fieldOtpEnabledDesc:
+        "When enabled, users will be required to enter an email code after entering their password",
+      fieldOtpTemplate: "OTP Email Template",
+      fieldOtpTemplateDesc:
+        "Email template used to send the one-time verification code",
+      fieldOtpValidity: "OTP Code Validity",
+      fieldOtpValidityDesc: "How long OTP codes remain valid after being sent",
       titlePdfDefaults: "Default PDF Templates",
       titlePdfDefaultsDesc:
         "Configure which PDF templates are used by default when sharing simulations",
@@ -1422,6 +1484,7 @@ export const translations = {
       confirmDelete: "Are you sure you want to delete this template?",
       typeSimulationShare: "Simulation Share",
       typeMagicLink: "Magic Link Login",
+      typeOtp: "Two-Factor Authentication (OTP)",
       typeWelcome: "Welcome Email",
       typeUserWelcome: "User Welcome Email",
       typePasswordReset: "Password Reset",
@@ -1590,6 +1653,47 @@ export const translations = {
         "Este enlace de configuración ha expirado. Pide a tu administrador que lo reenvíe.",
       success: "Contraseña establecida correctamente. Redirigiendo…",
       missingToken: "No se encontró el token de configuración en el enlace.",
+    },
+    magicLink: {
+      title: "Iniciar sesión con enlace mágico",
+      subtitle:
+        "Introduce tu correo y te enviaremos un enlace de acceso de un clic.",
+      emailLabel: "Correo electrónico",
+      emailPlaceholder: "tu@correo.com",
+      submitting: "Enviando enlace mágico…",
+      submit: "Enviar enlace mágico",
+      requestFailed: "Error al enviar el enlace mágico. Inténtalo de nuevo.",
+      successTitle: "Revisa tu bandeja de entrada",
+      successDesc:
+        "Se ha enviado un enlace mágico a tu correo. Caduca en unos minutos.",
+      successSubtitle: "Has iniciado sesión correctamente. Redirigiendo…",
+      backToPassword: "Iniciar sesión con contraseña",
+      verifyingTitle: "Verificando tu enlace mágico…",
+      verifyingSubtitle: "Por favor espera, estamos iniciando tu sesión.",
+      successLogin: "Sesión iniciada correctamente. Redirigiendo…",
+      errorTitle: "El enlace mágico ha fallado",
+      verifyFailed: "Este enlace mágico no es válido o ya fue utilizado.",
+      missingToken: "No se encontró el token en el enlace.",
+      backToLogin: "Volver al inicio de sesión",
+      sendMagicLink: "Enviarme un enlace mágico",
+      orSeparator: "o",
+    },
+    otp: {
+      title: "Autenticación en Dos Pasos",
+      subtitle: "Introduce el código de verificación enviado a tu correo",
+      description:
+        "Se ha enviado un código de 6 dígitos a tu correo electrónico. Introdúcelo a continuación para completar el inicio de sesión.",
+      codeLabel: "Código de Verificación",
+      verify: "Verificar Código",
+      verifying: "Verificando…",
+      verifyFailed:
+        "Código de verificación inválido o expirado. Por favor, inténtelo de nuevo.",
+      backToLogin: "Volver al inicio de sesión",
+      attemptsRemaining: "{{n}} intento(s) restante(s)",
+      noAttemptsLeft: "Sin intentos restantes. Solicita un nuevo código.",
+      resendCode: "Reenviar Código",
+      resendCooldown: "Reenvío disponible en {{n}}s",
+      resending: "Enviando…",
     },
     sectionDescriptions: {
       simulations:
@@ -2753,6 +2857,30 @@ export const translations = {
         "Plantilla de Correo de Restablecimiento de Contraseña",
       fieldPasswordResetTemplateDesc:
         "Plantilla de correo para enviar cuando un usuario solicita restablecer su contraseña (dejar vacío para deshabilitar)",
+      titleMagicLink: "Inicio de Sesión con Enlace Mágico",
+      titleMagicLinkDesc:
+        "Permite a los usuarios iniciar sesión mediante un enlace de un solo uso enviado a su correo",
+      fieldMagicLinkEnabled: "Habilitar Inicio de Sesión con Enlace Mágico",
+      fieldMagicLinkEnabledDesc:
+        "Cuando está habilitado, los usuarios pueden solicitar un enlace mágico desde la página de inicio de sesión",
+      fieldMagicLinkTemplate: "Plantilla de Correo para Enlace Mágico",
+      fieldMagicLinkTemplateDesc:
+        "Plantilla de correo usada para enviar el enlace de acceso mágico (requerido cuando el enlace mágico está habilitado)",
+      fieldMagicLinkValidity: "Validez del Enlace Mágico",
+      fieldMagicLinkValidityDesc:
+        "Tiempo que los enlaces mágicos permanecen válidos después de ser enviados",
+      titleOtp: "Autenticación en Dos Pasos (OTP)",
+      titleOtpDesc:
+        "Requiere que los usuarios verifiquen su identidad con un código de un solo uso enviado a su correo tras introducir su contraseña",
+      fieldOtpEnabled: "Habilitar Autenticación en Dos Pasos",
+      fieldOtpEnabledDesc:
+        "Cuando está habilitado, los usuarios deberán introducir un código de correo tras introducir su contraseña",
+      fieldOtpTemplate: "Plantilla de Correo para OTP",
+      fieldOtpTemplateDesc:
+        "Plantilla de correo usada para enviar el código de verificación de un solo uso",
+      fieldOtpValidity: "Validez del Código OTP",
+      fieldOtpValidityDesc:
+        "Tiempo que los códigos OTP permanecen válidos después de ser enviados",
       titlePdfDefaults: "Plantillas PDF Predeterminadas",
       titlePdfDefaultsDesc:
         "Configura qué plantillas PDF se usan por defecto al compartir simulaciones",
@@ -2978,6 +3106,7 @@ export const translations = {
       confirmDelete: "¿Estás seguro de que quieres eliminar esta plantilla?",
       typeSimulationShare: "Compartir Simulación",
       typeMagicLink: "Inicio de Sesión Magic Link",
+      typeOtp: "Autenticación en Dos Pasos (OTP)",
       typeWelcome: "Correo de Bienvenida",
       typeUserWelcome: "Correo de Bienvenida de Usuario",
       typePasswordReset: "Restablecer Contraseña",

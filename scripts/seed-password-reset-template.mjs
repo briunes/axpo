@@ -24,7 +24,7 @@ const passwordResetTemplate = {
     <table width="100%" cellpadding="0" cellspacing="0" border="0">
       <tbody><tr>
         <td align="center">
-          <img src="https://tuenergia.axpo.com/wp-content/uploads/2025/12/Axpo_logo.png" alt="Axpo Logo" style="display:block; margin:0 auto; border:0; max-width:200px; height:auto;">
+          <img src="https://axpo-qld.vercel.app/axpo-logo.svg" alt="Axpo Logo" style="display:block; margin:0 auto; border:0; max-width:200px; height:auto;">
         </td>
       </tr>
     </tbody></table>
