@@ -60,7 +60,7 @@ interface ShareSimulationViewProps {
 }
 
 export function ShareSimulationView({ simulation, token, isTestingMode, loggedUserEmail, onSuccess, onError, onStatusChange }: ShareSimulationViewProps) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
 
     const [shareMode, setShareMode] = useState<ShareMode>("pdf");
     const [pdfTemplates, setPdfTemplates] = useState<PdfTemplate[]>([]);
@@ -139,7 +139,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 const defaultPdf = simulationPdfTemplates.find((t) => t.active);
                 const defaultEmail = simulationEmailTemplates.find((t) => t.active);
                 if (defaultPdf) {
-                    const pdfTranslation = resolveTranslation(defaultPdf.translations ?? [], detectedLanguage);
+                    const pdfTranslation = resolveTranslation(defaultPdf.translations ?? [], locale);
                     const pdfContent = pdfTranslation?.htmlContent ?? defaultPdf.htmlContent;
                     setSelectedPdfTemplate(defaultPdf.id);
                     setEditedPdfContent(pdfContent);
@@ -174,14 +174,14 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             .finally(() => {
                 setIsLoading(false);
             });
-    }, [simulation, token]);
+    }, [simulation, token, locale]);
 
     const handleTemplateChange = (templateId: string) => {
         if (shareMode === "pdf") {
             setSelectedPdfTemplate(templateId);
             const template = pdfTemplates.find((t) => t.id === templateId);
             if (template) {
-                const translation = resolveTranslation(template.translations ?? [], clientLanguage);
+                const translation = resolveTranslation(template.translations ?? [], locale);
                 setEditedPdfContent(translation?.htmlContent ?? template.htmlContent);
                 const defaults = template.editableSections
                     ? Object.fromEntries(Object.entries(template.editableSections).map(([k, v]) => [k, v.default]))
