@@ -155,7 +155,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                     }
                 }
                 if (defaultEmail) {
-                    const emailTranslation = resolveTranslation(defaultEmail.translations ?? [], detectedLanguage);
+                    const emailTranslation = resolveTranslation(defaultEmail.translations ?? [], locale);
                     setSelectedEmailTemplate(defaultEmail.id);
                     setEditedEmailContent(emailTranslation?.htmlContent ?? defaultEmail.htmlContent);
                     setEditedSubject(emailTranslation?.subject ?? defaultEmail.subject);
@@ -192,7 +192,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             setSelectedEmailTemplate(templateId);
             const template = emailTemplates.find((t) => t.id === templateId);
             if (template) {
-                const translation = resolveTranslation(template.translations ?? [], clientLanguage);
+                const translation = resolveTranslation(template.translations ?? [], locale);
                 setEditedEmailContent(translation?.htmlContent ?? template.htmlContent);
                 setEditedSubject(translation?.subject ?? template.subject);
                 const defaults = template.editableSections
