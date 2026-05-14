@@ -108,6 +108,42 @@ function priceOf(map: PriceMap, key: string): number | undefined {
   return map.get(key);
 }
 
+function getAnnualConsumption(inputs: ElectricityInputs): number | null {
+  const fromTopLevel = (inputs as ElectricityInputs & { consumoAnual?: number })
+    .consumoAnual;
+  if (typeof fromTopLevel === "number" && Number.isFinite(fromTopLevel)) {
+    return fromTopLevel;
+  }
+
+  const fromClientData = (
+    inputs as ElectricityInputs & {
+      clientData?: { consumoAnual?: number };
+    }
+  ).clientData?.consumoAnual;
+
+  return typeof fromClientData === "number" && Number.isFinite(fromClientData)
+    ? fromClientData
+    : null;
+}
+
+function isEligibleSinglePeriodProduct(
+  inputs: ElectricityInputs,
+  product: string,
+): boolean {
+  const annualConsumption = getAnnualConsumption(inputs);
+  if (annualConsumption === null) return true;
+
+  if (product === "1P_PLUS") {
+    return annualConsumption < 50000;
+  }
+
+  if (product === "1P_PLUS_XL") {
+    return annualConsumption > 50000 && annualConsumption < 100000;
+  }
+
+  return true;
+}
+
 // ─── Electricity – Fixed ──────────────────────────────────────────────────────
 
 function calcElecFijo(
@@ -116,6 +152,10 @@ function calcElecFijo(
   tier: string,
   map: PriceMap,
 ): ProductResult | null {
+  if (!isEligibleSinglePeriodProduct(inputs, product)) {
+    return null;
+  }
+
   const {
     tarifaAcceso,
     consumo,
@@ -341,15 +381,13 @@ function calcElecIndex(
  */
 function calcPersonalizadaIndex(
   inputs: ElectricityInputs,
+  map: PriceMap,
 ): ProductResult | null {
-  const pi = inputs.personalizadaIndex;
-  if (!pi) return null;
-
-  // Skip entirely if no energy margin has been provided
-  const hasEnergyMargin = Object.values(pi.margenEnergia).some(
-    (v) => v && v > 0,
-  );
-  if (!hasEnergyMargin) return null;
+  // Use DB-stored prices from the PERSONALIZADA INDEX Excel sheet.
+  // These are full all-in monthly energy prices (same structure as DINAMICA).
+  // The product has no tier variant — keys use an empty-string tier.
+  const product = "PERSONALIZADA_INDEX";
+  const tier = "";
 
   const {
     tarifaAcceso,
@@ -359,9 +397,9 @@ function calcPersonalizadaIndex(
     periodo,
     facturaActual,
     extras,
-    omieEstimado,
   } = inputs;
   const dias = periodo.dias;
+  const billingMonth = periodo.fechaInicio.slice(0, 7); // YYYY-MM
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
@@ -369,28 +407,28 @@ function calcPersonalizadaIndex(
     string,
     number | undefined
   >;
-  const omieMap = (omieEstimado ?? {}) as Record<string, number | undefined>;
-  const margenEnergiaMap = (pi.margenEnergia ?? {}) as Record<
-    string,
-    number | undefined
-  >;
-  const margenPotenciaMap = (pi.margenPotencia ?? {}) as Record<
-    string,
-    number | undefined
-  >;
 
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
-    const margenMWh = margenEnergiaMap[p] ?? 0;
-    const margenKwh = margenMWh / 1000; // convert €/MWh → €/kWh
-    const omieP = pv(omieMap as Record<string, number | undefined>, p);
-    terminoEnergia += (omieP + margenKwh) * pv(consumoMap, p);
+    // Try monthly price first, fall back to 12-month average
+    const precio =
+      priceOf(
+        map,
+        `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:MARGEN:${billingMonth}`,
+      ) ??
+      priceOf(map, `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:MARGEN`);
+    if (precio === undefined) return null; // product not in DB → skip
+    terminoEnergia += precio * pv(consumoMap, p);
   }
 
   let terminoPotencia = 0;
   for (const p of powerPeriods) {
-    const margenPot = margenPotenciaMap[p] ?? 0; // €/kW/year
-    terminoPotencia += margenPot * pv(potenciaMap, p) * (dias / 365);
+    const precioPot = priceOf(
+      map,
+      `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
+    );
+    if (precioPot === undefined) return null;
+    terminoPotencia += precioPot * pv(potenciaMap, p) * (dias / 365);
   }
 
   const terminoExceso = excesoPotencia ?? 0;
@@ -445,12 +483,13 @@ function calcPersonalizadaIndex(
  */
 function calcPersonalizadaOmieB(
   inputs: ElectricityInputs,
+  map: PriceMap,
 ): ProductResult | null {
-  const pb = inputs.personalizadaOmieB;
-  if (!pb) return null;
-
-  const hasBTerm = Object.values(pb.terminoB).some((v) => v && v > 0);
-  if (!hasBTerm) return null;
+  // Use DB-stored prices from the "PERSONALIZADA OMIE + B" Excel sheet.
+  // These are full all-in monthly energy prices (same structure as DINAMICA).
+  // The product has no tier variant — keys use an empty-string tier.
+  const product = "PERSONALIZADA_OMIE_B";
+  const tier = "";
 
   const {
     tarifaAcceso,
@@ -460,9 +499,9 @@ function calcPersonalizadaOmieB(
     periodo,
     facturaActual,
     extras,
-    omieEstimado,
   } = inputs;
   const dias = periodo.dias;
+  const billingMonth = periodo.fechaInicio.slice(0, 7); // YYYY-MM
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
@@ -470,25 +509,28 @@ function calcPersonalizadaOmieB(
     string,
     number | undefined
   >;
-  const omieMap = (omieEstimado ?? {}) as Record<string, number | undefined>;
-  const terminoBMap = (pb.terminoB ?? {}) as Record<string, number | undefined>;
-  const margenPotenciaMap = (pb.margenPotencia ?? {}) as Record<
-    string,
-    number | undefined
-  >;
 
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
-    const bMWh = terminoBMap[p] ?? 0;
-    const bKwh = bMWh / 1000; // convert €/MWh → €/kWh
-    const omieP = pv(omieMap as Record<string, number | undefined>, p);
-    terminoEnergia += (omieP + bKwh) * pv(consumoMap, p);
+    // Try monthly price first, fall back to 12-month average
+    const precio =
+      priceOf(
+        map,
+        `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:MARGEN:${billingMonth}`,
+      ) ??
+      priceOf(map, `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:MARGEN`);
+    if (precio === undefined) return null; // product not in DB → skip
+    terminoEnergia += precio * pv(consumoMap, p);
   }
 
   let terminoPotencia = 0;
   for (const p of powerPeriods) {
-    const margenPot = margenPotenciaMap[p] ?? 0; // €/kW/year
-    terminoPotencia += margenPot * pv(potenciaMap, p) * (dias / 365);
+    const precioPot = priceOf(
+      map,
+      `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
+    );
+    if (precioPot === undefined) return null;
+    terminoPotencia += precioPot * pv(potenciaMap, p) * (dias / 365);
   }
 
   const terminoExceso = excesoPotencia ?? 0;
@@ -733,17 +775,18 @@ export class CalculationService {
       }
     }
 
-    // Personalizada products — only included when the user has filled the relevant fields
-    const rPIdx = calcPersonalizadaIndex(inputs);
+    // Personalizada products — prices come from their dedicated Excel sheets (stored in
+    // the DB like DINAMICA products). They are included whenever prices exist in the DB.
+    const rPIdx = calcPersonalizadaIndex(inputs, map);
     if (rPIdx) results.push(rPIdx);
 
-    const rPOmieB = calcPersonalizadaOmieB(inputs);
+    const rPOmieB = calcPersonalizadaOmieB(inputs, map);
     if (rPOmieB) results.push(rPOmieB);
 
     // Products are already in Excel order due to iteration sequence:
     // FIXED products iterated first (ESTABLE→1P_PLUS→etc), each with tiers N1→N2→N3
     // INDEXED products iterated second (DINAMICA→DINAMICA_PLUS→etc), each with tiers N1→N2→N3
-    // Personalizada products appear last (only when user data is provided)
+    // Personalizada products appear last
     return results;
   }
 

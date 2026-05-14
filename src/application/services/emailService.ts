@@ -186,6 +186,12 @@ export class EmailService {
         `${tag} [3/4] sendMail returned — messageId=${info.messageId} response="${info.response}" accepted=${JSON.stringify(info.accepted)} rejected=${JSON.stringify(info.rejected)} duration=${durationMs}ms`,
       );
 
+      if (info.rejected && info.rejected.length > 0) {
+        throw new Error(
+          `Email rejected by SMTP server for recipient(s): ${info.rejected.join(", ")}`,
+        );
+      }
+
       console.log(`${tag} [4/4] Writing success log to database…`);
       await prisma.emailLog.create({
         data: {

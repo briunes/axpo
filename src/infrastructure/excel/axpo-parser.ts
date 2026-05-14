@@ -600,6 +600,7 @@ function parseGasIndex(rows: SheetData): BaseValueItem[] {
 
 // Sheet name → [product slug, tier]
 // Sheet names are trimmed before lookup (some have trailing spaces in the workbook).
+// Personalizada products use an empty-string tier (they have no N1/N2/N3 tiers).
 const DINAMICA_SHEET_MAP: Record<string, [string, string]> = {
   "DINAMICA N1": ["DINAMICA", "N1"],
   "DINAMICA N2": ["DINAMICA", "N2"],
@@ -616,6 +617,9 @@ const DINAMICA_SHEET_MAP: Record<string, [string, string]> = {
   "DINAMICA CONTROL TECHO N1": ["DINAMICA_CONTROL_TECHO", "N1"],
   "DINAMICA CONTROL TECHO N2": ["DINAMICA_CONTROL_TECHO", "N2"],
   "DINAMICA CONTROL TECHO N3": ["DINAMICA_CONTROL_TECHO", "N3"],
+  // Personalizada products — same sheet layout as DINAMICA, no tier variant
+  "PERSONALIZADA INDEX": ["PERSONALIZADA_INDEX", ""],
+  "PERSONALIZADA OMIE + B": ["PERSONALIZADA_OMIE_B", ""],
 };
 
 // Per-tariff column positions (0-indexed) for the Precio TE average values.
@@ -684,11 +688,19 @@ function parseSpanishMonthYear(s: string): string | null {
  *      which is what the Excel simulator does)
  *   - PROMEDIO key:    ELEC:INDEX:<product>:<tier>:<tariff>:<P>:MARGEN
  *     (used as a fallback when no month-specific key is available)
+ *
+ * @param potenciaByTariff
+ *   When false (default — DINAMICA behaviour): the 6.1TD power row is emitted for
+ *   BOTH 3.0TD and 6.1TD, because the Excel VLOOKUP for DINAMICA products always
+ *   references the 6.1TD row regardless of selected tariff.
+ *   When true (PERSONALIZADA behaviour): each tariff row is emitted only for its
+ *   own tariff, because the PERSONALIZADA formulas use tariff-matched lookups.
  */
 function parseDinamicaSheet(
   sheet: XLSX.WorkSheet,
   product: string,
   tier: string,
+  potenciaByTariff = false,
 ): BaseValueItem[] {
   const items: BaseValueItem[] = [];
   const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
@@ -747,6 +759,85 @@ function parseDinamicaSheet(
     if (isPromedio) break;
   }
 
+  // ── POTENCIA section ────────────────────────────────────────────────────────
+  // Each DINAMICA product sheet contains a static POTENCIA table below the
+  // Precio TE section.  Layout (col B = c=1 is the label column):
+  //
+  //   Row "POTENCIA"  → section header
+  //   Row "2.0TD"     → daily rates (€/kW/día) for P1…P6 at cols C–H (c=2–7)
+  //   Row "3.0TD"     → daily rates for P1…P6
+  //   Row "6.1TD"     → daily rates for P1…P6
+  //
+  // The Excel simulator's VLOOKUP (see hidden "." sheet) always references the
+  // "6.1TD" power row for BOTH 3.0TD and 6.1TD scenarios (formula e.g.
+  // ='DINAMICA CONTROL PLUS N3'!C67 for every month regardless of tariff).
+  // Only 2.0TD uses its own dedicated row.
+  //
+  // We replicate that behaviour here: the 6.1TD row → emitted under both
+  // "3.0TD" and "6.1TD" keys; the "2.0TD" row → "2.0TD" only.
+  // These items are added AFTER parseIndex() in allItems so the last-write-wins
+  // deduplication in parseAxpoExcel() ensures they override the stale values
+  // that the static BASE DE DATOS INDEX sheet carries for these products.
+
+  let inPotenciaSection = false;
+
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    const labelCell = sheet[XLSX.utils.encode_cell({ r: R, c: 1 })]; // col B
+    const labelRaw = labelCell?.v != null ? String(labelCell.v).trim() : "";
+    const labelUp = labelRaw.toUpperCase();
+
+    if (!inPotenciaSection) {
+      if (labelUp === "POTENCIA") {
+        inPotenciaSection = true;
+      }
+      continue;
+    }
+
+    const isTariff2 = labelUp === "2.0TD";
+    const isTariff3 = labelUp === "3.0TD";
+    const isTariff6 = labelUp === "6.1TD";
+
+    if (!isTariff2 && !isTariff3 && !isTariff6) {
+      if (labelRaw !== "") break; // reached next section, stop
+      continue;
+    }
+
+    // Determine which tariff keys to emit for this row:
+    //   DINAMICA mode (potenciaByTariff=false):
+    //     Excel VLOOKUP always uses the 6.1TD row for both 3.0TD and 6.1TD
+    //     → skip the 3.0TD row, emit 6.1TD row under both tariffs.
+    //   PERSONALIZADA mode (potenciaByTariff=true):
+    //     Excel formulas match the tariff explicitly
+    //     → each row emits only for its own tariff.
+    let tariffsToEmit: string[];
+    if (potenciaByTariff) {
+      // Each row emits for its own tariff only
+      tariffsToEmit = isTariff2 ? ["2.0TD"] : isTariff3 ? ["3.0TD"] : ["6.1TD"];
+    } else {
+      // DINAMICA behaviour: skip 3.0TD row, use 6.1TD row for both
+      if (isTariff3) continue;
+      tariffsToEmit = isTariff2 ? ["2.0TD"] : ["3.0TD", "6.1TD"];
+    }
+    const periods = ["P1", "P2", "P3", "P4", "P5", "P6"];
+
+    for (let i = 0; i < periods.length; i++) {
+      const cell = sheet[XLSX.utils.encode_cell({ r: R, c: 2 + i })]; // cols C–H
+      if (!cell || cell.v === undefined || cell.v === null) continue;
+      const dailyRate = safeFloat(cell.v);
+      if (dailyRate === null || dailyRate <= 0) continue;
+      // Convert from €/kW/día to €/kW/año
+      const yearlyRate = Math.round(dailyRate * 365 * 1e10) / 1e10;
+
+      for (const tariff of tariffsToEmit) {
+        items.push({
+          key: `ELEC:INDEX:${product}:${tier}:${tariff}:${periods[i]}:POTENCIA`,
+          valueNumeric: yearlyRate,
+          unit: "€/kW/año",
+        });
+      }
+    }
+  }
+
   return items;
 }
 
@@ -789,7 +880,15 @@ export function parseAxpoExcel(
     const actualSheetName = trimmedSheetNames.get(sheetName);
     if (actualSheetName) {
       const sheet = workbook.Sheets[actualSheetName];
-      const dinamicaItems = parseDinamicaSheet(sheet, product, tier);
+      // Personalizada sheets use tariff-specific POTENCIA rows (potenciaByTariff=true).
+      // DINAMICA sheets use the 6.1TD row for both 3.0TD and 6.1TD (default behaviour).
+      const isPersonalizada = product.startsWith("PERSONALIZADA");
+      const dinamicaItems = parseDinamicaSheet(
+        sheet,
+        product,
+        tier,
+        isPersonalizada,
+      );
       allItems.push(...dinamicaItems);
     }
   }

@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+
+const generatePdfSchema = z.object({
+  htmlContent: z.string().min(1, "htmlContent is required"),
+  watermark: z.string().optional(),
+});
 
 /**
  * @swagger
@@ -45,25 +52,18 @@ import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
  *       500:
  *         description: Server error
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const POST = withErrorHandler(
+  async (
+    request: NextRequest,
+    context?: { params?: Record<string, string> },
+  ) => {
     // Verify authentication
     const auth = await requireAuth(request);
     await assertPermission(auth, "section.simulations");
 
-    const { id } = await params;
-    const body = await request.json();
-    const { htmlContent, watermark } = body;
-
-    if (!htmlContent) {
-      return NextResponse.json(
-        { error: "htmlContent is required" },
-        { status: 400 },
-      );
-    }
+    const id = context?.params?.id ?? "";
+    const rawBody = await request.json();
+    const { htmlContent, watermark } = generatePdfSchema.parse(rawBody);
 
     // Inject watermark style if requested
     const watermarkStyle = watermark
@@ -154,14 +154,5 @@ export async function POST(
         "Content-Disposition": `attachment; filename="simulation-${id}.pdf"`,
       },
     });
-  } catch (error) {
-    console.error("PDF generation error:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to generate PDF",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

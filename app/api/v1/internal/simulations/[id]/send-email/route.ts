@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
 import { EmailService } from "@/application/services/emailService";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
+
+const sendEmailSchema = z.object({
+  to: z.string().email("Invalid recipient email address"),
+  subject: z.string().min(1, "subject is required"),
+  htmlContent: z.string().min(1, "htmlContent is required"),
+  pdfHtmlContent: z.string().optional(),
+});
 
 /**
  * @swagger
@@ -57,7 +65,7 @@ export const POST = withErrorHandler(
     const params = context?.params || {};
     const id = params?.id || "";
 
-    let body;
+    let rawBody: unknown;
     try {
       const text = await request.text();
       if (!text || text.trim() === "") {
@@ -66,22 +74,16 @@ export const POST = withErrorHandler(
           { status: 400 },
         );
       }
-      body = JSON.parse(text);
-    } catch (error) {
+      rawBody = JSON.parse(text);
+    } catch {
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
         { status: 400 },
       );
     }
 
-    const { to, subject, htmlContent, pdfHtmlContent } = body;
-
-    if (!to || !subject || !htmlContent) {
-      return NextResponse.json(
-        { error: "to, subject, and htmlContent are required" },
-        { status: 400 },
-      );
-    }
+    const { to, subject, htmlContent, pdfHtmlContent } =
+      sendEmailSchema.parse(rawBody);
 
     let attachments = undefined;
 
@@ -154,24 +156,16 @@ export const POST = withErrorHandler(
       }
     }
 
-    try {
-      await EmailService.sendEmail({
-        to,
-        subject,
-        html: htmlContent,
-        attachments,
-        triggeredBy: "simulation-share",
-        triggeredByUserId: auth.userId,
-        relatedSimulationId: id,
-      });
+    await EmailService.sendEmail({
+      to,
+      subject,
+      html: htmlContent,
+      attachments,
+      triggeredBy: "simulation-share",
+      triggeredByUserId: auth.userId,
+      relatedSimulationId: id || undefined,
+    });
 
-      return NextResponse.json({ success: true });
-    } catch (err) {
-      console.error("Failed to send simulation email:", err);
-      return NextResponse.json(
-        { error: err instanceof Error ? err.message : "Failed to send email" },
-        { status: 500 },
-      );
-    }
+    return NextResponse.json({ success: true });
   },
 );

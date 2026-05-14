@@ -328,7 +328,8 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to generate PDF');
+                const errMsg = typeof errorData.error === "string" ? errorData.error : (errorData.error?.message || 'Failed to generate PDF');
+                throw new Error(errMsg);
             }
 
             const blob = await response.blob();
@@ -399,7 +400,8 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || "Failed to send email");
+                const errMsg = typeof errorData.error === "string" ? errorData.error : (errorData.error?.message || "Failed to send email");
+                throw new Error(errMsg);
             }
 
             onSuccess?.(t("shareSimulation", "emailSent") || "Email sent successfully");

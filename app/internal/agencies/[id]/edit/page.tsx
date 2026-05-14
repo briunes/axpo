@@ -10,6 +10,10 @@ import { AddressForm, CrudFormContainer, CrudPageLayout, LoadingState, useAlerts
 import { FormInput, DataTable, StatusBadge } from "../../../components/ui";
 import { AgencyTariffConfig } from "../../../components/ui/AgencyTariffConfig";
 
+interface ValidationErrors {
+    name?: string;
+}
+
 export default function EditAgencyPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
@@ -22,6 +26,7 @@ export default function EditAgencyPage({ params }: { params: Promise<{ id: strin
     const [address, setAddress] = useState<AddressData>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
     const [users, setUsers] = useState<UserItem[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
@@ -53,13 +58,29 @@ export default function EditAgencyPage({ params }: { params: Promise<{ id: strin
             });
     }, [session, id]);
 
+    const clearError = (field: keyof ValidationErrors) => {
+        if (validationErrors[field]) {
+            setValidationErrors((prev) => {
+                const next = { ...prev };
+                delete next[field];
+                return next;
+            });
+        }
+    };
+
+    const validateForm = (): boolean => {
+        const errors: ValidationErrors = {};
+        if (!name.trim()) {
+            errors.name = t("agencyFormPage", "validNameRequired");
+        }
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!session || !agency) return;
-        if (!name.trim()) {
-            setErrorMessage(t("agencyFormPage", "nameRequired"));
-            return;
-        }
+        if (!validateForm()) return;
         setIsSubmitting(true);
         setErrorMessage(null);
         try {
@@ -157,10 +178,17 @@ export default function EditAgencyPage({ params }: { params: Promise<{ id: strin
                             label={t("agencyFormPage", "nameLabel")}
                             type="text"
                             value={name}
-                            onChange={(e) => setName((e.target as HTMLInputElement).value)}
+                            onChange={(e) => {
+                                setName((e.target as HTMLInputElement).value);
+                                clearError("name");
+                            }}
                             autoFocus
+                            required
+                            disabled={isSubmitting}
+                            error={!!validationErrors.name}
+                            helperText={validationErrors.name}
                         />
-                        <AddressForm value={address} onChange={setAddress} />
+                        <AddressForm value={address} onChange={setAddress} disabled={isSubmitting} />
                     </Stack>
                 </CrudFormContainer>
             )}
