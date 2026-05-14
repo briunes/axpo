@@ -1015,7 +1015,7 @@ export const translations = {
       fieldVat: "VAT (%)",
       fieldVatHint: "Tax rate (usually 21%)",
       fieldElecTax: "Electricity tax (%)",
-      fieldElecTaxHint: "Electricity tax (5.11%)",
+      fieldElecTaxHint: "Electricity tax {tax}",
       fieldInvoiceTotal: "Invoice total (€)",
       helpInvoiceTotal:
         "The total amount on your current bill including all taxes",
@@ -1382,6 +1382,8 @@ export const translations = {
       fieldCurrentPrices: "Current supplier unit prices",
       fieldPricePower: "Power",
       fieldPriceEnergy: "Energy",
+      ocrDisclaimer:
+        "OCR may contain errors. Please validate the filled-in data before continuing.",
     },
     pdfTemplatesModule: {
       loading: "Loading templates...",
@@ -3012,6 +3014,8 @@ export const translations = {
       fieldCurrentPrices: "Precios unitarios del comercializador actual",
       fieldPricePower: "Potencia",
       fieldPriceEnergy: "Energía",
+      ocrDisclaimer:
+        "El OCR puede contener errores. Por favor, valida los datos rellenados antes de continuar.",
     },
     pdfTemplatesModule: {
       loading: "Cargando plantillas...",

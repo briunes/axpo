@@ -7,7 +7,7 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
-import { Button } from "@mui/material";
+import { Button, LinearProgress } from "@mui/material";
 
 export interface ExtractedInvoiceData {
     // Client/Holder Information
@@ -76,15 +76,18 @@ export interface ExtractedInvoiceData {
 interface InvoiceExtractorProps {
     onDataExtracted: (data: ExtractedInvoiceData, file?: File) => void;
     onError?: (error: string) => void;
+    /** Called right before a new extraction starts — use to clear previous extracted data */
+    onBeforeExtract?: () => void;
 }
 
-export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorProps) {
+export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract }: InvoiceExtractorProps) {
     const { t } = useI18n();
     const [files, setFiles] = useState<File[]>([]);
     const [isExtracting, setIsExtracting] = useState(false);
     const [extractionStatus, setExtractionStatus] = useState<"idle" | "success" | "error">("idle");
     const [statusMessage, setStatusMessage] = useState("");
     const [isDragging, setIsDragging] = useState(false);
+    const [progress, setProgress] = useState(0);
 
     const isPdf = (f: File) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
     const currentType: "pdf" | "image" | null = files.length === 0 ? null : isPdf(files[0]) ? "pdf" : "image";
@@ -148,9 +151,19 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
     const handleExtract = async () => {
         if (files.length === 0) return;
 
+        onBeforeExtract?.();
         setIsExtracting(true);
         setExtractionStatus("idle");
         setStatusMessage("");
+        setProgress(0);
+
+        // Animate progress bar: ramp quickly to ~85%, then stall until done
+        let rafId: ReturnType<typeof setInterval>;
+        let current = 0;
+        rafId = setInterval(() => {
+            current += current < 70 ? 3 : current < 85 ? 0.5 : 0;
+            setProgress(Math.min(current, 85));
+        }, 120);
 
         try {
             const formData = new FormData();
@@ -194,7 +207,13 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
             setStatusMessage(errorMsg);
             if (onError) onError(errorMsg);
         } finally {
-            setIsExtracting(false);
+            clearInterval(rafId);
+            setProgress(100);
+            // Small delay so the bar flashes full before hiding
+            setTimeout(() => {
+                setIsExtracting(false);
+                setProgress(0);
+            }, 400);
         }
     };
 
@@ -298,7 +317,21 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
                     </div>
                 )}
 
-                {extractionStatus !== "idle" && (
+                {isExtracting && (
+                    <div style={{ marginTop: 16 }}>
+                        <LinearProgress
+                            variant="determinate"
+                            value={progress}
+                            color="primary"
+                            sx={{ borderRadius: 999, height: 6, mb: 1 }}
+                        />
+                        <span style={{ fontSize: 13, color: "var(--scheme-neutral-400, #9ca3af)" }}>
+                            {t("invoiceExtractor", "extracting")}
+                        </span>
+                    </div>
+                )}
+
+                {extractionStatus !== "idle" && !isExtracting && (
                     <div className={`extraction-status status-${extractionStatus}`}>
                         {extractionStatus === "success" ? (
                             <CheckCircleIcon sx={{ fontSize: 24 }} />
@@ -306,6 +339,13 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
                             <ErrorIcon sx={{ fontSize: 24 }} />
                         )}
                         <span>{statusMessage}</span>
+                    </div>
+                )}
+
+                {extractionStatus === "success" && !isExtracting && (
+                    <div className="ocr-disclaimer">
+                        <span className="ocr-disclaimer-icon">⚠️</span>
+                        <span>{t("invoiceExtractor", "ocrDisclaimer") ?? "O OCR pode conter erros. Por favor, valide os dados preenchidos antes de continuar."}</span>
                     </div>
                 )}
             </div>
@@ -484,6 +524,31 @@ export function InvoiceExtractor({ onDataExtracted, onError }: InvoiceExtractorP
                     background: #fef2f2;
                     color: #991b1b;
                     border: 1px solid #ef4444;
+                }
+
+                .ocr-disclaimer {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 8px;
+                    padding: 10px 14px;
+                    border-radius: 8px;
+                    margin-top: 10px;
+                    font-size: 13px;
+                    background: #fffbeb;
+                    color: #78350f;
+                    border: 1px solid #f59e0b;
+                }
+
+                [data-theme="dark"] .ocr-disclaimer {
+                    background: #1c1507;
+                    color: #fcd34d;
+                    border: 1px solid #3d2a05;
+                }
+
+                .ocr-disclaimer-icon {
+                    flex-shrink: 0;
+                    font-size: 15px;
+                    line-height: 1.3;
                 }
 
                 .spinner {

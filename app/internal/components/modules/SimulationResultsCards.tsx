@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import type { SimulationResults, ProductResult } from "@/domain/types";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { FormSelect } from "../ui/FormSelect";
@@ -60,6 +60,9 @@ const uiColors = {
     textSoft: "var(--scheme-neutral-600)",
 };
 
+type SortCol = "productLabel" | "totalFactura" | "ahorro" | "pctAhorro" | "ahorroAnual";
+type SortDir = "asc" | "desc";
+
 function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, commodity, bestProductKey }: {
     products: ProductResult[];
     facturaActual?: number;
@@ -69,6 +72,57 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
     bestProductKey?: string;
 }) {
     const { t } = useI18n();
+    const [sortCol, setSortCol] = useState<SortCol>("ahorro");
+    const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+    const handleSort = (col: SortCol) => {
+        if (sortCol === col) {
+            setSortDir(d => d === "asc" ? "desc" : "asc");
+        } else {
+            setSortCol(col);
+            setSortDir(col === "productLabel" ? "asc" : "desc");
+        }
+    };
+
+    const sortedProducts = [...products].sort((a, b) => {
+        let cmp = 0;
+        if (sortCol === "productLabel") {
+            cmp = a.productLabel.localeCompare(b.productLabel);
+        } else {
+            cmp = (a[sortCol] as number) - (b[sortCol] as number);
+        }
+        return sortDir === "asc" ? cmp : -cmp;
+    });
+
+    const SortIndicator = ({ col, align = "right" }: { col: SortCol; align?: "left" | "right" | "center" }) => (
+        <span style={{
+            display: "inline-flex",
+            flexDirection: "column",
+            marginLeft: align === "left" ? 4 : 0,
+            marginRight: align === "right" ? 0 : 0,
+            verticalAlign: "middle",
+            gap: 1,
+            opacity: sortCol === col ? 1 : 0.3,
+        }}>
+            <span style={{ fontSize: 8, lineHeight: 1, color: sortCol === col && sortDir === "asc" ? uiColors.text : uiColors.textMuted }}>▲</span>
+            <span style={{ fontSize: 8, lineHeight: 1, color: sortCol === col && sortDir === "desc" ? uiColors.text : uiColors.textMuted }}>▼</span>
+        </span>
+    );
+
+    const thSortStyle = (col: SortCol, align: "left" | "right" | "center" = "right"): React.CSSProperties => ({
+        padding: "14px 16px",
+        textAlign: align,
+        fontSize: 11,
+        fontWeight: 700,
+        color: sortCol === col ? uiColors.text : uiColors.textMuted,
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+        borderBottom: `2px solid ${uiColors.border}`,
+        cursor: "pointer",
+        userSelect: "none",
+        whiteSpace: "nowrap",
+    });
+
     return (
         <div style={{
             background: uiColors.surface,
@@ -95,70 +149,30 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                 {t("simulationOffersCards", "colSelect")}
                             </th>
                         )}
-                        <th style={{
-                            padding: "14px 16px",
-                            textAlign: "left",
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: uiColors.textMuted,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            borderBottom: `2px solid ${uiColors.border}`,
-                        }}>
+                        <th style={thSortStyle("productLabel", "left")} onClick={() => handleSort("productLabel")}>
                             {t("simulationOffersCards", "colProduct")}
+                            <SortIndicator col="productLabel" align="left" />
                         </th>
-                        <th style={{
-                            padding: "14px 16px",
-                            textAlign: "right",
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: uiColors.textMuted,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            borderBottom: `2px solid ${uiColors.border}`,
-                        }}>
+                        <th style={thSortStyle("totalFactura", "right")} onClick={() => handleSort("totalFactura")}>
                             {t("simulationOffersCards", "colTotalInvoice")}
+                            {" "}<SortIndicator col="totalFactura" />
                         </th>
-                        <th style={{
-                            padding: "14px 16px",
-                            textAlign: "right",
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: uiColors.textMuted,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            borderBottom: `2px solid ${uiColors.border}`,
-                        }}>
+                        <th style={thSortStyle("ahorro", "right")} onClick={() => handleSort("ahorro")}>
                             {t("simulationOffersCards", "colMonthlySavings")}
+                            {" "}<SortIndicator col="ahorro" />
                         </th>
-                        <th style={{
-                            padding: "14px 16px",
-                            textAlign: "center",
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: uiColors.textMuted,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            borderBottom: `2px solid ${uiColors.border}`,
-                        }}>
+                        <th style={thSortStyle("pctAhorro", "center")} onClick={() => handleSort("pctAhorro")}>
                             {t("simulationOffersCards", "colPctDifference")}
+                            {" "}<SortIndicator col="pctAhorro" align="center" />
                         </th>
-                        <th style={{
-                            padding: "14px 16px",
-                            textAlign: "right",
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: uiColors.textMuted,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            borderBottom: `2px solid ${uiColors.border}`,
-                        }}>
+                        <th style={thSortStyle("ahorroAnual", "right")} onClick={() => handleSort("ahorroAnual")}>
                             {t("simulationOffersCards", "colAnnualSavings")}
+                            {" "}<SortIndicator col="ahorroAnual" />
                         </th>
                     </tr>
                 </thead>
                 <tbody>
-                    {products.map((product, idx) => {
+                    {sortedProducts.map((product, idx) => {
                         const isTop = product.productKey === bestProductKey && product.ahorro > 0;
                         const isSelected = selectedOffer?.productKey === product.productKey && selectedOffer?.commodity === commodity;
                         const savingsColor = product.ahorro > 0 ? "#10b981" : product.ahorro < 0 ? "#ef4444" : "#6b7280";

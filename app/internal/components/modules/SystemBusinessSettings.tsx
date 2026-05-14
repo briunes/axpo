@@ -14,7 +14,7 @@ export interface SystemBusinessSettingsProps {
     onNotify: (message: string, tone: "success" | "error") => void;
 }
 
-type BusinessTab = "simulation" | "clients" | "calculation" | "pdf-defaults" | "cron";
+type BusinessTab = "general" | "simulation" | "clients" | "calculation" | "pdf-defaults" | "cron";
 
 interface BusinessConfig {
     simulationExpirationDays: number;
@@ -27,6 +27,7 @@ interface BusinessConfig {
     hydrocarbonTaxRateOptions: number[];
     defaultPdfTemplateGasId: string | null;
     defaultPdfTemplateElectricityId: string | null;
+    appVersion: string;
 }
 
 const DEFAULT_CONFIG: BusinessConfig = {
@@ -40,17 +41,19 @@ const DEFAULT_CONFIG: BusinessConfig = {
     hydrocarbonTaxRateOptions: [0.00234],
     defaultPdfTemplateGasId: null,
     defaultPdfTemplateElectricityId: null,
+    appVersion: "1.0.0",
 };
 
 export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSettingsProps) {
     const { t } = useI18n();
-    const [activeTab, setActiveTab] = useState<BusinessTab>("simulation");
+    const [activeTab, setActiveTab] = useState<BusinessTab>("general");
     const [config, setConfig] = useState<BusinessConfig>(DEFAULT_CONFIG);
     const [isDirty, setIsDirty] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [pdfTemplates, setPdfTemplates] = useState<any[]>([]);
 
     const BUSINESS_TABS: Record<BusinessTab, string> = {
+        general: "General",
         simulation: t("systemSettings", "tabSimulation"),
         clients: t("systemSettings", "tabClients"),
         calculation: t("systemSettings", "tabCalculation"),
@@ -93,6 +96,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                 hydrocarbonTaxRateOptions: (data as any).hydrocarbonTaxRateOptions ?? [hydroVal],
                 defaultPdfTemplateGasId: (data as any).defaultPdfTemplateGasId || null,
                 defaultPdfTemplateElectricityId: (data as any).defaultPdfTemplateElectricityId || null,
+                appVersion: (data as any).appVersion ?? "1.0.0",
             });
         } catch (error) {
             console.error("Failed to load config:", error);
@@ -119,6 +123,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                 hydrocarbonTaxRateOptions: config.hydrocarbonTaxRateOptions,
                 defaultPdfTemplateGasId: config.defaultPdfTemplateGasId ?? undefined,
                 defaultPdfTemplateElectricityId: config.defaultPdfTemplateElectricityId ?? undefined,
+                appVersion: config.appVersion,
             });
             onNotify(t("systemSettings", "savedSuccess"), "success");
             setIsDirty(false);
@@ -310,6 +315,21 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                     </Box>
 
                     <div className="system-settings-content">
+                        {activeTab === "general" && (
+                            <div className="settings-panel">
+                                <h3 className="settings-panel-title">General</h3>
+
+                                <Box sx={{ mb: 3 }}>
+                                    <FormInput
+                                        label="App Version"
+                                        helperText="Bump this value after each deployment to force all clients to clear their cache and reload the latest version."
+                                        value={config.appVersion}
+                                        onChange={(e) => handleChange("appVersion", e.target.value)}
+                                    />
+                                </Box>
+                            </div>
+                        )}
+
                         {activeTab === "simulation" && (
                             <div className="settings-panel">
                                 <h3 className="settings-panel-title">{t("systemSettings", "titleSimulation")}</h3>

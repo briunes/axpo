@@ -247,11 +247,74 @@ Return ONLY a valid JSON object with the extracted data.`;
  */
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
+  const requestStartTime = Date.now();
+
+  // Helper: persist an OCR log entry (fire-and-forget, never throws)
+  const saveOcrLog = async (data: {
+    status: string;
+    durationMs?: number;
+    provider?: string;
+    model?: string;
+    baseUrl?: string;
+    fileName?: string;
+    fileType?: string;
+    fileSizeBytes?: number;
+    pageCount?: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+    extractedFields?: any;
+    fieldsExtracted?: number;
+    errorMessage?: string;
+    errorType?: string;
+    httpStatusCode?: number;
+    rawResponseSnippet?: string;
+    metadata?: any;
+  }) => {
+    try {
+      await prisma.ocrLog.create({
+        data: {
+          userId: auth.userId,
+          userEmail: auth.email,
+          status: data.status,
+          durationMs: data.durationMs,
+          provider: data.provider ?? "unknown",
+          model: data.model ?? "unknown",
+          baseUrl: data.baseUrl,
+          fileName: data.fileName,
+          fileType: data.fileType,
+          fileSizeBytes: data.fileSizeBytes,
+          pageCount: data.pageCount,
+          promptTokens: data.promptTokens,
+          completionTokens: data.completionTokens,
+          totalTokens: data.totalTokens,
+          extractedFields: data.extractedFields ?? undefined,
+          fieldsExtracted: data.fieldsExtracted,
+          errorMessage: data.errorMessage,
+          errorType: data.errorType,
+          httpStatusCode: data.httpStatusCode,
+          rawResponseSnippet: data.rawResponseSnippet,
+          metadata: data.metadata ?? undefined,
+        },
+      });
+    } catch (err) {
+      console.error("[OCR Log] Failed to save log:", err);
+    }
+  };
 
   // Get LLM configuration
   const config = await prisma.systemConfig.findFirst();
 
   if (!(config as any)?.llmEnabled) {
+    await saveOcrLog({
+      status: "FAILED",
+      durationMs: Date.now() - requestStartTime,
+      provider: "unknown",
+      model: "unknown",
+      errorMessage: "LLM features are not enabled",
+      errorType: "CONFIG_ERROR",
+      httpStatusCode: 400,
+    });
     return NextResponse.json(
       {
         success: false,
@@ -279,6 +342,17 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   console.log("===================================");
 
   if (!llmBaseUrl || !llmModelName) {
+    await saveOcrLog({
+      status: "FAILED",
+      durationMs: Date.now() - requestStartTime,
+      provider: llmProvider,
+      model: llmModelName ?? "unknown",
+      baseUrl: llmBaseUrl,
+      errorMessage:
+        "LLM is not properly configured. Please configure the base URL and model in system settings.",
+      errorType: "CONFIG_ERROR",
+      httpStatusCode: 400,
+    });
     return NextResponse.json(
       {
         success: false,
@@ -297,6 +371,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   console.log("File size:", file?.size, "bytes");
 
   if (!file) {
+    await saveOcrLog({
+      status: "FAILED",
+      durationMs: Date.now() - requestStartTime,
+      provider: llmProvider,
+      model: llmModelName,
+      baseUrl: llmBaseUrl,
+      errorMessage: "No file provided",
+      errorType: "VALIDATION_ERROR",
+      httpStatusCode: 400,
+    });
     return NextResponse.json(
       {
         success: false,
@@ -315,6 +399,19 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     "image/webp",
   ];
   if (!allowedTypes.includes(file.type)) {
+    await saveOcrLog({
+      status: "FAILED",
+      durationMs: Date.now() - requestStartTime,
+      provider: llmProvider,
+      model: llmModelName,
+      baseUrl: llmBaseUrl,
+      fileName: file.name,
+      fileType: file.type,
+      fileSizeBytes: file.size,
+      errorMessage: `Invalid file type: ${file.type}`,
+      errorType: "VALIDATION_ERROR",
+      httpStatusCode: 400,
+    });
     return NextResponse.json(
       {
         success: false,
@@ -359,6 +456,19 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     if (llmProvider === "ollama") {
       // Local Ollama doesn't support vision API
+      await saveOcrLog({
+        status: "FAILED",
+        durationMs: Date.now() - requestStartTime,
+        provider: llmProvider,
+        model: llmModelName,
+        baseUrl: llmBaseUrl,
+        fileName: file.name,
+        fileType: file.type,
+        fileSizeBytes: file.size,
+        errorMessage: "Invoice extraction with local Ollama is not supported.",
+        errorType: "UNSUPPORTED_PROVIDER",
+        httpStatusCode: 400,
+      });
       return NextResponse.json(
         {
           success: false,
@@ -541,6 +651,19 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         },
       );
     } else {
+      await saveOcrLog({
+        status: "FAILED",
+        durationMs: Date.now() - requestStartTime,
+        provider: llmProvider,
+        model: llmModelName,
+        baseUrl: llmBaseUrl,
+        fileName: file.name,
+        fileType: file.type,
+        fileSizeBytes: file.size,
+        errorMessage: `Provider ${llmProvider} is not supported for invoice extraction`,
+        errorType: "UNSUPPORTED_PROVIDER",
+        httpStatusCode: 400,
+      });
       return NextResponse.json(
         {
           success: false,
@@ -559,6 +682,20 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       console.error("Base URL:", llmBaseUrl);
       console.error("Response:", errorText);
       console.error("====================");
+      await saveOcrLog({
+        status: "ERROR",
+        durationMs: Date.now() - requestStartTime,
+        provider: llmProvider,
+        model: llmModelName,
+        baseUrl: llmBaseUrl,
+        fileName: file.name,
+        fileType: file.type,
+        fileSizeBytes: file.size,
+        errorMessage: `LLM API error: ${llmResponse.status} ${llmResponse.statusText}`,
+        errorType: "LLM_API_ERROR",
+        httpStatusCode: llmResponse.status,
+        rawResponseSnippet: errorText.substring(0, 500),
+      });
       return NextResponse.json(
         {
           success: false,
@@ -602,6 +739,21 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         extractedData = JSON.parse(jsonMatch[1]);
       } catch (e) {
         console.error("Failed to parse extracted JSON:", e);
+        await saveOcrLog({
+          status: "PARSE_ERROR",
+          durationMs: Date.now() - requestStartTime,
+          provider: llmProvider,
+          model: llmModelName,
+          baseUrl: llmBaseUrl,
+          fileName: file.name,
+          fileType: file.type,
+          fileSizeBytes: file.size,
+          errorMessage: "Failed to parse extracted data from LLM response",
+          errorType: "JSON_PARSE_ERROR",
+          httpStatusCode: 500,
+          rawResponseSnippet: extractedText,
+          metadata: { usage: llmData.usage ?? llmData.usageMetadata },
+        });
         return NextResponse.json(
           {
             success: false,
@@ -612,6 +764,21 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         );
       }
     } else {
+      await saveOcrLog({
+        status: "PARSE_ERROR",
+        durationMs: Date.now() - requestStartTime,
+        provider: llmProvider,
+        model: llmModelName,
+        baseUrl: llmBaseUrl,
+        fileName: file.name,
+        fileType: file.type,
+        fileSizeBytes: file.size,
+        errorMessage: "No valid JSON data found in LLM response",
+        errorType: "NO_JSON_FOUND",
+        httpStatusCode: 500,
+        rawResponseSnippet: extractedText,
+        metadata: { usage: llmData.usage ?? llmData.usageMetadata },
+      });
       return NextResponse.json(
         {
           success: false,
@@ -646,16 +813,77 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // CIF sanity check: reject obviously fake/example values
     if (extractedData.cif) {
       const knownPlaceholders = ["X-XXXXXXXX", "B12345678", "B00000000"];
-      const cifUpper = String(extractedData.cif).toUpperCase().replace(/\s+/g, "");
+      const cifUpper = String(extractedData.cif)
+        .toUpperCase()
+        .replace(/\s+/g, "");
       // Spanish CIF/NIF: letter + 7 digits + letter/digit, or 8 digits + letter (NIE)
-      const validCifPattern = /^[A-Z]\d{7}[A-Z0-9]$|^\d{8}[A-Z]$|^[XYZ]\d{7}[A-Z]$/;
-      if (knownPlaceholders.includes(extractedData.cif) || !validCifPattern.test(cifUpper)) {
-        console.warn(`⚠️  Discarding invalid/placeholder CIF: "${extractedData.cif}"`);
+      const validCifPattern =
+        /^[A-Z]\d{7}[A-Z0-9]$|^\d{8}[A-Z]$|^[XYZ]\d{7}[A-Z]$/;
+      if (
+        knownPlaceholders.includes(extractedData.cif) ||
+        !validCifPattern.test(cifUpper)
+      ) {
+        console.warn(
+          `⚠️  Discarding invalid/placeholder CIF: "${extractedData.cif}"`,
+        );
         delete extractedData.cif;
       } else {
         extractedData.cif = cifUpper;
       }
     }
+
+    // Extract token usage from provider response
+    let promptTokens: number | undefined;
+    let completionTokens: number | undefined;
+    let totalTokens: number | undefined;
+    if (
+      llmProvider === "openai" ||
+      llmProvider === "azure-openai" ||
+      llmProvider === "ollama-cloud"
+    ) {
+      promptTokens = llmData.usage?.prompt_tokens;
+      completionTokens = llmData.usage?.completion_tokens;
+      totalTokens = llmData.usage?.total_tokens;
+    } else if (llmProvider === "anthropic") {
+      promptTokens = llmData.usage?.input_tokens;
+      completionTokens = llmData.usage?.output_tokens;
+      totalTokens =
+        (llmData.usage?.input_tokens ?? 0) +
+        (llmData.usage?.output_tokens ?? 0);
+    } else if (llmProvider === "google") {
+      promptTokens = llmData.usageMetadata?.promptTokenCount;
+      completionTokens = llmData.usageMetadata?.candidatesTokenCount;
+      totalTokens = llmData.usageMetadata?.totalTokenCount;
+    }
+
+    const fieldsExtracted = Object.values(extractedData).filter(
+      (v) => v !== null && v !== undefined && v !== "",
+    ).length;
+
+    await saveOcrLog({
+      status: "SUCCESS",
+      durationMs: Date.now() - requestStartTime,
+      provider: llmProvider,
+      model: llmModelName,
+      baseUrl: llmBaseUrl,
+      fileName: file.name,
+      fileType: file.type,
+      fileSizeBytes: file.size,
+      pageCount:
+        imagesToProcess.length > 0 ? imagesToProcess.length : undefined,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      extractedFields: extractedData,
+      fieldsExtracted,
+      httpStatusCode: 200,
+      rawResponseSnippet: extractedText,
+      metadata: {
+        temperature: llmTemperature,
+        maxTokens: llmMaxTokens,
+        imagesProcessed: imagesToProcess.length,
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -671,6 +899,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     console.error("Model:", llmModelName);
     console.error("Base URL:", llmBaseUrl);
     console.error("================================");
+    await saveOcrLog({
+      status: "ERROR",
+      durationMs: Date.now() - requestStartTime,
+      provider: llmProvider ?? "unknown",
+      model: llmModelName ?? "unknown",
+      baseUrl: llmBaseUrl,
+      errorMessage: error.message || "Unknown error",
+      errorType: error.constructor?.name || "UnknownError",
+      httpStatusCode: 500,
+    });
     return NextResponse.json(
       {
         success: false,

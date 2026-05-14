@@ -3,6 +3,7 @@ import { Montserrat } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { I18nProvider } from "../src/lib/i18n-context";
 import { initializeCronJobs } from "../src/lib/cron";
+import { VersionChecker } from "./components/VersionChecker";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -74,6 +75,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={montserrat.className}>
         <AppRouterCacheProvider>
           <I18nProvider>
+            <VersionChecker />
             <div
               className={`environment-indicator env-${appEnv}`}
               role="status"

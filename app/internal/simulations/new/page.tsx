@@ -377,7 +377,10 @@ export default function NewSimulationPage() {
                                     </h3>
                                 </div>
                             </div>
-                            <InvoiceExtractor onDataExtracted={handleInvoiceDataExtracted} />
+                            <InvoiceExtractor
+                                onDataExtracted={handleInvoiceDataExtracted}
+                                onBeforeExtract={() => setExtractedData(null)}
+                            />
                         </div>
                     )}
 

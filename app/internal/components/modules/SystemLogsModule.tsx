@@ -7,6 +7,7 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { AuditLogsModule } from "./AuditLogsModule";
 import { EmailLogsModule } from "./EmailLogsModule";
 import { CronLogsPanel } from "./CronLogsPanel";
+import { OcrLogsPanel } from "./OcrLogsPanel";
 import "./configurations.css";
 
 export interface SystemLogsModuleProps {
@@ -16,7 +17,7 @@ export interface SystemLogsModuleProps {
     onActionButtons?: (buttons: React.ReactNode) => void;
 }
 
-type LogType = "audit" | "email" | "cron";
+type LogType = "audit" | "email" | "cron" | "ocr";
 
 export function SystemLogsModule({ session, auditLogsActions, onNotify, onActionButtons }: SystemLogsModuleProps) {
     const { t } = useI18n();
@@ -26,6 +27,7 @@ export function SystemLogsModule({ session, auditLogsActions, onNotify, onAction
         audit: "Audit Logs",
         email: "Email Logs",
         cron: "Cron Logs",
+        ocr: "OCR Logs",
     };
 
     return (
@@ -60,6 +62,12 @@ export function SystemLogsModule({ session, auditLogsActions, onNotify, onAction
                 )}
                 {activeTab === "cron" && (
                     <CronLogsPanel
+                        session={session}
+                        onNotify={onNotify}
+                    />
+                )}
+                {activeTab === "ocr" && (
+                    <OcrLogsPanel
                         session={session}
                         onNotify={onNotify}
                     />

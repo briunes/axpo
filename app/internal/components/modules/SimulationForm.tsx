@@ -8,6 +8,8 @@ import type { SimulationItem, ClientItem, CupsLookupEntry } from "../../lib/inte
 import { calculateSimulation, updateSimulation, fetchCupsLookup } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatNumber } from "../../lib/formatPreferences";
 import { FormSelect } from "../ui/FormSelect";
 import { DateInput } from "../ui/DateInput";
 import { DateRangePicker } from "../ui/DateRangePicker";
@@ -682,6 +684,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     electricityTaxRateOptions?: number[];
 }) {
     const { t } = useI18n();
+    const { preferences: { numberFormat } } = useUserPreferences();
     const up = <K extends keyof ElecFormState>(k: K, v: ElecFormState[K]) => onChange({ ...state, [k]: v });
     const upP = (field: "consumo" | "potencia" | "omie" | "personalizadaIndexMargenEnergia" | "personalizadaIndexMargenPotencia" | "personalizadaOmieBTerminoB" | "personalizadaOmieBMargenPotencia") => (p: string, v: number) => up(field, { ...state[field], [p]: v });
     const ep = ELEC_ENERGY_PERIODS[state.tarifaAcceso];
@@ -980,18 +983,18 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                             <Sel
                                 value={String(state.ivaTasa)}
                                 onChange={(v) => up("ivaTasa", parseFloat(v))}
-                                options={ivaRateOptions.map((o) => ({ value: String(o), label: String(o) }))}
+                                options={ivaRateOptions.map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) + "%" }))}
                             />
                         ) : (
                             <Num value={state.ivaTasa} onChange={(v) => up("ivaTasa", v)} step={0.01} />
                         )}
                     </Field>
-                    <Field label={t("simulationForm", "fieldElecTax")} hint={t("simulationForm", "fieldElecTaxHint")} flex="1 1 0">
+                    <Field label={t("simulationForm", "fieldElecTax")} hint={t("simulationForm", "fieldElecTaxHint", { tax: formatNumber(state.impuestoElectricoTasa, numberFormat) + "%" })} flex="1 1 0">
                         {electricityTaxRateOptions.length > 1 ? (
                             <Sel
                                 value={String(state.impuestoElectricoTasa)}
                                 onChange={(v) => up("impuestoElectricoTasa", parseFloat(v))}
-                                options={electricityTaxRateOptions.map((o) => ({ value: String(o), label: String(o) }))}
+                                options={electricityTaxRateOptions.map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) + "%" }))}
                             />
                         ) : (
                             <Num value={state.impuestoElectricoTasa} onChange={(v) => up("impuestoElectricoTasa", v)} step={0.001} />
@@ -1009,6 +1012,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
 
 function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbonTaxRateOptions = [] }: { state: GasFormState; onChange: (s: GasFormState) => void; errors?: Record<string, string>; ivaRateOptions?: number[]; hydrocarbonTaxRateOptions?: number[] }) {
     const { t } = useI18n();
+    const { preferences: { numberFormat } } = useUserPreferences();
     const up = <K extends keyof GasFormState>(k: K, v: GasFormState[K]) => onChange({ ...state, [k]: v });
 
     // Completion checks for gas
@@ -1181,7 +1185,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                             <Sel
                                 value={String(state.ivaTasa)}
                                 onChange={(v) => up("ivaTasa", parseFloat(v))}
-                                options={ivaRateOptions.map((o) => ({ value: String(o), label: String(o) }))}
+                                options={ivaRateOptions.map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) + "%" }))}
                             />
                         ) : (
                             <Num value={state.ivaTasa} onChange={(v) => up("ivaTasa", v)} step={0.1} />
@@ -1192,7 +1196,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                             <Sel
                                 value={String(state.impuestoHidrocarburo)}
                                 onChange={(v) => up("impuestoHidrocarburo", parseFloat(v))}
-                                options={hydrocarbonTaxRateOptions.map((o) => ({ value: String(o), label: String(o) }))}
+                                options={hydrocarbonTaxRateOptions.map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) }))}
                             />
                         ) : (
                             <Num value={state.impuestoHidrocarburo} onChange={(v) => up("impuestoHidrocarburo", v)} step={0.00001} />
@@ -1250,6 +1254,7 @@ export interface SimulationFormProps {
 export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormProps>(function SimulationForm({ simulation, token, clients, onClientFieldsChanged, onSuccess, onNotify, onOfferSelected, readOnly, baseValueSetId }: SimulationFormProps, ref) {
     const { t } = useI18n();
     const existingPayload = (simulation.payloadJson ?? {}) as SimulationPayload;
+    const isOcrFilled = !!(existingPayload as any).invoiceData;
 
     const ownerName = simulation.ownerUser?.fullName ?? "";
 
@@ -1589,6 +1594,25 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             {/* Inputs tab */}
             {!isOfferLocked && activeTab === "inputs" && (
                 <div>
+                    {/* OCR disclaimer */}
+                    {isOcrFilled && (
+                        <div style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 8,
+                            padding: "10px 14px",
+                            borderRadius: 8,
+                            marginBottom: 20,
+                            fontSize: 13,
+                            background: "rgba(245, 158, 11, 0.08)",
+                            color: "var(--scheme-warning-400, #f59e0b)",
+                            border: "1px solid rgba(245, 158, 11, 0.3)",
+                        }}>
+                            <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>⚠️</span>
+                            <span>{t("invoiceExtractor", "ocrDisclaimer") ?? "O OCR pode conter erros. Por favor, valide os dados preenchidos antes de continuar."}</span>
+                        </div>
+                    )}
+
                     {/* Commodity type indicator (read-only) */}
                     <div style={{
                         marginBottom: 28,

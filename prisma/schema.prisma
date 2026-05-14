@@ -116,6 +116,7 @@ model User {
   createdClients              Client[]            @relation("ClientCreatedBy")
   updatedClients              Client[]            @relation("ClientUpdatedBy")
   triggeredEmailLogs          EmailLog[]
+  ocrLogs                     OcrLog[]
   simulationVersions          SimulationVersion[]
   simulations                 Simulation[]
   preferences                 UserPreferences?
@@ -313,6 +314,7 @@ model SystemConfig {
   ivaRateOptions                  Json?
   electricityTaxRateOptions       Json?
   hydrocarbonTaxRateOptions       Json?
+  appVersion                      String   @default("1.0.0")
 
   @@map("system_config")
 }
@@ -467,6 +469,39 @@ model CronLog {
   @@index([jobType])
   @@index([status])
   @@map("cron_logs")
+}
+
+model OcrLog {
+  id                String   @id @default(cuid())
+  requestedAt       DateTime @default(now())
+  userId            String?
+  userEmail         String?
+  provider          String
+  model             String
+  baseUrl           String?
+  fileName          String?
+  fileType          String?
+  fileSizeBytes     Int?
+  pageCount         Int?
+  status            String   // SUCCESS | FAILED | ERROR | PARSE_ERROR
+  durationMs        Int?
+  promptTokens      Int?
+  completionTokens  Int?
+  totalTokens       Int?
+  extractedFields   Json?    // the extracted JSON data (sanitized, no PII beyond what was extracted)
+  fieldsExtracted   Int?     // count of non-null fields
+  errorMessage      String?
+  errorType         String?
+  httpStatusCode    Int?
+  rawResponseSnippet String? // first 500 chars of response for debugging
+  metadata          Json?    // any extra provider-specific info
+  user              User?    @relation(fields: [userId], references: [id])
+
+  @@index([requestedAt])
+  @@index([userId])
+  @@index([provider])
+  @@index([status])
+  @@map("ocr_logs")
 }
 
 enum UserRole {
