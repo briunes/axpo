@@ -67,6 +67,7 @@ export interface SystemConfig {
   llmEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
+  appVersion: String;
 }
 
 export interface PdfTemplateTranslationInput {

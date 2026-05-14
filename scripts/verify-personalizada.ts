@@ -8,6 +8,9 @@ async function main() {
     where: { isActive: true },
     orderBy: { createdAt: "desc" },
   });
+  if (!activeSet) {
+    throw new Error("No active BaseValueSet found");
+  }
   const items = await prisma.baseValueItem.findMany({
     where: { baseValueSetId: activeSet.id },
   });
