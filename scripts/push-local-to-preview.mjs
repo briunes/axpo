@@ -65,8 +65,8 @@ const TABLES = [
   "system_config",
   "role_permissions",
   "template_variables",
-  "agencies",
   "users",
+  "agencies",
   "clients",
   "base_value_sets",
   "base_value_items",
@@ -117,22 +117,29 @@ async function copyTable(localClient, previewClient, table) {
     })
   );
 
+  const BATCH = 500; // rows per INSERT statement
   let inserted = 0;
-  for (const row of rows) {
-    const vals = cols.map((c) => {
-      const v = row[c];
-      // Serialize JSON objects back to string so pg doesn't double-encode
-      if (jsonCols.has(c) && v !== null) return JSON.stringify(v);
-      // Also handle array-type JSON
-      if (Array.isArray(v)) return JSON.stringify(v);
-      return v;
+
+  for (let offset = 0; offset < rows.length; offset += BATCH) {
+    const batch = rows.slice(offset, offset + BATCH);
+    const allVals = [];
+    const valueClauses = batch.map((row, rowIdx) => {
+      const ph = cols.map((c, colIdx) => {
+        const v = row[c];
+        allVals.push(
+          (jsonCols.has(c) && v !== null) ? JSON.stringify(v) :
+          Array.isArray(v)               ? JSON.stringify(v) :
+          v
+        );
+        return `$${rowIdx * cols.length + colIdx + 1}`;
+      });
+      return `(${ph.join(", ")})`;
     });
-    const ph   = vals.map((_, i) => `$${i + 1}`).join(", ");
     await previewClient.query(
-      `INSERT INTO "${table}" (${colList}) VALUES (${ph}) ON CONFLICT DO NOTHING`,
-      vals
+      `INSERT INTO "${table}" (${colList}) VALUES ${valueClauses.join(", ")} ON CONFLICT DO NOTHING`,
+      allVals
     );
-    inserted++;
+    inserted += batch.length;
   }
   return inserted;
 }
@@ -186,6 +193,7 @@ async function main() {
 
     // ── Push tables ───────────────────────────────────────────────────────
     step("3/3  Pushing data to preview...");
+    await previewClient.query("SET session_replication_role = replica"); // disable FK checks during inserts
     const results = {};
     for (const table of TABLES) {
       if (counts[table] === 0) continue;
@@ -194,6 +202,7 @@ async function main() {
       ok(`${table.padEnd(30)} ${n} row(s)`);
     }
 
+    await previewClient.query("SET session_replication_role = DEFAULT");
     const pushedTotal = Object.values(results).reduce((a, b) => a + b, 0);
     log(`\n${GREEN}${BOLD}🎉 Push complete! ${pushedTotal} rows pushed to preview.${NC}`);
 
@@ -206,4 +215,4 @@ async function main() {
 main().catch((err) => {
   console.error(`\n${RED}❌ Push failed:${NC}`, err);
   process.exit(1);
-});
+}); 

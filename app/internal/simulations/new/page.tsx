@@ -503,13 +503,53 @@ export default function NewSimulationPage() {
                                 );
                             })()}
 
+                            {/* Consumption table: consumo per period */}
+                            {(() => {
+                                const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+                                const activeConsumo = periods.filter(p =>
+                                    extractedData[`consumo${p}` as keyof typeof extractedData] !== undefined
+                                );
+                                if (activeConsumo.length === 0) return null;
+                                return (
+                                    <div style={{ marginTop: 14 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                                            Consumo (kWh)
+                                        </div>
+                                        <div style={{ overflowX: "auto" }}>
+                                            <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{ textAlign: "left", padding: "3px 10px 3px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}></th>
+                                                        {activeConsumo.map(p => (
+                                                            <th key={p} style={{ textAlign: "center", padding: "3px 12px", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}>{p}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>Energy (kWh)</td>
+                                                        {activeConsumo.map(p => {
+                                                            const val = extractedData[`consumo${p}` as keyof typeof extractedData] as number | undefined;
+                                                            return <td key={p} style={{ textAlign: "center", padding: "4px 12px", fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827", fontFamily: "monospace", fontSize: 12 }}>{val !== undefined ? val.toLocaleString("es-ES") : "—"}</td>;
+                                                        })}
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
                             {/* Price table: current supplier unit prices */}
-                            {(extractedData.precioPotenciaP1 !== undefined || extractedData.precioEnergiaP1 !== undefined) && (() => {
+                            {(() => {
                                 const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
                                 const activePeriods = periods.filter(p =>
                                     extractedData[`precioPotencia${p}` as keyof typeof extractedData] !== undefined ||
                                     extractedData[`precioEnergia${p}` as keyof typeof extractedData] !== undefined
                                 );
+                                if (activePeriods.length === 0) return null;
+                                const hasPotencia = periods.some(p => extractedData[`precioPotencia${p}` as keyof typeof extractedData] !== undefined);
+                                const hasEnergia = periods.some(p => extractedData[`precioEnergia${p}` as keyof typeof extractedData] !== undefined);
                                 return (
                                     <div style={{ marginTop: 14 }}>
                                         <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
@@ -526,7 +566,7 @@ export default function NewSimulationPage() {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {extractedData.precioPotenciaP1 !== undefined && (
+                                                    {hasPotencia && (
                                                         <tr>
                                                             <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>{t("invoiceExtractor", "fieldPricePower")} (€/kW/día)</td>
                                                             {activePeriods.map(p => {
@@ -535,7 +575,7 @@ export default function NewSimulationPage() {
                                                             })}
                                                         </tr>
                                                     )}
-                                                    {extractedData.precioEnergiaP1 !== undefined && (
+                                                    {hasEnergia && (
                                                         <tr>
                                                             <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>{t("invoiceExtractor", "fieldPriceEnergy")} (€/kWh)</td>
                                                             {activePeriods.map(p => {

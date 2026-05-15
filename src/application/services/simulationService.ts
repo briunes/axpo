@@ -275,23 +275,77 @@ export class SimulationService {
       throw new ValidationError("Simulation has no versions to clone");
     }
 
-    const cloned = await prisma.simulation.create({
-      data: {
-        agencyId: simulation.agencyId,
-        ownerUserId: simulation.ownerUserId,
-        clientId: simulation.clientId, // Copy client reference
-        status: SimulationStatus.DRAFT,
-        expiresAt: simulation.expiresAt,
-      },
-    });
+    // Resolve the actor's own agency: for ADMIN, fall back to the source
+    // simulation's agency (admins operate globally); for everyone else use
+    // their own agency so the clone belongs to them.
+    const newAgencyId =
+      actor.role === UserRole.ADMIN ? simulation.agencyId : actor.agencyId;
+
+    // Fetch the new owner's PIN snapshot so the cloned simulation is
+    // properly associated with the duplicating user's credentials.
+    const [newOwner, systemConfig] = await Promise.all([
+      prisma.user.findUnique({ where: { id: actor.userId } }),
+      prisma.systemConfig.findFirst(),
+    ]);
+
+    // Compute expiresAt from system config (same logic as createSimulation)
+    const expirationDays = systemConfig?.simulationExpirationDays ?? 30;
+    const cloneExpiresAt = new Date();
+    cloneExpiresAt.setDate(cloneExpiresAt.getDate() + expirationDays);
+
+    // Generate a unique reference number (same retry loop as createSimulation)
+    let cloned: Awaited<ReturnType<typeof prisma.simulation.create>>;
+    let attempts = 0;
+    while (true) {
+      attempts++;
+      const year = new Date().getFullYear();
+      const yearStart = new Date(`${year}-01-01T00:00:00.000Z`);
+      const yearEnd = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+      const countThisYear = await prisma.simulation.count({
+        where: { createdAt: { gte: yearStart, lt: yearEnd } },
+      });
+      const referenceNumber = `${String(countThisYear + 1 + (attempts - 1)).padStart(5, "0")}/${year}`;
+
+      try {
+        cloned = await prisma.simulation.create({
+          data: {
+            agencyId: newAgencyId,
+            ownerUserId: actor.userId, // Actor becomes the new owner
+            clientId: simulation.clientId,
+            status: SimulationStatus.DRAFT,
+            expiresAt: cloneExpiresAt,
+            referenceNumber,
+            pinHashSnapshot: newOwner?.pinHash ?? null,
+            pinSnapshot: newOwner?.pinCurrent ?? null,
+          },
+        });
+        break;
+      } catch (err: unknown) {
+        const isUniqueViolation =
+          err instanceof Error &&
+          "code" in err &&
+          (err as { code: string }).code === "P2002";
+        if (isUniqueViolation && attempts < 5) continue;
+        throw err;
+      }
+    }
+
+    // Strip selectedOffer from the payload so the cloned simulation starts
+    // without a pre-selected offer (calculated results are kept).
+    let clonedPayload: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+    if (latestVersion.payloadJson === null) {
+      clonedPayload = Prisma.JsonNull;
+    } else {
+      const raw = latestVersion.payloadJson as Record<string, unknown>;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { selectedOffer: _dropped, ...rest } = raw;
+      clonedPayload = rest as Prisma.InputJsonValue;
+    }
 
     await prisma.simulationVersion.create({
       data: {
         simulationId: cloned.id,
-        payloadJson:
-          latestVersion.payloadJson === null
-            ? Prisma.JsonNull
-            : (latestVersion.payloadJson as Prisma.InputJsonValue),
+        payloadJson: clonedPayload,
         baseValueSetId: latestVersion.baseValueSetId,
         createdBy: actor.userId,
       },

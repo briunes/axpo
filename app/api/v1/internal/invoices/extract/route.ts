@@ -66,10 +66,138 @@ Return:
 
 Extract ALL available information from the provided invoice and return it as a JSON object. Be thorough and precise.
 
+CRITICAL BILLING PERIOD RULE:
+
+Invoices may contain multiple unrelated dates:
+- issue date
+- payment date
+- contract dates
+- meter reading dates
+
+For fechaInicio and fechaFin:
+- prioritize the explicit billing period
+- prioritize labels like:
+  - "Periodo de facturación"
+  - "Periodo facturado"
+  - "Facturación desde/hasta"
+  - "Desde / Hasta"
+
+The correct billing period usually forms a continuous period of approximately:
+- 28 to 31 days for monthly invoices
+
+Example:
+"Periodo de facturación: 01.03.2026 - 31.03.2026"
+
+Return:
+"fechaInicio": "2026-03-01"
+"fechaFin": "2026-03-31"
+
+NEVER use:
+- invoice issue date
+- payment due date
+- contract expiration date
+as billing period dates.
+
+CRITICAL PERIOD IDENTIFICATION RULE (VERY IMPORTANT):
+
+The invoice periods MUST be mapped using the ACTUAL printed period labels from the invoice.
+
+NEVER assign values by order or position.
+
+NEVER assume:
+- first value = P1
+- second value = P2
+- third value = P3
+
+ONLY use the explicit period identifier shown on the invoice.
+
+Examples:
+
+If the invoice shows:
+- Periodo 2 → 1200 kWh
+- Periodo 3 → 800 kWh
+- Periodo 6 → 150 kWh
+
+You MUST return:
+{
+  "consumoP2": 1200,
+  "consumoP3": 800,
+  "consumoP6": 150
+}
+
+You MUST NOT return:
+{
+  "consumoP1": 1200,
+  "consumoP2": 800,
+  "consumoP3": 150
+}
+
+The same rule applies to:
+- consumoP1..P6
+- potenciaP1..P6
+- precioPotenciaP1..P6
+- precioEnergiaP1..P6
+
+If a period does NOT explicitly appear on the invoice:
+- DO NOT create the field
+- DO NOT infer it
+- DO NOT shift another period into it
+
+For example:
+If only P2, P3 and P6 exist,
+return ONLY:
+- consumoP2
+- consumoP3
+- consumoP6
+
+and OMIT:
+- consumoP1
+- consumoP4
+- consumoP5
+
+CRITICAL TARIFF EXTRACTION RULE (VERY IMPORTANT):
+
+tarifaAcceso MUST ONLY be extracted from an EXPLICIT tariff label printed on the invoice.
+
+NEVER infer tarifaAcceso from:
+- number of periods
+- existence of P4/P5/P6
+- contracted powers
+- energy periods
+- industrial-looking layouts
+- consumption tables
+
+The ONLY valid source is an explicit field such as:
+- "Peaje de acceso a la red (ATR)"
+- "Tarifa de acceso"
+- "Tarifa"
+- "Tipo de tarifa"
+
+Examples:
+
+If the invoice explicitly says:
+"Peaje de acceso a la red (ATR): 3.0TD"
+
+You MUST return:
+"tarifaAcceso": "3.0TD"
+
+Even if:
+- periods P1..P6 exist
+- six power periods exist
+- six energy periods exist
+
+DO NOT convert 3.0TD into 6.1TD.
+
+6.1TD must ONLY be returned if the invoice explicitly prints:
+- "6.1TD"
+
+If the invoice explicitly says 3.0TD anywhere,
+ALWAYS prioritize that exact printed value.
+
 CRITICAL FIELDS TO EXTRACT:
 
 1. CLIENT/HOLDER INFORMATION:
-   - cups: ⚠️ MANDATORY — CUPS code (Código Universal del Punto de Suministro). Look for the label "Identificación punto de suministro (CUPS)", "CUPS", or "Punto de suministro". The value ALWAYS starts with "ES" and is 20-22 characters long. It is often printed with spaces between groups (e.g. "ES 0021 0000 0046 0347 YE") — you MUST strip ALL spaces and return it as one continuous string (e.g. "ES0021000000460347YE"). IMPORTANT: do NOT confuse with barcodes or long numeric reference codes printed elsewhere on the invoice — only use the value next to the explicit CUPS label. Never skip this field.
+   - cups: ⚠️ MANDATORY — CUPS code (Código Universal del Punto de Suministro). Look for the label "Identificación punto de suministro (CUPS)", "CUPS", or "Punto de suministro". The value ALWAYS starts with "ES" and is 20-22 characters long. It is often printed with spaces between groups (e.g. "ES 0021 0000 0046 0347 YE") — you MUST strip ALL spaces and return it as one continuous string (e.g. "ES0021000000460347YE"). IMPORTANT: do NOT confuse with barcodes or long numeric reference codes printed elsewhere — only use the value next to the explicit CUPS label. Never skip this field.
    - nombreTitular: Full name of the invoice holder/titular
    - personaContacto: Contact person name
    - direccion: Complete supply address (dirección de suministro)
@@ -82,7 +210,34 @@ CRITICAL FIELDS TO EXTRACT:
      "B53572871" (CIF titular)
 
 2. TARIFF AND ZONE:
-   - tarifaAcceso: ⚠️ MANDATORY — Access tariff. Read this EXACTLY as printed on the invoice. Look for fields labeled "Peaje de acceso a la red (ATR)", "Tarifa de acceso", or "Tipo de tarifa". Valid electricity values are ONLY "2.0TD", "3.0TD", or "6.1TD". Valid gas values are "RL.1", "RL.2", "RL.3", etc. Do NOT infer the tariff from the number of billed periods — always read the explicit label. Both 3.0TD and 6.1TD have 6 power periods (P1-P6), so the number of periods does NOT distinguish them. Never skip this field.
+   - tarifaAcceso: ⚠️ MANDATORY — Access tariff.
+
+     Look ONLY for explicit labels:
+     - "Peaje de acceso a la red (ATR)"
+     - "Tarifa de acceso"
+     - "Tarifa"
+     - "Tipo de tarifa"
+
+     Valid electricity values are ONLY:
+     - "2.0TD"
+     - "3.0TD"
+     - "6.1TD"
+
+     IMPORTANT:
+     3.0TD and 6.1TD BOTH commonly contain P1-P6 periods.
+
+     Therefore:
+     - the number of periods MUST NEVER be used to determine the tariff
+     - the tariff MUST ONLY come from the explicitly printed tariff label
+
+     Valid gas values are:
+     - "RL.1"
+     - "RL.2"
+     - "RL.3"
+     - etc.
+
+     Never skip this field.
+
    - zonaGeografica: Geographic zone ("Peninsula", "Baleares", "Canarias" for electricity, or specific gas zone)
    - perfilCarga: Load profile ("NORMAL", "DIURNO" for electricity)
 
@@ -95,48 +250,69 @@ CRITICAL FIELDS TO EXTRACT:
    - consumoP1: Consumption in period P1 (kWh)
    - consumoP2: Consumption in period P2 (kWh)
    - consumoP3: Consumption in period P3 (kWh)
-   - consumoP4: Consumption in period P4 (kWh) - if 3.0TD/6.1TD
-   - consumoP5: Consumption in period P5 (kWh) - if 3.0TD/6.1TD
-   - consumoP6: Consumption in period P6 (kWh) - if 3.0TD/6.1TD
+   - consumoP4: Consumption in period P4 (kWh)
+   - consumoP5: Consumption in period P5 (kWh)
+   - consumoP6: Consumption in period P6 (kWh)
    - consumoAnual: Annual consumption (kWh)
-   
-   For gas:
-   - consumoTotal: Total gas consumption (kWh or m³)
+
+   STRICT PERIOD MAPPING:
+   - Map values ONLY to their explicitly labeled period number.
+   - NEVER remap periods sequentially.
+   - NEVER compress gaps.
+   - NEVER infer missing periods.
+   - Missing periods must be omitted entirely.
 
 5. CONTRACTED POWER (Potencia Contratada - electricity only):
    - potenciaP1: Contracted power P1 (kW)
    - potenciaP2: Contracted power P2 (kW)
    - potenciaP3: Contracted power P3 (kW)
-   - potenciaP4: Contracted power P4 (kW) - if 3.0TD/6.1TD
-   - potenciaP5: Contracted power P5 (kW) - if 3.0TD/6.1TD
-   - potenciaP6: Contracted power P6 (kW) - if 3.0TD/6.1TD
+   - potenciaP4: Contracted power P4 (kW)
+   - potenciaP5: Contracted power P5 (kW)
+   - potenciaP6: Contracted power P6 (kW)
+
+   STRICT PERIOD MAPPING:
+   - Map values ONLY to their explicitly labeled period number.
+   - NEVER remap periods sequentially.
+   - NEVER compress gaps.
+   - NEVER infer missing periods.
+   - Missing periods must be omitted entirely.
 
 6. FINANCIAL INFORMATION:
    - facturaActual: Total invoice amount including taxes (€)
-   - excesoPotencia: Total excess power charge ("Exceso de potencia" / "Excesos de potencia") in € — extract the total € amount, NOT the unit price.
+   - excesoPotencia: Total excess power charge ("Exceso de potencia" / "Excesos de potencia") in €
    - reactiva: Reactive energy charges (€)
-   - alquiler: Equipment rental charges (alquiler contador/equipo de medida) (€)
+   - alquiler: Equipment rental charges (€)
    - otrosCargos: Other charges/concepts (€)
 
-7. CURRENT SUPPLIER POWER UNIT PRICES (electricity only, from "Detalle de factura"):
-   Look for lines like "P1 40 kW x 28 días x 0.061139 €/kW día" and extract only the unit price value.
-   - precioPotenciaP1: Power unit price for P1 (€/kW/día)
-   - precioPotenciaP2: Power unit price for P2 (€/kW/día)
-   - precioPotenciaP3: Power unit price for P3 (€/kW/día)
-   - precioPotenciaP4: Power unit price for P4 (€/kW/día) - if 3.0TD/6.1TD
-   - precioPotenciaP5: Power unit price for P5 (€/kW/día) - if 3.0TD/6.1TD
-   - precioPotenciaP6: Power unit price for P6 (€/kW/día) - if 3.0TD/6.1TD
+7. CURRENT SUPPLIER POWER UNIT PRICES:
+   - precioPotenciaP1
+   - precioPotenciaP2
+   - precioPotenciaP3
+   - precioPotenciaP4
+   - precioPotenciaP5
+   - precioPotenciaP6
 
-8. CURRENT SUPPLIER ENERGY UNIT PRICES (electricity only, from "Detalle de factura"):
-   Look for lines like "Horas no promocionadas 2.684 kWh x 0.234331 €/kWh" or "P1 ... €/kWh".
-   For invoices using "horas no promocionadas" / "horas promocionadas" instead of P1-P6:
-   map horas no promocionadas → precioEnergiaP1, horas promocionadas → precioEnergiaP2.
-   - precioEnergiaP1: Energy unit price for P1 or horas no promocionadas (€/kWh)
-   - precioEnergiaP2: Energy unit price for P2 or horas promocionadas (€/kWh)
-   - precioEnergiaP3: Energy unit price for P3 (€/kWh) - if available
-   - precioEnergiaP4: Energy unit price for P4 (€/kWh) - if 3.0TD/6.1TD
-   - precioEnergiaP5: Energy unit price for P5 (€/kWh) - if 3.0TD/6.1TD
-   - precioEnergiaP6: Energy unit price for P6 (€/kWh) - if 3.0TD/6.1TD
+   STRICT PERIOD MAPPING:
+   - Map values ONLY to their explicitly labeled period number.
+   - NEVER remap periods sequentially.
+   - NEVER compress gaps.
+   - NEVER infer missing periods.
+   - Missing periods must be omitted entirely.
+
+8. CURRENT SUPPLIER ENERGY UNIT PRICES:
+   - precioEnergiaP1
+   - precioEnergiaP2
+   - precioEnergiaP3
+   - precioEnergiaP4
+   - precioEnergiaP5
+   - precioEnergiaP6
+
+   STRICT PERIOD MAPPING:
+   - Map values ONLY to their explicitly labeled period number.
+   - NEVER remap periods sequentially.
+   - NEVER compress gaps.
+   - NEVER infer missing periods.
+   - Missing periods must be omitted entirely.
 
 9. GAS SPECIFIC:
    - telemedida: Remote metering ("SI" or "NO")
@@ -145,83 +321,11 @@ CRITICAL FIELDS TO EXTRACT:
    - invoiceType: Determine if "ELECTRICITY", "GAS", or "BOTH"
 
 IMPORTANT NOTES:
-- Look for keywords like: "Consumo", "Potencia", "Periodo", "CUPS", "Titular", "Tarifa", "Factura"
-- Periods are labeled as P1, P2, P3, P4, P5, P6 or Punta, Llano, Valle
 - Convert all dates to YYYY-MM-DD format
 - Extract numeric values without currency symbols or units
-- If a field is not found, DO NOT include it in the response
-- Be precise with decimal numbers
-
-IBERDROLA/Iberdrola Clientes, S.A.U. INVOICES — SPECIAL EXTRACTION RULES:
-If the invoice is issued by Iberdrola (or any of its subsidiaries: Iberdrola Clientes, i-DE, etc.), it typically contains an "INFORMACION ADICIONAL" section (sometimes titled "Información adicional"). This section is the PRIMARY and most reliable source for the following fields — always prefer values found here over values found elsewhere on the invoice:
-- cif: labeled "CIF titular"
-  IMPORTANT:
-  NEVER use the Iberdrola CIF from the invoice header.
-  ONLY use the value labeled "CIF titular".
-- cups: labeled "Identificación punto de suministro (CUPS)"
-- tarifaAcceso: labeled "Peaje de acceso a la red (ATR)" — e.g., "3.0TD", "6.1TD"
-- perfilCarga: labeled "Tipo discriminación horaria" — e.g., "PNEGOC", "NOC", "DIURNO"
-- potenciaP1..P6: labeled "Potencia contratada (kW)" as a slash-separated list — e.g., "40 / 40 / 40 / 40 / 40 / 41,6"
-- numeroContador: labeled "Nº contador" or "Número de contador"
-- direccion: labeled "Dirección fiscal" or "Dirección de suministro"
-- fechaFinalContrato: labeled "Fecha final del contrato"
-- empresaDistribuidora: labeled "Empresa distribuidora"
-Treat ALL fields found in the "INFORMACION ADICIONAL" section as authoritative. Only fall back to other parts of the invoice if a field is missing from this section.
-
-CRITICAL EXTRACTION RULES:
-- CUPS: This is MANDATORY. Search every page of the invoice for the LABELED field "Identificación punto de suministro (CUPS)", "CUPS", or "Punto de suministro" and read its value. The value starts with "ES" followed by digits and letters, total length 20-22 characters. Strip ALL spaces — e.g. "ES 0021 0000 0046 0347 YE" → "ES0021000000460347YE". WARNING: invoices often contain long numeric strings in barcodes or reference codes (e.g. "0625598325003391003802030090001...") — these are NOT the CUPS. NEVER extract a CUPS from a barcode, tracking number, or reference code. Only read the value that appears next to the explicit "CUPS" or "Identificación punto de suministro" label. If you cannot find the labeled field, do not guess.
-
-- CIF: The invoice may contain multiple CIF/NIF values — one for the energy provider/supplier company and one for the client/holder. You MUST extract only the CLIENT's CIF, not the provider's.
-
-  VERY IMPORTANT:
-  NEVER extract values like:
-  - A-95758389
-  - A95758389
-  when they appear near:
-  - IBERDROLA
-  - ENDESA
-  - NATURGY
-  - REPSOL
-  - commercial company logos
-  - invoice headers
-
-  For Iberdrola invoices:
-  ALWAYS prioritize:
-  "CIF titular"
-
-  Example:
-  WRONG:
-  "IBERDROLA CLIENTES, S.A.U. CIF A-95758389"
-
-  CORRECT:
-  "CIF titular: B53572871"
-
-  Priority rules (in order):
-  1. Look for a CIF/NIF explicitly labeled with client/holder keywords:
-     - "CIF titular"
-     - "CIF del titular"
-     - "NIF titular"
-     - "CIF cliente"
-     - "NIF cliente"
-     - "CIF del cliente"
-     - "Titular:"
-     - "Cliente:"
-  2. If no such label exists but multiple CIF/NIF values are present, prefer the one near section headers like:
-     - "Datos del titular"
-     - "Datos del cliente"
-     - "Información del titular"
-     - "Datos de facturación"
-  3. As a last resort (only one CIF found), use it.
-
-- Contracted Power: May appear as a slash-separated list like "40 / 40 / 40 / 40 / 40 / 41,6" corresponding to P1/P2/P3/P4/P5/P6. Extract each value as a separate potenciaP1..P6 field. Spanish decimal comma (e.g., "41,6") must be converted to a dot ("41.6")
-
-- All numeric values with Spanish decimal commas (e.g., "3.320,72") must be converted to standard decimals (e.g., "3320.72")
-
-- The supply address ("dirección de suministro" or "dirección fiscal") should be extracted as direccion
-
-- The current supplier/marketer may be labeled "Comercializadora", "Empresa comercializadora", or appear as the company issuing the invoice
-
-Return ONLY a valid JSON object with the extracted data.`;
+- Convert Spanish decimal commas to standard decimals
+- If a field is not found, DO NOT include it
+- Return ONLY a valid JSON object with the extracted data.`;
 
 /**
  * @swagger
