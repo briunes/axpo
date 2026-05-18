@@ -279,6 +279,10 @@ All responses follow a standard structure:
             expiresAt: { type: "string", format: "date-time" },
             payloadJson: { type: "object" },
             baseValueSetId: { type: "string", format: "uuid" },
+            ocrLogIds: {
+              type: "array",
+              items: { type: "string", format: "uuid" },
+            },
           },
         },
         CreateUserRequest: {

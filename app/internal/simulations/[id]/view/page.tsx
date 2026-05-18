@@ -9,8 +9,13 @@ import { CrudPageLayout, LoadingState, useAlerts } from "../../../components/sha
 import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { SimulationViewDisplay } from "../../../components/modules/SimulationViewDisplay";
 import type { SimulationResults } from "@/domain/types";
-import { Button } from "@mui/material";
+import { Button, IconButton, Tooltip } from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import HistoryIcon from "@mui/icons-material/History";
+import MailOutlineIcon from "@mui/icons-material/MailOutline";
+import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { DownloadHistoryDialog } from "../components/DownloadHistoryDialog";
 import { useUserPreferences } from "../../../components/providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../../lib/formatPreferences";
@@ -18,9 +23,25 @@ import { formatDisplayDate } from "../../../lib/formatPreferences";
 function SimulationMeta({ sim }: { sim: SimulationItem }) {
     const { t } = useI18n();
     const { preferences } = useUserPreferences();
+    const { showSuccess, showError } = useAlerts();
+    const [isPinVisible, setIsPinVisible] = useState(false);
 
     const fmtDate = (iso: string) =>
         formatDisplayDate(new Date(iso), preferences.dateFormat);
+
+    const handleCopyShareLink = async () => {
+        if (!sim.publicToken) return;
+
+        const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
+        const shareUrl = `${baseUrl}/simulador/?token=${sim.publicToken}`;
+
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            showSuccess("Share link copied to clipboard");
+        } catch {
+            showError("Failed to copy share link");
+        }
+    };
 
     return (
         <div style={{
@@ -35,9 +56,22 @@ function SimulationMeta({ sim }: { sim: SimulationItem }) {
         }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", flex: 1 }}>
 
+                {/* Reference Number */}
+                {sim.referenceNumber && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                        <span style={{ fontSize: 10, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("simulationDetail", "metaReference")}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--scheme-neutral-100)", fontFamily: "monospace", letterSpacing: "0.1em", background: "var(--scheme-neutral-900)", padding: "1px 7px", borderRadius: 4 }}>
+                            {sim.referenceNumber}
+                        </span>
+                    </span>
+                )}
+
                 {/* Client */}
                 {sim.client && (
                     <>
+                        {sim.referenceNumber && (
+                            <span style={{ color: "var(--scheme-neutral-800)", fontSize: 14, userSelect: "none" }}>·</span>
+                        )}
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                             <span style={{ fontSize: 10, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("simulationDetail", "metaClient")}</span>
                             <span style={{ fontSize: 11, color: "var(--scheme-neutral-100)", fontWeight: 600 }}>{sim.client.name}</span>
@@ -54,7 +88,8 @@ function SimulationMeta({ sim }: { sim: SimulationItem }) {
                     )}
                     {sim.status === "SHARED" && sim.sharedVia && (
                         <StatusBadge
-                            label={`${sim.sharedVia === "EMAIL" ? "✉" : "📄"} ${t("simulationsModule", sim.sharedVia === "EMAIL" ? "sharedViaEmail" : "sharedViaPdf") || (sim.sharedVia === "EMAIL" ? "Via Email" : "Via PDF")}`}
+                            icon={sim.sharedVia === "EMAIL" ? <MailOutlineIcon /> : <PictureAsPdfOutlinedIcon />}
+                            label={t("simulationsModule", sim.sharedVia === "EMAIL" ? "sharedViaEmail" : "sharedViaPdf") || (sim.sharedVia === "EMAIL" ? "Via Email" : "Via PDF")}
                             tone="neutral"
                         />
                     )}
@@ -100,7 +135,10 @@ function SimulationMeta({ sim }: { sim: SimulationItem }) {
                             }}
                             title={sim.invoiceFileName || "View invoice"}
                         >
-                            <span style={{ fontSize: 10, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>📄 {t("simulationDetail", "invoiceFile")}</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                                <PictureAsPdfOutlinedIcon sx={{ fontSize: 14 }} />
+                                {t("simulationDetail", "invoiceFile")}
+                            </span>
                             <span style={{ fontSize: 11, fontWeight: 600 }}>{sim.invoiceFileName || "View"}</span>
                             {sim.invoiceFileSize && (
                                 <span style={{ fontSize: 10, color: "var(--scheme-neutral-600)" }}>({Math.round(sim.invoiceFileSize / 1024)} KB)</span>
@@ -127,9 +165,35 @@ function SimulationMeta({ sim }: { sim: SimulationItem }) {
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                             <span style={{ fontSize: 10, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.06em" }}>PIN</span>
                             <span style={{ fontSize: 12, fontWeight: 700, color: "var(--scheme-neutral-100)", fontFamily: "monospace", letterSpacing: "0.14em", background: "var(--scheme-neutral-900)", padding: "1px 7px", borderRadius: 4 }}>
-                                {sim.pinSnapshot}
+                                {isPinVisible ? sim.pinSnapshot : "••••"}
                             </span>
+                            <Tooltip title={isPinVisible ? "Hide PIN" : "Show PIN"}>
+                                <IconButton
+                                    size="small"
+                                    onClick={() => setIsPinVisible((current) => !current)}
+                                    aria-label={isPinVisible ? "Hide PIN" : "Show PIN"}
+                                    sx={{ color: "var(--scheme-neutral-300)", p: 0.5 }}
+                                >
+                                    {isPinVisible ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                                </IconButton>
+                            </Tooltip>
                         </span>
+                    </>
+                )}
+
+                {/* Share link */}
+                {sim.sharedVia === "EMAIL" && sim.publicToken && (
+                    <>
+                        <span style={{ color: "var(--scheme-neutral-800)", fontSize: 14, userSelect: "none" }}>·</span>
+                        <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<ContentCopyIcon fontSize="small" />}
+                            onClick={handleCopyShareLink}
+                            sx={{ minWidth: "auto", px: 1.25, py: 0.25, textTransform: "none" }}
+                        >
+                            Copy share link
+                        </Button>
                     </>
                 )}
             </div>
@@ -188,7 +252,7 @@ export default function SimulationViewPage({ params }: { params: Promise<{ id: s
                 <div style={{ flex: 1 }}>
                     <SimulationMeta sim={simulation} />
                 </div>
-                {!!lastResults && false &&  (
+                {!!lastResults && false && (
                     <Button
                         variant="outlined"
                         startIcon={<HistoryIcon />}

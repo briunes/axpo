@@ -49,6 +49,17 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       skip,
       take: limit,
       include: {
+        simulation: {
+          select: { id: true, referenceNumber: true },
+        },
+        ocrFiles: {
+          select: {
+            id: true,
+            fileName: true,
+            fileType: true,
+            fileSizeBytes: true,
+          },
+        },
         user: {
           select: { id: true, email: true, fullName: true },
         },
@@ -65,6 +76,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         userId: l.userId,
         userEmail: l.user?.email ?? l.userEmail,
         userName: l.user?.fullName,
+        type: l.type,
         provider: l.provider,
         model: l.model,
         baseUrl: l.baseUrl,
@@ -83,7 +95,11 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         errorType: l.errorType,
         httpStatusCode: l.httpStatusCode,
         rawResponseSnippet: l.rawResponseSnippet,
+        promptText: l.promptText,
         metadata: l.metadata,
+        simulationId: l.simulationId,
+        simulationReferenceNumber: l.simulation?.referenceNumber ?? null,
+        files: l.ocrFiles,
       })),
       pagination: {
         page,

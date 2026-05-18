@@ -373,13 +373,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     errorType?: string;
     httpStatusCode?: number;
     rawResponseSnippet?: string;
+    promptText?: string;
     metadata?: any;
+    files?: File[];
   }) => {
     try {
-      await prisma.ocrLog.create({
+      const created = await prisma.ocrLog.create({
         data: {
           userId: auth.userId,
           userEmail: auth.email,
+          type: "INVOICE_EXTRACTION",
           status: data.status,
           durationMs: data.durationMs,
           provider: data.provider ?? "unknown",
@@ -398,11 +401,27 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           errorType: data.errorType,
           httpStatusCode: data.httpStatusCode,
           rawResponseSnippet: data.rawResponseSnippet,
+          promptText: data.promptText,
           metadata: data.metadata ?? undefined,
+          ocrFiles:
+            data.files && data.files.length > 0
+              ? {
+                  create: await Promise.all(
+                    data.files.map(async (file) => ({
+                      fileName: file.name,
+                      fileType: file.type || null,
+                      fileSizeBytes: file.size,
+                      fileData: Buffer.from(await file.arrayBuffer()),
+                    })),
+                  ),
+                }
+              : undefined,
         },
       });
+      return created;
     } catch (err) {
       console.error("[OCR Log] Failed to save log:", err);
+      return null;
     }
   };
 
@@ -469,7 +488,34 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Parse multipart form data
   const formData = await req.formData();
-  const file = formData.get("file") as File;
+  const requestFiles = formData
+    .getAll("file")
+    .filter((entry): entry is File => entry instanceof File);
+  const file = requestFiles[0];
+  const providerId = formData.get("providerId") as string | null;
+
+  // Load provider-specific prompt if a providerId was supplied
+  let activePrompt = INVOICE_EXTRACTION_PROMPT;
+  if (providerId) {
+    try {
+      const providerRecord = await (
+        prisma as any
+      ).invoiceProviderPrompt.findUnique({
+        where: { id: providerId },
+      });
+      if (providerRecord?.prompt && providerRecord.prompt.trim().length > 0) {
+        activePrompt = providerRecord.prompt;
+        console.log(
+          `Using provider-specific prompt for: ${providerRecord.name}`,
+        );
+      }
+    } catch (err) {
+      console.warn(
+        "Failed to load provider prompt, falling back to default:",
+        err,
+      );
+    }
+  }
 
   console.log("File type:", file?.type);
   console.log("File size:", file?.size, "bytes");
@@ -481,6 +527,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       provider: llmProvider,
       model: llmModelName,
       baseUrl: llmBaseUrl,
+      files: requestFiles,
       errorMessage: "No file provided",
       errorType: "VALIDATION_ERROR",
       httpStatusCode: 400,
@@ -512,6 +559,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       fileName: file.name,
       fileType: file.type,
       fileSizeBytes: file.size,
+      files: requestFiles,
       errorMessage: `Invalid file type: ${file.type}`,
       errorType: "VALIDATION_ERROR",
       httpStatusCode: 400,
@@ -569,6 +617,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         fileName: file.name,
         fileType: file.type,
         fileSizeBytes: file.size,
+        files: requestFiles,
         errorMessage: "Invoice extraction with local Ollama is not supported.",
         errorType: "UNSUPPORTED_PROVIDER",
         httpStatusCode: 400,
@@ -597,9 +646,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       }
 
       // Build content with all images (PDFs are converted to images)
-      const content: any[] = [
-        { type: "text", text: INVOICE_EXTRACTION_PROMPT },
-      ];
+      const content: any[] = [{ type: "text", text: activePrompt }];
 
       console.log(
         `Processing ${imagesToProcess.length} image(s) for Ollama Cloud`,
@@ -671,7 +718,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         {
           role: "user",
           content: [
-            { type: "text", text: INVOICE_EXTRACTION_PROMPT },
+            { type: "text", text: activePrompt },
             {
               type: "image_url",
               image_url: {
@@ -712,7 +759,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
             {
               role: "user",
               content: [
-                { type: "text", text: INVOICE_EXTRACTION_PROMPT },
+                { type: "text", text: activePrompt },
                 {
                   type: "image",
                   source: {
@@ -740,7 +787,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
             contents: [
               {
                 parts: [
-                  { text: INVOICE_EXTRACTION_PROMPT },
+                  { text: activePrompt },
                   {
                     inline_data: {
                       mime_type: file.type,
@@ -764,6 +811,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         fileName: file.name,
         fileType: file.type,
         fileSizeBytes: file.size,
+        files: requestFiles,
         errorMessage: `Provider ${llmProvider} is not supported for invoice extraction`,
         errorType: "UNSUPPORTED_PROVIDER",
         httpStatusCode: 400,
@@ -795,6 +843,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         fileName: file.name,
         fileType: file.type,
         fileSizeBytes: file.size,
+        files: requestFiles,
         errorMessage: `LLM API error: ${llmResponse.status} ${llmResponse.statusText}`,
         errorType: "LLM_API_ERROR",
         httpStatusCode: llmResponse.status,
@@ -843,7 +892,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         extractedData = JSON.parse(jsonMatch[1]);
       } catch (e) {
         console.error("Failed to parse extracted JSON:", e);
-        await saveOcrLog({
+        const createdParseLog = await saveOcrLog({
           status: "PARSE_ERROR",
           durationMs: Date.now() - requestStartTime,
           provider: llmProvider,
@@ -852,6 +901,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           fileName: file.name,
           fileType: file.type,
           fileSizeBytes: file.size,
+          files: requestFiles,
           errorMessage: "Failed to parse extracted data from LLM response",
           errorType: "JSON_PARSE_ERROR",
           httpStatusCode: 500,
@@ -863,12 +913,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
             success: false,
             message: "Failed to parse extracted data from LLM response",
             debug: extractedText,
+            ocrLogId: createdParseLog?.id ?? null,
           },
           { status: 500 },
         );
       }
     } else {
-      await saveOcrLog({
+      const createdParseLog = await saveOcrLog({
         status: "PARSE_ERROR",
         durationMs: Date.now() - requestStartTime,
         provider: llmProvider,
@@ -877,6 +928,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         fileName: file.name,
         fileType: file.type,
         fileSizeBytes: file.size,
+        files: requestFiles,
         errorMessage: "No valid JSON data found in LLM response",
         errorType: "NO_JSON_FOUND",
         httpStatusCode: 500,
@@ -888,12 +940,50 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           success: false,
           message: "No valid JSON data found in LLM response",
           debug: extractedText,
+          ocrLogId: createdParseLog?.id ?? null,
         },
         { status: 500 },
       );
     }
 
     // ── Post-processing: sanitize and validate extracted fields ──────────────
+
+    // Fix European thousand-separator misparse: Spanish invoices use "." as a thousand separator
+    // (e.g. "7.181 kWh" = 7,181 kWh). The LLM sometimes returns these as floats (7.181) instead
+    // of integers (7181). We detect this by checking if the sum of period values × 1000 ≈ consumoAnual.
+    {
+      const consumoPeriods = [
+        "consumoP1",
+        "consumoP2",
+        "consumoP3",
+        "consumoP4",
+        "consumoP5",
+        "consumoP6",
+      ] as const;
+      const periodValues = consumoPeriods
+        .map((k) => extractedData[k])
+        .filter((v): v is number => typeof v === "number");
+      if (
+        periodValues.length > 0 &&
+        typeof extractedData.consumoAnual === "number" &&
+        extractedData.consumoAnual > 100
+      ) {
+        const sumRaw = periodValues.reduce((a, b) => a + b, 0);
+        const sumScaled = sumRaw * 1000;
+        const annual = extractedData.consumoAnual;
+        // If scaled sum is within 5% of annual, the LLM misread thousands separators as decimals
+        if (Math.abs(sumScaled - annual) / annual < 0.05) {
+          console.log(
+            `[OCR Fix] Detected European thousand-separator misparse. Scaling consumo values ×1000 (sum=${sumRaw} → ${sumScaled}, consumoAnual=${annual})`,
+          );
+          for (const k of consumoPeriods) {
+            if (typeof extractedData[k] === "number") {
+              extractedData[k] = Math.round(extractedData[k] * 1000);
+            }
+          }
+        }
+      }
+    }
 
     // CUPS validation: Spanish CUPS format is ES + 16-18 digits + 2 uppercase letters.
     // Barcodes are typically all-numeric with no trailing letters.
@@ -964,7 +1054,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       (v) => v !== null && v !== undefined && v !== "",
     ).length;
 
-    await saveOcrLog({
+    const createdLog = await saveOcrLog({
       status: "SUCCESS",
       durationMs: Date.now() - requestStartTime,
       provider: llmProvider,
@@ -973,6 +1063,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       fileName: file.name,
       fileType: file.type,
       fileSizeBytes: file.size,
+      files: requestFiles,
       pageCount:
         imagesToProcess.length > 0 ? imagesToProcess.length : undefined,
       promptTokens,
@@ -982,6 +1073,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       fieldsExtracted,
       httpStatusCode: 200,
       rawResponseSnippet: extractedText,
+      promptText: activePrompt,
       metadata: {
         temperature: llmTemperature,
         maxTokens: llmMaxTokens,
@@ -993,6 +1085,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       success: true,
       message: "Invoice data extracted successfully",
       data: extractedData,
+      ocrLogId: createdLog?.id ?? null,
     });
   } catch (error: any) {
     console.error("=== INVOICE EXTRACTION ERROR ===");
@@ -1003,12 +1096,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     console.error("Model:", llmModelName);
     console.error("Base URL:", llmBaseUrl);
     console.error("================================");
-    await saveOcrLog({
+    const createdErrorLog = await saveOcrLog({
       status: "ERROR",
       durationMs: Date.now() - requestStartTime,
       provider: llmProvider ?? "unknown",
       model: llmModelName ?? "unknown",
       baseUrl: llmBaseUrl,
+      files: requestFiles,
       errorMessage: error.message || "Unknown error",
       errorType: error.constructor?.name || "UnknownError",
       httpStatusCode: 500,
@@ -1020,6 +1114,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         errorType: error.constructor.name,
         provider: llmProvider,
         model: llmModelName,
+        ocrLogId: createdErrorLog?.id ?? null,
       },
       { status: 500 },
     );

@@ -7,13 +7,14 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { SmtpSettings } from "./SmtpSettings";
 import { AutomatedEmailsSettings } from "./AutomatedEmailsSettings";
 import { LLMSettings } from "./LLMSettings";
+import { InvoiceProviderPromptsSettings } from "./InvoiceProviderPromptsSettings";
 
 export interface IntegrationsSettingsProps {
     session: SessionState;
     onNotify: (message: string, tone: "success" | "error") => void;
 }
 
-type IntegrationTab = "smtp" | "emails" | "llm";
+type IntegrationTab = "smtp" | "emails" | "llm" | "invoice-providers";
 
 export function IntegrationsSettings({ session, onNotify }: IntegrationsSettingsProps) {
     const { t } = useI18n();
@@ -23,6 +24,7 @@ export function IntegrationsSettings({ session, onNotify }: IntegrationsSettings
         smtp: t("systemSettings", "tabSmtp"),
         emails: t("systemSettings", "tabAutomatedEmails"),
         llm: t("configurationsModule", "tabLlmSettings"),
+        "invoice-providers": "Invoice Providers",
     };
 
     const tabIndex = (Object.keys(INTEGRATION_TABS) as IntegrationTab[]).indexOf(activeTab);
@@ -77,6 +79,11 @@ export function IntegrationsSettings({ session, onNotify }: IntegrationsSettings
                 )}
                 {activeTab === "llm" && (
                     <LLMSettings session={session} onNotify={onNotify} />
+                )}
+                {activeTab === "invoice-providers" && (
+                    <div style={{  height: "100%", boxSizing: "border-box" }}>
+                        <InvoiceProviderPromptsSettings session={session} onNotify={onNotify} />
+                    </div>
                 )}
             </div>
         </div>

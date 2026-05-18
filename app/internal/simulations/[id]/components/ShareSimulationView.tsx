@@ -299,6 +299,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             // When producing the final (shared) PDF, share the simulation first so
             // the publicToken is available for SIMULATION_LINK variable replacement.
             let simulationLink: string | undefined;
+            let didShare = false;
             if (markAsShared) {
                 try {
                     const shared = await shareSimulation(token, simulation.id, "PDF");
@@ -306,7 +307,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                     if (shared.publicToken) {
                         simulationLink = `${baseUrl}/simulador/?token=${shared.publicToken}`;
                     }
-                    onStatusChange?.();
+                    didShare = true;
                 } catch (err) {
                     console.error("Failed to share simulation before downloading PDF:", err);
                 }
@@ -342,6 +343,9 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
+            if (didShare) {
+                onStatusChange?.();
+            }
             onSuccess?.(t("shareSimulation", "pdfDownloaded") || "PDF downloaded successfully");
             return true;
         } catch (err) {
@@ -363,13 +367,14 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             // Share the simulation first so a publicToken is generated and the
             // SIMULATION_LINK variable resolves to a real URL instead of N/A.
             let simulationLink: string | undefined;
+            let didShare = false;
             try {
                 const shared = await shareSimulation(token, simulation.id, "EMAIL");
                 const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
                 if (shared.publicToken) {
                     simulationLink = `${baseUrl}/simulador/?token=${shared.publicToken}`;
                 }
-                onStatusChange?.();
+                didShare = true;
             } catch (err) {
                 console.error("Failed to share simulation before sending email:", err);
             }
@@ -404,6 +409,9 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 throw new Error(errMsg);
             }
 
+            if (didShare) {
+                onStatusChange?.();
+            }
             onSuccess?.(t("shareSimulation", "emailSent") || "Email sent successfully");
             return true;
         } catch (err) {

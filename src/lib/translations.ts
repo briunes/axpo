@@ -204,6 +204,8 @@ export const translations = {
       showAll: "Show all",
       selected: "{count} selected",
       clearSelection: "Clear selection",
+      copy: "Copy",
+      copied: "Copied!",
     },
     datePicker: {
       selectRange: "Select range",
@@ -717,6 +719,9 @@ export const translations = {
       both: "Electricity + Gas",
       selectClientError: "Please select a client.",
       clientNameRequired: "Client name is required.",
+      clientFound: "Client found and auto-selected.",
+      validateExtractedData:
+        "Please review and validate the extracted invoice data before saving.",
       created: "Simulation created successfully.",
       submitLabel: "Create simulation",
     },
@@ -1384,6 +1389,24 @@ export const translations = {
       fieldPriceEnergy: "Energy",
       ocrDisclaimer:
         "OCR may contain errors. Please validate the filled-in data before continuing.",
+      detectingProvider: "Detecting provider...",
+      detectedProvider: "Provider detected:",
+      unknownProvider: "Provider not in list:",
+      couldNotDetect: "Could not determine",
+      lowConfidenceHint:
+        "Low confidence — the model was not sure about this provider",
+      providerCustomPrompt: "Custom prompt active",
+      addProvider: "Add provider",
+      addProviderHint:
+        "Go to Configurations → Integrations → Invoice Providers to add this provider and configure a custom prompt",
+      addToList: "Add to list",
+      selectProvider: "Select provider",
+      defaultPrompt: "Default prompt",
+      needsPromptConfig: "Needs prompt setup",
+      needsPromptConfigHint:
+        "This provider was added automatically and its custom prompt has not been configured yet",
+      providerDetectionFailed:
+        "Could not detect provider — default prompt will be used",
     },
     pdfTemplatesModule: {
       loading: "Loading templates...",
@@ -1808,6 +1831,8 @@ export const translations = {
       showAll: "Mostrar todas",
       selected: "{count} seleccionados",
       clearSelection: "Limpiar selección",
+      copy: "Copiar",
+      copied: "¡Copiado!",
     },
     datePicker: {
       selectRange: "Seleccionar rango",
@@ -2326,6 +2351,9 @@ export const translations = {
       both: "Electricidad + Gas",
       selectClientError: "Por favor selecciona un cliente.",
       clientNameRequired: "El nombre del cliente es obligatorio.",
+      clientFound: "Cliente encontrado y seleccionado automáticamente.",
+      validateExtractedData:
+        "Por favor revisa y valida los datos extraídos de la factura antes de guardar.",
       created: "Simulación creada correctamente.",
       submitLabel: "Crear simulación",
     },
@@ -2983,8 +3011,7 @@ export const translations = {
         "Sube una factura energética (PDF o imagen) para extraer automáticamente datos de simulación",
       uploadPrompt: "Seleccionar Archivo de Factura",
       addMoreImages: "Añadir más imágenes",
-      uploadHint:
-        "Compatibles: PDF, JPG, PNG, WEBP (máx. 10MB). PDFs se convierten automáticamente a imágenes para Ollama. Mejor con facturas españolas.",
+      uploadHint: "Compatibles: PDF, JPG, PNG, WEBP (máx. 10MB).",
       extracting: "Extrayendo datos de la factura...",
       extract: "Extraer Datos",
       remove: "Eliminar Archivo",
@@ -3016,6 +3043,24 @@ export const translations = {
       fieldPriceEnergy: "Energía",
       ocrDisclaimer:
         "El OCR puede contener errores. Por favor, valida los datos rellenados antes de continuar.",
+      detectingProvider: "Detectando proveedor...",
+      detectedProvider: "Proveedor detectado:",
+      unknownProvider: "Proveedor no en la lista:",
+      couldNotDetect: "No se pudo determinar",
+      lowConfidenceHint:
+        "Baja confianza — el modelo no estaba seguro de este proveedor",
+      providerCustomPrompt: "Prompt personalizado activo",
+      addProvider: "Añadir proveedor",
+      addProviderHint:
+        "Ve a Configuraciones → Integraciones → Proveedores de facturas para añadir este proveedor y configurar un prompt personalizado",
+      addToList: "Añadir a la lista",
+      selectProvider: "Seleccionar proveedor",
+      defaultPrompt: "Prompt por defecto",
+      needsPromptConfig: "Falta configurar prompt",
+      needsPromptConfigHint:
+        "Este proveedor fue añadido automáticamente y su prompt personalizado aún no está configurado",
+      providerDetectionFailed:
+        "No se pudo detectar el proveedor — se usará el prompt por defecto",
     },
     pdfTemplatesModule: {
       loading: "Cargando plantillas...",

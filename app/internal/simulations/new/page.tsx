@@ -13,9 +13,14 @@ import { CrudFormContainer } from "../../components/shared/CrudFormContainer";
 import { getSystemConfig } from "../../lib/configApi";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem, FormControl, Box, Paper } from "@mui/material";
 import { ClientForm, type ClientFormData } from "../../components/modules/ClientForm";
-import { InvoiceExtractor, type ExtractedInvoiceData } from "../../components/modules";
+import { InvoiceExtractor, type ExtractedInvoiceData, type InvoiceExtractionContext } from "../../components/modules";
 import { FormSelect } from "../../components/ui/FormSelect";
 import { DateInput } from "../../components/ui/DateInput";
+import { FormInput } from "../../components/ui/FormInput";
+import { CurrencyInput } from "../../components/ui/CurrencyInput";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 
 type SimType = "ELECTRICITY" | "GAS";
 
@@ -54,9 +59,11 @@ export default function NewSimulationPage() {
     const [defaultDays, setDefaultDays] = useState<any>("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [errorMessage, ] = useState<string | null>(null);
     const [extractedData, setExtractedData] = useState<ExtractedInvoiceData | null>(null);
+    const [isValidatedExtractedData, setIsValidatedExtractedData] = useState(false);
     const [uploadedInvoiceFile, setUploadedInvoiceFile] = useState<File | null>(null);
+    const [ocrLogIds, setOcrLogIds] = useState<string[]>([]);
     const [isDarkMode, setIsDarkMode] = useState(false);
 
     useEffect(() => {
@@ -73,11 +80,15 @@ export default function NewSimulationPage() {
         return () => observer.disconnect();
     }, []);
 
-    const handleInvoiceDataExtracted = (data: ExtractedInvoiceData, file?: File) => {
+    const handleInvoiceDataExtracted = (data: ExtractedInvoiceData, context?: InvoiceExtractionContext) => {
         setExtractedData(data);
-        if (file) {
-            setUploadedInvoiceFile(file);
+        if (context?.file) {
+            setUploadedInvoiceFile(context.file);
         }
+        setOcrLogIds([
+            context?.providerDetectionLogId,
+            context?.extractionLogId,
+        ].filter((value): value is string => !!value));
 
         // Auto-detect commodity type from invoiceType or tariff
         if (data.invoiceType) {
@@ -111,9 +122,9 @@ export default function NewSimulationPage() {
         if (existingClient) {
             // Auto-select the found client
             setClientId(existingClient.id);
-            showSuccess(t("newSimulationPage", "clientFound") || `Client found: ${existingClient.name}`);
+            showSuccess(t("newSimulationPage", "clientFound"));
         } else if (data.nombreTitular && allowQuickCreate) {
-            // Pre-fill quick create form for new client
+            // Pre-fill quick create form for new client and open modal instantly
             setQuickClientData({
                 name: data.nombreTitular,
                 cif: data.cif || "",
@@ -124,6 +135,7 @@ export default function NewSimulationPage() {
                 agencyId: session?.user.agencyId ?? "",
                 address: {},
             });
+            setShowQuickCreate(true);
         }
     };
 
@@ -216,29 +228,23 @@ export default function NewSimulationPage() {
     const handleCancelQuickCreate = () => {
         setShowQuickCreate(false);
         setClientFormError(null);
-        setQuickClientData({
-            name: "",
-            cif: "",
-            contactName: "",
-            contactEmail: "",
-            contactPhone: "",
-            otherDetails: "",
-            agencyId: session.user.agencyId,
-            address: {},
-        });
+        // Intentionally do NOT reset quickClientData here so inputs are preserved if the modal is reopened
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!clientId) {
-            setErrorMessage(t("newSimulationPage", "selectClientError"));
             showError(t("newSimulationPage", "selectClientError"));
             return;
         }
 
+        if (llmEnabled && extractedData && !isValidatedExtractedData) {
+            showError(t("newSimulationPage", "validateExtractedData"));
+            return;
+        }
+
         setIsSubmitting(true);
-        setErrorMessage(null);
 
         try {
             // Build payload with extracted invoice data if available
@@ -295,6 +301,7 @@ export default function NewSimulationPage() {
                 clientId: clientId || undefined,
                 expiresAt: new Date(expiresAt + "T23:59:59Z").toISOString(),
                 payloadJson: payload,
+                ocrLogIds: ocrLogIds.length > 0 ? ocrLogIds : undefined,
             });
 
             // Upload invoice file if one was extracted
@@ -321,7 +328,6 @@ export default function NewSimulationPage() {
             router.push(`/internal/simulations/${created.id}`);
         } catch (err) {
             const msg = err instanceof Error ? err.message : "Could not create simulation.";
-            setErrorMessage(msg);
             showError(msg);
         } finally {
             setIsSubmitting(false);
@@ -341,7 +347,6 @@ export default function NewSimulationPage() {
             ) : (
                 <CrudFormContainer
                     onSubmit={handleSubmit}
-                    errorMessage={errorMessage}
                     submitLabel={t("newSimulationPage", "submitLabel")}
                     cancelLabel={t("actions", "cancel")}
                     onCancel={() => router.push("/internal/simulations")}
@@ -379,17 +384,23 @@ export default function NewSimulationPage() {
                             </div>
                             <InvoiceExtractor
                                 onDataExtracted={handleInvoiceDataExtracted}
-                                onBeforeExtract={() => setExtractedData(null)}
+                                onBeforeExtract={() => {
+                                    setExtractedData(null);
+                                    setIsValidatedExtractedData(false);
+                                    setUploadedInvoiceFile(null);
+                                    setOcrLogIds([]);
+                                }}
                             />
                         </div>
                     )}
 
                     {/* Display Extracted Data */}
                     {llmEnabled && extractedData && (
-                        <div style={{
+                        <Box sx={{
                             background: isDarkMode ? "linear-gradient(135deg, #0d1f17, #12261d)" : "linear-gradient(135deg, #f0fdf4, #ecfdf5)",
-                            border: isDarkMode ? "1px solid #1b3a2a" : "1px solid #86efac",
-                            borderRadius: 12,
+                            border: isDarkMode ? "1px solid" : "1px solid",
+                            borderColor: isDarkMode ? "#1b3a2a" : "success.main",
+                            borderRadius: 4,
                             padding: "16px 20px",
                             marginBottom: 24,
                             boxShadow: isDarkMode ? "0 2px 8px rgba(0,0,0,0.18)" : "0 2px 8px rgba(16,185,129,0.08)"
@@ -405,100 +416,154 @@ export default function NewSimulationPage() {
                                 <span style={{ fontWeight: 700, color: isDarkMode ? "#9dd8bc" : "#065f46", fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase" }}>
                                     {t("invoiceExtractor", "extractedDataTitle")}
                                 </span>
-                                {extractedData.invoiceType && (
-                                    <span style={{
-                                        marginLeft: "auto",
-                                        padding: "2px 10px",
-                                        borderRadius: 20,
-                                        fontSize: 11,
-                                        fontWeight: 700,
-                                        letterSpacing: "0.06em",
-                                        background: extractedData.invoiceType === "GAS" ? "#1e3a5f" : "#7c3aed",
-                                        color: "#fff",
-                                    }}>
-                                        {extractedData.invoiceType}
-                                    </span>
-                                )}
+                                {/* Commodity type toggle - always visible */}
+                                <ToggleButtonGroup
+                                    size="small"
+                                    exclusive
+                                    value={extractedData.invoiceType ?? "ELECTRICITY"}
+                                    onChange={(_, val) => {
+                                        if (!val) return;
+                                        setExtractedData(prev => prev ? { ...prev, invoiceType: val } : prev);
+                                        setSimType(val as SimType);
+                                    }}
+                                    sx={{ ml: 1, height: 26 }}
+                                >
+                                    <ToggleButton value="ELECTRICITY" sx={{ px: 1.2, py: 0, fontSize: 11, fontWeight: 700, gap: 0.5 }}>
+                                        <BoltIcon sx={{ fontSize: 13, color: "#f59e0b" }} />
+                                        Electricity
+                                    </ToggleButton>
+                                    <ToggleButton value="GAS" sx={{ px: 1.2, py: 0, fontSize: 11, fontWeight: 700, gap: 0.5 }}>
+                                        <LocalFireDepartmentIcon sx={{ fontSize: 13, color: "#ef4444" }} />
+                                        Gas
+                                    </ToggleButton>
+                                </ToggleButtonGroup>
+                                <Button
+                                    type="button"
+                                    size="small"
+                                    variant={isValidatedExtractedData ? "contained" : "outlined"}
+                                    color={isValidatedExtractedData ? "success" : "warning"}
+                                    onClick={() => setIsValidatedExtractedData(v => !v)}
+                                    startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+                                    sx={{ ml: "auto", fontSize: 11, py: 0.3, px: 1.2, minWidth: 0, textTransform: "none", fontWeight: 700 }}
+                                >
+                                    {isValidatedExtractedData ? "Validated" : "Validate"}
+                                </Button>
                             </div>
 
                             {/* Grid of fields */}
                             {(() => {
-                                const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 };
+                                const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 };
                                 const valueStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827" };
                                 const missingStyle: React.CSSProperties = { fontSize: 13, fontWeight: 500, color: isDarkMode ? "#a16207" : "#92400e", fontStyle: "italic", display: "flex", alignItems: "center", gap: 4 };
                                 const warnIcon = <span title="Not extracted by AI" style={{ fontSize: 13, lineHeight: 1 }}>⚠️</span>;
+                                const upStr = (key: keyof ExtractedInvoiceData, val: string) =>
+                                    setExtractedData(prev => prev ? { ...prev, [key]: val || undefined } : prev);
                                 return (
-                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "10px 20px" }}>
-                                        {/* CLIENT - always show */}
-                                        <div>
-                                            <div style={labelStyle}>{t("invoiceExtractor", "fieldClient")}</div>
-                                            {extractedData.nombreTitular
-                                                ? <div style={valueStyle}>{extractedData.nombreTitular}</div>
-                                                : <div style={missingStyle}>{warnIcon} Not found</div>}
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px 20px" }}>
+                                        {/* CLIENT */}
+                                        <div style={{ gridColumn: "span 2" }}>
+                                            <div style={labelStyle}>{t("newSimulationPage", "clientLabel")}</div>
+                                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <FormSelect
+                                                        label=""
+                                                        options={clients.map((c) => {
+                                                            const secondaryParts: string[] = [];
+                                                            if (c.cif) secondaryParts.push(`CIF: ${c.cif}`);
+                                                            if (c.contactName) secondaryParts.push(c.contactName);
+                                                            if (c.contactEmail) secondaryParts.push(c.contactEmail);
+                                                            return { value: c.id, label: c.name, secondaryLabel: secondaryParts.join(" • ") };
+                                                        })}
+                                                        value={clientId}
+                                                        onChange={(value) => setClientId(value as string)}
+                                                        required
+                                                        placeholder={t("newSimulationPage", "selectClient")}
+                                                        helperText={t("newSimulationPage", "clientHint")}
+                                                    />
+                                                </div>
+                                                {allowQuickCreate && (
+                                                    <Button type="button" variant="outlined" onClick={() => setShowQuickCreate(true)} title={t("newSimulationPage", "createNew")}>
+                                                        <AddIcon />
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
-                                        {/* CIF - always show */}
-                                        <div>
-                                            <div style={labelStyle}>{t("invoiceExtractor", "fieldCIF")}</div>
-                                            {extractedData.cif
-                                                ? <div style={valueStyle}>{extractedData.cif}</div>
-                                                : <div style={missingStyle}>{warnIcon} Not found</div>}
-                                        </div>
-                                        {/* CUPS - always show, span 2 */}
+                                        {/* CUPS - span 2 */}
                                         <div style={{ gridColumn: "span 2" }}>
                                             <div style={labelStyle}>{t("invoiceExtractor", "fieldCUPS")}</div>
-                                            {extractedData.cups
-                                                ? <div style={{ fontSize: 13, fontWeight: 600, color: "#0369a1", fontFamily: "monospace" }}>{extractedData.cups}</div>
-                                                : <div style={missingStyle}>{warnIcon} Not found</div>}
+                                            <FormInput label="" size="small" type="text" value={extractedData.cups ?? ""} onChange={e => upStr("cups", e.target.value)}
+                                                sx={{ '& input': { fontFamily: 'monospace', color: '#0369a1' } }} />
                                         </div>
-                                        {/* TARIFF - always show */}
+                                        {/* TARIFF */}
                                         <div>
                                             <div style={labelStyle}>{t("invoiceExtractor", "fieldTariff")}</div>
-                                            {extractedData.tarifaAcceso
-                                                ? <div style={{ fontSize: 13, fontWeight: 600, color: "#7c3aed" }}>{extractedData.tarifaAcceso}</div>
-                                                : <div style={missingStyle}>{warnIcon} Not found</div>}
+                                            {(() => {
+                                                const gasOptions = ["RL01", "RL02", "RL03", "RL04", "RL05", "RL06", "RLPS1", "RLPS2", "RLPS3", "RLPS4", "RLPS5", "RLPS6"];
+                                                const elecOptions = ["2.0TD", "3.0TD", "6.1TD"];
+                                                const availableOptions = simType === "GAS" ? gasOptions : elecOptions;
+                                                const extracted = extractedData.tarifaAcceso;
+                                                const isUnsupported = extracted && !availableOptions.includes(extracted);
+                                                return (
+                                                    <FormSelect label="" size="small" value={isUnsupported ? "" : (extractedData.tarifaAcceso ?? "")}
+                                                        onChange={v => upStr("tarifaAcceso", v as string)}
+                                                        helperText={isUnsupported ? `⚠️ OCR detected "${extracted}" — not supported by Axpo. Please select manually.` : undefined}
+                                                        options={simType === "GAS"
+                                                            ? gasOptions.map(v => ({ value: v, label: v }))
+                                                            : [
+                                                                { value: "2.0TD", label: "2.0TD (BT ≤15 kW)" },
+                                                                { value: "3.0TD", label: "3.0TD (BT >15 kW)" },
+                                                                { value: "6.1TD", label: "6.1TD (AT)" },
+                                                            ]
+                                                        } />
+                                                );
+                                            })()}
                                         </div>
-                                        {/* ZONE - always show */}
+                                        {/* ZONE */}
                                         <div>
                                             <div style={labelStyle}>{t("invoiceExtractor", "fieldZone")}</div>
-                                            {extractedData.zonaGeografica
-                                                ? <div style={valueStyle}>{extractedData.zonaGeografica}</div>
-                                                : <div style={missingStyle}>{warnIcon} Not found</div>}
+                                            <FormSelect label="" size="small" value={extractedData.zonaGeografica ?? ""}
+                                                onChange={v => upStr("zonaGeografica", v as string)}
+                                                options={[
+                                                    { value: "Peninsula", label: "Peninsula" },
+                                                    { value: "Baleares", label: "Baleares" },
+                                                    { value: "Canarias", label: "Canarias" },
+                                                    { value: "Ceuta", label: "Ceuta" },
+                                                    { value: "Melilla", label: "Melilla" },
+                                                ]} />
                                         </div>
-                                        {/* BILLING PERIOD - always show, span 2 */}
+                                        {/* BILLING PERIOD - span 2 */}
                                         <div style={{ gridColumn: "span 2" }}>
                                             <div style={labelStyle}>{t("invoiceExtractor", "fieldPeriod")}</div>
-                                            {extractedData.fechaInicio && extractedData.fechaFin
-                                                ? <div style={valueStyle}>{extractedData.fechaInicio} → {extractedData.fechaFin}</div>
-                                                : <div style={missingStyle}>{warnIcon} Not found</div>}
+                                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <DateInput value={extractedData.fechaInicio ?? ""} onChange={v => upStr("fechaInicio", v)} label="" />
+                                                </div>
+                                                <span style={{ color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 12, flexShrink: 0 }}>→</span>
+                                                <div style={{ flex: 1 }}>
+                                                    <DateInput value={extractedData.fechaFin ?? ""} onChange={v => upStr("fechaFin", v)} label="" />
+                                                </div>
+                                            </div>
                                         </div>
-                                        {/* AMOUNT - always show */}
+                                        {/* AMOUNT */}
                                         <div>
                                             <div style={labelStyle}>{t("invoiceExtractor", "fieldAmount")}</div>
-                                            {extractedData.facturaActual !== undefined
-                                                ? <div style={{ fontSize: 13, fontWeight: 700, color: "#059669" }}>{extractedData.facturaActual.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>
-                                                : <div style={missingStyle}>{warnIcon} Not found</div>}
+                                            <CurrencyInput value={extractedData.facturaActual ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, facturaActual: isNaN(v) ? undefined : v } : prev)} />
                                         </div>
-                                        {/* CURRENT SUPPLIER - always show */}
+                                        {/* CURRENT SUPPLIER */}
                                         <div>
                                             <div style={labelStyle}>{t("invoiceExtractor", "fieldSupplier")}</div>
-                                            {extractedData.comercializadorActual
-                                                ? <div style={valueStyle}>{extractedData.comercializadorActual}</div>
-                                                : <div style={missingStyle}>{warnIcon} Not found</div>}
+                                            <FormInput label="" size="small" type="text" value={extractedData.comercializadorActual ?? ""} onChange={e => upStr("comercializadorActual", e.target.value)} />
                                         </div>
-                                        {/* ADDRESS - always show, span 2 */}
+                                        {/* ADDRESS - span 2 */}
                                         <div style={{ gridColumn: "span 2" }}>
                                             <div style={labelStyle}>{t("invoiceExtractor", "fieldAddress")}</div>
-                                            {extractedData.direccion
-                                                ? <div style={valueStyle}>{extractedData.direccion}</div>
-                                                : <div style={missingStyle}>{warnIcon} Not found</div>}
+                                            <FormInput label="" size="small" type="text" value={extractedData.direccion ?? ""} onChange={e => upStr("direccion", e.target.value)} />
                                         </div>
-                                        {/* EXCESS POWER - only show if present */}
-                                        {extractedData.excesoPotencia !== undefined && (
-                                            <div>
-                                                <div style={labelStyle}>{t("invoiceExtractor", "fieldExcesoPotencia")}</div>
-                                                <div style={valueStyle}>{extractedData.excesoPotencia.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>
-                                            </div>
-                                        )}
+                                        {/* EXCESS POWER */}
+                                        <div>
+                                            <div style={labelStyle}>{t("invoiceExtractor", "fieldExcesoPotencia")}</div>
+                                            <CurrencyInput value={extractedData.excesoPotencia ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, excesoPotencia: isNaN(v) ? undefined : v } : prev)} />
+                                        </div>
                                     </div>
                                 );
                             })()}
@@ -506,10 +571,9 @@ export default function NewSimulationPage() {
                             {/* Consumption table: consumo per period */}
                             {(() => {
                                 const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
-                                const activeConsumo = periods.filter(p =>
-                                    extractedData[`consumo${p}` as keyof typeof extractedData] !== undefined
-                                );
-                                if (activeConsumo.length === 0) return null;
+                                const displayPeriods = periods;
+                                const hasConsumo = periods.some(p => extractedData[`consumo${p}` as keyof ExtractedInvoiceData] != null);
+                                if (!hasConsumo) return null;
                                 return (
                                     <div style={{ marginTop: 14 }}>
                                         <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
@@ -520,7 +584,7 @@ export default function NewSimulationPage() {
                                                 <thead>
                                                     <tr>
                                                         <th style={{ textAlign: "left", padding: "3px 10px 3px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}></th>
-                                                        {activeConsumo.map(p => (
+                                                        {displayPeriods.map(p => (
                                                             <th key={p} style={{ textAlign: "center", padding: "3px 12px", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}>{p}</th>
                                                         ))}
                                                     </tr>
@@ -528,9 +592,15 @@ export default function NewSimulationPage() {
                                                 <tbody>
                                                     <tr>
                                                         <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>Energy (kWh)</td>
-                                                        {activeConsumo.map(p => {
-                                                            const val = extractedData[`consumo${p}` as keyof typeof extractedData] as number | undefined;
-                                                            return <td key={p} style={{ textAlign: "center", padding: "4px 12px", fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827", fontFamily: "monospace", fontSize: 12 }}>{val !== undefined ? val.toLocaleString("es-ES") : "—"}</td>;
+                                                        {displayPeriods.map(p => {
+                                                            const key = `consumo${p}` as keyof ExtractedInvoiceData;
+                                                            const val = extractedData[key] as number | undefined;
+                                                            return <td key={p} style={{ textAlign: "center", padding: "4px 6px", fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827", fontFamily: "monospace", fontSize: 12 }}>
+                                                                <FormInput size="small" type="number" value={val ?? ""}
+                                                                    onChange={e => setExtractedData(prev => prev ? { ...prev, [key]: e.target.value === "" ? undefined : parseFloat(e.target.value) } : prev)}
+                                                                    slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, textAlign: 'center', fontFamily: 'monospace', width: 80, padding: '4px 6px' } } }}
+                                                                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }} />
+                                                            </td>;
                                                         })}
                                                     </tr>
                                                 </tbody>
@@ -540,61 +610,67 @@ export default function NewSimulationPage() {
                                 );
                             })()}
 
-                            {/* Price table: current supplier unit prices */}
+                            {/* Potencia table: potencia per period */}
                             {(() => {
                                 const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
-                                const activePeriods = periods.filter(p =>
-                                    extractedData[`precioPotencia${p}` as keyof typeof extractedData] !== undefined ||
-                                    extractedData[`precioEnergia${p}` as keyof typeof extractedData] !== undefined
-                                );
-                                if (activePeriods.length === 0) return null;
-                                const hasPotencia = periods.some(p => extractedData[`precioPotencia${p}` as keyof typeof extractedData] !== undefined);
-                                const hasEnergia = periods.some(p => extractedData[`precioEnergia${p}` as keyof typeof extractedData] !== undefined);
+                                const hasPotencia = periods.some(p => extractedData[`potencia${p}` as keyof ExtractedInvoiceData] != null);
+                                if (!hasPotencia) return null;
                                 return (
                                     <div style={{ marginTop: 14 }}>
                                         <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-                                            {t("invoiceExtractor", "fieldCurrentPrices")}
+                                            Potencia (kW)
                                         </div>
                                         <div style={{ overflowX: "auto" }}>
                                             <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
                                                 <thead>
                                                     <tr>
                                                         <th style={{ textAlign: "left", padding: "3px 10px 3px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}></th>
-                                                        {activePeriods.map(p => (
+                                                        {periods.map(p => (
                                                             <th key={p} style={{ textAlign: "center", padding: "3px 12px", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}>{p}</th>
                                                         ))}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {hasPotencia && (
-                                                        <tr>
-                                                            <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>{t("invoiceExtractor", "fieldPricePower")} (€/kW/día)</td>
-                                                            {activePeriods.map(p => {
-                                                                const val = extractedData[`precioPotencia${p}` as keyof typeof extractedData] as number | undefined;
-                                                                return <td key={p} style={{ textAlign: "center", padding: "4px 12px", fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827", fontFamily: "monospace", fontSize: 12 }}>{val !== undefined ? val.toFixed(6) : "—"}</td>;
-                                                            })}
-                                                        </tr>
-                                                    )}
-                                                    {hasEnergia && (
-                                                        <tr>
-                                                            <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>{t("invoiceExtractor", "fieldPriceEnergy")} (€/kWh)</td>
-                                                            {activePeriods.map(p => {
-                                                                const val = extractedData[`precioEnergia${p}` as keyof typeof extractedData] as number | undefined;
-                                                                return <td key={p} style={{ textAlign: "center", padding: "4px 12px", fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827", fontFamily: "monospace", fontSize: 12 }}>{val !== undefined ? val.toFixed(6) : "—"}</td>;
-                                                            })}
-                                                        </tr>
-                                                    )}
+                                                    <tr>
+                                                        <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>Power (kW)</td>
+                                                        {periods.map(p => {
+                                                            const key = `potencia${p}` as keyof ExtractedInvoiceData;
+                                                            const val = extractedData[key] as number | undefined;
+                                                            return (
+                                                                <td key={p} style={{ textAlign: "center", padding: "4px 6px" }}>
+                                                                    <FormInput size="small" type="number" value={val ?? ""}
+                                                                        onChange={e => setExtractedData(prev => prev ? { ...prev, [key]: e.target.value === "" ? undefined : parseFloat(e.target.value) } : prev)}
+                                                                        slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, textAlign: "center", fontFamily: "monospace", width: 80, padding: "4px 6px" } } }}
+                                                                        sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px" } }} />
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
                                                 </tbody>
                                             </table>
                                         </div>
                                     </div>
                                 );
                             })()}
-                        </div>
+
+                            {/* Simulation settings: expiration date */}
+                            <div style={{ display: "flex", gap: 16, marginTop: 16, paddingTop: 14, borderTop: `1px solid ${isDarkMode ? "#1b3a2a" : "#bbf7d0"}`, alignItems: "flex-start" }}>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{t("newSimulationPage", "expirationLabel")}</div>
+                                    <DateInput
+                                        label=""
+                                        value={expiresAt}
+                                        onChange={(value) => setExpiresAt(value)}
+                                        helperText={t("newSimulationPage", "expirationHint").replace("{{days}}", defaultDays)}
+                                        nopadding
+                                    />
+                                </div>
+                            </div>
+                        </Box>
                     )}
 
-                    {/* Client, Commodity Type, and Expiration Date - All in one row */}
-                    <div className="crud-form-section">
+                    {/* Client, Commodity Type, and Expiration Date - Only shown when no OCR data */}
+                    {!(llmEnabled && extractedData) && (<div className="crud-form-section">
                         <div className="crud-form-row" style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
                             {/* Client */}
                             <div className="crud-form-group" style={{ flex: 1 }}>
@@ -673,7 +749,7 @@ export default function NewSimulationPage() {
                                 />
                             </div>
                         </div>
-                    </div>
+                    </div>)}
                 </CrudFormContainer>
             )}
 
@@ -693,7 +769,6 @@ export default function NewSimulationPage() {
                             data={quickClientData}
                             onChange={setQuickClientData}
                             onSubmit={handleQuickCreateClient}
-                            errorMessage={clientFormError}
                             isSubmitting={isCreatingClient}
                             submitLabel={t("newSimulationPage", "saveClient")}
                             cancelLabel={t("actions", "cancel")}

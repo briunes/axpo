@@ -5,6 +5,8 @@ import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl, C
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import CheckIcon from "@mui/icons-material/Check";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -16,6 +18,11 @@ export interface ColumnDef<T> {
   label: string;
   sortable?: boolean;
   renderCell: (row: T) => React.ReactNode;
+  /** If true, a copy button appears on hover to copy the cell's text content */
+  copyable?: boolean;
+  /** Provide a custom text extractor for copying. Required when the cell renders JSX
+   *  whose text cannot be derived from the raw row field (e.g. nested objects). */
+  copyText?: (row: T) => string;
   width?: string;
 }
 
@@ -91,6 +98,56 @@ function CheckboxCell({
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
+
+// Copyable cell wrapper – shows a copy button on hover
+function CopyableCell({ children, text }: { children: React.ReactNode; text: string }) {
+  const [copied, setCopied] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const { t } = useI18n();
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  return (
+    <Box
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0.5,
+        width: '100%',
+        position: 'relative',
+        pr: hovered ? '26px' : 0,
+        transition: 'padding-right 0.1s',
+      }}
+    >
+      <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {children}
+      </Box>
+      {hovered && (
+        <Tooltip title={copied ? t('dataTable', 'copied') : t('dataTable', 'copy')} placement="top">
+          <IconButton
+            size="small"
+            onClick={handleCopy}
+            sx={{
+              position: 'absolute',
+              right: 0,
+              '&:hover': { color: copied ? 'success.main' : 'var(--scheme-neutral-100)' },
+            }}
+          >
+            {copied ? <CheckIcon sx={{ fontSize: 13 }} /> : <ContentCopyIcon sx={{ fontSize: 13 }} />}
+          </IconButton>
+        </Tooltip>
+      )}
+    </Box>
+  );
+}
 
 // ── Column visibility helpers ────────────────────────────────────────────────
 function loadHiddenCols(tableId: string): Set<string> {
@@ -279,7 +336,20 @@ export function DataTable<T extends { id: string }>({
         if (loading && (params.row as any).__skeleton) {
           return <Skeleton variant="rounded" width="100%" height={'50%'} />;
         }
-        return col.renderCell(params.row);
+        const content = col.renderCell(params.row);
+        if (col.copyable) {
+          // Use explicit copyText extractor when provided, otherwise try params.value
+          // (params.value reflects row[col.key] which may be an object or undefined)
+          let cellValue: string;
+          if (col.copyText) {
+            cellValue = col.copyText(params.row);
+          } else {
+            const raw = params.value;
+            cellValue = (raw != null && typeof raw !== 'object') ? String(raw) : '';
+          }
+          return <CopyableCell text={cellValue}>{content}</CopyableCell>;
+        }
+        return content;
       },
     })));
 
@@ -542,6 +612,18 @@ export function DataTable<T extends { id: string }>({
               py: 0,
               borderBottom: '1px solid var(--scheme-neutral-900)',
               borderRight: 'none',
+              outline: 'none !important',
+              '&:focus, &:focus-within': {
+                outline: 'none !important',
+              },
+              '&.MuiDataGrid-cell--selected': {
+                outline: 'none !important',
+              },
+            },
+            '& .MuiDataGrid-cell:hover': {
+              backgroundColor: 'rgba(255, 50, 84, 0.08)',
+              borderRadius: '4px',
+              cursor: 'default',
             },
             '& .MuiDataGrid-row': {
               backgroundColor: 'var(--scheme-neutral-1200)',

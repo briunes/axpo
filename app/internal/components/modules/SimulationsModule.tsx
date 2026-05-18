@@ -170,30 +170,9 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
 
   const columns: ColumnDef<SimulationItem>[] = [
     {
-      key: "referenceNumber",
-      label: t("columns", "reference"),
-      width: "120",
-      sortable: true,
-      renderCell: (s) => (
-        <span className="dt-cell-mono" style={{ fontSize: 12, letterSpacing: "0.08em", opacity: s.isDeleted ? 0.4 : 1, color: "var(--scheme-neutral-300)" }}>
-          {s.referenceNumber ?? <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
-        </span>
-      ),
-    },
-    {
-      key: "owner",
-      label: t("columns", "owner"),
-      width: "150",
-      renderCell: (s) => (
-        <span className="dt-cell-primary" style={{ opacity: s.isDeleted ? 0.5 : 1 }}>
-          {s.ownerUser?.fullName ?? "—"}
-        </span>
-      ),
-    },
-    {
-      key: "client",
-      label: t("columns", "client"),
-      width: "200",
+      key: "type",
+      label: "",
+      width: '18px',
       renderCell: (s) => {
         const payload = s.payloadJson as { type?: string; schemaVersion?: string } | null;
         let commodityIcon: React.ReactNode;
@@ -207,8 +186,61 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         return (
           <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: s.isDeleted ? 0.5 : 1 }}>
             {commodityIcon}
+          </div>
+        );
+      },
+    },
+    {
+      key: "referenceNumber",
+      label: t("columns", "reference"),
+      width: "120",
+      copyable: true,
+      sortable: true,
+      renderCell: (s) => (
+        <span className="dt-cell-mono" style={{ fontSize: 12, letterSpacing: "0.08em", opacity: s.isDeleted ? 0.4 : 1, color: "var(--scheme-neutral-300)" }}>
+          {s.referenceNumber ?? <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
+        </span>
+      ),
+    },
+    {
+      key: "owner",
+      label: t("columns", "owner"),
+      width: "150",
+      copyable: true,
+      copyText: (s) => s.ownerUser?.fullName ?? '',
+      sortable: true,
+      renderCell: (s) => (
+        <span className="dt-cell-primary" style={{ opacity: s.isDeleted ? 0.5 : 1 }}>
+          {s.ownerUser?.fullName ?? "—"}
+        </span>
+      ),
+    },
+    {
+      key: "client",
+      label: t("columns", "client"),
+      width: "200",
+      copyable: true,
+      copyText: (s) => s.client?.name ?? '',
+      sortable: true,
+      renderCell: (s) => {
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: s.isDeleted ? 0.5 : 1 }}>
             <span className="dt-cell-primary" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {s.client?.name || <span style={{ color: "var(--scheme-neutral-500)", fontStyle: "italic" }}>{t("status", "noClient")}</span>}
+              {s.client?.name
+                ? <Box
+                  component={'a'}
+                  href={`/internal/clients/${s.client.id}/edit`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ color: "primary", textDecoration: "none" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {s.client.name}
+                </Box>
+                : <span style={{ color: "var(--scheme-neutral-500)", fontStyle: "italic" }}>{t("status", "noClient")}</span>
+              }
             </span>
           </div>
         );
@@ -217,6 +249,14 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     {
       key: "cups",
       label: t("columns", "cups"),
+      copyable: true,
+      copyText: (s:any) => {
+        debugger;
+        const payload = s.payloadJson as { electricity?: { clientData?: { cups?: string } }; gas?: { clientData?: { cups?: string } } } | null;
+        const cupsElec = payload?.electricity?.clientData?.cups;
+        const cupsGas = payload?.gas?.clientData?.cups;
+        return s.cupsNumber || cupsElec || cupsGas || s?.invoiceData?.cups || '';
+      },
       renderCell: (s) => {
         const payload = s.payloadJson as { electricity?: { clientData?: { cups?: string } }; gas?: { clientData?: { cups?: string } } } | null;
         const cupsElec = payload?.electricity?.clientData?.cups;
@@ -251,17 +291,17 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         </span>
       ),
     },
-    {
-      key: "pinSnapshot",
-      label: "PIN",
-      width: "70",
-      sortable: true,
-      renderCell: (s) => (
-        <span className="dt-cell-mono" style={{ fontSize: 13, letterSpacing: "0.12em", opacity: s.isDeleted ? 0.4 : 1 }}>
-          {s.pinSnapshot ?? <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
-        </span>
-      ),
-    },
+    // {
+    //   key: "pinSnapshot",
+    //   label: "PIN",
+    //   width: "70",
+    //   sortable: true,
+    //   renderCell: (s) => (
+    //     <span className="dt-cell-mono" style={{ fontSize: 13, letterSpacing: "0.12em", opacity: s.isDeleted ? 0.4 : 1 }}>
+    //       {s.pinSnapshot ?? <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
+    //     </span>
+    //   ),
+    // },
     {
       key: "expiresAt",
       label: t("columns", "expires"),

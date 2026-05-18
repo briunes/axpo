@@ -430,6 +430,7 @@ interface CreateSimulationInput {
   expiresAt?: string;
   payloadJson?: Record<string, unknown>;
   baseValueSetId?: string;
+  ocrLogIds?: string[];
 }
 
 interface UpdateSimulationInput {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
     alpha,
     Box,
+    Button,
     Chip,
     Dialog,
     DialogContent,
@@ -23,6 +24,12 @@ import ErrorIcon from "@mui/icons-material/Error";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
+import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
+import TollRoundedIcon from "@mui/icons-material/TollRounded";
+import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
+import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import type { SessionState } from "../../lib/authSession";
 import { DataTable, type ColumnDef } from "../ui";
 
@@ -32,6 +39,7 @@ interface OcrLogEntry {
     userId?: string;
     userEmail?: string;
     userName?: string;
+    type: "INVOICE_EXTRACTION" | "PROVIDER_DETECTION";
     provider: string;
     model: string;
     baseUrl?: string;
@@ -50,7 +58,16 @@ interface OcrLogEntry {
     errorType?: string;
     httpStatusCode?: number;
     rawResponseSnippet?: string;
+    promptText?: string;
     metadata?: Record<string, unknown>;
+    simulationId?: string | null;
+    simulationReferenceNumber?: string | null;
+    files?: Array<{
+        id: string;
+        fileName: string;
+        fileType?: string | null;
+        fileSizeBytes: number;
+    }>;
 }
 
 export interface OcrLogsPanelProps {
@@ -75,6 +92,19 @@ function formatProvider(provider: string): string {
         "google": "Google AI",
     };
     return map[provider] ?? provider;
+}
+
+function formatLogType(type: OcrLogEntry["type"]): string {
+    return type === "PROVIDER_DETECTION" ? "Provider Detection" : "Invoice Extraction";
+}
+
+function getStoredFilesSummary(log: OcrLogEntry): string {
+    if (!log.files || log.files.length === 0) return "—";
+    if (log.files.length === 1) {
+        return `${log.files[0].fileName} (${formatFileSize(log.files[0].fileSizeBytes)})`;
+    }
+    const totalBytes = log.files.reduce((sum, file) => sum + file.fileSizeBytes, 0);
+    return `${log.files.length} files · ${formatFileSize(totalBytes)}`;
 }
 
 function StatusChip({ status }: { status: string }) {
@@ -131,15 +161,80 @@ function StatusChip({ status }: { status: string }) {
     );
 }
 
+function DetailStatCard({
+    label,
+    value,
+    subvalue,
+    icon,
+    mono = false,
+    accent,
+}: {
+    label: string;
+    value: string;
+    subvalue?: string;
+    icon?: React.ReactNode;
+    mono?: boolean;
+    accent?: string;
+}) {
+    return (
+        <Box
+            sx={{
+                position: "relative",
+                borderRadius: 2.5,
+                border: "1px solid",
+                borderColor: accent ? alpha(accent, 0.28) : "divider",
+                background: (theme) =>
+                    theme.palette.mode === "dark"
+                        ? `linear-gradient(180deg, ${alpha(accent ?? theme.palette.common.white, 0.06)}, rgba(255,255,255,0.02))`
+                        : `linear-gradient(180deg, ${alpha(accent ?? theme.palette.primary.main, 0.06)}, rgba(255,255,255,0.94))`,
+                p: 1.75,
+                minHeight: 104,
+                display: "flex",
+                flexDirection: "column",
+                gap: 0.6,
+                overflow: "hidden",
+            }}
+        >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, color: accent ?? "text.secondary" }}>
+                {icon}
+                <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "text.secondary" }}>
+                    {label}
+                </Typography>
+            </Box>
+            <Typography sx={{ fontSize: 15, fontWeight: 700, color: "text.primary", fontFamily: mono ? "monospace" : undefined, lineHeight: 1.35, wordBreak: "break-word" }}>
+                {value}
+            </Typography>
+            {subvalue && (
+                <Typography sx={{ fontSize: 12, color: "text.secondary", lineHeight: 1.35 }}>
+                    {subvalue}
+                </Typography>
+            )}
+        </Box>
+    );
+}
+
 // ── Detail dialog ────────────────────────────────────────────────────────────
 
-function OcrLogDetailDialog({ log, onClose }: { log: OcrLogEntry; onClose: () => void }) {
+function OcrLogDetailDialog({
+    log,
+    token,
+    onClose,
+    onNotify,
+}: {
+    log: OcrLogEntry;
+    token: string;
+    onClose: () => void;
+    onNotify?: (text: string, tone: "success" | "error") => void;
+}) {
     const theme = useTheme();
     const [tab, setTab] = useState(0);
+    const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
     const isDark = theme.palette.mode === "dark";
 
     const hasExtracted = !!log.extractedFields;
     const hasMetadata = !!log.metadata;
+    const hasPrompt = !!log.promptText;
+    const hasStoredFiles = !!log.files?.length;
 
     const codeBoxSx = {
         backgroundColor: isDark ? "#0d1117" : "#f6f8fa",
@@ -165,66 +260,232 @@ function OcrLogDetailDialog({ log, onClose }: { log: OcrLogEntry; onClose: () =>
         mb: 0.5,
     };
 
-    const metaItems = [
-        { label: "User", value: log.userName ? `${log.userName}${log.userEmail ? ` (${log.userEmail})` : ""}` : (log.userEmail ?? "—") },
-        { label: "Provider", value: formatProvider(log.provider) },
-        { label: "Model", value: log.model, mono: true },
-        { label: "File", value: log.fileName ? `${log.fileName}  ·  ${formatFileSize(log.fileSizeBytes)}${log.pageCount ? `  ·  ${log.pageCount} page(s)` : ""}` : "—" },
-        { label: "Duration", value: log.durationMs != null ? `${(log.durationMs / 1000).toFixed(2)}s` : "—" },
-        { label: "Tokens", value: log.totalTokens != null ? `${log.totalTokens.toLocaleString()}  (${log.promptTokens ?? 0}↑ / ${log.completionTokens ?? 0}↓)` : "—" },
-        { label: "Fields extracted", value: log.fieldsExtracted != null ? String(log.fieldsExtracted) : "—" },
-        { label: "HTTP status", value: log.httpStatusCode != null ? String(log.httpStatusCode) : "—" },
-    ];
+    const tokenSummary = log.totalTokens != null
+        ? `${log.totalTokens.toLocaleString()} total`
+        : "No token data";
+    const tokenBreakdown = log.totalTokens != null
+        ? `${log.promptTokens ?? 0} prompt / ${log.completionTokens ?? 0} completion`
+        : undefined;
+    const primaryFileSummary = log.fileName
+        ? `${log.fileName}`
+        : "No primary file";
+    const primaryFileMeta = [
+        log.fileType?.replace("application/", "").replace("image/", ""),
+        formatFileSize(log.fileSizeBytes),
+        log.pageCount ? `${log.pageCount} page(s)` : null,
+    ].filter(Boolean).join(" · ");
+
+    const handleDownloadStoredFile = async (fileId: string, fallbackName: string) => {
+        try {
+            setDownloadingFileId(fileId);
+            const response = await fetch(`/api/v1/internal/ocr-logs/${log.id}/files/${fileId}`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to download OCR file");
+            }
+
+            const disposition = response.headers.get("Content-Disposition") ?? "";
+            const filenameMatch = disposition.match(/filename="?([^\"]+)"?/);
+            const filename = filenameMatch?.[1] ?? fallbackName;
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = filename;
+            anchor.click();
+            URL.revokeObjectURL(url);
+            onNotify?.(`Downloaded ${filename}`, "success");
+        } catch (error) {
+            onNotify?.(
+                error instanceof Error ? error.message : "Failed to download OCR file",
+                "error",
+            );
+        } finally {
+            setDownloadingFileId(null);
+        }
+    };
 
     // tab indices are dynamic
-    const tabExtracted = 1;
-    const tabMetadata = hasExtracted ? 2 : 1;
+    const tabPrompt = 1;
+    const tabStoredFiles = 1 + (hasPrompt ? 1 : 0);
+    const tabExtracted = tabStoredFiles + (hasStoredFiles ? 1 : 0);
+    const tabMetadata = tabExtracted + (hasExtracted ? 1 : 0);
 
     return (
         <Dialog
             open
             onClose={onClose}
-            maxWidth="md"
+            maxWidth="lg"
             fullWidth
             PaperProps={{
                 sx: {
-                    backgroundColor: isDark ? "#161b22" : "#fff",
+                    backgroundColor: isDark ? "#10151d" : "#ffffff",
                     backgroundImage: "none",
-                    border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
+                    border: `1px solid ${isDark ? "#273244" : "#d9e1ec"}`,
+                    borderRadius: 3,
+                    boxShadow: isDark
+                        ? "0 30px 80px rgba(0,0,0,0.55)"
+                        : "0 24px 60px rgba(15, 23, 42, 0.18)",
                 },
             }}
         >
-            <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                    <StatusChip status={log.status} />
-                    <Typography variant="h6" sx={{ fontSize: 15, fontWeight: 700 }}>
-                        OCR Request &mdash;{" "}
-                        {new Date(log.requestedAt).toLocaleString("en-GB", {
-                            day: "2-digit", month: "2-digit", year: "numeric",
-                            hour: "2-digit", minute: "2-digit", second: "2-digit",
-                        })}
-                    </Typography>
+            <DialogTitle sx={{ px: 3, pt: 3, pb: 2 }}>
+                <Box
+                    sx={{
+                        borderRadius: 3,
+                        px: 2.25,
+                        py: 2,
+                        border: "1px solid",
+                        borderColor: isDark ? "rgba(96,165,250,0.20)" : "rgba(59,130,246,0.16)",
+                        background: isDark
+                            ? "linear-gradient(135deg, rgba(30,41,59,0.92), rgba(15,23,42,0.88))"
+                            : "linear-gradient(135deg, rgba(248,250,252,0.96), rgba(239,246,255,0.96))",
+                    }}
+                >
+                    <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }}>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.15, minWidth: 0 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                                <StatusChip status={log.status} />
+                                <Chip
+                                    label={formatLogType(log.type)}
+                                    size="small"
+                                    sx={{
+                                        fontWeight: 700,
+                                        fontSize: 11,
+                                        height: 24,
+                                        color: theme.palette.info.main,
+                                        backgroundColor: alpha(theme.palette.info.main, isDark ? 0.18 : 0.12),
+                                    }}
+                                />
+                                {log.simulationReferenceNumber && (
+                                    <Chip
+                                        icon={<LinkRoundedIcon sx={{ fontSize: 14 }} />}
+                                        label={`Simulation ${log.simulationReferenceNumber}`}
+                                        size="small"
+                                        sx={{
+                                            fontWeight: 700,
+                                            fontSize: 11,
+                                            height: 24,
+                                            color: theme.palette.secondary.main,
+                                            backgroundColor: alpha(theme.palette.secondary.main, isDark ? 0.18 : 0.1),
+                                        }}
+                                    />
+                                )}
+                            </Box>
+                            <Box>
+                                <Typography variant="h6" sx={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.15 }}>
+                                    OCR Request Detail
+                                </Typography>
+                                <Typography sx={{ mt: 0.6, fontSize: 13, color: "text.secondary", lineHeight: 1.45 }}>
+                                    {new Date(log.requestedAt).toLocaleString("en-GB", {
+                                        day: "2-digit", month: "2-digit", year: "numeric",
+                                        hour: "2-digit", minute: "2-digit", second: "2-digit",
+                                    })}
+                                    {log.userName || log.userEmail ? ` · ${log.userName ?? log.userEmail}` : ""}
+                                </Typography>
+                            </Box>
+                        </Box>
+                        <IconButton size="small" onClick={onClose} sx={{ mt: -0.25, mr: -0.25 }}>
+                            <CloseIcon fontSize="small" />
+                        </IconButton>
+                    </Box>
                 </Box>
-                <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
             </DialogTitle>
 
-            <Box sx={{ px: 3, pb: 2, display: "flex", flexWrap: "wrap", gap: "12px 28px" }}>
-                {metaItems.map(({ label, value, mono }) => (
-                    <Box key={label}>
-                        <Typography sx={labelSx}>{label}</Typography>
-                        <Typography variant="body2" sx={{ fontSize: 12, fontFamily: mono ? "monospace" : undefined }}>
-                            {value}
-                        </Typography>
-                    </Box>
-                ))}
+            <Box sx={{ px: 3, pb: 2.25 }}>
+                <Box
+                    sx={{
+                        display: "grid",
+                        gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
+                        gap: 1.5,
+                    }}
+                >
+                    <DetailStatCard
+                        label="Request"
+                        value={primaryFileSummary}
+                        subvalue={primaryFileMeta || `Log ID: ${log.id}`}
+                        icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 16 }} />}
+                        accent={theme.palette.primary.main}
+                    />
+                    <DetailStatCard
+                        label="Model"
+                        value={formatProvider(log.provider)}
+                        subvalue={log.model}
+                        icon={<SmartToyOutlinedIcon sx={{ fontSize: 16 }} />}
+                        accent={theme.palette.info.main}
+                    />
+                    <DetailStatCard
+                        label="Performance"
+                        value={log.durationMs != null ? `${(log.durationMs / 1000).toFixed(2)}s` : "—"}
+                        subvalue={log.httpStatusCode != null ? `HTTP ${log.httpStatusCode}` : "No status code"}
+                        icon={<TimerOutlinedIcon sx={{ fontSize: 16 }} />}
+                        accent={theme.palette.warning.main}
+                    />
+                    <DetailStatCard
+                        label="Tokens"
+                        value={tokenSummary}
+                        subvalue={tokenBreakdown}
+                        icon={<TollRoundedIcon sx={{ fontSize: 16 }} />}
+                        accent={theme.palette.success.main}
+                    />
+                </Box>
+
+                <Box
+                    sx={{
+                        mt: 1.5,
+                        display: "grid",
+                        gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
+                        gap: 1.5,
+                    }}
+                >
+                    <DetailStatCard
+                        label="Stored Files"
+                        value={getStoredFilesSummary(log)}
+                        subvalue={log.files?.map((file) => file.fileName).join(" · ") || undefined}
+                        icon={<DownloadRoundedIcon sx={{ fontSize: 16 }} />}
+                        accent={theme.palette.secondary.main}
+                    />
+                    <DetailStatCard
+                        label="Simulation"
+                        value={log.simulationReferenceNumber ?? "Not linked"}
+                        subvalue={log.simulationId ?? undefined}
+                        icon={<LinkRoundedIcon sx={{ fontSize: 16 }} />}
+                        mono={!log.simulationReferenceNumber && !!log.simulationId}
+                        accent={theme.palette.secondary.main}
+                    />
+                    <DetailStatCard
+                        label="Identity"
+                        value={log.userName ?? log.userEmail ?? "Unknown user"}
+                        subvalue={log.userName && log.userEmail ? log.userEmail : `Log ID: ${log.id}`}
+                        icon={<OpenInNewIcon sx={{ fontSize: 16 }} />}
+                        accent={theme.palette.primary.light}
+                    />
+                </Box>
             </Box>
 
             {log.errorMessage && (
                 <Box sx={{ px: 3, pb: 1.5 }}>
-                    <Typography sx={labelSx}>Error</Typography>
-                    <Typography variant="body2" sx={{ fontSize: 12, color: "error.main", fontWeight: 500 }}>
-                        {log.errorType ? `[${log.errorType}]  ` : ""}{log.errorMessage}
-                    </Typography>
+                    <Box
+                        sx={{
+                            borderRadius: 2,
+                            border: "1px solid",
+                            borderColor: alpha(theme.palette.error.main, 0.22),
+                            backgroundColor: alpha(theme.palette.error.main, isDark ? 0.12 : 0.08),
+                            px: 1.75,
+                            py: 1.4,
+                        }}
+                    >
+                        <Typography sx={labelSx}>Error</Typography>
+                        <Typography variant="body2" sx={{ fontSize: 12.5, color: "error.main", fontWeight: 600, lineHeight: 1.45 }}>
+                            {log.errorType ? `[${log.errorType}] ` : ""}{log.errorMessage}
+                        </Typography>
+                    </Box>
                 </Box>
             )}
 
@@ -236,11 +497,13 @@ function OcrLogDetailDialog({ log, onClose }: { log: OcrLogEntry; onClose: () =>
                 sx={{ px: 2, minHeight: 40, "& .MuiTab-root": { minHeight: 40, fontSize: 12, fontWeight: 600, textTransform: "none" } }}
             >
                 <Tab label="LLM Response" />
+                {hasPrompt && <Tab label="Prompt Sent" />}
+                {hasStoredFiles && <Tab label={`Stored Files (${log.files?.length ?? 0})`} />}
                 {hasExtracted && <Tab label="Extracted Fields" />}
                 {hasMetadata && <Tab label="Metadata" />}
             </Tabs>
 
-            <DialogContent sx={{ pt: 1.5 }}>
+            <DialogContent sx={{ pt: 2, pb: 2.5 }}>
                 {tab === 0 && (
                     <Box>
                         <Typography sx={{ ...labelSx, mb: 1 }}>Raw text returned by the model</Typography>
@@ -249,6 +512,69 @@ function OcrLogDetailDialog({ log, onClose }: { log: OcrLogEntry; onClose: () =>
                                 ? log.rawResponseSnippet
                                 : <Typography component="span" sx={{ color: "text.secondary", fontStyle: "italic", fontSize: 12 }}>No response text recorded for this request.</Typography>
                             }
+                        </Box>
+                    </Box>
+                )}
+                {tab === tabPrompt && hasPrompt && (
+                    <Box>
+                        <Typography sx={{ ...labelSx, mb: 1 }}>Full prompt sent to the LLM</Typography>
+                        <Box sx={codeBoxSx}>
+                            {log.promptText}
+                        </Box>
+                    </Box>
+                )}
+                {tab === tabStoredFiles && hasStoredFiles && (
+                    <Box>
+                        <Typography sx={{ ...labelSx, mb: 1 }}>Files persisted for this OCR request</Typography>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+                            {log.files?.map((file, index) => (
+                                <Box
+                                    key={file.id}
+                                    sx={{
+                                        border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
+                                        borderRadius: 2,
+                                        p: 1.75,
+                                        background: isDark
+                                            ? "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))"
+                                            : "linear-gradient(180deg, #ffffff, #f8fafc)",
+                                        display: "flex",
+                                        alignItems: { xs: "flex-start", sm: "center" },
+                                        justifyContent: "space-between",
+                                        gap: 1.5,
+                                        flexWrap: "wrap",
+                                    }}
+                                >
+                                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                                            <InsertDriveFileOutlinedIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+                                            <Typography variant="body2" sx={{ fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                File {index + 1}: {file.fileName}
+                                            </Typography>
+                                        </Box>
+                                        <Typography variant="caption" sx={{ color: "text.secondary", display: "block", fontSize: 11.5 }}>
+                                            {[
+                                                file.fileType?.replace("application/", "").replace("image/", ""),
+                                                formatFileSize(file.fileSizeBytes),
+                                            ].filter(Boolean).join(" · ")}
+                                        </Typography>
+                                    </Box>
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<DownloadRoundedIcon sx={{ fontSize: 16 }} />}
+                                        onClick={() => handleDownloadStoredFile(file.id, file.fileName)}
+                                        disabled={downloadingFileId === file.id}
+                                        sx={{
+                                            minWidth: 132,
+                                            borderRadius: 999,
+                                            fontWeight: 700,
+                                            textTransform: "none",
+                                        }}
+                                    >
+                                        {downloadingFileId === file.id ? "Downloading..." : "Download"}
+                                    </Button>
+                                </Box>
+                            ))}
                         </Box>
                     </Box>
                 )}
@@ -331,6 +657,23 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             ),
         },
         {
+            key: "type",
+            label: "Type",
+            renderCell: (log) => (
+                <Chip
+                    label={formatLogType(log.type)}
+                    size="small"
+                    sx={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        height: 24,
+                        backgroundColor: alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.16 : 0.1),
+                        color: theme.palette.info.main,
+                    }}
+                />
+            ),
+        },
+        {
             key: "status",
             label: "Status",
             renderCell: (log) => <StatusChip status={log.status} />,
@@ -379,9 +722,42 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                         {[
                             log.fileType?.replace("application/", "").replace("image/", ""),
                             formatFileSize(log.fileSizeBytes),
+                            log.files && log.files.length > 1 ? `${log.files.length} files` : null,
                             log.pageCount ? `${log.pageCount}p` : null,
                         ].filter(Boolean).join(" · ")}
                     </Typography>
+                </Box>
+            ),
+        },
+        {
+            key: "storedFiles",
+            label: "Stored Files",
+            renderCell: (log) => (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2, maxWidth: 180 }}>
+                    <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
+                        {log.files?.length ?? 0}
+                    </Typography>
+                    <Tooltip title={log.files?.map((file) => `${file.fileName} (${formatFileSize(file.fileSizeBytes)})`).join(" · ") ?? "No files stored"}>
+                        <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {getStoredFilesSummary(log)}
+                        </Typography>
+                    </Tooltip>
+                </Box>
+            ),
+        },
+        {
+            key: "simulation",
+            label: "Simulation",
+            renderCell: (log) => (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2, maxWidth: 130 }}>
+                    <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
+                        {log.simulationReferenceNumber ?? "—"}
+                    </Typography>
+                    {log.simulationId && (
+                        <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", lineHeight: 1.2, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {log.simulationId}
+                        </Typography>
+                    )}
                 </Box>
             ),
         },
@@ -449,6 +825,14 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                         </Tooltip>
                     );
                 }
+                if (log.type === "PROVIDER_DETECTION") {
+                    const providerName = (log.metadata?.detectedProviderName as string | undefined) ?? log.fileName;
+                    return (
+                        <Typography variant="caption" sx={{ fontSize: 11, color: "text.secondary", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+                            {providerName ?? "—"}
+                        </Typography>
+                    );
+                }
                 if (log.status === "SUCCESS" && log.extractedFields) {
                     const f = log.extractedFields as Record<string, unknown>;
                     const parts = [
@@ -482,10 +866,10 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
         <div style={{ padding: "24px", color: "var(--scheme-neutral-100)" }}>
             <div style={{ marginBottom: "20px" }}>
                 <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "6px", color: "var(--scheme-neutral-100)" }}>
-                    OCR Invoice Extraction Logs
+                    OCR Logs
                 </h2>
                 <p style={{ fontSize: "13px", color: "var(--scheme-neutral-600)" }}>
-                    Track all AI-powered invoice extraction requests — provider, model, token usage, duration, and extracted fields.
+                    Track invoice extraction and provider detection requests, including stored request files and linked simulations.
                     Click <strong>↗</strong> on any row to view the full LLM response.
                 </p>
             </div>
@@ -504,11 +888,16 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                         setPage(1);
                     },
                 }}
-                emptyMessage="No OCR extraction requests found"
+                emptyMessage="No OCR requests found"
             />
 
             {selectedLog && (
-                <OcrLogDetailDialog log={selectedLog} onClose={() => setSelectedLog(null)} />
+                <OcrLogDetailDialog
+                    log={selectedLog}
+                    token={session.token}
+                    onNotify={onNotify}
+                    onClose={() => setSelectedLog(null)}
+                />
             )}
         </div>
     );

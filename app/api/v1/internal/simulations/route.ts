@@ -14,6 +14,7 @@ const createSimulationSchema = z.object({
   expiresAt: z.string().datetime().optional(),
   payloadJson: z.record(z.unknown()).optional(),
   baseValueSetId: z.string().min(1).optional(),
+  ocrLogIds: z.array(z.string().min(1)).max(10).optional(),
 });
 
 /**

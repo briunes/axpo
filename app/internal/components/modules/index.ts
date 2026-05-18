@@ -12,7 +12,10 @@ export { ConfigurationsModule } from "./ConfigurationsModule";
 export { EmailLogsModule } from "./EmailLogsModule";
 export { LLMSettings } from "./LLMSettings";
 export { InvoiceExtractor } from "./InvoiceExtractor";
-export type { ExtractedInvoiceData } from "./InvoiceExtractor";
+export type {
+  ExtractedInvoiceData,
+  InvoiceExtractionContext,
+} from "./InvoiceExtractor";
 export { TemplatesCommunications } from "./TemplatesCommunications";
 export { SystemBusinessSettings } from "./SystemBusinessSettings";
 export { UserExperienceSettings } from "./UserExperienceSettings";

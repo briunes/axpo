@@ -93,6 +93,8 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       key: "name",
       label: t("columns", "name"),
       sortable: true,
+      copyable: true,
+      copyText: (a) => [a.name, a.city, a.province].filter(Boolean).join(', '),
       renderCell: (a) => (
         <Box>
           <Typography variant="body1" sx={{ fontWeight: 500 }}>{a.name}</Typography>
@@ -107,6 +109,8 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     {
       key: "address",
       label: t("columns", "address"),
+      copyable: true,
+      copyText: (a) => [a.street, a.postalCode, a.city, a.country].filter(Boolean).join(', '),
       renderCell: (a) => {
         const hasAddress = a.street || a.city || a.postalCode;
         return (

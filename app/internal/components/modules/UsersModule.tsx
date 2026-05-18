@@ -127,6 +127,8 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       key: "fullName",
       label: t("columns", "name"),
       sortable: true,
+      copyable: true,
+      copyText: (u) => [u.fullName, u.email].filter(Boolean).join(', '),
       renderCell: (u) => (
         <Box >
           <Typography variant="body1">
@@ -152,6 +154,8 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
     {
       key: "agency",
       label: t("columns", "agency"),
+      copyable: true,
+      copyText: (u) => agencies.find((a) => a.id === u.agencyId)?.name ?? '',
       renderCell: (u) => (
         <span className="dt-cell-secondary">
           {agencies.find((a) => a.id === u.agencyId)?.name ?? u.agencyId.slice(0, 8)}

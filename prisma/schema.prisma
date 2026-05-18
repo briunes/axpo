@@ -169,6 +169,7 @@ model Simulation {
   invoiceFileName     String?
   invoiceFileSize     Int?
   accessAttempts      AccessAttempt[]
+  ocrLogs             OcrLog[]
   versions            SimulationVersion[]
   agency              Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   client              Client?             @relation(fields: [clientId], references: [id])
@@ -471,37 +472,76 @@ model CronLog {
   @@map("cron_logs")
 }
 
-model OcrLog {
+model InvoiceProviderPrompt {
   id                String   @id @default(cuid())
-  requestedAt       DateTime @default(now())
-  userId            String?
-  userEmail         String?
-  provider          String
-  model             String
-  baseUrl           String?
-  fileName          String?
-  fileType          String?
-  fileSizeBytes     Int?
-  pageCount         Int?
-  status            String   // SUCCESS | FAILED | ERROR | PARSE_ERROR
-  durationMs        Int?
-  promptTokens      Int?
-  completionTokens  Int?
-  totalTokens       Int?
-  extractedFields   Json?    // the extracted JSON data (sanitized, no PII beyond what was extracted)
-  fieldsExtracted   Int?     // count of non-null fields
-  errorMessage      String?
-  errorType         String?
-  httpStatusCode    Int?
-  rawResponseSnippet String? // first 500 chars of response for debugging
-  metadata          Json?    // any extra provider-specific info
-  user              User?    @relation(fields: [userId], references: [id])
+  name              String   // e.g. "Repsol", "NEON", "Iberdrola"
+  slug              String   @unique // e.g. "repsol", "neon", "iberdrola"
+  prompt            String   @db.Text // Custom extraction prompt for this provider
+  isActive          Boolean  @default(true)
+  needsPromptConfig Boolean  @default(false) // true when auto-created from simulation (prompt not yet configured)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("invoice_provider_prompts")
+}
+
+model OcrLog {
+  id                 String      @id @default(cuid())
+  requestedAt        DateTime    @default(now())
+  userId             String?
+  userEmail          String?
+  simulationId       String?
+  type               OcrLogType  @default(INVOICE_EXTRACTION)
+  provider           String
+  model              String
+  baseUrl            String?
+  fileName           String?
+  fileType           String?
+  fileSizeBytes      Int?
+  pageCount          Int?
+  status             String      // SUCCESS | FAILED | ERROR | PARSE_ERROR
+  durationMs         Int?
+  promptTokens       Int?
+  completionTokens   Int?
+  totalTokens        Int?
+  extractedFields    Json?       // the extracted JSON data (sanitized, no PII beyond what was extracted)
+  fieldsExtracted    Int?        // count of non-null fields
+  errorMessage       String?
+  errorType          String?
+  httpStatusCode     Int?
+  rawResponseSnippet String?     // first 500 chars of response for debugging
+  promptText         String?     @db.Text // the full prompt sent to the LLM
+  metadata           Json?       // any extra provider-specific info
+  user               User?       @relation(fields: [userId], references: [id])
+  simulation         Simulation? @relation(fields: [simulationId], references: [id], onDelete: SetNull)
+  ocrFiles           OcrLogFile[]
 
   @@index([requestedAt])
   @@index([userId])
+  @@index([simulationId])
   @@index([provider])
   @@index([status])
+  @@index([type])
   @@map("ocr_logs")
+}
+
+model OcrLogFile {
+  id            String   @id @default(cuid())
+  ocrLogId      String
+  fileName      String
+  fileType      String?
+  fileSizeBytes Int
+  fileData      Bytes
+  createdAt     DateTime @default(now())
+  ocrLog        OcrLog   @relation(fields: [ocrLogId], references: [id], onDelete: Cascade)
+
+  @@index([ocrLogId])
+  @@map("ocr_log_files")
+}
+
+enum OcrLogType {
+  INVOICE_EXTRACTION
+  PROVIDER_DETECTION
 }
 
 enum UserRole {

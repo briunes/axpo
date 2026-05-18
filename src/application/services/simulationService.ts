@@ -21,6 +21,7 @@ interface CreateSimulationInput {
   expiresAt?: string;
   payloadJson?: Record<string, unknown>;
   baseValueSetId?: string;
+  ocrLogIds?: string[];
 }
 
 interface UpdateSimulationInput {
@@ -175,6 +176,22 @@ export class SimulationService {
         createdBy: actor.userId,
       },
     });
+
+    const ocrLogIds = Array.from(
+      new Set((input.ocrLogIds ?? []).filter(Boolean)),
+    );
+
+    if (ocrLogIds.length > 0) {
+      await prisma.ocrLog.updateMany({
+        where: {
+          id: { in: ocrLogIds },
+          userId: actor.userId,
+        },
+        data: {
+          simulationId: created.id,
+        },
+      });
+    }
 
     await AuditService.logEvent({
       actorUserId: actor.userId,

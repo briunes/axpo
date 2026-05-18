@@ -76,6 +76,8 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
       key: "name",
       label: t("columns", "company"),
       sortable: true,
+      copyable: true,
+      copyText: (c) => [c.name, c.cif ? `CIF: ${c.cif}` : ''].filter(Boolean).join(', '),
       renderCell: (c) => (
         <Stack spacing={0}>
           <Typography variant="body1" fontWeight={500}>{c.name}</Typography>
@@ -90,6 +92,8 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
     {
       key: "contactName",
       label: t("columns", "contact"),
+      copyable: true,
+      copyText: (c) => [c.contactName, c.contactPhone].filter(Boolean).join(', '),
       renderCell: (c) => (
         <Stack spacing={0}>
           {c.contactName ? (
@@ -113,6 +117,8 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
     {
       key: "agency",
       label: t("columns", "agency"),
+      copyable: true,
+      copyText: (c) => c.agency?.name ?? '',
       renderCell: (c) => (
         <Typography variant="body2">
           {c.agency?.name ?? <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>—</span>}
