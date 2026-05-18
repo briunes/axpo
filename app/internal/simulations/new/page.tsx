@@ -59,7 +59,7 @@ export default function NewSimulationPage() {
     const [defaultDays, setDefaultDays] = useState<any>("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [errorMessage, ] = useState<string | null>(null);
+    const [errorMessage,] = useState<string | null>(null);
     const [extractedData, setExtractedData] = useState<ExtractedInvoiceData | null>(null);
     const [isValidatedExtractedData, setIsValidatedExtractedData] = useState(false);
     const [uploadedInvoiceFile, setUploadedInvoiceFile] = useState<File | null>(null);
@@ -463,7 +463,7 @@ export default function NewSimulationPage() {
                                         {/* CLIENT */}
                                         <div style={{ gridColumn: "span 2" }}>
                                             <div style={labelStyle}>{t("newSimulationPage", "clientLabel")}</div>
-                                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                                                 <div style={{ flex: 1 }}>
                                                     <FormSelect
                                                         label=""
@@ -482,7 +482,7 @@ export default function NewSimulationPage() {
                                                     />
                                                 </div>
                                                 {allowQuickCreate && (
-                                                    <Button type="button" variant="outlined" onClick={() => setShowQuickCreate(true)} title={t("newSimulationPage", "createNew")}>
+                                                    <Button type="button" variant="outlined" onClick={() => setShowQuickCreate(true)} title={t("newSimulationPage", "createNew")} style={{ flexShrink: 0, marginTop: 2 }}>
                                                         <AddIcon />
                                                     </Button>
                                                 )}
@@ -674,7 +674,8 @@ export default function NewSimulationPage() {
                         <div className="crud-form-row" style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
                             {/* Client */}
                             <div className="crud-form-group" style={{ flex: 1 }}>
-                                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+
                                     <div style={{ flex: 1 }}>
                                         <FormSelect
                                             label={t("newSimulationPage", "clientLabel")}
@@ -699,13 +700,7 @@ export default function NewSimulationPage() {
                                         />
                                     </div>
                                     {allowQuickCreate && (
-                                        <Button
-                                            type="button"
-                                            variant="outlined"
-                                            onClick={() => setShowQuickCreate(true)}
-                                            title={t("newSimulationPage", "createNew")}
-
-                                        >
+                                        <Button type="button" variant="outlined" onClick={() => setShowQuickCreate(true)} title={t("newSimulationPage", "createNew")} style={{ flexShrink: 0, marginTop: 30 }}>
                                             <AddIcon />
                                         </Button>
                                     )}

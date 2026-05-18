@@ -81,6 +81,9 @@ const TABLES = [
   "email_logs",
   "access_attempts",
   "user_preferences",
+  "invoice_provider_prompts",
+  "ocr_logs",
+  "ocr_log_files",
 ];
 
 async function getColumns(client, table) {

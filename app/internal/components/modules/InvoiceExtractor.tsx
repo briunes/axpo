@@ -274,9 +274,10 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract }: 
         let rafId: ReturnType<typeof setInterval>;
         let current = 0;
         rafId = setInterval(() => {
-            current += current < 70 ? 3 : current < 85 ? 0.5 : 0;
-            setProgress(Math.min(current, 85));
-        }, 120);
+            // Eases toward 90% over ~20 seconds
+            current += (90 - current) * 0.011;
+            setProgress(Math.min(current, 90));
+        }, 200);
 
         try {
             const formData = new FormData();
@@ -329,7 +330,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract }: 
             setTimeout(() => {
                 setIsExtracting(false);
                 setProgress(0);
-            }, 400);
+            }, 600);
         }
     };
 
@@ -627,7 +628,14 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract }: 
                             variant="determinate"
                             value={progress}
                             color="primary"
-                            sx={{ borderRadius: 999, height: 6, mb: 1 }}
+                            sx={{
+                                borderRadius: 999,
+                                height: 6,
+                                mb: 1,
+                                "& .MuiLinearProgress-bar": {
+                                    transition: progress >= 100 ? "transform 0.3s ease-in" : "transform 0.2s linear",
+                                },
+                            }}
                         />
                         <span style={{ fontSize: 13, color: "var(--scheme-neutral-400, #9ca3af)" }}>
                             {t("invoiceExtractor", "extracting")}
