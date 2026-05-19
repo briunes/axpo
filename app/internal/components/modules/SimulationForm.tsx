@@ -108,6 +108,8 @@ interface GasFormState {
     otrosCargos: number;
     ivaTasa: number;
     impuestoHidrocarburo: number;
+    /** Personalizada Indexada margin over MIBGAS in €/kWh */
+    personalizadaIndexMargen: number;
 }
 
 function daysBetween(from: string, to: string): number {
@@ -226,6 +228,7 @@ function defaultGasState(): GasFormState {
         otrosCargos: 0,
         ivaTasa: 21,
         impuestoHidrocarburo: 0.00234,
+        personalizadaIndexMargen: 0,
     };
 }
 
@@ -292,6 +295,9 @@ function buildGasInputs(s: GasFormState): GasInputs {
         },
         ivaTasa: s.ivaTasa || undefined,
         impuestoHidrocarburo: s.impuestoHidrocarburo || undefined,
+        personalizadaIndex: s.personalizadaIndexMargen > 0
+            ? { margenEnergia: s.personalizadaIndexMargen }
+            : undefined,
     };
 }
 
@@ -349,7 +355,7 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
 
         return {
             cups: invoiceData.cups || "",
-            consumoAnual: invoiceData.consumoTotal || 0,
+            consumoAnual: invoiceData.consumoAnual || invoiceData.consumoTotal || 0,
             nombreTitular: invoiceData.nombreTitular || "",
             personaContacto: "",
             comercial: "",
@@ -459,6 +465,7 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
             otrosCargos: invoiceData.otrosCargos ?? 0,
             ivaTasa: 21,
             impuestoHidrocarburo: 0.00234,
+            personalizadaIndexMargen: 0,
         };
     }
 
@@ -482,6 +489,7 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
         otrosCargos: g.extras?.otrosCargos ?? 0,
         ivaTasa: g.ivaTasa ?? 21,
         impuestoHidrocarburo: g.impuestoHidrocarburo ?? 0.00234,
+        personalizadaIndexMargen: g.personalizadaIndex?.margenEnergia ?? 0,
     };
 }
 
@@ -1196,7 +1204,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                             <Sel
                                 value={String(state.impuestoHidrocarburo)}
                                 onChange={(v) => up("impuestoHidrocarburo", parseFloat(v))}
-                                options={hydrocarbonTaxRateOptions.map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) }))}
+                                options={hydrocarbonTaxRateOptions.map((o) => ({ value: String(o), label: formatNumber(o, numberFormat, 5) }))}
                             />
                         ) : (
                             <Num value={state.impuestoHidrocarburo} onChange={(v) => up("impuestoHidrocarburo", v)} step={0.00001} />
@@ -1431,6 +1439,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 otrosCargos: 0,
                 ivaTasa: 21,
                 impuestoHidrocarburo: 0.00234,
+                personalizadaIndexMargen: 0,
             };
             setGasState(testGas);
         }
@@ -1739,6 +1748,10 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                                         },
                                     }));
                                 }
+                            }}
+                            gasPersonalizadaIndexMargen={simType === "GAS" ? gasState.personalizadaIndexMargen : undefined}
+                            onUpdateGasPersonalizadaIndex={readOnly || simType !== "GAS" ? undefined : (margen) => {
+                                setGasState(prev => ({ ...prev, personalizadaIndexMargen: margen }));
                             }}
                             onRecalculate={readOnly ? undefined : handleCalculate}
                             calculating={calculating}

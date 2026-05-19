@@ -139,7 +139,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 const defaultPdf = simulationPdfTemplates.find((t) => t.active);
                 const defaultEmail = simulationEmailTemplates.find((t) => t.active);
                 if (defaultPdf) {
-                    const pdfTranslation = resolveTranslation(defaultPdf.translations ?? [], locale);
+                    const pdfTranslation = resolveTranslation(defaultPdf.translations ?? [], detectedLanguage);
                     const pdfContent = pdfTranslation?.htmlContent ?? defaultPdf.htmlContent;
                     setSelectedPdfTemplate(defaultPdf.id);
                     setEditedPdfContent(pdfContent);
@@ -155,7 +155,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                     }
                 }
                 if (defaultEmail) {
-                    const emailTranslation = resolveTranslation(defaultEmail.translations ?? [], locale);
+                    const emailTranslation = resolveTranslation(defaultEmail.translations ?? [], detectedLanguage);
                     setSelectedEmailTemplate(defaultEmail.id);
                     setEditedEmailContent(emailTranslation?.htmlContent ?? defaultEmail.htmlContent);
                     setEditedSubject(emailTranslation?.subject ?? defaultEmail.subject);
@@ -181,7 +181,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             setSelectedPdfTemplate(templateId);
             const template = pdfTemplates.find((t) => t.id === templateId);
             if (template) {
-                const translation = resolveTranslation(template.translations ?? [], locale);
+                const translation = resolveTranslation(template.translations ?? [], clientLanguage);
                 setEditedPdfContent(translation?.htmlContent ?? template.htmlContent);
                 const defaults = template.editableSections
                     ? Object.fromEntries(Object.entries(template.editableSections).map(([k, v]) => [k, v.default]))
@@ -192,7 +192,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             setSelectedEmailTemplate(templateId);
             const template = emailTemplates.find((t) => t.id === templateId);
             if (template) {
-                const translation = resolveTranslation(template.translations ?? [], locale);
+                const translation = resolveTranslation(template.translations ?? [], clientLanguage);
                 setEditedEmailContent(translation?.htmlContent ?? template.htmlContent);
                 setEditedSubject(translation?.subject ?? template.subject);
                 const defaults = template.editableSections

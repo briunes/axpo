@@ -2876,6 +2876,69 @@
         }
       }
     },
+    "/api/v1/internal/ocr-logs/{id}/improve-prompt": {
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Improve the OCR extraction prompt based on user corrections in the linked simulation",
+        "description": "Compares the OCR-extracted fields against the current simulation input values. Fields that the user changed are treated as corrections. The original prompt + correction context + stored invoice files are sent back to the LLM to generate an improved extraction prompt.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-logs/{id}/report": {
+      "patch": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Report an issue for an OCR log entry",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "description": "Issue message reported by the user"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/internal/ocr-logs": {
       "get": {
         "tags": [
@@ -3097,7 +3160,7 @@
         ]
       }
     },
-    "/api/v1/internal/simulations/{id}/price-history": {
+    "/api/v1/internal/simulations/{id}/price-history:Menu 'Comunicações'": {
       "get": {
         "summary": "Get indexed price history data for a simulation",
         "tags": [

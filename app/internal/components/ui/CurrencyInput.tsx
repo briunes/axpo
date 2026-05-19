@@ -209,7 +209,7 @@ export function CurrencyInput({
                 inputMode="decimal"
                 slotProps={{
                     input: {
-                        startAdornment: (
+                        startAdornment: currencySymbol ? (
                             <InputAdornment position="start">
                                 <Box
                                     component="span"
@@ -222,7 +222,7 @@ export function CurrencyInput({
                                     {currencySymbol}
                                 </Box>
                             </InputAdornment>
-                        ),
+                        ) : undefined,
                     },
                 }}
                 sx={{

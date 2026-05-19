@@ -108,6 +108,49 @@ function priceOf(map: PriceMap, key: string): number | undefined {
   return map.get(key);
 }
 
+/**
+ * Returns the calendar month (YYYY-MM) that has the most days overlapping
+ * with the billing period [fechaInicio, fechaFin].  This mirrors the Excel
+ * "MES" field and is used to look up the correct MIBGAS reference price when
+ * the billing period spans multiple months.
+ */
+function dominantBillingMonth(fechaInicio: string, fechaFin: string): string {
+  const start = new Date(fechaInicio + "T00:00:00");
+  const end = new Date(fechaFin + "T00:00:00");
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+    return fechaInicio.slice(0, 7);
+  }
+
+  let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+
+  let bestMonth = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`;
+  let maxDays = -1;
+
+  while (cursor <= endMonth) {
+    const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+
+    const overlapStart = start > monthStart ? start : monthStart;
+    const overlapEnd = end < monthEnd ? end : monthEnd;
+    const overlapDays =
+      overlapEnd >= overlapStart
+        ? Math.floor(
+            (overlapEnd.getTime() - overlapStart.getTime()) / 86400000,
+          ) + 1
+        : 0;
+
+    if (overlapDays > maxDays) {
+      maxDays = overlapDays;
+      bestMonth = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+  }
+
+  return bestMonth;
+}
+
 function getAnnualConsumption(inputs: ElectricityInputs): number | null {
   const fromTopLevel = (inputs as ElectricityInputs & { consumoAnual?: number })
     .consumoAnual;
@@ -659,7 +702,7 @@ function calcGasIndex(
   } = inputs;
   const dias = periodo.dias;
   const zonaKey = zonaGeografica === "Baleares" ? "BAL" : "PEN";
-  const mibgasKey = `MIBGAS:${periodo.fechaInicio.slice(0, 7)}`;
+  const mibgasKey = `MIBGAS:${dominantBillingMonth(periodo.fechaInicio, periodo.fechaFin)}`;
   const mibgas = priceOf(map, mibgasKey) ?? 0;
 
   const margen = priceOf(
@@ -708,6 +751,79 @@ function calcGasIndex(
   return {
     productKey: `${product}:${tier}`,
     productLabel: `${GAS_PRODUCT_LABELS[product] ?? product} ${tier}`,
+    commodity: "GAS",
+    pricingType: "INDEXED",
+    totalFactura: total,
+    ahorro,
+    pctAhorro,
+    ahorroAnual,
+    desglose: {
+      terminoEnergia: r2(terminoEnergia),
+      terminoFijo: r2(terminoFijoDia),
+      otrosCargos: r2(otros),
+      alquiler: r2(alquiler),
+      impuestoHidrocarburo,
+      iva,
+    },
+  };
+}
+
+// ─── Gas – Personalizada Indexada ─────────────────────────────────────────────
+
+/**
+ * Gas Personalizada Indexada product.
+ * The user supplies a flat energy margin (€/kWh) on top of MIBGAS.
+ * The fixed term (terminoDia) is taken from the base FIJO product for the tariff.
+ * Only computed when personalizadaIndex.margenEnergia > 0.
+ */
+function calcGasPersonalizadaIndex(
+  inputs: GasInputs,
+  map: PriceMap,
+): ProductResult | null {
+  if (
+    !inputs.personalizadaIndex ||
+    inputs.personalizadaIndex.margenEnergia <= 0
+  )
+    return null;
+
+  const {
+    tarifaAcceso,
+    zonaGeografica,
+    consumo,
+    periodo,
+    facturaActual,
+    extras,
+  } = inputs;
+  const dias = periodo.dias;
+  const mibgasKey = `MIBGAS:${dominantBillingMonth(periodo.fechaInicio, periodo.fechaFin)}`;
+  const mibgas = priceOf(map, mibgasKey) ?? 0;
+
+  const margen = inputs.personalizadaIndex.margenEnergia;
+  const precioEnergia = mibgas + margen;
+  const terminoEnergia = precioEnergia * consumo;
+
+  // Use the FIJO terminoDia for this tariff (fall back to N1)
+  const terminoDiaPrice =
+    priceOf(map, `GAS:FIJO:FIJO:N1:${tarifaAcceso}:TERMINO_DIA`) ?? 0;
+  const terminoFijoDia = terminoDiaPrice * dias;
+
+  const alquiler = extras?.alquilerEquipoMedida ?? 0;
+  const otros = extras?.otrosCargos ?? 0;
+  const hidrocarburoRate = inputs.impuestoHidrocarburo ?? IMPUESTO_HIDROCARBURO;
+  const impuestoHidrocarburo = r2(hidrocarburoRate * consumo);
+  const subtotal = terminoEnergia + terminoFijoDia;
+  const ivaRate = inputs.ivaTasa != null ? inputs.ivaTasa / 100 : IVA_RATE;
+  const baseIva = subtotal + impuestoHidrocarburo + alquiler + otros;
+  const iva = r2(baseIva * ivaRate);
+  const total = r2(baseIva + iva);
+  const ahorro = r2(facturaActual - total);
+  const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
+  const ahorroAnual =
+    dias === 365 ? r2(facturaActual - total) : r2((ahorro / dias) * 365);
+
+  return {
+    productKey: "GAS_PERSONALIZADA_INDEX",
+    productLabel: "Personalizada Index",
     commodity: "GAS",
     pricingType: "INDEXED",
     totalFactura: total,
@@ -811,6 +927,10 @@ export class CalculationService {
         if (r) results.push(r);
       }
     }
+
+    // Personalizada Indexada — only included when the user has provided a margin
+    const rGasPIdx = calcGasPersonalizadaIndex(inputs, map);
+    if (rGasPIdx) results.push(rGasPIdx);
 
     // Products are already in declaration order due to iteration sequence:
     // GAS products iterated in order (ESTABLE_GAS→ESTABLE_PLUS_GAS→DINAMICA_GAS→etc), each with tiers N1→N2→N3

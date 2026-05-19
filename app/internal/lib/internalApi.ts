@@ -750,6 +750,61 @@ export async function applySimulationOcrPrefill(
   }>(response, "OCR prefill failed");
 }
 
+export interface ImproveOcrPromptResult {
+  improvedPrompt: string;
+  corrections: Array<{
+    field: string;
+    ocrValue: unknown;
+    correctedValue: unknown;
+  }>;
+  unchanged: string[];
+  simulationId: string | null;
+  simulationReferenceNumber: string | null;
+  noCorrections?: boolean;
+  message?: string;
+}
+
+export interface TestOcrPromptResult {
+  oldFields: Record<string, unknown>;
+  newFields: Record<string, unknown>;
+}
+
+export async function testOcrPrompt(
+  token: string,
+  ocrLogId: string,
+  prompt: string,
+): Promise<TestOcrPromptResult> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/ocr-logs/${ocrLogId}/test-prompt`,
+    {
+      method: "POST",
+      headers: { ...authHeaders(token), "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    },
+  );
+  return parseApiResponse<TestOcrPromptResult>(
+    response,
+    "Test OCR prompt failed",
+  );
+}
+
+export async function improveOcrPrompt(
+  token: string,
+  ocrLogId: string,
+): Promise<ImproveOcrPromptResult> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/ocr-logs/${ocrLogId}/improve-prompt`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+    },
+  );
+  return parseApiResponse<ImproveOcrPromptResult>(
+    response,
+    "Improve OCR prompt failed",
+  );
+}
+
 export async function downloadSimulationPdf(
   token: string,
   simulationId: string,

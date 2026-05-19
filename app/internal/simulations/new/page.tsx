@@ -65,6 +65,12 @@ export default function NewSimulationPage() {
     const [uploadedInvoiceFile, setUploadedInvoiceFile] = useState<File | null>(null);
     const [ocrLogIds, setOcrLogIds] = useState<string[]>([]);
     const [isDarkMode, setIsDarkMode] = useState(false);
+    const [isMostlyEmpty, setIsMostlyEmpty] = useState(false);
+    const [extractionLogId, setExtractionLogId] = useState<string | null>(null);
+    const [showReportIssue, setShowReportIssue] = useState(false);
+    const [reportIssueMessage, setReportIssueMessage] = useState("");
+    const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+    const [reportSubmitted, setReportSubmitted] = useState(false);
 
     useEffect(() => {
         const root = document.documentElement;
@@ -89,6 +95,11 @@ export default function NewSimulationPage() {
             context?.providerDetectionLogId,
             context?.extractionLogId,
         ].filter((value): value is string => !!value));
+        setIsMostlyEmpty(context?.isMostlyEmpty ?? false);
+        setExtractionLogId(context?.extractionLogId ?? null);
+        setShowReportIssue(false);
+        setReportIssueMessage("");
+        setReportSubmitted(false);
 
         // Auto-detect commodity type from invoiceType or tariff
         if (data.invoiceType) {
@@ -389,8 +400,118 @@ export default function NewSimulationPage() {
                                     setIsValidatedExtractedData(false);
                                     setUploadedInvoiceFile(null);
                                     setOcrLogIds([]);
+                                    setIsMostlyEmpty(false);
+                                    setExtractionLogId(null);
+                                    setShowReportIssue(false);
+                                    setReportIssueMessage("");
+                                    setReportSubmitted(false);
                                 }}
                             />
+                        </div>
+                    )}
+
+                    {/* Display Extracted Data */}
+                    {llmEnabled && extractedData && isMostlyEmpty && !reportSubmitted && (
+                        <div style={{
+                            display: "flex", flexDirection: "column", gap: 0,
+                            padding: "10px 14px",
+                            borderRadius: 8, marginBottom: 12,
+                            fontSize: 13,
+                            background: isDarkMode ? "#1c1507" : "#fffbeb",
+                            color: isDarkMode ? "#fcd34d" : "#78350f",
+                            border: `1px solid ${isDarkMode ? "#3d2a05" : "#f59e0b"}`,
+                        }}>
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: 7, fontWeight: 500, lineHeight: 1.4 }}>
+                                <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>⚠️</span>
+                                <span>{t("invoiceExtractor", "reportIssueTitle")}</span>
+                            </div>
+                            {!showReportIssue ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowReportIssue(true)}
+                                    style={{
+                                        alignSelf: "flex-start", marginTop: 8,
+                                        fontSize: 11, fontWeight: 700, cursor: "pointer",
+                                        background: "transparent",
+                                        border: `1px solid ${isDarkMode ? "#3d2a05" : "#f59e0b"}`,
+                                        borderRadius: 999, padding: "3px 12px",
+                                        color: isDarkMode ? "#fcd34d" : "#92400e",
+                                    }}
+                                >
+                                    {t("invoiceExtractor", "reportIssueButton")}
+                                </button>
+                            ) : (
+                                <div style={{ marginTop: 8 }}>
+                                    <textarea
+                                        placeholder={t("invoiceExtractor", "reportIssuePlaceholder") ?? ""}
+                                        value={reportIssueMessage}
+                                        onChange={e => setReportIssueMessage(e.target.value)}
+                                        rows={3}
+                                        style={{
+                                            width: "100%", boxSizing: "border-box",
+                                            border: `1px solid ${isDarkMode ? "#3d2a05" : "#f59e0b"}`,
+                                            borderRadius: 5, padding: "7px 10px",
+                                            fontSize: 12, fontFamily: "inherit", resize: "vertical",
+                                            background: isDarkMode ? "#0f0900" : "#fff",
+                                            color: isDarkMode ? "#fcd34d" : "#1a1a1a",
+                                            outline: "none",
+                                        }}
+                                    />
+                                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 6 }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowReportIssue(false)}
+                                            style={{ fontSize: 11, cursor: "pointer", background: "transparent", border: "none", color: isDarkMode ? "#fcd34d" : "#92400e", padding: "3px 8px" }}
+                                        >
+                                            {t("invoiceExtractor", "reportIssueCancel")}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={!reportIssueMessage.trim() || isSubmittingReport}
+                                            onClick={async () => {
+                                                if (!extractionLogId || !reportIssueMessage.trim()) return;
+                                                setIsSubmittingReport(true);
+                                                try {
+                                                    const res = await fetch(`/api/v1/internal/ocr-logs/${extractionLogId}/report`, {
+                                                        method: "PATCH",
+                                                        headers: {
+                                                            "Content-Type": "application/json",
+                                                            Authorization: `Bearer ${session?.token}`,
+                                                        },
+                                                        body: JSON.stringify({ message: reportIssueMessage.trim() }),
+                                                    });
+                                                    if (res.ok) { setReportSubmitted(true); setShowReportIssue(false); }
+                                                } finally {
+                                                    setIsSubmittingReport(false);
+                                                }
+                                            }}
+                                            style={{
+                                                fontSize: 11, fontWeight: 700, cursor: "pointer",
+                                                background: isDarkMode ? "#3d2a05" : "#f59e0b",
+                                                border: "none", borderRadius: 999, padding: "4px 14px",
+                                                color: isDarkMode ? "#fcd34d" : "#fff",
+                                                opacity: (!reportIssueMessage.trim() || isSubmittingReport) ? 0.5 : 1,
+                                            }}
+                                        >
+                                            {isSubmittingReport ? t("invoiceExtractor", "reportIssueSubmitting") : t("invoiceExtractor", "reportIssueSubmit")}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {llmEnabled && extractedData && isMostlyEmpty && reportSubmitted && (
+                        <div style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            padding: "8px 14px", borderRadius: 8, marginBottom: 12,
+                            fontSize: 13, fontWeight: 500,
+                            background: isDarkMode ? "#052e16" : "#f0fdf4",
+                            color: isDarkMode ? "#86efac" : "#166534",
+                            border: `1px solid ${isDarkMode ? "#166534" : "#86efac"}`,
+                        }}>
+                            <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>✓</span>
+                            <span>{t("invoiceExtractor", "reportIssueConfirm")}</span>
                         </div>
                     )}
 

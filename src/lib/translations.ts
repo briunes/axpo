@@ -1036,9 +1036,9 @@ export const translations = {
       omieSpotHint:
         "Estimated OMIE spot price — only relevant for indexed products",
       // Personalizada Index section
-      sectionPersonalizadaIndex: "Personalizada Index (custom)",
+      sectionPersonalizadaIndex: "Personalized Index (custom)",
       personalizadaIndexDescription:
-        "Custom indexed offer — fills the 'Personalizada Index' result row. Fill the energy margin (€/MWh) and optionally power margin (€/kW/year) per period. Leave all at 0 to omit this row from results.",
+        "Custom indexed offer — fills the 'Personalized Index' result row. Fill the energy margin (€/MWh) and optionally power margin (€/kW/year) per period. Leave all at 0 to omit this row from results.",
       personalizadaIndexMargenEnergiaLabel: "Energy margin (€/MWh) per period",
       personalizadaIndexMargenEnergiaHint:
         "Custom energy margin added on top of OMIE spot price — €/MWh (Margen Venta Energía)",
@@ -1047,9 +1047,9 @@ export const translations = {
       personalizadaIndexMargenPotenciaHint:
         "Custom power margin — €/kW/year (Margen Venta Potencia)",
       // Personalizada OMIE + B section
-      sectionPersonalizadaOmieB: "Personalizada OMIE + B (custom)",
+      sectionPersonalizadaOmieB: "Personalized OMIE + B (custom)",
       personalizadaOmieBDescription:
-        "Custom OMIE + B offer — fills the 'Personalizada OMIE + B' result row. Fill the B term (€/MWh) per period. Leave all at 0 to omit this row from results.",
+        "Custom OMIE + B offer — fills the 'Personalized OMIE + B' result row. Fill the B term (€/MWh) per period. Leave all at 0 to omit this row from results.",
       personalizadaOmieBTerminoBLabel: "B term (€/MWh) per period",
       personalizadaOmieBTerminoBHint:
         "Custom B term added on top of OMIE spot price — €/MWh (Término Bi Oferta Personalizada)",
@@ -1061,6 +1061,13 @@ export const translations = {
       formCompletion:
         "Form completion: {completed} of {total} required sections",
       allPeriodsFilled: "All periods must be filled",
+      // Gas Personalizada Indexada section
+      sectionGasPersonalizadaIndex: "Personalized Indexed (custom)",
+      gasPersonalizadaIndexDescription:
+        "Custom indexed gas offer — fills the 'Personalized Index' row in results. Enter the energy margin (€/kWh) on top of MIBGAS. Leave at 0 to omit.",
+      gasPersonalizadaIndexMargenLabel: "Energy margin (€/kWh) over MIBGAS",
+      gasPersonalizadaIndexMargenHint:
+        "Flat margin added on top of MIBGAS reference price — €/kWh (Precio Término Energía oferta)",
       // Gas contract section
       sectionGasContractDetails: "Contract details",
       fieldGasFrom: "From",
@@ -1161,6 +1168,9 @@ export const translations = {
       confirmButton: "✓ Confirm Selection",
       monthSelectorLabel: "Billing month",
       monthSelectorRecalculating: "Recalculating…",
+      productLabelPersonalizadaIndex: "Personalized Index",
+      productLabelPersonalizadaOmieB: "Personalized OMIE + B",
+      productLabelGasPersonalizadaIndex: "Personalized Index",
     },
     downloadHistory: {
       buttonLabel: "Download History",
@@ -1407,6 +1417,15 @@ export const translations = {
         "This provider was added automatically and its custom prompt has not been configured yet",
       providerDetectionFailed:
         "Could not detect provider — default prompt will be used",
+      reportIssueTitle:
+        "The extracted data appears to be mostly empty. The invoice may not have been read correctly.",
+      reportIssueButton: "Report this issue",
+      reportIssuePlaceholder:
+        "Describe the issue (e.g. wrong provider detected, unreadable scan, wrong fields filled…)",
+      reportIssueCancel: "Cancel",
+      reportIssueSubmit: "Submit report",
+      reportIssueSubmitting: "Sending…",
+      reportIssueConfirm: "Issue reported. Thank you for your feedback.",
     },
     pdfTemplatesModule: {
       loading: "Loading templates...",
@@ -2701,6 +2720,13 @@ export const translations = {
       // Form progress
       formCompletion: "Completado: {completed} de {total} secciones requeridas",
       allPeriodsFilled: "Todos los períodos deben estar completados",
+      // Gas Personalizada Indexada section
+      sectionGasPersonalizadaIndex: "Personalizada Indexada (personalizada)",
+      gasPersonalizadaIndexDescription:
+        "Oferta indexada personalizada de gas — genera la fila 'Personalizada Index' en los resultados. Introduce el margen de energía (€/kWh) sobre MIBGAS. Deja en 0 para no incluir.",
+      gasPersonalizadaIndexMargenLabel: "Margen energía (€/kWh) sobre MIBGAS",
+      gasPersonalizadaIndexMargenHint:
+        "Margen plano sobre el precio de referencia MIBGAS — €/kWh (Precio Término Energía oferta)",
       // Gas contract section
       sectionGasContractDetails: "Datos del contrato",
       fieldGasFrom: "Desde",
@@ -2804,6 +2830,9 @@ export const translations = {
       confirmButton: "✓ Confirmar Selección",
       monthSelectorLabel: "Mes de facturación",
       monthSelectorRecalculating: "Recalculando…",
+      productLabelPersonalizadaIndex: "Personalizada Index",
+      productLabelPersonalizadaOmieB: "Personalizada OMIE + B",
+      productLabelGasPersonalizadaIndex: "Personalizada Index",
     },
     downloadHistory: {
       buttonLabel: "Descargar Histórico",
@@ -3061,9 +3090,17 @@ export const translations = {
         "Este proveedor fue añadido automáticamente y su prompt personalizado aún no está configurado",
       providerDetectionFailed:
         "No se pudo detectar el proveedor — se usará el prompt por defecto",
+      reportIssueTitle:
+        "Los datos extraídos parecen estar mayormente vacíos. Es posible que la factura no se haya leído correctamente.",
+      reportIssueButton: "Reportar este problema",
+      reportIssuePlaceholder:
+        "Describe el problema (p. ej. proveedor incorrecto, escaneado ilegible, campos erróneos…)",
+      reportIssueCancel: "Cancelar",
+      reportIssueSubmit: "Enviar reporte",
+      reportIssueSubmitting: "Enviando…",
+      reportIssueConfirm: "Problema reportado. Gracias por tu comentario.",
     },
     pdfTemplatesModule: {
-      loading: "Cargando plantillas...",
       title: "Plantillas PDF",
       btnNew: "+ Nueva Plantilla",
       colName: "Nombre",

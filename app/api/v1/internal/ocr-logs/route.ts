@@ -99,6 +99,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         metadata: l.metadata,
         simulationId: l.simulationId,
         simulationReferenceNumber: l.simulation?.referenceNumber ?? null,
+        reportedIssue: l.reportedIssue ?? null,
         files: l.ocrFiles,
       })),
       pagination: {

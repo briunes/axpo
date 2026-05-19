@@ -512,6 +512,7 @@ model OcrLog {
   rawResponseSnippet String?     // first 500 chars of response for debugging
   promptText         String?     @db.Text // the full prompt sent to the LLM
   metadata           Json?       // any extra provider-specific info
+  reportedIssue      String?     // user-reported issue message when extraction is mostly empty
   user               User?       @relation(fields: [userId], references: [id])
   simulation         Simulation? @relation(fields: [simulationId], references: [id], onDelete: SetNull)
   ocrFiles           OcrLogFile[]

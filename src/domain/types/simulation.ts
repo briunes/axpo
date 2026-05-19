@@ -212,6 +212,19 @@ export interface GasInputs {
   /** Client's current total invoice amount in €, used to compute savings */
   facturaActual: number;
 
+  /**
+   * Personalizada Indexada: user-supplied energy margin (€/kWh) over MIBGAS.
+   * When present and margenEnergia > 0, the calculation emits a single
+   * "GAS_PERSONALIZADA_INDEX" result row using:
+   *   precioEnergia = MIBGAS + margenEnergia
+   *   terminoEnergia = precioEnergia × consumo
+   * Leave undefined or margenEnergia = 0 to omit this row.
+   */
+  personalizadaIndex?: {
+    /** Energy margin added on top of MIBGAS in €/kWh */
+    margenEnergia: number;
+  };
+
   /** Extra line items */
   extras: {
     alquilerEquipoMedida?: number; // €

@@ -82,6 +82,7 @@ export interface InvoiceExtractionContext {
     file?: File;
     providerDetectionLogId?: string | null;
     extractionLogId?: string | null;
+    isMostlyEmpty?: boolean;
 }
 
 interface InvoiceExtractorProps {
@@ -311,10 +312,19 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract }: 
             if (result?.success && result.data) {
                 setExtractionStatus("success");
                 setStatusMessage(t("invoiceExtractor", "success"));
+
+                // Detect mostly-empty result: fewer than 3 non-null/non-empty fields
+                const dataValues = Object.entries(result.data as Record<string, unknown>)
+                    .filter(([key]) => key !== "invoiceType")
+                    .map(([, v]) => v);
+                const filledCount = dataValues.filter(v => v !== null && v !== undefined && v !== "").length;
+                const isEmpty = filledCount < 3;
+
                 onDataExtracted(result.data, {
                     file: files[0],
                     providerDetectionLogId,
                     extractionLogId: result.ocrLogId ?? null,
+                    isMostlyEmpty: isEmpty,
                 });
             } else {
                 throw new Error(result?.message || t("invoiceExtractor", "error"));
@@ -660,6 +670,8 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract }: 
                         <span>{t("invoiceExtractor", "ocrDisclaimer") ?? "O OCR pode conter erros. Por favor, valide os dados preenchidos antes de continuar."}</span>
                     </div>
                 )}
+
+
             </div>
 
             <style jsx>{`
@@ -1101,6 +1113,77 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract }: 
                     flex-shrink: 0;
                     font-size: 15px;
                     line-height: 1.3;
+                }
+
+                .ocr-report-issue-banner {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0;
+                    padding: 10px 12px;
+                    border-radius: 6px;
+                    margin-top: 0;
+                    font-size: 12px;
+                    background: #fffbeb;
+                    color: #78350f;
+                    border: 1px solid #f59e0b;
+                }
+
+                [data-theme="dark"] .ocr-report-issue-banner {
+                    background: #1c1507;
+                    color: #fcd34d;
+                    border: 1px solid #3d2a05;
+                }
+
+                .ocr-report-issue-header {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 7px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    line-height: 1.4;
+                }
+
+                .ocr-report-issue-form {
+                    margin-top: 8px;
+                }
+
+                .ocr-report-textarea {
+                    width: 100%;
+                    box-sizing: border-box;
+                    border: 1px solid #f59e0b;
+                    border-radius: 5px;
+                    padding: 7px 10px;
+                    font-size: 12px;
+                    font-family: inherit;
+                    resize: vertical;
+                    background: #fff;
+                    color: #1a1a1a;
+                    outline: none;
+                }
+
+                [data-theme="dark"] .ocr-report-textarea {
+                    background: #0f0900;
+                    color: #fcd34d;
+                    border-color: #3d2a05;
+                }
+
+                .ocr-report-submitted {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 7px 12px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    background: #f0fdf4;
+                    color: #166534;
+                    border: 1px solid #86efac;
+                }
+
+                [data-theme="dark"] .ocr-report-submitted {
+                    background: #052e16;
+                    color: #86efac;
+                    border: 1px solid #166534;
                 }
 
                 .spinner {

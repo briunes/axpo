@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import type { SimulationResults, ProductResult } from "@/domain/types";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { FormSelect } from "../ui/FormSelect";
+import { CurrencyInput } from "../ui/CurrencyInput";
 
 const MESES_ES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
 
@@ -38,6 +39,8 @@ interface SimulationResultsCardsProps {
     onUpdatePersonalizadaIndex?: (field: "margenEnergia" | "margenPotencia", period: string, value: number) => void;
     personalizadaOmieBPeriods?: { terminoB: Record<string, number>; margenPotencia: Record<string, number> };
     onUpdatePersonalizadaOmieB?: (field: "terminoB" | "margenPotencia", period: string, value: number) => void;
+    gasPersonalizadaIndexMargen?: number;
+    onUpdateGasPersonalizadaIndex?: (margen: number) => void;
 }
 
 interface PendingOffer {
@@ -236,7 +239,13 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                                 color: uiColors.text,
                                                 marginBottom: 3,
                                             }}>
-                                                {product.productLabel}
+                                                {product.productKey === "PERSONALIZADA_INDEX"
+                                                    ? t("simulationOffersCards", "productLabelPersonalizadaIndex")
+                                                    : product.productKey === "PERSONALIZADA_OMIE_B"
+                                                        ? t("simulationOffersCards", "productLabelPersonalizadaOmieB")
+                                                        : product.productKey === "GAS_PERSONALIZADA_INDEX"
+                                                            ? t("simulationOffersCards", "productLabelGasPersonalizadaIndex")
+                                                            : product.productLabel}
                                             </div>
                                             <div style={{
                                                 display: "inline-block",
@@ -251,7 +260,7 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                             }}>
                                                 {product.pricingType === "FIXED"
                                                     ? t("simulationOffersCards", "pricingFixed")
-                                                    : (product.productKey === "PERSONALIZADA_INDEX" || product.productKey === "PERSONALIZADA_OMIE_B")
+                                                    : (product.productKey === "PERSONALIZADA_INDEX" || product.productKey === "PERSONALIZADA_OMIE_B" || product.productKey === "GAS_PERSONALIZADA_INDEX")
                                                         ? t("simulationOffersCards", "pricingPersonalizada")
                                                         : t("simulationOffersCards", "pricingIndexed")}
                                             </div>
@@ -371,6 +380,8 @@ function EditableInputPanel({
     onUpdatePersonalizadaIndex,
     personalizadaOmieBPeriods,
     onUpdatePersonalizadaOmieB,
+    gasPersonalizadaIndexMargen,
+    onUpdateGasPersonalizadaIndex,
 }: {
     facturaActual?: number;
     tarifaAcceso?: string;
@@ -390,6 +401,8 @@ function EditableInputPanel({
     onUpdatePersonalizadaIndex?: (field: "margenEnergia" | "margenPotencia", period: string, value: number) => void;
     personalizadaOmieBPeriods?: { terminoB: Record<string, number>; margenPotencia: Record<string, number> };
     onUpdatePersonalizadaOmieB?: (field: "terminoB" | "margenPotencia", period: string, value: number) => void;
+    gasPersonalizadaIndexMargen?: number;
+    onUpdateGasPersonalizadaIndex?: (margen: number) => void;
 }) {
     const { t } = useI18n();
     const [expandedSection, setExpandedSection] = useState<"energy" | "power" | "omie" | "personalizadaIndex" | "personalizadaOmieB" | null>(null);
@@ -527,20 +540,11 @@ function EditableInputPanel({
                                         <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>
                                             {period}:
                                         </label>
-                                        <input
-                                            type="number"
+                                        <CurrencyInput
                                             value={value}
-                                            onChange={(e) => handleInputChange("energy", period, e.target.value)}
-                                            style={{
-                                                flex: 1,
-                                                padding: "6px 10px",
-                                                border: `1px solid ${uiColors.borderStrong}`,
-                                                borderRadius: 6,
-                                                fontSize: 13,
-                                                fontWeight: 600,
-                                                color: uiColors.text,
-                                                background: uiColors.surface,
-                                            }}
+                                            onChange={(v) => { if (!isNaN(v)) onUpdatePeriod?.("energy", period, v); }}
+                                            currencySymbol=""
+                                            decimals={0}
                                         />
                                     </div>
                                 ))}
@@ -579,21 +583,11 @@ function EditableInputPanel({
                                         <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>
                                             {period}:
                                         </label>
-                                        <input
-                                            type="number"
+                                        <CurrencyInput
                                             value={value}
-                                            onChange={(e) => handleInputChange("power", period, e.target.value)}
-                                            step="0.01"
-                                            style={{
-                                                flex: 1,
-                                                padding: "6px 10px",
-                                                border: `1px solid ${uiColors.borderStrong}`,
-                                                borderRadius: 6,
-                                                fontSize: 13,
-                                                fontWeight: 600,
-                                                color: uiColors.text,
-                                                background: uiColors.surface,
-                                            }}
+                                            onChange={(v) => { if (!isNaN(v)) onUpdatePeriod?.("power", period, v); }}
+                                            currencySymbol=""
+                                            decimals={2}
                                         />
                                     </div>
                                 ))}
@@ -633,12 +627,11 @@ function EditableInputPanel({
                                         {Object.entries(personalizadaIndexPeriods.margenEnergia).map(([period, value]) => (
                                             <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                                                 <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
-                                                <input
-                                                    type="number"
+                                                <CurrencyInput
                                                     value={value}
-                                                    onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenEnergia", period, v); }}
-                                                    step="0.1"
-                                                    style={{ flex: 1, padding: "6px 10px", border: `1px solid ${uiColors.borderStrong}`, borderRadius: 6, fontSize: 13, fontWeight: 600, color: uiColors.text, background: uiColors.surface }}
+                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenEnergia", period, v); }}
+                                                    currencySymbol=""
+                                                    decimals={2}
                                                 />
                                             </div>
                                         ))}
@@ -650,12 +643,11 @@ function EditableInputPanel({
                                         {Object.entries(personalizadaIndexPeriods.margenPotencia).map(([period, value]) => (
                                             <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                                                 <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
-                                                <input
-                                                    type="number"
+                                                <CurrencyInput
                                                     value={value}
-                                                    onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenPotencia", period, v); }}
-                                                    step="0.1"
-                                                    style={{ flex: 1, padding: "6px 10px", border: `1px solid ${uiColors.borderStrong}`, borderRadius: 6, fontSize: 13, fontWeight: 600, color: uiColors.text, background: uiColors.surface }}
+                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenPotencia", period, v); }}
+                                                    currencySymbol=""
+                                                    decimals={2}
                                                 />
                                             </div>
                                         ))}
@@ -697,12 +689,11 @@ function EditableInputPanel({
                                         {Object.entries(personalizadaOmieBPeriods.terminoB).map(([period, value]) => (
                                             <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                                                 <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
-                                                <input
-                                                    type="number"
+                                                <CurrencyInput
                                                     value={value}
-                                                    onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("terminoB", period, v); }}
-                                                    step="0.1"
-                                                    style={{ flex: 1, padding: "6px 10px", border: `1px solid ${uiColors.borderStrong}`, borderRadius: 6, fontSize: 13, fontWeight: 600, color: uiColors.text, background: uiColors.surface }}
+                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("terminoB", period, v); }}
+                                                    currencySymbol=""
+                                                    decimals={2}
                                                 />
                                             </div>
                                         ))}
@@ -714,17 +705,53 @@ function EditableInputPanel({
                                         {Object.entries(personalizadaOmieBPeriods.margenPotencia).map(([period, value]) => (
                                             <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                                                 <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
-                                                <input
-                                                    type="number"
+                                                <CurrencyInput
                                                     value={value}
-                                                    onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("margenPotencia", period, v); }}
-                                                    step="0.1"
-                                                    style={{ flex: 1, padding: "6px 10px", border: `1px solid ${uiColors.borderStrong}`, borderRadius: 6, fontSize: 13, fontWeight: 600, color: uiColors.text, background: uiColors.surface }}
+                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("margenPotencia", period, v); }}
+                                                    currencySymbol=""
+                                                    decimals={2}
                                                 />
                                             </div>
                                         ))}
                                     </>
                                 )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {gasPersonalizadaIndexMargen !== undefined && (
+                    <div style={{ marginTop: 8 }}>
+                        <button
+                            onClick={() => setExpandedSection(expandedSection === "personalizadaIndex" ? null : "personalizadaIndex")}
+                            style={{
+                                width: "100%",
+                                padding: "8px 10px",
+                                background: expandedSection === "personalizadaIndex" ? uiColors.surfaceMuted : uiColors.surface,
+                                border: `1px solid ${uiColors.borderStrong}`,
+                                borderRadius: 6,
+                                color: uiColors.text,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                transition: "all 0.2s",
+                            }}
+                        >
+                            <span>{t("simulationForm", "sectionGasPersonalizadaIndex")}</span>
+                            <span>{expandedSection === "personalizadaIndex" ? "▲" : "▼"}</span>
+                        </button>
+                        {expandedSection === "personalizadaIndex" && (
+                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "gasPersonalizadaIndexMargenLabel")}</div>
+                                <CurrencyInput
+                                    value={gasPersonalizadaIndexMargen}
+                                    onChange={(v) => { if (!isNaN(v)) onUpdateGasPersonalizadaIndex?.(v); }}
+                                    currencySymbol=""
+                                    decimals={5}
+                                />
                             </div>
                         )}
                     </div>
@@ -804,10 +831,12 @@ export function SimulationResultsCards({
     onUpdatePersonalizadaIndex,
     personalizadaOmieBPeriods,
     onUpdatePersonalizadaOmieB,
+    gasPersonalizadaIndexMargen,
+    onUpdateGasPersonalizadaIndex,
 }: SimulationResultsCardsProps) {
     const { t, locale } = useI18n();
     const [elecTab, setElecTab] = useState<"all" | "fixed" | "indexed" | "personalizadas">("all");
-    const [gasTab, setGasTab] = useState<"all" | "fixed" | "indexed">("all");
+    const [gasTab, setGasTab] = useState<"all" | "fixed" | "indexed" | "personalizadas">("all");
     const [pendingOffer, setPendingOffer] = useState<PendingOffer | null>(null);
     const [saving, setSaving] = useState(false);
 
@@ -877,6 +906,8 @@ export function SimulationResultsCards({
                     onUpdatePersonalizadaIndex={onUpdatePersonalizadaIndex}
                     personalizadaOmieBPeriods={personalizadaOmieBPeriods}
                     onUpdatePersonalizadaOmieB={onUpdatePersonalizadaOmieB}
+                    gasPersonalizadaIndexMargen={gasPersonalizadaIndexMargen}
+                    onUpdateGasPersonalizadaIndex={onUpdateGasPersonalizadaIndex}
                 />
 
                 {/* Right side - Product tables */}
@@ -995,7 +1026,9 @@ export function SimulationResultsCards({
                     {hasGas && (() => {
                         const gasProducts = [...results.gas!].sort((a, b) => b.ahorro - a.ahorro);
                         const fixedProducts = gasProducts.filter(p => p.pricingType === "FIXED");
-                        const indexedProducts = gasProducts.filter(p => p.pricingType === "INDEXED");
+                        const indexedProducts = gasProducts.filter(p => p.pricingType === "INDEXED" && p.productKey !== "GAS_PERSONALIZADA_INDEX");
+                        const personalizadaProducts = gasProducts.filter(p => p.productKey === "GAS_PERSONALIZADA_INDEX");
+                        const hasPersonalizadas = personalizadaProducts.length > 0;
 
                         // Find the best offer (highest savings) across all gas products
                         const bestGasProduct = gasProducts.reduce((best, current) =>
@@ -1006,7 +1039,9 @@ export function SimulationResultsCards({
                             ? gasProducts
                             : gasTab === "fixed"
                                 ? fixedProducts
-                                : indexedProducts;
+                                : gasTab === "personalizadas"
+                                    ? personalizadaProducts
+                                    : indexedProducts;
 
                         return (
                             <div>
@@ -1035,11 +1070,12 @@ export function SimulationResultsCards({
 
                                 {/* Tabs */}
                                 <div style={{ display: "flex", gap: 0, borderBottom: `2px solid ${uiColors.border}`, marginBottom: 16 }}>
-                                    {[
+                                    {([
                                         { key: "all" as const, label: t("simulationOffersCards", "tabAll"), count: gasProducts.length },
                                         { key: "fixed" as const, label: t("simulationOffersCards", "tabFixed"), count: fixedProducts.length },
                                         { key: "indexed" as const, label: t("simulationOffersCards", "tabIndexed"), count: indexedProducts.length },
-                                    ].map((tab) => (
+                                        ...(hasPersonalizadas ? [{ key: "personalizadas" as const, label: t("simulationOffersCards", "tabPersonalizadas"), count: personalizadaProducts.length }] : []),
+                                    ] as { key: "all" | "fixed" | "indexed" | "personalizadas"; label: string; count: number }[]).map((tab) => (
                                         <button
                                             key={tab.key}
                                             type="button"

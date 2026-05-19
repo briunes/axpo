@@ -31,26 +31,31 @@ const GAS_PRODUCT_LABELS: Record<string, string> = {
   "DINAMICA_PLUS:N3": "Gas Dinámica Plus N3",
 };
 
-function generateLast12Months(): { label: string; key: string }[] {
-  const now = new Date();
+const MONTH_NAMES = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+
+/**
+ * Generate the last 12 months ending at `anchor` (inclusive).
+ * If no anchor is provided, defaults to the current month.
+ */
+function generateLast12Months(anchor?: Date): { label: string; key: string }[] {
+  const ref = anchor ?? new Date();
   const months: { label: string; key: string }[] = [];
-  const monthNames = [
-    "Enero",
-    "Febrero",
-    "Marzo",
-    "Abril",
-    "Mayo",
-    "Junio",
-    "Julio",
-    "Agosto",
-    "Septiembre",
-    "Octubre",
-    "Noviembre",
-    "Diciembre",
-  ];
   for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const label = `${monthNames[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+    const d = new Date(ref.getFullYear(), ref.getMonth() - i, 1);
+    const label = `${MONTH_NAMES[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     months.push({ label, key });
   }
@@ -58,8 +63,29 @@ function generateLast12Months(): { label: string; key: string }[] {
 }
 
 /**
+ * Given a list of base-value items, find the latest YYYY-MM that has
+ * per-month margin data (keys ending in :MARGEN:YYYY-MM) and return it
+ * as a Date anchored to the first of that month.
+ * Returns undefined when no per-month data exists.
+ */
+function latestDataMonth(items: { key: string }[]): Date | undefined {
+  let latest: string | undefined;
+  for (const item of items) {
+    // Both ELEC and GAS per-month keys end with :MARGEN:YYYY-MM
+    const match = item.key.match(/:MARGEN:(\d{4}-\d{2})$/);
+    if (match) {
+      const ym = match[1];
+      if (!latest || ym > latest) latest = ym;
+    }
+  }
+  if (!latest) return undefined;
+  const [y, m] = latest.split("-").map(Number);
+  return new Date(y, m - 1, 1);
+}
+
+/**
  * @swagger
- * /api/v1/internal/simulations/{id}/price-history:
+ * /api/v1/internal/simulations/{id}/price-history:Menu 'Comunicações':
  *   get:
  *     summary: Get indexed price history data for a simulation
  *     tags: [Simulations]
@@ -285,11 +311,15 @@ export async function GET(
     const gas = payload?.gas as any;
     const gasTarifaAcceso = gas?.tarifaAcceso ?? "";
 
+    // Anchor months to the latest month that actually has per-month data in
+    // the base value set, so we never show future months without data.
+    const dataAnchor = latestDataMonth(baseValueItems);
+
     return NextResponse.json({
       tarifaAcceso,
       perfilCarga,
       products: simulationProducts,
-      months: generateLast12Months(),
+      months: generateLast12Months(dataAnchor),
       // Gas-specific fields
       isGas,
       gasTarifaAcceso,
