@@ -41,6 +41,10 @@ interface SimulationResultsCardsProps {
     onUpdatePersonalizadaOmieB?: (field: "terminoB" | "margenPotencia", period: string, value: number) => void;
     gasPersonalizadaIndexMargen?: number;
     onUpdateGasPersonalizadaIndex?: (margen: number) => void;
+    elecPersonalizadaFijoPeriods?: { preciosPotencia: Record<string, number>; preciosEnergia: Record<string, number> };
+    onUpdateElecPersonalizadaFijo?: (field: "preciosPotencia" | "preciosEnergia", period: string, value: number) => void;
+    gasPersonalizadaFijo?: { terminoDia: number; terminoVariable: number };
+    onUpdateGasPersonalizadaFijo?: (field: "terminoDia" | "terminoVariable", value: number) => void;
 }
 
 interface PendingOffer {
@@ -382,6 +386,10 @@ function EditableInputPanel({
     onUpdatePersonalizadaOmieB,
     gasPersonalizadaIndexMargen,
     onUpdateGasPersonalizadaIndex,
+    elecPersonalizadaFijoPeriods,
+    onUpdateElecPersonalizadaFijo,
+    gasPersonalizadaFijo,
+    onUpdateGasPersonalizadaFijo,
 }: {
     facturaActual?: number;
     tarifaAcceso?: string;
@@ -403,9 +411,13 @@ function EditableInputPanel({
     onUpdatePersonalizadaOmieB?: (field: "terminoB" | "margenPotencia", period: string, value: number) => void;
     gasPersonalizadaIndexMargen?: number;
     onUpdateGasPersonalizadaIndex?: (margen: number) => void;
+    elecPersonalizadaFijoPeriods?: { preciosPotencia: Record<string, number>; preciosEnergia: Record<string, number> };
+    onUpdateElecPersonalizadaFijo?: (field: "preciosPotencia" | "preciosEnergia", period: string, value: number) => void;
+    gasPersonalizadaFijo?: { terminoDia: number; terminoVariable: number };
+    onUpdateGasPersonalizadaFijo?: (field: "terminoDia" | "terminoVariable", value: number) => void;
 }) {
     const { t } = useI18n();
-    const [expandedSection, setExpandedSection] = useState<"energy" | "power" | "omie" | "personalizadaIndex" | "personalizadaOmieB" | null>(null);
+    const [expandedSection, setExpandedSection] = useState<"energy" | "power" | "omie" | "personalizadaIndex" | "personalizadaOmieB" | "personalizadaFijo" | "gasPersonalizadaFijo" | null>(null);
 
     const handleInputChange = (type: "energy" | "power" | "omie", period: string, value: string) => {
         const numValue = parseFloat(value);
@@ -757,6 +769,104 @@ function EditableInputPanel({
                     </div>
                 )}
 
+                {elecPersonalizadaFijoPeriods && (
+                    <div style={{ marginTop: 8 }}>
+                        <button
+                            onClick={() => setExpandedSection(expandedSection === "personalizadaFijo" ? null : "personalizadaFijo")}
+                            style={{
+                                width: "100%",
+                                padding: "8px 10px",
+                                background: expandedSection === "personalizadaFijo" ? uiColors.surfaceMuted : uiColors.surface,
+                                border: `1px solid ${uiColors.borderStrong}`,
+                                borderRadius: 6,
+                                color: uiColors.text,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                transition: "all 0.2s",
+                            }}
+                        >
+                            <span>Personalized Fixed (custom)</span>
+                            <span>{expandedSection === "personalizadaFijo" ? "▲" : "▼"}</span>
+                        </button>
+                        {expandedSection === "personalizadaFijo" && (
+                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>Término Potencia (€/kWdia)</div>
+                                {Object.entries(elecPersonalizadaFijoPeriods.preciosPotencia).map(([period, value]) => (
+                                    <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
+                                        <CurrencyInput
+                                            value={value}
+                                            onChange={(v) => { if (!isNaN(v)) onUpdateElecPersonalizadaFijo?.("preciosPotencia", period, v); }}
+                                            currencySymbol=""
+                                            decimals={4}
+                                        />
+                                    </div>
+                                ))}
+                                <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>Término Energía (€/kWh)</div>
+                                {Object.entries(elecPersonalizadaFijoPeriods.preciosEnergia).map(([period, value]) => (
+                                    <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
+                                        <CurrencyInput
+                                            value={value}
+                                            onChange={(v) => { if (!isNaN(v)) onUpdateElecPersonalizadaFijo?.("preciosEnergia", period, v); }}
+                                            currencySymbol=""
+                                            decimals={4}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {gasPersonalizadaFijo !== undefined && (
+                    <div style={{ marginTop: 8 }}>
+                        <button
+                            onClick={() => setExpandedSection(expandedSection === "gasPersonalizadaFijo" ? null : "gasPersonalizadaFijo")}
+                            style={{
+                                width: "100%",
+                                padding: "8px 10px",
+                                background: expandedSection === "gasPersonalizadaFijo" ? uiColors.surfaceMuted : uiColors.surface,
+                                border: `1px solid ${uiColors.borderStrong}`,
+                                borderRadius: 6,
+                                color: uiColors.text,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                transition: "all 0.2s",
+                            }}
+                        >
+                            <span>Personalized Fixed (custom)</span>
+                            <span>{expandedSection === "gasPersonalizadaFijo" ? "▲" : "▼"}</span>
+                        </button>
+                        {expandedSection === "gasPersonalizadaFijo" && (
+                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>Término Fijo (€/día)</div>
+                                <CurrencyInput
+                                    value={gasPersonalizadaFijo.terminoDia}
+                                    onChange={(v) => { if (!isNaN(v)) onUpdateGasPersonalizadaFijo?.("terminoDia", v); }}
+                                    currencySymbol=""
+                                    decimals={4}
+                                />
+                                <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>Término Variable (€/kWh)</div>
+                                <CurrencyInput
+                                    value={gasPersonalizadaFijo.terminoVariable}
+                                    onChange={(v) => { if (!isNaN(v)) onUpdateGasPersonalizadaFijo?.("terminoVariable", v); }}
+                                    currencySymbol=""
+                                    decimals={5}
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div style={{
                     marginTop: 16,
                     paddingTop: 12,
@@ -833,6 +943,10 @@ export function SimulationResultsCards({
     onUpdatePersonalizadaOmieB,
     gasPersonalizadaIndexMargen,
     onUpdateGasPersonalizadaIndex,
+    elecPersonalizadaFijoPeriods,
+    onUpdateElecPersonalizadaFijo,
+    gasPersonalizadaFijo,
+    onUpdateGasPersonalizadaFijo,
 }: SimulationResultsCardsProps) {
     const { t, locale } = useI18n();
     const [elecTab, setElecTab] = useState<"all" | "fixed" | "indexed" | "personalizadas">("all");
@@ -908,6 +1022,10 @@ export function SimulationResultsCards({
                     onUpdatePersonalizadaOmieB={onUpdatePersonalizadaOmieB}
                     gasPersonalizadaIndexMargen={gasPersonalizadaIndexMargen}
                     onUpdateGasPersonalizadaIndex={onUpdateGasPersonalizadaIndex}
+                    elecPersonalizadaFijoPeriods={elecPersonalizadaFijoPeriods}
+                    onUpdateElecPersonalizadaFijo={onUpdateElecPersonalizadaFijo}
+                    gasPersonalizadaFijo={gasPersonalizadaFijo}
+                    onUpdateGasPersonalizadaFijo={onUpdateGasPersonalizadaFijo}
                 />
 
                 {/* Right side - Product tables */}

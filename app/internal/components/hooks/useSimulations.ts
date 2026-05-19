@@ -140,14 +140,17 @@ export function useSimulations(
   const [showArchived, setShowArchived] = useState(false);
 
   // filters — pending = what the user is typing; applied = what was last submitted
+  const isCommercial = session?.user.role === "COMMERCIAL";
+  const selfUserId = isCommercial ? (session?.user.id ?? "") : "";
+
   const [filterSearch, setFilterSearch] = useState("");
-  const [filterOwnerUserId, setFilterOwnerUserId] = useState("");
+  const [filterOwnerUserId, setFilterOwnerUserId] = useState(selfUserId);
   const [filterClientId, setFilterClientId] = useState("");
   const [filterCups, setFilterCups] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
   const [appliedSearch, setAppliedSearch] = useState("");
-  const [appliedOwnerUserId, setAppliedOwnerUserId] = useState("");
+  const [appliedOwnerUserId, setAppliedOwnerUserId] = useState(selfUserId);
   const [appliedClientId, setAppliedClientId] = useState("");
   const [appliedCups, setAppliedCups] = useState("");
   const [appliedStatus, setAppliedStatus] = useState("");

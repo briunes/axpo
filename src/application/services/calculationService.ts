@@ -414,6 +414,105 @@ function calcElecIndex(
   };
 }
 
+// ─── Electricity – Personalizada Fijo ────────────────────────────────────────
+
+/**
+ * Personalizada Fijo (custom fixed offer) product.
+ * The user supplies all-in energy prices (€/kWh) and power prices (€/kWdia)
+ * per period.  Defaults can be imported from the COMPARATIVA LIBRE LUZ sheet.
+ * Only computed when at least one energy price period is > 0.
+ */
+function calcElecPersonalizadaFijo(
+  inputs: ElectricityInputs,
+  map: PriceMap,
+): ProductResult | null {
+  if (!inputs.personalizadaFijo) return null;
+  const { preciosEnergia, preciosPotencia } = inputs.personalizadaFijo;
+  const preciosEnergiaMap = (preciosEnergia ?? {}) as Record<
+    string,
+    number | undefined
+  >;
+  const hasEnergy = Object.values(preciosEnergiaMap).some(
+    (v) => v != null && v > 0,
+  );
+  if (!hasEnergy) return null;
+
+  const {
+    tarifaAcceso,
+    consumo,
+    potenciaContratada,
+    excesoPotencia,
+    periodo,
+    facturaActual,
+    extras,
+  } = inputs;
+  const dias = periodo.dias;
+  const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
+  const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
+  const consumoMap = consumo as unknown as Record<string, number | undefined>;
+  const potenciaMap = potenciaContratada as unknown as Record<
+    string,
+    number | undefined
+  >;
+  const preciosPotenciaMap = (preciosPotencia ?? {}) as Record<
+    string,
+    number | undefined
+  >;
+
+  let terminoEnergia = 0;
+  for (const p of energyPeriods) {
+    const precio = preciosEnergiaMap[p] ?? 0;
+    terminoEnergia += precio * pv(consumoMap, p);
+  }
+
+  let terminoPotencia = 0;
+  for (const p of powerPeriods) {
+    // price is €/kWdia → × kW × dias
+    const precioDia = preciosPotenciaMap[p] ?? 0;
+    terminoPotencia += precioDia * pv(potenciaMap, p) * dias;
+  }
+
+  const terminoExceso = excesoPotencia ?? 0;
+  const reactiva = extras?.reactiva ?? 0;
+  const alquiler = extras?.alquilerEquipoMedida ?? 0;
+  const otros = extras?.otrosCargos ?? 0;
+  const ieRate =
+    extras?.impuestoElectricoTasa != null
+      ? extras.impuestoElectricoTasa / 100
+      : IMPUESTO_ELECTRICO;
+  const ivaRate = extras?.ivaTasa != null ? extras.ivaTasa / 100 : IVA_RATE;
+  const baseImponible =
+    terminoEnergia + terminoPotencia + terminoExceso + reactiva + otros;
+  const impuestoElectricoRaw = baseImponible * ieRate;
+  const baseIva = baseImponible + impuestoElectricoRaw + alquiler;
+  const ivaRaw = baseIva * ivaRate;
+  const total = r2(baseIva + ivaRaw);
+  const ahorro = r2(facturaActual - total);
+  const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
+  const ahorroAnual =
+    dias === 365 ? r2(facturaActual - total) : r2((ahorro / dias) * 365);
+
+  return {
+    productKey: "PERSONALIZADA_FIJO",
+    productLabel: "Personalizada Fijo",
+    commodity: "ELECTRICITY",
+    pricingType: "FIXED",
+    totalFactura: total,
+    ahorro,
+    pctAhorro,
+    ahorroAnual,
+    desglose: {
+      terminoEnergia: r2(terminoEnergia),
+      terminoPotencia: r2(terminoPotencia),
+      excesoPotencia: r2(terminoExceso),
+      otrosCargos: r2(reactiva + otros),
+      alquiler: r2(alquiler),
+      impuestoElectrico: r2(impuestoElectricoRaw),
+      iva: r2(ivaRaw),
+    },
+  };
+}
+
 // ─── Electricity – Personalizada Index ────────────────────────────────────────
 
 /**
@@ -768,6 +867,63 @@ function calcGasIndex(
   };
 }
 
+// ─── Gas – Personalizada Fijo ─────────────────────────────────────────────────
+
+/**
+ * Gas Personalizada Fijo (custom fixed offer) product.
+ * The user supplies the all-in variable term (€/kWh) and fixed term (€/día).
+ * Defaults can be imported from the COMPARATIVA LIBRE GAS sheet.
+ * Only computed when terminoVariable > 0.
+ */
+function calcGasPersonalizadaFijo(
+  inputs: GasInputs,
+  map: PriceMap,
+): ProductResult | null {
+  if (
+    !inputs.personalizadaFijo ||
+    inputs.personalizadaFijo.terminoVariable <= 0
+  )
+    return null;
+
+  const { terminoVariable, terminoDia } = inputs.personalizadaFijo;
+  const { consumo, periodo, facturaActual, extras } = inputs;
+  const dias = periodo.dias;
+  const terminoEnergia = terminoVariable * consumo;
+  const terminoFijoDia = (terminoDia ?? 0) * dias;
+  const alquiler = extras?.alquilerEquipoMedida ?? 0;
+  const otros = extras?.otrosCargos ?? 0;
+  const hidrocarburoRate = inputs.impuestoHidrocarburo ?? IMPUESTO_HIDROCARBURO;
+  const impuestoHidrocarburo = r2(hidrocarburoRate * consumo);
+  const subtotal = terminoEnergia + terminoFijoDia;
+  const ivaRate = inputs.ivaTasa != null ? inputs.ivaTasa / 100 : IVA_RATE;
+  const baseIva = subtotal + impuestoHidrocarburo + alquiler + otros;
+  const iva = r2(baseIva * ivaRate);
+  const total = r2(baseIva + iva);
+  const ahorro = r2(facturaActual - total);
+  const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
+  const ahorroAnual =
+    dias === 365 ? r2(facturaActual - total) : r2((ahorro / dias) * 365);
+
+  return {
+    productKey: "GAS_PERSONALIZADA_FIJO",
+    productLabel: "Personalizada Fijo",
+    commodity: "GAS",
+    pricingType: "FIXED",
+    totalFactura: total,
+    ahorro,
+    pctAhorro,
+    ahorroAnual,
+    desglose: {
+      terminoEnergia: r2(terminoEnergia),
+      terminoFijo: r2(terminoFijoDia),
+      otrosCargos: r2(otros),
+      alquiler: r2(alquiler),
+      impuestoHidrocarburo,
+      iva,
+    },
+  };
+}
+
 // ─── Gas – Personalizada Indexada ─────────────────────────────────────────────
 
 /**
@@ -899,6 +1055,10 @@ export class CalculationService {
     const rPOmieB = calcPersonalizadaOmieB(inputs, map);
     if (rPOmieB) results.push(rPOmieB);
 
+    // Personalizada Fijo — user-supplied all-in prices per period
+    const rPFijo = calcElecPersonalizadaFijo(inputs, map);
+    if (rPFijo) results.push(rPFijo);
+
     // Products are already in Excel order due to iteration sequence:
     // FIXED products iterated first (ESTABLE→1P_PLUS→etc), each with tiers N1→N2→N3
     // INDEXED products iterated second (DINAMICA→DINAMICA_PLUS→etc), each with tiers N1→N2→N3
@@ -927,6 +1087,10 @@ export class CalculationService {
         if (r) results.push(r);
       }
     }
+
+    // Personalizada Fijo — user-supplied all-in fixed prices
+    const rGasPFijo = calcGasPersonalizadaFijo(inputs, map);
+    if (rGasPFijo) results.push(rGasPFijo);
 
     // Personalizada Indexada — only included when the user has provided a margin
     const rGasPIdx = calcGasPersonalizadaIndex(inputs, map);

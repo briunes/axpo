@@ -841,6 +841,99 @@ function parseDinamicaSheet(
   return items;
 }
 
+// ─── Comparativa Libre LUZ parser ─────────────────────────────────────────────
+
+/**
+ * Parses the "COMPARATIVA LIBRE LUZ" sheet which contains the user-filled
+ * custom fixed-price offer inputs:
+ *   Row 43 (0-based: 42), cols I–N (8–13): TERMINO POTENCIA in €/kWdia for P1–P6
+ *   Row 48 (0-based: 47), cols I–N (8–13): TÉRMINO ENERGÍA in €/kWh for P1–P6
+ *
+ * Stored under keys:
+ *   ELEC:LIBRE:PERSONALIZADA_FIJO:P{n}:POTENCIA  (€/kWdia)
+ *   ELEC:LIBRE:PERSONALIZADA_FIJO:P{n}:ENERGIA   (€/kWh)
+ */
+function parseComparativaLibreLuz(sheet: XLSX.WorkSheet): BaseValueItem[] {
+  const items: BaseValueItem[] = [];
+  const periods = ["P1", "P2", "P3", "P4", "P5", "P6"];
+  const potenciaRowIdx = 42; // row 43, 0-based
+  const energiaRowIdx = 47; // row 48, 0-based
+
+  for (let i = 0; i < 6; i++) {
+    const col = 8 + i; // cols I–N
+
+    const potAddr = XLSX.utils.encode_cell({ r: potenciaRowIdx, c: col });
+    const potCell = sheet[potAddr];
+    if (potCell && potCell.v != null) {
+      const v = parseFloat(String(potCell.v));
+      if (!isNaN(v) && v > 0) {
+        items.push({
+          key: `ELEC:LIBRE:PERSONALIZADA_FIJO:${periods[i]}:POTENCIA`,
+          valueNumeric: Math.round(v * 1e10) / 1e10,
+          unit: "€/kWdia",
+        });
+      }
+    }
+
+    const enaAddr = XLSX.utils.encode_cell({ r: energiaRowIdx, c: col });
+    const enaCell = sheet[enaAddr];
+    if (enaCell && enaCell.v != null) {
+      const v = parseFloat(String(enaCell.v));
+      if (!isNaN(v) && v > 0) {
+        items.push({
+          key: `ELEC:LIBRE:PERSONALIZADA_FIJO:${periods[i]}:ENERGIA`,
+          valueNumeric: Math.round(v * 1e10) / 1e10,
+          unit: "€/kWh",
+        });
+      }
+    }
+  }
+
+  return items;
+}
+
+// ─── Comparativa Libre GAS parser ─────────────────────────────────────────────
+
+/**
+ * Parses the "COMPARATIVA LIBRE GAS" sheet which contains the user-filled
+ * custom fixed-price gas offer inputs:
+ *   Row 42 (0-based: 41), col K (index 10): TERMINO FIJO value in €/día
+ *   Row 47 (0-based: 46), col K (index 10): TÉRMINO VARIABLE value in €/kWh
+ *
+ * Stored under keys:
+ *   GAS:LIBRE:PERSONALIZADA_FIJO:TERMINO_DIA      (€/día)
+ *   GAS:LIBRE:PERSONALIZADA_FIJO:TERMINO_VARIABLE (€/kWh)
+ */
+function parseComparativaLibreGas(sheet: XLSX.WorkSheet): BaseValueItem[] {
+  const items: BaseValueItem[] = [];
+
+  const terminoDiaCell = sheet[XLSX.utils.encode_cell({ r: 41, c: 10 })];
+  if (terminoDiaCell && terminoDiaCell.v != null) {
+    const v = parseFloat(String(terminoDiaCell.v));
+    if (!isNaN(v) && v > 0) {
+      items.push({
+        key: "GAS:LIBRE:PERSONALIZADA_FIJO:TERMINO_DIA",
+        valueNumeric: Math.round(v * 1e10) / 1e10,
+        unit: "€/día",
+      });
+    }
+  }
+
+  const terminoVarCell = sheet[XLSX.utils.encode_cell({ r: 46, c: 10 })];
+  if (terminoVarCell && terminoVarCell.v != null) {
+    const v = parseFloat(String(terminoVarCell.v));
+    if (!isNaN(v) && v > 0) {
+      items.push({
+        key: "GAS:LIBRE:PERSONALIZADA_FIJO:TERMINO_VARIABLE",
+        valueNumeric: Math.round(v * 1e10) / 1e10,
+        unit: "€/kWh",
+      });
+    }
+  }
+
+  return items;
+}
+
 // ─── Main Parser ─────────────────────────────────────────────────────────────
 
 export function parseAxpoExcel(
@@ -917,6 +1010,22 @@ export function parseAxpoExcel(
     const rows = worksheetToRows(sheet, 110);
     const gasIndexItems = parseGasIndex(rows);
     allItems.push(...gasIndexItems);
+  }
+
+  // Parse COMPARATIVA LIBRE LUZ (custom personalizada fijo electricity offer defaults)
+  if (trimmedSheetNames.has("COMPARATIVA LIBRE LUZ")) {
+    const sheet =
+      workbook.Sheets[trimmedSheetNames.get("COMPARATIVA LIBRE LUZ")!];
+    const libreElecItems = parseComparativaLibreLuz(sheet);
+    allItems.push(...libreElecItems);
+  }
+
+  // Parse COMPARATIVA LIBRE GAS (custom personalizada fijo gas offer defaults)
+  if (trimmedSheetNames.has("COMPARATIVA LIBRE GAS")) {
+    const sheet =
+      workbook.Sheets[trimmedSheetNames.get("COMPARATIVA LIBRE GAS")!];
+    const libreGasItems = parseComparativaLibreGas(sheet);
+    allItems.push(...libreGasItems);
   }
 
   // Deduplicate by key (last one wins, matching Python behavior)

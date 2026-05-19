@@ -141,7 +141,17 @@ export function UserPreferencesForm({ userId, token, onNotify }: UserPreferences
                 </Typography>
             </Box>
 
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <Box
+                sx={{
+                    display: "grid",
+                    gridTemplateColumns: {
+                        xs: "1fr",          // mobile: 1 column
+                        sm: "1fr 1fr",      // tablet: 2 columns
+                        md: "1fr 1fr 1fr",  // desktop: 3 columns
+                    },
+                    gap: 3,
+                }}
+            >
                 {/* Language */}
                 <FormSelect
                     label={t("userPreferences", "fieldLanguage")}
@@ -217,18 +227,18 @@ export function UserPreferencesForm({ userId, token, onNotify }: UserPreferences
                         { value: 100, label: "100" },
                     ]}
                 />
+            </Box>
 
-                {/* Save Button */}
-                <Box sx={{ display: "flex", justifyContent: "flex-start", pt: 1 }}>
-                    <Button
-                        variant="contained"
-                        onClick={handleSave}
-                        disabled={!isDirty || saving}
-                        size="large"
-                    >
-                        {saving ? t("actions", "saving") : t("actions", "saveChanges")}
-                    </Button>
-                </Box>
+            {/* Save Button */}
+            <Box sx={{ display: "flex", justifyContent: "flex-start", pt: 3 }}>
+                <Button
+                    variant="contained"
+                    onClick={handleSave}
+                    disabled={!isDirty || saving}
+                    size="large"
+                >
+                    {saving ? t("actions", "saving") : t("actions", "saveChanges")}
+                </Button>
             </Box>
         </Box>
     );

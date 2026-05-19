@@ -48,7 +48,7 @@ export default function ProfilePage() {
                     agencyId: u.agencyId || "",
                 });
             })
-            .catch(() => showError("Failed to load profile."))
+            .catch(() => showError(t("profilePage", "loadFailed")))
             .finally(() => setLoading(false));
     }, []);
 
@@ -72,10 +72,10 @@ export default function ProfilePage() {
                 // Password change requires currentPassword
 
             });
-            setSuccessText("Profile updated successfully.");
-            showSuccess("Profile updated successfully.");
+            setSuccessText(t("profilePage", "updated"));
+            showSuccess(t("profilePage", "updated"));
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Failed to update profile.";
+            const msg = err instanceof Error ? err.message : t("profilePage", "updateFailed");
             setErrorText(msg);
         } finally {
             setSubmitting(false);
@@ -96,11 +96,11 @@ export default function ProfilePage() {
 
     return (
         <CrudPageLayout
-            title="My Profile"
-            subtitle="View and edit your personal details and security settings"
+            title={t("profilePage", "title")}
+            subtitle={t("profilePage", "subtitle")}
         >
             {loading ? (
-                <LoadingState message="Loading profile..." size={100} />
+                <LoadingState message={t("profilePage", "loading")} size={100} />
             ) : (
                 <>
                     <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
@@ -116,7 +116,7 @@ export default function ProfilePage() {
                             <Stack direction="row" spacing={3} alignItems="flex-end" flexWrap="wrap">
                                 <Box sx={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                                     <span style={{ fontSize: 11, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
-                                        Role
+                                        {t("profilePage", "role")}
                                     </span>
                                     <Chip
                                         label={user?.role}
@@ -128,7 +128,7 @@ export default function ProfilePage() {
                                 {agencyName && (
                                     <Box sx={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                                         <span style={{ fontSize: 11, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
-                                            Agency
+                                            {t("profilePage", "agency")}
                                         </span>
                                         <Chip
                                             label={agencyName}
@@ -151,7 +151,7 @@ export default function ProfilePage() {
                                 errorMessage={errorText}
                                 successMessage={successText}
                                 isSubmitting={submitting}
-                                submitLabel="Save Changes"
+                                submitLabel={t("profilePage", "saveChanges")}
                                 mode="edit"
                                 isEditingSelf
                             />

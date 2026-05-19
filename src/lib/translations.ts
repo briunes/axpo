@@ -154,6 +154,7 @@ export const translations = {
     columns: {
       id: "ID",
       reference: "Ref.",
+      type: "Type",
       owner: "Owner",
       client: "Client",
       cups: "CUPS",
@@ -874,6 +875,15 @@ export const translations = {
       languageSystemDefault: "System default",
     },
     profilePage: {
+      title: "My Profile",
+      subtitle: "View and edit your personal details and security settings",
+      loading: "Loading profile...",
+      loadFailed: "Failed to load profile.",
+      updated: "Profile updated successfully.",
+      updateFailed: "Failed to update profile.",
+      role: "Role",
+      agency: "Agency",
+      saveChanges: "Save Changes",
       tabDetails: "Details",
       tabPreferences: "Preferences",
     },
@@ -1800,6 +1810,7 @@ export const translations = {
     columns: {
       id: "ID",
       reference: "Ref.",
+      type: "Tipo",
       owner: "Propietario",
       client: "Cliente",
       cups: "CUPS",
@@ -2528,6 +2539,16 @@ export const translations = {
       languageSystemDefault: "Por defecto del sistema",
     },
     profilePage: {
+      title: "Mi Perfil",
+      subtitle:
+        "Consulta y edita tus datos personales y configuración de seguridad",
+      loading: "Cargando perfil...",
+      loadFailed: "Error al cargar el perfil.",
+      updated: "Perfil actualizado correctamente.",
+      updateFailed: "Error al actualizar el perfil.",
+      role: "Rol",
+      agency: "Agencia",
+      saveChanges: "Guardar cambios",
       tabDetails: "Detalles",
       tabPreferences: "Preferencias",
     },

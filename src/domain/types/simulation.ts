@@ -140,6 +140,23 @@ export interface ElectricityInputs {
   };
 
   /**
+   * Personalizada Fijo: user-supplied all-in energy prices (€/kWh) and power
+   * prices (€/kWdia) per period.  When present and at least one energy price
+   * is > 0, the calculation emits a single "PERSONALIZADA_FIJO" result row.
+   * Default values can be imported from the COMPARATIVA LIBRE LUZ Excel sheet.
+   */
+  personalizadaFijo?: {
+    /** All-in energy price in €/kWh per period */
+    preciosEnergia: Partial<
+      Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>
+    >;
+    /** All-in power price in €/kWdia per period */
+    preciosPotencia: Partial<
+      Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>
+    >;
+  };
+
+  /**
    * Personalizada OMIE + B: user-supplied "B" term (€/MWh) per period plus
    * power margins (€/kW/year).  When present and at least one B value is > 0,
    * the calculation emits a single "PERSONALIZADA_OMIE_B" result row using
@@ -211,6 +228,19 @@ export interface GasInputs {
 
   /** Client's current total invoice amount in €, used to compute savings */
   facturaActual: number;
+
+  /**
+   * Personalizada Fijo: user-supplied all-in variable term (€/kWh) and fixed
+   * term (€/día).  When present and terminoVariable > 0, the calculation
+   * emits a single "GAS_PERSONALIZADA_FIJO" result row.
+   * Default values can be imported from the COMPARATIVA LIBRE GAS Excel sheet.
+   */
+  personalizadaFijo?: {
+    /** All-in variable energy term in €/kWh */
+    terminoVariable: number;
+    /** All-in fixed daily term in €/día */
+    terminoDia: number;
+  };
 
   /**
    * Personalizada Indexada: user-supplied energy margin (€/kWh) over MIBGAS.

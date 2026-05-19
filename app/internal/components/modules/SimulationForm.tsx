@@ -5,7 +5,7 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import { SimulationResultsCards } from "./SimulationResultsCards";
 import type { SimulationItem, ClientItem, CupsLookupEntry } from "../../lib/internalApi";
-import { calculateSimulation, updateSimulation, fetchCupsLookup } from "../../lib/internalApi";
+import { calculateSimulation, updateSimulation, fetchCupsLookup, listBaseValueSets, listBaseValueItems } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
@@ -79,6 +79,9 @@ interface ElecFormState {
     // Personalizada OMIE + B
     personalizadaOmieBTerminoB: PeriodMap;
     personalizadaOmieBMargenPotencia: PeriodMap;
+    // Personalizada Fijo (custom fixed offer)
+    personalizadaFijoPotencia: PeriodMap;
+    personalizadaFijoEnergia: PeriodMap;
     facturaActual: number;
     reactiva: number;
     alquiler: number;
@@ -110,6 +113,10 @@ interface GasFormState {
     impuestoHidrocarburo: number;
     /** Personalizada Indexada margin over MIBGAS in €/kWh */
     personalizadaIndexMargen: number;
+    /** Personalizada Fijo: all-in fixed daily term in €/día */
+    personalizadaFijoTerminoDia: number;
+    /** Personalizada Fijo: all-in variable term in €/kWh */
+    personalizadaFijoTerminoVariable: number;
 }
 
 function daysBetween(from: string, to: string): number {
@@ -198,6 +205,8 @@ function defaultElecState(): ElecFormState {
         personalizadaIndexMargenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
         personalizadaOmieBTerminoB: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
         personalizadaOmieBMargenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+        personalizadaFijoPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+        personalizadaFijoEnergia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
         facturaActual: 0,
         reactiva: 0,
         alquiler: 0,
@@ -229,6 +238,8 @@ function defaultGasState(): GasFormState {
         ivaTasa: 21,
         impuestoHidrocarburo: 0.00234,
         personalizadaIndexMargen: 0,
+        personalizadaFijoTerminoDia: 0,
+        personalizadaFijoTerminoVariable: 0,
     };
 }
 
@@ -260,6 +271,10 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
         personalizadaOmieB: {
             terminoB: s.personalizadaOmieBTerminoB,
             margenPotencia: s.personalizadaOmieBMargenPotencia,
+        },
+        personalizadaFijo: {
+            preciosEnergia: s.personalizadaFijoEnergia,
+            preciosPotencia: s.personalizadaFijoPotencia,
         },
         periodo: { fechaInicio: s.fechaInicio, fechaFin: s.fechaFin, dias },
         facturaActual: s.facturaActual,
@@ -297,6 +312,9 @@ function buildGasInputs(s: GasFormState): GasInputs {
         impuestoHidrocarburo: s.impuestoHidrocarburo || undefined,
         personalizadaIndex: s.personalizadaIndexMargen > 0
             ? { margenEnergia: s.personalizadaIndexMargen }
+            : undefined,
+        personalizadaFijo: (s.personalizadaFijoTerminoVariable > 0 || s.personalizadaFijoTerminoDia > 0)
+            ? { terminoVariable: s.personalizadaFijoTerminoVariable, terminoDia: s.personalizadaFijoTerminoDia }
             : undefined,
     };
 }
@@ -374,6 +392,8 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
             personalizadaIndexMargenPotencia: emptyPeriods(ep),
             personalizadaOmieBTerminoB: emptyPeriods(ep),
             personalizadaOmieBMargenPotencia: emptyPeriods(ep),
+            personalizadaFijoPotencia: emptyPeriods(ep),
+            personalizadaFijoEnergia: emptyPeriods(ep),
             facturaActual: invoiceData.facturaActual ?? 0,
             reactiva: invoiceData.reactiva ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
@@ -411,6 +431,8 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
         personalizadaIndexMargenPotencia: Object.fromEntries(pp.map((p) => [p, ((e.personalizadaIndex?.margenPotencia ?? {}) as Record<string, number>)[p] ?? 0])),
         personalizadaOmieBTerminoB: Object.fromEntries(ep.map((p) => [p, ((e.personalizadaOmieB?.terminoB ?? {}) as Record<string, number>)[p] ?? 0])),
         personalizadaOmieBMargenPotencia: Object.fromEntries(pp.map((p) => [p, ((e.personalizadaOmieB?.margenPotencia ?? {}) as Record<string, number>)[p] ?? 0])),
+        personalizadaFijoEnergia: Object.fromEntries(ep.map((p) => [p, ((e.personalizadaFijo?.preciosEnergia ?? {}) as Record<string, number>)[p] ?? 0])),
+        personalizadaFijoPotencia: Object.fromEntries(pp.map((p) => [p, ((e.personalizadaFijo?.preciosPotencia ?? {}) as Record<string, number>)[p] ?? 0])),
         facturaActual: e.facturaActual,
         reactiva: e.extras?.reactiva ?? 0,
         alquiler: e.extras?.alquilerEquipoMedida ?? 0,
@@ -466,6 +488,8 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
             ivaTasa: 21,
             impuestoHidrocarburo: 0.00234,
             personalizadaIndexMargen: 0,
+            personalizadaFijoTerminoDia: 0,
+            personalizadaFijoTerminoVariable: 0,
         };
     }
 
@@ -490,6 +514,8 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
         ivaTasa: g.ivaTasa ?? 21,
         impuestoHidrocarburo: g.impuestoHidrocarburo ?? 0.00234,
         personalizadaIndexMargen: g.personalizadaIndex?.margenEnergia ?? 0,
+        personalizadaFijoTerminoDia: g.personalizadaFijo?.terminoDia ?? 0,
+        personalizadaFijoTerminoVariable: g.personalizadaFijo?.terminoVariable ?? 0,
     };
 }
 
@@ -694,7 +720,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     const { t } = useI18n();
     const { preferences: { numberFormat } } = useUserPreferences();
     const up = <K extends keyof ElecFormState>(k: K, v: ElecFormState[K]) => onChange({ ...state, [k]: v });
-    const upP = (field: "consumo" | "potencia" | "omie" | "personalizadaIndexMargenEnergia" | "personalizadaIndexMargenPotencia" | "personalizadaOmieBTerminoB" | "personalizadaOmieBMargenPotencia") => (p: string, v: number) => up(field, { ...state[field], [p]: v });
+    const upP = (field: "consumo" | "potencia" | "omie" | "personalizadaIndexMargenEnergia" | "personalizadaIndexMargenPotencia" | "personalizadaOmieBTerminoB" | "personalizadaOmieBMargenPotencia" | "personalizadaFijoPotencia" | "personalizadaFijoEnergia") => (p: string, v: number) => up(field, { ...state[field], [p]: v });
     const ep = ELEC_ENERGY_PERIODS[state.tarifaAcceso];
     const pp = ELEC_POWER_PERIODS[state.tarifaAcceso];
     const xp = ELEC_EXCESS_PERIODS[state.tarifaAcceso];
@@ -1011,7 +1037,6 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                 </Row>
             </Sec>
 
-
         </>
     );
 }
@@ -1212,6 +1237,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                     </Field>
                 </Row>
             </Sec>
+
         </>
     );
 }
@@ -1332,6 +1358,55 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         }).catch(() => { /* non-critical */ });
     }, []);
 
+    // Pre-fill personalizadaFijo fields from base values when they are all zero (no saved user data)
+    useEffect(() => {
+        const hasFijoData =
+            Object.values(elecState.personalizadaFijoEnergia).some((v) => v > 0) ||
+            Object.values(elecState.personalizadaFijoPotencia).some((v) => v > 0);
+        if (hasFijoData) return;
+
+        listBaseValueSets(token, { pageSize: 100, showArchived: false })
+            .then(async (res) => {
+                const activeSet =
+                    res.items.find((s) => s.isProduction && !s.isDeleted) ??
+                    res.items.find((s) => s.isActive && !s.isDeleted) ??
+                    res.items[0];
+                if (!activeSet) return;
+
+                const items = await listBaseValueItems(token, activeSet.id);
+                const getVal = (key: string) => {
+                    const item = items.find((i) => i.key === key);
+                    return item?.valueNumeric != null ? Number(item.valueNumeric) : 0;
+                };
+
+                const periods = ["P1", "P2", "P3", "P4", "P5", "P6"];
+                const energia = Object.fromEntries(
+                    periods.map((p) => [p, getVal(`ELEC:LIBRE:PERSONALIZADA_FIJO:${p}:ENERGIA`)])
+                );
+                const potencia = Object.fromEntries(
+                    periods.map((p) => [p, getVal(`ELEC:LIBRE:PERSONALIZADA_FIJO:${p}:POTENCIA`)])
+                );
+
+                const hasAnyValue =
+                    Object.values(energia).some((v) => v > 0) ||
+                    Object.values(potencia).some((v) => v > 0);
+                if (!hasAnyValue) return;
+
+                setElecState((prev) => {
+                    const stillEmpty =
+                        !Object.values(prev.personalizadaFijoEnergia).some((v) => v > 0) &&
+                        !Object.values(prev.personalizadaFijoPotencia).some((v) => v > 0);
+                    if (!stillEmpty) return prev;
+                    return {
+                        ...prev,
+                        personalizadaFijoEnergia: { ...prev.personalizadaFijoEnergia, ...energia },
+                        personalizadaFijoPotencia: { ...prev.personalizadaFijoPotencia, ...potencia },
+                    };
+                });
+            })
+            .catch(() => { /* non-critical */ });
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Pre-fill client fields from ClientItem when a client is linked and form client data is empty
     useEffect(() => {
         if (!simulation.clientId || !clients?.length) return;
@@ -1416,6 +1491,8 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 personalizadaIndexMargenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
                 personalizadaOmieBTerminoB: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
                 personalizadaOmieBMargenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+                personalizadaFijoPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+                personalizadaFijoEnergia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
             };
             setElecState(testElec);
         }
@@ -1440,6 +1517,8 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 ivaTasa: 21,
                 impuestoHidrocarburo: 0.00234,
                 personalizadaIndexMargen: 0,
+                personalizadaFijoTerminoDia: 0,
+                personalizadaFijoTerminoVariable: 0,
             };
             setGasState(testGas);
         }
@@ -1749,9 +1828,23 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                                     }));
                                 }
                             }}
+                            elecPersonalizadaFijoPeriods={simType !== "GAS" ? { preciosPotencia: elecState.personalizadaFijoPotencia, preciosEnergia: elecState.personalizadaFijoEnergia } : undefined}
+                            onUpdateElecPersonalizadaFijo={readOnly || simType === "GAS" ? undefined : (field, period, value) => {
+                                setElecState(prev => ({
+                                    ...prev,
+                                    [field === "preciosPotencia" ? "personalizadaFijoPotencia" : "personalizadaFijoEnergia"]: {
+                                        ...prev[field === "preciosPotencia" ? "personalizadaFijoPotencia" : "personalizadaFijoEnergia"],
+                                        [period]: value,
+                                    },
+                                }));
+                            }}
                             gasPersonalizadaIndexMargen={simType === "GAS" ? gasState.personalizadaIndexMargen : undefined}
                             onUpdateGasPersonalizadaIndex={readOnly || simType !== "GAS" ? undefined : (margen) => {
                                 setGasState(prev => ({ ...prev, personalizadaIndexMargen: margen }));
+                            }}
+                            gasPersonalizadaFijo={simType === "GAS" ? { terminoDia: gasState.personalizadaFijoTerminoDia, terminoVariable: gasState.personalizadaFijoTerminoVariable } : undefined}
+                            onUpdateGasPersonalizadaFijo={readOnly || simType !== "GAS" ? undefined : (field, value) => {
+                                setGasState(prev => ({ ...prev, [field === "terminoDia" ? "personalizadaFijoTerminoDia" : "personalizadaFijoTerminoVariable"]: value }));
                             }}
                             onRecalculate={readOnly ? undefined : handleCalculate}
                             calculating={calculating}

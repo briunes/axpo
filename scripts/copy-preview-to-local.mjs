@@ -4,14 +4,28 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { readFileSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// ── Read DATABASE_URL from ../.env.preview ────────────────────────────────
+const envPath = resolve(__dirname, "../.env.preview");
+let previewUrl;
+try {
+  const envContent = readFileSync(envPath, "utf-8");
+  const match = envContent.match(/^(?!#)DATABASE_URL=(.+)$/m);
+  if (!match) throw new Error("DATABASE_URL not found in .env.preview");
+  previewUrl = match[1].trim().replace(/^['"]|['"]$/g, "");
+} catch (err) {
+  console.error(`❌ Could not read .env.preview at ${envPath}:`, err.message);
+  process.exit(1);
+}
 
 // Preview database
 const previewDb = new PrismaClient({
-  datasources: {
-    db: {
-      url: "postgresql://postgres.phgcujuexybguiducwcs:LPhwzkppwZhPmjjO@aws-1-eu-west-1.pooler.supabase.com:5432/postgres",
-    },
-  },
+  datasources: { db: { url: previewUrl } },
 });
 
 // Local database
@@ -77,19 +91,24 @@ async function main() {
     }
     console.log(`   ✅ Copied ${pdfTemplates.length} PDF template(s)\n`);
 
-    // 6. Copy Agencies
+    // 6. Copy Agencies first (users reference agencyId FK)
     console.log("6️⃣  Copying agencies...");
     const agencies = await previewDb.agency.findMany();
-    for (const agency of agencies) {
-      await localDb.agency.create({ data: agency });
-    }
-    console.log(`   ✅ Copied ${agencies.length} agency/agencies\n`);
 
-    // 7. Copy Users (preserving relationships)
-    console.log("8️⃣  Copying users...");
+    // First pass: create agencies without user FK references (circular dep)
+    for (const agency of agencies) {
+      const { createdByUserId, updatedByUserId, ...agencyData } = agency;
+      await localDb.agency.create({
+        data: { ...agencyData, createdByUserId: null, updatedByUserId: null },
+      });
+    }
+    console.log(`   ✅ Copied ${agencies.length} agency/agencies (user FKs deferred)\n`);
+
+    // 7. Copy Users (after agencies, since users reference agencyId)
+    console.log("7️⃣  Copying users...");
     const users = await previewDb.user.findMany();
-    
-    // First pass: create users without relationships
+
+    // First pass: create users without self-referencing relationships
     for (const user of users) {
       const { createdByUserId, updatedByUserId, ...userData } = user;
       await localDb.user.create({
@@ -100,8 +119,8 @@ async function main() {
         },
       });
     }
-    
-    // Second pass: update relationships
+
+    // Second pass: update self-referencing relationships
     for (const user of users) {
       if (user.createdByUserId || user.updatedByUserId) {
         await localDb.user.update({
@@ -114,6 +133,21 @@ async function main() {
       }
     }
     console.log(`   ✅ Copied ${users.length} user(s)\n`);
+
+    // 7b. Patch agencies' user FK references now that users exist
+    console.log("7️⃣b Patching agency user references...");
+    for (const agency of agencies) {
+      if (agency.createdByUserId || agency.updatedByUserId) {
+        await localDb.agency.update({
+          where: { id: agency.id },
+          data: {
+            createdByUserId: agency.createdByUserId,
+            updatedByUserId: agency.updatedByUserId,
+          },
+        });
+      }
+    }
+    console.log(`   ✅ Agency user references patched\n`);
 
     // 8. Copy Base Value Sets & Items
     console.log("8️⃣  Copying base value sets...");

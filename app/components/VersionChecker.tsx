@@ -4,9 +4,23 @@ import { useEffect } from "react";
 
 const VERSION_STORAGE_KEY = "axpo_app_version";
 
+// Keys that must survive a version-bump cache clear so users stay logged in.
+const SESSION_KEYS_TO_PRESERVE = [
+    "axpo.internal.auth.token",
+    "axpo.internal.auth.user",
+];
+
 async function clearAllCaches(): Promise<void> {
-    // Clear localStorage (preserving nothing — a fresh start is needed)
+    // Clear localStorage while preserving the auth session so users don't get logged out.
+    const preserved: Record<string, string> = {};
+    for (const key of SESSION_KEYS_TO_PRESERVE) {
+        const value = localStorage.getItem(key);
+        if (value !== null) preserved[key] = value;
+    }
     localStorage.clear();
+    for (const [key, value] of Object.entries(preserved)) {
+        localStorage.setItem(key, value);
+    }
 
     // Clear sessionStorage
     sessionStorage.clear();

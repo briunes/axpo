@@ -49,7 +49,8 @@ export default function NewSimulationPage() {
         contactPhone: "",
         otherDetails: "",
         agencyId: session?.user.agencyId ?? "",
-        address: {},
+        address: { country: "ES" },
+        language: "es",
     });
     const [clientFormError, setClientFormError] = useState<string | null>(null);
     const [allowQuickCreate, setAllowQuickCreate] = useState(false);
@@ -144,7 +145,8 @@ export default function NewSimulationPage() {
                 contactPhone: "",
                 otherDetails: data.cups ? `CUPS: ${data.cups}` : "",
                 agencyId: session?.user.agencyId ?? "",
-                address: {},
+                address: { country: "ES" },
+                language: "es",
             });
             setShowQuickCreate(true);
         }
@@ -225,7 +227,8 @@ export default function NewSimulationPage() {
                 contactPhone: "",
                 otherDetails: "",
                 agencyId: session.user.agencyId,
-                address: {},
+                address: { country: "ES" },
+                language: "es",
             });
             showSuccess(t("newSimulationPage", "clientCreated"));
         } catch (err) {

@@ -171,8 +171,8 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
   const columns: ColumnDef<SimulationItem>[] = [
     {
       key: "type",
-      label: "",
-      width: '18px',
+      label: t("columns", "type"),
+      width: '55px',
       renderCell: (s) => {
         const payload = s.payloadJson as { type?: string; schemaVersion?: string } | null;
         let commodityIcon: React.ReactNode;
@@ -250,8 +250,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       key: "cups",
       label: t("columns", "cups"),
       copyable: true,
-      copyText: (s:any) => {
-        debugger;
+      copyText: (s: any) => {
         const payload = s.payloadJson as { electricity?: { clientData?: { cups?: string } }; gas?: { clientData?: { cups?: string } } } | null;
         const cupsElec = payload?.electricity?.clientData?.cups;
         const cupsGas = payload?.gas?.clientData?.cups;
@@ -451,28 +450,31 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 }}
               />
             </Box>
-            <Box sx={{ width: 280 }}>
-              <FormSelect
-                label=""
-                options={[
-                  { value: "", label: t("search", "allOwners") },
-                  ...users
-                    .filter(u => u.isActive)
-                    .map(user => ({
-                      value: user.id,
-                      label: user.fullName || user.email,
-                    }))
-                    .sort((a, b) => a.label.localeCompare(b.label)),
-                ]}
-                value={filterOwnerUserId}
-                onChange={(val) => {
-                  setFilterOwnerUserId(val as string);
-                }}
-                placeholder="Owner"
-                onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
-                textFieldProps={{ size: "small" }}
-              />
-            </Box>
+            {session.user.role !== "COMMERCIAL" && (
+              <Box sx={{ width: 280 }}>
+                <FormSelect
+                  label=""
+                  options={[
+                    { value: "", label: t("search", "allOwners") },
+                    ...users
+                      .filter(u => u.isActive)
+                      .map(user => ({
+                        value: user.id,
+                        label: user.fullName || user.email,
+                      }))
+                      .sort((a, b) => a.label.localeCompare(b.label)),
+                  ]}
+                  value={filterOwnerUserId}
+                  onChange={(val) => {
+                    setFilterOwnerUserId(val as string);
+                  }}
+                  placeholder="Owner"
+                  onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
+                  textFieldProps={{ size: "small" }}
+                />
+              </Box>
+            )}
+
             <Box sx={{ width: 280 }}>
               <FormSelect
                 label=""

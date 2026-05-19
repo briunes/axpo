@@ -199,7 +199,6 @@ export function ClientForm({
                 value={data.language ?? ""}
                 onChange={(val) => onChange({ ...data, language: (val as string) || undefined })}
                 options={[
-                    { value: "", label: `— ${t("clientFormPage", "languageSystemDefault")} —` },
                     { value: "en", label: "🇬🇧 English" },
                     { value: "es", label: "🇪🇸 Español" },
                 ]}

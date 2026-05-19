@@ -25,8 +25,8 @@ export default function NewClientPage() {
         contactPhone: "",
         otherDetails: "",
         agencyId: session?.user.agencyId ?? "",
-        address: {},
-        language: undefined,
+        address: { country: "ES" },
+        language: "es",
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
