@@ -223,13 +223,22 @@ export default function NewUserPage() {
                                 </Typography>
                             </Box>
 
-                            <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                            <Box
+                                sx={{
+                                    display: "grid",
+                                    gridTemplateColumns: {
+                                        xs: "1fr",
+                                        sm: "1fr 1fr",
+                                        md: "1fr 1fr 1fr",
+                                    },
+                                    gap: 3,
+                                }}
+                            >
                                 <FormSelect
                                     label={t("userPreferences", "fieldLanguage")}
-                                    value={localPreferences.language ?? ""}
+                                    value={localPreferences.language ?? "en"}
                                     onChange={(value) => setLocalPreferences((p) => ({ ...p, language: (value as string) || null }))}
                                     options={[
-                                        { value: "", label: `— ${t("userPreferences", "languageSystemDefault")} —` },
                                         { value: "en", label: "🇬🇧 English" },
                                         { value: "es", label: "🇪🇸 Español" },
                                     ]}

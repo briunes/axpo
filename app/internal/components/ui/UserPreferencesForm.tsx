@@ -158,7 +158,6 @@ export function UserPreferencesForm({ userId, token, onNotify }: UserPreferences
                     value={preferences.language ?? ""}
                     onChange={(value) => handleChange("language", value || null)}
                     options={[
-                        { value: "", label: `— ${t("userPreferences", "languageSystemDefault")} —` },
                         { value: "en", label: "🇬🇧 English" },
                         { value: "es", label: "🇪🇸 Español" },
                     ]}
