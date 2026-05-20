@@ -804,6 +804,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                                 handleCupsChange(newInputValue);
                             }}
                             renderOption={(props, option) => {
+                                const { key, ...restProps } = props as typeof props & { key?: React.Key };
                                 const entry = option as CupsLookupEntry;
                                 const statusColor: Record<string, string> = {
                                     DRAFT: '#f59e0b',
@@ -815,7 +816,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                                     ? new Date(entry.lastUsed).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
                                     : null;
                                 return (
-                                    <li {...props} key={entry.cups} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 14px', gap: 2, cursor: 'pointer' }}>
+                                    <li key={key ?? entry.cups} {...restProps} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 14px', gap: 2, cursor: 'pointer' }}>
                                         <span style={{ fontWeight: 600, fontSize: 13, letterSpacing: '0.03em' }}>{entry.cups}</span>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
 
@@ -1012,23 +1013,23 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                 </Row>
                 <Divider sx={{ my: 2 }} />
                 <Row>
-                    <Field label={t("simulationForm", "fieldVat")} hint={t("simulationForm", "fieldVatHint")} flex="1 1 0">
-                        {ivaRateOptions.length > 1 ? (
+                    <Field label={state.zonaGeografica === "Canarias" ? t("simulationForm", "fieldIgic") : t("simulationForm", "fieldVat")} hint={state.zonaGeografica === "Canarias" ? t("simulationForm", "fieldIgicHint") : t("simulationForm", "fieldVatHint")} flex="1 1 0">
+                        {ivaRateOptions.length > 0 ? (
                             <Sel
                                 value={String(state.ivaTasa)}
-                                onChange={(v) => up("ivaTasa", parseFloat(v))}
-                                options={ivaRateOptions.map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) + "%" }))}
+                                onChange={(v) => { const n = parseFloat(v); if (!isNaN(n)) up("ivaTasa", n); }}
+                                options={[...new Set([...ivaRateOptions, state.ivaTasa])].filter((o) => !isNaN(o)).sort((a, b) => a - b).map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) + "%" }))}
                             />
                         ) : (
                             <Num value={state.ivaTasa} onChange={(v) => up("ivaTasa", v)} step={0.01} />
                         )}
                     </Field>
                     <Field label={t("simulationForm", "fieldElecTax")} hint={t("simulationForm", "fieldElecTaxHint", { tax: formatNumber(state.impuestoElectricoTasa, numberFormat) + "%" })} flex="1 1 0">
-                        {electricityTaxRateOptions.length > 1 ? (
+                        {electricityTaxRateOptions.length > 0 ? (
                             <Sel
                                 value={String(state.impuestoElectricoTasa)}
-                                onChange={(v) => up("impuestoElectricoTasa", parseFloat(v))}
-                                options={electricityTaxRateOptions.map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) + "%" }))}
+                                onChange={(v) => { const n = parseFloat(v); if (!isNaN(n)) up("impuestoElectricoTasa", n); }}
+                                options={[...new Set([...electricityTaxRateOptions, state.impuestoElectricoTasa])].filter((o) => !isNaN(o)).sort((a, b) => a - b).map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) + "%" }))}
                             />
                         ) : (
                             <Num value={state.impuestoElectricoTasa} onChange={(v) => up("impuestoElectricoTasa", v)} step={0.001} />
@@ -1098,7 +1099,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                         <Num value={state.consumoAnual} onChange={(v) => up("consumoAnual", v)} step={1000} />
                     </Field>
                     <Field label={t("simulationForm", "fieldZone")} flex="1 1 160px" required>
-                        <Sel value={state.zonaGeografica} onChange={(v) => up("zonaGeografica", v as GasZona)} options={[{ value: "Peninsula", label: t("simulationForm", "peninsula") }, { value: "Baleares", label: t("simulationForm", "balearics") }]} />
+                        <Sel value={state.zonaGeografica} onChange={(v) => up("zonaGeografica", v as GasZona)} options={[{ value: "Peninsula", label: t("simulationForm", "peninsulaYBaleares") }]} />
                     </Field>
                 </Row>
                 <Divider sx={{ mb: 2 }} />
@@ -1214,22 +1215,22 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                 <Divider sx={{ my: 2 }} />
                 <Row>
                     <Field label={t("simulationForm", "fieldIVA")} hint={t("simulationForm", "fieldIVAHint")} flex="1 1 0">
-                        {ivaRateOptions.length > 1 ? (
+                        {ivaRateOptions.length > 0 ? (
                             <Sel
                                 value={String(state.ivaTasa)}
-                                onChange={(v) => up("ivaTasa", parseFloat(v))}
-                                options={ivaRateOptions.map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) + "%" }))}
+                                onChange={(v) => { const n = parseFloat(v); if (!isNaN(n)) up("ivaTasa", n); }}
+                                options={[...new Set([...ivaRateOptions, state.ivaTasa])].filter((o) => !isNaN(o)).sort((a, b) => a - b).map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) + "%" }))}
                             />
                         ) : (
                             <Num value={state.ivaTasa} onChange={(v) => up("ivaTasa", v)} step={0.1} />
                         )}
                     </Field>
                     <Field label={t("simulationForm", "fieldHydrocarbonTax")} hint={t("simulationForm", "fieldHydrocarbonTaxHint")} flex="1 1 0">
-                        {hydrocarbonTaxRateOptions.length >= 1 ? (
+                        {hydrocarbonTaxRateOptions.length > 0 ? (
                             <Sel
                                 value={String(state.impuestoHidrocarburo)}
-                                onChange={(v) => up("impuestoHidrocarburo", parseFloat(v))}
-                                options={hydrocarbonTaxRateOptions.map((o) => ({ value: String(o), label: formatNumber(o, numberFormat, 5) }))}
+                                onChange={(v) => { const n = parseFloat(v); if (!isNaN(n)) up("impuestoHidrocarburo", n); }}
+                                options={[...new Set([...hydrocarbonTaxRateOptions, state.impuestoHidrocarburo])].filter((o) => !isNaN(o)).sort((a, b) => a - b).map((o) => ({ value: String(o), label: formatNumber(o, numberFormat, 5) }))}
                             />
                         ) : (
                             <Num value={state.impuestoHidrocarburo} onChange={(v) => up("impuestoHidrocarburo", v)} step={0.00001} />
@@ -1313,6 +1314,8 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     const [ivaRateOptions, setIvaRateOptions] = useState<number[]>([]);
     const [electricityTaxRateOptions, setElectricityTaxRateOptions] = useState<number[]>([]);
     const [hydrocarbonTaxRateOptions, setHydrocarbonTaxRateOptions] = useState<number[]>([]);
+    const [electricityTaxConfig, setElectricityTaxConfig] = useState<any>(null);
+    const [gasTaxConfig, setGasTaxConfig] = useState<any>(null);
 
     // Load CUPS history (scoped to simulation's client if set)
     useEffect(() => {
@@ -1325,17 +1328,32 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     useEffect(() => {
         getSystemConfig().then((cfg) => {
             const opts = cfg as any;
-            // Options are stored as decimals (0.21) — convert to % to match form state (21)
+
+            // Store full tax configs for zone-aware lookups
+            if (opts.electricityTaxConfig) setElectricityTaxConfig(opts.electricityTaxConfig);
+            if (opts.gasTaxConfig) setGasTaxConfig(opts.gasTaxConfig);
+
+            // Legacy flat options (fallback)
             if (opts.ivaRateOptions?.length > 1) setIvaRateOptions(opts.ivaRateOptions.map((v: any) => Number(v) * 100));
             if (opts.electricityTaxRateOptions?.length > 1) setElectricityTaxRateOptions(opts.electricityTaxRateOptions.map((v: any) => Number(v) * 100));
-            // hydrocarbonTaxRate is €/kWh — used as-is (no * 100)
             if (opts.hydrocarbonTaxRateOptions?.length >= 1) setHydrocarbonTaxRateOptions(opts.hydrocarbonTaxRateOptions.map(Number));
 
             // Pre-fill active values into form state for new simulations (no saved payload data)
             const hasExistingElec = !!(existingPayload as any).electricity?.extras;
             const hasExistingGas = !!(existingPayload as any).gas;
 
-            if (!hasExistingElec) {
+            if (!hasExistingElec && opts.electricityTaxConfig) {
+                const zone = (existingPayload as any).electricity?.zonaGeografica ?? "Peninsula";
+                const zoneKey = zone === "Baleares" ? "baleares" : zone === "Canarias" ? "canarias" : "peninsula";
+                const zoneConf = opts.electricityTaxConfig[zoneKey];
+                const ivaRates: number[] = (zoneConf?.ivaRates ?? zoneConf?.igicRates ?? []).map((v: any) => Number(v) * 100);
+                const elecTaxRates: number[] = (zoneConf?.elecTaxRates ?? []).map((v: any) => Number(v) * 100);
+                setElecState((prev) => ({
+                    ...prev,
+                    ...(ivaRates.length > 0 ? { ivaTasa: ivaRates[0] } : {}),
+                    ...(elecTaxRates.length > 0 ? { impuestoElectricoTasa: elecTaxRates[0] } : {}),
+                }));
+            } else if (!hasExistingElec) {
                 const ivaPercent = opts.ivaRate != null ? Number(opts.ivaRate) * 100 : undefined;
                 const elecTaxPercent = opts.electricityTaxRate != null ? Number(opts.electricityTaxRate) * 100 : undefined;
                 setElecState((prev) => ({
@@ -1345,9 +1363,19 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 }));
             }
 
-            if (!hasExistingGas) {
+            if (!hasExistingGas && opts.gasTaxConfig) {
+                const zone = (existingPayload as any).gas?.zonaGeografica ?? "Peninsula";
+                const zoneKey = zone === "Baleares" ? "baleares" : "peninsula";
+                const zoneConf = opts.gasTaxConfig[zoneKey];
+                const ivaRates: number[] = (zoneConf?.ivaRates ?? []).map((v: any) => Number(v) * 100);
+                const hydroRates: number[] = (opts.gasTaxConfig.hydrocarbonTaxRates ?? []).map(Number);
+                setGasState((prev) => ({
+                    ...prev,
+                    ...(ivaRates.length > 0 ? { ivaTasa: ivaRates[0] } : {}),
+                    ...(hydroRates.length > 0 ? { impuestoHidrocarburo: hydroRates[0] } : {}),
+                }));
+            } else if (!hasExistingGas) {
                 const ivaPercent = opts.ivaRate != null ? Number(opts.ivaRate) * 100 : undefined;
-                // hydrocarbonTaxRate is already in €/kWh — used as-is
                 const hydroRate = opts.hydrocarbonTaxRate != null ? Number(opts.hydrocarbonTaxRate) : undefined;
                 setGasState((prev) => ({
                     ...prev,
@@ -1357,55 +1385,6 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             }
         }).catch(() => { /* non-critical */ });
     }, []);
-
-    // Pre-fill personalizadaFijo fields from base values when they are all zero (no saved user data)
-    useEffect(() => {
-        const hasFijoData =
-            Object.values(elecState.personalizadaFijoEnergia).some((v) => v > 0) ||
-            Object.values(elecState.personalizadaFijoPotencia).some((v) => v > 0);
-        if (hasFijoData) return;
-
-        listBaseValueSets(token, { pageSize: 100, showArchived: false })
-            .then(async (res) => {
-                const activeSet =
-                    res.items.find((s) => s.isProduction && !s.isDeleted) ??
-                    res.items.find((s) => s.isActive && !s.isDeleted) ??
-                    res.items[0];
-                if (!activeSet) return;
-
-                const items = await listBaseValueItems(token, activeSet.id);
-                const getVal = (key: string) => {
-                    const item = items.find((i) => i.key === key);
-                    return item?.valueNumeric != null ? Number(item.valueNumeric) : 0;
-                };
-
-                const periods = ["P1", "P2", "P3", "P4", "P5", "P6"];
-                const energia = Object.fromEntries(
-                    periods.map((p) => [p, getVal(`ELEC:LIBRE:PERSONALIZADA_FIJO:${p}:ENERGIA`)])
-                );
-                const potencia = Object.fromEntries(
-                    periods.map((p) => [p, getVal(`ELEC:LIBRE:PERSONALIZADA_FIJO:${p}:POTENCIA`)])
-                );
-
-                const hasAnyValue =
-                    Object.values(energia).some((v) => v > 0) ||
-                    Object.values(potencia).some((v) => v > 0);
-                if (!hasAnyValue) return;
-
-                setElecState((prev) => {
-                    const stillEmpty =
-                        !Object.values(prev.personalizadaFijoEnergia).some((v) => v > 0) &&
-                        !Object.values(prev.personalizadaFijoPotencia).some((v) => v > 0);
-                    if (!stillEmpty) return prev;
-                    return {
-                        ...prev,
-                        personalizadaFijoEnergia: { ...prev.personalizadaFijoEnergia, ...energia },
-                        personalizadaFijoPotencia: { ...prev.personalizadaFijoPotencia, ...potencia },
-                    };
-                });
-            })
-            .catch(() => { /* non-critical */ });
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Pre-fill client fields from ClientItem when a client is linked and form client data is empty
     useEffect(() => {
@@ -1721,31 +1700,91 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
                     {(simType === "ELECTRICITY") && (
                         <div>
-
-                            <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, opacity: readOnly ? 0.7 : 1 }}>
-                                <ElecForm
-                                    state={elecState}
-                                    onChange={setElecState}
-                                    errors={elecErrors}
-                                    cupsHistory={cupsHistory}
-                                    ivaRateOptions={ivaRateOptions}
-                                    electricityTaxRateOptions={electricityTaxRateOptions}
-                                    onClientFieldsChanged={
-                                        simulation.clientId && onClientFieldsChanged
-                                            ? (data) => onClientFieldsChanged(simulation.clientId!, data)
-                                            : undefined
-                                    }
-                                />
-                            </fieldset>
+                            {(() => {
+                                const zone = elecState.zonaGeografica;
+                                const zoneKey = zone === "Baleares" ? "baleares" : zone === "Canarias" ? "canarias" : "peninsula";
+                                const zoneConf = electricityTaxConfig?.[zoneKey];
+                                const zoneIvaOptions: number[] = zoneConf
+                                    ? (zoneConf.ivaRates ?? zoneConf.igicRates ?? []).map((v: any) => Number(v) * 100)
+                                    : ivaRateOptions;
+                                const zoneElecTaxOptions: number[] = zoneConf
+                                    ? (zoneConf.elecTaxRates ?? []).map((v: any) => Number(v) * 100)
+                                    : electricityTaxRateOptions;
+                                return (
+                                    <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, opacity: readOnly ? 0.7 : 1 }}>
+                                        <ElecForm
+                                            state={elecState}
+                                            onChange={(s) => {
+                                                // When zone changes, auto-update tax values to first configured rate for new zone
+                                                if (s.zonaGeografica !== elecState.zonaGeografica && electricityTaxConfig) {
+                                                    const newZoneKey = s.zonaGeografica === "Baleares" ? "baleares" : s.zonaGeografica === "Canarias" ? "canarias" : "peninsula";
+                                                    const newZoneConf = electricityTaxConfig[newZoneKey];
+                                                    const newIvaRates: number[] = (newZoneConf?.ivaRates ?? newZoneConf?.igicRates ?? []).map((v: any) => Number(v) * 100);
+                                                    const newElecTaxRates: number[] = (newZoneConf?.elecTaxRates ?? []).map((v: any) => Number(v) * 100);
+                                                    setElecState({
+                                                        ...s,
+                                                        ...(newIvaRates.length > 0 ? { ivaTasa: newIvaRates[0] } : {}),
+                                                        ...(newElecTaxRates.length > 0 ? { impuestoElectricoTasa: newElecTaxRates[0] } : {}),
+                                                    });
+                                                } else {
+                                                    setElecState(s);
+                                                }
+                                            }}
+                                            errors={elecErrors}
+                                            cupsHistory={cupsHistory}
+                                            ivaRateOptions={zoneIvaOptions}
+                                            electricityTaxRateOptions={zoneElecTaxOptions}
+                                            onClientFieldsChanged={
+                                                simulation.clientId && onClientFieldsChanged
+                                                    ? (data) => onClientFieldsChanged(simulation.clientId!, data)
+                                                    : undefined
+                                            }
+                                        />
+                                    </fieldset>
+                                );
+                            })()}
                         </div>
                     )}
 
 
                     {(simType === "GAS") && (
                         <div>
-                            <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, opacity: readOnly ? 0.7 : 1 }}>
-                                <GasForm state={gasState} onChange={setGasState} errors={gasErrors} ivaRateOptions={ivaRateOptions} hydrocarbonTaxRateOptions={hydrocarbonTaxRateOptions} />
-                            </fieldset>
+                            {(() => {
+                                const zone = gasState.zonaGeografica;
+                                const zoneKey = zone === "Baleares" ? "baleares" : "peninsula";
+                                const zoneConf = gasTaxConfig?.[zoneKey];
+                                const zoneIvaOptions: number[] = zoneConf
+                                    ? (zoneConf.ivaRates ?? []).map((v: any) => Number(v) * 100)
+                                    : ivaRateOptions;
+                                const zoneHydroOptions: number[] = gasTaxConfig
+                                    ? (gasTaxConfig.hydrocarbonTaxRates ?? []).map(Number)
+                                    : hydrocarbonTaxRateOptions;
+                                return (
+                                    <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, opacity: readOnly ? 0.7 : 1 }}>
+                                        <GasForm
+                                            state={gasState}
+                                            onChange={(s) => {
+                                                if (s.zonaGeografica !== gasState.zonaGeografica && gasTaxConfig) {
+                                                    const newZoneKey = s.zonaGeografica === "Baleares" ? "baleares" : "peninsula";
+                                                    const newZoneConf = gasTaxConfig[newZoneKey];
+                                                    const newIvaRates: number[] = (newZoneConf?.ivaRates ?? []).map((v: any) => Number(v) * 100);
+                                                    const newHydroRates: number[] = (gasTaxConfig.hydrocarbonTaxRates ?? []).map(Number);
+                                                    setGasState({
+                                                        ...s,
+                                                        ...(newIvaRates.length > 0 ? { ivaTasa: newIvaRates[0] } : {}),
+                                                        ...(newHydroRates.length > 0 ? { impuestoHidrocarburo: newHydroRates[0] } : {}),
+                                                    });
+                                                } else {
+                                                    setGasState(s);
+                                                }
+                                            }}
+                                            errors={gasErrors}
+                                            ivaRateOptions={zoneIvaOptions}
+                                            hydrocarbonTaxRateOptions={zoneHydroOptions}
+                                        />
+                                    </fieldset>
+                                );
+                            })()}
                         </div>
                     )}
 

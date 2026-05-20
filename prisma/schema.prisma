@@ -315,6 +315,8 @@ model SystemConfig {
   ivaRateOptions                  Json?
   electricityTaxRateOptions       Json?
   hydrocarbonTaxRateOptions       Json?
+  electricityTaxConfig            Json?
+  gasTaxConfig                    Json?
   appVersion                      String   @default("1.0.0")
 
   @@map("system_config")

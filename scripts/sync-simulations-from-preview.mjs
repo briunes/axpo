@@ -114,6 +114,20 @@ async function main() {
   const clientIds = [...new Set(simulations.map((s) => s.clientId).filter(Boolean))];
   const userIds   = [...new Set(simulations.map((s) => s.ownerUserId).filter(Boolean))];
   const agencyIds = [...new Set(simulations.map((s) => s.agencyId).filter(Boolean))];
+  const baseValueSetIds = [...new Set(
+    simulations.flatMap((s) => s.versions.map((v) => v.baseValueSetId).filter(Boolean))
+  )];
+
+  // Base Value Sets
+  let missingBaseValueSets = 0;
+  for (const bvsId of baseValueSetIds) {
+    const exists = await localDb.baseValueSet.findUnique({ where: { id: bvsId } });
+    if (!exists) {
+      const src = await previewDb.baseValueSet.findUnique({ where: { id: bvsId } });
+      if (src) { await localDb.baseValueSet.create({ data: src }); missingBaseValueSets++; }
+    }
+  }
+  if (missingBaseValueSets) ok(`Imported ${missingBaseValueSets} missing baseValueSet(s)`);
 
   // Clients
   let missingClients = 0;

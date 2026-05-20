@@ -33,6 +33,8 @@ export interface SystemConfig {
   ivaRateOptions?: number[];
   electricityTaxRateOptions?: number[];
   hydrocarbonTaxRateOptions?: number[];
+  electricityTaxConfig?: any;
+  gasTaxConfig?: any;
   defaultDateFormat?: string;
   defaultTimeFormat?: string;
   defaultTimezone?: string;

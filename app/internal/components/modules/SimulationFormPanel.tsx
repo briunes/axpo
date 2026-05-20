@@ -443,8 +443,7 @@ function GasForm({
                             value={state.zonaGeografica}
                             onChange={(v) => up("zonaGeografica", v as GasZona)}
                             options={[
-                                { value: "Peninsula", label: t("simulationForm", "peninsula") },
-                                { value: "Baleares", label: t("simulationForm", "balearics") },
+                                { value: "Peninsula", label: t("simulationForm", "peninsulaYBaleares") },
                             ]}
                         />
                     </Field>
