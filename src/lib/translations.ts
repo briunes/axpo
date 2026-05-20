@@ -102,6 +102,15 @@ export const translations = {
       resendCooldown: "Resend available in {{n}}s",
       resending: "Sending…",
     },
+    maintenance: {
+      title: "Down for Maintenance",
+      subtitle:
+        "We're performing scheduled maintenance to improve your experience. We'll be back shortly.",
+      expectedOnline: "Expected back online",
+      footerNote:
+        "If you need immediate assistance, please contact your account manager.",
+      brand: "AXPO Simulator",
+    },
     sectionDescriptions: {
       simulations:
         "Create, update, share and archive simulation records with expiration control.",
@@ -1768,6 +1777,15 @@ export const translations = {
       resendCode: "Reenviar Código",
       resendCooldown: "Reenvío disponible en {{n}}s",
       resending: "Enviando…",
+    },
+    maintenance: {
+      title: "En Mantenimiento",
+      subtitle:
+        "Estamos realizando un mantenimiento programado para mejorar tu experiencia. Volveremos en breve.",
+      expectedOnline: "Disponible de nuevo",
+      footerNote:
+        "Si necesitas asistencia inmediata, contacta con tu responsable de cuenta.",
+      brand: "AXPO Simulator",
     },
     sectionDescriptions: {
       simulations:

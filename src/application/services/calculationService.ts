@@ -334,8 +334,10 @@ function calcElecIndex(
   } = inputs;
   // Indexed offers use the selected billing month's days (not the full billing
   // period days). Fixed offers use periodo.dias.
-  const billingMonthKey =
-    inputs.billingMonth ?? periodo.fechaInicio.slice(0, 7); // "YYYY-MM"
+  // Use fechaFin (not fechaInicio) to derive the default billing month — a billing
+  // period like "2026-01-31 → 2026-02-28" is a February bill, not a January bill.
+  // fechaInicio may fall on the last day of the previous month (common in Spain).
+  const billingMonthKey = inputs.billingMonth ?? periodo.fechaFin.slice(0, 7); // "YYYY-MM"
   const dias = (() => {
     if (inputs.billingMonth) {
       const [y, m] = inputs.billingMonth.split("-").map(Number);
@@ -558,7 +560,9 @@ function calcPersonalizadaIndex(
     facturaActual,
     extras,
   } = inputs;
-  const billingMonth = inputs.billingMonth ?? periodo.fechaInicio.slice(0, 7); // YYYY-MM
+  // Use fechaFin to derive the billing month — a period like "2026-01-31 → 2026-02-28"
+  // is a February bill; fechaInicio may land on the last day of the previous month.
+  const billingMonth = inputs.billingMonth ?? periodo.fechaFin.slice(0, 7); // YYYY-MM
   const dias = (() => {
     if (inputs.billingMonth) {
       const [y, m] = inputs.billingMonth.split("-").map(Number);
@@ -651,6 +655,13 @@ function calcPersonalizadaOmieB(
   inputs: ElectricityInputs,
   map: PriceMap,
 ): ProductResult | null {
+  // Only compute when the user has supplied at least one non-zero B term.
+  const terminoBValues = inputs.personalizadaOmieB
+    ? Object.values(inputs.personalizadaOmieB.terminoB)
+    : [];
+  const hasAnyBTerm = terminoBValues.some((v) => v != null && v !== 0);
+  if (!hasAnyBTerm) return null;
+
   // Use DB-stored prices from the "PERSONALIZADA OMIE + B" Excel sheet.
   // These are full all-in monthly energy prices (same structure as DINAMICA).
   // The product has no tier variant — keys use an empty-string tier.
@@ -666,7 +677,9 @@ function calcPersonalizadaOmieB(
     facturaActual,
     extras,
   } = inputs;
-  const billingMonth = inputs.billingMonth ?? periodo.fechaInicio.slice(0, 7); // YYYY-MM
+  // Use fechaFin to derive the billing month — a period like "2026-01-31 → 2026-02-28"
+  // is a February bill; fechaInicio may land on the last day of the previous month.
+  const billingMonth = inputs.billingMonth ?? periodo.fechaFin.slice(0, 7); // YYYY-MM
   const dias = (() => {
     if (inputs.billingMonth) {
       const [y, m] = inputs.billingMonth.split("-").map(Number);

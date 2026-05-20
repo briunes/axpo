@@ -262,10 +262,10 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                                 textTransform: "uppercase",
                                                 letterSpacing: "0.03em",
                                             }}>
-                                                {product.pricingType === "FIXED"
-                                                    ? t("simulationOffersCards", "pricingFixed")
-                                                    : (product.productKey === "PERSONALIZADA_INDEX" || product.productKey === "PERSONALIZADA_OMIE_B" || product.productKey === "GAS_PERSONALIZADA_INDEX")
-                                                        ? t("simulationOffersCards", "pricingPersonalizada")
+                                                {(product.productKey === "PERSONALIZADA_INDEX" || product.productKey === "PERSONALIZADA_OMIE_B" || product.productKey === "GAS_PERSONALIZADA_INDEX" || product.productKey === "PERSONALIZADA_FIJO" || product.productKey === "GAS_PERSONALIZADA_FIJO")
+                                                    ? t("simulationOffersCards", "pricingPersonalizada")
+                                                    : product.pricingType === "FIXED"
+                                                        ? t("simulationOffersCards", "pricingFixed")
                                                         : t("simulationOffersCards", "pricingIndexed")}
                                             </div>
                                         </div>

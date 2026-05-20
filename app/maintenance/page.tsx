@@ -1,18 +1,14 @@
-import type { Metadata } from "next";
+"use client";
 
-export const metadata: Metadata = {
-    title: "Maintenance | AXPO Simulator",
-    description: "The application is temporarily down for maintenance.",
-};
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { useI18n } from "../../src/lib/i18n-context";
+import Image from "next/image";
 
-interface Props {
-    searchParams: Promise<{ until?: string; message?: string }>;
-}
-
-function formatDateTime(isoString: string): string {
+function formatDateTime(isoString: string, locale: string): string {
     try {
         const date = new Date(isoString);
-        return date.toLocaleString("en-GB", {
+        return date.toLocaleString(locale === "es" ? "es-ES" : "en-GB", {
             weekday: "long",
             year: "numeric",
             month: "long",
@@ -26,71 +22,96 @@ function formatDateTime(isoString: string): string {
     }
 }
 
-export default async function MaintenancePage({ searchParams }: Props) {
-    const params = await searchParams;
-    const until = params.until ?? null;
-    const message = params.message ? decodeURIComponent(params.message) : null;
+function MaintenanceContent() {
+    const { t, locale, setLocale } = useI18n();
+    const searchParams = useSearchParams();
+    const until = searchParams.get("until");
+    const messageParam = searchParams.get("message");
+    const message = messageParam ? decodeURIComponent(messageParam) : null;
 
     return (
         <div style={{
             minHeight: "100vh",
-            background: "linear-gradient(135deg, #0f0f14 0%, #1a1a2e 50%, #16213e 100%)",
+            background: "linear-gradient(135deg, #0a0e1a 0%, #111827 60%, #0f172a 100%)",
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
             padding: "24px",
             fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
         }}>
+            {/* Language switcher */}
             <div style={{
-                maxWidth: 560,
-                width: "100%",
-                textAlign: "center",
+                position: "absolute",
+                top: 20,
+                right: 24,
+                display: "flex",
+                gap: 8,
             }}>
-                {/* Logo / Icon */}
-                <div style={{
-                    width: 80,
-                    height: 80,
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    margin: "0 auto 32px",
-                    boxShadow: "0 0 40px rgba(249, 115, 22, 0.3)",
-                }}>
-                    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                    </svg>
+                {(["en", "es"] as const).map((lng) => (
+                    <button
+                        key={lng}
+                        onClick={() => setLocale(lng)}
+                        style={{
+                            padding: "4px 12px",
+                            borderRadius: 6,
+                            border: "1px solid",
+                            borderColor: locale === lng ? "#f97316" : "rgba(148,163,184,0.2)",
+                            background: locale === lng ? "rgba(249,115,22,0.12)" : "transparent",
+                            color: locale === lng ? "#f97316" : "#64748b",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                        }}
+                    >
+                        {t("language", lng)}
+                    </button>
+                ))}
+            </div>
+
+            <div style={{ maxWidth: 520, width: "100%", textAlign: "center" }}>
+                {/* Logo */}
+                <div style={{ marginBottom: 32 }}>
+                    <Image
+                        src="/axpo-mark.svg"
+                        alt="AXPO"
+                        width={72}
+                        height={72}
+                        style={{
+                            filter: "drop-shadow(0 0 24px rgba(249,115,22,0.35))",
+                        }}
+                        priority
+                    />
                 </div>
 
                 {/* Heading */}
                 <h1 style={{
-                    color: "#ffffff",
-                    fontSize: "2rem",
+                    color: "#f1f5f9",
+                    fontSize: "1.875rem",
                     fontWeight: 700,
                     margin: "0 0 12px",
                     letterSpacing: "-0.02em",
                 }}>
-                    Down for Maintenance
+                    {t("maintenance", "title")}
                 </h1>
 
                 {/* Subtitle */}
                 <p style={{
                     color: "#94a3b8",
-                    fontSize: "1.05rem",
-                    lineHeight: 1.6,
+                    fontSize: "1rem",
+                    lineHeight: 1.65,
                     margin: "0 0 32px",
                 }}>
-                    {message
-                        ? message
-                        : "We're performing scheduled maintenance to improve your experience. We'll be back shortly."}
+                    {message ?? t("maintenance", "subtitle")}
                 </p>
 
                 {/* Expected time card */}
                 {until && (
                     <div style={{
-                        background: "rgba(249, 115, 22, 0.08)",
-                        border: "1px solid rgba(249, 115, 22, 0.25)",
+                        background: "rgba(249,115,22,0.07)",
+                        border: "1px solid rgba(249,115,22,0.22)",
                         borderRadius: 12,
                         padding: "20px 24px",
                         marginBottom: 32,
@@ -102,53 +123,53 @@ export default async function MaintenancePage({ searchParams }: Props) {
                             gap: 8,
                             marginBottom: 8,
                         }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="12" cy="12" r="10" />
                                 <polyline points="12 6 12 12 16 14" />
                             </svg>
-                            <span style={{ color: "#f97316", fontSize: "0.8rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                                Expected back online
+                            <span style={{ color: "#f97316", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                                {t("maintenance", "expectedOnline")}
                             </span>
                         </div>
                         <p style={{
                             color: "#f1f5f9",
-                            fontSize: "1.1rem",
+                            fontSize: "1.05rem",
                             fontWeight: 600,
                             margin: 0,
                         }}>
-                            {formatDateTime(until)}
+                            {formatDateTime(until, locale)}
                         </p>
                     </div>
                 )}
 
                 {/* Divider */}
-                <div style={{
-                    height: 1,
-                    background: "rgba(148, 163, 184, 0.1)",
-                    marginBottom: 28,
-                }} />
+                <div style={{ height: 1, background: "rgba(148,163,184,0.08)", marginBottom: 28 }} />
 
                 {/* Footer note */}
-                <p style={{
-                    color: "#475569",
-                    fontSize: "0.85rem",
-                    margin: 0,
-                }}>
-                    If you need immediate assistance, please contact your account manager.
+                <p style={{ color: "#475569", fontSize: "0.85rem", margin: "0 0 20px" }}>
+                    {t("maintenance", "footerNote")}
                 </p>
 
-                {/* AXPO branding */}
+                {/* Brand */}
                 <p style={{
-                    color: "#334155",
-                    fontSize: "0.8rem",
-                    marginTop: 24,
-                    fontWeight: 600,
-                    letterSpacing: "0.1em",
+                    color: "#1e293b",
+                    fontSize: "0.75rem",
+                    margin: 0,
+                    fontWeight: 700,
+                    letterSpacing: "0.14em",
                     textTransform: "uppercase",
                 }}>
-                    AXPO Simulator
+                    {t("maintenance", "brand")}
                 </p>
             </div>
         </div>
+    );
+}
+
+export default function MaintenancePage() {
+    return (
+        <Suspense>
+            <MaintenanceContent />
+        </Suspense>
     );
 }
