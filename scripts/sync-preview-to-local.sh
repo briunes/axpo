@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# sync-local-to-preview.sh
+# sync-preview-to-local.sh
 #
-# Performs a FULL schema + data override of the Supabase preview DB
-# using the local Docker Postgres as the source.
+# Performs a FULL schema + data override of the local Docker Postgres DB
+# using the Supabase preview DB as the source.
 #
 # What it does:
-#   1. pg_dump local DB (schema + data) to a temp SQL file
-#   2. Drops ALL tables/views/sequences/types in preview public schema
-#   3. Restores the dump into preview
+#   1. pg_dump preview DB (schema + data) to a temp SQL file
+#   2. Drops ALL tables/views/sequences/types in local public schema
+#   3. Restores the dump into local Docker Postgres
 #
 # Prerequisites:
 #   - Docker container axpo-postgres-local must be running
@@ -15,8 +15,8 @@
 #   - .env.preview with DIRECT_URL (or DATABASE_URL) defined
 #
 # Usage:
-#   ./scripts/sync-local-to-preview.sh           # with confirmation prompt
-#   ./scripts/sync-local-to-preview.sh --dry-run # show plan only, no writes
+#   ./scripts/sync-preview-to-local.sh           # with confirmation prompt
+#   ./scripts/sync-preview-to-local.sh --dry-run # show plan only, no writes
 set -euo pipefail
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -32,15 +32,15 @@ DRY_RUN=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_PREVIEW="$ROOT_DIR/.env.preview"
-DUMP_FILE="$(mktemp /tmp/axpo-local-dump-XXXXXX.sql)"
+DUMP_FILE="$(mktemp /tmp/axpo-preview-dump-XXXXXX.sql)"
 # Ensure temp file is cleaned up on exit
 trap 'rm -f "$DUMP_FILE"' EXIT
 
 echo ""
 echo -e "${BOLD}================================================${NC}"
-echo -e "${BOLD}  Full DB Sync: Local -> Supabase Preview${NC}"
+echo -e "${BOLD}  Full DB Sync: Supabase Preview -> Local${NC}"
 echo -e "${BOLD}================================================${NC}"
-$DRY_RUN && warn "DRY RUN -- nothing will be written to preview"
+$DRY_RUN && warn "DRY RUN -- nothing will be written to local"
 
 # ── 0. Prerequisites ──────────────────────────────────────────────────────────
 step "0/4  Checking prerequisites..."
@@ -55,7 +55,7 @@ if command -v pg_dump &>/dev/null; then
   ok "pg_dump found locally"
 else
   USE_DOCKER_PGDUMP=true
-  warn "pg_dump not found locally -- will use pg_dump inside the Docker container"
+  warn "pg_dump not found locally -- will use pg_dump inside a Docker container"
 fi
 
 if command -v psql &>/dev/null; then
@@ -68,7 +68,7 @@ fi
 
 [[ -f "$ENV_PREVIEW" ]] || die ".env.preview not found at $ENV_PREVIEW"
 
-# Prefer DIRECT_URL (no pgBouncer -- required for multi-statement DDL)
+# Prefer DIRECT_URL (no pgBouncer -- required for multi-statement DDL / pg_dump)
 PREVIEW_URL="$(grep -E '^DIRECT_URL=' "$ENV_PREVIEW" | head -1 | cut -d= -f2- | tr -d "'\""  || true)"
 if [[ -z "$PREVIEW_URL" ]]; then
   warn "DIRECT_URL not found in .env.preview, falling back to DATABASE_URL"
@@ -77,9 +77,7 @@ fi
 [[ -z "$PREVIEW_URL" ]] && die "No DIRECT_URL or DATABASE_URL found in .env.preview"
 ok "Preview URL: $(echo "$PREVIEW_URL" | sed 's/:.*@/:***@/')"
 
-# For Docker-based psql we need an IPv4-reachable URL.
-# The DIRECT_URL uses IPv6 (db.*.supabase.co) which Docker containers can't reach.
-# The session pooler on port 5432 is IPv4 and works from Docker.
+# For Docker-based pg_dump we need an IPv4-reachable URL (session pooler on port 5432).
 DOCKER_PREVIEW_URL="$(grep -E '^DATABASE_URL=' "$ENV_PREVIEW" | head -1 | cut -d= -f2- | tr -d "'\"" \
   | sed 's/pgbouncer=true//g; s/?$//g; s/&$//g; s/6543/5432/g' || true)"
 if [[ -z "$DOCKER_PREVIEW_URL" ]]; then
@@ -94,45 +92,35 @@ LOCAL_USER="axpo"
 LOCAL_PASS="axpo_dev_password"
 LOCAL_DB="axpo_simulator"
 
-PGPASSWORD="$LOCAL_PASS" psql -h "$LOCAL_HOST" -p "$LOCAL_PORT" -U "$LOCAL_USER" -d "$LOCAL_DB" \
+docker exec axpo-postgres-local psql -U "$LOCAL_USER" -d "$LOCAL_DB" \
   -c "SELECT 1" -q --tuples-only &>/dev/null \
-  || docker exec axpo-postgres-local psql -U "$LOCAL_USER" -d "$LOCAL_DB" \
-       -c "SELECT 1" -q --tuples-only &>/dev/null \
-  || die "Cannot connect to local DB at $LOCAL_HOST:$LOCAL_PORT/$LOCAL_DB -- is Docker running?"
+  || die "Cannot connect to local DB -- is Docker running? (docker compose up -d)"
 ok "Local DB is reachable"
 
-LOCAL_ROW_COUNT="$(docker exec axpo-postgres-local psql \
-  -U "$LOCAL_USER" -d "$LOCAL_DB" -t -c \
-  "SELECT COALESCE(SUM(reltuples::bigint),0) FROM pg_class c
-   JOIN pg_namespace n ON n.oid=c.relnamespace
-   WHERE n.nspname='public' AND c.relkind='r'" 2>/dev/null | tr -d ' ' || echo '?')"
-echo "  Local DB approx rows: $LOCAL_ROW_COUNT"
-
 if $DRY_RUN; then
-  warn "Dry run complete. Would wipe preview and restore local dump."
+  warn "Dry run complete. Would wipe local DB and restore preview dump."
   exit 0
 fi
 
 # ── Confirm ───────────────────────────────────────────────────────────────────
 echo ""
-echo -e "${RED}${BOLD}  WARNING: This will COMPLETELY WIPE the Supabase preview DB${NC}"
-echo -e "${RED}${BOLD}  and replace it with your local DB (schema + all data).${NC}"
+echo -e "${RED}${BOLD}  WARNING: This will COMPLETELY WIPE your local DB${NC}"
+echo -e "${RED}${BOLD}  and replace it with the Supabase preview DB (schema + all data).${NC}"
 echo ""
 read -rp '  Type "yes" to continue: ' ANSWER
 [[ "$ANSWER" == "yes" ]] || { warn "Aborted."; exit 0; }
 
-# ── 1. Dump local DB ─────────────────────────────────────────────────────────
-step "1/4  Dumping local DB..."
+# ── 1. Dump preview DB ────────────────────────────────────────────────────────
+step "1/4  Dumping Supabase preview DB..."
 if $USE_DOCKER_PGDUMP; then
-  docker exec axpo-postgres-local pg_dump \
-    -U "$LOCAL_USER" -d "$LOCAL_DB" \
+  docker run --rm \
+    postgres:17-alpine \
+    pg_dump "$DOCKER_PREVIEW_URL" \
     --no-owner --no-acl --no-privileges \
     --schema=public --format=plain \
     > "$DUMP_FILE"
 else
-  PGPASSWORD="$LOCAL_PASS" pg_dump \
-    -h "$LOCAL_HOST" -p "$LOCAL_PORT" \
-    -U "$LOCAL_USER" -d "$LOCAL_DB" \
+  pg_dump "$PREVIEW_URL" \
     --no-owner --no-acl --no-privileges \
     --schema=public --format=plain \
     --file="$DUMP_FILE"
@@ -141,9 +129,11 @@ ok "Dump complete ($(du -sh "$DUMP_FILE" | cut -f1))"
 
 # Patch CREATE SCHEMA to avoid "already exists" error on restore
 sed -i '' 's/^CREATE SCHEMA public;$/CREATE SCHEMA IF NOT EXISTS public;/' "$DUMP_FILE"
+# Strip PG17-only settings that older local Postgres versions don't recognise
+sed -i '' '/^SET transaction_timeout/d' "$DUMP_FILE"
 
-# ── 2. Drop everything in preview public schema ───────────────────────────────
-step "2/4  Dropping all objects in preview public schema..."
+# ── 2. Drop everything in local public schema ─────────────────────────────────
+step "2/4  Dropping all objects in local public schema..."
 DROP_SQL="
 DO \$\$
 DECLARE r RECORD;
@@ -168,24 +158,16 @@ BEGIN
   SET session_replication_role = DEFAULT;
 END\$\$;
 "
-if $USE_DOCKER_PSQL; then
-  echo "$DROP_SQL" | docker run --rm -i postgres:16-alpine psql "$DOCKER_PREVIEW_URL" -v ON_ERROR_STOP=1 -q
-else
-  psql "$PREVIEW_URL" -v ON_ERROR_STOP=1 -q -c "$DROP_SQL"
-fi
-ok "Preview public schema cleared"
+docker exec axpo-postgres-local psql -U "$LOCAL_USER" -d "$LOCAL_DB" \
+  -v ON_ERROR_STOP=1 -q -c "$DROP_SQL"
+ok "Local public schema cleared"
 
 # ── 3. Restore dump ───────────────────────────────────────────────────────────
-step "3/4  Restoring dump to preview..."
-if $USE_DOCKER_PSQL; then
-  # Mount the dump file into a fresh postgres container that has internet access
-  docker run --rm -i \
-    -v "$DUMP_FILE:/dump.sql:ro" \
-    postgres:16-alpine \
-    psql "$DOCKER_PREVIEW_URL" -v ON_ERROR_STOP=1 -q --file=/dump.sql
-else
-  psql "$PREVIEW_URL" -v ON_ERROR_STOP=1 -q --file="$DUMP_FILE"
-fi
+step "3/4  Restoring preview dump to local DB..."
+docker exec -i axpo-postgres-local psql \
+  -U "$LOCAL_USER" -d "$LOCAL_DB" \
+  -v ON_ERROR_STOP=1 -q \
+  < "$DUMP_FILE"
 ok "Restore complete"
 
 # ── 4. Done (trap handles temp file cleanup) ──────────────────────────────────
@@ -193,5 +175,5 @@ step "4/4  Cleanup..."
 ok "Temp dump file removed"
 
 echo ""
-echo -e "${GREEN}${BOLD}Done! Preview DB now mirrors your local DB.${NC}"
+echo -e "${GREEN}${BOLD}Done! Local DB now mirrors the Supabase preview DB.${NC}"
 echo ""

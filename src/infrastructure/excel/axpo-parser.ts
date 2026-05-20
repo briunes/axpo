@@ -199,11 +199,16 @@ function parseFijo(rows: SheetData): BaseValueItem[] {
     if (Object.keys(nonEmpty).length === 1 && nonEmpty["K"]) {
       const rawName = nonEmpty["K"];
       const cleanName = rawName.replace(/\s*\(.*?\)\s*$/, "").trim();
-      const slug = FIJO_PRODUCT_NAMES[rawName] || FIJO_PRODUCT_NAMES[cleanName];
+      const slug =
+        FIJO_PRODUCT_NAMES[rawName] ||
+        FIJO_PRODUCT_NAMES[cleanName] ||
+        // Auto-slug unknown products so new products are captured automatically
+        cleanName
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, "_")
+          .replace(/^_|_$/g, "");
 
-      if (slug) {
-        productStarts.push([rowNum, slug]);
-      }
+      productStarts.push([rowNum, slug]);
     }
   }
 
@@ -337,6 +342,17 @@ function parseIndex(rows: SheetData): BaseValueItem[] {
       const [slug, tier] = parseIndexProductTier(nonEmpty["A"]);
       if (slug && tier) {
         productStarts.push([rowNum, slug, tier]);
+      } else {
+        // Auto-slug unknown index products (e.g. new tier variants)
+        const match = nonEmpty["A"].trim().match(/^(.*?)\s+(N[123])$/);
+        if (match) {
+          const autoSlug = match[1]
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "");
+          productStarts.push([rowNum, autoSlug, match[2]]);
+        }
       }
     }
   }
@@ -403,12 +419,24 @@ function parseGasFijo(rows: SheetData): BaseValueItem[] {
         {} as Record<string, string>,
       );
 
-    if (
-      nonEmpty["A"] &&
-      GAS_FIJO_PRODUCT_MAP[nonEmpty["A"]] &&
-      Object.keys(nonEmpty).length <= 2
-    ) {
-      productStarts.push([rowNum, nonEmpty["A"]]);
+    if (nonEmpty["A"] && Object.keys(nonEmpty).length <= 2) {
+      if (GAS_FIJO_PRODUCT_MAP[nonEmpty["A"]]) {
+        productStarts.push([rowNum, nonEmpty["A"]]);
+      } else {
+        // Auto-capture unknown gas fijo products using a synthetic map entry
+        const rawName = nonEmpty["A"];
+        const match = rawName.trim().match(/^(.*?)\s+(N[123])$/);
+        if (match) {
+          const autoSlug = match[1]
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "");
+          // Register dynamically so the parser block below can consume it
+          GAS_FIJO_PRODUCT_MAP[rawName] = [autoSlug, match[2]];
+          productStarts.push([rowNum, rawName]);
+        }
+      }
     }
   }
 
@@ -519,12 +547,23 @@ function parseGasIndex(rows: SheetData): BaseValueItem[] {
         {} as Record<string, string>,
       );
 
-    if (
-      nonEmpty["A"] &&
-      GAS_INDEX_PRODUCT_MAP[nonEmpty["A"]] &&
-      Object.keys(nonEmpty).length <= 2
-    ) {
-      productStarts.push([rowNum, nonEmpty["A"]]);
+    if (nonEmpty["A"] && Object.keys(nonEmpty).length <= 2) {
+      if (GAS_INDEX_PRODUCT_MAP[nonEmpty["A"]]) {
+        productStarts.push([rowNum, nonEmpty["A"]]);
+      } else {
+        // Auto-capture unknown gas index products
+        const rawName = nonEmpty["A"];
+        const match = rawName.trim().match(/^(.*?)\s+(N[123])$/);
+        if (match) {
+          const autoSlug = match[1]
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "");
+          GAS_INDEX_PRODUCT_MAP[rawName] = [autoSlug, match[2]];
+          productStarts.push([rowNum, rawName]);
+        }
+      }
     }
   }
 
@@ -690,11 +729,10 @@ function parseSpanishMonthYear(s: string): string | null {
  *     (used as a fallback when no month-specific key is available)
  *
  * @param potenciaByTariff
- *   When false (default — DINAMICA behaviour): the 6.1TD power row is emitted for
- *   BOTH 3.0TD and 6.1TD, because the Excel VLOOKUP for DINAMICA products always
- *   references the 6.1TD row regardless of selected tariff.
- *   When true (PERSONALIZADA behaviour): each tariff row is emitted only for its
- *   own tariff, because the PERSONALIZADA formulas use tariff-matched lookups.
+ *   When true (always recommended): each tariff row is emitted only for its own
+ *   tariff.  Earlier code used false for DINAMICA products under the (incorrect)
+ *   assumption that the Excel VLOOKUP always referenced the 6.1TD row regardless
+ *   of tariff — analysis of simulator results confirmed this was wrong.
  */
 function parseDinamicaSheet(
   sheet: XLSX.WorkSheet,
@@ -768,13 +806,7 @@ function parseDinamicaSheet(
   //   Row "3.0TD"     → daily rates for P1…P6
   //   Row "6.1TD"     → daily rates for P1…P6
   //
-  // The Excel simulator's VLOOKUP (see hidden "." sheet) always references the
-  // "6.1TD" power row for BOTH 3.0TD and 6.1TD scenarios (formula e.g.
-  // ='DINAMICA CONTROL PLUS N3'!C67 for every month regardless of tariff).
-  // Only 2.0TD uses its own dedicated row.
-  //
-  // We replicate that behaviour here: the 6.1TD row → emitted under both
-  // "3.0TD" and "6.1TD" keys; the "2.0TD" row → "2.0TD" only.
+  // Each tariff row is emitted under its own tariff key only.
   // These items are added AFTER parseIndex() in allItems so the last-write-wins
   // deduplication in parseAxpoExcel() ensures they override the stale values
   // that the static BASE DE DATOS INDEX sheet carries for these products.
@@ -802,22 +834,15 @@ function parseDinamicaSheet(
       continue;
     }
 
-    // Determine which tariff keys to emit for this row:
-    //   DINAMICA mode (potenciaByTariff=false):
-    //     Excel VLOOKUP always uses the 6.1TD row for both 3.0TD and 6.1TD
-    //     → skip the 3.0TD row, emit 6.1TD row under both tariffs.
-    //   PERSONALIZADA mode (potenciaByTariff=true):
-    //     Excel formulas match the tariff explicitly
-    //     → each row emits only for its own tariff.
-    let tariffsToEmit: string[];
-    if (potenciaByTariff) {
-      // Each row emits for its own tariff only
-      tariffsToEmit = isTariff2 ? ["2.0TD"] : isTariff3 ? ["3.0TD"] : ["6.1TD"];
-    } else {
-      // DINAMICA behaviour: skip 3.0TD row, use 6.1TD row for both
-      if (isTariff3) continue;
-      tariffsToEmit = isTariff2 ? ["2.0TD"] : ["3.0TD", "6.1TD"];
-    }
+    // Each tariff row is emitted only for its own tariff.
+    // Earlier versions assumed the Excel VLOOKUP always used the 6.1TD row for
+    // both 3.0TD and 6.1TD, but analysis of the actual simulator results confirms
+    // each tariff uses its own dedicated power-price row.
+    const tariffsToEmit: string[] = isTariff2
+      ? ["2.0TD"]
+      : isTariff3
+        ? ["3.0TD"]
+        : ["6.1TD"];
     const periods = ["P1", "P2", "P3", "P4", "P5", "P6"];
 
     for (let i = 0; i < periods.length; i++) {
@@ -967,21 +992,38 @@ export function parseAxpoExcel(
   const trimmedSheetNames = new Map(
     workbook.SheetNames.map((n) => [n.trim(), n]),
   );
+  // Auto-detect any sheets that look like DINAMICA product sheets but aren't in
+  // the hardcoded map (e.g. new products added in future file versions).
+  for (const [trimmed, actual] of trimmedSheetNames) {
+    if (!DINAMICA_SHEET_MAP[trimmed]) {
+      // Match patterns like "SOME PRODUCT N1", "SOME PRODUCT N2", "SOME PRODUCT N3"
+      const m = trimmed.match(/^(.+?)\s+(N[123])$/);
+      if (m) {
+        const autoSlug = m[1]
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, "_")
+          .replace(/^_|_$/g, "");
+        const isPersonalizada = autoSlug.startsWith("PERSONALIZADA");
+        const dinamicaItems = parseDinamicaSheet(
+          workbook.Sheets[actual],
+          autoSlug,
+          m[2],
+          isPersonalizada,
+        );
+        allItems.push(...dinamicaItems);
+      }
+    }
+  }
+
   for (const [sheetName, [product, tier]] of Object.entries(
     DINAMICA_SHEET_MAP,
   )) {
     const actualSheetName = trimmedSheetNames.get(sheetName);
     if (actualSheetName) {
       const sheet = workbook.Sheets[actualSheetName];
-      // Personalizada sheets use tariff-specific POTENCIA rows (potenciaByTariff=true).
-      // DINAMICA sheets use the 6.1TD row for both 3.0TD and 6.1TD (default behaviour).
-      const isPersonalizada = product.startsWith("PERSONALIZADA");
-      const dinamicaItems = parseDinamicaSheet(
-        sheet,
-        product,
-        tier,
-        isPersonalizada,
-      );
+      // All sheets use tariff-specific POTENCIA rows.
+      const dinamicaItems = parseDinamicaSheet(sheet, product, tier, true);
       allItems.push(...dinamicaItems);
     }
   }

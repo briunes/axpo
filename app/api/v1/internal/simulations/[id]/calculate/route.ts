@@ -14,6 +14,15 @@ import type { SimulationPayload } from "@/domain/types";
 const calculateSchema = z.object({
   /** Override which BaseValueSet to use. Defaults to the version's baseValueSetId or the latest active global set. */
   baseValueSetId: z.string().min(1).optional(),
+  /**
+   * Optional billing month override (YYYY-MM).
+   * When provided, indexed electricity calculations use the prices and days for
+   * this specific month. Fixed calculations always use the billing period days.
+   */
+  selectedMonth: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(),
 });
 
 /**
@@ -62,10 +71,14 @@ export const POST = withErrorHandler(
 
     // Parse optional body
     let baseValueSetIdOverride: string | undefined;
+    let selectedMonthOverride: string | undefined;
     try {
       const body = await request.json().catch(() => ({}));
       const parsed = calculateSchema.safeParse(body);
-      if (parsed.success) baseValueSetIdOverride = parsed.data.baseValueSetId;
+      if (parsed.success) {
+        baseValueSetIdOverride = parsed.data.baseValueSetId;
+        selectedMonthOverride = parsed.data.selectedMonth;
+      }
     } catch {
       // body is optional — ignore parse errors
     }
@@ -154,6 +167,9 @@ export const POST = withErrorHandler(
       electricity: payload.electricity
         ? {
             ...payload.electricity,
+            ...(selectedMonthOverride
+              ? { billingMonth: selectedMonthOverride }
+              : {}),
             extras: {
               ...payload.electricity.extras,
               ivaTasa:

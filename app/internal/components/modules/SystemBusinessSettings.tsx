@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Box, Tabs, Tab, Button, Stack, IconButton, Tooltip, TextField, Typography, Checkbox } from "@mui/material";
+import { Box, Tabs, Tab, Button, Stack, IconButton, Tooltip, TextField, Typography, Checkbox, Switch } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { getSystemConfig, updateSystemConfig } from "../../lib/configApi";
@@ -62,6 +62,9 @@ interface BusinessConfig {
     defaultPdfTemplateGasId: string | null;
     defaultPdfTemplateElectricityId: string | null;
     appVersion: string;
+    maintenanceMode: boolean;
+    maintenanceUntil: string;
+    maintenanceMessage: string;
 }
 
 const DEFAULT_ELEC_TAX_CONFIG: ElectricityTaxConfig = {
@@ -91,6 +94,9 @@ const DEFAULT_CONFIG: BusinessConfig = {
     defaultPdfTemplateGasId: null,
     defaultPdfTemplateElectricityId: null,
     appVersion: "1.0.0",
+    maintenanceMode: false,
+    maintenanceUntil: "",
+    maintenanceMessage: "",
 };
 
 export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSettingsProps) {
@@ -149,6 +155,9 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                 defaultPdfTemplateGasId: (data as any).defaultPdfTemplateGasId || null,
                 defaultPdfTemplateElectricityId: (data as any).defaultPdfTemplateElectricityId || null,
                 appVersion: (data as any).appVersion ?? "1.0.0",
+                maintenanceMode: (data as any).maintenanceMode ?? false,
+                maintenanceUntil: (data as any).maintenanceUntil ? new Date((data as any).maintenanceUntil).toISOString().slice(0, 16) : "",
+                maintenanceMessage: (data as any).maintenanceMessage ?? "",
             });
         } catch (error) {
             console.error("Failed to load config:", error);
@@ -178,6 +187,9 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                 defaultPdfTemplateGasId: config.defaultPdfTemplateGasId ?? undefined,
                 defaultPdfTemplateElectricityId: config.defaultPdfTemplateElectricityId ?? undefined,
                 appVersion: config.appVersion,
+                maintenanceMode: config.maintenanceMode,
+                maintenanceUntil: config.maintenanceUntil ? new Date(config.maintenanceUntil).toISOString() : null,
+                maintenanceMessage: config.maintenanceMessage || null,
             });
             onNotify(t("systemSettings", "savedSuccess"), "success");
             setIsDirty(false);
@@ -400,6 +412,76 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                                         value={config.appVersion}
                                         onChange={(e) => handleChange("appVersion", e.target.value)}
                                     />
+                                </Box>
+
+                                {/* ── Maintenance Mode ─────────────────────────────────── */}
+                                <Box sx={{
+                                    mt: 2,
+                                    p: 2.5,
+                                    border: config.maintenanceMode
+                                        ? "1.5px solid rgba(239, 68, 68, 0.5)"
+                                        : "1px solid var(--scheme-neutral-800)",
+                                    borderRadius: 2,
+                                    background: config.maintenanceMode
+                                        ? "rgba(239, 68, 68, 0.05)"
+                                        : "transparent",
+                                    transition: "all 0.2s",
+                                }}>
+                                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: config.maintenanceMode ? 2.5 : 0 }}>
+                                        <Box>
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: config.maintenanceMode ? "error.main" : "text.primary", display: "flex", alignItems: "center", gap: 1 }}>
+                                                {config.maintenanceMode && (
+                                                    <Box component="span" sx={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 6px rgba(239,68,68,0.8)" }} />
+                                                )}
+                                                Maintenance Mode
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                                                {config.maintenanceMode
+                                                    ? "Site is currently down for maintenance — all visitors see the maintenance page."
+                                                    : "When enabled, all visitors will be redirected to a maintenance page."}
+                                            </Typography>
+                                        </Box>
+                                        <Switch
+                                            checked={config.maintenanceMode}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange("maintenanceMode", e.target.checked)}
+                                            color="error"
+                                            sx={{ ml: 2, flexShrink: 0 }}
+                                        />
+                                    </Box>
+
+                                    {config.maintenanceMode && (
+                                        <Stack spacing={2}>
+                                            <Box>
+                                                <Typography variant="caption" sx={{ fontWeight: 600, color: "text.secondary", display: "block", mb: 0.75 }}>
+                                                    Expected back online (optional)
+                                                </Typography>
+                                                <TextField
+                                                    type="datetime-local"
+                                                    size="small"
+                                                    fullWidth
+                                                    value={config.maintenanceUntil}
+                                                    onChange={(e) => handleChange("maintenanceUntil", e.target.value)}
+                                                    helperText="Leave blank to show no expected time to visitors."
+                                                    slotProps={{ htmlInput: { min: new Date().toISOString().slice(0, 16) } }}
+                                                />
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="caption" sx={{ fontWeight: 600, color: "text.secondary", display: "block", mb: 0.75 }}>
+                                                    Maintenance message (optional)
+                                                </Typography>
+                                                <TextField
+                                                    size="small"
+                                                    fullWidth
+                                                    multiline
+                                                    rows={2}
+                                                    placeholder="We're performing scheduled maintenance to improve your experience."
+                                                    value={config.maintenanceMessage}
+                                                    onChange={(e) => handleChange("maintenanceMessage", e.target.value)}
+                                                    helperText="Custom message shown to visitors on the maintenance page."
+                                                />
+                                            </Box>
+                                        </Stack>
+                                    )}
                                 </Box>
                             </div>
                         )}

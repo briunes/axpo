@@ -851,6 +851,8 @@ export async function validateCups(
 
 export interface CalculateSimulationInput {
   baseValueSetId?: string;
+  /** Billing month override (YYYY-MM) for indexed offers. Fixed offers always use the billing period days. */
+  selectedMonth?: string;
 }
 
 export interface CalculateSimulationResult {

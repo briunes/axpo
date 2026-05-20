@@ -49,6 +49,7 @@ export type ElecFijoProduct =
   | "ESTABLE_PLUS"
   | "1P_PLUS"
   | "1P_PLUS_XL"
+  | "1P_PLUS_SSCC_LIBRES"
   | "ESTABLE_TALLERES"
   | "ESTABLE_PLUS_TALLERES";
 
@@ -109,6 +110,14 @@ export interface ElectricityInputs {
     fechaFin: string; // ISO date "YYYY-MM-DD"
     dias: number; // calendar days in the period
   };
+
+  /**
+   * Optional billing month override (YYYY-MM).
+   * When set, indexed calculations use the prices and days for this specific
+   * month instead of deriving them from the billing period dates.
+   * Fixed calculations always use periodo.dias regardless of this field.
+   */
+  billingMonth?: string;
 
   /** Client's current total invoice amount in €, used to compute savings */
   facturaActual: number;

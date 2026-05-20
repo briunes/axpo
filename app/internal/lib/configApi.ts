@@ -70,6 +70,10 @@ export interface SystemConfig {
   createdAt: string;
   updatedAt: string;
   appVersion: String;
+  // Maintenance mode
+  maintenanceMode?: boolean;
+  maintenanceUntil?: string | null;
+  maintenanceMessage?: string | null;
 }
 
 export interface PdfTemplateTranslationInput {

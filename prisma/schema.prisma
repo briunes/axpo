@@ -318,6 +318,9 @@ model SystemConfig {
   electricityTaxConfig            Json?
   gasTaxConfig                    Json?
   appVersion                      String   @default("1.0.0")
+  maintenanceMode                 Boolean  @default(false)
+  maintenanceUntil                DateTime?
+  maintenanceMessage              String?
 
   @@map("system_config")
 }

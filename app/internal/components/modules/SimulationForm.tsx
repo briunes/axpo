@@ -1310,6 +1310,9 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     const [selectedOffer, setSelectedOffer] = useState<SimulationPayload["selectedOffer"]>(
         existingPayload.selectedOffer ?? undefined
     );
+    // Tracks the billing month explicitly chosen by the user via the month selector.
+    // null means "derive from the billing period dates" (the default).
+    const [billingMonthOverride, setBillingMonthOverride] = useState<string | null>(null);
     const [cupsHistory, setCupsHistory] = useState<CupsLookupEntry[]>([]);
     const [ivaRateOptions, setIvaRateOptions] = useState<number[]>([]);
     const [electricityTaxRateOptions, setElectricityTaxRateOptions] = useState<number[]>([]);
@@ -1535,30 +1538,26 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify, baseValueSetId]);
 
     const calculateWithMonth = useCallback(async (month: string) => {
-        const [year, mon] = month.split('-').map(Number);
-        const fechaInicio = `${year}-${String(mon).padStart(2, '0')}-01`;
-        const lastDay = new Date(year, mon, 0).getDate();
-        const fechaFin = `${year}-${String(mon).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-
-        const newElecState: ElecFormState = { ...elecState, fechaInicio, fechaFin };
-        const newGasState: GasFormState = { ...gasState, fechaInicio, fechaFin };
-
-        // Update state so inputs tab stays in sync
-        if (simType !== "GAS") setElecState(newElecState);
-        if (simType !== "ELECTRICITY") setGasState(newGasState);
-
+        // Do NOT change fechaInicio/fechaFin — the billing period must stay as-is.
+        // Instead, pass selectedMonth to the API so indexed calculations use the
+        // correct month's prices and days, while fixed calculations keep using
+        // the billing period's days.
+        setBillingMonthOverride(month);
         setError(null);
         setCalculating(true);
         try {
             const payload: SimulationPayload = {
                 schemaVersion: "1",
                 type: simType,
-                electricity: simType !== "GAS" ? buildElecInputs(newElecState) : undefined,
-                gas: simType !== "ELECTRICITY" ? buildGasInputs(newGasState) : undefined,
+                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
+                gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
                 ...(selectedOffer ? { selectedOffer } : {}),
             };
             await updateSimulation(token, simulation.id, { payloadJson: payload as Record<string, unknown> });
-            const calcResult = await calculateSimulation(token, simulation.id, baseValueSetId ? { baseValueSetId } : undefined);
+            const calcResult = await calculateSimulation(token, simulation.id, {
+                ...(baseValueSetId ? { baseValueSetId } : {}),
+                selectedMonth: month,
+            });
             setResults(calcResult.results);
             setActiveTab("results");
             onSuccess?.(calcResult.results, calcResult.baseValueSetId);
@@ -1604,9 +1603,11 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     const facturaActual = simType === "ELECTRICITY" ? elecState.facturaActual
         : simType === "GAS" ? gasState.facturaActual : undefined;
 
-    const selectedMonth = simType !== "GAS"
-        ? getDominantBillingMonth(elecState.fechaInicio, elecState.fechaFin)
-        : getDominantBillingMonth(gasState.fechaInicio, gasState.fechaFin);
+    const selectedMonth = billingMonthOverride ?? (
+        simType !== "GAS"
+            ? getDominantBillingMonth(elecState.fechaInicio, elecState.fechaFin)
+            : getDominantBillingMonth(gasState.fechaInicio, gasState.fechaFin)
+    );
     const availableMonths = (() => {
         const today = new Date();
         const months: string[] = [];

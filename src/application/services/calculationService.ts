@@ -42,6 +42,7 @@ const ELEC_FIJO_PRODUCTS = [
   "ESTABLE_PLUS",
   "1P_PLUS",
   "1P_PLUS_XL",
+  "1P_PLUS_SSCC_LIBRES",
   "ESTABLE_TALLERES",
   "ESTABLE_PLUS_TALLERES",
 ] as const;
@@ -77,6 +78,7 @@ const ELEC_PRODUCT_LABELS: Record<string, string> = {
   ESTABLE_PLUS: "Estable Plus",
   "1P_PLUS": "1P Plus",
   "1P_PLUS_XL": "1P Plus XL",
+  "1P_PLUS_SSCC_LIBRES": "1P Plus SSCC Libres",
   ESTABLE_TALLERES: "Estable Talleres",
   ESTABLE_PLUS_TALLERES: "Estable Plus Talleres",
   DINAMICA_CONTROL: "Dinámica Control",
@@ -184,6 +186,10 @@ function isEligibleSinglePeriodProduct(
     return annualConsumption > 50000 && annualConsumption < 100000;
   }
 
+  if (product === "1P_PLUS_SSCC_LIBRES") {
+    return annualConsumption < 50000;
+  }
+
   return true;
 }
 
@@ -220,7 +226,10 @@ function calcElecFijo(
   // "1P PLUS" products are "Periodo Único" — they publish a single P1 price that
   // applies to all energy and power periods.  This allows them to work with any
   // access tariff (2.0TD, 3.0TD, 6.1TD) without requiring separate per-period keys.
-  const isSinglePeriod = product === "1P_PLUS" || product === "1P_PLUS_XL";
+  const isSinglePeriod =
+    product === "1P_PLUS" ||
+    product === "1P_PLUS_XL" ||
+    product === "1P_PLUS_SSCC_LIBRES";
 
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
@@ -323,7 +332,17 @@ function calcElecIndex(
     extras,
     omieEstimado,
   } = inputs;
-  const dias = periodo.dias;
+  // Indexed offers use the selected billing month's days (not the full billing
+  // period days). Fixed offers use periodo.dias.
+  const billingMonthKey =
+    inputs.billingMonth ?? periodo.fechaInicio.slice(0, 7); // "YYYY-MM"
+  const dias = (() => {
+    if (inputs.billingMonth) {
+      const [y, m] = inputs.billingMonth.split("-").map(Number);
+      return new Date(y, m, 0).getDate();
+    }
+    return periodo.dias;
+  })();
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
@@ -342,7 +361,6 @@ function calcElecIndex(
   // month, not the 12-month average.  If no month-specific price is stored (e.g.
   // for DINAMICA_CONTROL variants or older imports), we fall back to the PROMEDIO
   // (12-month average) key, and then to the legacy ENERGIA key.
-  const billingMonthKey = periodo.fechaInicio.slice(0, 7); // "YYYY-MM"
 
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
@@ -540,8 +558,14 @@ function calcPersonalizadaIndex(
     facturaActual,
     extras,
   } = inputs;
-  const dias = periodo.dias;
-  const billingMonth = periodo.fechaInicio.slice(0, 7); // YYYY-MM
+  const billingMonth = inputs.billingMonth ?? periodo.fechaInicio.slice(0, 7); // YYYY-MM
+  const dias = (() => {
+    if (inputs.billingMonth) {
+      const [y, m] = inputs.billingMonth.split("-").map(Number);
+      return new Date(y, m, 0).getDate();
+    }
+    return periodo.dias;
+  })();
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
@@ -642,8 +666,14 @@ function calcPersonalizadaOmieB(
     facturaActual,
     extras,
   } = inputs;
-  const dias = periodo.dias;
-  const billingMonth = periodo.fechaInicio.slice(0, 7); // YYYY-MM
+  const billingMonth = inputs.billingMonth ?? periodo.fechaInicio.slice(0, 7); // YYYY-MM
+  const dias = (() => {
+    if (inputs.billingMonth) {
+      const [y, m] = inputs.billingMonth.split("-").map(Number);
+      return new Date(y, m, 0).getDate();
+    }
+    return periodo.dias;
+  })();
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
