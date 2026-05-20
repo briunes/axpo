@@ -1033,9 +1033,9 @@ export function SimulationResultsCards({
                     {/* Electricity section */}
                     {hasElec && (() => {
                         const elecProducts = [...results.electricity!].sort((a, b) => b.ahorro - a.ahorro);
-                        const fixedProducts = elecProducts.filter(p => p.pricingType === "FIXED");
+                        const fixedProducts = elecProducts.filter(p => p.pricingType === "FIXED" && p.productKey !== "PERSONALIZADA_FIJO");
                         const indexedProducts = elecProducts.filter(p => p.pricingType === "INDEXED");
-                        const personalizadaProducts = elecProducts.filter(p => p.productKey === "PERSONALIZADA_INDEX" || p.productKey === "PERSONALIZADA_OMIE_B");
+                        const personalizadaProducts = elecProducts.filter(p => p.productKey === "PERSONALIZADA_INDEX" || p.productKey === "PERSONALIZADA_OMIE_B" || p.productKey === "PERSONALIZADA_FIJO");
                         const hasPersonalizadas = personalizadaProducts.length > 0;
 
                         const bestElecProduct = elecProducts.reduce((best, current) =>
@@ -1143,9 +1143,9 @@ export function SimulationResultsCards({
                     {/* Gas section */}
                     {hasGas && (() => {
                         const gasProducts = [...results.gas!].sort((a, b) => b.ahorro - a.ahorro);
-                        const fixedProducts = gasProducts.filter(p => p.pricingType === "FIXED");
+                        const fixedProducts = gasProducts.filter(p => p.pricingType === "FIXED" && p.productKey !== "GAS_PERSONALIZADA_FIJO");
                         const indexedProducts = gasProducts.filter(p => p.pricingType === "INDEXED" && p.productKey !== "GAS_PERSONALIZADA_INDEX");
-                        const personalizadaProducts = gasProducts.filter(p => p.productKey === "GAS_PERSONALIZADA_INDEX");
+                        const personalizadaProducts = gasProducts.filter(p => p.productKey === "GAS_PERSONALIZADA_INDEX" || p.productKey === "GAS_PERSONALIZADA_FIJO");
                         const hasPersonalizadas = personalizadaProducts.length > 0;
 
                         // Find the best offer (highest savings) across all gas products
