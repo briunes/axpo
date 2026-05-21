@@ -414,7 +414,7 @@ export default function NewSimulationPage() {
                     )}
 
                     {/* Display Extracted Data */}
-                    {llmEnabled && extractedData && isMostlyEmpty && !reportSubmitted && (
+                    {llmEnabled && extractedData && isMostlyEmpty && !showReportIssue && !reportSubmitted && (
                         <div style={{
                             display: "flex", flexDirection: "column", gap: 0,
                             padding: "10px 14px",
@@ -428,83 +428,24 @@ export default function NewSimulationPage() {
                                 <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>⚠️</span>
                                 <span>{t("invoiceExtractor", "reportIssueTitle")}</span>
                             </div>
-                            {!showReportIssue ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowReportIssue(true)}
-                                    style={{
-                                        alignSelf: "flex-start", marginTop: 8,
-                                        fontSize: 11, fontWeight: 700, cursor: "pointer",
-                                        background: "transparent",
-                                        border: `1px solid ${isDarkMode ? "#3d2a05" : "#f59e0b"}`,
-                                        borderRadius: 999, padding: "3px 12px",
-                                        color: isDarkMode ? "#fcd34d" : "#92400e",
-                                    }}
-                                >
-                                    {t("invoiceExtractor", "reportIssueButton")}
-                                </button>
-                            ) : (
-                                <div style={{ marginTop: 8 }}>
-                                    <textarea
-                                        placeholder={t("invoiceExtractor", "reportIssuePlaceholder") ?? ""}
-                                        value={reportIssueMessage}
-                                        onChange={e => setReportIssueMessage(e.target.value)}
-                                        rows={3}
-                                        style={{
-                                            width: "100%", boxSizing: "border-box",
-                                            border: `1px solid ${isDarkMode ? "#3d2a05" : "#f59e0b"}`,
-                                            borderRadius: 5, padding: "7px 10px",
-                                            fontSize: 12, fontFamily: "inherit", resize: "vertical",
-                                            background: isDarkMode ? "#0f0900" : "#fff",
-                                            color: isDarkMode ? "#fcd34d" : "#1a1a1a",
-                                            outline: "none",
-                                        }}
-                                    />
-                                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 6 }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowReportIssue(false)}
-                                            style={{ fontSize: 11, cursor: "pointer", background: "transparent", border: "none", color: isDarkMode ? "#fcd34d" : "#92400e", padding: "3px 8px" }}
-                                        >
-                                            {t("invoiceExtractor", "reportIssueCancel")}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            disabled={!reportIssueMessage.trim() || isSubmittingReport}
-                                            onClick={async () => {
-                                                if (!extractionLogId || !reportIssueMessage.trim()) return;
-                                                setIsSubmittingReport(true);
-                                                try {
-                                                    const res = await fetch(`/api/v1/internal/ocr-logs/${extractionLogId}/report`, {
-                                                        method: "PATCH",
-                                                        headers: {
-                                                            "Content-Type": "application/json",
-                                                            Authorization: `Bearer ${session?.token}`,
-                                                        },
-                                                        body: JSON.stringify({ message: reportIssueMessage.trim() }),
-                                                    });
-                                                    if (res.ok) { setReportSubmitted(true); setShowReportIssue(false); }
-                                                } finally {
-                                                    setIsSubmittingReport(false);
-                                                }
-                                            }}
-                                            style={{
-                                                fontSize: 11, fontWeight: 700, cursor: "pointer",
-                                                background: isDarkMode ? "#3d2a05" : "#f59e0b",
-                                                border: "none", borderRadius: 999, padding: "4px 14px",
-                                                color: isDarkMode ? "#fcd34d" : "#fff",
-                                                opacity: (!reportIssueMessage.trim() || isSubmittingReport) ? 0.5 : 1,
-                                            }}
-                                        >
-                                            {isSubmittingReport ? t("invoiceExtractor", "reportIssueSubmitting") : t("invoiceExtractor", "reportIssueSubmit")}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                            <button
+                                type="button"
+                                onClick={() => setShowReportIssue(true)}
+                                style={{
+                                    alignSelf: "flex-start", marginTop: 8,
+                                    fontSize: 11, fontWeight: 700, cursor: "pointer",
+                                    background: "transparent",
+                                    border: `1px solid ${isDarkMode ? "#3d2a05" : "#f59e0b"}`,
+                                    borderRadius: 999, padding: "3px 12px",
+                                    color: isDarkMode ? "#fcd34d" : "#92400e",
+                                }}
+                            >
+                                {t("invoiceExtractor", "reportIssueButton")}
+                            </button>
                         </div>
                     )}
 
-                    {llmEnabled && extractedData && isMostlyEmpty && reportSubmitted && (
+                    {llmEnabled && extractedData && isMostlyEmpty && !showReportIssue && reportSubmitted && (
                         <div style={{
                             display: "flex", alignItems: "center", gap: 6,
                             padding: "8px 14px", borderRadius: 8, marginBottom: 12,
@@ -561,18 +502,113 @@ export default function NewSimulationPage() {
                                         Gas
                                     </ToggleButton>
                                 </ToggleButtonGroup>
-                                <Button
-                                    type="button"
-                                    size="small"
-                                    variant={isValidatedExtractedData ? "contained" : "outlined"}
-                                    color={isValidatedExtractedData ? "success" : "warning"}
-                                    onClick={() => setIsValidatedExtractedData(v => !v)}
-                                    startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
-                                    sx={{ ml: "auto", fontSize: 11, py: 0.3, px: 1.2, minWidth: 0, textTransform: "none", fontWeight: 700 }}
-                                >
-                                    {isValidatedExtractedData ? "Validated" : "Validate"}
-                                </Button>
+                                <div style={{ display: "flex", gap: 6, marginLeft: "auto", alignItems: "center" }}>
+                                    {!reportSubmitted && (
+                                        <Button
+                                            type="button"
+                                            size="small"
+                                            variant="text"
+                                            color="error"
+                                            onClick={() => setShowReportIssue(v => !v)}
+                                            sx={{ fontSize: 11, py: 0.3, px: 1.2, minWidth: 0, textTransform: "none", fontWeight: 600, opacity: 0.75, '&:hover': { opacity: 1 } }}
+                                        >
+                                            {showReportIssue ? t("invoiceExtractor", "reportIssueCancel") : "⚑ Report issue"}
+                                        </Button>
+                                    )}
+                                    <Button
+                                        type="button"
+                                        size="small"
+                                        variant={isValidatedExtractedData ? "contained" : "outlined"}
+                                        color={isValidatedExtractedData ? "success" : "warning"}
+                                        onClick={() => setIsValidatedExtractedData(v => !v)}
+                                        startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+                                        sx={{ fontSize: 11, py: 0.3, px: 1.2, minWidth: 0, textTransform: "none", fontWeight: 700 }}
+                                    >
+                                        {isValidatedExtractedData ? "Validated" : "Validate"}
+                                    </Button>
+                                </div>
                             </div>
+
+                            {/* Inline report issue form */}
+                            {showReportIssue && !reportSubmitted && (
+                                <div style={{
+                                    marginBottom: 14,
+                                    padding: "10px 14px",
+                                    borderRadius: 8,
+                                    background: isDarkMode ? "#1c0a0a" : "#fff7f7",
+                                    border: `1px solid ${isDarkMode ? "#5c1a1a" : "#fca5a5"}`,
+                                }}>
+                                    <textarea
+                                        placeholder={t("invoiceExtractor", "reportIssuePlaceholder") ?? "Describe the issue with the extracted data..."}
+                                        value={reportIssueMessage}
+                                        onChange={e => setReportIssueMessage(e.target.value)}
+                                        rows={3}
+                                        style={{
+                                            width: "100%", boxSizing: "border-box",
+                                            border: `1px solid ${isDarkMode ? "#5c1a1a" : "#fca5a5"}`,
+                                            borderRadius: 5, padding: "7px 10px",
+                                            fontSize: 12, fontFamily: "inherit", resize: "vertical",
+                                            background: isDarkMode ? "#0f0000" : "#fff",
+                                            color: isDarkMode ? "#fca5a5" : "#1a1a1a",
+                                            outline: "none",
+                                        }}
+                                    />
+                                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 6 }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setShowReportIssue(false); setReportIssueMessage(""); }}
+                                            style={{ fontSize: 11, cursor: "pointer", background: "transparent", border: "none", color: isDarkMode ? "#fca5a5" : "#b91c1c", padding: "3px 8px" }}
+                                        >
+                                            {t("invoiceExtractor", "reportIssueCancel")}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={!reportIssueMessage.trim() || isSubmittingReport}
+                                            onClick={async () => {
+                                                if (!extractionLogId || !reportIssueMessage.trim()) return;
+                                                setIsSubmittingReport(true);
+                                                try {
+                                                    const res = await fetch(`/api/v1/internal/ocr-logs/${extractionLogId}/report`, {
+                                                        method: "PATCH",
+                                                        headers: {
+                                                            "Content-Type": "application/json",
+                                                            Authorization: `Bearer ${session?.token}`,
+                                                        },
+                                                        body: JSON.stringify({ message: reportIssueMessage.trim() }),
+                                                    });
+                                                    if (res.ok) { setReportSubmitted(true); setShowReportIssue(false); }
+                                                } finally {
+                                                    setIsSubmittingReport(false);
+                                                }
+                                            }}
+                                            style={{
+                                                fontSize: 11, fontWeight: 700, cursor: "pointer",
+                                                background: isDarkMode ? "#5c1a1a" : "#ef4444",
+                                                border: "none", borderRadius: 999, padding: "4px 14px",
+                                                color: "#fff",
+                                                opacity: (!reportIssueMessage.trim() || isSubmittingReport) ? 0.5 : 1,
+                                            }}
+                                        >
+                                            {isSubmittingReport ? t("invoiceExtractor", "reportIssueSubmitting") : t("invoiceExtractor", "reportIssueSubmit")}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Report submitted confirmation (non-mostly-empty case) */}
+                            {!isMostlyEmpty && reportSubmitted && (
+                                <div style={{
+                                    display: "flex", alignItems: "center", gap: 6,
+                                    padding: "8px 14px", borderRadius: 8, marginBottom: 14,
+                                    fontSize: 13, fontWeight: 500,
+                                    background: isDarkMode ? "#052e16" : "#f0fdf4",
+                                    color: isDarkMode ? "#86efac" : "#166534",
+                                    border: `1px solid ${isDarkMode ? "#166534" : "#86efac"}`,
+                                }}>
+                                    <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>✓</span>
+                                    <span>{t("invoiceExtractor", "reportIssueConfirm")}</span>
+                                </div>
+                            )}
 
                             {/* Grid of fields */}
                             {(() => {
@@ -696,8 +732,7 @@ export default function NewSimulationPage() {
                             {(() => {
                                 const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
                                 const displayPeriods = periods;
-                                const hasConsumo = periods.some(p => extractedData[`consumo${p}` as keyof ExtractedInvoiceData] != null);
-                                if (!hasConsumo) return null;
+
                                 return (
                                     <div style={{ marginTop: 14 }}>
                                         <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
@@ -737,8 +772,7 @@ export default function NewSimulationPage() {
                             {/* Potencia table: potencia per period */}
                             {(() => {
                                 const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
-                                const hasPotencia = periods.some(p => extractedData[`potencia${p}` as keyof ExtractedInvoiceData] != null);
-                                if (!hasPotencia) return null;
+
                                 return (
                                     <div style={{ marginTop: 14 }}>
                                         <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>

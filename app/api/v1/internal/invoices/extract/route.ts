@@ -579,6 +579,33 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const buffer = Buffer.from(bytes);
     const base64File = buffer.toString("base64");
 
+    // ── PDF text extraction (font-rendering fallback) ─────────────────────
+    // Some PDFs use non-embedded fonts (e.g. Arial, Courier New) that are not
+    // available on Vercel's Linux environment. When pdfjs tries to render these
+    // to images the text layer comes out blank, causing the LLM to return only
+    // the invoice type. To guard against this we always extract the raw text
+    // layer from the PDF and append it to the prompt so the LLM can fall back
+    // to the text even when the rendered images are unreadable.
+    if (file.type === "application/pdf") {
+      try {
+        const pdfParseModule = await import("pdf-parse");
+        const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
+        const pdfData = await pdfParse(buffer);
+        const rawText = pdfData.text?.trim();
+        if (rawText && rawText.length > 50) {
+          activePrompt =
+            activePrompt +
+            `\n\n---\nEXTRACTED PDF TEXT (use this if the images are unreadable):\n${rawText}\n---`;
+          console.log(
+            `[PDF text extraction] Appended ${rawText.length} chars of raw text to prompt`,
+          );
+        }
+      } catch (textErr) {
+        // Non-fatal – proceed without the text layer
+        console.warn("[PDF text extraction] Failed to extract text:", textErr);
+      }
+    }
+
     // Handle PDF conversion for Ollama providers
     let imagesToProcess: Array<{ base64: string; mimeType: string }> = [];
 
@@ -992,8 +1019,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       const rawCups = String(extractedData.cups)
         .replace(/\s+/g, "")
         .toUpperCase();
-      // Strict pattern: ES + 16-18 digits + exactly 2 uppercase letters at the end
-      const cupsPattern = /^ES\d{16,18}[A-Z]{2}$/;
+      // Strict pattern: ES + 16-18 digits + 2 uppercase letters (checksum) + optional subpoint (1 digit + 1 letter)
+      const cupsPattern = /^ES\d{16,18}[A-Z]{2}(\d[A-Z])?$/;
       if (cupsPattern.test(rawCups)) {
         extractedData.cups = rawCups;
       } else {

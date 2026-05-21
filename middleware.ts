@@ -117,7 +117,7 @@ let maintenanceCache: {
   message: string | null;
   ts: number;
 } | null = null;
-const MAINTENANCE_CACHE_TTL_MS = 10_000; // 10 seconds
+const MAINTENANCE_CACHE_TTL_MS = 2_000; // 2 seconds
 
 async function getMaintenanceStatus(
   req: NextRequest,
