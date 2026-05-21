@@ -7,7 +7,6 @@ const nextConfig = {
     "@sparticuz/chromium",
     "puppeteer-core",
     "@napi-rs/canvas",
-    "pdf-parse",
   ],
 
   
