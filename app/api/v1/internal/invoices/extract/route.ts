@@ -584,14 +584,39 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // available on Vercel's Linux environment. When pdfjs tries to render these
     // to images the text layer comes out blank, causing the LLM to return only
     // the invoice type. To guard against this we always extract the raw text
-    // layer from the PDF and append it to the prompt so the LLM can fall back
-    // to the text even when the rendered images are unreadable.
+    // layer from the PDF via pdfjs (same lib used for image conversion) and
+    // append it to the prompt so the LLM can fall back to the text even when
+    // the rendered images are unreadable.
     if (file.type === "application/pdf") {
       try {
-        const pdfParseModule = await import("pdf-parse");
-        const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
-        const pdfData = await pdfParse(buffer);
-        const rawText = pdfData.text?.trim();
+        const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+        const path = await import("path");
+        const workerPath = path.resolve(
+          process.cwd(),
+          "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+        );
+        (pdfjsLib as any).GlobalWorkerOptions.workerSrc =
+          `file://${workerPath}`;
+
+        const loadingTask = (pdfjsLib as any).getDocument({
+          data: new Uint8Array(buffer),
+          verbosity: 0,
+        });
+        const pdf = await loadingTask.promise;
+        const textParts: string[] = [];
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item: any) => item.str ?? "")
+            .join(" ")
+            .replace(/\s{3,}/g, "  ")
+            .trim();
+          if (pageText) textParts.push(pageText);
+        }
+
+        const rawText = textParts.join("\n\n").trim();
         if (rawText && rawText.length > 50) {
           activePrompt =
             activePrompt +
