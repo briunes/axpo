@@ -38,6 +38,8 @@ export const getRequestSessionContext = (
   request: NextRequest,
 ): SessionRequestContext => {
   const userAgent = request.headers.get("user-agent") ?? "unknown";
+  const browserFingerprint =
+    request.headers.get("x-browser-fingerprint")?.trim() || null;
   const ipAddress =
     firstForwardedIp(request.headers.get("x-forwarded-for")) ||
     request.headers.get("x-real-ip") ||
@@ -48,5 +50,6 @@ export const getRequestSessionContext = (
     userAgent,
     browser: parseBrowser(userAgent),
     os: parseOs(userAgent),
+    browserFingerprint,
   };
 };

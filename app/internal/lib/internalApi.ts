@@ -1,3 +1,5 @@
+import { getBrowserFingerprint } from "./browserFingerprint";
+
 export interface LoginResult {
   token?: string;
   requiresOtp?: boolean;
@@ -564,15 +566,24 @@ function authHeaders(token: string): HeadersInit {
   };
 }
 
+async function sessionHeaders(): Promise<HeadersInit> {
+  const browserFingerprint = await getBrowserFingerprint();
+
+  return {
+    "content-type": "application/json",
+    ...(browserFingerprint
+      ? { "x-browser-fingerprint": browserFingerprint }
+      : {}),
+  };
+}
+
 export async function login(
   email: string,
   password: string,
 ): Promise<LoginResult> {
   const response = await fetch(`${baseUrl}/api/v1/internal/auth/login`, {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
+    headers: await sessionHeaders(),
     body: JSON.stringify({ email, password }),
   });
 
@@ -587,7 +598,7 @@ export async function setupPassword(
     `${baseUrl}/api/v1/internal/auth/setup-password`,
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: await sessionHeaders(),
       body: JSON.stringify({ token, password }),
     },
   );
@@ -620,7 +631,7 @@ export async function resetPassword(
     `${baseUrl}/api/v1/internal/auth/reset-password`,
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: await sessionHeaders(),
       body: JSON.stringify({ token, password }),
     },
   );
@@ -633,7 +644,7 @@ export async function verifyOtp(
 ): Promise<LoginResult> {
   const response = await fetch(`${baseUrl}/api/v1/internal/auth/otp/verify`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: await sessionHeaders(),
     body: JSON.stringify({ otpSessionToken, code }),
   });
   return parseApiResponse<LoginResult>(

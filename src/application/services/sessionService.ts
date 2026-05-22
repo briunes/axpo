@@ -16,6 +16,7 @@ export interface SessionRequestContext {
   userAgent: string;
   browser: string;
   os: string;
+  browserFingerprint?: string | null;
 }
 
 interface SessionUser {
@@ -47,6 +48,10 @@ const normalizeDeviceLimit = (value: number | null | undefined): number => {
 const normalizedPart = (value: string) => value.trim().toLowerCase();
 
 const buildDeviceFingerprint = (context: SessionRequestContext): string => {
+  if (context.browserFingerprint) {
+    return normalizedPart(context.browserFingerprint);
+  }
+
   const source = [
     normalizedPart(context.browser),
     normalizedPart(context.os),
@@ -135,6 +140,7 @@ export class SessionService {
           lastActivityAt: loginAt,
           metadataJson: {
             maxActiveDevices: maxDevices,
+            browserFingerprint: context.browserFingerprint ?? null,
           },
         },
       });
@@ -161,6 +167,7 @@ export class SessionService {
         os: context.os,
         ipAddress: context.ipAddress,
         userAgent: context.userAgent,
+        browserFingerprint: context.browserFingerprint ?? null,
         sessionTokenId,
         autoKickedSessions: autoKickedSessionIds.length,
       },

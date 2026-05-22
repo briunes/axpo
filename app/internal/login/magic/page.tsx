@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@mui/material";
 import { saveSession } from "../../lib/authSession";
+import { getBrowserFingerprint } from "../../lib/browserFingerprint";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import "../../globals.css";
 
@@ -33,8 +34,16 @@ function MagicLinkVerifyContent() {
 
         const verify = async () => {
             try {
+                const browserFingerprint = await getBrowserFingerprint();
                 const res = await fetch(
-                    `/api/v1/internal/auth/magic-link/verify?token=${encodeURIComponent(token)}`
+                    `/api/v1/internal/auth/magic-link/verify?token=${encodeURIComponent(token)}`,
+                    browserFingerprint
+                        ? {
+                            headers: {
+                                "x-browser-fingerprint": browserFingerprint,
+                            },
+                        }
+                        : undefined,
                 );
                 const body = await res.json();
 
