@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Box, Tabs, Tab } from "@mui/material";
+import HistoryIcon from "@mui/icons-material/History";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
@@ -11,6 +12,7 @@ import { useUsers } from "../../../components/hooks/useUsers";
 import { UserForm, type UserFormData } from "../../../components/modules/UserForm";
 import { CrudPageLayout, LoadingState, PinResultDialog, useAlerts } from "../../../components/shared";
 import { UserPreferencesForm } from "../../../components/ui/UserPreferencesForm";
+import { AuditLogsModal } from "../../../components/ui/AuditLogsModal";
 import { getUser, type ListUsersResponse, type UserItem } from "../../../lib/internalApi";
 
 export default function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
@@ -30,6 +32,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const [newPin, setNewPin] = useState<string | null>(null);
     const [isRegeneratingPin, setIsRegeneratingPin] = useState(false);
     const [isSendingPasswordReset, setIsSendingPasswordReset] = useState(false);
+    const [showAuditLogsModal, setShowAuditLogsModal] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
     const [formData, setFormData] = useState<UserFormData>({
         fullName: "",
@@ -92,24 +95,30 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
 
     useEffect(() => {
         if (usersActions.successText) {
-            // Don't show alert or redirect for PIN rotation - we handle it with the dialog
-            if (!isRegeneratingPin) {
-                alertSuccess(usersActions.successText);
-                usersActions.clearFeedback();
-                router.push("/internal/users");
-            } else {
+            // Keep user on edit view for PIN rotation and password reset actions
+            if (isRegeneratingPin) {
                 // Clear the success message for PIN rotation
                 usersActions.clearFeedback();
                 setIsRegeneratingPin(false);
+            } else if (isSendingPasswordReset) {
+                alertSuccess(usersActions.successText);
+                usersActions.clearFeedback();
+                setIsSendingPasswordReset(false);
+            } else {
+                alertSuccess(usersActions.successText);
+                usersActions.clearFeedback();
+                router.push("/internal/users");
             }
         }
-    }, [usersActions.successText, isRegeneratingPin]);
+    }, [alertSuccess, isRegeneratingPin, isSendingPasswordReset, router, usersActions.clearFeedback, usersActions.successText]);
 
     useEffect(() => {
         if (usersActions.errorText) {
             alertError(usersActions.errorText);
+            setIsRegeneratingPin(false);
+            setIsSendingPasswordReset(false);
         }
-    }, [usersActions.errorText]);
+    }, [alertError, usersActions.errorText]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -145,11 +154,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const handleSendPasswordReset = async () => {
         if (!user) return;
         setIsSendingPasswordReset(true);
-        try {
-            await usersActions.handleRequestPasswordReset(user);
-        } finally {
-            setIsSendingPasswordReset(false);
-        }
+        await usersActions.handleRequestPasswordReset(user);
     };
 
     if (!session || !user) {
@@ -173,6 +178,14 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                 maxWidth={undefined}
                 actions={
                     <>
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<HistoryIcon />}
+                            onClick={() => setShowAuditLogsModal(true)}
+                        >
+                            {t("auditLogsModal", "title")}
+                        </Button>
                         <Button
                             variant="outlined"
                             size="small"
@@ -235,6 +248,17 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                         setShowPinDialog(false);
                         setNewPin(null);
                     }}
+                />
+            )}
+
+            {session && (
+                <AuditLogsModal
+                    open={showAuditLogsModal}
+                    onClose={() => setShowAuditLogsModal(false)}
+                    targetType="USER"
+                    targetId={user.id}
+                    token={session.token}
+                    title={`${t("auditLogsModal", "title")} - ${user.fullName}`}
                 />
             )}
         </>

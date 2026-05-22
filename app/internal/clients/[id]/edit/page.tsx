@@ -2,11 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { use, useEffect, useRef, useState } from "react";
+import { Button } from "@mui/material";
+import HistoryIcon from "@mui/icons-material/History";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
 import { getClient, isAdmin, listAgencies, updateClient, type ClientItem } from "../../../lib/internalApi";
 import { CrudPageLayout, LoadingState, useAlerts } from "../../../components/shared";
 import { ClientForm, type ClientFormData } from "../../../components/modules/ClientForm";
+import { AuditLogsModal } from "../../../components/ui/AuditLogsModal";
 import type { AgencyItem } from "../../../lib/internalApi";
 
 export default function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,6 +21,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
 
     const [client, setClient] = useState<ClientItem | null>(null);
     const [agencies, setAgencies] = useState<AgencyItem[]>([]);
+    const [showAuditLogsModal, setShowAuditLogsModal] = useState(false);
     const [formData, setFormData] = useState<ClientFormData>({
         name: "",
         cif: "",
@@ -114,7 +118,19 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
             title={t("clientFormPage", "editTitle")}
             subtitle={t("clientFormPage", "editSubtitle", { name: client.name })}
             backHref="/internal/clients"
-            actions={formActions}
+            actions={
+                <>
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<HistoryIcon />}
+                        onClick={() => setShowAuditLogsModal(true)}
+                    >
+                        {t("auditLogsModal", "title")}
+                    </Button>
+                    {formActions}
+                </>
+            }
         >
             <ClientForm
                 session={session}
@@ -130,6 +146,16 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
                 mode="edit"
                 onRenderActions={setFormActions}
             />
-        </CrudPageLayout>
+
+            {session && (
+                <AuditLogsModal
+                    open={showAuditLogsModal}
+                    onClose={() => setShowAuditLogsModal(false)}
+                    targetType="CLIENT"
+                    targetId={client.id}
+                    token={session.token}
+                    title={`${t("auditLogsModal", "title")} - ${client.name}`}
+                />
+            )}        </CrudPageLayout>
     );
 }

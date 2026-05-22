@@ -42,6 +42,140 @@ const toInputJson = (value: unknown): Prisma.InputJsonValue => {
   return (value ?? {}) as Prisma.InputJsonValue;
 };
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const parseJsonLikeString = (value: unknown): unknown => {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  if (
+    !(trimmed.startsWith("{") && trimmed.endsWith("}")) &&
+    !(trimmed.startsWith("[") && trimmed.endsWith("]"))
+  ) {
+    return value;
+  }
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return value;
+  }
+};
+
+const normalizeForAudit = (value: unknown): unknown =>
+  parseJsonLikeString(value === undefined ? null : value);
+
+const shouldSkipAuditPath = (path: string): boolean => {
+  return (
+    path === "results" ||
+    path.startsWith("results.") ||
+    path === "selectedOffer" ||
+    path.startsWith("selectedOffer.")
+  );
+};
+
+const collectAuditDiff = (
+  beforeValue: unknown,
+  afterValue: unknown,
+  path: string,
+  beforeOut: Record<string, unknown>,
+  afterOut: Record<string, unknown>,
+): void => {
+  if (shouldSkipAuditPath(path)) {
+    return;
+  }
+
+  const normalizedBefore = normalizeForAudit(beforeValue);
+  const normalizedAfter = normalizeForAudit(afterValue);
+
+  const beforeIsObject = isPlainObject(normalizedBefore);
+  const afterIsObject = isPlainObject(normalizedAfter);
+
+  if (beforeIsObject || afterIsObject) {
+    const beforeObj = beforeIsObject
+      ? normalizedBefore
+      : ({} as Record<string, unknown>);
+    const afterObj = afterIsObject
+      ? normalizedAfter
+      : ({} as Record<string, unknown>);
+
+    const keys = Array.from(
+      new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)]),
+    );
+    for (const key of keys) {
+      const nextPath = path ? `${path}.${key}` : key;
+      collectAuditDiff(
+        beforeObj[key],
+        afterObj[key],
+        nextPath,
+        beforeOut,
+        afterOut,
+      );
+    }
+    return;
+  }
+
+  if (JSON.stringify(normalizedBefore) === JSON.stringify(normalizedAfter)) {
+    return;
+  }
+
+  beforeOut[path] = normalizedBefore;
+  afterOut[path] = normalizedAfter;
+};
+
+const mergePayloadPatch = (base: unknown, patch: unknown): unknown => {
+  if (patch === undefined) return base;
+
+  if (isPlainObject(base) && isPlainObject(patch)) {
+    const merged: Record<string, unknown> = { ...base };
+    for (const key of Object.keys(patch)) {
+      merged[key] = mergePayloadPatch(base[key], patch[key]);
+    }
+    return merged;
+  }
+
+  return patch;
+};
+
+const applySalesAgentDefaults = (
+  payload: Record<string, unknown>,
+  ownerName: string,
+): Record<string, unknown> => {
+  if (!ownerName) return payload;
+
+  const next: Record<string, unknown> = { ...payload };
+
+  const electricityRaw = next.electricity;
+  if (isPlainObject(electricityRaw)) {
+    const electricity = { ...electricityRaw };
+    const clientDataRaw = electricity.clientData;
+    const clientData = isPlainObject(clientDataRaw)
+      ? { ...clientDataRaw }
+      : ({} as Record<string, unknown>);
+    const comercial =
+      typeof clientData.comercial === "string"
+        ? clientData.comercial.trim()
+        : "";
+    if (!comercial) {
+      clientData.comercial = ownerName;
+    }
+    electricity.clientData = clientData;
+    next.electricity = electricity;
+  }
+
+  const gasRaw = next.gas;
+  if (isPlainObject(gasRaw)) {
+    const gas = { ...gasRaw };
+    const comercial =
+      typeof gas.comercial === "string" ? gas.comercial.trim() : "";
+    if (!comercial) {
+      gas.comercial = ownerName;
+    }
+    next.gas = gas;
+  }
+
+  return next;
+};
+
 export class SimulationService {
   static buildSimulationFilter(actor: ActorContext, includeDeleted = false) {
     if (actor.role === UserRole.ADMIN) {
@@ -69,7 +203,7 @@ export class SimulationService {
       where: { id: simulationId },
       include: {
         ownerUser: {
-          select: { id: true, agencyId: true, pinHash: true },
+          select: { id: true, agencyId: true, pinHash: true, fullName: true },
         },
       },
     });
@@ -210,6 +344,36 @@ export class SimulationService {
   ) {
     const simulation = await this.assertSimulationAccess(actor, simulationId);
 
+    const latestVersion =
+      input.payloadJson !== undefined || input.baseValueSetId !== undefined
+        ? await prisma.simulationVersion.findFirst({
+            where: { simulationId: simulation.id },
+            orderBy: { createdAt: "desc" },
+            select: { payloadJson: true, baseValueSetId: true },
+          })
+        : null;
+
+    const payloadBefore = isPlainObject(latestVersion?.payloadJson)
+      ? (latestVersion.payloadJson as Record<string, unknown>)
+      : {};
+    const payloadPatch = isPlainObject(input.payloadJson)
+      ? input.payloadJson
+      : {};
+    const mergedPayload = mergePayloadPatch(payloadBefore, payloadPatch);
+    const payloadAfter = isPlainObject(mergedPayload)
+      ? mergedPayload
+      : payloadBefore;
+
+    const ownerName = simulation.ownerUser?.fullName ?? "";
+    const payloadBeforeNormalized = applySalesAgentDefaults(
+      payloadBefore,
+      ownerName,
+    );
+    const payloadAfterNormalized = applySalesAgentDefaults(
+      payloadAfter,
+      ownerName,
+    );
+
     const updated = await prisma.simulation.update({
       where: { id: simulation.id },
       data: {
@@ -227,7 +391,10 @@ export class SimulationService {
       await prisma.simulationVersion.create({
         data: {
           simulationId: simulation.id,
-          payloadJson: toInputJson(input.payloadJson),
+          payloadJson:
+            input.payloadJson !== undefined
+              ? toInputJson(payloadAfterNormalized)
+              : toInputJson(latestVersion?.payloadJson ?? {}),
           baseValueSetId: input.baseValueSetId ?? null,
           createdBy: actor.userId,
         },
@@ -246,6 +413,40 @@ export class SimulationService {
           ? simulation.expiresAt.toISOString()
           : (simulation.expiresAt ?? null);
       simAfter.expiresAt = input.expiresAt;
+    }
+    if (input.baseValueSetId !== undefined) {
+      simBefore.baseValueSetId = latestVersion?.baseValueSetId ?? null;
+      simAfter.baseValueSetId = input.baseValueSetId ?? null;
+    }
+    if (input.payloadJson !== undefined) {
+      const payloadBeforeDiff: Record<string, unknown> = {};
+      const payloadAfterDiff: Record<string, unknown> = {};
+
+      const rootKeys = Array.from(
+        new Set([
+          ...Object.keys(payloadBeforeNormalized),
+          ...Object.keys(payloadAfterNormalized),
+        ]),
+      );
+      for (const key of rootKeys) {
+        collectAuditDiff(
+          payloadBeforeNormalized[key],
+          payloadAfterNormalized[key],
+          key,
+          payloadBeforeDiff,
+          payloadAfterDiff,
+        );
+      }
+
+      const MAX_FIELDS = 120;
+      const changedPaths = Object.keys(payloadBeforeDiff);
+      for (const path of changedPaths.slice(0, MAX_FIELDS)) {
+        simBefore[path] = payloadBeforeDiff[path];
+        simAfter[path] = payloadAfterDiff[path];
+      }
+      if (changedPaths.length > MAX_FIELDS) {
+        simAfter._truncatedFields = changedPaths.length - MAX_FIELDS;
+      }
     }
     await AuditService.logEvent({
       actorUserId: actor.userId,

@@ -16,44 +16,66 @@ interface AuditLogsModuleProps {
 
 // ─── Event registry ──────────────────────────────────────────────────────────
 
-type EventMeta = { label: string; color: string; bg: string; group: string };
+type EventMeta = { labelKey: string; color: string; bg: string; group: string };
+type AuditEventLabelKey =
+  | "created"
+  | "updated"
+  | "deleted"
+  | "calculated"
+  | "shared"
+  | "cloned"
+  | "pinRotated"
+  | "statusChanged"
+  | "activated"
+  | "setCreated"
+  | "ocrApplied"
+  | "login"
+  | "logout"
+  | "accessAttempt";
 
 const EVENT_REGISTRY: Record<string, EventMeta> = {
-  SIMULATION_CREATED: { group: "Sim", label: "Created", color: "#60a5fa", bg: "rgba(96,165,250,.13)" },
-  SIMULATION_UPDATED: { group: "Sim", label: "Updated", color: "#60a5fa", bg: "rgba(96,165,250,.13)" },
-  SIMULATION_CALCULATED: { group: "Sim", label: "Calculated", color: "#38bdf8", bg: "rgba(56,189,248,.13)" },
-  SIMULATION_SHARED: { group: "Sim", label: "Shared", color: "#34d399", bg: "rgba(52,211,153,.13)" },
-  SIMULATION_CLONED: { group: "Sim", label: "Cloned", color: "#a78bfa", bg: "rgba(167,139,250,.13)" },
-  SIMULATION_DELETED: { group: "Sim", label: "Deleted", color: "#f87171", bg: "rgba(248,113,113,.13)" },
-  SIMULATION_PIN_ROTATED: { group: "Sim", label: "PIN Rotated", color: "#fbbf24", bg: "rgba(251,191,36,.13)" },
-  SIMULATION_OCR_APPLIED: { group: "Sim", label: "OCR Applied", color: "#a78bfa", bg: "rgba(167,139,250,.13)" },
-  USER_CREATED: { group: "User", label: "Created", color: "#c084fc", bg: "rgba(192,132,252,.13)" },
-  USER_UPDATED: { group: "User", label: "Updated", color: "#c084fc", bg: "rgba(192,132,252,.13)" },
-  USER_STATUS_CHANGED: { group: "User", label: "Status Changed", color: "#e879f9", bg: "rgba(232,121,249,.13)" },
-  USER_PIN_ROTATED: { group: "User", label: "PIN Rotated", color: "#fbbf24", bg: "rgba(251,191,36,.13)" },
-  AGENCY_CREATED: { group: "Agency", label: "Created", color: "#fb923c", bg: "rgba(251,146,60,.13)" },
-  AGENCY_UPDATED: { group: "Agency", label: "Updated", color: "#fb923c", bg: "rgba(251,146,60,.13)" },
-  CLIENT_CREATED: { group: "Client", label: "Created", color: "#f472b6", bg: "rgba(244,114,182,.13)" },
-  CLIENT_UPDATED: { group: "Client", label: "Updated", color: "#f472b6", bg: "rgba(244,114,182,.13)" },
-  CLIENT_DELETED: { group: "Client", label: "Deleted", color: "#f87171", bg: "rgba(248,113,113,.13)" },
-  BASE_VALUE_SET_CREATED: { group: "BV", label: "Set Created", color: "#2dd4bf", bg: "rgba(45,212,191,.13)" },
-  BASE_VALUE_SET_ACTIVATED: { group: "BV", label: "Activated", color: "#2dd4bf", bg: "rgba(45,212,191,.13)" },
-  AUTH_LOGIN: { group: "Auth", label: "Login", color: "#94a3b8", bg: "rgba(148,163,184,.10)" },
-  AUTH_LOGOUT: { group: "Auth", label: "Logout", color: "#94a3b8", bg: "rgba(148,163,184,.10)" },
-  PUBLIC_ACCESS_ATTEMPT: { group: "Pub", label: "Access Attempt", color: "#facc15", bg: "rgba(250,204,21,.10)" },
+  SIMULATION_CREATED: { group: "Sim", labelKey: "created", color: "#60a5fa", bg: "rgba(96,165,250,.13)" },
+  SIMULATION_UPDATED: { group: "Sim", labelKey: "updated", color: "#60a5fa", bg: "rgba(96,165,250,.13)" },
+  SIMULATION_CALCULATED: { group: "Sim", labelKey: "calculated", color: "#38bdf8", bg: "rgba(56,189,248,.13)" },
+  SIMULATION_SHARED: { group: "Sim", labelKey: "shared", color: "#34d399", bg: "rgba(52,211,153,.13)" },
+  SIMULATION_CLONED: { group: "Sim", labelKey: "cloned", color: "#a78bfa", bg: "rgba(167,139,250,.13)" },
+  SIMULATION_DELETED: { group: "Sim", labelKey: "deleted", color: "#f87171", bg: "rgba(248,113,113,.13)" },
+  SIMULATION_PIN_ROTATED: { group: "Sim", labelKey: "pinRotated", color: "#fbbf24", bg: "rgba(251,191,36,.13)" },
+  SIMULATION_OCR_APPLIED: { group: "Sim", labelKey: "ocrApplied", color: "#a78bfa", bg: "rgba(167,139,250,.13)" },
+  USER_CREATED: { group: "User", labelKey: "created", color: "#c084fc", bg: "rgba(192,132,252,.13)" },
+  USER_UPDATED: { group: "User", labelKey: "updated", color: "#c084fc", bg: "rgba(192,132,252,.13)" },
+  USER_STATUS_CHANGED: { group: "User", labelKey: "statusChanged", color: "#e879f9", bg: "rgba(232,121,249,.13)" },
+  USER_PIN_ROTATED: { group: "User", labelKey: "pinRotated", color: "#fbbf24", bg: "rgba(251,191,36,.13)" },
+  AGENCY_CREATED: { group: "Agency", labelKey: "created", color: "#fb923c", bg: "rgba(251,146,60,.13)" },
+  AGENCY_UPDATED: { group: "Agency", labelKey: "updated", color: "#fb923c", bg: "rgba(251,146,60,.13)" },
+  CLIENT_CREATED: { group: "Client", labelKey: "created", color: "#f472b6", bg: "rgba(244,114,182,.13)" },
+  CLIENT_UPDATED: { group: "Client", labelKey: "updated", color: "#f472b6", bg: "rgba(244,114,182,.13)" },
+  CLIENT_DELETED: { group: "Client", labelKey: "deleted", color: "#f87171", bg: "rgba(248,113,113,.13)" },
+  BASE_VALUE_SET_CREATED: { group: "BV", labelKey: "setCreated", color: "#2dd4bf", bg: "rgba(45,212,191,.13)" },
+  BASE_VALUE_SET_ACTIVATED: { group: "BV", labelKey: "activated", color: "#2dd4bf", bg: "rgba(45,212,191,.13)" },
+  AUTH_LOGIN: { group: "Auth", labelKey: "login", color: "#94a3b8", bg: "rgba(148,163,184,.10)" },
+  AUTH_LOGOUT: { group: "Auth", labelKey: "logout", color: "#94a3b8", bg: "rgba(148,163,184,.10)" },
+  PUBLIC_ACCESS_ATTEMPT: { group: "Pub", labelKey: "accessAttempt", color: "#facc15", bg: "rgba(250,204,21,.10)" },
 };
 
 const GROUP_ORDER = ["Simulation", "User", "Agency", "Client", "Base Values", "Auth", "Public"];
 const EVENT_TYPES = Object.keys(EVENT_REGISTRY);
 
 function getEvent(eventType: string): EventMeta {
-  return EVENT_REGISTRY[eventType] ?? { group: "", label: eventType, color: "#94a3b8", bg: "rgba(148,163,184,.10)" };
+  return EVENT_REGISTRY[eventType] ?? { group: "", labelKey: "", color: "#94a3b8", bg: "rgba(148,163,184,.10)" };
+}
+
+function getEventLabel(eventType: string, t: ReturnType<typeof useI18n>["t"]): string {
+  const labelKey = getEvent(eventType).labelKey as AuditEventLabelKey | "";
+  return labelKey ? t("auditEvents", labelKey) : eventType;
 }
 
 // ─── Badge ────────────────────────────────────────────────────────────────────
 
 function EventBadge({ eventType }: { eventType: string }) {
+  const { t } = useI18n();
   const ev = getEvent(eventType);
+  const label = getEventLabel(eventType, t);
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 5,
@@ -65,7 +87,7 @@ function EventBadge({ eventType }: { eventType: string }) {
       {ev.group && (
         <span style={{ opacity: 0.5, fontSize: 10, fontWeight: 600 }}>{ev.group}</span>
       )}
-      {ev.label}
+      {label}
     </span>
   );
 }
@@ -371,7 +393,7 @@ export function AuditLogsModule({ session: _session, actions, onNotify: _onNotif
                 if (!items.length) return null;
                 return (
                   <optgroup key={group} label={group}>
-                    {items.map((t) => <option key={t} value={t}>{EVENT_REGISTRY[t]!.label}</option>)}
+                    {items.map((eventType) => <option key={eventType} value={eventType}>{getEventLabel(eventType, t)}</option>)}
                   </optgroup>
                 );
               })}

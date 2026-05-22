@@ -749,7 +749,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     const clientComplete = !!state.cups && !!state.nombreTitular;
     const invoiceComplete = !!state.fechaInicio && !!state.fechaFin && state.facturaActual > 0;
     const powerComplete = pp.every((p) => (state.potencia[p] ?? 0) > 0);
-    const consumptionComplete = ep.every((p) => (state.consumo[p] ?? 0) > 0);
+    const consumptionComplete = ep.some((p) => (state.consumo[p] ?? 0) > 0);
 
     const requiredSteps = [clientComplete, invoiceComplete, powerComplete, consumptionComplete];
     const completedCount = requiredSteps.filter(Boolean).length;
