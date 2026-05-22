@@ -398,8 +398,8 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
             reactiva: invoiceData.reactiva ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
             otrosCargos: invoiceData.otrosCargos ?? 0,
-            ivaTasa: 21,
-            impuestoElectricoTasa: 5.11269,
+            ivaTasa: invoiceData.ivaTasa ?? 21,
+            impuestoElectricoTasa: invoiceData.impuestoElectricoTasa ?? 5.11269,
         };
     }
 

@@ -13,6 +13,7 @@ export interface CrudFormContainerProps {
     cancelLabel?: string;
     onCancel?: () => void;
     isSubmitting?: boolean;
+    hideSubmit?: boolean;
     onRenderActions?: (actions: React.ReactNode) => void;
 }
 
@@ -28,6 +29,7 @@ export function CrudFormContainer({
     cancelLabel = "Cancel",
     onCancel,
     isSubmitting,
+    hideSubmit,
     onRenderActions,
 }: CrudFormContainerProps) {
     const onRenderActionsRef = useRef(onRenderActions);
@@ -50,18 +52,20 @@ export function CrudFormContainer({
                     {cancelLabel}
                 </Button>
             )}
-            <Button
-                type="submit"
-                form={formId}
-                variant="contained"
-                size="small"
-                disabled={isSubmitting}
-                loading={isSubmitting}
-            >
-                {submitLabel}
-            </Button>
+            {!hideSubmit && (
+                <Button
+                    type="submit"
+                    form={formId}
+                    variant="contained"
+                    size="small"
+                    disabled={isSubmitting}
+                    loading={isSubmitting}
+                >
+                    {submitLabel}
+                </Button>
+            )}
         </>
-    ), [submitLabel, cancelLabel, isSubmitting, onCancel, formId]);
+    ), [submitLabel, cancelLabel, isSubmitting, onCancel, formId, hideSubmit]);
 
     useLayoutEffect(() => {
         if (onRenderActionsRef.current) {

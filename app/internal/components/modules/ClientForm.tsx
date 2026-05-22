@@ -78,9 +78,7 @@ export function ClientForm({
         if (!data.name || data.name.trim() === "") {
             errors.name = t("clientFormPage", "validNameRequired");
         }
-        if (!data.contactEmail || data.contactEmail.trim() === "") {
-            errors.contactEmail = t("clientFormPage", "validContactEmailRequired");
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.contactEmail)) {
+        if (data.contactEmail && data.contactEmail.trim() !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.contactEmail)) {
             errors.contactEmail = t("clientFormPage", "validContactEmailInvalid");
         }
         if (!data.address.country) {
@@ -160,7 +158,6 @@ export function ClientForm({
                         onChange({ ...data, contactEmail: e.target.value });
                         clearError("contactEmail");
                     }}
-                    required
                     disabled={isSubmitting}
                     error={!!validationErrors.contactEmail}
                     helperText={validationErrors.contactEmail}

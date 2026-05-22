@@ -483,7 +483,7 @@ export function SectionMenu({
               {!collapsed && (
                 <Box className="app-user-detail" sx={{ flex: 1, overflow: "hidden" }}>
                   <Box className="app-user-name" sx={{ color: "var(--scheme-neutral-100)" }}>{session.user.fullName}</Box>
-                  <Box className="app-user-role">{session.user.role}</Box>
+                  <Box className="app-user-role">{session.user.role === "ADMIN" ? t("userFormPage", "roleAdmin") : session.user.role === "AGENT" ? t("userFormPage", "roleAgent") : t("userFormPage", "roleCommercial")}</Box>
                 </Box>
               )}
             </Box>

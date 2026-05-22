@@ -56,6 +56,9 @@ export interface ExtractedInvoiceData {
     reactiva?: number;
     alquiler?: number;
     otrosCargos?: number;
+    ivaTasa?: number;
+    impuestoElectricoTasa?: number;
+    impuestoHidrocarburo?: number;
 
     // Current supplier unit prices (from invoice detail)
     precioPotenciaP1?: number;
@@ -90,13 +93,19 @@ interface InvoiceExtractorProps {
     onError?: (error: string) => void;
     /** Called right before a new extraction starts — use to clear previous extracted data */
     onBeforeExtract?: () => void;
+    /** Called when file presence changes (true = file uploaded, false = no file) */
+    onFileChange?: (hasFile: boolean) => void;
 }
 
-export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract }: InvoiceExtractorProps) {
+export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, onFileChange }: InvoiceExtractorProps) {
     const { t } = useI18n();
     const [files, setFiles] = useState<File[]>([]);
     const [isExtracting, setIsExtracting] = useState(false);
     const [extractionStatus, setExtractionStatus] = useState<"idle" | "success" | "error">("idle");
+
+    useEffect(() => {
+        onFileChange?.(files.length > 0);
+    }, [files.length]);
     const [statusMessage, setStatusMessage] = useState("");
     const [isDragging, setIsDragging] = useState(false);
     const [progress, setProgress] = useState(0);

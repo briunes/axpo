@@ -2,12 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { use, useEffect, useRef, useState } from "react";
+import { State } from "country-state-city";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import AddIcon from "@mui/icons-material/Add";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { createSimulation, createClient, listClients, getAgency, type ClientItem, type AgencyItem } from "../../lib/internalApi";
+import { createSimulation, createClient, listClients, getAgency, calculateSimulation, type ClientItem, type AgencyItem } from "../../lib/internalApi";
 import { CrudPageLayout, LoadingState, useAlerts } from "../../components/shared";
 import { CrudFormContainer } from "../../components/shared/CrudFormContainer";
 import { getSystemConfig } from "../../lib/configApi";
@@ -28,6 +29,109 @@ function addDays(n: number): string {
     const d = new Date();
     d.setDate(d.getDate() + n);
     return d.toISOString().slice(0, 10);
+}
+
+// ─── OCR payload helpers (mirrors SimulationForm logic) ───────────────────────
+
+const ELEC_ENERGY_PERIODS: Record<string, string[]> = {
+    "2.0TD": ["P1", "P2", "P3"],
+    "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
+    "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
+};
+const ELEC_POWER_PERIODS: Record<string, string[]> = {
+    "2.0TD": ["P1", "P2"],
+    "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
+    "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
+};
+
+function ocrDaysBetween(from: string, to: string): number {
+    const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+    return Math.max(1, d + 1);
+}
+
+function ocrPrevMonthRange(): { fechaInicio: string; fechaFin: string } {
+    const now = new Date();
+    const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastOfLastMonth = new Date(firstOfThisMonth.getTime() - 86400000);
+    const firstOfLastMonth = new Date(lastOfLastMonth.getFullYear(), lastOfLastMonth.getMonth(), 1);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return {
+        fechaInicio: `${firstOfLastMonth.getFullYear()}-${pad(firstOfLastMonth.getMonth() + 1)}-01`,
+        fechaFin: `${lastOfLastMonth.getFullYear()}-${pad(lastOfLastMonth.getMonth() + 1)}-${pad(lastOfLastMonth.getDate())}`,
+    };
+}
+
+function buildElecPayloadFromOcr(data: import("../../components/modules").ExtractedInvoiceData): object {
+    const tariff = (data.tarifaAcceso || "3.0TD") as string;
+    const ep = ELEC_ENERGY_PERIODS[tariff] ?? ELEC_ENERGY_PERIODS["3.0TD"];
+    const pp = ELEC_POWER_PERIODS[tariff] ?? ELEC_POWER_PERIODS["3.0TD"];
+
+    const consumo: Record<string, number> = {};
+    ep.forEach((p) => { consumo[p] = (data as any)[`consumo${p}`] ?? 0; });
+    const potencia: Record<string, number> = {};
+    pp.forEach((p) => { potencia[p] = (data as any)[`potencia${p}`] ?? 0; });
+
+    const { fechaInicio, fechaFin } = data.fechaInicio && data.fechaFin
+        ? { fechaInicio: data.fechaInicio, fechaFin: data.fechaFin }
+        : ocrPrevMonthRange();
+    const dias = ocrDaysBetween(fechaInicio, fechaFin);
+    const zero: Record<string, number> = Object.fromEntries(ep.map((p) => [p, 0]));
+    const zeroPow: Record<string, number> = Object.fromEntries(pp.map((p) => [p, 0]));
+
+    return {
+        clientData: {
+            cups: data.cups || undefined,
+            consumoAnual: data.consumoTotal || undefined,
+            nombreTitular: data.nombreTitular || undefined,
+            direccion: data.direccion || undefined,
+            comercializadorActual: data.comercializadorActual || undefined,
+        },
+        tarifaAcceso: tariff,
+        zonaGeografica: data.zonaGeografica || "Peninsula",
+        perfilCarga: "NORMAL",
+        potenciaContratada: potencia,
+        excesoPotencia: data.excesoPotencia ?? 0,
+        consumo,
+        omieEstimado: zero,
+        personalizadaIndex: { margenEnergia: zero, margenPotencia: zeroPow },
+        personalizadaOmieB: { terminoB: zero, margenPotencia: zeroPow },
+        personalizadaFijo: { preciosEnergia: zero, preciosPotencia: zeroPow },
+        periodo: { fechaInicio, fechaFin, dias },
+        facturaActual: data.facturaActual ?? 0,
+        extras: {
+            reactiva: data.reactiva || undefined,
+            alquilerEquipoMedida: data.alquiler || undefined,
+            otrosCargos: data.otrosCargos || undefined,
+            ivaTasa: data.ivaTasa,
+            impuestoElectricoTasa: data.impuestoElectricoTasa,
+        },
+    };
+}
+
+function buildGasPayloadFromOcr(data: import("../../components/modules").ExtractedInvoiceData): object {
+    const { fechaInicio, fechaFin } = data.fechaInicio && data.fechaFin
+        ? { fechaInicio: data.fechaInicio, fechaFin: data.fechaFin }
+        : ocrPrevMonthRange();
+    const dias = ocrDaysBetween(fechaInicio, fechaFin);
+    return {
+        cups: data.cups || undefined,
+        consumoAnual: data.consumoTotal || undefined,
+        nombreTitular: data.nombreTitular || undefined,
+        direccion: data.direccion || undefined,
+        comercializadorActual: data.comercializadorActual || undefined,
+        tarifaAcceso: data.tarifaAcceso || "RL01",
+        zonaGeografica: "Peninsula",
+        consumo: data.consumoTotal || 0,
+        telemedida: "NO",
+        periodo: { fechaInicio, fechaFin, dias },
+        facturaActual: data.facturaActual ?? 0,
+        extras: {
+            alquilerEquipoMedida: data.alquiler || undefined,
+            otrosCargos: data.otrosCargos || undefined,
+        },
+        ivaTasa: data.ivaTasa,
+        impuestoHidrocarburo: 0.00234,
+    };
 }
 
 export default function NewSimulationPage() {
@@ -55,6 +159,7 @@ export default function NewSimulationPage() {
     const [clientFormError, setClientFormError] = useState<string | null>(null);
     const [allowQuickCreate, setAllowQuickCreate] = useState(false);
     const [llmEnabled, setLlmEnabled] = useState(false);
+    const [hasInvoiceFile, setHasInvoiceFile] = useState(false);
     const [simType, setSimType] = useState<SimType>("ELECTRICITY");
     const [expiresAt, setExpiresAt] = useState("");
     const [defaultDays, setDefaultDays] = useState<any>("");
@@ -72,6 +177,8 @@ export default function NewSimulationPage() {
     const [reportIssueMessage, setReportIssueMessage] = useState("");
     const [isSubmittingReport, setIsSubmittingReport] = useState(false);
     const [reportSubmitted, setReportSubmitted] = useState(false);
+    const [electricityTaxConfig, setElectricityTaxConfig] = useState<any>(null);
+    const [gasTaxConfig, setGasTaxConfig] = useState<any>(null);
 
     useEffect(() => {
         const root = document.documentElement;
@@ -88,7 +195,17 @@ export default function NewSimulationPage() {
     }, []);
 
     const handleInvoiceDataExtracted = (data: ExtractedInvoiceData, context?: InvoiceExtractionContext) => {
-        setExtractedData(data);
+        // Inject default tax values from config based on zone
+        const zone = data.zonaGeografica ?? "Peninsula";
+        const zoneKey = zone === "Baleares" ? "baleares" : zone === "Canarias" ? "canarias" : "peninsula";
+        const zoneConf = electricityTaxConfig?.[zoneKey];
+        const defaultIva = zoneConf
+            ? ((zoneConf.ivaRates ?? zoneConf.igicRates ?? [])[0] ?? 0.21) * 100
+            : 21;
+        const defaultElecTax = zoneConf
+            ? ((zoneConf.elecTaxRates ?? [])[0] ?? 0.051127) * 100
+            : 5.11269;
+        setExtractedData({ ...data, ivaTasa: defaultIva, impuestoElectricoTasa: defaultElecTax });
         if (context?.file) {
             setUploadedInvoiceFile(context.file);
         }
@@ -137,6 +254,15 @@ export default function NewSimulationPage() {
             showSuccess(t("newSimulationPage", "clientFound"));
         } else if (data.nombreTitular && allowQuickCreate) {
             // Pre-fill quick create form for new client and open modal instantly
+            const billingAddr = (data as any).clienteAddress;
+            const countryCode = billingAddr?.country || "ES";
+            // Normalize province: do a case-insensitive match against the library's state names
+            const rawProvince: string = billingAddr?.province || "";
+            const stateList = State.getStatesOfCountry(countryCode);
+            const matchedState = stateList.find(
+                (s) => s.name.toLowerCase() === rawProvince.toLowerCase()
+            );
+            const normalizedProvince = matchedState ? matchedState.name : rawProvince;
             setQuickClientData({
                 name: data.nombreTitular,
                 cif: data.cif || "",
@@ -145,7 +271,13 @@ export default function NewSimulationPage() {
                 contactPhone: "",
                 otherDetails: data.cups ? `CUPS: ${data.cups}` : "",
                 agencyId: session?.user.agencyId ?? "",
-                address: { country: "ES" },
+                address: {
+                    street: billingAddr?.street || "",
+                    city: billingAddr?.city || "",
+                    postalCode: billingAddr?.postalCode || "",
+                    province: normalizedProvince,
+                    country: countryCode,
+                },
                 language: "es",
             });
             setShowQuickCreate(true);
@@ -165,6 +297,8 @@ export default function NewSimulationPage() {
                     setDefaultDays(config.simulationExpirationDays);
                     setExpiresAt(addDays(config.simulationExpirationDays));
                     setLlmEnabled(config.llmEnabled ?? false);
+                    if ((config as any).electricityTaxConfig) setElectricityTaxConfig((config as any).electricityTaxConfig);
+                    if ((config as any).gasTaxConfig) setGasTaxConfig((config as any).gasTaxConfig);
                 })
                 .catch(() => {
                     // Fallback to 30 days if config fetch fails
@@ -210,6 +344,11 @@ export default function NewSimulationPage() {
                 contactPhone: quickClientData.contactPhone || undefined,
                 otherDetails: quickClientData.otherDetails || undefined,
                 agencyId: quickClientData.agencyId || session.user.agencyId,
+                street: quickClientData.address?.street || undefined,
+                city: quickClientData.address?.city || undefined,
+                postalCode: quickClientData.address?.postalCode || undefined,
+                province: quickClientData.address?.province || undefined,
+                country: quickClientData.address?.country || undefined,
             });
 
             // Add to clients list
@@ -295,6 +434,8 @@ export default function NewSimulationPage() {
                     alquiler: extractedData.alquiler,
                     otrosCargos: extractedData.otrosCargos,
                     reactiva: extractedData.reactiva,
+                    ivaTasa: extractedData.ivaTasa,
+                    impuestoElectricoTasa: extractedData.impuestoElectricoTasa,
                     precioPotenciaP1: extractedData.precioPotenciaP1,
                     precioPotenciaP2: extractedData.precioPotenciaP2,
                     precioPotenciaP3: extractedData.precioPotenciaP3,
@@ -309,6 +450,12 @@ export default function NewSimulationPage() {
                     precioEnergiaP6: extractedData.precioEnergiaP6,
                     invoiceType: extractedData.invoiceType,
                 };
+                // Also build the proper electricity/gas section so auto-calculation works
+                if (extractedData.invoiceType === "GAS") {
+                    payload.gas = buildGasPayloadFromOcr(extractedData);
+                } else {
+                    payload.electricity = buildElecPayloadFromOcr(extractedData);
+                }
             }
 
             const created = await createSimulation(session.token, {
@@ -335,6 +482,16 @@ export default function NewSimulationPage() {
                 } catch (uploadErr) {
                     console.error("Failed to upload invoice file:", uploadErr);
                     // Don't fail the simulation creation if file upload fails
+                }
+            }
+
+            // If created via OCR, trigger calculation immediately so results are ready
+            if (extractedData) {
+                try {
+                    await calculateSimulation(session.token, created.id);
+                } catch (calcErr) {
+                    console.error("Auto-calculate after OCR creation failed:", calcErr);
+                    // Don't block redirect if calculation fails
                 }
             }
 
@@ -365,6 +522,7 @@ export default function NewSimulationPage() {
                     cancelLabel={t("actions", "cancel")}
                     onCancel={() => router.push("/internal/simulations")}
                     isSubmitting={isSubmitting}
+                    hideSubmit={llmEnabled && hasInvoiceFile && !extractedData}
                 >
                     {/* Invoice Data Extraction - Only show if LLM is enabled */}
                     {llmEnabled && (
@@ -398,6 +556,7 @@ export default function NewSimulationPage() {
                             </div>
                             <InvoiceExtractor
                                 onDataExtracted={handleInvoiceDataExtracted}
+                                onFileChange={setHasInvoiceFile}
                                 onBeforeExtract={() => {
                                     setExtractedData(null);
                                     setIsValidatedExtractedData(false);
@@ -682,14 +841,26 @@ export default function NewSimulationPage() {
                                         <div>
                                             <div style={labelStyle}>{t("invoiceExtractor", "fieldZone")}</div>
                                             <FormSelect label="" size="small" value={extractedData.zonaGeografica ?? ""}
-                                                onChange={v => upStr("zonaGeografica", v as string)}
-                                                options={[
-                                                    { value: "Peninsula", label: "Peninsula" },
-                                                    { value: "Baleares", label: "Baleares" },
-                                                    { value: "Canarias", label: "Canarias" },
-                                                    { value: "Ceuta", label: "Ceuta" },
-                                                    { value: "Melilla", label: "Melilla" },
-                                                ]} />
+                                                onChange={v => {
+                                                    const newZone = v as string;
+                                                    const newZoneKey = newZone === "Baleares" ? "baleares" : newZone === "Canarias" ? "canarias" : "peninsula";
+                                                    const newZoneConf = electricityTaxConfig?.[newZoneKey];
+                                                    const newIva = newZoneConf
+                                                        ? ((newZoneConf.ivaRates ?? newZoneConf.igicRates ?? [])[0] ?? 0.21) * 100
+                                                        : 21;
+                                                    const newElecTax = newZoneConf
+                                                        ? ((newZoneConf.elecTaxRates ?? [])[0] ?? 0.051127) * 100
+                                                        : 5.11269;
+                                                    setExtractedData(prev => prev ? { ...prev, zonaGeografica: newZone, ivaTasa: newIva, impuestoElectricoTasa: newElecTax } : prev);
+                                                }}
+                                                options={simType === "GAS"
+                                                    ? [{ value: "Peninsula", label: t("simulationForm", "peninsulaYBaleares") }]
+                                                    : [
+                                                        { value: "Peninsula", label: t("simulationForm", "peninsula") },
+                                                        { value: "Baleares", label: t("simulationForm", "balearics") },
+                                                        { value: "Canarias", label: t("simulationForm", "canarias") },
+                                                    ]
+                                                } />
                                         </div>
                                         {/* BILLING PERIOD - span 2 */}
                                         <div style={{ gridColumn: "span 2" }}>
@@ -719,97 +890,255 @@ export default function NewSimulationPage() {
                                             <div style={labelStyle}>{t("invoiceExtractor", "fieldAddress")}</div>
                                             <FormInput label="" size="small" type="text" value={extractedData.direccion ?? ""} onChange={e => upStr("direccion", e.target.value)} />
                                         </div>
-                                        {/* EXCESS POWER */}
-                                        <div>
-                                            <div style={labelStyle}>{t("invoiceExtractor", "fieldExcesoPotencia")}</div>
-                                            <CurrencyInput value={extractedData.excesoPotencia ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, excesoPotencia: isNaN(v) ? undefined : v } : prev)} />
+                                        {/* EXCESS POWER - ELECTRICITY ONLY */}
+                                        {simType === "ELECTRICITY" && (
+                                            <div>
+                                                <div style={labelStyle}>{t("invoiceExtractor", "fieldExcesoPotencia")}</div>
+                                                <CurrencyInput value={extractedData.excesoPotencia ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, excesoPotencia: isNaN(v) ? undefined : v } : prev)} />
+                                            </div>
+                                        )}
+                                        {/* REACTIVE ENERGY - ELECTRICITY ONLY */}
+                                        {simType === "ELECTRICITY" && (
+                                            <div>
+                                                <div style={labelStyle}>{t("simulationForm", "fieldReactiveEnergy")}</div>
+                                                <CurrencyInput value={extractedData.reactiva ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, reactiva: isNaN(v) ? undefined : v } : prev)} />
+                                            </div>
+                                        )}
+                                        {/* METER RENTAL - ELECTRICITY ONLY */}
+                                        {simType === "ELECTRICITY" && (
+                                            <div>
+                                                <div style={labelStyle}>{t("simulationForm", "fieldMeterRental")}</div>
+                                                <CurrencyInput value={extractedData.alquiler ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, alquiler: isNaN(v) ? undefined : v } : prev)} />
+                                            </div>
+                                        )}
+                                        {/* OTHER CHARGES - ELECTRICITY ONLY */}
+                                        {simType === "ELECTRICITY" && (
+                                            <div>
+                                                <div style={labelStyle}>{t("simulationForm", "fieldOtherCharges")}</div>
+                                                <CurrencyInput value={extractedData.otrosCargos ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, otrosCargos: isNaN(v) ? undefined : v } : prev)} />
+                                            </div>
+                                        )}
+                                        {/* TELEMEDIDA - GAS ONLY */}
+                                        {simType === "GAS" && (
+                                            <div>
+                                                <div style={labelStyle}>{t("simulationForm", "fieldTelemetering")}</div>
+                                                <FormSelect
+                                                    label=""
+                                                    size="small"
+                                                    value={extractedData.telemedida ?? "NO"}
+                                                    onChange={v => setExtractedData(prev => prev ? { ...prev, telemedida: v as "SI" | "NO" } : prev)}
+                                                    options={[
+                                                        { value: "NO", label: t("simulationForm", "no") },
+                                                        { value: "SI", label: t("simulationForm", "yes") },
+                                                    ]}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Taxes section */}
+                            {(() => {
+                                const zone = extractedData.zonaGeografica ?? "Peninsula";
+                                const isCanarias = zone === "Canarias";
+                                const labelStyle2: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 };
+
+                                // Electricity taxes
+                                const elecZoneKey = zone === "Baleares" ? "baleares" : isCanarias ? "canarias" : "peninsula";
+                                const elecZoneConf = electricityTaxConfig?.[elecZoneKey];
+                                const elecIvaOptions: number[] = elecZoneConf
+                                    ? ((elecZoneConf.ivaRates ?? elecZoneConf.igicRates ?? []) as any[]).map((v: any) => Number(v) * 100)
+                                    : [21];
+                                const elecTaxOptions: number[] = elecZoneConf
+                                    ? ((elecZoneConf.elecTaxRates ?? []) as any[]).map((v: any) => Number(v) * 100)
+                                    : [5.11269];
+                                const ivaLabel = isCanarias ? t("simulationForm", "fieldIgic") : t("simulationForm", "fieldVat");
+                                const elecTaxLabel = t("simulationForm", "fieldElecTax");
+
+                                // Gas taxes
+                                const gasZoneKey = zone === "Baleares" ? "baleares" : "peninsula";
+                                const gasZoneConf = gasTaxConfig?.[gasZoneKey];
+                                const gasIvaOptions: number[] = gasZoneConf
+                                    ? ((gasZoneConf.ivaRates ?? []) as any[]).map((v: any) => Number(v) * 100)
+                                    : [21];
+                                const hydroTaxOptions: number[] = gasTaxConfig
+                                    ? ((gasTaxConfig.hydrocarbonTaxRates ?? []) as any[]).map(Number)
+                                    : [];
+
+                                const ivaOptions = simType === "GAS" ? gasIvaOptions : elecIvaOptions;
+
+                                return (
+                                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${isDarkMode ? "#1b3a2a" : "#bbf7d0"}` }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                                            {t("simulationForm", "sectionTaxes") || "Taxes"}
+                                        </div>
+                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px 20px" }}>
+                                            {/* IVA / IGIC */}
+                                            <div>
+                                                <div style={labelStyle2}>{ivaLabel}</div>
+                                                {ivaOptions.length > 1 ? (
+                                                    <FormSelect
+                                                        label=""
+                                                        size="small"
+                                                        value={String(extractedData.ivaTasa ?? ivaOptions[0])}
+                                                        onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, ivaTasa: isNaN(n) ? undefined : n } : prev); }}
+                                                        options={[...new Set([...ivaOptions, extractedData.ivaTasa ?? ivaOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: o + "%" }))}
+                                                    />
+                                                ) : (
+                                                    <FormInput label="" size="small" type="number" value={extractedData.ivaTasa ?? ivaOptions[0] ?? 21}
+                                                        onChange={e => { const n = parseFloat(e.target.value); setExtractedData(prev => prev ? { ...prev, ivaTasa: isNaN(n) ? undefined : n } : prev); }} />
+                                                )}
+                                            </div>
+                                            {/* Electricity Tax - ELECTRICITY ONLY */}
+                                            {simType === "ELECTRICITY" && (
+                                                <div>
+                                                    <div style={labelStyle2}>{elecTaxLabel}</div>
+                                                    {elecTaxOptions.length > 1 ? (
+                                                        <FormSelect
+                                                            label=""
+                                                            size="small"
+                                                            value={String(extractedData.impuestoElectricoTasa ?? elecTaxOptions[0])}
+                                                            onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, impuestoElectricoTasa: isNaN(n) ? undefined : n } : prev); }}
+                                                            options={[...new Set([...elecTaxOptions, extractedData.impuestoElectricoTasa ?? elecTaxOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: o + "%" }))}
+                                                        />
+                                                    ) : (
+                                                        <FormInput label="" size="small" type="number" value={extractedData.impuestoElectricoTasa ?? elecTaxOptions[0] ?? 5.11269}
+                                                            onChange={e => { const n = parseFloat(e.target.value); setExtractedData(prev => prev ? { ...prev, impuestoElectricoTasa: isNaN(n) ? undefined : n } : prev); }} />
+                                                    )}
+                                                </div>
+                                            )}
+                                            {/* Gas Hydrocarbon Tax - GAS ONLY */}
+                                            {simType === "GAS" && (
+                                                <div>
+                                                    <div style={labelStyle2}>{t("simulationForm", "fieldHydrocarbonTax")}</div>
+                                                    {hydroTaxOptions.length > 0 ? (
+                                                        <FormSelect
+                                                            label=""
+                                                            size="small"
+                                                            value={String(extractedData.impuestoHidrocarburo ?? hydroTaxOptions[0])}
+                                                            onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, impuestoHidrocarburo: isNaN(n) ? undefined : n } : prev); }}
+                                                            options={[...new Set([...hydroTaxOptions, extractedData.impuestoHidrocarburo ?? hydroTaxOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: String(o) }))}
+                                                        />
+                                                    ) : (
+                                                        <FormInput label="" size="small" type="number" value={extractedData.impuestoHidrocarburo ?? 0.00234}
+                                                            onChange={e => { const n = parseFloat(e.target.value); setExtractedData(prev => prev ? { ...prev, impuestoHidrocarburo: isNaN(n) ? undefined : n } : prev); }} />
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );
                             })()}
 
-                            {/* Consumption table: consumo per period */}
-                            {(() => {
-                                const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
-                                const displayPeriods = periods;
+                            {/* Consumption table: consumo per period - ELECTRICITY ONLY */}
+                            {simType === "ELECTRICITY" && (
+                                (() => {
+                                    const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+                                    const displayPeriods = periods;
 
-                                return (
-                                    <div style={{ marginTop: 14 }}>
-                                        <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-                                            Consumo (kWh)
-                                        </div>
-                                        <div style={{ overflowX: "auto" }}>
-                                            <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
-                                                <thead>
-                                                    <tr>
-                                                        <th style={{ textAlign: "left", padding: "3px 10px 3px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}></th>
-                                                        {displayPeriods.map(p => (
-                                                            <th key={p} style={{ textAlign: "center", padding: "3px 12px", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}>{p}</th>
-                                                        ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr>
-                                                        <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>Energy (kWh)</td>
-                                                        {displayPeriods.map(p => {
-                                                            const key = `consumo${p}` as keyof ExtractedInvoiceData;
-                                                            const val = extractedData[key] as number | undefined;
-                                                            return <td key={p} style={{ textAlign: "center", padding: "4px 6px", fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827", fontFamily: "monospace", fontSize: 12 }}>
-                                                                <FormInput size="small" type="number" value={val ?? ""}
-                                                                    onChange={e => setExtractedData(prev => prev ? { ...prev, [key]: e.target.value === "" ? undefined : parseFloat(e.target.value) } : prev)}
-                                                                    slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, textAlign: 'center', fontFamily: 'monospace', width: 80, padding: '4px 6px' } } }}
-                                                                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }} />
-                                                            </td>;
-                                                        })}
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Potencia table: potencia per period */}
-                            {(() => {
-                                const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
-
-                                return (
-                                    <div style={{ marginTop: 14 }}>
-                                        <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-                                            Potencia (kW)
-                                        </div>
-                                        <div style={{ overflowX: "auto" }}>
-                                            <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
-                                                <thead>
-                                                    <tr>
-                                                        <th style={{ textAlign: "left", padding: "3px 10px 3px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}></th>
-                                                        {periods.map(p => (
-                                                            <th key={p} style={{ textAlign: "center", padding: "3px 12px", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}>{p}</th>
-                                                        ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr>
-                                                        <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>Power (kW)</td>
-                                                        {periods.map(p => {
-                                                            const key = `potencia${p}` as keyof ExtractedInvoiceData;
-                                                            const val = extractedData[key] as number | undefined;
-                                                            return (
-                                                                <td key={p} style={{ textAlign: "center", padding: "4px 6px" }}>
+                                    return (
+                                        <div style={{ marginTop: 14 }}>
+                                            <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                                                Consumo (kWh)
+                                            </div>
+                                            <div style={{ overflowX: "auto" }}>
+                                                <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
+                                                    <thead>
+                                                        <tr>
+                                                            <th style={{ textAlign: "left", padding: "3px 10px 3px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}></th>
+                                                            {displayPeriods.map(p => (
+                                                                <th key={p} style={{ textAlign: "center", padding: "3px 12px", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}>{p}</th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>Energy (kWh)</td>
+                                                            {displayPeriods.map(p => {
+                                                                const key = `consumo${p}` as keyof ExtractedInvoiceData;
+                                                                const val = extractedData[key] as number | undefined;
+                                                                return <td key={p} style={{ textAlign: "center", padding: "4px 6px", fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827", fontFamily: "monospace", fontSize: 12 }}>
                                                                     <FormInput size="small" type="number" value={val ?? ""}
                                                                         onChange={e => setExtractedData(prev => prev ? { ...prev, [key]: e.target.value === "" ? undefined : parseFloat(e.target.value) } : prev)}
-                                                                        slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, textAlign: "center", fontFamily: "monospace", width: 80, padding: "4px 6px" } } }}
-                                                                        sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px" } }} />
-                                                                </td>
-                                                            );
-                                                        })}
-                                                    </tr>
-                                                </tbody>
-                                            </table>
+                                                                        slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, textAlign: 'center', fontFamily: 'monospace', width: 80, padding: '4px 6px' } } }}
+                                                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }} />
+                                                                </td>;
+                                                            })}
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    );
+                                })()
+                            )}
+
+                            {/* Consumption single field - GAS ONLY */}
+                            {simType === "GAS" && (
+                                <div style={{ marginTop: 14 }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                                        Consumo (kWh)
+                                    </div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px 20px" }}>
+                                        <div>
+                                            <FormInput
+                                                label=""
+                                                size="small"
+                                                type="number"
+                                                value={extractedData.consumoTotal ?? ""}
+                                                onChange={e => setExtractedData(prev => prev ? { ...prev, consumoTotal: e.target.value === "" ? undefined : parseFloat(e.target.value) } : prev)}
+                                                placeholder="0"
+                                                slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, fontFamily: 'monospace' } } }}
+                                            />
                                         </div>
                                     </div>
-                                );
-                            })()}
+                                </div>
+                            )}
+
+                            {/* Potencia table: potencia per period - ELECTRICITY ONLY */}
+                            {simType === "ELECTRICITY" && (
+                                (() => {
+                                    const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+
+                                    return (
+                                        <div style={{ marginTop: 14 }}>
+                                            <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                                                Potencia (kW)
+                                            </div>
+                                            <div style={{ overflowX: "auto" }}>
+                                                <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
+                                                    <thead>
+                                                        <tr>
+                                                            <th style={{ textAlign: "left", padding: "3px 10px 3px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}></th>
+                                                            {periods.map(p => (
+                                                                <th key={p} style={{ textAlign: "center", padding: "3px 12px", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}>{p}</th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>Power (kW)</td>
+                                                            {periods.map(p => {
+                                                                const key = `potencia${p}` as keyof ExtractedInvoiceData;
+                                                                const val = extractedData[key] as number | undefined;
+                                                                return (
+                                                                    <td key={p} style={{ textAlign: "center", padding: "4px 6px" }}>
+                                                                        <FormInput size="small" type="number" value={val ?? ""}
+                                                                            onChange={e => setExtractedData(prev => prev ? { ...prev, [key]: e.target.value === "" ? undefined : parseFloat(e.target.value) } : prev)}
+                                                                            slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, textAlign: "center", fontFamily: "monospace", width: 80, padding: "4px 6px" } } }}
+                                                                            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px" } }} />
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    );
+                                })()
+                            )}
 
                             {/* Simulation settings: expiration date */}
                             <div style={{ display: "flex", gap: 16, marginTop: 16, paddingTop: 14, borderTop: `1px solid ${isDarkMode ? "#1b3a2a" : "#bbf7d0"}`, alignItems: "flex-start" }}>
@@ -828,7 +1157,7 @@ export default function NewSimulationPage() {
                     )}
 
                     {/* Client, Commodity Type, and Expiration Date - Only shown when no OCR data */}
-                    {!(llmEnabled && extractedData) && (<div className="crud-form-section">
+                    {!(llmEnabled && extractedData) && !(llmEnabled && hasInvoiceFile) && (<div className="crud-form-section">
                         <div className="crud-form-row" style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
                             {/* Client */}
                             <div className="crud-form-group" style={{ flex: 1 }}>

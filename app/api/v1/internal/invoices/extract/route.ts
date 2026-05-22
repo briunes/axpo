@@ -200,7 +200,27 @@ CRITICAL FIELDS TO EXTRACT:
    - cups: ⚠️ MANDATORY — CUPS code (Código Universal del Punto de Suministro). Look for the label "Identificación punto de suministro (CUPS)", "CUPS", or "Punto de suministro". The value ALWAYS starts with "ES" and is 20-22 characters long. It is often printed with spaces between groups (e.g. "ES 0021 0000 0046 0347 YE") — you MUST strip ALL spaces and return it as one continuous string (e.g. "ES0021000000460347YE"). IMPORTANT: do NOT confuse with barcodes or long numeric reference codes printed elsewhere — only use the value next to the explicit CUPS label. Never skip this field.
    - nombreTitular: Full name of the invoice holder/titular
    - personaContacto: Contact person name
-   - direccion: Complete supply address (dirección de suministro)
+   - direccion: ⚠️ This MUST be the CUPS supply point address — i.e. the address of the metering point / installation.
+     Look in sections labeled:
+     - "Datos punto de suministro"
+     - "Dirección de suministro"
+     - "Punto de suministro"
+     - "Dirección del punto de suministro"
+     This is NOT the client's billing/postal address. It is the physical location where the electricity or gas meter is installed.
+     Extract it as a single string.
+   - clienteAddress: The client's main billing / invoicing address (dirección de facturación del titular).
+     Look in sections labeled:
+     - "Datos del titular"
+     - "Datos facturación"
+     - "Dirección de facturación"
+     - "Titular"
+     Extract as a structured object with the following sub-fields:
+       - street: Street name and number (e.g. "AV DE LA LIBERTAD, 2 PTA. BJ")
+       - city: City name (e.g. "TORREVIEJA")
+       - postalCode: Postal code (e.g. "03180")
+       - province: Province or region (e.g. "ALICANTE")
+       - country: ISO 3166-1 alpha-2 country code. For Spanish invoices always use "ES".
+     If the billing address is the same section as the supply address, still extract it here. Always include all sub-fields, using empty string "" if a sub-field is not found.
    - comercializadorActual: Current energy marketer/supplier name
    - cif: Tax ID (CIF/NIF) of the CLIENT/HOLDER only.
      NEVER use the supplier/provider CIF.
@@ -320,12 +340,83 @@ CRITICAL FIELDS TO EXTRACT:
 10. TYPE DETECTION:
    - invoiceType: Determine if "ELECTRICITY", "GAS", or "BOTH"
 
+11. TAX RATES (extract ONLY if explicitly printed on the invoice):
+   - ivaTasa: IVA / VAT rate as a PERCENTAGE number (e.g. 21 for 21%, 10 for 10%).
+     Look for labels: "IVA", "I.V.A.", "Impuesto sobre el Valor Añadido".
+     For Canary Islands invoices look for "IGIC" instead — extract that value into ivaTasa.
+     NEVER infer or assume this value. Only extract if printed.
+   - impuestoElectricoTasa: Electricity tax rate as a PERCENTAGE number (e.g. 5.11269 for 5.11269%).
+     Look for labels: "Impuesto eléctrico", "Impuesto especial electricidad", "I.E. electricidad",
+     "Impuesto sobre la electricidad", "Electricidad s/ base".
+     NEVER infer or assume this value. Only extract if printed.
+
+   IMPORTANT:
+   - Extract as plain percentage numbers, NOT as decimals (e.g. 21, not 0.21).
+   - If the rate is not explicitly printed, return null for these fields.
+
 IMPORTANT NOTES:
 - Convert all dates to YYYY-MM-DD format
 - Extract numeric values without currency symbols or units
 - Convert Spanish decimal commas to standard decimals
-- If a field is not found, DO NOT include it
-- Return ONLY a valid JSON object with the extracted data.`;
+- ALWAYS return the COMPLETE JSON object with ALL fields listed below, even if a field is empty or not found. Use null for missing numeric/string fields and "" for missing string sub-fields inside clienteAddress.
+- Return ONLY a valid JSON object. No markdown, no code fences, no explanation — just the raw JSON.
+
+You MUST always return a JSON that exactly matches this structure (all keys present):
+
+{
+  "cups": "ES0021000000000000XX",
+  "nombreTitular": "EMPRESA EJEMPLO, S.L.",
+  "personaContacto": "",
+  "cif": "B12345678",
+  "direccion": "CALLE SUMINISTRO 1, 2º A",
+  "clienteAddress": {
+    "street": "CALLE FACTURACIÓN 2, PTA. BJ",
+    "city": "MADRID",
+    "postalCode": "28001",
+    "province": "MADRID",
+    "country": "ES"
+  },
+  "comercializadorActual": "NOMBRE COMERCIALIZADOR",
+  "tarifaAcceso": "3.0TD",
+  "zonaGeografica": "Peninsula",
+  "perfilCarga": "NORMAL",
+  "fechaInicio": "2025-10-01",
+  "fechaFin": "2025-10-31",
+  "consumoP1": null,
+  "consumoP2": null,
+  "consumoP3": null,
+  "consumoP4": null,
+  "consumoP5": null,
+  "consumoP6": null,
+  "consumoAnual": null,
+  "potenciaP1": null,
+  "potenciaP2": null,
+  "potenciaP3": null,
+  "potenciaP4": null,
+  "potenciaP5": null,
+  "potenciaP6": null,
+  "precioPotenciaP1": null,
+  "precioPotenciaP2": null,
+  "precioPotenciaP3": null,
+  "precioPotenciaP4": null,
+  "precioPotenciaP5": null,
+  "precioPotenciaP6": null,
+  "precioEnergiaP1": null,
+  "precioEnergiaP2": null,
+  "precioEnergiaP3": null,
+  "precioEnergiaP4": null,
+  "precioEnergiaP5": null,
+  "precioEnergiaP6": null,
+  "facturaActual": null,
+  "excesoPotencia": null,
+  "reactiva": null,
+  "alquiler": null,
+  "otrosCargos": null,
+  "ivaTasa": null,
+  "impuestoElectricoTasa": null,
+  "telemedida": "",
+  "invoiceType": "ELECTRICITY"
+}`;
 
 /**
  * @swagger
@@ -1037,20 +1128,21 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       }
     }
 
-    // CUPS validation: Spanish CUPS format is ES + 16-18 digits + 2 uppercase letters.
-    // Barcodes are typically all-numeric with no trailing letters.
-    // Strip spaces first, then validate.
+    // CUPS validation: Spanish CUPS format is ES + exactly 16 digits + 2 uppercase letters.
+    // Anything after the 2 trailing letters is cropped.
+    // Strip spaces first, then extract.
     if (extractedData.cups) {
       const rawCups = String(extractedData.cups)
         .replace(/\s+/g, "")
         .toUpperCase();
-      // Strict pattern: ES + 16-18 digits + 2 uppercase letters (checksum) + optional subpoint (1 digit + 1 letter)
-      const cupsPattern = /^ES\d{16,18}[A-Z]{2}(\d[A-Z])?$/;
-      if (cupsPattern.test(rawCups)) {
-        extractedData.cups = rawCups;
+      // Extract: ES + exactly 16 digits + 2 uppercase letters, anywhere in the string, crop the rest
+      const cupsPattern = /ES\d{16}[A-Z]{2}/;
+      const match = cupsPattern.exec(rawCups);
+      if (match) {
+        extractedData.cups = match[0];
       } else {
         console.warn(
-          `⚠️  Discarding invalid CUPS value: "${rawCups}" (failed ES+digits+2letters pattern — likely a barcode or reference code)`,
+          `⚠️  Discarding invalid CUPS value: "${rawCups}" (failed ES+16digits+2letters pattern — likely a barcode or reference code)`,
         );
         delete extractedData.cups;
       }

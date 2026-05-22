@@ -119,7 +119,7 @@ export default function ProfilePage() {
                                         {t("profilePage", "role")}
                                     </span>
                                     <Chip
-                                        label={user?.role}
+                                        label={user?.role === "ADMIN" ? t("userFormPage", "roleAdmin") : user?.role === "AGENT" ? t("userFormPage", "roleAgent") : t("userFormPage", "roleCommercial")}
                                         size="small"
                                         color={roleTone[user?.role ?? "COMMERCIAL"]}
                                         sx={{ fontWeight: 600, fontSize: 12, width: "fit-content" }}
