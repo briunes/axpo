@@ -27,7 +27,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   await requireAuth(req);
 
   const body = await req.json();
-  const { name, prompt, isActive, needsPromptConfig } = body;
+  const {
+    name,
+    prompt,
+    promptElectricity,
+    promptGas,
+    isActive,
+    needsPromptConfig,
+  } = body;
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return NextResponse.json(
@@ -57,6 +64,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       name: name.trim(),
       slug,
       prompt: prompt || "",
+      promptElectricity: promptElectricity || "",
+      promptGas: promptGas || "",
       isActive: isActive !== undefined ? isActive : true,
       needsPromptConfig:
         needsPromptConfig !== undefined ? needsPromptConfig : false,

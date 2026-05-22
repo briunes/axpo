@@ -45,7 +45,14 @@ export const PUT = withErrorHandler(
     }
 
     const body = await req.json();
-    const { name, prompt, isActive, needsPromptConfig } = body;
+    const {
+      name,
+      prompt,
+      promptElectricity,
+      promptGas,
+      isActive,
+      needsPromptConfig,
+    } = body;
 
     const existing = await (prisma as any).invoiceProviderPrompt.findUnique({
       where: { id },
@@ -58,10 +65,15 @@ export const PUT = withErrorHandler(
     }
 
     // Auto-clear needsPromptConfig when a real prompt is being saved
+    const hasRealPrompt =
+      (promptElectricity !== undefined &&
+        promptElectricity.trim().length > 0) ||
+      (promptGas !== undefined && promptGas.trim().length > 0) ||
+      (prompt !== undefined && prompt.trim().length > 0);
     const autoNeedsPromptConfig =
       needsPromptConfig !== undefined
         ? needsPromptConfig
-        : prompt !== undefined && prompt.trim().length > 0
+        : hasRealPrompt
           ? false
           : undefined;
 
@@ -70,6 +82,8 @@ export const PUT = withErrorHandler(
       data: {
         ...(name !== undefined && { name: name.trim() }),
         ...(prompt !== undefined && { prompt }),
+        ...(promptElectricity !== undefined && { promptElectricity }),
+        ...(promptGas !== undefined && { promptGas }),
         ...(isActive !== undefined && { isActive }),
         ...(autoNeedsPromptConfig !== undefined && {
           needsPromptConfig: autoNeedsPromptConfig,

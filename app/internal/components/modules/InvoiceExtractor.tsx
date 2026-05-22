@@ -121,6 +121,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         providerName: string | null;
         isKnown: boolean;
         confidence: "high" | "low";
+        invoiceType: "ELECTRICITY" | "GAS" | "BOTH" | null;
     } | null>(null);
     const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
     const [providerDetectionLogId, setProviderDetectionLogId] = useState<string | null>(null);
@@ -194,6 +195,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                             providerName: result.providerName,
                             isKnown: result.isKnown,
                             confidence: result.confidence,
+                            invoiceType: result.invoiceType ?? null,
                         });
                         setSelectedProviderId(result.providerId ?? null);
                         setDetectionStatus("detected");
@@ -298,6 +300,11 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 if (selectedProvider && !selectedProvider.needsPromptConfig) {
                     formData.append("providerId", selectedProviderId);
                 }
+            }
+            // Pass the detected invoice type so the extract route picks the correct prompt
+            const invoiceType = detectedProvider?.invoiceType;
+            if (invoiceType === "ELECTRICITY" || invoiceType === "GAS") {
+                formData.append("invoiceType", invoiceType);
             }
 
             const response = await fetch("/api/v1/internal/invoices/extract", {

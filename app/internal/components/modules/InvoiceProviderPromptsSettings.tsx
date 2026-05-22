@@ -12,6 +12,8 @@ import {
     DialogTitle,
     IconButton,
     Switch,
+    Tab,
+    Tabs,
     Tooltip,
     Typography,
 } from "@mui/material";
@@ -32,14 +34,22 @@ interface InvoiceProvider {
     id: string;
     name: string;
     slug: string;
-    prompt: string;
+    prompt: string; // legacy generic prompt
+    promptElectricity: string;
+    promptGas: string;
     isActive: boolean;
     needsPromptConfig: boolean;
     createdAt: string;
     updatedAt: string;
 }
 
-const DEFAULT_PROMPT_TEMPLATE = `You are an expert at extracting data from Spanish energy invoices (electricity and gas) specifically from {PROVIDER_NAME}.
+const DEFAULT_ELECTRICITY_PROMPT_TEMPLATE = `You are an expert at extracting data from Spanish ELECTRICITY invoices specifically from {PROVIDER_NAME}.
+
+Extract ALL available information from the provided invoice and return it as a JSON object following the standard extraction schema.
+
+IMPORTANT: Return ONLY a valid JSON object with the extracted data.`;
+
+const DEFAULT_GAS_PROMPT_TEMPLATE = `You are an expert at extracting data from Spanish GAS invoices specifically from {PROVIDER_NAME}.
 
 Extract ALL available information from the provided invoice and return it as a JSON object following the standard extraction schema.
 
@@ -57,8 +67,10 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
 
     // Form state
     const [formName, setFormName] = useState("");
-    const [formPrompt, setFormPrompt] = useState("");
+    const [formPromptElectricity, setFormPromptElectricity] = useState("");
+    const [formPromptGas, setFormPromptGas] = useState("");
     const [formIsActive, setFormIsActive] = useState(true);
+    const [promptTab, setPromptTab] = useState<"electricity" | "gas">("electricity");
 
     const token = typeof window !== "undefined"
         ? localStorage.getItem("axpo.internal.auth.token")
@@ -87,7 +99,8 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
     const handleSelectProvider = (provider: InvoiceProvider) => {
         setSelectedProvider(provider);
         setFormName(provider.name);
-        setFormPrompt(provider.prompt);
+        setFormPromptElectricity(provider.promptElectricity ?? "");
+        setFormPromptGas(provider.promptGas ?? "");
         setFormIsActive(provider.isActive);
         setEditMode("view");
     };
@@ -95,7 +108,8 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
     const handleStartCreate = () => {
         setSelectedProvider(null);
         setFormName("");
-        setFormPrompt(DEFAULT_PROMPT_TEMPLATE.replace("{PROVIDER_NAME}", "this provider"));
+        setFormPromptElectricity(DEFAULT_ELECTRICITY_PROMPT_TEMPLATE.replace("{PROVIDER_NAME}", "this provider"));
+        setFormPromptGas(DEFAULT_GAS_PROMPT_TEMPLATE.replace("{PROVIDER_NAME}", "this provider"));
         setFormIsActive(true);
         setEditMode("create");
     };
@@ -103,7 +117,8 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
     const handleStartEdit = (provider: InvoiceProvider) => {
         setSelectedProvider(provider);
         setFormName(provider.name);
-        setFormPrompt(provider.prompt);
+        setFormPromptElectricity(provider.promptElectricity ?? "");
+        setFormPromptGas(provider.promptGas ?? "");
         setFormIsActive(provider.isActive);
         setEditMode("edit");
     };
@@ -111,7 +126,8 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
     const handleCancelEdit = () => {
         if (selectedProvider) {
             setFormName(selectedProvider.name);
-            setFormPrompt(selectedProvider.prompt);
+            setFormPromptElectricity(selectedProvider.promptElectricity ?? "");
+            setFormPromptGas(selectedProvider.promptGas ?? "");
             setFormIsActive(selectedProvider.isActive);
             setEditMode("view");
         } else {
@@ -134,7 +150,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${token}`,
                     },
-                    body: JSON.stringify({ name: formName, prompt: formPrompt, isActive: formIsActive }),
+                    body: JSON.stringify({ name: formName, promptElectricity: formPromptElectricity, promptGas: formPromptGas, isActive: formIsActive }),
                 });
                 if (!res.ok) {
                     const err = await res.json();
@@ -152,7 +168,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${token}`,
                     },
-                    body: JSON.stringify({ name: formName, prompt: formPrompt, isActive: formIsActive }),
+                    body: JSON.stringify({ name: formName, promptElectricity: formPromptElectricity, promptGas: formPromptGas, isActive: formIsActive }),
                 });
                 if (!res.ok) {
                     const err = await res.json();
@@ -264,8 +280,8 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                         <div className="provider-item-meta">
                                             {provider.needsPromptConfig ? (
                                                 <Chip label="⚠️ Needs prompt setup" size="small" color="warning" variant="outlined" sx={{ fontSize: 10, height: 18 }} />
-                                            ) : provider.prompt.trim() ? (
-                                                <Chip label="Custom prompt" size="small" color="success" variant="outlined" sx={{ fontSize: 10, height: 18 }} />
+                                            ) : (provider.promptElectricity?.trim() || provider.promptGas?.trim()) ? (
+                                                <Chip label="Custom prompts" size="small" color="success" variant="outlined" sx={{ fontSize: 10, height: 18 }} />
                                             ) : (
                                                 <Chip label="No prompt" size="small" variant="outlined" sx={{ fontSize: 10, height: 18, opacity: 0.5 }} />
                                             )}
@@ -419,18 +435,44 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                 </div>
 
                                 <div className="form-field" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                                    <label className="form-label">Extraction Prompt</label>
-                                    <span className="form-hint" style={{ marginBottom: 8 }}>
-                                        This prompt will be sent to the AI instead of the default when an invoice from this provider is detected.
-                                        Leave empty to use the system default prompt.
-                                    </span>
-                                    <textarea
-                                        className="form-textarea"
-                                        value={formPrompt}
-                                        onChange={e => setFormPrompt(e.target.value)}
-                                        placeholder="Enter a custom extraction prompt for this provider's invoice format..."
-                                        rows={16}
-                                    />
+                                    <Tabs
+                                        value={promptTab}
+                                        onChange={(_, v) => setPromptTab(v)}
+                                        sx={{ borderBottom: 1, borderColor: "divider", mb: 2, minHeight: 36 }}
+                                        TabIndicatorProps={{ style: { backgroundColor: "var(--axpo-red, #e30613)" } }}
+                                    >
+                                        <Tab value="electricity" label="⚡ Electricity" sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "electricity" ? 600 : 400 }} />
+                                        <Tab value="gas" label="🔥 Gas" sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "gas" ? 600 : 400 }} />
+                                    </Tabs>
+                                    {promptTab === "electricity" ? (
+                                        <>
+                                            <span className="form-hint" style={{ marginBottom: 8 }}>
+                                                Sent to the AI when an <strong>electricity</strong> invoice from this provider is detected.
+                                                Leave empty to use the system default electricity prompt.
+                                            </span>
+                                            <textarea
+                                                className="form-textarea"
+                                                value={formPromptElectricity}
+                                                onChange={e => setFormPromptElectricity(e.target.value)}
+                                                placeholder="Enter a custom electricity extraction prompt for this provider..."
+                                                rows={14}
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="form-hint" style={{ marginBottom: 8 }}>
+                                                Sent to the AI when a <strong>gas</strong> invoice from this provider is detected.
+                                                Leave empty to use the system default gas prompt.
+                                            </span>
+                                            <textarea
+                                                className="form-textarea"
+                                                value={formPromptGas}
+                                                onChange={e => setFormPromptGas(e.target.value)}
+                                                placeholder="Enter a custom gas extraction prompt for this provider..."
+                                                rows={14}
+                                            />
+                                        </>
+                                    )}
                                 </div>
 
                                 <div className="form-actions">
@@ -454,24 +496,54 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                             </div>
                         ) : selectedProvider && (
                             <div className="provider-view">
-                                <div className="prompt-preview-label">Extraction Prompt</div>
-                                {selectedProvider.prompt.trim() ? (
-                                    <pre className="prompt-preview">{selectedProvider.prompt}</pre>
+                                <Tabs
+                                    value={promptTab}
+                                    onChange={(_, v) => setPromptTab(v)}
+                                    sx={{ borderBottom: 1, borderColor: "divider", mb: 2, minHeight: 36 }}
+                                    TabIndicatorProps={{ style: { backgroundColor: "var(--axpo-red, #e30613)" } }}
+                                >
+                                    <Tab value="electricity" label="⚡ Electricity" sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "electricity" ? 600 : 400 }} />
+                                    <Tab value="gas" label="🔥 Gas" sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "gas" ? 600 : 400 }} />
+                                </Tabs>
+
+                                {promptTab === "electricity" ? (
+                                    selectedProvider.promptElectricity?.trim() ? (
+                                        <pre className="prompt-preview">{selectedProvider.promptElectricity}</pre>
+                                    ) : (
+                                        <div className="prompt-empty">
+                                            <Typography variant="body2" sx={{ opacity: 0.5, fontStyle: "italic" }}>
+                                                No custom electricity prompt — the system default will be used.
+                                            </Typography>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                startIcon={<EditIcon />}
+                                                onClick={() => handleStartEdit(selectedProvider)}
+                                                sx={{ mt: 2 }}
+                                            >
+                                                Configure Prompts
+                                            </Button>
+                                        </div>
+                                    )
                                 ) : (
-                                    <div className="prompt-empty">
-                                        <Typography variant="body2" sx={{ opacity: 0.5, fontStyle: "italic" }}>
-                                            No custom prompt configured — the system default prompt will be used for invoices from this provider.
-                                        </Typography>
-                                        <Button
-                                            variant="outlined"
-                                            size="small"
-                                            startIcon={<EditIcon />}
-                                            onClick={() => handleStartEdit(selectedProvider)}
-                                            sx={{ mt: 2 }}
-                                        >
-                                            Add Custom Prompt
-                                        </Button>
-                                    </div>
+                                    selectedProvider.promptGas?.trim() ? (
+                                        <pre className="prompt-preview">{selectedProvider.promptGas}</pre>
+                                    ) : (
+                                        <div className="prompt-empty">
+                                            <Typography variant="body2" sx={{ opacity: 0.5, fontStyle: "italic" }}>
+                                                No custom gas prompt — the system default will be used.
+                                            </Typography>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                startIcon={<EditIcon />}
+                                                onClick={() => handleStartEdit(selectedProvider)}
+                                                sx={{ mt: 2 }}
+                                            >
+                                                Configure Prompts
+                                            </Button>
+                                        </div>
+                                    )
                                 )}
                             </div>
                         )}

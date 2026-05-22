@@ -481,7 +481,9 @@ model InvoiceProviderPrompt {
   id                String   @id @default(cuid())
   name              String   // e.g. "Repsol", "NEON", "Iberdrola"
   slug              String   @unique // e.g. "repsol", "neon", "iberdrola"
-  prompt            String   @db.Text // Custom extraction prompt for this provider
+  prompt            String   @db.Text // Legacy generic prompt (kept for backward compatibility)
+  promptElectricity String   @default("") @db.Text // Custom prompt for electricity invoices
+  promptGas         String   @default("") @db.Text // Custom prompt for gas invoices
   isActive          Boolean  @default(true)
   needsPromptConfig Boolean  @default(false) // true when auto-created from simulation (prompt not yet configured)
   createdAt         DateTime @default(now())

@@ -122,7 +122,7 @@ function buildGasPayloadFromOcr(data: import("../../components/modules").Extract
         tarifaAcceso: data.tarifaAcceso || "RL01",
         zonaGeografica: "Peninsula",
         consumo: data.consumoTotal || 0,
-        telemedida: "NO",
+        telemedida: data.telemedida === "SI" ? "SI" : "NO",
         periodo: { fechaInicio, fechaFin, dias },
         facturaActual: data.facturaActual ?? 0,
         extras: {
@@ -130,7 +130,7 @@ function buildGasPayloadFromOcr(data: import("../../components/modules").Extract
             otrosCargos: data.otrosCargos || undefined,
         },
         ivaTasa: data.ivaTasa,
-        impuestoHidrocarburo: 0.00234,
+        impuestoHidrocarburo: data.impuestoHidrocarburo ?? 0.00234,
     };
 }
 
@@ -195,17 +195,37 @@ export default function NewSimulationPage() {
     }, []);
 
     const handleInvoiceDataExtracted = (data: ExtractedInvoiceData, context?: InvoiceExtractionContext) => {
-        // Inject default tax values from config based on zone
+        // Resolve config-based tax defaults (used only when OCR didn't return a value)
         const zone = data.zonaGeografica ?? "Peninsula";
         const zoneKey = zone === "Baleares" ? "baleares" : zone === "Canarias" ? "canarias" : "peninsula";
-        const zoneConf = electricityTaxConfig?.[zoneKey];
-        const defaultIva = zoneConf
-            ? ((zoneConf.ivaRates ?? zoneConf.igicRates ?? [])[0] ?? 0.21) * 100
-            : 21;
-        const defaultElecTax = zoneConf
-            ? ((zoneConf.elecTaxRates ?? [])[0] ?? 0.051127) * 100
+        const isGas = data.invoiceType?.toUpperCase() === "GAS";
+
+        // IVA: prefer OCR value, fall back to zone config default
+        let resolvedIva: number;
+        if (data.ivaTasa != null && !isNaN(data.ivaTasa)) {
+            resolvedIva = data.ivaTasa;
+        } else if (isGas) {
+            const gasZoneConf = gasTaxConfig?.[zoneKey];
+            resolvedIva = gasZoneConf
+                ? ((gasZoneConf.ivaRates ?? [])[0] ?? 0.21) * 100
+                : 21;
+        } else {
+            const elecZoneConf = electricityTaxConfig?.[zoneKey];
+            resolvedIva = elecZoneConf
+                ? ((elecZoneConf.ivaRates ?? elecZoneConf.igicRates ?? [])[0] ?? 0.21) * 100
+                : 21;
+        }
+
+        // Electricity tax: prefer OCR value, fall back to config default (not applicable for gas)
+        const elecZoneConf = electricityTaxConfig?.[zoneKey];
+        const defaultElecTax = elecZoneConf
+            ? ((elecZoneConf.elecTaxRates ?? [])[0] ?? 0.051127) * 100
             : 5.11269;
-        setExtractedData({ ...data, ivaTasa: defaultIva, impuestoElectricoTasa: defaultElecTax });
+        const resolvedElecTax = (!isGas && data.impuestoElectricoTasa != null && !isNaN(data.impuestoElectricoTasa))
+            ? data.impuestoElectricoTasa
+            : defaultElecTax;
+
+        setExtractedData({ ...data, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax });
         if (context?.file) {
             setUploadedInvoiceFile(context.file);
         }
@@ -825,7 +845,7 @@ export default function NewSimulationPage() {
                                                 return (
                                                     <FormSelect label="" size="small" value={isUnsupported ? "" : (extractedData.tarifaAcceso ?? "")}
                                                         onChange={v => upStr("tarifaAcceso", v as string)}
-                                                        helperText={isUnsupported ? `⚠️ OCR detected "${extracted}" — not supported by Axpo. Please select manually.` : undefined}
+                                                        helperText={isUnsupported ? `⚠️ OCR detected "${extracted}", not supported by Axpo. Please select manually.` : undefined}
                                                         options={simType === "GAS"
                                                             ? gasOptions.map(v => ({ value: v, label: v }))
                                                             : [

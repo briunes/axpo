@@ -148,6 +148,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
   const requestStartTime = Date.now();
 
+  type OcrPersistedFile = {
+    fileName: string;
+    fileType?: string | null;
+    fileSizeBytes?: number;
+    fileData: Buffer;
+  };
+
   // Get LLM config
   const config = await prisma.systemConfig.findFirst();
 
@@ -181,8 +188,31 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     promptText?: string;
     metadata?: any;
     files?: File[];
+    persistedFiles?: OcrPersistedFile[];
   }) => {
     try {
+      const uploadedFiles =
+        data.files && data.files.length > 0
+          ? await Promise.all(
+              data.files.map(async (file) => ({
+                fileName: file.name,
+                fileType: file.type || null,
+                fileSizeBytes: file.size,
+                fileData: Buffer.from(await file.arrayBuffer()),
+              })),
+            )
+          : [];
+
+      const persistedFiles = [
+        ...uploadedFiles,
+        ...(data.persistedFiles ?? []).map((f) => ({
+          fileName: f.fileName,
+          fileType: f.fileType ?? null,
+          fileSizeBytes: f.fileSizeBytes ?? f.fileData.length,
+          fileData: f.fileData,
+        })),
+      ];
+
       const created = await prisma.ocrLog.create({
         data: {
           userId: auth.userId,
@@ -207,16 +237,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           promptText: data.promptText,
           metadata: { requestType: "provider-detection", ...data.metadata },
           ocrFiles:
-            data.files && data.files.length > 0
+            persistedFiles.length > 0
               ? {
-                  create: await Promise.all(
-                    data.files.map(async (file) => ({
-                      fileName: file.name,
-                      fileType: file.type || null,
-                      fileSizeBytes: file.size,
-                      fileData: Buffer.from(await file.arrayBuffer()),
-                    })),
-                  ),
+                  create: persistedFiles,
                 }
               : undefined,
         },
@@ -313,17 +336,27 @@ Look for:
 - "Comercializadora" or "Suministradora" field
 - Footer with company details
 
+TASK 2 — COMMODITY TYPE:
+Also determine whether this is an electricity or gas invoice.
+- Look for labels like "Electricidad", "Energía eléctrica", "CUPS eléctrico" → ELECTRICITY
+- Look for labels like "Gas Natural", "Gas", "CUPS gas", "calorífico" → GAS
+- If both are present → BOTH
+- If unclear → null
+
 RESPONSE FORMAT:
 Respond with ONLY a JSON object, no markdown, no explanation:
 {
   "providerName": "exact company name as printed on invoice",
   "matchedSlug": "slug from the known providers list if it matches, or null if not in the list",
-  "confidence": "high" or "low"
+  "confidence": "high" or "low",
+  "invoiceType": "ELECTRICITY" or "GAS" or "BOTH" or null
 }
 
 If the provider is in the known list, set matchedSlug to its slug.
 If not in the list, set matchedSlug to null and still return the providerName you found.
 If you cannot determine the provider at all, return providerName as null.`;
+
+  let convertedPdfLogFiles: OcrPersistedFile[] = [];
 
   try {
     // Prepare images to send
@@ -333,10 +366,21 @@ If you cannot determine the provider at all, return providerName as null.`;
       // PDF: convert to images, use only first page
       const bytes = await fileEntries[0].arrayBuffer();
       const buffer = Buffer.from(bytes);
+      const fileNameWithoutExt = fileEntries[0].name.replace(/\.[^.]+$/, "");
 
       if (llmProvider === "ollama-cloud") {
         // Convert PDF to image first (only first page)
         const pdfImages = await convertPdfToImages(buffer, 1, 1.5);
+        convertedPdfLogFiles = pdfImages.map((img) => {
+          const imageBuffer = Buffer.from(img.base64, "base64");
+          return {
+            fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.png`,
+            fileType: img.mimeType,
+            fileSizeBytes: imageBuffer.length,
+            fileData: imageBuffer,
+          };
+        });
+
         imagesToProcess = pdfImages.map((img) => ({
           base64: img.base64,
           mimeType: img.mimeType,
@@ -344,6 +388,16 @@ If you cannot determine the provider at all, return providerName as null.`;
       } else {
         // Providers that handle PDF natively — send as is but only first page via image conversion
         const pdfImages = await convertPdfToImages(buffer, 1, 1.5);
+        convertedPdfLogFiles = pdfImages.map((img) => {
+          const imageBuffer = Buffer.from(img.base64, "base64");
+          return {
+            fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.png`,
+            fileType: img.mimeType,
+            fileSizeBytes: imageBuffer.length,
+            fileData: imageBuffer,
+          };
+        });
+
         if (pdfImages.length > 0) {
           imagesToProcess = [
             { base64: pdfImages[0].base64, mimeType: pdfImages[0].mimeType },
@@ -399,6 +453,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         fileType: fileEntries[0]?.type,
         fileSizeBytes: fileEntries[0]?.size,
         files: fileEntries,
+        persistedFiles: convertedPdfLogFiles,
         promptTokens,
         completionTokens,
         totalTokens,
@@ -414,6 +469,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         providerName: null,
         isKnown: false,
         confidence: "low",
+        invoiceType: null,
         ocrLogId: createdLog?.id ?? null,
       });
     }
@@ -429,6 +485,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         fileType: fileEntries[0]?.type,
         fileSizeBytes: fileEntries[0]?.size,
         files: fileEntries,
+        persistedFiles: convertedPdfLogFiles,
         promptTokens,
         completionTokens,
         totalTokens,
@@ -444,6 +501,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         providerName: null,
         isKnown: false,
         confidence: "low",
+        invoiceType: null,
         ocrLogId: createdLog?.id ?? null,
       });
     }
@@ -452,6 +510,12 @@ If you cannot determine the provider at all, return providerName as null.`;
     const matchedSlug: string | null = parsed.matchedSlug || null;
     const confidence: "high" | "low" =
       parsed.confidence === "high" ? "high" : "low";
+    const invoiceType: "ELECTRICITY" | "GAS" | "BOTH" | null =
+      parsed.invoiceType === "ELECTRICITY" ||
+      parsed.invoiceType === "GAS" ||
+      parsed.invoiceType === "BOTH"
+        ? parsed.invoiceType
+        : null;
 
     // Find matched provider in DB
     let matchedProvider: { id: string; name: string; slug: string } | null =
@@ -468,6 +532,7 @@ If you cannot determine the provider at all, return providerName as null.`;
       fileType: firstFile?.type,
       fileSizeBytes: firstFile?.size,
       files: fileEntries,
+      persistedFiles: convertedPdfLogFiles,
       promptTokens,
       completionTokens,
       totalTokens,
@@ -477,6 +542,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         detectedProviderName: matchedProvider?.name ?? detectedName,
         isKnown: matchedProvider !== null,
         confidence,
+        invoiceType,
       },
     });
 
@@ -486,6 +552,7 @@ If you cannot determine the provider at all, return providerName as null.`;
       providerName: matchedProvider?.name ?? detectedName,
       isKnown: matchedProvider !== null,
       confidence,
+      invoiceType,
       ocrLogId: createdLog?.id ?? null,
     });
   } catch (error: any) {
@@ -497,6 +564,7 @@ If you cannot determine the provider at all, return providerName as null.`;
       fileType: fileEntries[0]?.type,
       fileSizeBytes: fileEntries[0]?.size,
       files: fileEntries,
+      persistedFiles: convertedPdfLogFiles,
       errorMessage: error.message || "Failed to detect provider",
       errorType: "DETECTION_ERROR",
       httpStatusCode: 500,

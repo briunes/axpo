@@ -5,12 +5,12 @@ import { prisma } from "@/infrastructure/database/prisma";
 import { convertPdfToImages } from "@/lib/pdfToImage";
 
 /**
- * LLM Prompt for Invoice Data Extraction
+ * LLM Prompts for Invoice Data Extraction
  *
- * This prompt is designed to extract all necessary fields from Spanish energy invoices
- * (electricity and gas) to populate simulation forms.
+ * Separate prompts for electricity and gas invoices.
+ * The correct one is selected based on the invoiceType detected in the provider-detection step.
  */
-const INVOICE_EXTRACTION_PROMPT = `You are an expert at extracting data from Spanish energy invoices (electricity and gas).
+const INVOICE_EXTRACTION_PROMPT_ELECTRICITY = `You are an expert at extracting data from Spanish ELECTRICITY invoices.
 
 IMPORTANT PRIORITY RULE — CLIENT CIF EXTRACTION
 
@@ -419,6 +419,138 @@ You MUST always return a JSON that exactly matches this structure (all keys pres
 }`;
 
 /**
+ * Default prompt for GAS invoices.
+ */
+const INVOICE_EXTRACTION_PROMPT_GAS = `You are an expert at extracting data from Spanish GAS invoices.
+
+IMPORTANT PRIORITY RULE — CLIENT CIF EXTRACTION
+
+Spanish energy invoices often contain TWO CIF/NIF values:
+1. the ENERGY COMPANY CIF
+2. the CLIENT/HOLDER CIF
+
+You MUST extract ONLY the CLIENT/HOLDER CIF.
+NEVER extract the supplier/provider CIF.
+
+When extracting the "cif" field prioritize labels: "CIF titular", "NIF titular", "CIF cliente", "NIF cliente", "Titular", "Cliente".
+NEVER use CIF values near the logo, header, or supplier company names.
+
+CRITICAL BILLING PERIOD RULE:
+
+For fechaInicio and fechaFin prioritize labels like:
+- "Periodo de facturación", "Periodo facturado", "Facturación desde/hasta", "Desde / Hasta"
+
+The correct billing period is usually ~28–31 days for monthly invoices.
+NEVER use invoice issue date, payment due date, or contract expiration date.
+
+CRITICAL FIELDS TO EXTRACT:
+
+1. CLIENT/HOLDER INFORMATION:
+   - cups: ⚠️ MANDATORY — CUPS gas code. Starts with "ES" and is 20-22 chars long. Strip all spaces.
+   - nombreTitular: Full name of the invoice holder/titular
+   - personaContacto: Contact person name
+   - direccion: Supply point address (where the gas meter is installed). Look in "Datos punto de suministro", "Dirección de suministro".
+   - clienteAddress: Billing address as object with: street, city, postalCode, province, country (use "ES").
+   - comercializadorActual: Current gas supplier/marketer name
+   - cif: Tax ID (CIF/NIF) of the CLIENT/HOLDER only.
+
+2. TARIFF AND ZONE:
+   - tarifaAcceso: ⚠️ MANDATORY — Gas access tariff. You MUST return one of these exact values:
+     "RL01", "RL02", "RL03", "RL04", "RL05", "RL06",
+     "RLPS1", "RLPS2", "RLPS3", "RLPS4", "RLPS5", "RLPS6"
+     Match the tariff printed on the invoice to the closest option (e.g. "RL.2" or "RL2" → "RL02"). Never skip.
+   - zonaGeografica: Geographic zone (e.g. "Peninsula", "Baleares", "Canarias", or specific gas zone)
+   - perfilCarga: Leave null for gas
+
+3. BILLING PERIOD:
+   - fechaInicio: Start date (YYYY-MM-DD)
+   - fechaFin: End date (YYYY-MM-DD)
+
+4. GAS CONSUMPTION:
+   - consumoTotal: Total gas consumption in kWh or m³ as printed on the invoice
+   - consumoAnual: Annual gas consumption if shown
+   NOTE: Gas invoices do NOT have period-based consumption (P1..P6). Leave consumoP1..P6 as null.
+
+5. FINANCIAL INFORMATION:
+   - facturaActual: Total invoice amount including taxes (€)
+   - alquiler: Equipment/meter rental charges (€)
+   - otrosCargos: Other charges (€)
+
+6. GAS-SPECIFIC:
+   - telemedida: Remote metering ("SI" or "NO")
+   - impuestoHidrocarburo: Hydrocarbon tax amount (€) if shown
+
+7. TAX RATES (only if explicitly printed):
+   - ivaTasa: IVA/VAT rate as a PERCENTAGE number (e.g. 21). Look for "IVA", "I.V.A.". For Canary Islands look for "IGIC".
+   - impuestoHidrocarburo: Hydrocarbon/gas tax amount in € if shown. Look for "Impuesto sobre Hidrocarburos", "I.H.", "Imp. Hidrocarburos".
+
+IMPORTANT NOTES:
+- Convert all dates to YYYY-MM-DD format
+- Extract numeric values without currency symbols or units
+- Convert Spanish decimal commas to standard decimals
+- Return ONLY a valid JSON object. No markdown, no code fences, no explanation.
+- ALWAYS return the COMPLETE JSON with all keys, using null for missing fields.
+
+You MUST always return a JSON that exactly matches this structure (all keys present):
+
+{
+  "cups": "ES0000000000000000XX",
+  "nombreTitular": "EMPRESA EJEMPLO, S.L.",
+  "personaContacto": "",
+  "cif": "B12345678",
+  "direccion": "CALLE SUMINISTRO 1, 2º A",
+  "clienteAddress": {
+    "street": "CALLE FACTURACIÓN 2, PTA. BJ",
+    "city": "MADRID",
+    "postalCode": "28001",
+    "province": "MADRID",
+    "country": "ES"
+  },
+  "comercializadorActual": "NOMBRE COMERCIALIZADOR",
+  "tarifaAcceso": "RL.2",
+  "zonaGeografica": "Peninsula",
+  "perfilCarga": null,
+  "fechaInicio": "2025-10-01",
+  "fechaFin": "2025-10-31",
+  "consumoP1": null,
+  "consumoP2": null,
+  "consumoP3": null,
+  "consumoP4": null,
+  "consumoP5": null,
+  "consumoP6": null,
+  "consumoAnual": null,
+  "consumoTotal": null,
+  "potenciaP1": null,
+  "potenciaP2": null,
+  "potenciaP3": null,
+  "potenciaP4": null,
+  "potenciaP5": null,
+  "potenciaP6": null,
+  "precioPotenciaP1": null,
+  "precioPotenciaP2": null,
+  "precioPotenciaP3": null,
+  "precioPotenciaP4": null,
+  "precioPotenciaP5": null,
+  "precioPotenciaP6": null,
+  "precioEnergiaP1": null,
+  "precioEnergiaP2": null,
+  "precioEnergiaP3": null,
+  "precioEnergiaP4": null,
+  "precioEnergiaP5": null,
+  "precioEnergiaP6": null,
+  "facturaActual": null,
+  "excesoPotencia": null,
+  "reactiva": null,
+  "alquiler": null,
+  "otrosCargos": null,
+  "ivaTasa": null,
+  "impuestoElectricoTasa": null,
+  "impuestoHidrocarburo": null,
+  "telemedida": "",
+  "invoiceType": "GAS"
+}`;
+
+/**
  * @swagger
  * /api/v1/internal/invoices/extract:
  *   post:
@@ -444,6 +576,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
   const requestStartTime = Date.now();
 
+  type OcrPersistedFile = {
+    fileName: string;
+    fileType?: string | null;
+    fileSizeBytes?: number;
+    fileData: Buffer;
+  };
+
   // Helper: persist an OCR log entry (fire-and-forget, never throws)
   const saveOcrLog = async (data: {
     status: string;
@@ -467,8 +606,31 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     promptText?: string;
     metadata?: any;
     files?: File[];
+    persistedFiles?: OcrPersistedFile[];
   }) => {
     try {
+      const uploadedFiles =
+        data.files && data.files.length > 0
+          ? await Promise.all(
+              data.files.map(async (file) => ({
+                fileName: file.name,
+                fileType: file.type || null,
+                fileSizeBytes: file.size,
+                fileData: Buffer.from(await file.arrayBuffer()),
+              })),
+            )
+          : [];
+
+      const persistedFiles = [
+        ...uploadedFiles,
+        ...(data.persistedFiles ?? []).map((f) => ({
+          fileName: f.fileName,
+          fileType: f.fileType ?? null,
+          fileSizeBytes: f.fileSizeBytes ?? f.fileData.length,
+          fileData: f.fileData,
+        })),
+      ];
+
       const created = await prisma.ocrLog.create({
         data: {
           userId: auth.userId,
@@ -495,16 +657,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           promptText: data.promptText,
           metadata: data.metadata ?? undefined,
           ocrFiles:
-            data.files && data.files.length > 0
+            persistedFiles.length > 0
               ? {
-                  create: await Promise.all(
-                    data.files.map(async (file) => ({
-                      fileName: file.name,
-                      fileType: file.type || null,
-                      fileSizeBytes: file.size,
-                      fileData: Buffer.from(await file.arrayBuffer()),
-                    })),
-                  ),
+                  create: persistedFiles,
                 }
               : undefined,
         },
@@ -584,9 +739,20 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     .filter((entry): entry is File => entry instanceof File);
   const file = requestFiles[0];
   const providerId = formData.get("providerId") as string | null;
+  const invoiceTypeParam = formData.get("invoiceType") as string | null;
+  const invoiceType: "ELECTRICITY" | "GAS" | null =
+    invoiceTypeParam === "ELECTRICITY" || invoiceTypeParam === "GAS"
+      ? invoiceTypeParam
+      : null;
+
+  // Select the appropriate default prompt based on invoice type
+  const defaultPrompt =
+    invoiceType === "GAS"
+      ? INVOICE_EXTRACTION_PROMPT_GAS
+      : INVOICE_EXTRACTION_PROMPT_ELECTRICITY;
 
   // Load provider-specific prompt if a providerId was supplied
-  let activePrompt = INVOICE_EXTRACTION_PROMPT;
+  let activePrompt = defaultPrompt;
   if (providerId) {
     try {
       const providerRecord = await (
@@ -594,11 +760,24 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       ).invoiceProviderPrompt.findUnique({
         where: { id: providerId },
       });
-      if (providerRecord?.prompt && providerRecord.prompt.trim().length > 0) {
-        activePrompt = providerRecord.prompt;
-        console.log(
-          `Using provider-specific prompt for: ${providerRecord.name}`,
-        );
+      if (providerRecord) {
+        // Pick the per-commodity prompt first, fall back to legacy generic prompt
+        const commodityPrompt =
+          invoiceType === "GAS"
+            ? providerRecord.promptGas
+            : providerRecord.promptElectricity;
+        const chosenPrompt =
+          commodityPrompt?.trim().length > 0
+            ? commodityPrompt
+            : providerRecord.prompt?.trim().length > 0
+              ? providerRecord.prompt
+              : null;
+        if (chosenPrompt) {
+          activePrompt = chosenPrompt;
+          console.log(
+            `Using provider-specific ${invoiceType ?? "generic"} prompt for: ${providerRecord.name}`,
+          );
+        }
       }
     } catch (err) {
       console.warn(
@@ -607,6 +786,143 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       );
     }
   }
+
+  // Append dynamic allowed-value constraints so OCR output matches UI-selectable options
+  const effectiveInvoiceType: "ELECTRICITY" | "GAS" =
+    invoiceType === "GAS" ? "GAS" : "ELECTRICITY";
+
+  const electricityTaxConfig = (config as any).electricityTaxConfig as
+    | Record<string, any>
+    | undefined;
+  const electricityZoneOptions: string[] = [];
+  if (electricityTaxConfig?.peninsula) electricityZoneOptions.push("Peninsula");
+  if (electricityTaxConfig?.baleares) electricityZoneOptions.push("Baleares");
+  if (electricityTaxConfig?.canarias) electricityZoneOptions.push("Canarias");
+  const fallbackElectricityZones = ["Peninsula", "Baleares", "Canarias"];
+
+  // In the current UI, gas has a single zone value "Peninsula"
+  // (displayed as "Peninsula and Balearic Islands").
+  const gasZoneOptions = ["Peninsula"];
+
+  const allowedZones =
+    effectiveInvoiceType === "GAS"
+      ? gasZoneOptions
+      : electricityZoneOptions.length > 0
+        ? electricityZoneOptions
+        : fallbackElectricityZones;
+
+  const allowedTariffs =
+    effectiveInvoiceType === "GAS"
+      ? [
+          "RL01",
+          "RL02",
+          "RL03",
+          "RL04",
+          "RL05",
+          "RL06",
+          "RLPS1",
+          "RLPS2",
+          "RLPS3",
+          "RLPS4",
+          "RLPS5",
+          "RLPS6",
+        ]
+      : ["2.0TD", "3.0TD", "6.1TD"];
+
+  // Extract available tax options from config for display in OCR prompt
+  const getElectricityTaxOptions = (): number[] => {
+    if (!electricityTaxConfig) return [];
+    const allOptions = new Set<number>();
+
+    // Collect IVA options from all zones
+    if (electricityTaxConfig.peninsula?.ivaOptions) {
+      electricityTaxConfig.peninsula.ivaOptions.forEach((v: number) =>
+        allOptions.add(v),
+      );
+    }
+    if (electricityTaxConfig.baleares?.ivaOptions) {
+      electricityTaxConfig.baleares.ivaOptions.forEach((v: number) =>
+        allOptions.add(v),
+      );
+    }
+    if (electricityTaxConfig.canarias?.igicOptions) {
+      electricityTaxConfig.canarias.igicOptions.forEach((v: number) =>
+        allOptions.add(v),
+      );
+    }
+
+    // Collect electricity tax options from all zones
+    if (electricityTaxConfig.peninsula?.elecTaxOptions) {
+      electricityTaxConfig.peninsula.elecTaxOptions.forEach((v: number) =>
+        allOptions.add(v),
+      );
+    }
+    if (electricityTaxConfig.baleares?.elecTaxOptions) {
+      electricityTaxConfig.baleares.elecTaxOptions.forEach((v: number) =>
+        allOptions.add(v),
+      );
+    }
+    if (electricityTaxConfig.canarias?.elecTaxOptions) {
+      electricityTaxConfig.canarias.elecTaxOptions.forEach((v: number) =>
+        allOptions.add(v),
+      );
+    }
+
+    return Array.from(allOptions).sort((a, b) => a - b);
+  };
+
+  const getGasTaxOptions = (): number[] => {
+    const gasTaxConfig = (config as any).gasTaxConfig as
+      | Record<string, any>
+      | undefined;
+    if (!gasTaxConfig) return [];
+    const allOptions = new Set<number>();
+
+    // Collect IVA options from all zones
+    if (gasTaxConfig.peninsula?.ivaOptions) {
+      gasTaxConfig.peninsula.ivaOptions.forEach((v: number) =>
+        allOptions.add(v),
+      );
+    }
+    if (gasTaxConfig.baleares?.ivaOptions) {
+      gasTaxConfig.baleares.ivaOptions.forEach((v: number) =>
+        allOptions.add(v),
+      );
+    }
+
+    return Array.from(allOptions).sort((a, b) => a - b);
+  };
+
+  const elecTaxOptions = getElectricityTaxOptions();
+  const gasTaxOptions = getGasTaxOptions();
+
+  // Format options for display in prompt (convert to percentages)
+  const formatTaxOptionsForPrompt = (options: number[]): string => {
+    if (options.length === 0) return "not available";
+    return options.map((opt) => `${(opt * 100).toFixed(5)}%`).join(", ");
+  };
+
+  activePrompt += `
+
+---
+SYSTEM ALLOWED OPTIONS (MUST FOLLOW)
+- zonaGeografica: return ONLY one of: ${allowedZones.join(", ")}
+- tarifaAcceso: return ONLY one of: ${allowedTariffs.join(", ")}
+${
+  effectiveInvoiceType === "ELECTRICITY"
+    ? `- ivaTasa (for Electricity): return ONLY one of: ${formatTaxOptionsForPrompt(elecTaxOptions)}
+- impuestoElectricoTasa (Electricity Tax): return ONLY one of: ${formatTaxOptionsForPrompt(
+        elecTaxOptions.filter((opt) => opt < 0.1),
+      )} (these are the electricity tax rates, NOT VAT)`
+    : `- ivaTasa (for Gas): return ONLY one of: ${formatTaxOptionsForPrompt(gasTaxOptions)}`
+}
+${
+  effectiveInvoiceType === "GAS"
+    ? '- For gas invoices, map "Peninsula and Balearic Islands" to zonaGeografica = "Peninsula".'
+    : ""
+}
+If invoice text uses a different format, map it to the closest allowed value above.
+---`;
 
   console.log("File type:", file?.type);
   console.log("File size:", file?.size, "bytes");
@@ -663,6 +979,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       { status: 400 },
     );
   }
+
+  let convertedPdfLogFiles: OcrPersistedFile[] = [];
 
   try {
     // Convert file to buffer
@@ -729,6 +1047,18 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       // For Ollama (local and cloud), convert PDF to images first
       if (llmProvider === "ollama" || llmProvider === "ollama-cloud") {
         const pdfImages = await convertPdfToImages(buffer, 2, 1.5);
+        const fileNameWithoutExt = file.name.replace(/\.[^.]+$/, "");
+
+        convertedPdfLogFiles = pdfImages.map((img) => {
+          const imageBuffer = Buffer.from(img.base64, "base64");
+          return {
+            fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.png`,
+            fileType: img.mimeType,
+            fileSizeBytes: imageBuffer.length,
+            fileData: imageBuffer,
+          };
+        });
+
         imagesToProcess = pdfImages.map((img) => ({
           base64: img.base64,
           mimeType: img.mimeType,
@@ -761,6 +1091,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         fileType: file.type,
         fileSizeBytes: file.size,
         files: requestFiles,
+        persistedFiles: convertedPdfLogFiles,
         errorMessage: "Invoice extraction with local Ollama is not supported.",
         errorType: "UNSUPPORTED_PROVIDER",
         httpStatusCode: 400,
@@ -955,6 +1286,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         fileType: file.type,
         fileSizeBytes: file.size,
         files: requestFiles,
+        persistedFiles: convertedPdfLogFiles,
         errorMessage: `Provider ${llmProvider} is not supported for invoice extraction`,
         errorType: "UNSUPPORTED_PROVIDER",
         httpStatusCode: 400,
@@ -987,6 +1319,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         fileType: file.type,
         fileSizeBytes: file.size,
         files: requestFiles,
+        persistedFiles: convertedPdfLogFiles,
         errorMessage: `LLM API error: ${llmResponse.status} ${llmResponse.statusText}`,
         errorType: "LLM_API_ERROR",
         httpStatusCode: llmResponse.status,
@@ -1045,6 +1378,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           fileType: file.type,
           fileSizeBytes: file.size,
           files: requestFiles,
+          persistedFiles: convertedPdfLogFiles,
           errorMessage: "Failed to parse extracted data from LLM response",
           errorType: "JSON_PARSE_ERROR",
           httpStatusCode: 500,
@@ -1072,6 +1406,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         fileType: file.type,
         fileSizeBytes: file.size,
         files: requestFiles,
+        persistedFiles: convertedPdfLogFiles,
         errorMessage: "No valid JSON data found in LLM response",
         errorType: "NO_JSON_FOUND",
         httpStatusCode: 500,
@@ -1170,6 +1505,183 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       }
     }
 
+    // ── TAX RATE VALIDATION: Match OCR values to configured options with rounding tolerance ──
+    // Helper function to match an OCR value to available configured options
+    const matchTaxRateToOption = (
+      ocrValue: number | null | undefined,
+      availableOptions: number[],
+      fieldName: string,
+    ): number | null => {
+      if (
+        ocrValue === null ||
+        ocrValue === undefined ||
+        availableOptions.length === 0
+      ) {
+        return null;
+      }
+
+      // Convert OCR value (as percentage) to decimal for matching
+      // OCR may return values in percentage format (e.g. 5.11269 for 5.11269%)
+      // or as already-parsed decimals (e.g. 0.051127)
+      // We normalize by checking if the value is reasonable for a percentage:
+      // - If > 1, assume it's a percentage (e.g. 5.11269 = 5.11269%)
+      // - If < 1, assume it's already a decimal (e.g. 0.051127 = 5.1127%)
+      const normalizedValue = ocrValue > 1 ? ocrValue / 100 : ocrValue;
+
+      // Try to find an exact match in configured options
+      const exactMatch = availableOptions.find(
+        (opt) => Math.abs(opt - normalizedValue) < 0.000001,
+      );
+      if (exactMatch !== undefined) {
+        console.log(
+          `[Tax Validation] Field "${fieldName}": OCR value ${ocrValue} matches configured option ${(exactMatch * 100).toFixed(5)}% exactly`,
+        );
+        return exactMatch;
+      }
+
+      // If no exact match, find the closest match within tolerance
+      // Tolerance: allow up to 0.005 (0.5%) difference for rounding
+      const toleranceThreshold = 0.005;
+      let closestMatch: number | undefined;
+      let closestDistance = Infinity;
+
+      for (const option of availableOptions) {
+        const distance = Math.abs(option - normalizedValue);
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestMatch = option;
+        }
+      }
+
+      if (closestMatch !== undefined && closestDistance <= toleranceThreshold) {
+        console.log(
+          `[Tax Validation] Field "${fieldName}": OCR value ${ocrValue} (${(normalizedValue * 100).toFixed(5)}%) corrected to closest configured option ${(closestMatch * 100).toFixed(5)}% (distance: ${(closestDistance * 100).toFixed(5)}%)`,
+        );
+        return closestMatch;
+      }
+
+      // No match found within tolerance — reject the value
+      console.warn(
+        `⚠️  [Tax Validation] Field "${fieldName}": OCR value ${ocrValue} (${(normalizedValue * 100).toFixed(5)}%) does NOT match any configured option. Available options: ${availableOptions.map((opt) => `${(opt * 100).toFixed(5)}%`).join(", ")}. Discarding value.`,
+      );
+      return null;
+    };
+
+    // Validate electricity tax rates (if electricity invoice)
+    if (effectiveInvoiceType === "ELECTRICITY" && electricityTaxConfig) {
+      // Collect all available electricity tax options from config
+      const allElecTaxOptions: number[] = [];
+      if (electricityTaxConfig.peninsula?.elecTaxOptions) {
+        electricityTaxConfig.peninsula.elecTaxOptions.forEach((v: number) => {
+          if (!allElecTaxOptions.includes(v)) allElecTaxOptions.push(v);
+        });
+      }
+      if (electricityTaxConfig.baleares?.elecTaxOptions) {
+        electricityTaxConfig.baleares.elecTaxOptions.forEach((v: number) => {
+          if (!allElecTaxOptions.includes(v)) allElecTaxOptions.push(v);
+        });
+      }
+      if (electricityTaxConfig.canarias?.elecTaxOptions) {
+        electricityTaxConfig.canarias.elecTaxOptions.forEach((v: number) => {
+          if (!allElecTaxOptions.includes(v)) allElecTaxOptions.push(v);
+        });
+      }
+
+      // Validate and correct impuestoElectricoTasa
+      if (
+        extractedData.impuestoElectricoTasa !== null &&
+        extractedData.impuestoElectricoTasa !== undefined
+      ) {
+        const matched = matchTaxRateToOption(
+          extractedData.impuestoElectricoTasa,
+          allElecTaxOptions,
+          "impuestoElectricoTasa",
+        );
+        if (matched !== null) {
+          // Convert back to percentage format (as the rest of the system expects)
+          extractedData.impuestoElectricoTasa = matched * 100;
+        } else {
+          delete extractedData.impuestoElectricoTasa;
+        }
+      }
+
+      // Collect all available IVA options from config
+      const allIvaOptions: number[] = [];
+      if (electricityTaxConfig.peninsula?.ivaOptions) {
+        electricityTaxConfig.peninsula.ivaOptions.forEach((v: number) => {
+          if (!allIvaOptions.includes(v)) allIvaOptions.push(v);
+        });
+      }
+      if (electricityTaxConfig.baleares?.ivaOptions) {
+        electricityTaxConfig.baleares.ivaOptions.forEach((v: number) => {
+          if (!allIvaOptions.includes(v)) allIvaOptions.push(v);
+        });
+      }
+      if (electricityTaxConfig.canarias?.igicOptions) {
+        electricityTaxConfig.canarias.igicOptions.forEach((v: number) => {
+          if (!allIvaOptions.includes(v)) allIvaOptions.push(v);
+        });
+      }
+
+      // Validate and correct ivaTasa
+      if (
+        extractedData.ivaTasa !== null &&
+        extractedData.ivaTasa !== undefined
+      ) {
+        const matched = matchTaxRateToOption(
+          extractedData.ivaTasa,
+          allIvaOptions,
+          "ivaTasa (Electricity)",
+        );
+        if (matched !== null) {
+          // Convert back to percentage format
+          extractedData.ivaTasa = matched * 100;
+        } else {
+          delete extractedData.ivaTasa;
+        }
+      }
+    }
+
+    // Validate gas tax rates (if gas invoice)
+    if (effectiveInvoiceType === "GAS") {
+      const gasTaxConfig = (config as any).gasTaxConfig as
+        | Record<string, any>
+        | undefined;
+
+      if (gasTaxConfig) {
+        // Collect all available IVA options from gas config
+        const allIvaOptions: number[] = [];
+        if (gasTaxConfig.peninsula?.ivaOptions) {
+          gasTaxConfig.peninsula.ivaOptions.forEach((v: number) => {
+            if (!allIvaOptions.includes(v)) allIvaOptions.push(v);
+          });
+        }
+        if (gasTaxConfig.baleares?.ivaOptions) {
+          gasTaxConfig.baleares.ivaOptions.forEach((v: number) => {
+            if (!allIvaOptions.includes(v)) allIvaOptions.push(v);
+          });
+        }
+
+        // Validate and correct ivaTasa
+        if (
+          extractedData.ivaTasa !== null &&
+          extractedData.ivaTasa !== undefined
+        ) {
+          const matched = matchTaxRateToOption(
+            extractedData.ivaTasa,
+            allIvaOptions,
+            "ivaTasa (Gas)",
+          );
+          if (matched !== null) {
+            // Convert back to percentage format
+            extractedData.ivaTasa = matched * 100;
+          } else {
+            delete extractedData.ivaTasa;
+          }
+        }
+      }
+    }
+
     // Extract token usage from provider response
     let promptTokens: number | undefined;
     let completionTokens: number | undefined;
@@ -1208,6 +1720,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       fileType: file.type,
       fileSizeBytes: file.size,
       files: requestFiles,
+      persistedFiles: convertedPdfLogFiles,
       pageCount:
         imagesToProcess.length > 0 ? imagesToProcess.length : undefined,
       promptTokens,
@@ -1247,6 +1760,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       model: llmModelName ?? "unknown",
       baseUrl: llmBaseUrl,
       files: requestFiles,
+      persistedFiles: convertedPdfLogFiles,
       errorMessage: error.message || "Unknown error",
       errorType: error.constructor?.name || "UnknownError",
       httpStatusCode: 500,
