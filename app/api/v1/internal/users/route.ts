@@ -25,6 +25,7 @@ const createUserSchema = z.object({
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/)
     .optional(),
   pin: z.string().regex(/^\d+$/).optional(),
+  maxActiveDevices: z.number().int().min(1).max(10).optional(),
 });
 
 /**
@@ -181,6 +182,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         commercialPhone: true,
         commercialEmail: true,
         otherDetails: true,
+        maxActiveDevices: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,

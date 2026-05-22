@@ -30,6 +30,7 @@ async function GET(req: NextRequest) {
         enableAuditLogsModule: true,
         defaultDashboardView: "COMMERCIAL",
         enableRealtimeReports: false,
+        defaultMaxActiveDevices: 3,
       },
     });
   }

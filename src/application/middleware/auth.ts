@@ -2,15 +2,20 @@ import { NextRequest } from "next/server";
 import { UnauthorizedError } from "@/domain/errors/errors";
 import { UserRole } from "@/domain/types";
 import { JwtService } from "@/application/services/jwtService";
+import { SessionService } from "@/application/services/sessionService";
+import { setRefreshedAccessToken } from "@/application/middleware/requestContext";
 
 export interface AuthContext {
   userId: string;
+  sessionId: string;
   role: UserRole;
   agencyId: string;
   email: string;
 }
 
-export const requireAuth = async (request: NextRequest): Promise<AuthContext> => {
+export const requireAuth = async (
+  request: NextRequest,
+): Promise<AuthContext> => {
   const authorization = request.headers.get("authorization");
   if (!authorization) {
     throw new UnauthorizedError("Missing Authorization header");
@@ -23,8 +28,40 @@ export const requireAuth = async (request: NextRequest): Promise<AuthContext> =>
 
   const payload = JwtService.verifyAccessToken(token);
 
+  const activeSession = await SessionService.ensureSessionIsActive(
+    payload.sub,
+    payload.sid,
+  );
+
+  if (!activeSession) {
+    throw new UnauthorizedError("Session expired or revoked");
+  }
+
+  await SessionService.touchSession(payload.sid);
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const secondsUntilExpiry = payload.exp - nowSeconds;
+
+  // Sliding extension: only starts in the last 30 minutes of token lifetime.
+  // Any authenticated request in this window resets TTL to 30 minutes.
+  if (secondsUntilExpiry > 0 && secondsUntilExpiry <= 30 * 60) {
+    const refreshedToken = JwtService.signAccessToken(
+      {
+        sub: payload.sub,
+        sid: payload.sid,
+        role: payload.role,
+        agencyId: payload.agencyId,
+        email: payload.email,
+      },
+      { expiresIn: "30m" },
+    );
+
+    setRefreshedAccessToken(refreshedToken);
+  }
+
   return {
     userId: payload.sub,
+    sessionId: payload.sid,
     role: payload.role,
     agencyId: payload.agencyId,
     email: payload.email,

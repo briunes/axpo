@@ -456,11 +456,15 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                   label=""
                   options={[
                     { value: "", label: t("search", "allOwners") },
-                    ...users
-                      .filter(u => u.isActive)
+                    ...Array.from(new Map(
+                      users
+                        .filter(u => u.isActive)
+                        .map((u) => [u.id, u]),
+                    ).values())
                       .map(user => ({
                         value: user.id,
                         label: user.fullName || user.email,
+                        secondaryLabel: user.email,
                       }))
                       .sort((a, b) => a.label.localeCompare(b.label)),
                   ]}

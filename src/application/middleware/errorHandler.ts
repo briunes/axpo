@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { DomainError, isDomainError } from "@/domain/errors/errors";
 import { ResponseHandler } from "./response";
+import { getRefreshedAccessToken, withRequestContext } from "./requestContext";
 
 export interface ErrorHandlerOptions {
   logErrors?: boolean;
@@ -89,11 +90,22 @@ export const withErrorHandler = (
     },
   ) => {
     try {
-      const resolvedParams = context?.params ? await context.params : undefined;
-      return await handler(
-        req,
-        resolvedParams ? { params: resolvedParams } : undefined,
-      );
+      return await withRequestContext(async () => {
+        const resolvedParams = context?.params
+          ? await context.params
+          : undefined;
+        const response = await handler(
+          req,
+          resolvedParams ? { params: resolvedParams } : undefined,
+        );
+
+        const refreshedAccessToken = getRefreshedAccessToken();
+        if (refreshedAccessToken) {
+          response.headers.set("x-access-token", refreshedAccessToken);
+        }
+
+        return response;
+      });
     } catch (error) {
       return errorHandler(error);
     }

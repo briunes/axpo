@@ -62,7 +62,17 @@ export const PATCH = withErrorHandler(async (request: NextRequest) => {
   const { updates } = upsertSchema.parse(body);
 
   // Strip ADMIN entries — cannot be changed
-  const filtered = updates.filter((u) => u.role !== UserRole.ADMIN);
+  const filtered = updates
+    .filter((u) => u.role !== UserRole.ADMIN)
+    .map((u) => {
+      if (
+        u.permissionKey === "users.sessions.manage" &&
+        (u.role === UserRole.AGENT || u.role === UserRole.COMMERCIAL)
+      ) {
+        return { ...u, allowed: false };
+      }
+      return u;
+    });
 
   await Promise.all(
     filtered.map((u) =>

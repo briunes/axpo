@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { AuthService } from "@/application/services/authService";
+import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
 
 /**
  * @swagger
@@ -24,8 +25,9 @@ import { AuthService } from "@/application/services/authService";
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const token = request.nextUrl.searchParams.get("token") ?? "";
+  const sessionContext = getRequestSessionContext(request);
 
-  const result = await AuthService.verifyMagicLink(token);
+  const result = await AuthService.verifyMagicLink(token, sessionContext);
 
   return ResponseHandler.ok(result);
 });

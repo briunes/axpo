@@ -13,6 +13,7 @@ import { assertRole } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 import { PasswordService } from "@/application/services/passwordService";
+import { SessionService } from "@/application/services/sessionService";
 
 const updateUserSchema = z.object({
   fullName: z.string().min(2).optional(),
@@ -21,6 +22,7 @@ const updateUserSchema = z.object({
   commercialPhone: z.string().min(1).optional(),
   commercialEmail: z.string().email().optional(),
   otherDetails: z.string().max(5000).optional(),
+  maxActiveDevices: z.number().int().min(1).max(10).optional(),
   isActive: z.boolean().optional(),
   role: z.nativeEnum(UserRole).optional(),
   agencyId: z.string().optional(),
@@ -86,6 +88,7 @@ export const GET = withErrorHandler(
         commercialPhone: true,
         commercialEmail: true,
         otherDetails: true,
+        maxActiveDevices: true,
         isActive: true,
         isDeleted: true,
         deletedAt: true,
@@ -133,7 +136,11 @@ export const PATCH = withErrorHandler(
       if (id !== auth.userId) {
         throw new ForbiddenError("Agent can only update their own profile");
       }
-      if (payload.role !== undefined || payload.isActive !== undefined) {
+      if (
+        payload.role !== undefined ||
+        payload.isActive !== undefined ||
+        payload.maxActiveDevices !== undefined
+      ) {
         throw new ForbiddenError("Agent cannot change role or active state");
       }
       if (payload.password && !payload.currentPassword) {
@@ -147,7 +154,11 @@ export const PATCH = withErrorHandler(
       if (id !== auth.userId) {
         throw new ForbiddenError("Commercial can only update own user");
       }
-      if (payload.role !== undefined || payload.isActive !== undefined) {
+      if (
+        payload.role !== undefined ||
+        payload.isActive !== undefined ||
+        payload.maxActiveDevices !== undefined
+      ) {
         throw new ForbiddenError(
           "Commercial cannot change role or active state",
         );
@@ -194,6 +205,7 @@ export const PATCH = withErrorHandler(
         commercialPhone: payload.commercialPhone,
         commercialEmail: payload.commercialEmail,
         otherDetails: payload.otherDetails,
+        maxActiveDevices: payload.maxActiveDevices,
         isActive: payload.isActive,
         role: payload.role,
         agencyId: payload.agencyId,
@@ -210,6 +222,7 @@ export const PATCH = withErrorHandler(
         commercialPhone: true,
         commercialEmail: true,
         otherDetails: true,
+        maxActiveDevices: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -218,6 +231,17 @@ export const PATCH = withErrorHandler(
         updatedByUser: { select: { id: true, fullName: true } },
       },
     });
+
+    if (payload.isActive === false) {
+      await SessionService.forceLogoutAllSessionsByUser(
+        {
+          userId: auth.userId,
+          role: auth.role,
+          agencyId: auth.agencyId,
+        },
+        id,
+      );
+    }
 
     const { password: _pw, currentPassword: _cp, ...changedFields } = payload;
     const changedKeys = Object.keys(

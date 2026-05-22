@@ -2,6 +2,7 @@ import { z } from "zod";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { AuthService } from "@/application/services/authService";
+import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
 
 const setupPasswordSchema = z.object({
   token: z.string().min(1),
@@ -37,10 +38,15 @@ const setupPasswordSchema = z.object({
  *         description: Invalid token or password does not meet policy
  */
 export const POST = withErrorHandler(async (request) => {
+  const sessionContext = getRequestSessionContext(request);
   const body = await request.json();
   const { token, password } = setupPasswordSchema.parse(body);
 
-  const result = await AuthService.setupPassword(token, password);
+  const result = await AuthService.setupPassword(
+    token,
+    password,
+    sessionContext,
+  );
 
   return ResponseHandler.ok(result);
 });

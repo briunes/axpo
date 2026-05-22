@@ -165,6 +165,30 @@ function saveHiddenCols(tableId: string, hidden: Set<string>) {
   } catch { /* ignore */ }
 }
 
+// ── Filter & Sort Persistence helpers ────────────────────────────────────────
+interface TablePersistentState {
+  search: string;
+  sortColumn?: string;
+  sortDirection?: "asc" | "desc";
+  pageSize?: number;
+}
+
+function loadTableState(tableId: string): TablePersistentState | null {
+  if (typeof window === 'undefined' || !tableId) return null;
+  try {
+    const raw = localStorage.getItem(`axpo_dt_state_${tableId}`);
+    if (!raw) return null;
+    return JSON.parse(raw) as TablePersistentState;
+  } catch { return null; }
+}
+
+function saveTableState(tableId: string, state: TablePersistentState) {
+  if (!tableId) return;
+  try {
+    localStorage.setItem(`axpo_dt_state_${tableId}`, JSON.stringify(state));
+  } catch { /* ignore */ }
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function DataTable<T extends { id: string }>({
@@ -213,6 +237,15 @@ export function DataTable<T extends { id: string }>({
     setHiddenCols(new Set());
     if (tableId) saveHiddenCols(tableId, new Set());
   };
+
+  // ── Persistent state loading ────────────────────────────────────────────────
+  // Load persisted state once on mount
+  const persistedState = useMemo(() => tableId ? loadTableState(tableId) : null, [tableId]);
+
+  // Initialize with persisted state or defaults
+  const initialSearch = searchValue || persistedState?.search || "";
+  const initialSortColumn = sortState?.column || persistedState?.sortColumn || "";
+  const initialSortDir = sortState?.direction || persistedState?.sortDirection || "asc";
 
   // Helper to save scroll position before a selection state update and restore it after.
   const withScrollPreserved = useCallback((fn: () => void) => {
@@ -404,6 +437,20 @@ export function DataTable<T extends { id: string }>({
   const commitSearch = () => {
     if (onSearch) onSearch(draft);
   };
+
+  // ── Persist state to localStorage whenever search or sort changes ────────────
+  useEffect(() => {
+    if (!tableId) return;
+
+    const currentState: TablePersistentState = {
+      search: searchValue,
+      sortColumn: sortState?.column,
+      sortDirection: sortState?.direction,
+      pageSize: pagination?.pageSize,
+    };
+
+    saveTableState(tableId, currentState);
+  }, [tableId, searchValue, sortState?.column, sortState?.direction, pagination?.pageSize]);
 
   // Handle sort model changes
   const handleSortModelChange = (model: GridSortModel) => {

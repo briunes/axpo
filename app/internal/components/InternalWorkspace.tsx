@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, createContext, useContext, useRef } f
 import { useRouter } from "next/navigation";
 import { Text } from "@once-ui-system/core";
 import { clearSession, loadSession, type SessionState } from "../lib/authSession";
-import { listRolePermissions } from "../lib/internalApi";
+import { listRolePermissions, logout } from "../lib/internalApi";
 import {
   PermissionsContext,
   buildPermissionMap,
@@ -104,7 +104,15 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
 
   const { messages: toastMessages, dismissToast, showSuccess, showError } = useToast();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (session?.token) {
+      try {
+        await logout(session.token);
+      } catch {
+        // ignore logout API failures, local cleanup still applies
+      }
+    }
+
     clearSession();
     router.replace("/internal/login");
   };

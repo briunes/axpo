@@ -31,6 +31,7 @@ export type PermissionKey =
   | "users.create"
   | "users.edit"
   | "users.deactivate"
+  | "users.sessions.manage"
   // ── Agency management ─────────────────────────────────────────────────────
   | "agencies.view"
   | "agencies.create"
@@ -198,6 +199,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         description: "Activate or deactivate user accounts (admin only)",
         adminOnly: true,
       },
+      {
+        key: "users.sessions.manage",
+        label: "Manage user sessions",
+        description:
+          "View user sessions and force logout by session, user or globally",
+      },
     ],
   },
   {
@@ -264,6 +271,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "users.create": true,
     "users.edit": true,
     "users.deactivate": true,
+    "users.sessions.manage": true,
     "agencies.view": true,
     "agencies.create": true,
     "agencies.edit": true,
@@ -293,6 +301,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "users.create": false,
     "users.edit": false,
     "users.deactivate": false,
+    "users.sessions.manage": false,
     "agencies.view": false,
     "agencies.create": false,
     "agencies.edit": false,
@@ -322,6 +331,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "users.create": false,
     "users.edit": false,
     "users.deactivate": false,
+    "users.sessions.manage": false,
     "agencies.view": false,
     "agencies.create": false,
     "agencies.edit": false,

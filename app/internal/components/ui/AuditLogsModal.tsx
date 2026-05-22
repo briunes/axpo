@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Dialog,
     DialogTitle,
@@ -25,10 +25,33 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { Country } from "country-state-city";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { listAuditLogs, type AuditLogItem } from "../../lib/internalApi";
+import { listAuditLogs, type AuditLogItem, getAgency, listUsers, type UserItem } from "../../lib/internalApi";
 import { formatDisplayDate } from "../../lib/formatPreferences";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { DateRangePicker } from "./DateRangePicker";
+import { FormSelect, type FormSelectOption } from "./FormSelect";
+
+const ENTITY_EVENT_TYPES: Record<string, string[]> = {
+    USER: ["USER_CREATED", "USER_UPDATED", "USER_DELETED", "USER_STATUS_CHANGED", "USER_PIN_ROTATED"],
+    CLIENT: ["CLIENT_CREATED", "CLIENT_UPDATED", "CLIENT_DELETED"],
+    AGENCY: ["AGENCY_CREATED", "AGENCY_UPDATED", "AGENCY_DELETED"],
+    SIMULATION: [
+        "SIMULATION_CREATED",
+        "SIMULATION_UPDATED",
+        "SIMULATION_CALCULATED",
+        "SIMULATION_SHARED",
+        "SIMULATION_CLONED",
+        "SIMULATION_DELETED",
+        "SIMULATION_PIN_ROTATED",
+        "SIMULATION_PIN_SNAPSHOT_ROTATED",
+        "SIMULATION_OCR_APPLIED",
+        "SIMULATION_OCR_PREFILL",
+        "SIMULATION_BULK_DELETED",
+        "SIMULATION_BULK_ARCHIVED",
+    ],
+};
 
 interface AuditLogsModalProps {
     open: boolean;
@@ -39,6 +62,61 @@ interface AuditLogsModalProps {
     title?: string;
 }
 
+// Helper component to resolve and display agency names
+function AgencyValueResolver({
+    agencyId,
+    getAgencyName,
+}: {
+    agencyId: string;
+    getAgencyName: (id: string) => Promise<string | null>;
+}) {
+    const [name, setName] = React.useState<string | null>(null);
+    const [loading, setLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        const resolve = async () => {
+            try {
+                const resolved = await getAgencyName(agencyId);
+                setName(resolved);
+            } finally {
+                setLoading(false);
+            }
+        };
+        resolve();
+    }, [agencyId, getAgencyName]);
+
+    if (loading) {
+        return (
+            <span style={{ display: "inline-block", maxWidth: "100%", fontSize: 11, color: "var(--scheme-neutral-500)" }}>
+                {agencyId.slice(0, 12)}…
+            </span>
+        );
+    }
+
+    if (name) {
+        return (
+            <span style={{ display: "inline-block", maxWidth: "100%" }} title={agencyId}>
+                {name}
+            </span>
+        );
+    }
+
+    // Fallback: show ID if resolution failed
+    return (
+        <span
+            style={{
+                display: "inline-block",
+                maxWidth: "100%",
+                fontFamily: "'JetBrains Mono','Fira Code',monospace",
+                fontSize: 11,
+            }}
+            title={agencyId}
+        >
+            {agencyId.slice(0, 12)}…
+        </span>
+    );
+}
+
 // Field change details component
 function FieldChangeDetails({
     metadata,
@@ -47,7 +125,7 @@ function FieldChangeDetails({
 }: {
     metadata: Record<string, unknown>;
     resolveFieldLabel: (key: string) => string;
-    renderValue: (v: unknown) => React.ReactNode;
+    renderValue: (v: unknown, fieldKey?: string) => React.ReactNode;
 }) {
     const hasDiff =
         "before" in metadata && "after" in metadata &&
@@ -134,9 +212,9 @@ function FieldChangeDetails({
                 return (
                     <div key={key} style={{ ...rowBase, background: changed ? "rgba(251,191,36,.04)" : undefined }}>
                         <span style={fieldLabel}>{resolveFieldLabel(key)}</span>
-                        <span style={{ fontSize: 12, color: "var(--scheme-neutral-400)" }}>{renderValue(oldVal)}</span>
+                        <span style={{ fontSize: 12, color: "var(--scheme-neutral-400)" }}>{renderValue(oldVal, key)}</span>
                         <span style={{ fontSize: 12, color: changed ? "#fbbf24" : "var(--scheme-neutral-200)", fontWeight: changed ? 600 : 400 }}>
-                            {renderValue(newVal)}
+                            {renderValue(newVal, key)}
                         </span>
                     </div>
                 );
@@ -159,14 +237,122 @@ export function AuditLogsModal({
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(preferences.itemsPerPage);
-    const [total, setTotal] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+    const [filterEventType, setFilterEventType] = useState("");
+    const [filterActorUserId, setFilterActorUserId] = useState("");
+    const [filterStartDate, setFilterStartDate] = useState<Date | null>(null);
+    const [filterEndDate, setFilterEndDate] = useState<Date | null>(null);
+    const [appliedEventType, setAppliedEventType] = useState("");
+    const [appliedActorUserId, setAppliedActorUserId] = useState("");
+    const [appliedStartDate, setAppliedStartDate] = useState<Date | null>(null);
+    const [appliedEndDate, setAppliedEndDate] = useState<Date | null>(null);
+    const [users, setUsers] = useState<UserItem[]>([]);
+
+    // Use ref for cache to avoid dependency issues
+    const agenciesCacheRef = React.useRef<Map<string, string>>(new Map());
+    const agenciesInFlightRef = React.useRef<Map<string, Promise<string | null>>>(new Map());
 
     // Update pageSize when user preferences change
     useEffect(() => {
         setPageSize(preferences.itemsPerPage);
     }, [preferences.itemsPerPage]);
+
+    // Helper: Resolve country code to country name
+    const getCountryName = useCallback((countryCode: string): string | null => {
+        if (!countryCode || typeof countryCode !== "string") return null;
+        try {
+            const country = Country.getCountryByCode(countryCode);
+            return country?.name || null;
+        } catch {
+            return null;
+        }
+    }, []);
+
+    // Helper: Resolve agency ID to agency name
+    const getAgencyName = useCallback(
+        async (agencyId: string): Promise<string | null> => {
+            if (!agencyId || typeof agencyId !== "string") return null;
+
+            // Check resolved cache first
+            if (agenciesCacheRef.current.has(agencyId)) {
+                const cached = agenciesCacheRef.current.get(agencyId);
+                return cached || null;
+            }
+
+            // Check if already in-flight
+            if (agenciesInFlightRef.current.has(agencyId)) {
+                return agenciesInFlightRef.current.get(agencyId)!;
+            }
+
+            // Create the fetch promise and cache it
+            const promise = (async () => {
+                try {
+                    const agency = await getAgency(token, agencyId);
+                    const name = agency?.name || null;
+
+                    // Update resolved cache
+                    agenciesCacheRef.current.set(agencyId, name || "");
+
+                    return name;
+                } catch (err) {
+                    console.error("Failed to fetch agency:", err);
+                    // Cache the failed lookup to avoid repeated requests
+                    agenciesCacheRef.current.set(agencyId, "");
+                    return null;
+                } finally {
+                    // Remove from in-flight after completion
+                    agenciesInFlightRef.current.delete(agencyId);
+                }
+            })();
+
+            // Cache the promise while in-flight
+            agenciesInFlightRef.current.set(agencyId, promise);
+
+            return promise;
+        },
+        [token]
+    );
+
+    const toDateOnly = (date: Date | null): string | undefined => {
+        if (!date) return undefined;
+        const localDate = new Date(date);
+        const year = localDate.getFullYear();
+        const month = String(localDate.getMonth() + 1).padStart(2, "0");
+        const day = String(localDate.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    };
+
+    const fetchUsers = useCallback(async () => {
+        if (!open || !token) return;
+
+        try {
+            const firstPage = await listUsers(token, {
+                page: 1,
+                pageSize: 100,
+                includeDeleted: true,
+            });
+
+            const allUsers: UserItem[] = [...firstPage.items];
+            const totalPages = Math.max(1, Math.ceil(firstPage.total / firstPage.pageSize));
+
+            if (totalPages > 1) {
+                for (let nextPage = 2; nextPage <= totalPages; nextPage++) {
+                    const nextResult = await listUsers(token, {
+                        page: nextPage,
+                        pageSize: 100,
+                        includeDeleted: true,
+                    });
+                    allUsers.push(...nextResult.items);
+                }
+            }
+
+            setUsers(allUsers);
+        } catch (err) {
+            console.error("Failed to fetch users for audit filters:", err);
+            setUsers([]);
+        }
+    }, [open, token]);
 
     const fetchLogs = useCallback(async () => {
         if (!open || !token) return;
@@ -175,14 +361,33 @@ export function AuditLogsModal({
         setError(null);
 
         try {
-            const result = await listAuditLogs(token, {
-                page: page + 1, // MUI uses 0-based, API uses 1-based
-                limit: pageSize,
-                search: targetId, // Search for just the targetId
+            const baseParams = {
+                limit: 100,
+                excludeAuthEvents: true,
+                search: targetId,
+                ...(appliedEventType ? { eventType: appliedEventType } : {}),
+                ...(appliedStartDate ? { dateFrom: toDateOnly(appliedStartDate) } : {}),
+                ...(appliedEndDate ? { dateTo: toDateOnly(appliedEndDate) } : {}),
+            };
+
+            const firstPage = await listAuditLogs(token, {
+                ...baseParams,
+                page: 1,
             });
 
-            setLogs(result.items);
-            setTotal(result.pagination.total);
+            const allItems: AuditLogItem[] = [...firstPage.items];
+
+            if (firstPage.pagination.totalPages > 1) {
+                for (let nextPage = 2; nextPage <= firstPage.pagination.totalPages; nextPage++) {
+                    const nextResult = await listAuditLogs(token, {
+                        ...baseParams,
+                        page: nextPage,
+                    });
+                    allItems.push(...nextResult.items);
+                }
+            }
+
+            setLogs(allItems);
         } catch (err) {
             const message = err instanceof Error ? err.message : t("common", "error");
             setError(message);
@@ -190,13 +395,36 @@ export function AuditLogsModal({
         } finally {
             setLoading(false);
         }
-    }, [open, token, page, pageSize, targetId, t]);
+    }, [open, token, targetId, t, appliedEventType, appliedStartDate, appliedEndDate]);
 
     useEffect(() => {
         if (open) {
             fetchLogs();
+            fetchUsers();
         }
-    }, [open, fetchLogs]);
+    }, [open, fetchLogs, fetchUsers]);
+
+    const handleSearchFilters = () => {
+        setAppliedEventType(filterEventType);
+        setAppliedActorUserId(filterActorUserId);
+        setAppliedStartDate(filterStartDate);
+        setAppliedEndDate(filterEndDate);
+        setPage(0);
+        setExpandedLogId(null);
+    };
+
+    const handleClearFilters = () => {
+        setFilterEventType("");
+        setFilterActorUserId("");
+        setFilterStartDate(null);
+        setFilterEndDate(null);
+        setAppliedEventType("");
+        setAppliedActorUserId("");
+        setAppliedStartDate(null);
+        setAppliedEndDate(null);
+        setPage(0);
+        setExpandedLogId(null);
+    };
 
     const handleChangePage = (_event: unknown, newPage: number) => {
         setPage(newPage);
@@ -435,7 +663,7 @@ export function AuditLogsModal({
         }
     };
 
-    const renderValue = (v: unknown): React.ReactNode => {
+    const renderValue = (v: unknown, fieldKey?: string): React.ReactNode => {
         if (v === null || v === undefined)
             return <em style={{ color: "var(--scheme-neutral-700)" }}>—</em>;
         if (typeof v === "boolean")
@@ -460,7 +688,34 @@ export function AuditLogsModal({
                 </span>
             );
         }
+
         const s = String(v);
+
+        // Handle special field types with context awareness
+        if (fieldKey) {
+            const normalizedKey = fieldKey.toLowerCase();
+
+            // Handle agency/agencyId fields - try to resolve to name
+            if (normalizedKey.includes("agency") && s.length > 18 && /^[a-z0-9_-]+$/i.test(s)) {
+                // This looks like an ID, attempt async resolution
+                // For now, return a placeholder and use state management
+                // We'll handle this with async rendering below
+                return <AgencyValueResolver agencyId={s} getAgencyName={getAgencyName} />;
+            }
+
+            // Handle country fields - resolve code to name
+            if (normalizedKey === "country" || normalizedKey.endsWith(".country")) {
+                const countryName = getCountryName(s);
+                if (countryName) {
+                    return (
+                        <span style={{ display: "inline-block", maxWidth: "100%" }}>
+                            {s} ({countryName})
+                        </span>
+                    );
+                }
+            }
+        }
+
         const isId = s.length > 18 && /^[a-z0-9_-]+$/i.test(s);
         const preview = s.length > 160 ? `${s.slice(0, 160)}…` : s;
         return (
@@ -505,6 +760,61 @@ export function AuditLogsModal({
         if (eventType === "PUBLIC_ACCESS_ATTEMPT") return t("auditEvents", "accessAttempt");
         return eventType;
     };
+
+    const eventTypeOptions = useMemo(() => {
+        const options = new Set<string>([
+            ...(ENTITY_EVENT_TYPES[targetType] || []),
+            ...logs
+                .map((log) => log.eventType)
+                .filter((eventType) => eventType.startsWith(`${targetType}_`)),
+        ]);
+        if (filterEventType) options.add(filterEventType);
+        return Array.from(options).sort((a, b) => a.localeCompare(b));
+    }, [logs, filterEventType, targetType]);
+
+    const eventTypeSelectOptions = useMemo<FormSelectOption[]>(() => {
+        return [
+            { value: "", label: "All" },
+            ...eventTypeOptions.map((eventType) => ({
+                value: eventType,
+                label: getEventTypeLabel(eventType),
+                secondaryLabel: eventType,
+            })),
+        ];
+    }, [eventTypeOptions, getEventTypeLabel]);
+
+    const userOptions = useMemo(() => {
+        return [...users].sort((a, b) => {
+            const aLabel = `${a.fullName} ${a.email}`.toLowerCase();
+            const bLabel = `${b.fullName} ${b.email}`.toLowerCase();
+            return aLabel.localeCompare(bLabel);
+        });
+    }, [users]);
+
+    const userSelectOptions = useMemo<FormSelectOption[]>(() => {
+        return [
+            { value: "", label: "All" },
+            { value: "__system__", label: "System" },
+            ...userOptions.map((user) => ({
+                value: user.id,
+                label: user.fullName,
+                secondaryLabel: user.email,
+            })),
+        ];
+    }, [userOptions]);
+
+    const filteredLogs = useMemo(() => {
+        if (!appliedActorUserId) return logs;
+        if (appliedActorUserId === "__system__") {
+            return logs.filter((log) => !log.actorUserId);
+        }
+        return logs.filter((log) => log.actorUserId === appliedActorUserId);
+    }, [logs, appliedActorUserId]);
+
+    const paginatedLogs = useMemo(() => {
+        const start = page * pageSize;
+        return filteredLogs.slice(start, start + pageSize);
+    }, [filteredLogs, page, pageSize]);
 
     return (
         <Dialog
@@ -552,13 +862,66 @@ export function AuditLogsModal({
                     color: "var(--scheme-neutral-100)",
                 }}
             >
+                <Box
+                    sx={{
+                        p: 2,
+                        borderBottom: "1px solid var(--scheme-neutral-920)",
+                        backgroundColor: "var(--scheme-neutral-1045)",
+                    }}
+                >
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                        <Box sx={{ minWidth: 220 }}>
+                            <FormSelect
+                                label={t("auditLogsModal", "eventType")}
+                                options={eventTypeSelectOptions}
+                                value={filterEventType}
+                                onChange={(value) => setFilterEventType(String(value ?? ""))}
+                                size="small"
+                            />
+                        </Box>
+
+                        <Box sx={{ minWidth: 280 }}>
+                            <FormSelect
+                                label={t("auditLogsModal", "actor")}
+                                options={userSelectOptions}
+                                value={filterActorUserId}
+                                onChange={(value) => setFilterActorUserId(String(value ?? ""))}
+                                size="small"
+                            />
+                        </Box>
+
+                        <Box sx={{ minWidth: 280, flex: 1 }}>
+                            <DateRangePicker
+                                labelPosition="top"
+                                variant="single"
+                                label={t("auditLogsModal", "timestamp")}
+                                startDate={filterStartDate}
+                                endDate={filterEndDate}
+                                onChange={(startDate, endDate) => {
+                                    setFilterStartDate(startDate);
+                                    setFilterEndDate(endDate);
+                                }}
+                            />
+                        </Box>
+
+                        <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: "stretch", md: "flex-end" } }}>
+                            <Button variant="contained" onClick={handleSearchFilters}>
+                                Search
+                            </Button>
+                            <Button variant="outlined" onClick={handleClearFilters}>
+                                Clear
+                            </Button>
+                        </Stack>
+                    </Stack>
+                </Box>
+
                 {error && (
                     <Box sx={{ p: 2, color: "var(--scheme-danger-500)", backgroundColor: "rgba(239, 68, 68, 0.05)" }}>
                         <Typography variant="body2">{error}</Typography>
                     </Box>
                 )}
 
-                {loading && logs.length === 0 ? (
+                {loading && filteredLogs.length === 0 ? (
                     <Box
                         sx={{
                             display: "flex",
@@ -569,7 +932,7 @@ export function AuditLogsModal({
                     >
                         <CircularProgress size={40} />
                     </Box>
-                ) : logs.length === 0 ? (
+                ) : filteredLogs.length === 0 ? (
                     <Box sx={{ p: 3, textAlign: "center" }}>
                         <Typography variant="body2" sx={{ color: "var(--scheme-neutral-600)" }}>
                             {t("auditLogsModal", "noLogs")}
@@ -607,7 +970,7 @@ export function AuditLogsModal({
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {logs.map((log, idx) => {
+                                {paginatedLogs.map((log, idx) => {
                                     const hasChanges = log.metadataJson && "before" in log.metadataJson && "after" in log.metadataJson;
                                     const isExpanded = expandedLogId === log.id;
                                     return (
@@ -709,11 +1072,11 @@ export function AuditLogsModal({
                     </TableContainer>
                 )}
 
-                {logs.length > 0 && (
+                {filteredLogs.length > 0 && (
                     <TablePagination
                         rowsPerPageOptions={[5, 10, 25, 50]}
                         component="div"
-                        count={total}
+                        count={filteredLogs.length}
                         rowsPerPage={pageSize}
                         page={page}
                         onPageChange={handleChangePage}

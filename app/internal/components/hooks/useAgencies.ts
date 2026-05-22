@@ -70,6 +70,19 @@ export function useAgencies(
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
 
+  // Load persisted state from localStorage
+  const getPersistedState = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_dt_state_agencies");
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+  const persistedState = getPersistedState();
+
   // pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
@@ -78,15 +91,19 @@ export function useAgencies(
     setPageSize(initialPageSize);
     setPage(1);
   }, [initialPageSize]);
-  // sort
-  const [sortColumn, setSortColumn] = useState("createdAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // sort - load from persisted state if available
+  const [sortColumn, setSortColumn] = useState(
+    persistedState?.sortColumn || "createdAt",
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    persistedState?.sortDirection || "desc",
+  );
   const setSort = (column: string, dir: "asc" | "desc") => {
     setSortColumn(column);
     setSortDir(dir);
   };
-  // search
-  const [search, setSearch] = useState("");
+  // search - load from persisted state if available
+  const [search, setSearch] = useState(persistedState?.search || "");
   const [showArchived, setShowArchived] = useState(false);
 
   const [newAgencyName, setNewAgencyName] = useState("");

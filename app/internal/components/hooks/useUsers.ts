@@ -66,6 +66,7 @@ export interface UsersActions {
     data?: {
       name: string;
       email: string;
+      maxActiveDevices?: number;
       mobilePhone: string;
       commercialPhone: string;
       commercialEmail: string;
@@ -93,6 +94,7 @@ export interface UsersActions {
       userId: string;
       name: string;
       email: string;
+      maxActiveDevices?: number;
       mobilePhone: string;
       commercialPhone: string;
       commercialEmail: string;
@@ -117,6 +119,13 @@ export interface UsersActions {
 
 interface UseUsersOptions {
   queryEnabled?: boolean;
+  usePersistedState?: boolean;
+}
+
+interface UsersFilterPersistentState {
+  roleFilter: string;
+  agencyFilter: string;
+  showArchived: boolean;
 }
 
 export function useUsers(
@@ -128,6 +137,39 @@ export function useUsers(
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
+  const usePersistedState = options?.usePersistedState ?? true;
+
+  // Load persisted state from localStorage
+  const getPersistedState = () => {
+    if (!usePersistedState) return null;
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_dt_state_users");
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+  const persistedState = getPersistedState();
+
+  const getPersistedFilters = (): UsersFilterPersistentState | null => {
+    if (!usePersistedState) return null;
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_users_filters");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<UsersFilterPersistentState>;
+      return {
+        roleFilter: parsed.roleFilter ?? "",
+        agencyFilter: parsed.agencyFilter ?? "",
+        showArchived: parsed.showArchived ?? false,
+      };
+    } catch {
+      return null;
+    }
+  };
+  const persistedFilters = getPersistedFilters();
 
   // pagination
   const [page, setPage] = useState(1);
@@ -137,19 +179,29 @@ export function useUsers(
     setPageSize(initialPageSize);
     setPage(1);
   }, [initialPageSize]);
-  // sort
-  const [sortColumn, setSortColumn] = useState("createdAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // sort - load from persisted state if available
+  const [sortColumn, setSortColumn] = useState(
+    persistedState?.sortColumn || "createdAt",
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    persistedState?.sortDirection || "desc",
+  );
   const setSort = (column: string, dir: "asc" | "desc") => {
     setSortColumn(column);
     setSortDir(dir);
   };
-  // search
-  const [search, setSearch] = useState("");
+  // search - load from persisted state if available
+  const [search, setSearch] = useState(persistedState?.search || "");
   // filters
-  const [roleFilter, setRoleFilter] = useState("");
-  const [agencyFilter, setAgencyFilter] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
+  const [roleFilter, setRoleFilter] = useState(
+    persistedFilters?.roleFilter || "",
+  );
+  const [agencyFilter, setAgencyFilter] = useState(
+    persistedFilters?.agencyFilter || "",
+  );
+  const [showArchived, setShowArchived] = useState(
+    persistedFilters?.showArchived || false,
+  );
 
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -182,6 +234,22 @@ export function useUsers(
     setSuccessText(null);
   };
 
+  // Persist custom users filters (role/agency/archived) across navigation
+  useEffect(() => {
+    if (!usePersistedState) return;
+    if (typeof window === "undefined") return;
+    try {
+      const nextState: UsersFilterPersistentState = {
+        roleFilter,
+        agencyFilter,
+        showArchived,
+      };
+      localStorage.setItem("axpo_users_filters", JSON.stringify(nextState));
+    } catch {
+      // ignore persistence failures
+    }
+  }, [usePersistedState, roleFilter, agencyFilter, showArchived]);
+
   // ── TanStack Query ──────────────────────────────────────────────────────
   const queryParams: ListUsersParams = {
     page,
@@ -194,8 +262,20 @@ export function useUsers(
     includeDeleted: showArchived || undefined,
   };
 
+  // Create a stable cache key by serializing query params
+  const queryKeyString = JSON.stringify({
+    page,
+    pageSize,
+    search: search || null,
+    role: roleFilter || null,
+    agencyId: agencyFilter || null,
+    orderBy: sortColumn,
+    sortDir,
+    includeDeleted: showArchived || null,
+  });
+
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["users", session?.token ?? "", queryParams],
+    queryKey: ["users", session?.token ?? "", queryKeyString],
     queryFn: async () => {
       const result = await listUsers(session!.token, queryParams);
       // seed the agencyId for the create form if not yet set
@@ -247,6 +327,7 @@ export function useUsers(
       mobilePhone: string;
       commercialPhone: string;
       commercialEmail: string;
+      maxActiveDevices?: number;
       otherDetails?: string;
       password?: string;
       role: UserRole;
@@ -261,6 +342,7 @@ export function useUsers(
     const mobilePhone = data?.mobilePhone ?? newUserMobilePhone;
     const commercialPhone = data?.commercialPhone ?? newUserCommercialPhone;
     const commercialEmail = data?.commercialEmail ?? newUserCommercialEmail;
+    const maxActiveDevices = data?.maxActiveDevices;
     const otherDetails = data?.otherDetails ?? newUserOtherDetails;
     const password = data?.password ?? newUserPassword;
     const role = data?.role ?? newUserRole;
@@ -310,6 +392,7 @@ export function useUsers(
         mobilePhone: mobilePhone.trim(),
         commercialPhone: commercialPhone.trim(),
         commercialEmail: commercialEmail.trim(),
+        ...(maxActiveDevices ? { maxActiveDevices } : {}),
         otherDetails: otherDetails.trim() || undefined,
         ...(password ? { password } : {}),
       });
@@ -357,6 +440,7 @@ export function useUsers(
       mobilePhone: string;
       commercialPhone: string;
       commercialEmail: string;
+      maxActiveDevices?: number;
       otherDetails?: string;
       password?: string;
       currentPassword?: string;
@@ -374,6 +458,7 @@ export function useUsers(
     const mobilePhone = data?.mobilePhone ?? editUserMobilePhone;
     const commercialPhone = data?.commercialPhone ?? editUserCommercialPhone;
     const commercialEmail = data?.commercialEmail ?? editUserCommercialEmail;
+    const maxActiveDevices = data?.maxActiveDevices;
     const otherDetails = data?.otherDetails ?? editUserOtherDetails;
     const password = data?.password ?? editUserPassword;
     const currentPassword = data?.currentPassword ?? editUserCurrentPassword;
@@ -417,6 +502,7 @@ export function useUsers(
         mobilePhone: mobilePhone.trim(),
         commercialPhone: commercialPhone.trim(),
         commercialEmail: commercialEmail.trim(),
+        ...(maxActiveDevices ? { maxActiveDevices } : {}),
         otherDetails: otherDetails?.trim() || "",
         ...(role ? { role } : {}),
         ...(agencyId ? { agencyId } : {}),

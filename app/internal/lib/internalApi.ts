@@ -167,6 +167,7 @@ export interface UserItem {
   role: UserRole;
   fullName: string;
   email: string;
+  maxActiveDevices?: number;
   mobilePhone?: string | null;
   commercialPhone?: string | null;
   commercialEmail?: string | null;
@@ -182,6 +183,7 @@ export interface UserItem {
 interface UpdateUserInput {
   fullName?: string;
   email?: string;
+  maxActiveDevices?: number;
   mobilePhone?: string;
   commercialPhone?: string;
   commercialEmail?: string;
@@ -349,6 +351,7 @@ interface CreateUserInput {
   role: UserRole;
   fullName: string;
   email: string;
+  maxActiveDevices?: number;
   mobilePhone: string;
   commercialPhone: string;
   commercialEmail: string;
@@ -453,6 +456,43 @@ export interface RotatePinResult {
   pinRotatedAt: string;
 }
 
+export interface UserSessionItem {
+  id: string;
+  userId: string;
+  sessionTokenId: string;
+  loginAt: string;
+  logoutAt?: string | null;
+  isActive: boolean;
+  authMethod: string;
+  browser?: string | null;
+  os?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  lastActivityAt: string;
+  terminationReason?: string | null;
+  metadataJson?: Record<string, unknown> | null;
+  user?: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: UserRole;
+    agencyId: string;
+    maxActiveDevices: number;
+  };
+  terminatedByUser?: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+}
+
+export interface ListSessionsResponse {
+  items: UserSessionItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface CupsValidationResult {
   cups: string;
   normalized: string;
@@ -466,20 +506,45 @@ const baseUrl =
     ? window.location.origin
     : "http://localhost:3000");
 
+function maybePersistRefreshedToken(response: Response): void {
+  if (typeof window === "undefined") return;
+
+  const refreshedToken = response.headers.get("x-access-token");
+  if (!refreshedToken) return;
+
+  window.localStorage.setItem("axpo.internal.auth.token", refreshedToken);
+}
+
 async function parseApiResponse<T>(
   response: Response,
   fallbackMessage: string,
   skipAuthRedirect = false,
 ): Promise<T> {
+  maybePersistRefreshedToken(response);
+
   const body = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok || !body.success || !body.data) {
-    // Token expired / revoked → clear session and force login redirect
+    // Token expired / revoked / forbidden → clear session and force login redirect once
     // Skip redirect for login/auth endpoints to avoid page reload
-    if (response.status === 401 && !skipAuthRedirect) {
+    if (
+      (response.status === 401 || response.status === 403) &&
+      !skipAuthRedirect
+    ) {
       if (typeof window !== "undefined") {
+        const w = window as Window & { __axpoAuthRedirecting?: boolean };
+
         window.localStorage.removeItem("axpo.internal.auth.token");
         window.localStorage.removeItem("axpo.internal.auth.user");
-        window.location.href = "/internal/login";
+
+        if (!w.__axpoAuthRedirecting) {
+          w.__axpoAuthRedirecting = true;
+          window.location.replace("/internal/login");
+        }
+
+        // Avoid bubbling repeated auth errors while redirecting
+        return new Promise<T>(() => {
+          // intentionally unresolved
+        });
       }
     }
     throw new Error(
@@ -574,6 +639,20 @@ export async function verifyOtp(
   return parseApiResponse<LoginResult>(
     response,
     "OTP verification failed",
+    true,
+  );
+}
+
+export async function logout(token: string): Promise<{ success: boolean }> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/auth/logout`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({}),
+  });
+
+  return parseApiResponse<{ success: boolean }>(
+    response,
+    "Logout failed",
     true,
   );
 }
@@ -987,6 +1066,14 @@ export interface ListUsersParams {
   includeDeleted?: boolean;
 }
 
+export interface ListSessionsParams {
+  page?: number;
+  pageSize?: number;
+  userId?: string;
+  activeOnly?: boolean;
+  inactiveOnly?: boolean;
+}
+
 export interface ListUsersResponse {
   items: UserItem[];
   total: number;
@@ -1029,6 +1116,85 @@ export async function getUser(token: string, id: string): Promise<UserItem> {
   });
 
   return parseApiResponse<UserItem>(response, "User not found");
+}
+
+export async function listSessions(
+  token: string,
+  params?: ListSessionsParams,
+): Promise<ListSessionsResponse> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
+  if (params?.userId) qs.set("userId", params.userId);
+  if (params?.activeOnly) qs.set("activeOnly", "true");
+  if (params?.inactiveOnly) qs.set("inactiveOnly", "true");
+
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/sessions${qs.toString() ? `?${qs}` : ""}`,
+    {
+      method: "GET",
+      headers: authHeaders(token),
+      cache: "no-store",
+    },
+  );
+
+  return parseApiResponse<ListSessionsResponse>(
+    response,
+    "List sessions failed",
+  );
+}
+
+export async function forceLogoutSession(
+  token: string,
+  sessionId: string,
+): Promise<{ success: boolean }> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/sessions/${sessionId}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(token),
+      body: JSON.stringify({}),
+    },
+  );
+
+  return parseApiResponse<{ success: boolean }>(
+    response,
+    "Force logout session failed",
+  );
+}
+
+export async function forceLogoutAllUserSessions(
+  token: string,
+  userId: string,
+): Promise<{ success: boolean; revokedCount: number }> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/sessions/user/${userId}/logout-all`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify({}),
+    },
+  );
+
+  return parseApiResponse<{ success: boolean; revokedCount: number }>(
+    response,
+    "Force logout all user sessions failed",
+  );
+}
+
+export async function forceLogoutAllSessions(
+  token: string,
+): Promise<{ success: boolean; revokedCount: number }> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/sessions`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({}),
+  });
+
+  return parseApiResponse<{ success: boolean; revokedCount: number }>(
+    response,
+    "Force logout all sessions failed",
+  );
 }
 
 export async function createUser(
@@ -1565,6 +1731,7 @@ export interface ListAuditLogsParams {
   page?: number;
   limit?: number;
   eventType?: string;
+  excludeAuthEvents?: boolean;
   dateFrom?: string;
   dateTo?: string;
   search?: string;
@@ -1578,6 +1745,7 @@ export async function listAuditLogs(
   if (params?.page) qs.set("page", String(params.page));
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.eventType) qs.set("eventType", params.eventType);
+  if (params?.excludeAuthEvents) qs.set("excludeAuthEvents", "true");
   if (params?.dateFrom) qs.set("dateFrom", params.dateFrom);
   if (params?.dateTo) qs.set("dateTo", params.dateTo);
   if (params?.search) qs.set("search", params.search);

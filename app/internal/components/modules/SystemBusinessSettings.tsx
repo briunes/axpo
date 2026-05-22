@@ -14,7 +14,7 @@ export interface SystemBusinessSettingsProps {
     onNotify: (message: string, tone: "success" | "error") => void;
 }
 
-type BusinessTab = "general" | "simulation" | "clients" | "calculation" | "pdf-defaults" | "cron";
+type BusinessTab = "general" | "simulation" | "clients" | "sessions" | "calculation" | "pdf-defaults" | "cron";
 
 interface ElecZoneConfig {
     ivaRates: number[];
@@ -51,6 +51,7 @@ interface GasTaxConfig {
 interface BusinessConfig {
     simulationExpirationDays: number;
     autoCreateClientOnSimulation: boolean;
+    defaultMaxActiveDevices: number;
     ivaRate: number;
     electricityTaxRate: number;
     hydrocarbonTaxRate: number;
@@ -83,6 +84,7 @@ const DEFAULT_GAS_TAX_CONFIG: GasTaxConfig = {
 const DEFAULT_CONFIG: BusinessConfig = {
     simulationExpirationDays: 30,
     autoCreateClientOnSimulation: true,
+    defaultMaxActiveDevices: 3,
     ivaRate: 0.21,
     electricityTaxRate: 0.051127,
     hydrocarbonTaxRate: 0.00234,
@@ -112,6 +114,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
         general: "General",
         simulation: t("systemSettings", "tabSimulation"),
         clients: t("systemSettings", "tabClients"),
+        sessions: "Sessions",
         calculation: t("systemSettings", "tabCalculation"),
         "pdf-defaults": t("systemSettings", "tabPdfDefaults"),
         cron: "Cron Jobs",
@@ -144,6 +147,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
             setConfig({
                 simulationExpirationDays: data.simulationExpirationDays,
                 autoCreateClientOnSimulation: data.autoCreateClientOnSim,
+                defaultMaxActiveDevices: (data as any).defaultMaxActiveDevices ?? 3,
                 ivaRate: ivaRateVal,
                 electricityTaxRate: elecTaxVal,
                 hydrocarbonTaxRate: hydroVal,
@@ -176,6 +180,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
             await updateSystemConfig({
                 simulationExpirationDays: config.simulationExpirationDays,
                 autoCreateClientOnSim: config.autoCreateClientOnSimulation,
+                defaultMaxActiveDevices: config.defaultMaxActiveDevices,
                 ivaRate: config.ivaRate,
                 electricityTaxRate: config.electricityTaxRate,
                 hydrocarbonTaxRate: config.hydrocarbonTaxRate,
@@ -521,6 +526,28 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                                     <span className="config-field-description" style={{ marginLeft: "32px" }}>
                                         {t("systemSettings", "fieldAutoCreateDesc")}
                                     </span>
+                                </Box>
+                            </div>
+                        )}
+
+                        {activeTab === "sessions" && (
+                            <div className="settings-panel">
+                                <h3 className="settings-panel-title">Sessions</h3>
+
+                                <Box sx={{ mb: 3 }}>
+                                    <FormInput
+                                        label="Default max active sessions per user"
+                                        helperText="Used as the default limit when creating users or when a user has no explicit value."
+                                        type="number"
+                                        slotProps={{
+                                            htmlInput: { min: 1, max: 10 }
+                                        }}
+                                        value={config.defaultMaxActiveDevices}
+                                        onChange={(e) => {
+                                            const parsed = Number.parseInt(e.target.value, 10);
+                                            handleChange("defaultMaxActiveDevices", Number.isNaN(parsed) ? 1 : parsed);
+                                        }}
+                                    />
                                 </Box>
                             </div>
                         )}

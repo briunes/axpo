@@ -59,6 +59,7 @@ export interface SystemConfig {
   otpEnabled?: boolean;
   otpEmailTemplateId?: string;
   otpCodeValidityMinutes?: number;
+  defaultMaxActiveDevices?: number;
   // LLM settings
   llmProvider?: string;
   llmApiKey?: string;

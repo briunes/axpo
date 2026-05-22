@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import {
   activateBaseValueSet,
   listBaseValueSets,
@@ -50,15 +54,32 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
 
+  // Load persisted state from localStorage
+  const getPersistedState = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_dt_state_base-values");
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+  const persistedState = getPersistedState();
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [sortColumn, setSortColumn] = useState("updatedAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortColumn, setSortColumn] = useState(
+    persistedState?.sortColumn || "updatedAt",
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    persistedState?.sortDirection || "desc",
+  );
   const setSort = (column: string, dir: "asc" | "desc") => {
     setSortColumn(column);
     setSortDir(dir);
   };
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(persistedState?.search || "");
   const [showArchived, setShowArchived] = useState(false);
 
   const clearFeedback = () => {
@@ -93,9 +114,12 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
     });
   }, [queryClient, session?.token]);
 
-  const refresh = useCallback(async (_overrides?: ListBaseValueSetsParams) => {
-    await refetch();
-  }, [refetch]);
+  const refresh = useCallback(
+    async (_overrides?: ListBaseValueSetsParams) => {
+      await refetch();
+    },
+    [refetch],
+  );
   // ────────────────────────────────────────────────────────────────────────
 
   const runAction = async (id: string, fn: () => Promise<void>) => {

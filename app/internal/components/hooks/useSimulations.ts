@@ -113,6 +113,13 @@ export interface SimulationsActions {
   formatDate: typeof formatDate;
 }
 
+interface SimulationsFilterPersistentState {
+  ownerUserId: string;
+  clientId: string;
+  cups: string;
+  status: string;
+}
+
 export function useSimulations(
   session: SessionState | null,
   initialPageSize = 25,
@@ -122,6 +129,39 @@ export function useSimulations(
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
 
+  // Load persisted state from localStorage
+  const getPersistedState = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_dt_state_simulations");
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+  const persistedState = getPersistedState();
+
+  const getPersistedFilters = (): SimulationsFilterPersistentState | null => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_simulations_filters");
+      if (!raw) return null;
+      const parsed = JSON.parse(
+        raw,
+      ) as Partial<SimulationsFilterPersistentState>;
+      return {
+        ownerUserId: parsed.ownerUserId ?? "",
+        clientId: parsed.clientId ?? "",
+        cups: parsed.cups ?? "",
+        status: parsed.status ?? "",
+      };
+    } catch {
+      return null;
+    }
+  };
+  const persistedFilters = getPersistedFilters();
+
   // pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
@@ -130,9 +170,13 @@ export function useSimulations(
     setPageSize(initialPageSize);
     setPage(1);
   }, [initialPageSize]);
-  // sort
-  const [sortColumn, setSortColumn] = useState("updatedAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // sort - load from persisted state if available
+  const [sortColumn, setSortColumn] = useState(
+    persistedState?.sortColumn || "updatedAt",
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    persistedState?.sortDirection || "desc",
+  );
   const setSort = (column: string, dir: "asc" | "desc") => {
     setSortColumn(column);
     setSortDir(dir);
@@ -142,19 +186,50 @@ export function useSimulations(
   // filters — pending = what the user is typing; applied = what was last submitted
   const isCommercial = session?.user.role === "COMMERCIAL";
   const selfUserId = isCommercial ? (session?.user.id ?? "") : "";
+  const initialOwnerUserId = isCommercial
+    ? selfUserId
+    : (persistedFilters?.ownerUserId ?? "");
+  const initialClientId = persistedFilters?.clientId ?? "";
+  const initialCups = persistedFilters?.cups ?? "";
+  const initialStatus = persistedFilters?.status ?? "";
 
-  const [filterSearch, setFilterSearch] = useState("");
-  const [filterOwnerUserId, setFilterOwnerUserId] = useState(selfUserId);
-  const [filterClientId, setFilterClientId] = useState("");
-  const [filterCups, setFilterCups] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterSearch, setFilterSearch] = useState(
+    persistedState?.search || "",
+  );
+  const [filterOwnerUserId, setFilterOwnerUserId] =
+    useState(initialOwnerUserId);
+  const [filterClientId, setFilterClientId] = useState(initialClientId);
+  const [filterCups, setFilterCups] = useState(initialCups);
+  const [filterStatus, setFilterStatus] = useState(initialStatus);
 
-  const [appliedSearch, setAppliedSearch] = useState("");
-  const [appliedOwnerUserId, setAppliedOwnerUserId] = useState(selfUserId);
-  const [appliedClientId, setAppliedClientId] = useState("");
-  const [appliedCups, setAppliedCups] = useState("");
-  const [appliedStatus, setAppliedStatus] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState(
+    persistedState?.search || "",
+  );
+  const [appliedOwnerUserId, setAppliedOwnerUserId] =
+    useState(initialOwnerUserId);
+  const [appliedClientId, setAppliedClientId] = useState(initialClientId);
+  const [appliedCups, setAppliedCups] = useState(initialCups);
+  const [appliedStatus, setAppliedStatus] = useState(initialStatus);
   const [filtersAppliedAt, setFiltersAppliedAt] = useState(0);
+
+  // Persist custom simulation filters (owner/client/cups/status) across navigation
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const nextState: SimulationsFilterPersistentState = {
+        ownerUserId: filterOwnerUserId,
+        clientId: filterClientId,
+        cups: filterCups,
+        status: filterStatus,
+      };
+      localStorage.setItem(
+        "axpo_simulations_filters",
+        JSON.stringify(nextState),
+      );
+    } catch {
+      // ignore persistence failures
+    }
+  }, [filterOwnerUserId, filterClientId, filterCups, filterStatus]);
 
   // create form
   const [clientName, setClientName] = useState("");
@@ -200,8 +275,22 @@ export function useSimulations(
     status: appliedStatus || undefined,
   };
 
+  // Create a stable cache key by serializing query params
+  const queryKeyString = JSON.stringify({
+    page,
+    pageSize,
+    orderBy: sortColumn,
+    sortDir,
+    includeDeleted: showArchived || null,
+    search: appliedSearch || null,
+    ownerUserId: appliedOwnerUserId || null,
+    clientId: appliedClientId || null,
+    cups: appliedCups || null,
+    status: appliedStatus || null,
+  });
+
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["simulations", session?.token ?? "", queryParams],
+    queryKey: ["simulations", session?.token ?? "", queryKeyString],
     queryFn: () => listSimulations(session!.token, queryParams),
     enabled: !!session,
     placeholderData: keepPreviousData,

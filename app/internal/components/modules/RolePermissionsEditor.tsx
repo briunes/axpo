@@ -25,6 +25,12 @@ interface RolePermissionsEditorProps {
 type PermState = Record<string, Record<string, boolean>>;
 
 const EDITABLE_ROLES = ["AGENT", "COMMERCIAL"] as const;
+const SESSION_PERMISSION_KEY = "users.sessions.manage" as const;
+
+const isSessionPermissionLocked = (role: string, permissionKey: PermissionKey) => {
+    if (permissionKey !== SESSION_PERMISSION_KEY) return false;
+    return role === "AGENT" || role === "COMMERCIAL" || role === "AGENT_MASTER";
+};
 
 function buildState(items: RolePermissionItem[]): PermState {
     const state: PermState = {
@@ -36,6 +42,15 @@ function buildState(items: RolePermissionItem[]): PermState {
         if (!state[item.role]) state[item.role] = {};
         state[item.role][item.permissionKey] = item.allowed;
     }
+
+    if (state.AGENT) {
+        state.AGENT[SESSION_PERMISSION_KEY] = false;
+    }
+
+    if (state.COMMERCIAL) {
+        state.COMMERCIAL[SESSION_PERMISSION_KEY] = false;
+    }
+
     return state;
 }
 
@@ -92,6 +107,10 @@ export function RolePermissionsEditor({
     }, [session.token]);
 
     const handleToggle = (role: string, key: PermissionKey, value: boolean) => {
+        if (isSessionPermissionLocked(role, key)) {
+            return;
+        }
+
         setState((prev) => ({
             ...prev,
             [role]: { ...prev[role], [key]: value },
@@ -108,7 +127,9 @@ export function RolePermissionsEditor({
                     updates.push({
                         role,
                         permissionKey: perm.key,
-                        allowed: state[role]?.[perm.key] ?? false,
+                        allowed: isSessionPermissionLocked(role, perm.key)
+                            ? false
+                            : (state[role]?.[perm.key] ?? false),
                     });
                 }
             }
@@ -200,6 +221,7 @@ export function RolePermissionsEditor({
                                     {/* Editable role columns */}
                                     {EDITABLE_ROLES.map((role) => {
                                         const checked = state[role]?.[perm.key] ?? false;
+                                        const locked = isSessionPermissionLocked(role, perm.key);
                                         return (
                                             <div key={role} className="rpe-col-role">
                                                 <Switch
@@ -207,6 +229,7 @@ export function RolePermissionsEditor({
                                                     size="small"
                                                     color="primary"
                                                     onChange={(_, val) => handleToggle(role, perm.key, val)}
+                                                    disabled={locked}
                                                 />
                                             </div>
                                         );

@@ -11,6 +11,7 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 export interface UserFormData {
     fullName: string;
     email: string;
+    maxActiveDevices?: number;
     mobilePhone: string;
     commercialPhone: string;
     commercialEmail: string;
@@ -23,6 +24,7 @@ export interface UserFormData {
 interface ValidationErrors {
     fullName?: string;
     email?: string;
+    maxActiveDevices?: string;
     mobilePhone?: string;
     commercialPhone?: string;
     commercialEmail?: string;

@@ -46,14 +46,54 @@ export interface ClientsActions {
   handleBulkDeleteClients: (ids: string[]) => Promise<void>;
 }
 
+interface UseClientsOptions {
+  usePersistedState?: boolean;
+}
+
+interface ClientsFilterPersistentState {
+  agencyId: string;
+}
+
 export function useClients(
   session: SessionState | null,
   initialPageSize = 25,
+  options?: UseClientsOptions,
 ): ClientsActions {
   const queryClient = useQueryClient();
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
+  const usePersistedState = options?.usePersistedState ?? true;
+
+  // Load persisted state from localStorage
+  const getPersistedState = () => {
+    if (!usePersistedState) return null;
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_dt_state_clients");
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+  const persistedState = getPersistedState();
+
+  const getPersistedFilters = (): ClientsFilterPersistentState | null => {
+    if (!usePersistedState) return null;
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_clients_filters");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<ClientsFilterPersistentState>;
+      return {
+        agencyId: parsed.agencyId ?? "",
+      };
+    } catch {
+      return null;
+    }
+  };
+  const persistedFilters = getPersistedFilters();
 
   // pagination
   const [page, setPage] = useState(1);
@@ -63,22 +103,40 @@ export function useClients(
     setPageSize(initialPageSize);
     setPage(1);
   }, [initialPageSize]);
-  // sort
-  const [sortColumn, setSortColumn] = useState("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  // sort - load from persisted state if available
+  const [sortColumn, setSortColumn] = useState(
+    persistedState?.sortColumn || "name",
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    persistedState?.sortDirection || "asc",
+  );
   const setSort = (column: string, dir: "asc" | "desc") => {
     setSortColumn(column);
     setSortDir(dir);
   };
-  // search
-  const [search, setSearch] = useState("");
+  // search - load from persisted state if available
+  const [search, setSearch] = useState(persistedState?.search || "");
   const [showArchived, setShowArchived] = useState(false);
-  const [agencyId, setAgencyId] = useState("");
+  const [agencyId, setAgencyId] = useState(persistedFilters?.agencyId || "");
 
   const clearFeedback = () => {
     setErrorText(null);
     setSuccessText(null);
   };
+
+  // Persist clients agency filter across navigation
+  useEffect(() => {
+    if (!usePersistedState) return;
+    if (typeof window === "undefined") return;
+    try {
+      const nextState: ClientsFilterPersistentState = {
+        agencyId,
+      };
+      localStorage.setItem("axpo_clients_filters", JSON.stringify(nextState));
+    } catch {
+      // ignore persistence failures
+    }
+  }, [usePersistedState, agencyId]);
 
   // ── TanStack Query ──────────────────────────────────────────────────────
   const queryParams: ListClientsParams = {
@@ -91,8 +149,19 @@ export function useClients(
     agencyId: agencyId || undefined,
   };
 
+  // Create a stable cache key by serializing query params
+  const queryKeyString = JSON.stringify({
+    page,
+    pageSize,
+    search: search || null,
+    orderBy: sortColumn,
+    sortDir,
+    includeDeleted: showArchived || null,
+    agencyId: agencyId || null,
+  });
+
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["clients", session?.token ?? "", queryParams],
+    queryKey: ["clients", session?.token ?? "", queryKeyString],
     queryFn: () => listClients(session!.token, queryParams),
     enabled: !!session,
     placeholderData: keepPreviousData,

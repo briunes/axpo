@@ -8,9 +8,9 @@ import {
 } from "@/domain/errors/errors";
 import { prisma } from "@/infrastructure/database/prisma";
 import { PinService } from "./pinService";
-import { JwtService } from "./jwtService";
 import { PasswordService } from "./passwordService";
 import { EmailService } from "./emailService";
+import { SessionRequestContext, SessionService } from "./sessionService";
 
 interface CreateUserInput {
   agencyId: string;
@@ -23,11 +23,16 @@ interface CreateUserInput {
   otherDetails?: string;
   password?: string;
   pin?: string;
+  maxActiveDevices?: number;
   createdByUserId?: string;
 }
 
 export class AuthService {
-  static async loginWithEmailAndPassword(email: string, password: string) {
+  static async loginWithEmailAndPassword(
+    email: string,
+    password: string,
+    context?: SessionRequestContext,
+  ) {
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user || !user.isActive || !user.passwordHash) {
@@ -90,16 +95,26 @@ export class AuthService {
       };
     }
 
-    const token = JwtService.signAccessToken({
-      sub: user.id,
-      role: user.role as UserRole,
-      agencyId: user.agencyId,
-      email: user.email,
-    });
+    const session = await SessionService.createSessionForUser(
+      {
+        id: user.id,
+        role: user.role as UserRole,
+        agencyId: user.agencyId,
+        email: user.email,
+        maxActiveDevices: user.maxActiveDevices,
+      },
+      "PASSWORD",
+      context ?? {
+        ipAddress: "unknown",
+        userAgent: "unknown",
+        browser: "Unknown",
+        os: "Unknown",
+      },
+    );
 
     return {
       requiresOtp: false,
-      token,
+      token: session.token,
       user: {
         id: user.id,
         agencyId: user.agencyId,
@@ -114,7 +129,11 @@ export class AuthService {
    * Verify a one-time OTP code using the session token issued at login.
    * Single-use: clears the OTP after successful verification.
    */
-  static async verifyOtp(otpSessionToken: string, code: string) {
+  static async verifyOtp(
+    otpSessionToken: string,
+    code: string,
+    context?: SessionRequestContext,
+  ) {
     const user = await prisma.user.findUnique({ where: { otpSessionToken } });
 
     if (!user) {
@@ -151,15 +170,25 @@ export class AuthService {
       },
     });
 
-    const authToken = JwtService.signAccessToken({
-      sub: user.id,
-      role: user.role as UserRole,
-      agencyId: user.agencyId,
-      email: user.email,
-    });
+    const session = await SessionService.createSessionForUser(
+      {
+        id: user.id,
+        role: user.role as UserRole,
+        agencyId: user.agencyId,
+        email: user.email,
+        maxActiveDevices: user.maxActiveDevices,
+      },
+      "OTP",
+      context ?? {
+        ipAddress: "unknown",
+        userAgent: "unknown",
+        browser: "Unknown",
+        os: "Unknown",
+      },
+    );
 
     return {
-      token: authToken,
+      token: session.token,
       user: {
         id: user.id,
         agencyId: user.agencyId,
@@ -187,6 +216,7 @@ export class AuthService {
     // Get system configuration for token validity
     const systemConfig = await prisma.systemConfig.findFirst();
     const tokenValidityHours = systemConfig?.setupTokenValidityHours ?? 72;
+    const defaultMaxActiveDevices = systemConfig?.defaultMaxActiveDevices ?? 3;
 
     // Always generate a setup token so the user can set/reset their password
     // via the first-time setup link (configurable validity from system config).
@@ -208,6 +238,7 @@ export class AuthService {
         commercialPhone: input.commercialPhone,
         commercialEmail: input.commercialEmail,
         otherDetails: input.otherDetails,
+        maxActiveDevices: input.maxActiveDevices ?? defaultMaxActiveDevices,
         passwordHash: passwordHash ?? null,
         setupToken,
         setupTokenExpiresAt,
@@ -245,6 +276,7 @@ export class AuthService {
         commercialPhone: user.commercialPhone,
         commercialEmail: user.commercialEmail,
         otherDetails: user.otherDetails,
+        maxActiveDevices: user.maxActiveDevices,
         isActive: user.isActive,
       },
       generatedPin: generated,
@@ -257,7 +289,11 @@ export class AuthService {
    * Validate a first-time setup token and set the user's password.
    * The token is consumed (cleared) after successful use.
    */
-  static async setupPassword(token: string, newPassword: string) {
+  static async setupPassword(
+    token: string,
+    newPassword: string,
+    context?: SessionRequestContext,
+  ) {
     const user = await prisma.user.findUnique({
       where: { setupToken: token },
     });
@@ -287,15 +323,25 @@ export class AuthService {
       },
     });
 
-    const authToken = JwtService.signAccessToken({
-      sub: user.id,
-      role: user.role as UserRole,
-      agencyId: user.agencyId,
-      email: user.email,
-    });
+    const session = await SessionService.createSessionForUser(
+      {
+        id: user.id,
+        role: user.role as UserRole,
+        agencyId: user.agencyId,
+        email: user.email,
+        maxActiveDevices: user.maxActiveDevices,
+      },
+      "SETUP_PASSWORD",
+      context ?? {
+        ipAddress: "unknown",
+        userAgent: "unknown",
+        browser: "Unknown",
+        os: "Unknown",
+      },
+    );
 
     return {
-      token: authToken,
+      token: session.token,
       user: {
         id: user.id,
         agencyId: user.agencyId,
@@ -366,7 +412,11 @@ export class AuthService {
    * Reset password using a valid reset token.
    * The token is consumed (cleared) after successful use.
    */
-  static async resetPassword(token: string, newPassword: string) {
+  static async resetPassword(
+    token: string,
+    newPassword: string,
+    context?: SessionRequestContext,
+  ) {
     const user = await prisma.user.findUnique({
       where: { passwordResetToken: token },
     });
@@ -399,15 +449,25 @@ export class AuthService {
       },
     });
 
-    const authToken = JwtService.signAccessToken({
-      sub: user.id,
-      role: user.role as UserRole,
-      agencyId: user.agencyId,
-      email: user.email,
-    });
+    const session = await SessionService.createSessionForUser(
+      {
+        id: user.id,
+        role: user.role as UserRole,
+        agencyId: user.agencyId,
+        email: user.email,
+        maxActiveDevices: user.maxActiveDevices,
+      },
+      "RESET_PASSWORD",
+      context ?? {
+        ipAddress: "unknown",
+        userAgent: "unknown",
+        browser: "Unknown",
+        os: "Unknown",
+      },
+    );
 
     return {
-      token: authToken,
+      token: session.token,
       user: {
         id: user.id,
         agencyId: user.agencyId,
@@ -510,7 +570,7 @@ export class AuthService {
    * Verify a magic link token and return a session token.
    * The token is consumed (single-use) after successful verification.
    */
-  static async verifyMagicLink(token: string) {
+  static async verifyMagicLink(token: string, context?: SessionRequestContext) {
     const user = await prisma.user.findUnique({
       where: { magicLinkToken: token },
     });
@@ -536,15 +596,25 @@ export class AuthService {
       data: { magicLinkToken: null, magicLinkTokenExpiresAt: null },
     });
 
-    const authToken = JwtService.signAccessToken({
-      sub: user.id,
-      role: user.role as UserRole,
-      agencyId: user.agencyId,
-      email: user.email,
-    });
+    const session = await SessionService.createSessionForUser(
+      {
+        id: user.id,
+        role: user.role as UserRole,
+        agencyId: user.agencyId,
+        email: user.email,
+        maxActiveDevices: user.maxActiveDevices,
+      },
+      "MAGIC_LINK",
+      context ?? {
+        ipAddress: "unknown",
+        userAgent: "unknown",
+        browser: "Unknown",
+        os: "Unknown",
+      },
+    );
 
     return {
-      token: authToken,
+      token: session.token,
       user: {
         id: user.id,
         agencyId: user.agencyId,
@@ -554,7 +624,6 @@ export class AuthService {
       },
     };
   }
-
 
   static enforceCreatePermissions(
     actor: { role: UserRole; agencyId: string },

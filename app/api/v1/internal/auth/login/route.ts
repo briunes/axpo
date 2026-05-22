@@ -3,6 +3,7 @@ import { z } from "zod";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { AuthService } from "@/application/services/authService";
+import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
 import {
   applyRateLimit,
   getClientRateLimitKey,
@@ -57,17 +58,19 @@ const loginSchema = z.object({
  *               $ref: '#/components/schemas/Error'
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
-  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  const sessionContext = getRequestSessionContext(request);
+  const ip = sessionContext.ipAddress;
   applyRateLimit(getClientRateLimitKey(ip, "login"));
 
   const body = await request.json();
   const payload = loginSchema.parse(body);
-  
+
   payload.email = payload.email.toLowerCase();
 
   const result = await AuthService.loginWithEmailAndPassword(
     payload.email,
     payload.password,
+    sessionContext,
   );
   return ResponseHandler.ok(result, 200);
 });

@@ -255,6 +255,7 @@ export const translations = {
     usersModule: {
       subtitle: "Manage user accounts and access levels.",
       noPermission: "You do not have permission to manage users.",
+      sessionsShortcut: "Sessions",
       editUser: "Edit user",
       fullName: "Full name",
       currentPassword: "Current password",
@@ -276,6 +277,43 @@ export const translations = {
       bulkDeleteTitle: "Delete users",
       bulkDeleteConfirm:
         "Delete {count} selected user{count, plural, one {} other {s}}? This action cannot be undone.",
+    },
+    userSessions: {
+      title: "Sessions",
+      subtitle: "Active and historical login sessions",
+      openSessionsPage: "Sessions",
+      activeOnly: "Active sessions only",
+      activeUsersCount: "{count} logged user(s)",
+      activeSessions: "Active sessions",
+      pastSessions: "Past sessions",
+      noPastSessions: "No past sessions",
+      expandSessions: "Show past sessions",
+      collapseSessions: "Hide past sessions",
+      processing: "Processing...",
+      logoutAllUserSessions: "Logout all user sessions",
+      emergencyLogoutAllUsers: "Emergency logout all users",
+      login: "Login",
+      lastActivity: "Last activity",
+      logout: "Logout",
+      auth: "Auth",
+      device: "Device",
+      reason: "Reason",
+      loading: "Loading sessions...",
+      noSessions: "No sessions found",
+      closed: "Closed",
+      onlineNow: "Online",
+      idle: "Idle 30m+",
+      forceLogout: "Force logout",
+      sessionsCount: "{count} session(s)",
+      prev: "Prev",
+      next: "Next",
+      sessionTerminated: "Session terminated",
+      failedToLoad: "Failed to load sessions",
+      failedToTerminateSession: "Failed to terminate session",
+      terminatedActiveSessions: "Terminated {count} active sessions",
+      failedToTerminateUserSessions: "Failed to terminate user sessions",
+      emergencyLogoutCompleted: "Emergency logout completed ({count} sessions)",
+      failedEmergencyLogout: "Failed to perform emergency logout",
     },
     agenciesModule: {
       subtitle: "Create and manage agencies.",
@@ -866,6 +904,7 @@ export const translations = {
       cannotDeactivateSelf: "You cannot deactivate your own account",
       tabDetails: "Details",
       tabPreferences: "Preferences",
+      tabSessions: "Sessions",
       mustVisitPreferences: "Please review the Preferences tab before saving.",
     },
     agencyFormPage: {
@@ -1654,6 +1693,7 @@ export const translations = {
       perm_label_users_create: "Create users",
       perm_label_users_edit: "Edit users",
       perm_label_users_deactivate: "Deactivate users",
+      perm_label_users_sessions_manage: "Manage user sessions",
       perm_label_agencies_view: "View agencies",
       perm_label_agencies_create: "Create agencies",
       perm_label_agencies_edit: "Edit agencies",
@@ -1687,6 +1727,8 @@ export const translations = {
       perm_desc_users_edit: "Edit user details and passwords (admin only)",
       perm_desc_users_deactivate:
         "Activate or deactivate user accounts (admin only)",
+      perm_desc_users_sessions_manage:
+        "View user sessions and force logout by session, user or globally",
       perm_desc_agencies_view:
         "View the agency list and agency details (admin only)",
       perm_desc_agencies_create: "Create new agency records (admin only)",
@@ -1957,6 +1999,7 @@ export const translations = {
     usersModule: {
       subtitle: "Gestiona cuentas de usuario y niveles de acceso.",
       noPermission: "No tienes permiso para gestionar usuarios.",
+      sessionsShortcut: "Sesiones",
       editUser: "Editar usuario",
       fullName: "Nombre completo",
       currentPassword: "Contraseña actual",
@@ -1978,6 +2021,47 @@ export const translations = {
       bulkDeleteTitle: "Eliminar usuarios",
       bulkDeleteConfirm:
         "¿Eliminar {count} usuario(s) seleccionado(s)? Esta acción no se puede deshacer.",
+    },
+    userSessions: {
+      title: "Sesiones",
+      subtitle: "Sesiones activas e históricas",
+      openSessionsPage: "Sesiones",
+      activeOnly: "Solo sesiones activas",
+      activeUsersCount: "{count} usuario(s) con sesión iniciada",
+      activeSessions: "Sesiones activas",
+      pastSessions: "Sesiones anteriores",
+      noPastSessions: "No hay sesiones anteriores",
+      expandSessions: "Mostrar sesiones anteriores",
+      collapseSessions: "Ocultar sesiones anteriores",
+      processing: "Procesando...",
+      logoutAllUserSessions: "Cerrar todas las sesiones del usuario",
+      emergencyLogoutAllUsers:
+        "Cierre de sesión de emergencia para todos los usuarios",
+      login: "Inicio",
+      lastActivity: "Última actividad",
+      logout: "Cierre",
+      auth: "Autenticación",
+      device: "Dispositivo",
+      reason: "Motivo",
+      loading: "Cargando sesiones...",
+      noSessions: "No se encontraron sesiones",
+      closed: "Cerrada",
+      onlineNow: "En línea",
+      idle: "Inactivo 30m+",
+      forceLogout: "Forzar cierre",
+      sessionsCount: "{count} sesión(es)",
+      prev: "Anterior",
+      next: "Siguiente",
+      sessionTerminated: "Sesión finalizada",
+      failedToLoad: "Error al cargar sesiones",
+      failedToTerminateSession: "Error al finalizar la sesión",
+      terminatedActiveSessions: "{count} sesiones activas finalizadas",
+      failedToTerminateUserSessions:
+        "Error al finalizar las sesiones del usuario",
+      emergencyLogoutCompleted:
+        "Cierre de emergencia completado ({count} sesiones)",
+      failedEmergencyLogout:
+        "Error al ejecutar el cierre de sesión de emergencia",
     },
     agenciesModule: {
       subtitle: "Crear y gestionar agencias.",
@@ -2574,6 +2658,7 @@ export const translations = {
       cannotDeactivateSelf: "No puedes desactivar tu propia cuenta",
       tabDetails: "Detalles",
       tabPreferences: "Preferencias",
+      tabSessions: "Sesiones",
       mustVisitPreferences:
         "Por favor, revisa la pestaña de Preferencias antes de guardar.",
     },
@@ -3384,6 +3469,7 @@ export const translations = {
       perm_label_users_create: "Crear usuarios",
       perm_label_users_edit: "Editar usuarios",
       perm_label_users_deactivate: "Desactivar usuarios",
+      perm_label_users_sessions_manage: "Gestionar sesiones de usuarios",
       perm_label_agencies_view: "Ver agencias",
       perm_label_agencies_create: "Crear agencias",
       perm_label_agencies_edit: "Editar agencias",
@@ -3423,6 +3509,8 @@ export const translations = {
         "Editar detalles y contraseñas de usuarios (solo admin)",
       perm_desc_users_deactivate:
         "Activar o desactivar cuentas de usuario (solo admin)",
+      perm_desc_users_sessions_manage:
+        "Ver sesiones de usuarios y forzar cierre por sesión, usuario o global",
       perm_desc_agencies_view:
         "Ver la lista de agencias y detalles (solo admin)",
       perm_desc_agencies_create:

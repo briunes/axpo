@@ -34,6 +34,7 @@ export default function NewUserPage() {
 
     const [activeTab, setActiveTab] = useState(0);
     const [hasVisitedPreferences, setHasVisitedPreferences] = useState(false);
+    const [defaultMaxActiveDevices, setDefaultMaxActiveDevices] = useState(3);
 
     const [localPreferences, setLocalPreferences] = useState<LocalPreferences>({
         language: null,
@@ -46,6 +47,13 @@ export default function NewUserPage() {
 
     useEffect(() => {
         getSystemConfig().then((config) => {
+            const maxDevices = config.defaultMaxActiveDevices ?? 3;
+            setDefaultMaxActiveDevices(maxDevices);
+            setFormData((prev) => ({
+                ...prev,
+                maxActiveDevices: maxDevices,
+            }));
+
             setLocalPreferences({
                 language: config.defaultLanguage ?? null,
                 dateFormat: config.defaultDateFormat ?? "DD/MM/YYYY",
@@ -65,6 +73,7 @@ export default function NewUserPage() {
     const [formData, setFormData] = useState<UserFormData>({
         fullName: "",
         email: "",
+        maxActiveDevices: defaultMaxActiveDevices,
         mobilePhone: "",
         commercialPhone: "",
         commercialEmail: "",
@@ -99,6 +108,7 @@ export default function NewUserPage() {
         const result = await usersActions.handleCreateUser(e, {
             name: formData.fullName,
             email: formData.email,
+            maxActiveDevices: formData.maxActiveDevices,
             mobilePhone: formData.mobilePhone,
             commercialPhone: formData.commercialPhone,
             commercialEmail: formData.commercialEmail,

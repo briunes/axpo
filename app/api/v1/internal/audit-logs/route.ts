@@ -40,6 +40,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const { searchParams } = new URL(request.url);
   const eventType = searchParams.get("eventType") ?? undefined;
+  const excludeAuthEvents = searchParams.get("excludeAuthEvents") === "true";
   const dateFrom = searchParams.get("dateFrom") ?? undefined;
   const dateTo = searchParams.get("dateTo") ?? undefined;
   const search = searchParams.get("search") ?? undefined;
@@ -49,6 +50,28 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     100,
   );
   const skip = (page - 1) * limit;
+
+  const parseDateParam = (
+    rawValue: string | undefined,
+    boundary: "start" | "end",
+  ): Date | null => {
+    if (!rawValue) return null;
+
+    const value = rawValue.trim();
+    if (!value) return null;
+
+    const hasTime = value.includes("T");
+    const normalized = hasTime
+      ? value
+      : `${value}${boundary === "start" ? "T00:00:00.000Z" : "T23:59:59.999Z"}`;
+
+    const parsed = new Date(normalized);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+
+    return parsed;
+  };
 
   // Build where clause
   const where: Record<string, unknown> = {};
@@ -66,11 +89,36 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     where.eventType = eventType;
   }
 
+  if (excludeAuthEvents) {
+    where.NOT = {
+      eventType: { startsWith: "AUTH_" },
+    };
+  }
+
   // Date range filter
   if (dateFrom || dateTo) {
+    const parsedDateFrom = parseDateParam(dateFrom, "start");
+    const parsedDateTo = parseDateParam(dateTo, "end");
+
+    if (dateFrom && !parsedDateFrom) {
+      return ResponseHandler.error(
+        "VALIDATION_ERROR",
+        "Invalid dateFrom parameter",
+        400,
+      );
+    }
+
+    if (dateTo && !parsedDateTo) {
+      return ResponseHandler.error(
+        "VALIDATION_ERROR",
+        "Invalid dateTo parameter",
+        400,
+      );
+    }
+
     where.createdAt = {
-      ...(dateFrom ? { gte: new Date(`${dateFrom}T00:00:00.000Z`) } : {}),
-      ...(dateTo ? { lte: new Date(`${dateTo}T23:59:59.999Z`) } : {}),
+      ...(parsedDateFrom ? { gte: parsedDateFrom } : {}),
+      ...(parsedDateTo ? { lte: parsedDateTo } : {}),
     };
   }
 

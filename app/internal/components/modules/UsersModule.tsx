@@ -94,6 +94,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
 
   const canCreateUsers = canDo(role, "users.create");
   const isAdminUser = isAdmin(role);
+  const canManageUserSessions = canDo(role, "users.sessions.manage");
 
   // Render action buttons for topbar
   useLayoutEffect(() => {
@@ -110,6 +111,11 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
           </Button>
         )}
+        {canManageUserSessions && (
+          <Link href="/internal/users/sessions" style={{ textDecoration: "none" }}>
+            <Button variant="outlined" size="small">{t("userSessions", "openSessionsPage")}</Button>
+          </Link>
+        )}
         {canCreateUsers && (
           <Link href="/internal/users/new" style={{ textDecoration: "none" }}>
             <Button variant="contained" size="small">{t("actions", "newUser")}</Button>
@@ -118,7 +124,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       </>
     );
     return () => onActionButtons?.(null);
-  }, [onActionButtons, refresh, loading, canCreateUsers, isAdminUser, showArchived, setShowArchived, t]);
+  }, [onActionButtons, refresh, loading, canCreateUsers, isAdminUser, canManageUserSessions, showArchived, setShowArchived, t]);
 
   const editingOwnUser = selectedUserId === session.user.id;
 

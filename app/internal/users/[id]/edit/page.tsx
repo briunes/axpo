@@ -9,11 +9,15 @@ import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
 import { useAgencies } from "../../../components/hooks/useAgencies";
 import { useUsers } from "../../../components/hooks/useUsers";
+import { usePermissions } from "../../../lib/permissionsContext";
 import { UserForm, type UserFormData } from "../../../components/modules/UserForm";
+import { UserSessionsPanel } from "../../../components/modules/UserSessionsPanel";
 import { CrudPageLayout, LoadingState, PinResultDialog, useAlerts } from "../../../components/shared";
 import { UserPreferencesForm } from "../../../components/ui/UserPreferencesForm";
 import { AuditLogsModal } from "../../../components/ui/AuditLogsModal";
+import { useUserPreferences } from "../../../components/providers/UserPreferencesProvider";
 import { getUser, type ListUsersResponse, type UserItem } from "../../../lib/internalApi";
+import { getSystemConfig } from "../../../lib/configApi";
 
 export default function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -21,6 +25,8 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const [session] = useState(loadSession());
     const { showSuccess: alertSuccess, showError: alertError } = useAlerts();
     const { t } = useI18n();
+    const { canDo } = usePermissions();
+    const { preferences } = useUserPreferences();
     const queryClient = useQueryClient();
 
     const usersActions = useUsers(session, 25, { queryEnabled: false });
@@ -34,9 +40,11 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const [isSendingPasswordReset, setIsSendingPasswordReset] = useState(false);
     const [showAuditLogsModal, setShowAuditLogsModal] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
+    const [defaultMaxActiveDevices, setDefaultMaxActiveDevices] = useState(3);
     const [formData, setFormData] = useState<UserFormData>({
         fullName: "",
         email: "",
+        maxActiveDevices: defaultMaxActiveDevices,
         mobilePhone: "",
         commercialPhone: "",
         commercialEmail: "",
@@ -45,6 +53,23 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
 
     const isEditingSelf = user?.id === session?.user.id;
+    const canManageUserSessions = session ? canDo(session.user.role, "users.sessions.manage") : false;
+
+    useEffect(() => {
+        getSystemConfig()
+            .then((config) => {
+                setDefaultMaxActiveDevices(config.defaultMaxActiveDevices ?? 3);
+            })
+            .catch(() => {
+                // keep fallback
+            });
+    }, []);
+
+    useEffect(() => {
+        if (!canManageUserSessions && activeTab === 2) {
+            setActiveTab(0);
+        }
+    }, [activeTab, canManageUserSessions]);
 
     const cachedUser = useMemo(() => {
         if (!session) return null;
@@ -70,6 +95,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
             setFormData({
                 fullName: foundUser.fullName,
                 email: foundUser.email,
+                maxActiveDevices: foundUser.maxActiveDevices ?? defaultMaxActiveDevices,
                 mobilePhone: foundUser.mobilePhone || "",
                 commercialPhone: foundUser.commercialPhone || "",
                 commercialEmail: foundUser.commercialEmail || "",
@@ -91,7 +117,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                 alertError(t("userFormPage", "notFound"));
                 router.push("/internal/users");
             });
-    }, [alertError, cachedUser, id, router, session, t]);
+    }, [alertError, cachedUser, defaultMaxActiveDevices, id, router, session, t]);
 
     useEffect(() => {
         if (usersActions.successText) {
@@ -129,6 +155,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
             userId: user.id,
             name: formData.fullName,
             email: formData.email,
+            maxActiveDevices: formData.maxActiveDevices,
             mobilePhone: formData.mobilePhone,
             commercialPhone: formData.commercialPhone,
             commercialEmail: formData.commercialEmail,
@@ -211,6 +238,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                     <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
                         <Tab label={t("userFormPage", "tabDetails")} />
                         <Tab label={t("userPreferences", "tabPreferences")} />
+                        {canManageUserSessions && <Tab label={t("userFormPage", "tabSessions")} />}
                     </Tabs>
                 </Box>
 
@@ -236,6 +264,17 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                     <UserPreferencesForm
                         userId={id}
                         token={session.token}
+                        onNotify={(msg, tone) => tone === "error" ? alertError(msg) : alertSuccess(msg)}
+                    />
+                )}
+
+                {canManageUserSessions && activeTab === 2 && session && (
+                    <UserSessionsPanel
+                        session={session}
+                        userId={id}
+                        initialPageSize={preferences.itemsPerPage}
+                        allowUserLogoutAll
+                        maxActiveDevices={user?.maxActiveDevices ?? defaultMaxActiveDevices}
                         onNotify={(msg, tone) => tone === "error" ? alertError(msg) : alertSuccess(msg)}
                     />
                 )}
