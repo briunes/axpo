@@ -58,6 +58,7 @@ export interface AgenciesActions {
 
 interface UseAgenciesOptions {
   queryEnabled?: boolean;
+  minimal?: boolean;
 }
 
 export function useAgencies(
@@ -110,6 +111,7 @@ export function useAgencies(
   const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
   const [editAgencyName, setEditAgencyName] = useState("");
   const queryEnabled = options?.queryEnabled ?? true;
+  const minimal = options?.minimal ?? false;
 
   const clearFeedback = () => {
     setErrorText(null);
@@ -124,6 +126,7 @@ export function useAgencies(
     orderBy: sortColumn,
     sortDir,
     includeDeleted: showArchived || undefined,
+    minimal: minimal || undefined,
   };
 
   const { data, isFetching, refetch } = useQuery({

@@ -18,7 +18,7 @@ export default function UsersPage() {
   const usersActions = useUsers(session, preferences.itemsPerPage);
   useRegisterRefresh(() => usersActions.refresh());
   // Fetch all agencies for the dropdowns — TQ auto-fetches on mount
-  const agenciesActions = useAgencies(session, 1000);
+  const agenciesActions = useAgencies(session, 1000, { minimal: true });
 
   const handleNotify = (text: string, tone: "success" | "error") => {
     tone === "success" ? showSuccess(text) : showError(text);

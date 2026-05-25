@@ -324,9 +324,6 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                     sx={{ width: 180 }}
                 />
 
-                <Button onClick={resetFilters} variant="outlined" size="small">
-                    Reset Filters
-                </Button>
             </Stack>
         </Stack>
     );
@@ -342,6 +339,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                     setSearchTerm(value);
                     setPage(1);
                 }}
+                onClearFilters={resetFilters}
                 searchPlaceholder="Search by recipient, subject, or template..."
                 sortState={{ column: sortColumn, direction: sortDir }}
                 onSort={handleSort}

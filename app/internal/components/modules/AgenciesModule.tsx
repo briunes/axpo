@@ -300,6 +300,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
+        onClearFilters={() => { setSearch(""); setPage(1); }}
         searchPlaceholder={t("search", "agencies")}
         emptyMessage={t("search", "emptyAgencies")}
         sortState={{ column: sortColumn, direction: sortDir }}

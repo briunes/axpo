@@ -438,6 +438,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         columns={commercialColumns}
                         rows={(analytics.byUser ?? []).map((r) => ({ ...r, id: r.userId }))}
                         loading={false}
+                        onClearFilters={() => undefined}
                         emptyMessage={t("analyticsModule", "emptyCommercialData")}
                         headerRight={<span className="dt-meta-pill">{t("analyticsModule", "pillCommercials").replace("{count}", String(analytics.byUser.length))}</span>}
                     />

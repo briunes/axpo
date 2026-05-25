@@ -32,7 +32,8 @@ import { formatDisplayDate } from "../../lib/formatPreferences";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { DateRangePicker } from "./DateRangePicker";
 import { FormSelect, type FormSelectOption } from "./FormSelect";
-
+import ClearIcon from '@mui/icons-material/Clear';
+import SearchIcon from '@mui/icons-material/Search';
 const ENTITY_EVENT_TYPES: Record<string, string[]> = {
     USER: ["USER_CREATED", "USER_UPDATED", "USER_DELETED", "USER_STATUS_CHANGED", "USER_PIN_ROTATED"],
     CLIENT: ["CLIENT_CREATED", "CLIENT_UPDATED", "CLIENT_DELETED"],
@@ -906,10 +907,12 @@ export function AuditLogsModal({
 
                         <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: "stretch", md: "flex-end" } }}>
                             <Button variant="contained" onClick={handleSearchFilters}>
-                                Search
+                                <SearchIcon />
+                                {t("common", "search")}
                             </Button>
                             <Button variant="outlined" onClick={handleClearFilters}>
-                                Clear
+                                <ClearIcon />
+                                {t("dataTable", "clearFilters")}
                             </Button>
                         </Stack>
                     </Stack>

@@ -30,7 +30,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const queryClient = useQueryClient();
 
     const usersActions = useUsers(session, 25, { queryEnabled: false });
-    const agenciesActions = useAgencies(session, 1000);
+    const agenciesActions = useAgencies(session, 1000, { minimal: true });
     const { loading: loadingAgencies } = agenciesActions;
 
     const [user, setUser] = useState<UserItem | null>(null);

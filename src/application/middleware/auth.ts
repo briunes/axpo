@@ -37,7 +37,9 @@ export const requireAuth = async (
     throw new UnauthorizedError("Session expired or revoked");
   }
 
-  await SessionService.touchSession(payload.sid);
+  // Fire-and-forget: only updates lastActivityAt for session tracking.
+  // Not awaiting saves one full round-trip (~80ms to remote Supabase) per request.
+  SessionService.touchSession(payload.sid).catch(() => {});
 
   const nowSeconds = Math.floor(Date.now() / 1000);
   const secondsUntilExpiry = payload.exp - nowSeconds;

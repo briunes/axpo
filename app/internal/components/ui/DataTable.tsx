@@ -10,7 +10,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { useI18n } from "../../../../src/lib/i18n-context";
-
+import ClearIcon from '@mui/icons-material/Clear';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ColumnDef<T> {
@@ -55,6 +55,7 @@ export interface DataTableProps<T extends { id: string }> {
   error?: string;
   searchValue?: string;
   onSearch?: (value: string) => void;
+  onClearFilters?: () => void;
   searchPlaceholder?: string;
   sortState?: SortState;
   onSort?: (column: string) => void;
@@ -199,6 +200,7 @@ export function DataTable<T extends { id: string }>({
   error,
   searchValue = "",
   onSearch,
+  onClearFilters,
   searchPlaceholder = "Search…",
   sortState,
   onSort,
@@ -483,9 +485,24 @@ export function DataTable<T extends { id: string }>({
       {/* Toolbar */}
       <div className="dt-toolbar" style={{ backgroundColor: tableHeaderBackground }}>
 
-        <div className="dt-toolbar-left">
+        <div
+          className="dt-toolbar-left"
+          style={renderCustomSearch ? { flex: 1, minWidth: 0 } : undefined}
+        >
           {renderCustomSearch ? (
-            renderCustomSearch({ draft, setDraft, commitSearch, searchPlaceholder })
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', width: '100%', minWidth: 0 }}>
+              {renderCustomSearch({ draft, setDraft, commitSearch, searchPlaceholder })}
+              {onClearFilters && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={onClearFilters}
+                >
+                  <ClearIcon  />
+                  {tI18n('dataTable', 'clearFilters')} 
+                </Button>
+              )}
+            </div>
           ) : (
             toolbarLeft
           )}
@@ -494,37 +511,59 @@ export function DataTable<T extends { id: string }>({
         {!renderCustomSearch && (
           <div className="dt-toolbar-center">
             {onSearch && (
-              <div className="dt-search-wrap">
-                <input
-                  className="dt-search"
-                  type="text"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
-                  placeholder={searchPlaceholder}
-                  aria-label={searchPlaceholder}
-                />
-                <IconButton
-                  size="small"
-                  onClick={() => { setDraft(""); if (onSearch) onSearch(""); }}
-                  aria-label="Clear"
-                  sx={{ visibility: draft ? "visible" : "hidden" }}
-                >
-                  <CloseIcon fontSize="inherit" />
-                </IconButton>
-                <IconButton
-                  className="dt-search-btn"
-                  size="small"
-                  onClick={commitSearch}
-                  aria-label="Search"
-                >
-                  <SearchIcon fontSize="inherit" color="primary" />
-                </IconButton>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="dt-search-wrap">
+                  <input
+                    className="dt-search"
+                    type="text"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
+                    placeholder={searchPlaceholder}
+                    aria-label={searchPlaceholder}
+                  />
+                  <IconButton
+                    size="small"
+                    onClick={() => { setDraft(""); if (onSearch) onSearch(""); }}
+                    aria-label="Clear"
+                    sx={{ visibility: draft ? "visible" : "hidden" }}
+                  >
+                    <CloseIcon fontSize="inherit" />
+                  </IconButton>
+                  <IconButton
+                    className="dt-search-btn"
+                    size="small"
+                    onClick={commitSearch}
+                    aria-label="Search"
+                  >
+                    <SearchIcon fontSize="inherit" color="primary" />
+                  </IconButton>
+                </div>
+                {onClearFilters && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={onClearFilters}
+                    sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap' }}
+                  >
+                    {tI18n('dataTable', 'clearFilters')}
+                  </Button>
+                )}
               </div>
             )}
           </div>
         )}
         <div className="dt-toolbar-right">
+          {onClearFilters && !onSearch && !renderCustomSearch && (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={onClearFilters}
+              sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap' }}
+            >
+              {tI18n('dataTable', 'clearFilters')}
+            </Button>
+          )}
           {/* Column visibility toggle */}
           <Tooltip title={tI18n('dataTable', 'showHideColumns')}>
             <IconButton size="small" onClick={(e) => setColMenuAnchor(e.currentTarget)}>

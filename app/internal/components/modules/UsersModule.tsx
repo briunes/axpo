@@ -282,6 +282,12 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
+        onClearFilters={() => {
+          setSearch("");
+          setRoleFilter("");
+          setAgencyFilter("");
+          setPage(1);
+        }}
         searchPlaceholder={t("search", "users")}
         emptyMessage={t("search", "emptyUsers")}
         sortState={{ column: sortColumn, direction: sortDir }}

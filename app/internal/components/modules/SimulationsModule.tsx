@@ -67,7 +67,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     filterClientId, setFilterClientId,
     filterCups, setFilterCups,
     filterStatus, setFilterStatus,
-    applyFilters, filtersAppliedAt,
+    applyFilters, clearFilters, filtersAppliedAt,
     selectedSimulationId, editPayloadJson, setEditPayloadJson,
     openSimulationEditor, closeSimulationEditor, handleUpdateSimulation,
     handleShare, handleClone, handleRotatePin, handleOcrPrefill, handlePdfDownload, handleArchive,
@@ -408,6 +408,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         loading={loading}
         searchValue={filterSearch}
         onSearch={(v) => { setFilterSearch(v); }}
+        onClearFilters={clearFilters}
         searchPlaceholder={t("search", "simulations")}
         emptyMessage={t("search", "emptySimulations")}
         sortState={{ column: sortColumn, direction: sortDir }}
@@ -426,7 +427,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         t={t}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
           <>
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
               <FormInput
                 label=""
                 placeholder={searchPlaceholder}
@@ -451,7 +452,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
               />
             </Box>
             {session.user.role !== "COMMERCIAL" && (
-              <Box sx={{ width: 280 }}>
+              <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
                 <FormSelect
                   label=""
                   options={[
@@ -479,7 +480,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
               </Box>
             )}
 
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
               <FormSelect
                 label=""
                 options={[
@@ -501,7 +502,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 textFieldProps={{ size: "small" }}
               />
             </Box>
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
               <FormInput
                 label=""
                 placeholder="CUPS"
@@ -525,7 +526,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 }}
               />
             </Box>
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
               <FormSelect
                 label=""
                 options={[
@@ -548,6 +549,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
               size="small"
               onClick={() => { setFilterSearch(draft); applyFilters(); }}
               aria-label="Search"
+              sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
             >
               <SearchIcon />
               {t('common', 'search')}

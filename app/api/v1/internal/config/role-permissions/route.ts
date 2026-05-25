@@ -4,7 +4,10 @@ import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import {
+  assertRole,
+  invalidatePermissionCache,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 
 const upsertSchema = z.object({
@@ -92,6 +95,9 @@ export const PATCH = withErrorHandler(async (request: NextRequest) => {
       }),
     ),
   );
+
+  // Invalidate in-process cache so new permissions take effect immediately.
+  invalidatePermissionCache();
 
   return ResponseHandler.ok({ updated: filtered.length }, 200);
 });

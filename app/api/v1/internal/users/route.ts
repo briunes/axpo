@@ -136,6 +136,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     sp.get("includeDeleted") === "true" && auth.role === UserRole.ADMIN;
   const rawOrderBy = sp.get("orderBy") || "createdAt";
   const sortDir: "asc" | "desc" = sp.get("sortDir") === "asc" ? "asc" : "desc";
+  // minimal=true: skip all includes/joins. Used by dropdowns that only need id + name.
+  const minimal = sp.get("minimal") === "true";
 
   const allowedOrderBy: Record<string, string> = {
     createdAt: "createdAt",
@@ -166,8 +168,32 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ...searchWhere,
     ...roleWhere,
     ...agencyWhere,
-    ...(includeDeleted ? {} : { isDeleted: false }), // Only filter out deleted if not including them
+    ...(includeDeleted ? {} : { isDeleted: false }),
   };
+
+  if (minimal) {
+    // Lean query: no joins. Used for dropdown/select UI.
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          agencyId: true,
+          role: true,
+          fullName: true,
+          email: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { [orderByField]: sortDir },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.user.count({ where }),
+    ]);
+    return ResponseHandler.ok({ items: users, total, page, pageSize }, 200);
+  }
 
   const [users, total] = await Promise.all([
     prisma.user.findMany({

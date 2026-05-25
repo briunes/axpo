@@ -289,6 +289,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
+        onClearFilters={() => { setSearch(""); setPage(1); }}
         searchPlaceholder={t("search", "baseValues")}
         emptyMessage={t("search", "emptyBaseValues")}
         sortState={{ column: sortColumn, direction: sortDir }}

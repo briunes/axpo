@@ -155,6 +155,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const orderBy = searchParams.get("orderBy") ?? "name";
   const sortDir =
     (searchParams.get("sortDir") ?? "asc") === "asc" ? "asc" : "desc";
+  // minimal=true: skip all includes/joins. Used by dropdowns that only need id + name.
+  const minimal = searchParams.get("minimal") === "true";
 
   const allowedOrderBy: Record<string, true> = {
     name: true,
@@ -181,6 +183,29 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         ],
       }
     : { ...baseWhere };
+
+  if (minimal) {
+    // Lean query: no joins. Used for dropdown/select UI.
+    const [clients, total] = await Promise.all([
+      prisma.client.findMany({
+        where,
+        orderBy: { [safeOrderBy]: sortDir },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          agencyId: true,
+          isActive: true,
+          isDeleted: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.client.count({ where }),
+    ]);
+    return ResponseHandler.ok({ items: clients, total, page, pageSize }, 200);
+  }
 
   const [clients, total] = await Promise.all([
     prisma.client.findMany({

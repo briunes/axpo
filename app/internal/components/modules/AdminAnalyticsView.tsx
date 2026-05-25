@@ -324,6 +324,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                         columns={agencyColumns}
                         rows={(analytics.byAgency ?? []).map((r) => ({ ...r, id: r.agencyId }))}
                         loading={false}
+                        onClearFilters={() => undefined}
                         emptyMessage={t("analyticsModule", "emptyAgencyData")}
                         headerRight={<span className="dt-meta-pill">{t("analyticsModule", "pillAgencies").replace("{count}", String(analytics.byAgency.length))}</span>}
                     />

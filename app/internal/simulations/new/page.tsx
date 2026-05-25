@@ -325,8 +325,8 @@ export default function NewSimulationPage() {
                     setDefaultDays(30);
                     setExpiresAt(addDays(30));
                 }),
-            // Load clients list
-            listClients(session.token, { pageSize: 1000 })
+            // Load clients list (minimal: true — only need id+name for the dropdown)
+            listClients(session.token, { pageSize: 1000, minimal: true })
                 .then((res) => {
                     setClients(res.items);
                 })

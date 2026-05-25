@@ -14,7 +14,7 @@ export default function ProfilePage() {
     const { t } = useI18n();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
-    const agenciesActions = useAgencies(session, 1000);
+    const agenciesActions = useAgencies(session, 1000, { minimal: true });
 
     const [user, setUser] = useState<UserItem | null>(null);
     const [loading, setLoading] = useState(true);

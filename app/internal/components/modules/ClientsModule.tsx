@@ -56,7 +56,7 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
   const [confirmToggle, setConfirmToggle] = useState<ClientItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ClientItem | null>(null);
   const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
-  const { agencies } = useAgencies(session, 1000, { queryEnabled: isAdmin(role) });
+  const { agencies } = useAgencies(session, 1000, { queryEnabled: isAdmin(role), minimal: true });
   const [dropdownState, setDropdownState] = useState<{
     anchorEl: HTMLElement | null;
     items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }>;
@@ -258,6 +258,11 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
+        onClearFilters={() => {
+          setSearch("");
+          setAgencyId("");
+          setPage(1);
+        }}
         searchPlaceholder={t("search", "clients")}
         emptyMessage={t("search", "emptyClients")}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (

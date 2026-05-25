@@ -132,6 +132,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const orderBy = searchParams.get("orderBy") ?? "createdAt";
   const sortDir =
     (searchParams.get("sortDir") ?? "desc") === "asc" ? "asc" : "desc";
+  // minimal=true: skip all includes/joins. Used by dropdowns that only need id + name.
+  const minimal = searchParams.get("minimal") === "true";
 
   const allowedOrderBy: Record<string, true> = {
     createdAt: true,
@@ -149,8 +151,30 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const where = {
     ...baseWhere,
-    ...(includeDeleted ? {} : { isDeleted: false }), // Only filter out deleted if not including them
+    ...(includeDeleted ? {} : { isDeleted: false }),
   };
+
+  if (minimal) {
+    // Lean query: no joins. Used for dropdown/select UI.
+    const [agencies, total] = await Promise.all([
+      prisma.agency.findMany({
+        where,
+        orderBy: { [safeOrderBy]: sortDir },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          isActive: true,
+          isDeleted: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.agency.count({ where }),
+    ]);
+    return ResponseHandler.ok({ items: agencies, total, page, pageSize }, 200);
+  }
 
   const [agencies, total] = await Promise.all([
     prisma.agency.findMany({

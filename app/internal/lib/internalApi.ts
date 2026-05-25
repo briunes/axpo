@@ -101,6 +101,7 @@ export interface ListAgenciesParams {
   orderBy?: string;
   sortDir?: "asc" | "desc";
   includeDeleted?: boolean;
+  minimal?: boolean;
 }
 
 export interface ListAgenciesResponse {
@@ -154,6 +155,7 @@ export interface ListClientsParams {
   sortDir?: "asc" | "desc";
   includeDeleted?: boolean;
   agencyId?: string;
+  minimal?: boolean;
 }
 
 export interface ListClientsResponse {
@@ -1075,6 +1077,7 @@ export interface ListUsersParams {
   orderBy?: string;
   sortDir?: "asc" | "desc";
   includeDeleted?: boolean;
+  minimal?: boolean;
 }
 
 export interface ListSessionsParams {
@@ -1105,6 +1108,7 @@ export async function listUsers(
   if (params?.orderBy) qs.set("orderBy", params.orderBy);
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
   if (params?.includeDeleted) qs.set("includeDeleted", "true");
+  if (params?.minimal) qs.set("minimal", "true");
   const url = `${baseUrl}/api/v1/internal/users${qs.toString() ? `?${qs}` : ""}`;
   const response = await fetch(url, {
     method: "GET",
@@ -1302,6 +1306,7 @@ export async function listAgencies(
   if (params?.orderBy) qs.set("orderBy", params.orderBy);
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
   if (params?.includeDeleted) qs.set("includeDeleted", "true");
+  if (params?.minimal) qs.set("minimal", "true");
   const url = `${baseUrl}/api/v1/internal/agencies${qs.toString() ? `?${qs}` : ""}`;
   const response = await fetch(url, {
     method: "GET",
@@ -1396,6 +1401,7 @@ export async function listClients(
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
   if (params?.includeDeleted) qs.set("includeDeleted", "true");
   if (params?.agencyId) qs.set("agencyId", params.agencyId);
+  if (params?.minimal) qs.set("minimal", "true");
   const url = `${baseUrl}/api/v1/internal/clients${qs.toString() ? `?${qs}` : ""}`;
   const response = await fetch(url, {
     method: "GET",

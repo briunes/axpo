@@ -15,7 +15,7 @@ export default function NewClientPage() {
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
 
-    const agenciesActions = useAgencies(session, 1000);
+    const agenciesActions = useAgencies(session, 1000, { minimal: true });
 
     const [formData, setFormData] = useState<ClientFormData>({
         name: "",

@@ -31,6 +31,7 @@ model Agency {
   simulations     Simulation[]
   users           User[]
 
+  @@index([isDeleted])
   @@map("agencies")
 }
 
@@ -74,6 +75,7 @@ model Client {
   updatedByUser   User?        @relation("ClientUpdatedBy", fields: [updatedByUserId], references: [id])
   simulations     Simulation[]
 
+  @@index([agencyId, isDeleted])
   @@map("clients")
 }
 
@@ -129,6 +131,8 @@ model User {
   updatedByUser               User?               @relation("UserUpdatedBy", fields: [updatedByUserId], references: [id])
   updatedUsers                User[]              @relation("UserUpdatedBy")
 
+  @@index([agencyId, isDeleted])
+  @@index([email, isDeleted])
   @@map("users")
 }
 
@@ -206,6 +210,9 @@ model Simulation {
   client              Client?             @relation(fields: [clientId], references: [id])
   ownerUser           User                @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
 
+  @@index([agencyId, isDeleted, updatedAt(sort: Desc)])
+  @@index([ownerUserId, isDeleted, updatedAt(sort: Desc)])
+  @@index([status, isDeleted])
   @@map("simulations")
 }
 
@@ -220,6 +227,7 @@ model SimulationVersion {
   createdByUser  User          @relation(fields: [createdBy], references: [id])
   simulation     Simulation    @relation(fields: [simulationId], references: [id], onDelete: Cascade)
 
+  @@index([simulationId, createdAt(sort: Desc)])
   @@map("simulation_versions")
 }
 
@@ -288,6 +296,9 @@ model AuditLog {
   createdAt    DateTime @default(now())
   actor        User?    @relation(fields: [actorUserId], references: [id])
 
+  @@index([actorUserId, createdAt(sort: Desc)])
+  @@index([targetType, targetId])
+  @@index([createdAt(sort: Desc)])
   @@map("audit_logs")
 }
 

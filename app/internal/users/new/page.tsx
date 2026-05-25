@@ -30,7 +30,7 @@ export default function NewUserPage() {
     const { t } = useI18n();
 
     const usersActions = useUsers(session, 25, { queryEnabled: false });
-    const agenciesActions = useAgencies(session, 1000);
+    const agenciesActions = useAgencies(session, 1000, { minimal: true });
 
     const [activeTab, setActiveTab] = useState(0);
     const [hasVisitedPreferences, setHasVisitedPreferences] = useState(false);

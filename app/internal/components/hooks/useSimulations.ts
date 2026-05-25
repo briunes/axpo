@@ -65,6 +65,7 @@ export interface SimulationsActions {
   filterStatus: string;
   setFilterStatus: (v: string) => void;
   applyFilters: () => void;
+  clearFilters: () => void;
   filtersAppliedAt: number;
   // create form state
   clientName: string;
@@ -339,6 +340,24 @@ export function useSimulations(
     filterStatus,
   ]);
 
+  const clearFilters = useCallback(() => {
+    const resetOwnerUserId = isCommercial ? selfUserId : "";
+    setFilterSearch("");
+    setFilterOwnerUserId(resetOwnerUserId);
+    setFilterClientId("");
+    setFilterCups("");
+    setFilterStatus("");
+
+    setAppliedSearch("");
+    setAppliedOwnerUserId(resetOwnerUserId);
+    setAppliedClientId("");
+    setAppliedCups("");
+    setAppliedStatus("");
+
+    setFiltersAppliedAt((n) => n + 1);
+    setPage(1);
+  }, [isCommercial, selfUserId]);
+
   const handleValidateCups = async () => {
     if (!session) return;
     const candidate = cups.trim();
@@ -564,6 +583,7 @@ export function useSimulations(
     filterStatus,
     setFilterStatus,
     applyFilters,
+    clearFilters,
     filtersAppliedAt,
     clientName,
     setClientName,

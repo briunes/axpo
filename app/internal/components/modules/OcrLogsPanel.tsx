@@ -1140,6 +1140,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                 columns={columns}
                 rows={logs}
                 loading={isFetching}
+                onClearFilters={() => setPage(1)}
                 pagination={{
                     page,
                     pageSize,

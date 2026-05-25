@@ -22,11 +22,12 @@ export default function SimulationsPage() {
   const isCommercial = session?.user.role === "COMMERCIAL";
 
   // TanStack Query auto-fetches on mount; initialPageSize=1000 for filter dropdowns
-  const clientsActions = useClients(session, 1000, { usePersistedState: false });
+  const clientsActions = useClients(session, 1000, { usePersistedState: false, minimal: true });
   // Commercial users cannot access /users — skip the query entirely and derive from session
   const usersActions = useUsers(session, 1000, {
     queryEnabled: !isCommercial,
     usePersistedState: false,
+    minimal: true,
   });
 
   const sessionUser: UserItem | null = session

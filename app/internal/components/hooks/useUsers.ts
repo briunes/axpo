@@ -120,6 +120,7 @@ export interface UsersActions {
 interface UseUsersOptions {
   queryEnabled?: boolean;
   usePersistedState?: boolean;
+  minimal?: boolean;
 }
 
 interface UsersFilterPersistentState {
@@ -138,6 +139,7 @@ export function useUsers(
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
   const usePersistedState = options?.usePersistedState ?? true;
+  const minimal = options?.minimal ?? false;
 
   // Load persisted state from localStorage
   const getPersistedState = () => {
@@ -260,6 +262,7 @@ export function useUsers(
     orderBy: sortColumn,
     sortDir,
     includeDeleted: showArchived || undefined,
+    minimal: minimal || undefined,
   };
 
   // Create a stable cache key by serializing query params

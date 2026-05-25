@@ -226,6 +226,7 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                 columns={columns}
                 rows={logs}
                 loading={loading}
+                onClearFilters={() => setPage(1)}
                 pagination={{
                     page,
                     pageSize,
