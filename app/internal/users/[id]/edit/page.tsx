@@ -13,7 +13,7 @@ import { usePermissions } from "../../../lib/permissionsContext";
 import { UserForm, type UserFormData } from "../../../components/modules/UserForm";
 import { UserSessionsPanel } from "../../../components/modules/UserSessionsPanel";
 import { CrudPageLayout, LoadingState, PinResultDialog, useAlerts } from "../../../components/shared";
-import { UserPreferencesForm } from "../../../components/ui/UserPreferencesForm";
+import { UserPreferencesForm, type UserPreferences } from "../../../components/ui/UserPreferencesForm";
 import { AuditLogsModal } from "../../../components/ui/AuditLogsModal";
 import { useUserPreferences } from "../../../components/providers/UserPreferencesProvider";
 import { getUser, type ListUsersResponse, type UserItem } from "../../../lib/internalApi";
@@ -41,6 +41,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const [showAuditLogsModal, setShowAuditLogsModal] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
     const [defaultMaxActiveDevices, setDefaultMaxActiveDevices] = useState(3);
+    const [preferencesDraft, setPreferencesDraft] = useState<UserPreferences | null>(null);
     const [formData, setFormData] = useState<UserFormData>({
         fullName: "",
         email: "",
@@ -123,7 +124,6 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
         if (usersActions.successText) {
             // Keep user on edit view for PIN rotation and password reset actions
             if (isRegeneratingPin) {
-                // Clear the success message for PIN rotation
                 usersActions.clearFeedback();
                 setIsRegeneratingPin(false);
             } else if (isSendingPasswordReset) {
@@ -163,6 +163,16 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
             role: formData.role,
             agencyId: formData.agencyId,
             isActive: formData.isActive,
+            preferences: preferencesDraft
+                ? {
+                    language: preferencesDraft.language,
+                    dateFormat: preferencesDraft.dateFormat,
+                    timeFormat: preferencesDraft.timeFormat,
+                    timezone: preferencesDraft.timezone,
+                    numberFormat: preferencesDraft.numberFormat,
+                    itemsPerPage: preferencesDraft.itemsPerPage,
+                }
+                : undefined,
         } as Parameters<typeof usersActions.handleUpdateUser>[1]);
     };
 
@@ -242,7 +252,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                     </Tabs>
                 </Box>
 
-                {activeTab === 0 && (
+                <Box sx={{ display: activeTab === 0 ? "block" : "none" }}>
                     <UserForm
                         session={session}
                         agencies={agenciesActions.agencies}
@@ -258,25 +268,37 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                         isEditingSelf={isEditingSelf}
                         onRenderActions={setFormActions}
                     />
-                )}
+                </Box>
 
-                {activeTab === 1 && session && (
-                    <UserPreferencesForm
-                        userId={id}
-                        token={session.token}
-                        onNotify={(msg, tone) => tone === "error" ? alertError(msg) : alertSuccess(msg)}
-                    />
-                )}
+                <Box sx={{ display: activeTab === 1 ? "block" : "none" }}>
+                    {session && (
+                        <UserPreferencesForm
+                            userId={id}
+                            token={session.token}
+                            hideSaveButton
+                            onPreferencesChange={setPreferencesDraft}
+                            onNotify={(msg, tone) => tone === "error" ? alertError(msg) : alertSuccess(msg)}
+                        />
+                    )}
+                </Box>
 
-                {canManageUserSessions && activeTab === 2 && session && (
-                    <UserSessionsPanel
-                        session={session}
-                        userId={id}
-                        initialPageSize={preferences.itemsPerPage}
-                        allowUserLogoutAll
-                        maxActiveDevices={user?.maxActiveDevices ?? defaultMaxActiveDevices}
-                        onNotify={(msg, tone) => tone === "error" ? alertError(msg) : alertSuccess(msg)}
-                    />
+                {canManageUserSessions && (
+                    <Box sx={{ display: activeTab === 2 ? "block" : "none" }}>
+                        {session && (
+                            <UserSessionsPanel
+                                session={session}
+                                userId={id}
+                                initialPageSize={preferences.itemsPerPage}
+                                allowUserLogoutAll
+                                maxActiveDevices={formData.maxActiveDevices ?? defaultMaxActiveDevices}
+                                maxActiveDevicesLimit={defaultMaxActiveDevices}
+                                onMaxActiveDevicesChange={(value) => {
+                                    setFormData((prev) => ({ ...prev, maxActiveDevices: value }));
+                                }}
+                                onNotify={(msg, tone) => tone === "error" ? alertError(msg) : alertSuccess(msg)}
+                            />
+                        )}
+                    </Box>
                 )}
             </CrudPageLayout>
 

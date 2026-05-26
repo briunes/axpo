@@ -17,6 +17,7 @@ import { CrudPageLayout, LoadingState, useAlerts } from "../../../components/sha
 import { HtmlEditor } from "../../../components/modules/HtmlEditor";
 import { DraggableVariables } from "../../../components/modules/DraggableVariables";
 import { extractVariableValues, replaceVariables as replaceVars } from "@/infrastructure/pdf/variableReplacer";
+import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
 import {
     Box,
     Button,
@@ -210,7 +211,7 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `simulation-${id}.pdf`;
+            a.download = buildSimulationPdfFilenameFromSimulation(simulation);
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

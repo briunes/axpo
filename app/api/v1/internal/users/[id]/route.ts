@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { z } from "zod";
 import { UserRole } from "@/domain/types";
 import {
   ForbiddenError,
@@ -14,21 +13,7 @@ import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 import { PasswordService } from "@/application/services/passwordService";
 import { SessionService } from "@/application/services/sessionService";
-
-const updateUserSchema = z.object({
-  fullName: z.string().min(2).optional(),
-  email: z.string().email().optional(),
-  mobilePhone: z.string().min(1).optional(),
-  commercialPhone: z.string().min(1).optional(),
-  commercialEmail: z.string().email().optional(),
-  otherDetails: z.string().max(5000).optional(),
-  maxActiveDevices: z.number().int().min(1).max(10).optional(),
-  isActive: z.boolean().optional(),
-  role: z.nativeEnum(UserRole).optional(),
-  agencyId: z.string().optional(),
-  password: z.string().min(12).max(128).optional(),
-  currentPassword: z.string().min(1).optional(),
-});
+import { parseUpdateUserPayload } from "../userPayloadValidation";
 
 const assertUserReadable = (
   actor: { userId: string; role: UserRole; agencyId: string },
@@ -130,7 +115,7 @@ export const PATCH = withErrorHandler(
     assertUserReadable(auth, existing);
 
     const body = await request.json();
-    const payload = updateUserSchema.parse(body);
+    const payload = await parseUpdateUserPayload(body);
 
     if (auth.role === UserRole.AGENT) {
       if (id !== auth.userId) {
@@ -196,40 +181,71 @@ export const PATCH = withErrorHandler(
       ? await PasswordService.hash(payload.password)
       : undefined;
 
-    const updated = await prisma.user.update({
-      where: { id },
-      data: {
-        fullName: payload.fullName,
-        email: payload.email,
-        mobilePhone: payload.mobilePhone,
-        commercialPhone: payload.commercialPhone,
-        commercialEmail: payload.commercialEmail,
-        otherDetails: payload.otherDetails,
-        maxActiveDevices: payload.maxActiveDevices,
-        isActive: payload.isActive,
-        role: payload.role,
-        agencyId: payload.agencyId,
-        passwordHash,
-        updatedByUserId: auth.userId,
-      },
-      select: {
-        id: true,
-        agencyId: true,
-        role: true,
-        fullName: true,
-        email: true,
-        mobilePhone: true,
-        commercialPhone: true,
-        commercialEmail: true,
-        otherDetails: true,
-        maxActiveDevices: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-        pinRotatedAt: true,
-        createdByUser: { select: { id: true, fullName: true } },
-        updatedByUser: { select: { id: true, fullName: true } },
-      },
+    const existingPreferences = payload.preferences
+      ? await prisma.userPreferences.findUnique({ where: { userId: id } })
+      : null;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id },
+        data: {
+          fullName: payload.fullName,
+          email: payload.email,
+          mobilePhone: payload.mobilePhone,
+          commercialPhone: payload.commercialPhone,
+          commercialEmail: payload.commercialEmail,
+          otherDetails: payload.otherDetails,
+          maxActiveDevices: payload.maxActiveDevices,
+          isActive: payload.isActive,
+          role: payload.role,
+          agencyId: payload.agencyId,
+          passwordHash,
+          updatedByUserId: auth.userId,
+        },
+        select: {
+          id: true,
+          agencyId: true,
+          role: true,
+          fullName: true,
+          email: true,
+          mobilePhone: true,
+          commercialPhone: true,
+          commercialEmail: true,
+          otherDetails: true,
+          maxActiveDevices: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+          pinRotatedAt: true,
+          createdByUser: { select: { id: true, fullName: true } },
+          updatedByUser: { select: { id: true, fullName: true } },
+        },
+      });
+
+      if (payload.preferences) {
+        await tx.userPreferences.upsert({
+          where: { userId: id },
+          create: {
+            userId: id,
+            language: payload.preferences.language,
+            dateFormat: payload.preferences.dateFormat,
+            timeFormat: payload.preferences.timeFormat,
+            timezone: payload.preferences.timezone,
+            numberFormat: payload.preferences.numberFormat,
+            itemsPerPage: payload.preferences.itemsPerPage,
+          },
+          update: {
+            language: payload.preferences.language,
+            dateFormat: payload.preferences.dateFormat,
+            timeFormat: payload.preferences.timeFormat,
+            timezone: payload.preferences.timezone,
+            numberFormat: payload.preferences.numberFormat,
+            itemsPerPage: payload.preferences.itemsPerPage,
+          },
+        });
+      }
+
+      return updatedUser;
     });
 
     if (payload.isActive === false) {
@@ -243,10 +259,13 @@ export const PATCH = withErrorHandler(
       );
     }
 
-    const { password: _pw, currentPassword: _cp, ...changedFields } = payload;
-    const changedKeys = Object.keys(
-      changedFields,
-    ) as (keyof typeof changedFields)[];
+    const {
+      password: _pw,
+      currentPassword: _cp,
+      preferences,
+      ...changedFields
+    } = payload;
+    const changedKeys = Object.keys(changedFields);
     const auditBefore: Record<string, unknown> = {};
     const auditAfter: Record<string, unknown> = {};
     for (const key of changedKeys) {
@@ -257,6 +276,19 @@ export const PATCH = withErrorHandler(
     if (changedKeys.length > 0) {
       auditMeta.before = auditBefore;
       auditMeta.after = auditAfter;
+    }
+    if (preferences) {
+      auditMeta.preferencesBefore = existingPreferences
+        ? {
+            language: existingPreferences.language,
+            dateFormat: existingPreferences.dateFormat,
+            timeFormat: existingPreferences.timeFormat,
+            timezone: existingPreferences.timezone,
+            numberFormat: existingPreferences.numberFormat,
+            itemsPerPage: existingPreferences.itemsPerPage,
+          }
+        : null;
+      auditMeta.preferencesAfter = preferences;
     }
     if (payload.password) auditMeta.passwordUpdated = true;
     await AuditService.logEvent({

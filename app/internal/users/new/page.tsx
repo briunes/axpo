@@ -10,6 +10,7 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { useAgencies } from "../../components/hooks/useAgencies";
 import { useUsers } from "../../components/hooks/useUsers";
 import { UserForm, type UserFormData } from "../../components/modules/UserForm";
+import { UserSessionsPanel } from "../../components/modules/UserSessionsPanel";
 import { CrudPageLayout, useAlerts } from "../../components/shared";
 import type { UserRole } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
@@ -195,32 +196,31 @@ export default function NewUserPage() {
                         <Tabs value={activeTab} onChange={handleTabChange}>
                             <Tab label={t("userFormPage", "tabDetails")} />
                             <Tab label={t("userFormPage", "tabPreferences")} />
+                            <Tab label={t("userFormPage", "tabSessions")} />
                         </Tabs>
                     </Box>
 
-                    {activeTab === 0 && (
-                        <>
-                            {!hasVisitedPreferences && (
-                                <Alert severity="info" sx={{ mb: 2 }}>
-                                    {t("userFormPage", "mustVisitPreferences")}
-                                </Alert>
-                            )}
-                            <UserForm
-                                session={session}
-                                agencies={agenciesActions.agencies}
-                                data={formData}
-                                onChange={setFormData}
-                                onSubmit={handleSubmit}
-                                errorMessage={usersActions.errorText}
-                                isSubmitting={usersActions.busyAction === "create-user"}
-                                submitLabel={t("userFormPage", "createSubmitLabel")}
-                                cancelLabel={t("actions", "cancel")}
-                                onCancel={() => router.push("/internal/users")}
-                                mode="create"
-                                onRenderActions={setFormActions}
-                            />
-                        </>
-                    )}
+                    <Box sx={{ display: activeTab === 0 ? "block" : "none" }}>
+                        {!hasVisitedPreferences && (
+                            <Alert severity="info" sx={{ mb: 2 }}>
+                                {t("userFormPage", "mustVisitPreferences")}
+                            </Alert>
+                        )}
+                        <UserForm
+                            session={session}
+                            agencies={agenciesActions.agencies}
+                            data={formData}
+                            onChange={setFormData}
+                            onSubmit={handleSubmit}
+                            errorMessage={usersActions.errorText}
+                            isSubmitting={usersActions.busyAction === "create-user"}
+                            submitLabel={t("userFormPage", "createSubmitLabel")}
+                            cancelLabel={t("actions", "cancel")}
+                            onCancel={() => router.push("/internal/users")}
+                            mode="create"
+                            onRenderActions={setFormActions}
+                        />
+                    </Box>
 
                     {activeTab === 1 && (
                         <Box>
@@ -309,6 +309,21 @@ export default function NewUserPage() {
                                 />
                             </Box>
                         </Box>
+                    )}
+
+                    {activeTab === 2 && (
+                        <UserSessionsPanel
+                            session={session}
+                            maxActiveDevices={formData.maxActiveDevices ?? defaultMaxActiveDevices}
+                            maxActiveDevicesLimit={defaultMaxActiveDevices}
+                            onMaxActiveDevicesChange={(value) => {
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    maxActiveDevices: value,
+                                }));
+                            }}
+                            showSessionsList={false}
+                        />
                     )}
                 </>
             )}

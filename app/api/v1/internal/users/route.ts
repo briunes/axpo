@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { z } from "zod";
 import { UserRole } from "@/domain/types";
 import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
@@ -8,25 +7,7 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { AuthService } from "@/application/services/authService";
 import { prisma } from "@/infrastructure/database/prisma";
-
-const createUserSchema = z.object({
-  agencyId: z.string().min(1),
-  role: z.nativeEnum(UserRole),
-  fullName: z.string().min(2),
-  email: z.string().email(),
-  mobilePhone: z.string().min(1),
-  commercialPhone: z.string().min(1),
-  commercialEmail: z.string().email(),
-  otherDetails: z.string().max(5000).optional(),
-  password: z
-    .string()
-    .min(12)
-    .max(128)
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/)
-    .optional(),
-  pin: z.string().regex(/^\d+$/).optional(),
-  maxActiveDevices: z.number().int().min(1).max(10).optional(),
-});
+import { parseCreateUserPayload } from "./userPayloadValidation";
 
 /**
  * @swagger
@@ -281,7 +262,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   await assertPermission(auth, "users.create");
 
   const body = await request.json();
-  const payload = createUserSchema.parse(body);
+  const payload = await parseCreateUserPayload(body);
 
   AuthService.enforceCreatePermissions(
     { role: auth.role, agencyId: auth.agencyId },

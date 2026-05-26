@@ -101,6 +101,14 @@ export interface UsersActions {
       otherDetails?: string;
       role?: string;
       agencyId?: string;
+      preferences?: {
+        language?: string | null;
+        dateFormat?: string | null;
+        timeFormat?: string | null;
+        timezone?: string | null;
+        numberFormat?: string | null;
+        itemsPerPage?: number | null;
+      };
     },
   ) => Promise<void>;
   // self-service profile
@@ -450,6 +458,14 @@ export function useUsers(
       role?: string;
       agencyId?: string;
       isActive?: boolean;
+      preferences?: {
+        language?: string | null;
+        dateFormat?: string | null;
+        timeFormat?: string | null;
+        timezone?: string | null;
+        numberFormat?: string | null;
+        itemsPerPage?: number | null;
+      };
     },
   ) => {
     e.preventDefault();
@@ -468,6 +484,7 @@ export function useUsers(
     const role = data?.role as UserRole | undefined;
     const agencyId = data?.agencyId;
     const isActive = data?.isActive;
+    const preferences = data?.preferences;
 
     if (!userId) return;
     if (
@@ -510,6 +527,7 @@ export function useUsers(
         ...(role ? { role } : {}),
         ...(agencyId ? { agencyId } : {}),
         ...(isActive !== undefined ? { isActive } : {}),
+        ...(preferences ? { preferences } : {}),
         ...(changingPassword
           ? {
               password: password,

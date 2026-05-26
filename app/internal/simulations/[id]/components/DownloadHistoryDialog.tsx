@@ -27,6 +27,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import { useI18n } from "../../../../../src/lib/i18n-context";
 import { getPdfTemplates, type PdfTemplate } from "../../../lib/configApi";
 import { LoadingState } from "../../../components/shared";
+import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -479,7 +480,10 @@ export function DownloadHistoryDialog({
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `history-${selectedProduct.productKey.replace(/:/g, "-")}-${simulation.id}.pdf`;
+            a.download = buildSimulationPdfFilenameFromSimulation(simulation, {
+                productName: selectedProduct.productLabel,
+                prefix: "history",
+            });
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

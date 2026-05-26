@@ -537,10 +537,10 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                                 <Box sx={{ mb: 3 }}>
                                     <FormInput
                                         label="Default max active sessions per user"
-                                        helperText="Used as the default limit when creating users or when a user has no explicit value."
+                                        helperText="Used as the default and maximum limit when creating users or when a user has no explicit value."
                                         type="number"
                                         slotProps={{
-                                            htmlInput: { min: 1, max: 10 }
+                                            htmlInput: { min: 1 }
                                         }}
                                         value={config.defaultMaxActiveDevices}
                                         onChange={(e) => {

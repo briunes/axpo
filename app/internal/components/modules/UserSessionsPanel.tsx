@@ -38,6 +38,9 @@ interface UserSessionsPanelProps {
     allowUserLogoutAll?: boolean;
     showUserColumn?: boolean;
     maxActiveDevices?: number;
+    maxActiveDevicesLimit?: number;
+    onMaxActiveDevicesChange?: (value: number) => void;
+    showSessionsList?: boolean;
     onNotify?: (message: string, tone: "success" | "error") => void;
 }
 
@@ -70,6 +73,9 @@ export function UserSessionsPanel({
     allowUserLogoutAll = false,
     showUserColumn = false,
     maxActiveDevices: initialMaxActiveDevices,
+    maxActiveDevicesLimit,
+    onMaxActiveDevicesChange,
+    showSessionsList = true,
     onNotify,
 }: UserSessionsPanelProps) {
     const { t } = useI18n();
@@ -92,12 +98,30 @@ export function UserSessionsPanel({
     const onNotifyRef = useRef(onNotify);
     const [maxDevices, setMaxDevices] = useState<number>(initialMaxActiveDevices ?? 3);
     const [isSavingMaxDevices, setIsSavingMaxDevices] = useState(false);
+    const effectiveMaxDevicesLimit = Math.max(1, maxActiveDevicesLimit ?? initialMaxActiveDevices ?? 3);
+    const canManageMaxDevices = Boolean(userId) || typeof onMaxActiveDevicesChange === "function";
+    const canPersistMaxDevices = Boolean(userId) && typeof onMaxActiveDevicesChange !== "function";
+    const shouldLoadSessions = showSessionsList && (Boolean(userId) || groupedMode);
+
+    const clampMaxDevices = useCallback((value: number) => {
+        if (Number.isNaN(value)) {
+            return 1;
+        }
+
+        return Math.min(effectiveMaxDevicesLimit, Math.max(1, value));
+    }, [effectiveMaxDevicesLimit]);
 
     useEffect(() => {
         if (initialMaxActiveDevices !== undefined) {
             setMaxDevices(initialMaxActiveDevices);
         }
     }, [initialMaxActiveDevices]);
+
+    const handleMaxDevicesChange = useCallback((value: number) => {
+        const nextValue = clampMaxDevices(value);
+        setMaxDevices(nextValue);
+        onMaxActiveDevicesChange?.(nextValue);
+    }, [clampMaxDevices, onMaxActiveDevicesChange]);
 
     const handleSaveMaxDevices = async () => {
         if (!userId) return;
@@ -248,16 +272,24 @@ export function UserSessionsPanel({
     );
 
     useEffect(() => {
+        if (!shouldLoadSessions) {
+            return;
+        }
+
         void fetchSessions();
-    }, [fetchSessions]);
+    }, [fetchSessions, shouldLoadSessions]);
 
     useEffect(() => {
+        if (!shouldLoadSessions) {
+            return;
+        }
+
         const interval = setInterval(() => {
             void fetchSessions({ force: true });
         }, 30000);
 
         return () => clearInterval(interval);
-    }, [fetchSessions]);
+    }, [fetchSessions, shouldLoadSessions]);
 
     const toggleUserDetails = (targetUserId: string) => {
         const nextOpen = !expandedUsers[targetUserId];
@@ -348,350 +380,363 @@ export function UserSessionsPanel({
 
     return (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {userId && (
+            {canManageMaxDevices && (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 2, p: 2, bgcolor: "action.hover", borderRadius: 2, flexWrap: "wrap" }}>
                     <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 200 }}>
-                        Max allowed active sessions
+                        {t("userSessions", "maxAllowedActiveSessions")}
                     </Typography>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <input
                             type="number"
                             min={1}
-                            max={10}
+                            max={effectiveMaxDevicesLimit}
                             value={maxDevices}
-                            onChange={(e) => setMaxDevices(Math.min(10, Math.max(1, Number(e.target.value))))}
+                            onChange={(e) => handleMaxDevicesChange(Number(e.target.value))}
                             style={{ width: 64, padding: "4px 8px", borderRadius: 4, border: "1px solid #ccc", fontSize: 14 }}
                         />
-                        <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={handleSaveMaxDevices}
-                            disabled={isSavingMaxDevices || maxDevices === initialMaxActiveDevices}
-                        >
-                            {isSavingMaxDevices ? "Saving…" : "Save"}
-                        </Button>
+                        {canPersistMaxDevices && (
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={handleSaveMaxDevices}
+                                disabled={isSavingMaxDevices || maxDevices === initialMaxActiveDevices}
+                            >
+                                {isSavingMaxDevices ? "Saving…" : "Save"}
+                            </Button>
+                        )}
                     </Box>
                     <Typography variant="caption" color="text.secondary">
-                        When exceeded, the oldest session is automatically revoked at login.
+                        {showSessionsList
+                            ? t("userSessions", "maxAllowedActiveSessionsHint", { count: effectiveMaxDevicesLimit })
+                            : t("userSessions", "maxAllowedActiveSessionsCreateHint", { count: effectiveMaxDevicesLimit })}
                     </Typography>
                 </Box>
             )}
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-                {!groupedMode ? (
-                    <FormControlLabel
-                        control={
-                            <Switch
-                                checked={activeOnly}
-                                onChange={(event) => {
-                                    setActiveOnly(event.target.checked);
-                                    setPage(1);
-                                }}
+            {!showSessionsList && (
+                <Typography variant="body2" color="text.secondary">
+                    {t("userSessions", "historyAvailableAfterFirstLogin")}
+                </Typography>
+            )}
+            {showSessionsList && (
+                <>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+                        {!groupedMode ? (
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={activeOnly}
+                                        onChange={(event) => {
+                                            setActiveOnly(event.target.checked);
+                                            setPage(1);
+                                        }}
+                                    />
+                                }
+                                label={t("userSessions", "activeOnly")}
                             />
-                        }
-                        label={t("userSessions", "activeOnly")}
-                    />
-                ) : (
-                    <Typography variant="body2" color="text.secondary">
-                        {t("userSessions", "activeUsersCount", { count: groupedActiveUsers.length })}
-                    </Typography>
-                )}
-
-                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                    {allowUserLogoutAll && userId && (
-                        <Button
-                            variant="outlined"
-                            color="warning"
-                            onClick={handleForceLogoutAllForUser}
-                            disabled={busyGlobalAction !== null}
-                        >
-                            {busyGlobalAction === "user-all" ? t("userSessions", "processing") : t("userSessions", "logoutAllUserSessions")}
-                        </Button>
-                    )}
-
-                    {allowGlobalLogoutAll && (
-                        <Button
-                            variant="contained"
-                            color="error"
-                            onClick={handleEmergencyLogoutAll}
-                            disabled={busyGlobalAction !== null}
-                        >
-                            {busyGlobalAction === "global-all" ? t("userSessions", "processing") : t("userSessions", "emergencyLogoutAllUsers")}
-                        </Button>
-                    )}
-
-                    <Button variant="outlined" onClick={() => void fetchSessions({ force: true })} disabled={loading}>
-                        {t("actions", "refresh")}
-                    </Button>
-                </Box>
-            </Box>
-
-            <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, overflow: "hidden" }}>
-                <Table size="small">
-                    <TableHead>
-                        <TableRow>
-                            {groupedMode ? (
-                                <>
-                                    <TableCell>{t("auditLogsModal", "actor")}</TableCell>
-                                    <TableCell>{t("columns", "status")}</TableCell>
-                                    <TableCell>{t("userSessions", "activeSessions")}</TableCell>
-                                    <TableCell>{t("userSessions", "login")}</TableCell>
-                                    <TableCell>{t("userSessions", "lastActivity")}</TableCell>
-                                    <TableCell align="right">{t("columns", "actions")}</TableCell>
-                                </>
-                            ) : (
-                                <>
-                                    {showUserColumn && <TableCell>{t("auditLogsModal", "actor")}</TableCell>}
-                                    <TableCell>{t("columns", "status")}</TableCell>
-                                    <TableCell>{t("userSessions", "login")}</TableCell>
-                                    <TableCell>{t("userSessions", "lastActivity")}</TableCell>
-                                    <TableCell>{t("userSessions", "logout")}</TableCell>
-                                    <TableCell>{t("userSessions", "auth")}</TableCell>
-                                    <TableCell>{t("userSessions", "device")}</TableCell>
-                                    <TableCell>IP</TableCell>
-                                    <TableCell>{t("userSessions", "reason")}</TableCell>
-                                    <TableCell align="right">{t("columns", "actions")}</TableCell>
-                                </>
-                            )}
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {(groupedMode ? groupedActiveUsers.length === 0 : items.length === 0) && (
-                            <TableRow>
-                                <TableCell colSpan={groupedMode ? 6 : showUserColumn ? 10 : 9}>
-                                    {loading ? (
-                                        <Box sx={{ py: 3, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                                            <CircularProgress size={24} />
-                                            <Typography variant="body2" color="text.secondary">
-                                                {t("userSessions", "loading")}
-                                            </Typography>
-                                        </Box>
-                                    ) : (
-                                        <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                                            {t("userSessions", "noSessions")}
-                                        </Typography>
-                                    )}
-                                </TableCell>
-                            </TableRow>
+                        ) : (
+                            <Typography variant="body2" color="text.secondary">
+                                {t("userSessions", "activeUsersCount", { count: groupedActiveUsers.length })}
+                            </Typography>
                         )}
 
-                        {groupedMode
-                            ? groupedActiveUsers.map((group) => {
-                                const isOpen = Boolean(expandedUsers[group.userId]);
-                                const pastSessions = pastSessionsByUser[group.userId] ?? [];
-                                const loadingPast = Boolean(loadingPastByUser[group.userId]);
-                                const pastPage = pastPageByUser[group.userId] ?? 1;
-                                const pastTotal = pastTotalByUser[group.userId] ?? 0;
-                                const pastTotalPages = Math.max(1, Math.ceil(pastTotal / pageSize));
+                        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                            {allowUserLogoutAll && userId && (
+                                <Button
+                                    variant="outlined"
+                                    color="warning"
+                                    onClick={handleForceLogoutAllForUser}
+                                    disabled={busyGlobalAction !== null}
+                                >
+                                    {busyGlobalAction === "user-all" ? t("userSessions", "processing") : t("userSessions", "logoutAllUserSessions")}
+                                </Button>
+                            )}
 
-                                return (
-                                    <Fragment key={group.userId}>
-                                        <TableRow hover>
-                                            <TableCell>
-                                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                                    {group.userName}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {group.userEmail}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell>{renderStatus(true, group.latestActivityAt)}</TableCell>
-                                            <TableCell>{group.sessions.length}</TableCell>
-                                            <TableCell>{formatDate(group.latestLoginAt)}</TableCell>
-                                            <TableCell>{formatDate(group.latestActivityAt)}</TableCell>
-                                            <TableCell align="right">
-                                                <IconButton
-                                                    size="small"
-                                                    aria-label={
-                                                        isOpen
-                                                            ? t("userSessions", "collapseSessions")
-                                                            : t("userSessions", "expandSessions")
-                                                    }
-                                                    onClick={() => toggleUserDetails(group.userId)}
-                                                >
-                                                    {isOpen ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-                                                </IconButton>
-                                            </TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell colSpan={6} sx={{ p: 0 }}>
-                                                <Collapse in={isOpen} timeout="auto" unmountOnExit>
-                                                    <Box sx={{ p: 2, backgroundColor: "background.default" }}>
-                                                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                                                            {t("userSessions", "activeSessions")}
-                                                        </Typography>
-                                                        <Table size="small" sx={{ mb: 2 }}>
-                                                            <TableHead>
-                                                                <TableRow>
-                                                                    <TableCell>{t("userSessions", "login")}</TableCell>
-                                                                    <TableCell>{t("userSessions", "lastActivity")}</TableCell>
-                                                                    <TableCell>{t("userSessions", "auth")}</TableCell>
-                                                                    <TableCell>{t("userSessions", "device")}</TableCell>
-                                                                    <TableCell>IP</TableCell>
-                                                                    <TableCell align="right">{t("columns", "actions")}</TableCell>
-                                                                </TableRow>
-                                                            </TableHead>
-                                                            <TableBody>
-                                                                {group.sessions.map((activeSession) => (
-                                                                    <TableRow key={activeSession.id}>
-                                                                        <TableCell>{formatDate(activeSession.loginAt)}</TableCell>
-                                                                        <TableCell>{formatDate(activeSession.lastActivityAt)}</TableCell>
-                                                                        <TableCell>{activeSession.authMethod}</TableCell>
-                                                                        <TableCell>
-                                                                            {[activeSession.browser, activeSession.os].filter(Boolean).join(" / ") || "—"}
-                                                                        </TableCell>
-                                                                        <TableCell>{activeSession.ipAddress || "—"}</TableCell>
-                                                                        <TableCell align="right">
-                                                                            <Button
-                                                                                size="small"
-                                                                                color="warning"
-                                                                                disabled={busySessionId !== null}
-                                                                                onClick={() => void handleForceLogoutSession(activeSession.id, group.userId)}
-                                                                            >
-                                                                                {busySessionId === activeSession.id
-                                                                                    ? t("userSessions", "processing")
-                                                                                    : t("userSessions", "forceLogout")}
-                                                                            </Button>
-                                                                        </TableCell>
-                                                                    </TableRow>
-                                                                ))}
-                                                            </TableBody>
-                                                        </Table>
+                            {allowGlobalLogoutAll && (
+                                <Button
+                                    variant="contained"
+                                    color="error"
+                                    onClick={handleEmergencyLogoutAll}
+                                    disabled={busyGlobalAction !== null}
+                                >
+                                    {busyGlobalAction === "global-all" ? t("userSessions", "processing") : t("userSessions", "emergencyLogoutAllUsers")}
+                                </Button>
+                            )}
 
-                                                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                                                            {t("userSessions", "pastSessions")}
-                                                        </Typography>
-                                                        {loadingPast ? (
-                                                            <Box sx={{ py: 2, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                                                                <CircularProgress size={20} />
-                                                                <Typography variant="body2" color="text.secondary">
-                                                                    {t("userSessions", "loading")}
-                                                                </Typography>
-                                                            </Box>
-                                                        ) : pastSessions.length === 0 ? (
-                                                            <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
-                                                                {t("userSessions", "noPastSessions")}
-                                                            </Typography>
-                                                        ) : (
-                                                            <Table size="small">
-                                                                <TableHead>
-                                                                    <TableRow>
-                                                                        <TableCell>{t("userSessions", "login")}</TableCell>
-                                                                        <TableCell>{t("userSessions", "lastActivity")}</TableCell>
-                                                                        <TableCell>{t("userSessions", "logout")}</TableCell>
-                                                                        <TableCell>{t("userSessions", "auth")}</TableCell>
-                                                                        <TableCell>{t("userSessions", "device")}</TableCell>
-                                                                        <TableCell>IP</TableCell>
-                                                                        <TableCell>{t("userSessions", "reason")}</TableCell>
-                                                                    </TableRow>
-                                                                </TableHead>
-                                                                <TableBody>
-                                                                    {pastSessions.map((pastSession) => (
-                                                                        <TableRow key={pastSession.id}>
-                                                                            <TableCell>{formatDate(pastSession.loginAt)}</TableCell>
-                                                                            <TableCell>{formatDate(pastSession.lastActivityAt)}</TableCell>
-                                                                            <TableCell>{formatDate(pastSession.logoutAt)}</TableCell>
-                                                                            <TableCell>{pastSession.authMethod}</TableCell>
-                                                                            <TableCell>
-                                                                                {[pastSession.browser, pastSession.os].filter(Boolean).join(" / ") || "—"}
-                                                                            </TableCell>
-                                                                            <TableCell>{pastSession.ipAddress || "—"}</TableCell>
-                                                                            <TableCell>{pastSession.terminationReason || "—"}</TableCell>
-                                                                        </TableRow>
-                                                                    ))}
-                                                                </TableBody>
-                                                            </Table>
-                                                        )}
+                            <Button variant="outlined" onClick={() => void fetchSessions({ force: true })} disabled={loading}>
+                                {t("actions", "refresh")}
+                            </Button>
+                        </Box>
+                    </Box>
 
-                                                        <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 1, mt: 1 }}>
-                                                            <Button
-                                                                size="small"
-                                                                variant="outlined"
-                                                                disabled={loadingPast || pastPage <= 1}
-                                                                onClick={() => void fetchPastSessionsForUser(group.userId, Math.max(1, pastPage - 1))}
-                                                            >
-                                                                {t("userSessions", "prev")}
-                                                            </Button>
-                                                            <Typography variant="body2">
-                                                                {pastPage} / {pastTotalPages}
-                                                            </Typography>
-                                                            <Button
-                                                                size="small"
-                                                                variant="outlined"
-                                                                disabled={loadingPast || pastPage >= pastTotalPages}
-                                                                onClick={() => void fetchPastSessionsForUser(group.userId, Math.min(pastTotalPages, pastPage + 1))}
-                                                            >
-                                                                {t("userSessions", "next")}
-                                                            </Button>
-                                                        </Box>
-                                                    </Box>
-                                                </Collapse>
-                                            </TableCell>
-                                        </TableRow>
-                                    </Fragment>
-                                );
-                            })
-                            : items.map((item) => (
-                                <TableRow key={item.id} hover>
-                                    {showUserColumn && (
-                                        <TableCell>
-                                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                                {item.user?.fullName ?? "—"}
-                                            </Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                {item.user?.email ?? item.userId}
-                                            </Typography>
-                                        </TableCell>
+                    <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, overflow: "hidden" }}>
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow>
+                                    {groupedMode ? (
+                                        <>
+                                            <TableCell>{t("auditLogsModal", "actor")}</TableCell>
+                                            <TableCell>{t("columns", "status")}</TableCell>
+                                            <TableCell>{t("userSessions", "activeSessions")}</TableCell>
+                                            <TableCell>{t("userSessions", "login")}</TableCell>
+                                            <TableCell>{t("userSessions", "lastActivity")}</TableCell>
+                                            <TableCell align="right">{t("columns", "actions")}</TableCell>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {showUserColumn && <TableCell>{t("auditLogsModal", "actor")}</TableCell>}
+                                            <TableCell>{t("columns", "status")}</TableCell>
+                                            <TableCell>{t("userSessions", "login")}</TableCell>
+                                            <TableCell>{t("userSessions", "lastActivity")}</TableCell>
+                                            <TableCell>{t("userSessions", "logout")}</TableCell>
+                                            <TableCell>{t("userSessions", "auth")}</TableCell>
+                                            <TableCell>{t("userSessions", "device")}</TableCell>
+                                            <TableCell>IP</TableCell>
+                                            <TableCell>{t("userSessions", "reason")}</TableCell>
+                                            <TableCell align="right">{t("columns", "actions")}</TableCell>
+                                        </>
                                     )}
-                                    <TableCell>{renderStatus(item.isActive, item.lastActivityAt)}</TableCell>
-                                    <TableCell>{formatDate(item.loginAt)}</TableCell>
-                                    <TableCell>{formatDate(item.lastActivityAt)}</TableCell>
-                                    <TableCell>{formatDate(item.logoutAt)}</TableCell>
-                                    <TableCell>{item.authMethod}</TableCell>
-                                    <TableCell>{[item.browser, item.os].filter(Boolean).join(" / ") || "—"}</TableCell>
-                                    <TableCell>{item.ipAddress || "—"}</TableCell>
-                                    <TableCell>{item.terminationReason || "—"}</TableCell>
-                                    <TableCell align="right">
-                                        <Button
-                                            size="small"
-                                            color="warning"
-                                            disabled={!item.isActive || busySessionId !== null}
-                                            onClick={() => void handleForceLogoutSession(item.id)}
-                                        >
-                                            {busySessionId === item.id ? t("userSessions", "processing") : t("userSessions", "forceLogout")}
-                                        </Button>
-                                    </TableCell>
                                 </TableRow>
-                            ))}
-                    </TableBody>
-                </Table>
-            </Box>
+                            </TableHead>
+                            <TableBody>
+                                {(groupedMode ? groupedActiveUsers.length === 0 : items.length === 0) && (
+                                    <TableRow>
+                                        <TableCell colSpan={groupedMode ? 6 : showUserColumn ? 10 : 9}>
+                                            {loading ? (
+                                                <Box sx={{ py: 3, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                                                    <CircularProgress size={24} />
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        {t("userSessions", "loading")}
+                                                    </Typography>
+                                                </Box>
+                                            ) : (
+                                                <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                                                    {t("userSessions", "noSessions")}
+                                                </Typography>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
 
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <Typography variant="body2" color="text.secondary">
-                    {t("userSessions", "sessionsCount", { count: total })}
-                </Typography>
-                <Box sx={{ display: "flex", gap: 1 }}>
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        disabled={page <= 1}
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    >
-                        {t("userSessions", "prev")}
-                    </Button>
-                    <Typography variant="body2" sx={{ alignSelf: "center" }}>
-                        {page} / {totalPages}
-                    </Typography>
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        disabled={page >= totalPages}
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    >
-                        {t("userSessions", "next")}
-                    </Button>
-                </Box>
-            </Box>
+                                {groupedMode
+                                    ? groupedActiveUsers.map((group) => {
+                                        const isOpen = Boolean(expandedUsers[group.userId]);
+                                        const pastSessions = pastSessionsByUser[group.userId] ?? [];
+                                        const loadingPast = Boolean(loadingPastByUser[group.userId]);
+                                        const pastPage = pastPageByUser[group.userId] ?? 1;
+                                        const pastTotal = pastTotalByUser[group.userId] ?? 0;
+                                        const pastTotalPages = Math.max(1, Math.ceil(pastTotal / pageSize));
+
+                                        return (
+                                            <Fragment key={group.userId}>
+                                                <TableRow hover>
+                                                    <TableCell>
+                                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                            {group.userName}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {group.userEmail}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell>{renderStatus(true, group.latestActivityAt)}</TableCell>
+                                                    <TableCell>{group.sessions.length}</TableCell>
+                                                    <TableCell>{formatDate(group.latestLoginAt)}</TableCell>
+                                                    <TableCell>{formatDate(group.latestActivityAt)}</TableCell>
+                                                    <TableCell align="right">
+                                                        <IconButton
+                                                            size="small"
+                                                            aria-label={
+                                                                isOpen
+                                                                    ? t("userSessions", "collapseSessions")
+                                                                    : t("userSessions", "expandSessions")
+                                                            }
+                                                            onClick={() => toggleUserDetails(group.userId)}
+                                                        >
+                                                            {isOpen ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                                                        </IconButton>
+                                                    </TableCell>
+                                                </TableRow>
+                                                <TableRow>
+                                                    <TableCell colSpan={6} sx={{ p: 0 }}>
+                                                        <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                                                            <Box sx={{ p: 2, backgroundColor: "background.default" }}>
+                                                                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                                                                    {t("userSessions", "activeSessions")}
+                                                                </Typography>
+                                                                <Table size="small" sx={{ mb: 2 }}>
+                                                                    <TableHead>
+                                                                        <TableRow>
+                                                                            <TableCell>{t("userSessions", "login")}</TableCell>
+                                                                            <TableCell>{t("userSessions", "lastActivity")}</TableCell>
+                                                                            <TableCell>{t("userSessions", "auth")}</TableCell>
+                                                                            <TableCell>{t("userSessions", "device")}</TableCell>
+                                                                            <TableCell>IP</TableCell>
+                                                                            <TableCell align="right">{t("columns", "actions")}</TableCell>
+                                                                        </TableRow>
+                                                                    </TableHead>
+                                                                    <TableBody>
+                                                                        {group.sessions.map((activeSession) => (
+                                                                            <TableRow key={activeSession.id}>
+                                                                                <TableCell>{formatDate(activeSession.loginAt)}</TableCell>
+                                                                                <TableCell>{formatDate(activeSession.lastActivityAt)}</TableCell>
+                                                                                <TableCell>{activeSession.authMethod}</TableCell>
+                                                                                <TableCell>
+                                                                                    {[activeSession.browser, activeSession.os].filter(Boolean).join(" / ") || "—"}
+                                                                                </TableCell>
+                                                                                <TableCell>{activeSession.ipAddress || "—"}</TableCell>
+                                                                                <TableCell align="right">
+                                                                                    <Button
+                                                                                        size="small"
+                                                                                        color="warning"
+                                                                                        disabled={busySessionId !== null}
+                                                                                        onClick={() => void handleForceLogoutSession(activeSession.id, group.userId)}
+                                                                                    >
+                                                                                        {busySessionId === activeSession.id
+                                                                                            ? t("userSessions", "processing")
+                                                                                            : t("userSessions", "forceLogout")}
+                                                                                    </Button>
+                                                                                </TableCell>
+                                                                            </TableRow>
+                                                                        ))}
+                                                                    </TableBody>
+                                                                </Table>
+
+                                                                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                                                                    {t("userSessions", "pastSessions")}
+                                                                </Typography>
+                                                                {loadingPast ? (
+                                                                    <Box sx={{ py: 2, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                                                                        <CircularProgress size={20} />
+                                                                        <Typography variant="body2" color="text.secondary">
+                                                                            {t("userSessions", "loading")}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                ) : pastSessions.length === 0 ? (
+                                                                    <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+                                                                        {t("userSessions", "noPastSessions")}
+                                                                    </Typography>
+                                                                ) : (
+                                                                    <Table size="small">
+                                                                        <TableHead>
+                                                                            <TableRow>
+                                                                                <TableCell>{t("userSessions", "login")}</TableCell>
+                                                                                <TableCell>{t("userSessions", "lastActivity")}</TableCell>
+                                                                                <TableCell>{t("userSessions", "logout")}</TableCell>
+                                                                                <TableCell>{t("userSessions", "auth")}</TableCell>
+                                                                                <TableCell>{t("userSessions", "device")}</TableCell>
+                                                                                <TableCell>IP</TableCell>
+                                                                                <TableCell>{t("userSessions", "reason")}</TableCell>
+                                                                            </TableRow>
+                                                                        </TableHead>
+                                                                        <TableBody>
+                                                                            {pastSessions.map((pastSession) => (
+                                                                                <TableRow key={pastSession.id}>
+                                                                                    <TableCell>{formatDate(pastSession.loginAt)}</TableCell>
+                                                                                    <TableCell>{formatDate(pastSession.lastActivityAt)}</TableCell>
+                                                                                    <TableCell>{formatDate(pastSession.logoutAt)}</TableCell>
+                                                                                    <TableCell>{pastSession.authMethod}</TableCell>
+                                                                                    <TableCell>
+                                                                                        {[pastSession.browser, pastSession.os].filter(Boolean).join(" / ") || "—"}
+                                                                                    </TableCell>
+                                                                                    <TableCell>{pastSession.ipAddress || "—"}</TableCell>
+                                                                                    <TableCell>{pastSession.terminationReason || "—"}</TableCell>
+                                                                                </TableRow>
+                                                                            ))}
+                                                                        </TableBody>
+                                                                    </Table>
+                                                                )}
+
+                                                                <Box sx={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 1, mt: 1 }}>
+                                                                    <Button
+                                                                        size="small"
+                                                                        variant="outlined"
+                                                                        disabled={loadingPast || pastPage <= 1}
+                                                                        onClick={() => void fetchPastSessionsForUser(group.userId, Math.max(1, pastPage - 1))}
+                                                                    >
+                                                                        {t("userSessions", "prev")}
+                                                                    </Button>
+                                                                    <Typography variant="body2">
+                                                                        {pastPage} / {pastTotalPages}
+                                                                    </Typography>
+                                                                    <Button
+                                                                        size="small"
+                                                                        variant="outlined"
+                                                                        disabled={loadingPast || pastPage >= pastTotalPages}
+                                                                        onClick={() => void fetchPastSessionsForUser(group.userId, Math.min(pastTotalPages, pastPage + 1))}
+                                                                    >
+                                                                        {t("userSessions", "next")}
+                                                                    </Button>
+                                                                </Box>
+                                                            </Box>
+                                                        </Collapse>
+                                                    </TableCell>
+                                                </TableRow>
+                                            </Fragment>
+                                        );
+                                    })
+                                    : items.map((item) => (
+                                        <TableRow key={item.id} hover>
+                                            {showUserColumn && (
+                                                <TableCell>
+                                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                        {item.user?.fullName ?? "—"}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {item.user?.email ?? item.userId}
+                                                    </Typography>
+                                                </TableCell>
+                                            )}
+                                            <TableCell>{renderStatus(item.isActive, item.lastActivityAt)}</TableCell>
+                                            <TableCell>{formatDate(item.loginAt)}</TableCell>
+                                            <TableCell>{formatDate(item.lastActivityAt)}</TableCell>
+                                            <TableCell>{formatDate(item.logoutAt)}</TableCell>
+                                            <TableCell>{item.authMethod}</TableCell>
+                                            <TableCell>{[item.browser, item.os].filter(Boolean).join(" / ") || "—"}</TableCell>
+                                            <TableCell>{item.ipAddress || "—"}</TableCell>
+                                            <TableCell>{item.terminationReason || "—"}</TableCell>
+                                            <TableCell align="right">
+                                                <Button
+                                                    size="small"
+                                                    color="warning"
+                                                    disabled={!item.isActive || busySessionId !== null}
+                                                    onClick={() => void handleForceLogoutSession(item.id)}
+                                                >
+                                                    {busySessionId === item.id ? t("userSessions", "processing") : t("userSessions", "forceLogout")}
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                            </TableBody>
+                        </Table>
+                    </Box>
+
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Typography variant="body2" color="text.secondary">
+                            {t("userSessions", "sessionsCount", { count: total })}
+                        </Typography>
+                        <Box sx={{ display: "flex", gap: 1 }}>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                disabled={page <= 1}
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                            >
+                                {t("userSessions", "prev")}
+                            </Button>
+                            <Typography variant="body2" sx={{ alignSelf: "center" }}>
+                                {page} / {totalPages}
+                            </Typography>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                disabled={page >= totalPages}
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                            >
+                                {t("userSessions", "next")}
+                            </Button>
+                        </Box>
+                    </Box>
+                </>
+            )}
         </Box>
     );
 }

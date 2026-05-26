@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
+import { prisma } from "@/infrastructure/database/prisma";
 import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
+import {
+  buildSimulationPdfFilenameFromSimulation,
+  resolveSimulationProductName,
+} from "@/infrastructure/pdf/pdfFilename";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 
 const generatePdfSchema = z.object({
@@ -64,6 +69,34 @@ export const POST = withErrorHandler(
     const id = context?.params?.id ?? "";
     const rawBody = await request.json();
     const { htmlContent, watermark } = generatePdfSchema.parse(rawBody);
+
+    const simulation = await prisma.simulation.findFirst({
+      where: { id, isDeleted: false },
+      select: {
+        id: true,
+        referenceNumber: true,
+        client: { select: { name: true } },
+        versions: {
+          select: { payloadJson: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+    });
+    const latestPayload = simulation?.versions?.[0]?.payloadJson as any;
+    const filename = simulation
+      ? buildSimulationPdfFilenameFromSimulation(
+          {
+            id: simulation.id,
+            referenceNumber: simulation.referenceNumber,
+            client: simulation.client,
+            payloadJson: latestPayload,
+          },
+          {
+            productName: resolveSimulationProductName(latestPayload),
+          },
+        )
+      : `simulation-${id}.pdf`;
 
     // Inject watermark style if requested
     const watermarkStyle = watermark
@@ -151,7 +184,7 @@ export const POST = withErrorHandler(
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="simulation-${id}.pdf"`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
   },

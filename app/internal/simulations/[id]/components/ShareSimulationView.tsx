@@ -14,6 +14,7 @@ import {
 import { HtmlEditor } from "../../../components/modules/HtmlEditor";
 import { DraggableVariables } from "../../../components/modules/DraggableVariables";
 import { extractVariableValues, replaceVariables as replaceVars } from "@/infrastructure/pdf/variableReplacer";
+import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
 import type { EditableSectionOverrides, EditableSectionsConfig } from "@/infrastructure/templates/editableSections";
 import { mergeEditableSections } from "@/infrastructure/templates/editableSections";
 import { resolveTranslation, getLanguageFromCountry } from "@/lib/supportedLanguages";
@@ -337,7 +338,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `simulation-${simulation.id}.pdf`;
+            a.download = buildSimulationPdfFilenameFromSimulation(simulation);
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

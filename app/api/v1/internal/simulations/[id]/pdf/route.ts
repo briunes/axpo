@@ -5,6 +5,10 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
+import {
+  buildSimulationPdfFilenameFromSimulation,
+  resolveSimulationProductName,
+} from "@/infrastructure/pdf/pdfFilename";
 
 const escapePdfText = (text: string): string => {
   return text
@@ -80,6 +84,12 @@ export const GET = withErrorHandler(
       where: { simulationId: simulation.id },
       orderBy: { createdAt: "desc" },
     });
+    const client = simulation.clientId
+      ? await prisma.client.findUnique({
+          where: { id: simulation.clientId },
+          select: { name: true },
+        })
+      : null;
 
     const pdf = buildSimplePdf([
       `AXPO Simulation Snapshot`,
@@ -89,12 +99,24 @@ export const GET = withErrorHandler(
       `Expires At: ${simulation.expiresAt ? simulation.expiresAt.toISOString() : "N/A"}`,
       `Latest Version: ${latestVersion?.id ?? "N/A"}`,
     ]);
+    const latestPayload = latestVersion?.payloadJson as any;
+    const filename = buildSimulationPdfFilenameFromSimulation(
+      {
+        id: simulation.id,
+        referenceNumber: simulation.referenceNumber,
+        client,
+        payloadJson: latestPayload,
+      },
+      {
+        productName: resolveSimulationProductName(latestPayload),
+      },
+    );
 
     return new NextResponse(new Uint8Array(pdf), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename=simulation-${simulation.id}.pdf`,
+        "Content-Disposition": `inline; filename="${filename}"`,
         "Cache-Control": "no-store",
       },
     });

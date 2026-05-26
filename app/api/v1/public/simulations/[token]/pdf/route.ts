@@ -9,6 +9,10 @@ import {
   replaceVariables,
 } from "@/infrastructure/pdf/variableReplacer";
 import type { SimulationPayload } from "@/domain/types/simulation";
+import {
+  buildSimulationPdfFilenameFromSimulation,
+  resolveSimulationProductName,
+} from "@/infrastructure/pdf/pdfFilename";
 
 interface PublicSessionPayload {
   typ?: string;
@@ -275,11 +279,17 @@ ${processedHtml}
 
     await browser.close();
 
-    // Generate filename
-    const clientName =
-      simulation.client?.name?.replace(/[^a-zA-Z0-9]/g, "_") || "simulacion";
-    const date = new Date().toISOString().split("T")[0];
-    const filename = `simulacion-axpo-${clientName}-${date}.pdf`;
+    const filename = buildSimulationPdfFilenameFromSimulation(
+      {
+        id: simulation.id,
+        referenceNumber: simulation.referenceNumber,
+        client: simulation.client,
+        payloadJson: mergedPayload as any,
+      },
+      {
+        productName: resolveSimulationProductName(mergedPayload as any),
+      },
+    );
 
     // Return PDF as response
     return new NextResponse(Buffer.from(pdfBuffer), {

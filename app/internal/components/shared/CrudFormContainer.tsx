@@ -71,11 +71,6 @@ export function CrudFormContainer({
         if (onRenderActionsRef.current) {
             onRenderActionsRef.current(actionButtons);
         }
-        return () => {
-            if (onRenderActionsRef.current) {
-                onRenderActionsRef.current(null);
-            }
-        };
     }, [submitLabel, cancelLabel, isSubmitting]);
 
     return (

@@ -283,6 +283,13 @@ export const translations = {
       title: "Sessions",
       subtitle: "Active and historical login sessions",
       openSessionsPage: "Sessions",
+      maxAllowedActiveSessions: "Max allowed active sessions",
+      maxAllowedActiveSessionsHint:
+        "Configured limit: {count}. When exceeded, the oldest session is automatically revoked at login.",
+      maxAllowedActiveSessionsCreateHint:
+        "This user can be created with up to {count} active sessions.",
+      historyAvailableAfterFirstLogin:
+        "Session history will appear after the user signs in for the first time.",
       activeOnly: "Active sessions only",
       activeUsersCount: "{count} logged user(s)",
       activeSessions: "Active sessions",
@@ -2028,6 +2035,13 @@ export const translations = {
       title: "Sesiones",
       subtitle: "Sesiones activas e históricas",
       openSessionsPage: "Sesiones",
+      maxAllowedActiveSessions: "Máximo de sesiones activas permitidas",
+      maxAllowedActiveSessionsHint:
+        "Límite configurado: {count}. Si se supera, la sesión más antigua se cerrará automáticamente al iniciar sesión.",
+      maxAllowedActiveSessionsCreateHint:
+        "Este usuario se puede crear con hasta {count} sesiones activas.",
+      historyAvailableAfterFirstLogin:
+        "El historial de sesiones aparecerá cuando el usuario inicie sesión por primera vez.",
       activeOnly: "Solo sesiones activas",
       activeUsersCount: "{count} usuario(s) con sesión iniciada",
       activeSessions: "Sesiones activas",

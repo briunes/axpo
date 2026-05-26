@@ -6,7 +6,7 @@ import { FormSelect } from "./FormSelect";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 
-interface UserPreferences {
+export interface UserPreferences {
     language: string | null;
     dateFormat: string;
     timeFormat: string;
@@ -27,9 +27,19 @@ interface UserPreferencesFormProps {
     userId: string;
     token: string;
     onNotify?: (message: string, tone: "success" | "error") => void;
+    hideSaveButton?: boolean;
+    onDirtyChange?: (isDirty: boolean) => void;
+    onPreferencesChange?: (preferences: UserPreferences) => void;
 }
 
-export function UserPreferencesForm({ userId, token, onNotify }: UserPreferencesFormProps) {
+export function UserPreferencesForm({
+    userId,
+    token,
+    onNotify,
+    hideSaveButton = false,
+    onDirtyChange,
+    onPreferencesChange,
+}: UserPreferencesFormProps) {
     const { t, setLocale } = useI18n();
     const { refresh: refreshProviderPrefs } = useUserPreferences();
     const [preferences, setPreferences] = useState<UserPreferences>({
@@ -63,6 +73,7 @@ export function UserPreferencesForm({ userId, token, onNotify }: UserPreferences
 
             const data = await response.json();
             setPreferences(data);
+            setIsDirty(false);
         } catch (error) {
             onNotify?.(
                 error instanceof Error ? error.message : "Failed to load preferences",
@@ -121,10 +132,19 @@ export function UserPreferencesForm({ userId, token, onNotify }: UserPreferences
                 error instanceof Error ? error.message : t("userPreferences", "saveError"),
                 "error"
             );
+            throw error;
         } finally {
             setSaving(false);
         }
     };
+
+    useEffect(() => {
+        onDirtyChange?.(isDirty);
+    }, [isDirty, onDirtyChange]);
+
+    useEffect(() => {
+        onPreferencesChange?.(preferences);
+    }, [onPreferencesChange, preferences]);
 
     if (loading) {
         return <Typography>{t("userPreferences", "loading")}</Typography>;
@@ -228,17 +248,18 @@ export function UserPreferencesForm({ userId, token, onNotify }: UserPreferences
                 />
             </Box>
 
-            {/* Save Button */}
-            <Box sx={{ display: "flex", justifyContent: "flex-start", pt: 3 }}>
-                <Button
-                    variant="contained"
-                    onClick={handleSave}
-                    disabled={!isDirty || saving}
-                    size="large"
-                >
-                    {saving ? t("actions", "saving") : t("actions", "saveChanges")}
-                </Button>
-            </Box>
+            {!hideSaveButton && (
+                <Box sx={{ display: "flex", justifyContent: "flex-start", pt: 3 }}>
+                    <Button
+                        variant="contained"
+                        onClick={() => void handleSave()}
+                        disabled={!isDirty || saving}
+                        size="large"
+                    >
+                        {saving ? t("actions", "saving") : t("actions", "saveChanges")}
+                    </Button>
+                </Box>
+            )}
         </Box>
     );
 }

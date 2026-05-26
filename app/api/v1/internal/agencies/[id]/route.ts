@@ -17,6 +17,14 @@ const updateAgencySchema = z.object({
   province: z.string().optional(),
   country: z.string().optional(),
   isActive: z.boolean().optional(),
+  tariffs: z
+    .array(
+      z.object({
+        tariffType: z.string().min(1),
+        isEnabled: z.boolean(),
+      }),
+    )
+    .optional(),
 });
 
 /**
@@ -206,49 +214,97 @@ export const PATCH = withErrorHandler(
       throw new NotFoundError("Agency", id);
     }
 
-    const updated = await prisma.agency.update({
-      where: { id },
-      data: {
-        name: payload.name,
-        street: payload.street,
-        city: payload.city,
-        postalCode: payload.postalCode,
-        province: payload.province,
-        country: payload.country,
-        isActive: payload.isActive,
-        updatedByUserId: auth.userId,
-      },
-      include: {
-        createdByUser: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
+    const existingTariffs = payload.tariffs
+      ? await prisma.agencyTariff.findMany({
+          where: { agencyId: id },
+          select: { tariffType: true, isEnabled: true },
+        })
+      : [];
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedAgency = await tx.agency.update({
+        where: { id },
+        data: {
+          name: payload.name,
+          street: payload.street,
+          city: payload.city,
+          postalCode: payload.postalCode,
+          province: payload.province,
+          country: payload.country,
+          isActive: payload.isActive,
+          updatedByUserId: auth.userId,
+        },
+        include: {
+          createdByUser: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+          updatedByUser: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
           },
         },
-        updatedByUser: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
-        },
-      },
+      });
+
+      if (payload.tariffs) {
+        await Promise.all(
+          payload.tariffs.map((tariff) =>
+            tx.agencyTariff.upsert({
+              where: {
+                agencyId_tariffType: {
+                  agencyId: id,
+                  tariffType: tariff.tariffType,
+                },
+              },
+              update: {
+                isEnabled: tariff.isEnabled,
+              },
+              create: {
+                agencyId: id,
+                tariffType: tariff.tariffType,
+                isEnabled: tariff.isEnabled,
+              },
+            }),
+          ),
+        );
+      }
+
+      return updatedAgency;
     });
 
-    const changedKeys = Object.keys(payload) as (keyof typeof payload)[];
+    const { tariffs, ...agencyFields } = payload;
+    const changedKeys = Object.keys(
+      agencyFields,
+    ) as (keyof typeof agencyFields)[];
     const before: Record<string, unknown> = {};
     const after: Record<string, unknown> = {};
     for (const key of changedKeys) {
       before[key] = (existing as Record<string, unknown>)[key] ?? null;
       after[key] = (updated as Record<string, unknown>)[key] ?? null;
     }
+
+    const metadata: Record<string, unknown> = {};
+    if (changedKeys.length > 0) {
+      metadata.before = before;
+      metadata.after = after;
+    }
+    if (tariffs) {
+      metadata.tariffsBefore = existingTariffs;
+      metadata.tariffsAfter = tariffs;
+    }
+
     await AuditService.logEvent({
       actorUserId: auth.userId,
       eventType: "AGENCY_UPDATED",
       targetType: "AGENCY",
       targetId: updated.id,
-      metadataJson: changedKeys.length > 0 ? { before, after } : undefined,
+      metadataJson: Object.keys(metadata).length > 0 ? metadata : undefined,
     });
 
     return ResponseHandler.ok(updated, 200);

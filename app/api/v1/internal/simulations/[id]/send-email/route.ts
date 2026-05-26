@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
+import { prisma } from "@/infrastructure/database/prisma";
 import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
 import { EmailService } from "@/application/services/emailService";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
+import {
+  buildSimulationPdfFilenameFromSimulation,
+  resolveSimulationProductName,
+} from "@/infrastructure/pdf/pdfFilename";
 
 const sendEmailSchema = z.object({
   to: z.string().email("Invalid recipient email address"),
@@ -85,6 +90,20 @@ export const POST = withErrorHandler(
     const { to, subject, htmlContent, pdfHtmlContent } =
       sendEmailSchema.parse(rawBody);
 
+    const simulation = await prisma.simulation.findFirst({
+      where: { id, isDeleted: false },
+      select: {
+        id: true,
+        referenceNumber: true,
+        client: { select: { name: true } },
+        versions: {
+          select: { payloadJson: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+    });
+
     let attachments = undefined;
 
     if (pdfHtmlContent) {
@@ -140,9 +159,24 @@ export const POST = withErrorHandler(
 
         await browser.close();
 
+        const latestPayload = simulation?.versions?.[0]?.payloadJson as any;
+        const filename = simulation
+          ? buildSimulationPdfFilenameFromSimulation(
+              {
+                id: simulation.id,
+                referenceNumber: simulation.referenceNumber,
+                client: simulation.client,
+                payloadJson: latestPayload,
+              },
+              {
+                productName: resolveSimulationProductName(latestPayload),
+              },
+            )
+          : `simulation-${id}.pdf`;
+
         attachments = [
           {
-            filename: `simulation-${id}.pdf`,
+            filename,
             content: Buffer.from(pdfBuffer),
             contentType: "application/pdf",
           },

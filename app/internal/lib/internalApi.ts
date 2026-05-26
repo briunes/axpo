@@ -197,6 +197,14 @@ interface UpdateUserInput {
   agencyId?: string;
   password?: string;
   currentPassword?: string;
+  preferences?: {
+    language?: string | null;
+    dateFormat?: string | null;
+    timeFormat?: string | null;
+    timezone?: string | null;
+    numberFormat?: string | null;
+    itemsPerPage?: number | null;
+  };
 }
 
 interface ListUsersResult {
@@ -380,6 +388,10 @@ interface UpdateAgencyInput {
   province?: string;
   country?: string;
   isActive?: boolean;
+  tariffs?: Array<{
+    tariffType: string;
+    isEnabled: boolean;
+  }>;
 }
 
 interface CreateClientInput {

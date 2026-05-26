@@ -57,6 +57,9 @@ export default function EditAgencyPage({
   const [activeTab, setActiveTab] = useState(0);
   const [showAuditLogsModal, setShowAuditLogsModal] = useState(false);
   const [formActions, setFormActions] = useState<React.ReactNode>(null);
+  const [tariffsDraft, setTariffsDraft] = useState<
+    Array<{ tariffType: string; isEnabled: boolean }>
+  >([]);
 
   useEffect(() => {
     if (!session) return;
@@ -119,7 +122,9 @@ export default function EditAgencyPage({
         postalCode: address.postalCode?.trim() || undefined,
         province: address.province?.trim() || undefined,
         country: address.country?.trim() || undefined,
+        tariffs: tariffsDraft.length > 0 ? tariffsDraft : undefined,
       });
+
       showSuccess(t("agencyFormPage", "updated"));
       router.push("/internal/agencies");
     } catch (err) {
@@ -217,7 +222,7 @@ export default function EditAgencyPage({
           <Tab label={t("agencyFormPage", "tabTariffs")} />
         </Tabs>
       </Box>
-      {activeTab === 0 && (
+      <Box sx={{ display: activeTab === 0 ? "block" : "none" }}>
         <CrudFormContainer
           onSubmit={handleSubmit}
           errorMessage={errorMessage}
@@ -249,7 +254,7 @@ export default function EditAgencyPage({
             />
           </Stack>
         </CrudFormContainer>
-      )}
+      </Box>
       {activeTab === 1 && (
         <Box>
           <Box sx={{ mb: 2 }}>
@@ -270,15 +275,17 @@ export default function EditAgencyPage({
           />
         </Box>
       )}
-      {activeTab === 2 && (
+      <Box sx={{ display: activeTab === 2 ? "block" : "none" }}>
         <AgencyTariffConfig
           agencyId={agency.id}
           token={session.token}
+          hideSaveButton
+          onTariffsChange={setTariffsDraft}
           onNotify={(msg, type) =>
             type === "error" ? showError(msg) : showSuccess(msg)
           }
         />
-      )}
+      </Box>
       {session && (
         <AuditLogsModal
           open={showAuditLogsModal}
