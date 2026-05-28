@@ -119,9 +119,9 @@ interface GasFormState {
     personalizadaFijoTerminoVariable: number;
 }
 
-function daysBetween(from: string, to: string): number {
+function daysBetween(from: string, to: string, inclusive = false): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-    return Math.max(1, d + 1); // inclusive end date, matching Excel E25 = (E24-D24)+1
+    return Math.max(1, inclusive ? d + 1 : d); // electricity: inclusive (end-start+1), gas: non-inclusive (end-start)
 }
 
 function parseLocalDate(isoDateString: string): Date {
@@ -246,7 +246,7 @@ function defaultGasState(): GasFormState {
 // ─── Payload builders ──────────────────────────────────────────────────────────
 
 function buildElecInputs(s: ElecFormState): ElectricityInputs {
-    const dias = daysBetween(s.fechaInicio, s.fechaFin);
+    const dias = daysBetween(s.fechaInicio, s.fechaFin, true);
     return {
         clientData: {
             cups: s.cups || undefined,
@@ -289,7 +289,7 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
 }
 
 function buildGasInputs(s: GasFormState): GasInputs {
-    const dias = daysBetween(s.fechaInicio, s.fechaFin);
+    const dias = daysBetween(s.fechaInicio, s.fechaFin); // gas: non-inclusive
     return {
         cups: s.cups || undefined,
         consumoAnual: s.consumoAnual || undefined,
@@ -975,7 +975,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                                 />
                             </Field>
                             <Field label={t("simulationForm", "fieldDays")} flex="0 0 88px">
-                                <FormInput label="" type="number" slotProps={{ htmlInput: { readOnly: true } }} value={daysBetween(state.fechaInicio, state.fechaFin)} sx={{ opacity: 0.6 }} />
+                                <FormInput label="" type="number" slotProps={{ htmlInput: { readOnly: true } }} value={daysBetween(state.fechaInicio, state.fechaFin, true)} sx={{ opacity: 0.6 }} />
                             </Field>
                         </Row>
                     </Sec>

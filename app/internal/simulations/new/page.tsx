@@ -46,7 +46,12 @@ const ELEC_POWER_PERIODS: Record<string, string[]> = {
 
 function ocrDaysBetween(from: string, to: string): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-    return Math.max(1, d + 1);
+    return Math.max(1, d + 1); // electricity: inclusive (end - start + 1)
+}
+
+function ocrDaysBetweenGas(from: string, to: string): number {
+    const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+    return Math.max(1, d); // gas: non-inclusive (end - start)
 }
 
 function ocrPrevMonthRange(): { fechaInicio: string; fechaFin: string } {
@@ -112,7 +117,7 @@ function buildGasPayloadFromOcr(data: import("../../components/modules").Extract
     const { fechaInicio, fechaFin } = data.fechaInicio && data.fechaFin
         ? { fechaInicio: data.fechaInicio, fechaFin: data.fechaFin }
         : ocrPrevMonthRange();
-    const dias = ocrDaysBetween(fechaInicio, fechaFin);
+    const dias = ocrDaysBetweenGas(fechaInicio, fechaFin);
     return {
         cups: data.cups || undefined,
         consumoAnual: data.consumoTotal || undefined,
@@ -369,6 +374,7 @@ export default function NewSimulationPage() {
                 postalCode: quickClientData.address?.postalCode || undefined,
                 province: quickClientData.address?.province || undefined,
                 country: quickClientData.address?.country || undefined,
+                language: quickClientData.language || undefined,
             });
 
             // Add to clients list
