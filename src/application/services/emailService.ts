@@ -488,6 +488,7 @@ export class EmailService {
         process.env.NEXT_PUBLIC_BACKEND_URL ||
         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
         "http://localhost:3000";
+
       console.log(baseUrl);
       console.log(process.env.NEXT_PUBLIC_BACKEND_URL);
       console.log(process.env.VERCEL_URL);
