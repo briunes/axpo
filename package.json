@@ -39,6 +39,7 @@
     "@napi-rs/canvas": "^0.1.99",
     "@once-ui-system/core": "^1.6.4",
     "@prisma/client": "5.22.0",
+    "@sentry/nextjs": "^10.55.0",
     "@sparticuz/chromium": "147.0.0",
     "@tanstack/react-query": "^5.100.5",
     "@tanstack/react-query-devtools": "^5.100.5",

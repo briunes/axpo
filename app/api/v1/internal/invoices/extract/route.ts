@@ -273,7 +273,6 @@ CRITICAL FIELDS TO EXTRACT:
    - consumoP4: Consumption in period P4 (kWh)
    - consumoP5: Consumption in period P5 (kWh)
    - consumoP6: Consumption in period P6 (kWh)
-   - consumoAnual: Annual consumption (kWh)
 
    STRICT PERIOD MAPPING:
    - Map values ONLY to their explicitly labeled period number.
@@ -753,6 +752,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Load provider-specific prompt if a providerId was supplied
   let activePrompt = defaultPrompt;
+  let invoiceProviderName: string | null = null;
   if (providerId) {
     try {
       const providerRecord = await (
@@ -761,6 +761,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         where: { id: providerId },
       });
       if (providerRecord) {
+        invoiceProviderName = providerRecord.name as string;
         // Pick the per-commodity prompt first, fall back to legacy generic prompt
         const commodityPrompt =
           invoiceType === "GAS"
@@ -1735,6 +1736,9 @@ If invoice text uses a different format, map it to the closest allowed value abo
         temperature: llmTemperature,
         maxTokens: llmMaxTokens,
         imagesProcessed: imagesToProcess.length,
+        invoiceProviderId: providerId ?? null,
+        invoiceProviderName: invoiceProviderName ?? null,
+        invoiceType: effectiveInvoiceType,
       },
     });
 

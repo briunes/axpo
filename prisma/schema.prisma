@@ -125,6 +125,7 @@ model User {
   simulationVersions          SimulationVersion[]
   simulations                 Simulation[]
   preferences                 UserPreferences?
+  appErrorLogs                AppErrorLog[]
   agency                      Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   createdByUser               User?               @relation("UserCreatedBy", fields: [createdByUserId], references: [id])
   createdUsers                User[]              @relation("UserCreatedBy")
@@ -556,6 +557,7 @@ model OcrLog {
   totalTokens        Int?
   extractedFields    Json?       // the extracted JSON data (sanitized, no PII beyond what was extracted)
   fieldsExtracted    Int?        // count of non-null fields
+  userCorrections    Json?       // corrections applied by the user: { fieldName: { ocr: value, corrected: value } }
   errorMessage       String?
   errorType          String?
   httpStatusCode     Int?
@@ -610,4 +612,36 @@ enum SimulationStatus {
 enum BaseValueScope {
   GLOBAL
   AGENCY
+}
+
+model AppErrorLog {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  // Error details
+  errorType   String   // e.g. "Error", "ZodError", "DomainError"
+  errorCode   String?  // domain error code, e.g. "NOT_FOUND"
+  message     String
+  stack       String?
+
+  // HTTP context
+  method      String?  // GET, POST, etc.
+  path        String?  // /api/v1/internal/...
+  statusCode  Int?
+
+  // Who triggered it (optional — may be unauthenticated)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Sentry event ID for cross-referencing
+  sentryEventId String?
+
+  // Extra metadata (JSON)
+  metadata    Json?
+
+  @@index([createdAt])
+  @@index([errorType])
+  @@index([path])
+  @@index([userId])
+  @@map("app_error_logs")
 }

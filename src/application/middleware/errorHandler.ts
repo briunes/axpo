@@ -7,6 +7,7 @@ import { ZodError } from "zod";
 import { DomainError, isDomainError } from "@/domain/errors/errors";
 import { ResponseHandler } from "./response";
 import { getRefreshedAccessToken, withRequestContext } from "./requestContext";
+import { ErrorLoggerService } from "@/application/services/errorLoggerService";
 
 export interface ErrorHandlerOptions {
   logErrors?: boolean;
@@ -107,6 +108,24 @@ export const withErrorHandler = (
         return response;
       });
     } catch (error) {
+      // Only log true server errors (500), not expected domain/validation errors
+      const isDomain = isDomainError(error);
+      const isClientError =
+        error instanceof ZodError ||
+        error instanceof SyntaxError ||
+        (isDomain && (error as DomainError).statusCode < 500);
+
+      if (!isClientError) {
+        const method = req.method;
+        const path = new URL(req.url).pathname;
+        // Awaited so Sentry.flush() completes before the response exits
+        await ErrorLoggerService.capture(error, {
+          method,
+          path,
+          statusCode: 500,
+        }).catch(() => undefined);
+      }
+
       return errorHandler(error);
     }
   };

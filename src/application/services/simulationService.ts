@@ -316,15 +316,77 @@ export class SimulationService {
     );
 
     if (ocrLogIds.length > 0) {
-      await prisma.ocrLog.updateMany({
-        where: {
-          id: { in: ocrLogIds },
-          userId: actor.userId,
-        },
-        data: {
-          simulationId: created.id,
-        },
+      // Fetch existing OCR logs so we can compute per-field user corrections
+      const existingLogs = await prisma.ocrLog.findMany({
+        where: { id: { in: ocrLogIds }, userId: actor.userId },
+        select: { id: true, extractedFields: true },
       });
+
+      // invoiceData in the payload holds exactly the flat OCR field names after
+      // the user may have edited them in the extracted-data form
+      const invoiceData = isPlainObject(input.payloadJson?.invoiceData)
+        ? (input.payloadJson!.invoiceData as Record<string, unknown>)
+        : null;
+
+      for (const log of existingLogs) {
+        let userCorrections: Record<
+          string,
+          { ocr: unknown; corrected: unknown }
+        > | null = null;
+
+        if (invoiceData && isPlainObject(log.extractedFields)) {
+          const ocrFields = log.extractedFields as Record<string, unknown>;
+          const corrections: Record<
+            string,
+            { ocr: unknown; corrected: unknown }
+          > = {};
+          const normalise = (v: unknown) =>
+            typeof v === "string" ? v.trim() : v;
+
+          // Only compare fields that are explicitly present in invoiceData
+          // (fields not mapped there were never shown to the user, so can't be corrections)
+          for (const field of Object.keys(invoiceData)) {
+            const submittedValue = invoiceData[field];
+            const ocrValue = ocrFields[field];
+
+            // Field was not in OCR output at all — user filled it from scratch
+            if (!(field in ocrFields)) {
+              if (
+                submittedValue !== null &&
+                submittedValue !== undefined &&
+                submittedValue !== ""
+              ) {
+                corrections[field] = { ocr: null, corrected: submittedValue };
+              }
+              continue;
+            }
+
+            // Both present — compare
+            if (
+              String(normalise(ocrValue)) !== String(normalise(submittedValue))
+            ) {
+              corrections[field] = {
+                ocr: ocrValue,
+                corrected: submittedValue,
+              };
+            }
+          }
+
+          if (Object.keys(corrections).length > 0) {
+            userCorrections = corrections;
+          }
+        }
+
+        await prisma.ocrLog.update({
+          where: { id: log.id },
+          data: {
+            simulation: { connect: { id: created.id } },
+            ...(userCorrections !== null
+              ? { userCorrections: userCorrections as Prisma.InputJsonValue }
+              : {}),
+          },
+        });
+      }
     }
 
     await AuditService.logEvent({

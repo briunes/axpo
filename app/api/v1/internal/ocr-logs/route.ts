@@ -91,6 +91,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         totalTokens: l.totalTokens,
         extractedFields: l.extractedFields,
         fieldsExtracted: l.fieldsExtracted,
+        userCorrections: l.userCorrections ?? null,
         errorMessage: l.errorMessage,
         errorType: l.errorType,
         httpStatusCode: l.httpStatusCode,

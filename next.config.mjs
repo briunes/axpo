@@ -1,5 +1,11 @@
+import { withSentryConfig } from "@sentry/nextjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Required for Sentry instrumentation.ts to be loaded
+  experimental: {
+    instrumentationHook: true,
+  },
   serverExternalPackages: [
     "bcrypt",
     "@prisma/client",
@@ -33,4 +39,23 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Sentry organization and project (set in environment or here)
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // Suppress verbose upload logs in CI
+  silent: !process.env.CI,
+
+  // Upload source maps for better stack traces
+  widenClientFileUpload: true,
+
+  // Automatically tree-shake Sentry logger statements
+  disableLogger: true,
+
+  // Avoid Sentry crashing the build if DSN is missing
+  // (useful for local dev without .env configured)
+  errorHandler(err, invokeErr, compilation) {
+    compilation.warnings.push("Sentry CLI: " + err.message);
+  },
+});

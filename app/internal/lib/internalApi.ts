@@ -864,6 +864,9 @@ export interface ImproveOcrPromptResult {
   unchanged: string[];
   simulationId: string | null;
   simulationReferenceNumber: string | null;
+  invoiceProviderId: string | null;
+  invoiceProviderName: string | null;
+  invoiceType: "ELECTRICITY" | "GAS";
   noCorrections?: boolean;
   message?: string;
 }
@@ -895,12 +898,20 @@ export async function testOcrPrompt(
 export async function improveOcrPrompt(
   token: string,
   ocrLogId: string,
+  options?: {
+    invoiceProviderId?: string | null;
+    invoiceProviderName?: string | null;
+    invoiceType?: "ELECTRICITY" | "GAS";
+    previousPrompt?: string | null;
+    feedbackComment?: string | null;
+  },
 ): Promise<ImproveOcrPromptResult> {
   const response = await fetch(
     `${baseUrl}/api/v1/internal/ocr-logs/${ocrLogId}/improve-prompt`,
     {
       method: "POST",
-      headers: authHeaders(token),
+      headers: { ...authHeaders(token), "Content-Type": "application/json" },
+      body: JSON.stringify(options ?? {}),
     },
   );
   return parseApiResponse<ImproveOcrPromptResult>(

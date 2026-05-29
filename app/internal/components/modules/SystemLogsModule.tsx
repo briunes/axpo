@@ -8,6 +8,7 @@ import { AuditLogsModule } from "./AuditLogsModule";
 import { EmailLogsModule } from "./EmailLogsModule";
 import { CronLogsPanel } from "./CronLogsPanel";
 import { OcrLogsPanel } from "./OcrLogsPanel";
+import { AppErrorLogsPanel } from "./AppErrorLogsPanel";
 import "./configurations.css";
 
 export interface SystemLogsModuleProps {
@@ -17,7 +18,7 @@ export interface SystemLogsModuleProps {
     onActionButtons?: (buttons: React.ReactNode) => void;
 }
 
-type LogType = "audit" | "email" | "cron" | "ocr";
+type LogType = "audit" | "email" | "cron" | "ocr" | "app-errors";
 
 export function SystemLogsModule({ session, auditLogsActions, onNotify, onActionButtons }: SystemLogsModuleProps) {
     const { t } = useI18n();
@@ -28,6 +29,7 @@ export function SystemLogsModule({ session, auditLogsActions, onNotify, onAction
         email: "Email Logs",
         cron: "Cron Logs",
         ocr: "OCR Logs",
+        "app-errors": "App Errors",
     };
 
     return (
@@ -68,6 +70,12 @@ export function SystemLogsModule({ session, auditLogsActions, onNotify, onAction
                 )}
                 {activeTab === "ocr" && (
                     <OcrLogsPanel
+                        session={session}
+                        onNotify={onNotify}
+                    />
+                )}
+                {activeTab === "app-errors" && (
+                    <AppErrorLogsPanel
                         session={session}
                         onNotify={onNotify}
                     />

@@ -1,11 +1,13 @@
 "use client";
-
+import CheckIcon from '@mui/icons-material/Check';
 import { useEffect, useState } from "react";
 import {
     alpha,
     Box,
     Button,
     Chip,
+    CircularProgress,
+    Collapse,
     Dialog,
     DialogContent,
     DialogTitle,
@@ -33,6 +35,8 @@ import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import AutoFixHighRoundedIcon from "@mui/icons-material/AutoFixHighRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import DifferenceRoundedIcon from "@mui/icons-material/DifferenceRounded";
+import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import type { SessionState } from "../../lib/authSession";
 import { DataTable, type ColumnDef } from "../ui";
 import { improveOcrPrompt, testOcrPrompt, type ImproveOcrPromptResult, type TestOcrPromptResult } from "../../lib/internalApi";
@@ -58,6 +62,7 @@ interface OcrLogEntry {
     totalTokens?: number;
     extractedFields?: Record<string, unknown>;
     fieldsExtracted?: number;
+    userCorrections?: Record<string, { ocr: unknown; corrected: unknown }> | null;
     errorMessage?: string;
     errorType?: string;
     httpStatusCode?: number;
@@ -235,13 +240,19 @@ function OcrLogDetailDialog({
     const [tab, setTab] = useState(0);
     const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
     const [isImprovingPrompt, setIsImprovingPrompt] = useState(false);
+    const [improveStep, setImproveStep] = useState<null | "generating" | "testing">(null);
     const [improveResult, setImproveResult] = useState<ImproveOcrPromptResult | null>(null);
     const [showImproveDialog, setShowImproveDialog] = useState(false);
-    const [isTestingPrompt, setIsTestingPrompt] = useState(false);
+    const [isSavingPrompt, setIsSavingPrompt] = useState(false);
+    const [feedbackComment, setFeedbackComment] = useState("");
+    const [isReImproving, setIsReImproving] = useState(false);
     const [testResult, setTestResult] = useState<TestOcrPromptResult | null>(null);
+    const [improveDialogTab, setImproveDialogTab] = useState(0);
+    const [feedbackOpen, setFeedbackOpen] = useState(false);
     const isDark = theme.palette.mode === "dark";
 
     const hasExtracted = !!log.extractedFields;
+    const hasCorrections = !!log.userCorrections && Object.keys(log.userCorrections).length > 0;
     const hasMetadata = !!log.metadata;
     const hasPrompt = !!log.promptText;
     const hasStoredFiles = !!log.files?.length;
@@ -324,8 +335,25 @@ function OcrLogDetailDialog({
     const handleImprovePrompt = async () => {
         try {
             setIsImprovingPrompt(true);
-            const result = await improveOcrPrompt(token, log.id);
+            setImproveStep("generating");
+            setImproveResult(null);
+            setTestResult(null);
+            setFeedbackComment("");
+            const result = await improveOcrPrompt(token, log.id, {
+                invoiceProviderId: (log.metadata?.invoiceProviderId as string | null) ?? null,
+                invoiceProviderName: (log.metadata?.invoiceProviderName as string | null) ?? null,
+                invoiceType: (log.metadata?.invoiceType as "ELECTRICITY" | "GAS" | undefined) ?? "ELECTRICITY",
+            });
             setImproveResult(result);
+            if (result.improvedPrompt) {
+                setImproveStep("testing");
+                try {
+                    const testRes = await testOcrPrompt(token, log.id, result.improvedPrompt);
+                    setTestResult(testRes);
+                } catch {
+                    // test failed non-fatally — still open dialog
+                }
+            }
             setShowImproveDialog(true);
         } catch (err) {
             onNotify?.(
@@ -334,6 +362,7 @@ function OcrLogDetailDialog({
             );
         } finally {
             setIsImprovingPrompt(false);
+            setImproveStep(null);
         }
     };
 
@@ -341,7 +370,8 @@ function OcrLogDetailDialog({
     const tabPrompt = 1;
     const tabStoredFiles = 1 + (hasPrompt ? 1 : 0);
     const tabExtracted = tabStoredFiles + (hasStoredFiles ? 1 : 0);
-    const tabMetadata = tabExtracted + (hasExtracted ? 1 : 0);
+    const tabCorrections = tabExtracted + (hasExtracted ? 1 : 0);
+    const tabMetadata = tabCorrections + (hasCorrections ? 1 : 0);
 
     return (
         <>
@@ -425,7 +455,7 @@ function OcrLogDetailDialog({
                     </Box>
                 </DialogTitle>
 
-                <Box sx={{ px: 3, pb: 2.25 }}>
+                {!isImprovingPrompt && <Box sx={{ px: 3, pb: 2.25 }}>
                     <Box
                         sx={{
                             display: "grid",
@@ -494,9 +524,9 @@ function OcrLogDetailDialog({
                             accent={theme.palette.primary.light}
                         />
                     </Box>
-                </Box>
+                </Box>}
 
-                {log.errorMessage && (
+                {!isImprovingPrompt && log.errorMessage && (
                     <Box sx={{ px: 3, pb: 1.5 }}>
                         <Box
                             sx={{
@@ -544,146 +574,295 @@ function OcrLogDetailDialog({
 
                 {log.type === "INVOICE_EXTRACTION" && log.extractedFields && (log.simulationId || log.reportedIssue) && (
                     <Box sx={{ px: 3, pb: 1.5 }}>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={isImprovingPrompt ? undefined : <AutoFixHighRoundedIcon sx={{ fontSize: 16 }} />}
-                            onClick={handleImprovePrompt}
-                            disabled={isImprovingPrompt}
-                            sx={{
-                                borderRadius: 999,
-                                fontWeight: 700,
-                                textTransform: "none",
-                                fontSize: 13,
-                                borderColor: isDark ? alpha(theme.palette.warning.main, 0.45) : alpha(theme.palette.warning.main, 0.5),
-                                color: theme.palette.warning.main,
-                                "&:hover": {
-                                    borderColor: theme.palette.warning.main,
-                                    background: alpha(theme.palette.warning.main, 0.08),
-                                },
-                            }}
-                        >
-                            {isImprovingPrompt ? "Analysing corrections & improving prompt…" : "Improve OCR Prompt with AI"}
-                        </Button>
-                        <Typography variant="caption" sx={{ display: "block", mt: 0.75, fontSize: 11, color: "text.secondary", lineHeight: 1.4 }}>
-                            {log.simulationId
-                                ? "Compares OCR-extracted fields with the linked simulation's current values, detects user corrections, and asks the AI to produce an improved extraction prompt."
-                                : "Uses the reported issue description to ask the AI to produce an improved extraction prompt targeting the problem described."}
-                        </Typography>
+                        {isImprovingPrompt ? (
+                            <Box sx={{
+                                borderRadius: 2,
+                                border: `1px solid ${isDark ? alpha(theme.palette.warning.main, 0.25) : alpha(theme.palette.warning.main, 0.4)}`,
+                                backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.06 : 0.04),
+                                p: 2,
+                            }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
+                                    <AutoFixHighRoundedIcon sx={{ fontSize: 18, color: theme.palette.warning.main, flexShrink: 0 }} />
+                                    <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: theme.palette.warning.main }}>
+                                        {improveStep === "generating" ? "Generating improved prompt…" : "Testing the new prompt…"}
+                                    </Typography>
+                                </Box>
+                                {/* Step indicators */}
+                                <Box sx={{ display: "flex", gap: 1.5, mb: 1.5 }}>
+                                    {[{ key: "generating", label: "1. Generate prompt" }, { key: "testing", label: "2. Test on invoice" }].map(step => {
+                                        const isDone = improveStep === "testing" && step.key === "generating";
+                                        const isActive = improveStep === step.key;
+                                        return (
+                                            <Box key={step.key} sx={{
+                                                display: "flex", alignItems: "center", gap: 0.6,
+                                                px: 1.25, py: 0.5, borderRadius: 999,
+                                                background: isDone
+                                                    ? alpha(theme.palette.success.main, isDark ? 0.18 : 0.12)
+                                                    : isActive
+                                                        ? alpha(theme.palette.warning.main, isDark ? 0.18 : 0.12)
+                                                        : alpha(theme.palette.action.disabled, 0.06),
+                                                border: `1px solid ${isDone ? alpha(theme.palette.success.main, 0.3)
+                                                    : isActive ? alpha(theme.palette.warning.main, 0.4)
+                                                        : isDark ? "#30363d" : "#d0d7de"
+                                                    }`,
+                                            }}>
+                                                {isDone
+                                                    ? <span style={{ fontSize: 11 }}><CheckIcon fontSize='small' color='success' /></span>
+                                                    : isActive
+                                                        ? <CircularProgress size={9} thickness={5} sx={{ color: theme.palette.warning.main }} />
+                                                        : <span style={{ fontSize: 11, opacity: 0.3 }}>○</span>
+                                                }
+                                                <Typography sx={{ fontSize: 11.5, fontWeight: isActive ? 700 : 400, color: isDone ? theme.palette.success.main : isActive ? theme.palette.warning.main : "text.disabled" }}>
+                                                    {step.label}
+                                                </Typography>
+                                            </Box>
+                                        );
+                                    })}
+                                </Box>
+                                {/* Progress bar */}
+                                <Box sx={{ height: 4, borderRadius: 2, background: isDark ? "#21262d" : "#e0e0e0", overflow: "hidden" }}>
+                                    <Box sx={{
+                                        height: "100%",
+                                        borderRadius: 2,
+                                        background: `linear-gradient(90deg, ${theme.palette.warning.main}, ${alpha(theme.palette.warning.main, 0.5)})`,
+                                        width: improveStep === "testing" ? "75%" : "40%",
+                                        transition: "width 0.6s ease",
+                                        animation: "pulse 1.5s ease-in-out infinite",
+                                    }} />
+                                </Box>
+                                <Typography variant="caption" sx={{ display: "block", mt: 1, color: "text.secondary", fontSize: 11 }}>
+                                    {improveStep === "generating"
+                                        ? "The AI is analysing the invoice, corrections and previous prompt to write a dedicated extraction prompt…"
+                                        : "Running the new prompt against the stored invoice file to compare results…"}
+                                </Typography>
+                            </Box>
+                        ) : (
+                            <>
+                                <Button
+                                    variant="outlined"
+                                    size="small"
+                                    startIcon={<AutoFixHighRoundedIcon sx={{ fontSize: 16 }} />}
+                                    onClick={handleImprovePrompt}
+                                    sx={{
+                                        borderRadius: 999,
+                                        fontWeight: 700,
+                                        textTransform: "none",
+                                        fontSize: 13,
+                                        borderColor: isDark ? alpha(theme.palette.warning.main, 0.45) : alpha(theme.palette.warning.main, 0.5),
+                                        color: theme.palette.warning.main,
+                                        "&:hover": {
+                                            borderColor: theme.palette.warning.main,
+                                            background: alpha(theme.palette.warning.main, 0.08),
+                                        },
+                                    }}
+                                >
+                                    Improve OCR Prompt with AI
+                                </Button>
+                                <Typography variant="caption" sx={{ display: "block", mt: 0.75, fontSize: 11, color: "text.secondary", lineHeight: 1.4 }}>
+                                    {log.simulationId
+                                        ? "Generates a dedicated extraction prompt for this provider using the invoice corrections, then automatically tests it."
+                                        : "Generates a dedicated extraction prompt based on the reported issue, then automatically tests it."}
+                                </Typography>
+                            </>
+                        )}
                     </Box>
                 )}
 
-                <Divider />
+                {!isImprovingPrompt && <><Divider />
 
-                <Tabs
-                    value={tab}
-                    onChange={(_, v) => setTab(v)}
-                    sx={{ px: 2, minHeight: 40, "& .MuiTab-root": { minHeight: 40, fontSize: 12, fontWeight: 600, textTransform: "none" } }}
-                >
-                    <Tab label="LLM Response" />
-                    {hasPrompt && <Tab label="Prompt Sent" />}
-                    {hasStoredFiles && <Tab label={`Stored Files (${log.files?.length ?? 0})`} />}
-                    {hasExtracted && <Tab label="Extracted Fields" />}
-                    {hasMetadata && <Tab label="Metadata" />}
-                </Tabs>
+                    <Tabs
+                        value={tab}
+                        onChange={(_, v) => setTab(v)}
+                        sx={{ px: 2, minHeight: 40, "& .MuiTab-root": { minHeight: 40, fontSize: 12, fontWeight: 600, textTransform: "none" } }}
+                    >
+                        <Tab label="LLM Response" />
+                        {hasPrompt && <Tab label="Prompt Sent" />}
+                        {hasStoredFiles && <Tab label={`Stored Files (${log.files?.length ?? 0})`} />}
+                        {hasExtracted && <Tab label="Extracted Fields" />}
+                        {hasCorrections && (
+                            <Tab
+                                label={`User Corrections (${Object.keys(log.userCorrections!).length})`}
+                                sx={{ color: `${theme.palette.warning.main} !important` }}
+                            />
+                        )}
+                        {hasMetadata && <Tab label="Metadata" />}
+                    </Tabs>
 
-                <DialogContent sx={{ pt: 2, pb: 2.5 }}>
-                    {tab === 0 && (
-                        <Box>
-                            <Typography sx={{ ...labelSx, mb: 1 }}>Raw text returned by the model</Typography>
-                            <Box sx={codeBoxSx}>
-                                {log.rawResponseSnippet
-                                    ? log.rawResponseSnippet
-                                    : <Typography component="span" sx={{ color: "text.secondary", fontStyle: "italic", fontSize: 12 }}>No response text recorded for this request.</Typography>
-                                }
+                    <DialogContent sx={{ pt: 2, pb: 2.5 }}>
+                        {tab === 0 && (
+                            <Box>
+                                <Typography sx={{ ...labelSx, mb: 1 }}>Raw text returned by the model</Typography>
+                                <Box sx={codeBoxSx}>
+                                    {log.rawResponseSnippet
+                                        ? log.rawResponseSnippet
+                                        : <Typography component="span" sx={{ color: "text.secondary", fontStyle: "italic", fontSize: 12 }}>No response text recorded for this request.</Typography>
+                                    }
+                                </Box>
                             </Box>
-                        </Box>
-                    )}
-                    {tab === tabPrompt && hasPrompt && (
-                        <Box>
-                            <Typography sx={{ ...labelSx, mb: 1 }}>Full prompt sent to the LLM</Typography>
-                            <Box sx={codeBoxSx}>
-                                {log.promptText}
+                        )}
+                        {tab === tabPrompt && hasPrompt && (
+                            <Box>
+                                <Typography sx={{ ...labelSx, mb: 1 }}>Full prompt sent to the LLM</Typography>
+                                <Box sx={codeBoxSx}>
+                                    {log.promptText}
+                                </Box>
                             </Box>
-                        </Box>
-                    )}
-                    {tab === tabStoredFiles && hasStoredFiles && (
-                        <Box>
-                            <Typography sx={{ ...labelSx, mb: 1 }}>Files persisted for this OCR request</Typography>
-                            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
-                                {log.files?.map((file, index) => (
-                                    <Box
-                                        key={file.id}
-                                        sx={{
-                                            border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
-                                            borderRadius: 2,
-                                            p: 1.75,
-                                            background: isDark
-                                                ? "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))"
-                                                : "linear-gradient(180deg, #ffffff, #f8fafc)",
-                                            display: "flex",
-                                            alignItems: { xs: "flex-start", sm: "center" },
-                                            justifyContent: "space-between",
-                                            gap: 1.5,
-                                            flexWrap: "wrap",
-                                        }}
-                                    >
-                                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                                                <InsertDriveFileOutlinedIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-                                                <Typography variant="body2" sx={{ fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                                    File {index + 1}: {file.fileName}
-                                                </Typography>
-                                            </Box>
-                                            <Typography variant="caption" sx={{ color: "text.secondary", display: "block", fontSize: 11.5 }}>
-                                                {[
-                                                    file.fileType?.replace("application/", "").replace("image/", ""),
-                                                    formatFileSize(file.fileSizeBytes),
-                                                ].filter(Boolean).join(" · ")}
-                                            </Typography>
-                                        </Box>
-                                        <Button
-                                            variant="outlined"
-                                            size="small"
-                                            startIcon={<DownloadRoundedIcon sx={{ fontSize: 16 }} />}
-                                            onClick={() => handleDownloadStoredFile(file.id, file.fileName)}
-                                            disabled={downloadingFileId === file.id}
+                        )}
+                        {tab === tabStoredFiles && hasStoredFiles && (
+                            <Box>
+                                <Typography sx={{ ...labelSx, mb: 1 }}>Files persisted for this OCR request</Typography>
+                                <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
+                                    {log.files?.map((file, index) => (
+                                        <Box
+                                            key={file.id}
                                             sx={{
-                                                minWidth: 132,
-                                                borderRadius: 999,
-                                                fontWeight: 700,
-                                                textTransform: "none",
+                                                border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
+                                                borderRadius: 2,
+                                                p: 1.75,
+                                                background: isDark
+                                                    ? "linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015))"
+                                                    : "linear-gradient(180deg, #ffffff, #f8fafc)",
+                                                display: "flex",
+                                                alignItems: { xs: "flex-start", sm: "center" },
+                                                justifyContent: "space-between",
+                                                gap: 1.5,
+                                                flexWrap: "wrap",
                                             }}
                                         >
-                                            {downloadingFileId === file.id ? "Downloading..." : "Download"}
-                                        </Button>
-                                    </Box>
-                                ))}
+                                            <Box sx={{ minWidth: 0, flex: 1 }}>
+                                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                                                    <InsertDriveFileOutlinedIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+                                                    <Typography variant="body2" sx={{ fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                        File {index + 1}: {file.fileName}
+                                                    </Typography>
+                                                </Box>
+                                                <Typography variant="caption" sx={{ color: "text.secondary", display: "block", fontSize: 11.5 }}>
+                                                    {[
+                                                        file.fileType?.replace("application/", "").replace("image/", ""),
+                                                        formatFileSize(file.fileSizeBytes),
+                                                    ].filter(Boolean).join(" · ")}
+                                                </Typography>
+                                            </Box>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                startIcon={<DownloadRoundedIcon sx={{ fontSize: 16 }} />}
+                                                onClick={() => handleDownloadStoredFile(file.id, file.fileName)}
+                                                disabled={downloadingFileId === file.id}
+                                                sx={{
+                                                    minWidth: 132,
+                                                    borderRadius: 999,
+                                                    fontWeight: 700,
+                                                    textTransform: "none",
+                                                }}
+                                            >
+                                                {downloadingFileId === file.id ? "Downloading..." : "Download"}
+                                            </Button>
+                                        </Box>
+                                    ))}
+                                </Box>
                             </Box>
-                        </Box>
-                    )}
-                    {tab === tabExtracted && hasExtracted && (
-                        <Box>
-                            <Typography sx={{ ...labelSx, mb: 1 }}>Extracted & post-processed fields (JSON)</Typography>
-                            <Box sx={codeBoxSx}>
-                                {JSON.stringify(log.extractedFields, null, 2)}
+                        )}
+                        {tab === tabExtracted && hasExtracted && (
+                            <Box>
+                                <Typography sx={{ ...labelSx, mb: 1 }}>Extracted & post-processed fields (JSON)</Typography>
+                                <Box sx={codeBoxSx}>
+                                    {JSON.stringify(log.extractedFields, null, 2)}
+                                </Box>
                             </Box>
-                        </Box>
-                    )}
-                    {tab === tabMetadata && hasMetadata && (
-                        <Box>
-                            <Typography sx={{ ...labelSx, mb: 1 }}>Request metadata</Typography>
-                            <Box sx={codeBoxSx}>
-                                {JSON.stringify(log.metadata, null, 2)}
+                        )}
+                        {tab === tabCorrections && hasCorrections && (
+                            <Box>
+                                <Typography sx={{ ...labelSx, mb: 1.5 }}>
+                                    Fields corrected by the user after OCR extraction
+                                </Typography>
+                                <Box
+                                    sx={{
+                                        borderRadius: 2,
+                                        border: `1px solid ${isDark ? alpha(theme.palette.warning.main, 0.25) : alpha(theme.palette.warning.main, 0.35)}`,
+                                        backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.06 : 0.04),
+                                        px: 1.5,
+                                        py: 1,
+                                        mb: 1.5,
+                                    }}
+                                >
+                                    <Typography variant="caption" sx={{ fontSize: 11.5, color: "text.secondary", lineHeight: 1.5 }}>
+                                        These corrections are captured automatically when the user saves a simulation after editing OCR-prefilled fields.
+                                        The AI prompt trainer uses this data to improve future extractions for this provider.
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                                    {Object.entries(log.userCorrections!).map(([field, { ocr, corrected }]) => (
+                                        <Box
+                                            key={field}
+                                            sx={{
+                                                display: "grid",
+                                                gridTemplateColumns: "180px 1fr 1fr",
+                                                gap: 1.5,
+                                                alignItems: "start",
+                                                borderRadius: 1.5,
+                                                border: `1px solid ${isDark ? "#30363d" : "#e2e8f0"}`,
+                                                background: isDark
+                                                    ? "linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01))"
+                                                    : "linear-gradient(180deg, #ffffff, #f8fafc)",
+                                                px: 1.5,
+                                                py: 1.25,
+                                            }}
+                                        >
+                                            <Typography sx={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: "text.primary", pt: 0.25 }}>
+                                                {field}
+                                            </Typography>
+                                            <Box>
+                                                <Typography sx={{ fontSize: 10, fontWeight: 700, color: "error.main", textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.4 }}>
+                                                    OCR extracted
+                                                </Typography>
+                                                <Box sx={{
+                                                    backgroundColor: isDark ? alpha(theme.palette.error.main, 0.12) : alpha(theme.palette.error.main, 0.07),
+                                                    border: `1px solid ${alpha(theme.palette.error.main, 0.25)}`,
+                                                    borderRadius: 1,
+                                                    px: 1,
+                                                    py: 0.5,
+                                                }}>
+                                                    <Typography sx={{ fontSize: 12, fontFamily: "monospace", color: "error.main", wordBreak: "break-all" }}>
+                                                        {ocr === null || ocr === undefined ? <em style={{ opacity: 0.6 }}>not extracted</em> : String(ocr)}
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                            <Box>
+                                                <Typography sx={{ fontSize: 10, fontWeight: 700, color: "success.main", textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.4 }}>
+                                                    Corrected to
+                                                </Typography>
+                                                <Box sx={{
+                                                    backgroundColor: isDark ? alpha(theme.palette.success.main, 0.12) : alpha(theme.palette.success.main, 0.07),
+                                                    border: `1px solid ${alpha(theme.palette.success.main, 0.25)}`,
+                                                    borderRadius: 1,
+                                                    px: 1,
+                                                    py: 0.5,
+                                                }}>
+                                                    <Typography sx={{ fontSize: 12, fontFamily: "monospace", color: "success.main", wordBreak: "break-all" }}>
+                                                        {corrected === null || corrected === undefined ? <em style={{ opacity: 0.6 }}>cleared</em> : String(corrected)}
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+                                        </Box>
+                                    ))}
+                                </Box>
                             </Box>
-                        </Box>
-                    )}
-                </DialogContent>
+                        )}
+                        {tab === tabMetadata && hasMetadata && (
+                            <Box>
+                                <Typography sx={{ ...labelSx, mb: 1 }}>Request metadata</Typography>
+                                <Box sx={codeBoxSx}>
+                                    {JSON.stringify(log.metadata, null, 2)}
+                                </Box>
+                            </Box>
+                        )}
+                    </DialogContent></>}
             </Dialog>
             {showImproveDialog && improveResult && (
                 <Dialog
                     open
-                    onClose={() => { setShowImproveDialog(false); setTestResult(null); }}
+                    onClose={() => { setShowImproveDialog(false); setTestResult(null); setFeedbackComment(""); setIsReImproving(false); setImproveDialogTab(0); setFeedbackOpen(false); }}
                     maxWidth="xl"
                     fullWidth
                     PaperProps={{
@@ -711,13 +890,72 @@ function OcrLogDetailDialog({
                                     )}
                                 </Box>
                             </Box>
-                            <IconButton size="small" onClick={() => { setShowImproveDialog(false); setTestResult(null); }}>
+                            <IconButton size="small" onClick={() => { setShowImproveDialog(false); setTestResult(null); setFeedbackComment(""); setIsReImproving(false); setImproveDialogTab(0); setFeedbackOpen(false); }}>
                                 <CloseIcon fontSize="small" />
                             </IconButton>
                         </Box>
                     </DialogTitle>
-                    <DialogContent sx={{ px: 3, pb: 3 }}>
-                        {improveResult!.noCorrections ? (
+                    <DialogContent sx={{ px: 3, pb: 3, display: "flex", flexDirection: "column", gap: 0, minHeight: 0 }}>
+                        {isReImproving ? (
+                            <Box sx={{
+                                borderRadius: 2,
+                                border: `1px solid ${isDark ? alpha(theme.palette.warning.main, 0.25) : alpha(theme.palette.warning.main, 0.4)}`,
+                                backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.06 : 0.04),
+                                p: 2,
+                            }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
+                                    <AutoFixHighRoundedIcon sx={{ fontSize: 18, color: theme.palette.warning.main, flexShrink: 0 }} />
+                                    <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: theme.palette.warning.main }}>
+                                        {improveStep === "generating" ? "Generating improved prompt…" : "Testing the new prompt…"}
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ display: "flex", gap: 1.5, mb: 1.5 }}>
+                                    {[{ key: "generating", label: "1. Generate prompt" }, { key: "testing", label: "2. Test on invoice" }].map(step => {
+                                        const isDone = improveStep === "testing" && step.key === "generating";
+                                        const isActive = improveStep === step.key;
+                                        return (
+                                            <Box key={step.key} sx={{
+                                                display: "flex", alignItems: "center", gap: 0.6,
+                                                px: 1.25, py: 0.5, borderRadius: 999,
+                                                background: isDone
+                                                    ? alpha(theme.palette.success.main, isDark ? 0.18 : 0.12)
+                                                    : isActive
+                                                        ? alpha(theme.palette.warning.main, isDark ? 0.18 : 0.12)
+                                                        : alpha(theme.palette.action.disabled, 0.06),
+                                                border: `1px solid ${isDone ? alpha(theme.palette.success.main, 0.3)
+                                                    : isActive ? alpha(theme.palette.warning.main, 0.4)
+                                                        : isDark ? "#30363d" : "#d0d7de"}`,
+                                            }}>
+                                                {isDone
+                                                    ? <CheckCircleIcon sx={{ fontSize: 11, color: theme.palette.success.main }} />
+                                                    : isActive
+                                                        ? <CircularProgress size={9} thickness={5} sx={{ color: theme.palette.warning.main }} />
+                                                        : <span style={{ fontSize: 11, opacity: 0.3 }}>○</span>
+                                                }
+                                                <Typography sx={{ fontSize: 11.5, fontWeight: isActive ? 700 : 400, color: isDone ? theme.palette.success.main : isActive ? theme.palette.warning.main : "text.disabled" }}>
+                                                    {step.label}
+                                                </Typography>
+                                            </Box>
+                                        );
+                                    })}
+                                </Box>
+                                <Box sx={{ height: 4, borderRadius: 2, background: isDark ? "#21262d" : "#e0e0e0", overflow: "hidden" }}>
+                                    <Box sx={{
+                                        height: "100%",
+                                        borderRadius: 2,
+                                        background: `linear-gradient(90deg, ${theme.palette.warning.main}, ${alpha(theme.palette.warning.main, 0.5)})`,
+                                        width: improveStep === "testing" ? "75%" : "40%",
+                                        transition: "width 0.6s ease",
+                                        animation: "pulse 1.5s ease-in-out infinite",
+                                    }} />
+                                </Box>
+                                <Typography variant="caption" sx={{ display: "block", mt: 1, color: "text.secondary", fontSize: 11 }}>
+                                    {improveStep === "generating"
+                                        ? "The AI is analysing the invoice, corrections and previous prompt to write a dedicated extraction prompt…"
+                                        : "Running the new prompt against the stored invoice file to compare results…"}
+                                </Typography>
+                            </Box>
+                        ) : improveResult!.noCorrections ? (
                             <Box sx={{
                                 p: 2.5, borderRadius: 2,
                                 background: alpha(theme.palette.info.main, isDark ? 0.1 : 0.07),
@@ -726,120 +964,241 @@ function OcrLogDetailDialog({
                                 <Typography sx={{ fontSize: 14, lineHeight: 1.6 }}>{improveResult!.message}</Typography>
                             </Box>
                         ) : (
-                            <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                                {/* Improved prompt + copy + test buttons */}
-                                <Box>
-                                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 2, height: "100%" }}>
+
+                                {/* Re-improve with feedback — collapsible accordion */}
+                                <Box sx={{
+                                    borderRadius: 2,
+                                    border: `1px solid ${isDark ? alpha(theme.palette.warning.main, 0.25) : alpha(theme.palette.warning.main, 0.35)}`,
+                                    backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.05 : 0.03),
+                                    overflow: "hidden",
+                                }}>
+                                    <Box
+                                        onClick={() => setFeedbackOpen(v => !v)}
+                                        sx={{
+                                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                                            px: 2, py: 1.25,
+                                            cursor: "pointer",
+                                            userSelect: "none",
+                                            "&:hover": { backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.07 : 0.05) },
+                                        }}
+                                    >
                                         <Typography sx={{ fontSize: 11, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                                            Improved prompt
+                                            Re-improve with feedback
                                         </Typography>
-                                        <Box sx={{ display: "flex", gap: 1 }}>
-                                            <Button
-                                                size="small"
-                                                variant="outlined"
-                                                startIcon={<ContentCopyRoundedIcon sx={{ fontSize: 14 }} />}
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(improveResult!.improvedPrompt);
-                                                    onNotify?.("Improved prompt copied to clipboard", "success");
+                                        <KeyboardArrowDownRoundedIcon sx={{
+                                            fontSize: 18, color: "text.secondary",
+                                            transition: "transform 0.2s",
+                                            transform: feedbackOpen ? "rotate(180deg)" : "rotate(0deg)",
+                                        }} />
+                                    </Box>
+                                    <Collapse in={feedbackOpen}>
+                                        <Box sx={{ px: 2, pb: 2 }}>
+                                            <Typography variant="caption" sx={{ display: "block", color: "text.secondary", mb: 1.5, lineHeight: 1.5 }}>
+                                                Describe what is still wrong with the prompt above (e.g. "alquiler is not being returned", "precioEnergia values are incorrect"). The AI will iterate on the improved prompt using your feedback and the original invoice files.
+                                            </Typography>
+                                            <textarea
+                                                value={feedbackComment}
+                                                onChange={e => setFeedbackComment(e.target.value)}
+                                                placeholder="e.g. alquiler is not being returned, precioEnergiaP1 is always 0..."
+                                                rows={3}
+                                                style={{
+                                                    width: "100%",
+                                                    boxSizing: "border-box",
+                                                    resize: "vertical",
+                                                    fontFamily: "inherit",
+                                                    fontSize: 13,
+                                                    lineHeight: 1.5,
+                                                    padding: "8px 10px",
+                                                    borderRadius: 6,
+                                                    border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
+                                                    background: isDark ? "#0d1117" : "#ffffff",
+                                                    color: isDark ? "#e6edf3" : "#24292f",
+                                                    outline: "none",
                                                 }}
-                                                sx={{ borderRadius: 999, fontWeight: 700, textTransform: "none", fontSize: 12 }}
-                                            >
-                                                Copy
-                                            </Button>
-                                            <Button
-                                                size="small"
-                                                variant="contained"
-                                                color="warning"
-                                                startIcon={isTestingPrompt ? undefined : <AutoFixHighRoundedIcon sx={{ fontSize: 14 }} />}
-                                                disabled={isTestingPrompt}
-                                                onClick={async () => {
-                                                    setIsTestingPrompt(true);
-                                                    setTestResult(null);
-                                                    try {
-                                                        const result = await testOcrPrompt(token, log.id, improveResult!.improvedPrompt);
-                                                        setTestResult(result);
-                                                    } catch (err: any) {
-                                                        onNotify?.(err?.message ?? "Test failed", "error");
-                                                    } finally {
-                                                        setIsTestingPrompt(false);
-                                                    }
-                                                }}
-                                                sx={{ borderRadius: 999, fontWeight: 700, textTransform: "none", fontSize: 12 }}
-                                            >
-                                                {isTestingPrompt ? "Running OCR…" : "Test this prompt"}
-                                            </Button>
+                                            />
+                                            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1.5 }}>
+                                                <Button
+                                                    size="small"
+                                                    variant="contained"
+                                                    color="warning"
+                                                    startIcon={isReImproving ? undefined : <AutoFixHighRoundedIcon sx={{ fontSize: 14 }} />}
+                                                    disabled={isReImproving || !feedbackComment.trim()}
+                                                    onClick={async () => {
+                                                        setIsReImproving(true);
+                                                        setImproveStep("generating");
+                                                        setTestResult(null);
+                                                        setFeedbackOpen(false);
+                                                        try {
+                                                            const result = await improveOcrPrompt(token, log.id, {
+                                                                invoiceProviderId: improveResult!.invoiceProviderId,
+                                                                invoiceProviderName: improveResult!.invoiceProviderName,
+                                                                invoiceType: improveResult!.invoiceType,
+                                                                previousPrompt: improveResult!.improvedPrompt,
+                                                                feedbackComment: feedbackComment.trim(),
+                                                            });
+                                                            setImproveResult(result);
+                                                            setFeedbackComment("");
+                                                            setImproveDialogTab(0);
+                                                            // auto-test the re-improved prompt
+                                                            if (result.improvedPrompt) {
+                                                                setImproveStep("testing");
+                                                                try {
+                                                                    const testRes = await testOcrPrompt(token, log.id, result.improvedPrompt);
+                                                                    setTestResult(testRes);
+                                                                } catch { /* non-fatal */ }
+                                                            }
+                                                        } catch (err: any) {
+                                                            onNotify?.(err?.message ?? "Re-improve failed", "error");
+                                                        } finally {
+                                                            setIsReImproving(false);
+                                                            setImproveStep(null);
+                                                        }
+                                                    }}
+                                                    sx={{ borderRadius: 999, fontWeight: 700, textTransform: "none", fontSize: 12 }}
+                                                >
+                                                    {isReImproving ? "Re-improving & testing…" : "Re-improve with this feedback"}
+                                                </Button>
+                                            </Box>
                                         </Box>
-                                    </Box>
-                                    <Box sx={{
-                                        backgroundColor: isDark ? "#0d1117" : "#f6f8fa",
-                                        border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
-                                        borderRadius: 1,
-                                        p: 2,
-                                        fontFamily: "monospace",
-                                        fontSize: 12,
-                                        lineHeight: 1.6,
-                                        whiteSpace: "pre-wrap",
-                                        wordBreak: "break-word",
-                                        overflowY: "auto",
-                                        maxHeight: "30vh",
-                                        color: isDark ? "#e6edf3" : "#24292f",
-                                    }}>
-                                        {improveResult!.improvedPrompt}
-                                    </Box>
+                                    </Collapse>
                                 </Box>
 
-                                {/* Side-by-side comparison */}
-                                {testResult && (() => {
-                                    const allFields = Array.from(new Set([
-                                        ...Object.keys(testResult.oldFields),
-                                        ...Object.keys(testResult.newFields),
-                                    ])).sort();
-                                    const changed = allFields.filter(f => String(testResult.oldFields[f] ?? "") !== String(testResult.newFields[f] ?? ""));
-                                    const unchanged2 = allFields.filter(f => String(testResult.oldFields[f] ?? "") === String(testResult.newFields[f] ?? ""));
-                                    return (
-                                        <Box>
-                                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: 1.5 }}>
-                                                <DifferenceRoundedIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-                                                <Typography sx={{ fontSize: 11, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                                                    OCR comparison — {changed.length} field{changed.length !== 1 ? "s" : ""} changed
-                                                </Typography>
+                                {/* Tabs: Result / Improved Prompt */}
+                                <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+                                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${isDark ? "#30363d" : "#e0e0e0"}`, mb: 0 }}>
+                                        <Tabs
+                                            value={improveDialogTab}
+                                            onChange={(_, v) => setImproveDialogTab(v)}
+                                            sx={{ minHeight: 40, "& .MuiTab-root": { minHeight: 40, py: 0.5, textTransform: "none", fontWeight: 600, fontSize: 13 } }}
+                                        >
+                                            <Tab label={testResult ? (() => {
+                                                const allF = Array.from(new Set([...Object.keys(testResult.oldFields), ...Object.keys(testResult.newFields)]));
+                                                const changedCount = allF.filter(f => String(testResult.oldFields[f] ?? "") !== String(testResult.newFields[f] ?? "")).length;
+                                                return `Result · ${changedCount} field${changedCount !== 1 ? "s" : ""} changed`;
+                                            })() : "Result"} />
+                                            <Tab label="Improved Prompt" />
+                                        </Tabs>
+                                        {/* Copy/Save buttons visible on Improved Prompt tab */}
+                                        {improveDialogTab === 1 && (
+                                            <Box sx={{ display: "flex", gap: 1, pr: 0.5, pb: 0.5 }}>
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    startIcon={<ContentCopyRoundedIcon sx={{ fontSize: 14 }} />}
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(improveResult!.improvedPrompt);
+                                                        onNotify?.("Improved prompt copied to clipboard", "success");
+                                                    }}
+                                                    sx={{ borderRadius: 999, fontWeight: 700, textTransform: "none", fontSize: 12 }}
+                                                >
+                                                    Copy
+                                                </Button>
+                                                {improveResult!.invoiceProviderId && (
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="success"
+                                                        disabled={isSavingPrompt}
+                                                        onClick={async () => {
+                                                            setIsSavingPrompt(true);
+                                                            try {
+                                                                const field = improveResult!.invoiceType === "GAS" ? "promptGas" : "promptElectricity";
+                                                                const res = await fetch(`/api/v1/internal/invoice-providers/${improveResult!.invoiceProviderId}`, {
+                                                                    method: "PUT",
+                                                                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                                                                    body: JSON.stringify({ [field]: improveResult!.improvedPrompt }),
+                                                                });
+                                                                if (!res.ok) throw new Error("Failed to save prompt");
+                                                                onNotify?.(`${improveResult!.invoiceType} prompt saved to ${improveResult!.invoiceProviderName}`, "success");
+                                                            } catch (err: any) {
+                                                                onNotify?.(err?.message ?? "Save failed", "error");
+                                                            } finally {
+                                                                setIsSavingPrompt(false);
+                                                            }
+                                                        }}
+                                                        sx={{ borderRadius: 999, fontWeight: 700, textTransform: "none", fontSize: 12 }}
+                                                    >
+                                                        {isSavingPrompt ? "Saving…" : `Save to ${improveResult!.invoiceProviderName ?? "provider"}`}
+                                                    </Button>
+                                                )}
                                             </Box>
-                                            <Box sx={{ borderRadius: 1.5, border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`, overflow: "hidden" }}>
-                                                {/* Header */}
-                                                <Box sx={{ display: "grid", gridTemplateColumns: "200px 1fr 1fr", background: isDark ? "#161b22" : "#f6f8fa", borderBottom: `1px solid ${isDark ? "#30363d" : "#d0d7de"}` }}>
-                                                    <Box sx={{ px: 1.5, py: 0.75 }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>Field</Typography></Box>
-                                                    <Box sx={{ px: 1.5, py: 0.75, borderLeft: `1px solid ${isDark ? "#30363d" : "#d0d7de"}` }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, color: theme.palette.error.main, textTransform: "uppercase", letterSpacing: "0.05em" }}>Old prompt result</Typography></Box>
-                                                    <Box sx={{ px: 1.5, py: 0.75, borderLeft: `1px solid ${isDark ? "#30363d" : "#d0d7de"}` }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, color: theme.palette.success.main, textTransform: "uppercase", letterSpacing: "0.05em" }}>New prompt result</Typography></Box>
+                                        )}
+                                    </Box>
+
+                                    {/* Tab: Result (OCR comparison) */}
+                                    {improveDialogTab === 0 && (
+                                        <Box sx={{ pt: 2, overflowY: "auto", flex: 1 }}>
+                                            {!testResult ? (
+                                                <Box sx={{ p: 2.5, borderRadius: 2, background: alpha(theme.palette.info.main, isDark ? 0.1 : 0.07), border: `1px solid ${alpha(theme.palette.info.main, 0.22)}` }}>
+                                                    <Typography sx={{ fontSize: 13, color: "text.secondary" }}>No test results available yet.</Typography>
                                                 </Box>
-                                                {/* Changed rows first */}
-                                                {[...changed, ...unchanged2].map((field, i) => {
-                                                    const isChanged = changed.includes(field);
-                                                    const oldVal = testResult.oldFields[field];
-                                                    const newVal = testResult.newFields[field];
-                                                    const fmt = (v: unknown) => v === null || v === undefined || v === "" ? <em style={{ opacity: 0.4 }}>(empty)</em> : String(v);
-                                                    return (
-                                                        <Box key={field} sx={{
-                                                            display: "grid",
-                                                            gridTemplateColumns: "200px 1fr 1fr",
-                                                            borderBottom: i < allFields.length - 1 ? `1px solid ${isDark ? "#21262d" : "#eaecef"}` : "none",
-                                                            background: isChanged ? (isDark ? "rgba(248,81,73,0.07)" : "rgba(248,81,73,0.04)") : "transparent",
-                                                        }}>
-                                                            <Box sx={{ px: 1.5, py: 0.85 }}>
-                                                                <Typography sx={{ fontSize: 12, fontWeight: isChanged ? 700 : 400, fontFamily: "monospace", color: isChanged ? theme.palette.info.main : "text.secondary" }}>{field}</Typography>
+                                            ) : (() => {
+                                                const allFields = Array.from(new Set([
+                                                    ...Object.keys(testResult.oldFields),
+                                                    ...Object.keys(testResult.newFields),
+                                                ])).sort();
+                                                const changed = allFields.filter(f => String(testResult.oldFields[f] ?? "") !== String(testResult.newFields[f] ?? ""));
+                                                return (
+                                                    <Box>
+                                                        <Box sx={{ borderRadius: 1.5, border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`, overflow: "hidden" }}>
+                                                            <Box sx={{ display: "grid", gridTemplateColumns: "200px 1fr 1fr", background: isDark ? "#161b22" : "#f6f8fa", borderBottom: `1px solid ${isDark ? "#30363d" : "#d0d7de"}` }}>
+                                                                <Box sx={{ px: 1.5, py: 0.75 }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>Field</Typography></Box>
+                                                                <Box sx={{ px: 1.5, py: 0.75, borderLeft: `1px solid ${isDark ? "#30363d" : "#d0d7de"}` }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, color: theme.palette.error.main, textTransform: "uppercase", letterSpacing: "0.05em" }}>Old prompt result</Typography></Box>
+                                                                <Box sx={{ px: 1.5, py: 0.75, borderLeft: `1px solid ${isDark ? "#30363d" : "#d0d7de"}` }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, color: theme.palette.success.main, textTransform: "uppercase", letterSpacing: "0.05em" }}>New prompt result</Typography></Box>
                                                             </Box>
-                                                            <Box sx={{ px: 1.5, py: 0.85, borderLeft: `1px solid ${isDark ? "#21262d" : "#eaecef"}` }}>
-                                                                <Typography sx={{ fontSize: 12, color: isChanged ? theme.palette.error.main : "text.primary" }}>{fmt(oldVal)}</Typography>
-                                                            </Box>
-                                                            <Box sx={{ px: 1.5, py: 0.85, borderLeft: `1px solid ${isDark ? "#21262d" : "#eaecef"}` }}>
-                                                                <Typography sx={{ fontSize: 12, color: isChanged ? theme.palette.success.main : "text.primary" }}>{fmt(newVal)}</Typography>
-                                                            </Box>
+                                                            {changed.map((field, i) => {
+                                                                const oldVal = testResult.oldFields[field];
+                                                                const newVal = testResult.newFields[field];
+                                                                const fmt = (v: unknown) => v === null || v === undefined || v === "" ? <em style={{ opacity: 0.4 }}>(empty)</em> : String(v);
+                                                                return (
+                                                                    <Box key={field} sx={{
+                                                                        display: "grid",
+                                                                        gridTemplateColumns: "200px 1fr 1fr",
+                                                                        borderBottom: i < changed.length - 1 ? `1px solid ${isDark ? "#21262d" : "#eaecef"}` : "none",
+                                                                        background: isDark ? "rgba(248,81,73,0.07)" : "rgba(248,81,73,0.04)",
+                                                                    }}>
+                                                                        <Box sx={{ px: 1.5, py: 0.85 }}>
+                                                                            <Typography sx={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: theme.palette.info.main }}>{field}</Typography>
+                                                                        </Box>
+                                                                        <Box sx={{ px: 1.5, py: 0.85, borderLeft: `1px solid ${isDark ? "#21262d" : "#eaecef"}` }}>
+                                                                            <Typography sx={{ fontSize: 12, color: theme.palette.error.main }}>{fmt(oldVal)}</Typography>
+                                                                        </Box>
+                                                                        <Box sx={{ px: 1.5, py: 0.85, borderLeft: `1px solid ${isDark ? "#21262d" : "#eaecef"}` }}>
+                                                                            <Typography sx={{ fontSize: 12, color: theme.palette.success.main }}>{fmt(newVal)}</Typography>
+                                                                        </Box>
+                                                                    </Box>
+                                                                );
+                                                            })}
                                                         </Box>
-                                                    );
-                                                })}
+                                                    </Box>
+                                                );
+                                            })()}
+                                        </Box>
+                                    )}
+
+                                    {/* Tab: Improved Prompt */}
+                                    {improveDialogTab === 1 && (
+                                        <Box sx={{ pt: 2, overflowY: "auto", flex: 1 }}>
+                                            <Box sx={{
+                                                backgroundColor: isDark ? "#0d1117" : "#f6f8fa",
+                                                border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
+                                                borderRadius: 1,
+                                                p: 2,
+                                                fontFamily: "monospace",
+                                                fontSize: 12,
+                                                lineHeight: 1.6,
+                                                whiteSpace: "pre-wrap",
+                                                wordBreak: "break-word",
+                                                overflowY: "auto",
+                                                maxHeight: "55vh",
+                                                color: isDark ? "#e6edf3" : "#24292f",
+                                            }}>
+                                                {improveResult!.improvedPrompt}
                                             </Box>
                                         </Box>
-                                    );
-                                })()}
+                                    )}
+                                </Box>
                             </Box>
                         )}
                     </DialogContent>
@@ -1085,6 +1444,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                 }
                 if (log.status === "SUCCESS" && log.extractedFields) {
                     const f = log.extractedFields as Record<string, unknown>;
+                    const correctionCount = log.userCorrections ? Object.keys(log.userCorrections).length : 0;
                     const parts = [
                         f.cups ? `CUPS: …${String(f.cups).slice(-6)}` : null,
                         f.nombreTitular ? String(f.nombreTitular) : null,
@@ -1101,6 +1461,16 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                                         <WarningAmberIcon sx={{ fontSize: 12, color: "warning.main" }} />
                                         <Typography variant="caption" sx={{ fontSize: 10, color: "warning.main", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 150 }}>
                                             Issue reported
+                                        </Typography>
+                                    </Box>
+                                </Tooltip>
+                            )}
+                            {correctionCount > 0 && (
+                                <Tooltip title={`${correctionCount} field${correctionCount !== 1 ? "s" : ""} corrected by user`}>
+                                    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.4, cursor: "default" }}>
+                                        <EditNoteRoundedIcon sx={{ fontSize: 12, color: "warning.main" }} />
+                                        <Typography variant="caption" sx={{ fontSize: 10, color: "warning.main", fontWeight: 600 }}>
+                                            {correctionCount} correction{correctionCount !== 1 ? "s" : ""}
                                         </Typography>
                                     </Box>
                                 </Tooltip>
