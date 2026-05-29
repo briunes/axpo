@@ -34,7 +34,7 @@ FEATURE_ANALYTICS_ENABLED="true"
 
 NEXT_PUBLIC_BACKEND_URL="https://misimulador.axpoiberia.es"
 
-NEXT_PUBLIC_SENTRY_DSN=https://a515453df8bc25f40b2a1444b3135e37@o4511472518627328.ingest.de.sentry.io/4511472520659024
-SENTRY_ORG=signed-axpo
-SENTRY_PROJECT=javascript-nextjs
-SENTRY_AUTH_TOKEN=your_sentry_auth_token_here
+NEXT_PUBLIC_SENTRY_DSN=check_vaultwarden
+SENTRY_ORG=check_vaultwarden
+SENTRY_PROJECT=check_vaultwarden
+SENTRY_AUTH_TOKEN=check_vaultwarden
