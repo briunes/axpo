@@ -74,6 +74,14 @@ export function UserForm({
 
     const canManageRole = mode === "create" || isAdmin(session.user.role);
     const canManageAgency = isAdmin(session.user.role);
+    const isSysAdminViewer = session.user.role === "SYS_ADMIN";
+    // Lock rules in edit mode:
+    //   - Any user with ADMIN role is locked unless the viewer is a SYS_ADMIN
+    //     (only SYS_ADMINs can manage other admins)
+    //   - Any user with SYS_ADMIN role is ALWAYS locked (no one can change it from the UI)
+    const isAdminTargetLocked = mode === "edit" && data.role === "ADMIN" && !isSysAdminViewer;
+    const isSysAdminTargetLocked = mode === "edit" && data.role === "SYS_ADMIN";
+    const isRoleLocked = isAdminTargetLocked || isSysAdminTargetLocked;
 
     const clearError = (field: keyof ValidationErrors) => {
         if (validationErrors[field]) {
@@ -237,7 +245,8 @@ export function UserForm({
                         options={[
                             { value: "COMMERCIAL", label: t("userFormPage", "roleCommercial") },
                             { value: "AGENT", label: t("userFormPage", "roleAgent") },
-                            ...(isAdmin(session.user.role) ? [{ value: "ADMIN", label: t("userFormPage", "roleAdmin") }] : [])
+                            ...(isAdmin(session.user.role) ? [{ value: "ADMIN", label: t("userFormPage", "roleAdmin") }] : []),
+                            ...(session.user.role === "SYS_ADMIN" ? [{ value: "SYS_ADMIN", label: t("userFormPage", "roleSysAdmin") }] : []),
                         ]}
                         value={data.role || "COMMERCIAL"}
                         onChange={(value) => {
@@ -245,9 +254,16 @@ export function UserForm({
                             clearError('role');
                         }}
                         required={mode === "create"}
-                        disabled={isSubmitting || (mode === "edit" && data.role === "ADMIN")}
+                        disabled={isSubmitting || isRoleLocked}
                         error={!!validationErrors.role}
-                        helperText={validationErrors.role || (mode === "edit" && data.role === "ADMIN" ? t("userFormPage", "adminRoleCannotBeChanged") : undefined)}
+                        helperText={
+                            validationErrors.role ||
+                            (isAdminTargetLocked
+                                ? t("userFormPage", "adminRoleCannotBeChanged")
+                                : isSysAdminTargetLocked
+                                    ? t("userFormPage", "sysAdminRoleCannotBeChanged")
+                                    : undefined)
+                        }
                     />
 
                     {canManageAgency && (

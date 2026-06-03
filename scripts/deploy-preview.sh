@@ -40,6 +40,7 @@ if [[ -z "$COMMIT_MSG" ]]; then
 fi
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo ""
 echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -47,9 +48,56 @@ echo -e "${BOLD}  🚀  Deploy to Preview${NC}"
 echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
+# ── Secret scrubbing helpers ───────────────────────────────────────────────
+# Files that may contain real secrets that must not be committed to git.
+# Each entry is a regex pattern (for grep -E) + the sed replacement key.
+SECRET_FILES=(
+  "$ROOT_DIR/.env.local.example"
+  "$ROOT_DIR/vars"
+  "$ROOT_DIR/vars prod"
+)
+SECRET_PATTERN='SENTRY_AUTH_TOKEN=sntryu_[A-Za-z0-9_]+'
+SECRET_PLACEHOLDER='SENTRY_AUTH_TOKEN=your_sentry_auth_token_here'
+
+# Stores original lines so we can restore after push
+# Using parallel arrays for bash 3.2 compatibility (macOS default)
+_SECRET_KEYS=()
+_SECRET_VALS=()
+
+scrub_secrets() {
+  for f in "${SECRET_FILES[@]}"; do
+    [[ -f "$f" ]] || continue
+    local original
+    original=$(grep -E "$SECRET_PATTERN" "$f" || true)
+    if [[ -n "$original" ]]; then
+      _SECRET_KEYS+=("$f")
+      _SECRET_VALS+=("$original")
+      sed -i '' -E "s|${SECRET_PATTERN}|${SECRET_PLACEHOLDER}|g" "$f"
+      echo -e "${YELLOW}  ⚠  Redacted secret in: $(basename "$f")${NC}"
+    fi
+  done
+}
+
+restore_secrets() {
+  local i
+  for i in "${!_SECRET_KEYS[@]}"; do
+    local f="${_SECRET_KEYS[$i]}"
+    local original="${_SECRET_VALS[$i]}"
+    sed -i '' "s|${SECRET_PLACEHOLDER}|${original}|g" "$f"
+    echo -e "${CYAN}  ↩  Restored secret in: $(basename "$f")${NC}"
+  done
+}
+
 # ── Step 1: Git commit & push ──────────────────────────────────────────────
 echo -e "${CYAN}[1/3] Git — staging all changes...${NC}"
+
+# Scrub secrets before staging
+scrub_secrets
+
 git add -A
+
+# Restore secrets on exit (success or failure) so local files are never left redacted
+trap restore_secrets EXIT
 
 # Only commit if there's something staged
 if git diff --cached --quiet; then
@@ -62,6 +110,10 @@ fi
 echo -e "${CYAN}[2/3] Git — pushing branch '${BRANCH}' to origin...${NC}"
 git push origin "$BRANCH"
 echo -e "${GREEN}  ✔ Pushed to origin/${BRANCH}${NC}"
+
+# Restore secrets immediately after push (trap will also run on exit, idempotent)
+restore_secrets
+trap - EXIT
 
 # ── Step 2: Bump app version in preview DB ────────────────────────────────
 echo -e "${CYAN}[3/3] Supabase preview — bumping app version...${NC}"

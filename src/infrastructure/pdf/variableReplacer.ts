@@ -144,9 +144,6 @@ export function extractVariableValues(
   // Product name
   const productName = selectedResult?.productLabel || "N/A";
 
-  // Current plan costs
-  const currentTotal = electricity?.facturaActual || 0;
-
   // AXPO plan costs (from results)
   const axpoDesglose = selectedResult?.desglose || {};
   const axpoPowerCost = axpoDesglose.terminoPotencia || 0;
@@ -161,16 +158,67 @@ export function extractVariableValues(
   const axpoVat = axpoDesglose.iva || 0;
   const axpoTotal = selectedResult?.totalFactura || 0;
 
-  // Estimate current plan breakdown (proportional distribution)
-  const currentPowerCost = currentTotal * 0.35;
-  const currentEnergyCost = currentTotal * 0.4;
-  const currentExcessCost = electricity?.excesoPotencia
-    ? currentTotal * 0.05
-    : 0;
-  const currentTaxCost = currentTotal * 0.05;
-  const currentOtherCost = currentTotal * 0.03;
+  // Current plan costs.
+  // The simulation form only reliably stores `facturaActual` (the total).
+  // Anything else is sourced from `electricity.extras` if present; the
+  // remaining base is split between terminoPotencia and terminoEnergia
+  // using the same per-period distribution that Axpo uses, so the two
+  // plans stay self-consistent. Tax (IE) and VAT are back-derived from
+  // the total using the rates captured in `extras` (matches the way
+  // the gas side is already handled further down in this function).
+  const currentTotal = electricity?.facturaActual || 0;
+  const currentIvaTasa =
+    electricity?.extras?.ivaTasa != null ? electricity.extras.ivaTasa : 21;
+  const currentIeTasa =
+    electricity?.extras?.impuestoElectricoTasa != null
+      ? electricity.extras.impuestoElectricoTasa
+      : 5.11269;
   const currentRentalCost = electricity?.extras?.alquilerEquipoMedida || 0;
-  const currentVat = currentTotal * 0.12;
+  const currentReactiveCost = electricity?.extras?.reactiva || 0;
+  const currentOtherChargeCost = electricity?.extras?.otrosCargos || 0;
+  const currentExcessCost = electricity?.excesoPotencia || 0;
+  // Lines that are KNOWN exactly from the form (always real € values).
+  const currentKnownBase =
+    currentRentalCost +
+    currentReactiveCost +
+    currentOtherChargeCost +
+    currentExcessCost;
+  // Back-derive IE + VAT from currentTotal using the input rates.
+  // The Spanish tax chain is:  total = (base + base*ie) * (1+iva) + alquiler
+  // Solving for IE directly (rental is OUTSIDE the IE base but inside IVA):
+  //   ie  = total * ieR / ((1+ieR) * (1+ivaR))
+  //   vat = (total - ie - alquiler) * ivaR
+  const ieR = currentIeTasa / 100;
+  const ivaR = currentIvaTasa / 100;
+  const currentTaxCost = currentTotal * (ieR / ((1 + ieR) * (1 + ivaR)));
+  const currentVat = (currentTotal - currentTaxCost - currentRentalCost) * ivaR;
+  // Base for terminoPotencia + terminoEnergia (the only lines we can't
+  // observe directly) = total − tax − vat − known lines.
+  const currentPowerEnergyBase = Math.max(
+    0,
+    currentTotal - currentTaxCost - currentVat - currentKnownBase,
+  );
+  // If the OCR or the form captured the real split, prefer it.
+  const explicitCurrentPower = (electricity?.extras as any)
+    ?.terminoPotenciaActual;
+  const explicitCurrentEnergy = (electricity?.extras as any)
+    ?.terminoEnergiaActual;
+  // Otherwise, mirror the Axpo plan's power/energy ratio — a much
+  // better estimate than fixed 35%/40% because it adapts to the
+  // access tariff, period mix and consumption profile of THIS simulation.
+  const axpoPeSum = axpoPowerCost + axpoEnergyCost || 1;
+  const currentPowerCost =
+    explicitCurrentPower != null
+      ? Number(explicitCurrentPower)
+      : currentPowerEnergyBase * (axpoPowerCost / axpoPeSum);
+  const currentEnergyCost =
+    explicitCurrentEnergy != null
+      ? Number(explicitCurrentEnergy)
+      : currentPowerEnergyBase * (axpoEnergyCost / axpoPeSum);
+  // CURRENT_OTHER_COST keeps its semantic of "reactiva + otros cargos"
+  // to mirror the Axpo desglose shape so a side-by-side comparison
+  // shows comparable line items.
+  const currentOtherCost = currentReactiveCost + currentOtherChargeCost;
 
   // Savings
   const savingsAmount = selectedResult?.ahorro || 0;

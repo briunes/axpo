@@ -12,16 +12,24 @@ export interface PDFPageImage {
 }
 
 /**
+ * PDF.js renders at 72 DPI when scale is 1. OCR works much better near
+ * print-like density, so 4x gives roughly 288 DPI while keeping payloads
+ * manageable for the vision providers.
+ */
+export const OCR_PDF_RENDER_SCALE = 4;
+export const OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE = 3;
+
+/**
  * Convert PDF pages to base64-encoded images
  * @param pdfBuffer - PDF file as Buffer
  * @param maxPages - Maximum number of pages to extract (default: 3)
- * @param scale - Rendering scale (default: 2 for high quality)
+ * @param scale - Rendering scale (default: OCR quality, roughly 288 DPI)
  * @returns Array of page images
  */
 export async function convertPdfToImages(
   pdfBuffer: Buffer,
   maxPages: number = 3,
-  scale: number = 2,
+  scale: number = OCR_PDF_RENDER_SCALE,
 ): Promise<PDFPageImage[]> {
   // Dynamically import dependencies to avoid Next.js edge runtime issues
   const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
@@ -91,12 +99,12 @@ export async function convertPdfToImages(
 /**
  * Get the first page of a PDF as a base64-encoded image
  * @param pdfBuffer - PDF file as Buffer
- * @param scale - Rendering scale (default: 2)
+ * @param scale - Rendering scale (default: OCR quality)
  * @returns First page image data
  */
 export async function getFirstPageAsImage(
   pdfBuffer: Buffer,
-  scale: number = 2,
+  scale: number = OCR_PDF_RENDER_SCALE,
 ): Promise<PDFPageImage> {
   const images = await convertPdfToImages(pdfBuffer, 1, scale);
   if (images.length === 0) {

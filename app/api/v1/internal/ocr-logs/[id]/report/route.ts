@@ -77,8 +77,20 @@ export const PATCH = withErrorHandler(
 
     const updated = await prisma.ocrLog.update({
       where: { id },
-      data: { reportedIssue: message.trim() },
-      select: { id: true, reportedIssue: true },
+      data: {
+        reportedIssue: message.trim(),
+        issueStatus: "OPEN",
+        issueSubmittedAt: new Date(),
+        issueResolution: null,
+        issueHandledAt: null,
+        issueHandledByUserId: null,
+      },
+      select: {
+        id: true,
+        reportedIssue: true,
+        issueStatus: true,
+        issueSubmittedAt: true,
+      },
     });
 
     return NextResponse.json({ success: true, data: updated });

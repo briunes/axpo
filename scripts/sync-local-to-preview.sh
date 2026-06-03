@@ -81,7 +81,7 @@ ok "Preview URL: $(echo "$PREVIEW_URL" | sed 's/:.*@/:***@/')"
 # The DIRECT_URL uses IPv6 (db.*.supabase.co) which Docker containers can't reach.
 # The session pooler on port 5432 is IPv4 and works from Docker.
 DOCKER_PREVIEW_URL="$(grep -E '^DATABASE_URL=' "$ENV_PREVIEW" | head -1 | cut -d= -f2- | tr -d "'\"" \
-  | sed 's/pgbouncer=true//g; s/?$//g; s/&$//g; s/6543/5432/g' || true)"
+  | sed 's/pgbouncer=true//g; s/connection_limit=[^&]*//g; s/pool_timeout=[^&]*//g; s/connect_timeout=[^&]*//g; s/6543/5432/g; s/?&/\?/g; s/&&/\&/g; s/[?&]$//g' || true)"
 if [[ -z "$DOCKER_PREVIEW_URL" ]]; then
   DOCKER_PREVIEW_URL="$PREVIEW_URL"
 fi

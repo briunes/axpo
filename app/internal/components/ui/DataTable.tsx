@@ -56,6 +56,8 @@ export interface DataTableProps<T extends { id: string }> {
   searchValue?: string;
   onSearch?: (value: string) => void;
   onClearFilters?: () => void;
+  /** When false the Clear button is hidden even if onClearFilters is provided. Defaults to true. */
+  hasActiveFilters?: boolean;
   searchPlaceholder?: string;
   sortState?: SortState;
   onSort?: (column: string) => void;
@@ -201,6 +203,7 @@ export function DataTable<T extends { id: string }>({
   searchValue = "",
   onSearch,
   onClearFilters,
+  hasActiveFilters = true,
   searchPlaceholder = "Search…",
   sortState,
   onSort,
@@ -492,14 +495,14 @@ export function DataTable<T extends { id: string }>({
           {renderCustomSearch ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', width: '100%', minWidth: 0 }}>
               {renderCustomSearch({ draft, setDraft, commitSearch, searchPlaceholder })}
-              {onClearFilters && (
+              {onClearFilters && hasActiveFilters && (
                 <Button
                   size="small"
                   variant="outlined"
                   onClick={onClearFilters}
                 >
-                  <ClearIcon  />
-                  {tI18n('dataTable', 'clearFilters')} 
+                  <ClearIcon />
+                  {tI18n('dataTable', 'clearFilters')}
                 </Button>
               )}
             </div>
@@ -539,7 +542,7 @@ export function DataTable<T extends { id: string }>({
                     <SearchIcon fontSize="inherit" color="primary" />
                   </IconButton>
                 </div>
-                {onClearFilters && (
+                {onClearFilters && hasActiveFilters && (
                   <Button
                     size="small"
                     variant="outlined"
@@ -554,7 +557,7 @@ export function DataTable<T extends { id: string }>({
           </div>
         )}
         <div className="dt-toolbar-right">
-          {onClearFilters && !onSearch && !renderCustomSearch && (
+          {onClearFilters && hasActiveFilters && !onSearch && !renderCustomSearch && (
             <Button
               size="small"
               variant="outlined"

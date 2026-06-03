@@ -152,8 +152,8 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       sortable: true,
       renderCell: (u) => (
         <StatusBadge
-          label={u.role === "ADMIN" ? t("userFormPage", "roleAdmin") : u.role === "AGENT" ? t("userFormPage", "roleAgent") : t("userFormPage", "roleCommercial")}
-          tone={u.role === "ADMIN" ? "brand" : u.role === "AGENT" ? "accent" : "neutral"}
+          label={u.role === "SYS_ADMIN" ? t("userFormPage", "roleSysAdmin") : u.role === "ADMIN" ? t("userFormPage", "roleAdmin") : u.role === "AGENT" ? t("userFormPage", "roleAgent") : t("userFormPage", "roleCommercial")}
+          tone={u.role === "SYS_ADMIN" ? "warning" : u.role === "ADMIN" ? "brand" : u.role === "AGENT" ? "accent" : "neutral"}
         />
       ),
     },
@@ -343,6 +343,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
                 label=""
                 options={[
                   { value: "", label: t("search", "allRoles") },
+                  { value: "SYS_ADMIN", label: t("userFormPage", "roleSysAdmin") },
                   { value: "ADMIN", label: t("userFormPage", "roleAdmin") },
                   { value: "AGENT", label: t("userFormPage", "roleAgent") },
                   { value: "COMMERCIAL", label: t("userFormPage", "roleCommercial") },

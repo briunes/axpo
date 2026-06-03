@@ -3,7 +3,7 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
-import { convertPdfToImages } from "@/lib/pdfToImage";
+import { convertPdfToImages, OCR_PDF_RENDER_SCALE } from "@/lib/pdfToImage";
 
 /**
  * POST /api/v1/internal/ocr-logs/{id}/test-prompt
@@ -112,7 +112,7 @@ export const POST = withErrorHandler(
             const imgs = await convertPdfToImages(
               Buffer.from(f.base64, "base64"),
               2,
-              1.5,
+              OCR_PDF_RENDER_SCALE,
             );
             for (const img of imgs) resolvedFiles.push(img);
           } else {

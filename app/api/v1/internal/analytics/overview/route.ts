@@ -3,7 +3,10 @@ import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { Prisma } from "@prisma/client";
 
@@ -35,14 +38,48 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const since = new Date(Date.now() - days * 86_400_000);
 
   // Admin can optionally scope to a specific agency
-  const filterAgencyId =
-    auth.role === UserRole.ADMIN
-      ? (searchParams.get("agencyId") ?? undefined)
-      : auth.agencyId!;
+  const filterAgencyId = isElevatedRole(auth.role)
+    ? (searchParams.get("agencyId") ?? undefined)
+    : auth.agencyId!;
+
+  // Optional energy type filter: "ELECTRICITY" | "GAS" | undefined (all)
+  const energyTypeParam = searchParams.get("energyType") ?? undefined;
+  const energyTypeFilter =
+    energyTypeParam === "ELECTRICITY" || energyTypeParam === "GAS"
+      ? energyTypeParam
+      : undefined;
+
+  // SQL clause helpers — used in raw queries
+  const agencyClause = filterAgencyId
+    ? Prisma.sql`AND s."agencyId" = ${filterAgencyId}`
+    : Prisma.sql``;
+
+  // When energy type is set, narrow to matching simulation IDs via the JSON payload
+  let energyTypeIdFilter: { id?: { in: string[] } } = {};
+  if (energyTypeFilter) {
+    const matchingRows = await prisma.$queryRaw<
+      Array<{ simulationId: string }>
+    >`
+      WITH latest AS (
+        SELECT DISTINCT ON ("simulationId") "simulationId", "payloadJson"
+        FROM simulation_versions
+        ORDER BY "simulationId", "createdAt" DESC
+      )
+      SELECT latest."simulationId"
+      FROM latest
+      INNER JOIN simulations s ON s.id = latest."simulationId"
+      WHERE s."isDeleted" = false
+        ${agencyClause}
+        AND latest."payloadJson"->>'type' = ${energyTypeFilter}
+    `;
+    energyTypeIdFilter = {
+      id: { in: matchingRows.map((r) => r.simulationId) },
+    };
+  }
 
   const simulationFilter = filterAgencyId
-    ? { isDeleted: false, agencyId: filterAgencyId }
-    : { isDeleted: false };
+    ? { isDeleted: false, agencyId: filterAgencyId, ...energyTypeIdFilter }
+    : { isDeleted: false, ...energyTypeIdFilter };
 
   const accessFilter = filterAgencyId
     ? { simulation: { agencyId: filterAgencyId } }
@@ -58,12 +95,19 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   // so that "opens" is always comparable to "sent" and open rate stays ≤ 100%
   // (unless a client opens multiple times, which is expected).
   const accessOnPeriodSimsFilter = filterAgencyId
-    ? { simulation: { agencyId: filterAgencyId, createdAt: { gte: since } } }
-    : { simulation: { createdAt: { gte: since } } };
+    ? {
+        simulation: {
+          agencyId: filterAgencyId,
+          createdAt: { gte: since },
+          ...energyTypeIdFilter,
+        },
+      }
+    : { simulation: { createdAt: { gte: since }, ...energyTypeIdFilter } };
 
   const [
     totalSimulations,
     sharedSimulations,
+    emailSharedSimulations,
     expiredSimulations,
     draftSimulations,
     accessAttempts,
@@ -76,6 +120,16 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     prisma.simulation.count({ where: simulationPeriodFilter }),
     prisma.simulation.count({
       where: { ...simulationPeriodFilter, status: "SHARED" },
+    }),
+    // Only simulations sent via email can be "opened" by the client —
+    // PDF/download shares will never register an open, so email-sent is the
+    // correct denominator for open-rate calculations.
+    prisma.simulation.count({
+      where: {
+        ...simulationPeriodFilter,
+        status: "SHARED",
+        sharedVia: "EMAIL",
+      },
     }),
     prisma.simulation.count({
       where: { ...simulationPeriodFilter, status: "EXPIRED" },
@@ -91,7 +145,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         accessAttempts: { some: { success: true } },
       },
     }),
-    auth.role === UserRole.ADMIN && !filterAgencyId
+    isElevatedRole(auth.role) && !filterAgencyId
       ? prisma.simulation.groupBy({
           by: ["agencyId"],
           where: simulationPeriodFilter,
@@ -118,8 +172,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   ]);
 
   // ── Simulation content metrics (raw SQL — JSON payload extraction) ────────
-  const agencyClause = filterAgencyId
-    ? Prisma.sql`AND s."agencyId" = ${filterAgencyId}`
+  const energyTypeClause = energyTypeFilter
+    ? Prisma.sql`AND latest."payloadJson"->>'type' = ${energyTypeFilter}`
     : Prisma.sql``;
 
   const [energyTypeSplitRaw, tariffBreakdownRaw, avgConsumptionRaw] =
@@ -136,6 +190,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         WHERE s."isDeleted" = false
           AND s."createdAt" >= ${since}
           ${agencyClause}
+          ${energyTypeClause}
         GROUP BY latest."payloadJson"->>'type'
       `,
       prisma.$queryRaw<Array<{ tariff: string | null; count: number }>>`
@@ -155,6 +210,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         WHERE s."isDeleted" = false
           AND s."createdAt" >= ${since}
           ${agencyClause}
+          ${energyTypeClause}
         GROUP BY tariff
         ORDER BY count DESC
       `,
@@ -178,6 +234,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         WHERE s."isDeleted" = false
           AND s."createdAt" >= ${since}
           ${agencyClause}
+          ${energyTypeClause}
       `,
     ]);
 
@@ -365,6 +422,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     {
       totalSimulations,
       sharedSimulations,
+      emailSharedSimulations,
       expiredSimulations,
       draftSimulations,
       accessAttempts,

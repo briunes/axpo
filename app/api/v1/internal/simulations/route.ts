@@ -4,7 +4,10 @@ import { UserRole, SimulationStatus } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 
@@ -124,7 +127,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const rawOrderBy = sp.get("orderBy") || "updatedAt";
   const sortDir = (sp.get("sortDir") || "desc") as "asc" | "desc";
   const includeDeleted =
-    sp.get("includeDeleted") === "true" && auth.role === UserRole.ADMIN;
+    sp.get("includeDeleted") === "true" && isElevatedRole(auth.role);
   const search = sp.get("search") || undefined;
   const ownerUserId = sp.get("ownerUserId") || undefined;
   const clientId = sp.get("clientId") || undefined;

@@ -1,26 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
     alpha,
     Box,
+    Button,
     Chip,
     Drawer,
     IconButton,
     Stack,
+    TextField,
     Tooltip,
     Typography,
     useTheme,
     Divider,
-    Button,
 } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
 import type { SessionState } from "../../lib/authSession";
 import { DataTable, type ColumnDef } from "../ui";
+import { FormSelect } from "../ui/FormSelect";
+import { DateRangePicker } from "../ui/DateRangePicker";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDate } from "../../lib/formatPreferences";
 
 const SENTRY_BASE_URL = "https://signed-axpo.sentry.io";
 
@@ -52,17 +59,64 @@ export interface AppErrorLogsPanelProps {
 
 export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps) {
     const theme = useTheme();
+    const { preferences } = useUserPreferences();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
     const [selected, setSelected] = useState<AppErrorLogEntry | null>(null);
 
+    // Applied filters
+    const [filterErrorType, setFilterErrorType] = useState("");
+    const [filterSearch, setFilterSearch] = useState("");
+    const [filterDateFrom, setFilterDateFrom] = useState("");
+    const [filterDateTo, setFilterDateTo] = useState("");
+
+    // Local (pending) filter state
+    const [localErrorType, setLocalErrorType] = useState("");
+    const [localSearch, setLocalSearch] = useState("");
+    const [localDateFrom, setLocalDateFrom] = useState<Date | null>(null);
+    const [localDateTo, setLocalDateTo] = useState<Date | null>(null);
+
+    const formatDate = useCallback((isoString: string) => {
+        try {
+            const date = new Date(isoString);
+            const formatted = formatDisplayDate(date, preferences.dateFormat);
+            const hh = String(date.getHours()).padStart(2, "0");
+            const mm = String(date.getMinutes()).padStart(2, "0");
+            const ss = String(date.getSeconds()).padStart(2, "0");
+            return `${formatted} ${hh}:${mm}:${ss}`;
+        } catch { return isoString; }
+    }, [preferences.dateFormat]);
+
+    const toDateOnly = (d: Date | null) => {
+        if (!d) return "";
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+
+    const handleSearch = () => {
+        setFilterErrorType(localErrorType);
+        setFilterSearch(localSearch);
+        setFilterDateFrom(toDateOnly(localDateFrom));
+        setFilterDateTo(toDateOnly(localDateTo));
+        setPage(1);
+    };
+
+    const handleClear = () => {
+        setLocalErrorType(""); setLocalSearch(""); setLocalDateFrom(null); setLocalDateTo(null);
+        setFilterErrorType(""); setFilterSearch(""); setFilterDateFrom(""); setFilterDateTo("");
+        setPage(1);
+    };
+
     const { data, isFetching, error } = useQuery({
-        queryKey: ["app-error-logs", session.token, page, pageSize],
+        queryKey: ["app-error-logs", session.token, page, pageSize, filterErrorType, filterSearch, filterDateFrom, filterDateTo],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: pageSize.toString(),
             });
+            if (filterErrorType) params.append("errorType", filterErrorType);
+            if (filterSearch) params.append("search", filterSearch);
+            if (filterDateFrom) params.append("dateFrom", filterDateFrom);
+            if (filterDateTo) params.append("dateTo", filterDateTo);
             const response = await fetch(`/api/v1/internal/app-error-logs?${params}`, {
                 headers: { Authorization: `Bearer ${session.token}` },
             });
@@ -91,14 +145,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
                     <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
-                        {new Date(log.createdAt).toLocaleString("en-GB", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                        })}
+                        {formatDate(log.createdAt)}
                     </Typography>
                     <Typography variant="caption" sx={{ fontSize: 11, color: "text.secondary" }}>
                         {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
@@ -225,36 +272,70 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
     ];
 
     return (
-        <div style={{ padding: "24px", color: "var(--scheme-neutral-100)" }}>
-            {/* Header */}
-            <Box sx={{ mb: 3, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                <Box>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                        <ErrorOutlineIcon sx={{ color: "error.main", fontSize: 22 }} />
-                        <Typography variant="h6" sx={{ fontSize: 18, fontWeight: 700 }}>
-                            Application Errors
-                        </Typography>
-                    </Box>
-                    <Typography variant="body2" sx={{ fontSize: 13, color: "text.secondary" }}>
-                        Server errors captured by the global error handler — saved to the database and reported to Sentry.
-                    </Typography>
-                </Box>
-                <Button
-                    variant="outlined"
-                    size="small"
-                    endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-                    onClick={() => window.open(`${SENTRY_BASE_URL}/issues/`, "_blank", "noopener,noreferrer")}
-                    sx={{ fontSize: 12, whiteSpace: "nowrap", ml: 2 }}
-                >
-                    Open Sentry
-                </Button>
-            </Box>
+        <div>
+
 
             <DataTable
                 columns={columns}
                 rows={logs}
                 loading={isFetching}
-                onClearFilters={() => setPage(1)}
+                renderCustomSearch={({ }) => (
+                    <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
+                        <Box sx={{ flex: 1, }}>
+                            <FormSelect
+                                label=""
+                                options={[
+                                    { value: "", label: "All types" },
+                                    { value: "Error", label: "Error" },
+                                    { value: "ReferenceError", label: "ReferenceError" },
+                                    { value: "TypeError", label: "TypeError" },
+                                    { value: "SyntaxError", label: "SyntaxError" },
+                                ]}
+                                value={localErrorType}
+                                onChange={(v) => setLocalErrorType(String(v ?? ""))}
+                                placeholder="Error Type"
+                                textFieldProps={{ size: "small" }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                            <TextField
+                                size="small"
+                                fullWidth
+                                placeholder="Message, error type, endpoint…"
+                                value={localSearch}
+                                onChange={(e) => setLocalSearch(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                                sx={{ "& .MuiInputBase-root": { fontSize: 13 } }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 2 }}>
+                            <DateRangePicker
+                                variant="inline"
+                                label="Timestamp"
+                                startDate={localDateFrom}
+                                endDate={localDateTo}
+                                onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
+
+                            />
+                        </Box>
+                        <Button variant="contained" size="small" onClick={handleSearch} aria-label="Search">
+                            <SearchIcon />
+                        </Button>
+                        <Button variant="outlined" size="small" onClick={handleClear}>
+                            <ClearIcon />
+                        </Button>
+                    </Box>
+                )}
+                headerRight={
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+                        onClick={() => window.open(`${SENTRY_BASE_URL}/issues/`, "_blank", "noopener,noreferrer")}
+                        sx={{ fontSize: 12, whiteSpace: "nowrap", ml: 2 }}
+                    >
+                        Open Sentry
+                    </Button>}
                 pagination={{
                     page,
                     pageSize,
@@ -323,10 +404,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                             <Box>
                                 <Typography variant="caption" color="text.secondary">Timestamp</Typography>
                                 <Typography variant="body2" sx={{ mt: 0.5, fontSize: 13 }}>
-                                    {new Date(selected.createdAt).toLocaleString("en-GB", {
-                                        day: "2-digit", month: "2-digit", year: "numeric",
-                                        hour: "2-digit", minute: "2-digit", second: "2-digit",
-                                    })}
+                                    {formatDate(selected.createdAt)}
                                     {" · "}{formatDistanceToNow(new Date(selected.createdAt), { addSuffix: true })}
                                 </Typography>
                             </Box>

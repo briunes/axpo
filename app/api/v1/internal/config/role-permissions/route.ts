@@ -7,6 +7,7 @@ import { requireAuth } from "@/application/middleware/auth";
 import {
   assertRole,
   invalidatePermissionCache,
+  isElevatedRole,
 } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 
@@ -30,7 +31,7 @@ const upsertSchema = z.object({
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
 
-  const isAdmin = auth.role === UserRole.ADMIN;
+  const isAdmin = isElevatedRole(auth.role);
 
   // Non-admins may only fetch their own role's permissions
   const roleFilter = isAdmin
@@ -59,7 +60,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
  */
 export const PATCH = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN]);
+  assertRole(auth, [UserRole.ADMIN, UserRole.SYS_ADMIN]);
 
   const body = await request.json();
   const { updates } = upsertSchema.parse(body);

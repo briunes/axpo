@@ -9,6 +9,10 @@ import {
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "./auditService";
 
+/** True for roles that have unrestricted access (ADMIN and SYS_ADMIN). */
+const isElevatedRole = (role: UserRole) =>
+  role === UserRole.ADMIN || role === UserRole.SYS_ADMIN;
+
 interface ActorContext {
   userId: string;
   role: UserRole;
@@ -44,6 +48,65 @@ const toInputJson = (value: unknown): Prisma.InputJsonValue => {
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+const OCR_CORRECTION_COMMON_FIELDS = [
+  "cups",
+  "nombreTitular",
+  "personaContacto",
+  "direccion",
+  "clienteAddress",
+  "comercializadorActual",
+  "cif",
+  "tarifaAcceso",
+  "zonaGeografica",
+  "fechaInicio",
+  "fechaFin",
+  "facturaActual",
+  "alquiler",
+  "otrosCargos",
+  "ivaTasa",
+  "invoiceType",
+] as const;
+
+const OCR_CORRECTION_ELECTRICITY_FIELDS = [
+  ...OCR_CORRECTION_COMMON_FIELDS,
+  "perfilCarga",
+  "consumoAnual",
+  "consumoP1",
+  "consumoP2",
+  "consumoP3",
+  "consumoP4",
+  "consumoP5",
+  "consumoP6",
+  "potenciaP1",
+  "potenciaP2",
+  "potenciaP3",
+  "potenciaP4",
+  "potenciaP5",
+  "potenciaP6",
+  "precioPotenciaP1",
+  "precioPotenciaP2",
+  "precioPotenciaP3",
+  "precioPotenciaP4",
+  "precioPotenciaP5",
+  "precioPotenciaP6",
+  "precioEnergiaP1",
+  "precioEnergiaP2",
+  "precioEnergiaP3",
+  "precioEnergiaP4",
+  "precioEnergiaP5",
+  "precioEnergiaP6",
+  "excesoPotencia",
+  "reactiva",
+  "impuestoElectricoTasa",
+] as const;
+
+const OCR_CORRECTION_GAS_FIELDS = [
+  ...OCR_CORRECTION_COMMON_FIELDS,
+  "consumoTotal",
+  "impuestoHidrocarburo",
+  "telemedida",
+] as const;
 
 const parseJsonLikeString = (value: unknown): unknown => {
   if (typeof value !== "string") return value;
@@ -178,7 +241,7 @@ const applySalesAgentDefaults = (
 
 export class SimulationService {
   static buildSimulationFilter(actor: ActorContext, includeDeleted = false) {
-    if (actor.role === UserRole.ADMIN) {
+    if (isElevatedRole(actor.role)) {
       return includeDeleted ? {} : { isDeleted: false };
     }
 
@@ -212,7 +275,7 @@ export class SimulationService {
       throw new NotFoundError("Simulation", simulationId);
     }
 
-    if (actor.role === UserRole.ADMIN) {
+    if (isElevatedRole(actor.role)) {
       return simulation;
     }
 
@@ -279,10 +342,9 @@ export class SimulationService {
       try {
         created = await prisma.simulation.create({
           data: {
-            agencyId:
-              actor.role === UserRole.ADMIN
-                ? ownerUser.agencyId
-                : actor.agencyId,
+            agencyId: isElevatedRole(actor.role)
+              ? ownerUser.agencyId
+              : actor.agencyId,
             ownerUserId,
             clientId: input.clientId ?? null,
             expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
@@ -327,6 +389,17 @@ export class SimulationService {
       const invoiceData = isPlainObject(input.payloadJson?.invoiceData)
         ? (input.payloadJson!.invoiceData as Record<string, unknown>)
         : null;
+      const invoiceType =
+        String(
+          invoiceData?.invoiceType ?? input.payloadJson?.type ?? "",
+        ).toUpperCase() === "GAS"
+          ? "GAS"
+          : "ELECTRICITY";
+      const correctionFields = new Set<string>(
+        invoiceType === "GAS"
+          ? OCR_CORRECTION_GAS_FIELDS
+          : OCR_CORRECTION_ELECTRICITY_FIELDS,
+      );
 
       for (const log of existingLogs) {
         let userCorrections: Record<
@@ -346,6 +419,10 @@ export class SimulationService {
           // Only compare fields that are explicitly present in invoiceData
           // (fields not mapped there were never shown to the user, so can't be corrections)
           for (const field of Object.keys(invoiceData)) {
+            if (!correctionFields.has(field)) {
+              continue;
+            }
+
             const submittedValue = invoiceData[field];
             const ocrValue = ocrFields[field];
 
@@ -558,8 +635,9 @@ export class SimulationService {
     // Resolve the actor's own agency: for ADMIN, fall back to the source
     // simulation's agency (admins operate globally); for everyone else use
     // their own agency so the clone belongs to them.
-    const newAgencyId =
-      actor.role === UserRole.ADMIN ? simulation.agencyId : actor.agencyId;
+    const newAgencyId = isElevatedRole(actor.role)
+      ? simulation.agencyId
+      : actor.agencyId;
 
     // Fetch the new owner's PIN snapshot so the cloned simulation is
     // properly associated with the duplicating user's credentials.

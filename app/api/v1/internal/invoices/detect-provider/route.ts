@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
-import { convertPdfToImages } from "@/lib/pdfToImage";
+import {
+  convertPdfToImages,
+  OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
+} from "@/lib/pdfToImage";
 
 /**
  * Sends images to the configured LLM and returns the raw text response.
@@ -338,10 +341,31 @@ Look for:
 
 TASK 2 — COMMODITY TYPE:
 Also determine whether this is an electricity or gas invoice.
-- Look for labels like "Electricidad", "Energía eléctrica", "CUPS eléctrico" → ELECTRICITY
-- Look for labels like "Gas Natural", "Gas", "CUPS gas", "calorífico" → GAS
-- If both are present → BOTH
-- If unclear → null
+
+Important:
+- Do NOT classify as ELECTRICITY merely because the invoice contains "kWh" or "CUPS".
+- Gas invoices may also use kWh and CUPS.
+- Treat "kWh", "CUPS", "consumo", and generic "energía" as neutral unless accompanied by commodity-specific terms.
+
+Strong GAS indicators:
+- "gas", "factura gas", "facturagas", "gas natural"
+- "hidrocarburos", "impuesto especial hidrocarburos"
+- "poder calorífico", "coeficiente de conversión", "Gj", "PCS"
+- "caudal", "peaje gas", "término variable gas"
+
+Strong ELECTRICITY indicators:
+- "electricidad", "energía eléctrica", "luz"
+- "potencia contratada", "término de potencia"
+- "peaje de acceso electricidad", "discriminación horaria"
+- periods like P1/P2/P3 when tied to power or electricity energy charges
+- "alquiler contador electricidad"
+
+Decision rule:
+- If strong GAS indicators appear and no strong ELECTRICITY indicators appear → GAS.
+- If strong ELECTRICITY indicators appear and no strong GAS indicators appear → ELECTRICITY.
+- If strong indicators for both appear → BOTH.
+- If only neutral terms like "kWh", "CUPS", "consumo", or generic "energía" appear → null.
+- If unclear → null.
 
 RESPONSE FORMAT:
 Respond with ONLY a JSON object, no markdown, no explanation:
@@ -370,7 +394,11 @@ If you cannot determine the provider at all, return providerName as null.`;
 
       if (llmProvider === "ollama-cloud") {
         // Convert PDF to image first (only first page)
-        const pdfImages = await convertPdfToImages(buffer, 1, 1.5);
+        const pdfImages = await convertPdfToImages(
+          buffer,
+          1,
+          OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
+        );
         convertedPdfLogFiles = pdfImages.map((img) => {
           const imageBuffer = Buffer.from(img.base64, "base64");
           return {
@@ -387,7 +415,11 @@ If you cannot determine the provider at all, return providerName as null.`;
         }));
       } else {
         // Providers that handle PDF natively — send as is but only first page via image conversion
-        const pdfImages = await convertPdfToImages(buffer, 1, 1.5);
+        const pdfImages = await convertPdfToImages(
+          buffer,
+          1,
+          OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
+        );
         convertedPdfLogFiles = pdfImages.map((img) => {
           const imageBuffer = Buffer.from(img.base64, "base64");
           return {

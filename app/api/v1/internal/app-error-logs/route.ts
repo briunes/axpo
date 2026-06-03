@@ -37,11 +37,27 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const skip = (page - 1) * limit;
   const errorType = searchParams.get("errorType") ?? undefined;
   const path = searchParams.get("path") ?? undefined;
+  const dateFrom = searchParams.get("dateFrom") || undefined;
+  const dateTo = searchParams.get("dateTo") || undefined;
+  const search = searchParams.get("search") || undefined;
 
   const where: any = {
     ...(errorType && { errorType }),
     ...(path && { path: { contains: path, mode: "insensitive" } }),
   };
+  if (dateFrom || dateTo) {
+    where.createdAt = {
+      ...(dateFrom ? { gte: new Date(dateFrom + "T00:00:00.000Z") } : {}),
+      ...(dateTo ? { lte: new Date(dateTo + "T23:59:59.999Z") } : {}),
+    };
+  }
+  if (search) {
+    where.OR = [
+      { message: { contains: search, mode: "insensitive" as const } },
+      { errorType: { contains: search, mode: "insensitive" as const } },
+      { path: { contains: search, mode: "insensitive" as const } },
+    ];
+  }
 
   const [logs, total] = await Promise.all([
     (prisma as any).appErrorLog.findMany({

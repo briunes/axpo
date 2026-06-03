@@ -14,6 +14,7 @@ export type PermissionKey =
   | "section.email-logs"
   | "section.analytics"
   | "section.configurations"
+  | "section.ocr-usage"
   // ── Simulation actions ───────────────────────────────────────────────────
   | "simulations.create"
   | "simulations.share"
@@ -104,6 +105,13 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: "section.configurations",
         label: "Configurations",
         description: "Access system configurations (admin only)",
+        adminOnly: true,
+      },
+      {
+        key: "section.ocr-usage",
+        label: "OCR Usage & Billing",
+        description:
+          "Access the OCR token usage / cost dashboard and invoice exports (admin only)",
         adminOnly: true,
       },
     ],
@@ -247,6 +255,37 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
   string,
   Record<PermissionKey, boolean>
 > = {
+  SYS_ADMIN: {
+    "section.simulations": true,
+    "section.users": true,
+    "section.agencies": true,
+    "section.clients": true,
+    "section.base-values": true,
+    "section.audit-logs": true,
+    "section.email-logs": true,
+    "section.analytics": true,
+    "section.configurations": true,
+    "section.ocr-usage": true,
+    "simulations.create": true,
+    "simulations.share": true,
+    "simulations.duplicate": true,
+    "simulations.archive": true,
+    "simulations.delete": true,
+    "simulations.edit_payload": true,
+    "clients.view": true,
+    "clients.create": true,
+    "clients.edit": true,
+    "clients.delete": true,
+    "users.view": true,
+    "users.create": true,
+    "users.edit": true,
+    "users.deactivate": true,
+    "users.sessions.manage": true,
+    "agencies.view": true,
+    "agencies.create": true,
+    "agencies.edit": true,
+    "agencies.deactivate": true,
+  },
   ADMIN: {
     "section.simulations": true,
     "section.users": true,
@@ -257,6 +296,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.email-logs": true,
     "section.analytics": true,
     "section.configurations": true,
+    "section.ocr-usage": true,
     "simulations.create": true,
     "simulations.share": true,
     "simulations.duplicate": true,
@@ -287,6 +327,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.email-logs": false,
     "section.analytics": true,
     "section.configurations": false,
+    "section.ocr-usage": false,
     "simulations.create": true,
     "simulations.share": true,
     "simulations.duplicate": true,
@@ -317,6 +358,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.email-logs": false,
     "section.analytics": false,
     "section.configurations": false,
+    "section.ocr-usage": false,
     "simulations.create": true,
     "simulations.share": true,
     "simulations.duplicate": true,

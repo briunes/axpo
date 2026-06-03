@@ -296,7 +296,7 @@ interface AnalyticsModuleProps {
 
 export function AnalyticsModule({ session, actions, onNotify, onActionButtons }: AnalyticsModuleProps) {
   const { t } = useI18n();
-  const { analytics, loading, errorText, refresh } = actions;
+  const { analytics, loading, errorText, refresh, energyType, setEnergyType } = actions;
   const [selectedDays, setSelectedDays] = useState(30);
   const isAdminView = isAdmin(session.user.role);
 
@@ -321,21 +321,42 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
   useEffect(() => {
     if (!selectedAgencyId) { setAgencyAnalytics(null); return; }
     setAgencyLoading(true);
-    fetchAnalyticsForAgency(session.token, selectedAgencyId, selectedDays)
+    fetchAnalyticsForAgency(session.token, selectedAgencyId, selectedDays, energyType || undefined)
       .then(setAgencyAnalytics)
       .catch(() => setAgencyAnalytics(null))
       .finally(() => setAgencyLoading(false));
-  }, [selectedAgencyId, selectedDays]);
+  }, [selectedAgencyId, selectedDays, energyType]);
 
   const handleDaysChange = (d: number) => {
     setSelectedDays(d);
     refresh(d);
   };
 
+  const energyOptions: Array<{ value: string; label: string; icon: string }> = [
+    { value: "", label: t("analyticsModule", "energyTypeAll") || "All", icon: "🔋" },
+    { value: "ELECTRICITY", label: t("analyticsModule", "energyTypeElectricity") || "Electricity", icon: "⚡" },
+    { value: "GAS", label: t("analyticsModule", "energyTypeGas") || "Gas", icon: "🔥" },
+  ];
+
   // Render action buttons for topbar
   useLayoutEffect(() => {
     onActionButtons?.(
       <>
+        {/* Energy type toggle */}
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          {energyOptions.map((opt) => (
+            <Button
+              key={opt.value}
+              size="small"
+              variant={energyType === opt.value ? "contained" : "outlined"}
+              onClick={() => setEnergyType(opt.value)}
+              disabled={loading}
+              style={{ cursor: loading ? "not-allowed" : "pointer", minWidth: 0 }}
+            >
+              {opt.icon} {opt.label}
+            </Button>
+          ))}
+        </div>
         {isAdminView && allAgencies.length > 0 && (
           <div style={{ minWidth: 200 }}>
             <FormSelect
@@ -361,7 +382,7 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
       </>
     );
     return () => onActionButtons?.(null);
-  }, [onActionButtons, selectedDays, handleDaysChange, loading, t, refresh, selectedAgencyId, isAdminView, allAgencies]);
+  }, [onActionButtons, selectedDays, handleDaysChange, loading, t, refresh, selectedAgencyId, isAdminView, allAgencies, energyType, setEnergyType]);
 
   // Determine what to render
   const showAgencyDrillDown = isAdminView && selectedAgencyId !== null;

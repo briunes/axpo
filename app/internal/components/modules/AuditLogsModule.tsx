@@ -1,443 +1,754 @@
 "use client";
 
-import { Button, Column } from "@once-ui-system/core";
-import { useEffect, useState, useLayoutEffect } from "react";
-import type { SessionState } from "../../lib/authSession";
-import type { AuditLogItem } from "../../lib/internalApi";
-import type { AuditLogsActions } from "../hooks/useAuditLogs";
+import React, { useCallback, useEffect, useMemo, useLayoutEffect, useState } from "react";
+import {
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    Collapse,
+    IconButton,
+    Paper,
+    Stack,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TablePagination,
+    TableRow,
+    TextField,
+    Typography,
+} from "@mui/material";
+import { FormSelect, type FormSelectOption } from "../ui/FormSelect";
+import LaunchIcon from '@mui/icons-material/Launch';
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
+import { Button as OnceButton, Column } from "@once-ui-system/core";
+import { Country } from "country-state-city";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import type { AuditLogItem } from "../../lib/internalApi";
+import type { SessionState } from "../../lib/authSession";
+import type { AuditLogsActions } from "../hooks/useAuditLogs";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDate } from "../../lib/formatPreferences";
+import { DateRangePicker } from "../ui/DateRangePicker";
+import {
+    AgencyValueResolver,
+    FieldChangeDetails,
+    formatFieldName,
+    normalizeAuditFieldKey,
+    makeGetAgencyName,
+} from "../ui/AuditLogShared";
+import { FormInput } from "../ui";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AuditLogsModuleProps {
-  session: SessionState;
-  actions: AuditLogsActions;
-  onNotify?: (text: string, tone: "success" | "error") => void;
-  onActionButtons?: (buttons: React.ReactNode) => void;
+    session: SessionState;
+    actions: AuditLogsActions;
+    onNotify?: (text: string, tone: "success" | "error") => void;
+    onActionButtons?: (buttons: React.ReactNode) => void;
 }
 
-// ─── Event registry ──────────────────────────────────────────────────────────
+// ─── Event registry ───────────────────────────────────────────────────────────
 
-type EventMeta = { labelKey: string; color: string; bg: string; group: string };
-type AuditEventLabelKey =
-  | "created"
-  | "updated"
-  | "deleted"
-  | "calculated"
-  | "shared"
-  | "cloned"
-  | "pinRotated"
-  | "statusChanged"
-  | "activated"
-  | "setCreated"
-  | "ocrApplied"
-  | "login"
-  | "logout"
-  | "accessAttempt";
+type EventMeta = { group: string; color: string; bg: string };
 
 const EVENT_REGISTRY: Record<string, EventMeta> = {
-  SIMULATION_CREATED: { group: "Sim", labelKey: "created", color: "#60a5fa", bg: "rgba(96,165,250,.13)" },
-  SIMULATION_UPDATED: { group: "Sim", labelKey: "updated", color: "#60a5fa", bg: "rgba(96,165,250,.13)" },
-  SIMULATION_CALCULATED: { group: "Sim", labelKey: "calculated", color: "#38bdf8", bg: "rgba(56,189,248,.13)" },
-  SIMULATION_SHARED: { group: "Sim", labelKey: "shared", color: "#34d399", bg: "rgba(52,211,153,.13)" },
-  SIMULATION_CLONED: { group: "Sim", labelKey: "cloned", color: "#a78bfa", bg: "rgba(167,139,250,.13)" },
-  SIMULATION_DELETED: { group: "Sim", labelKey: "deleted", color: "#f87171", bg: "rgba(248,113,113,.13)" },
-  SIMULATION_PIN_ROTATED: { group: "Sim", labelKey: "pinRotated", color: "#fbbf24", bg: "rgba(251,191,36,.13)" },
-  SIMULATION_OCR_APPLIED: { group: "Sim", labelKey: "ocrApplied", color: "#a78bfa", bg: "rgba(167,139,250,.13)" },
-  USER_CREATED: { group: "User", labelKey: "created", color: "#c084fc", bg: "rgba(192,132,252,.13)" },
-  USER_UPDATED: { group: "User", labelKey: "updated", color: "#c084fc", bg: "rgba(192,132,252,.13)" },
-  USER_STATUS_CHANGED: { group: "User", labelKey: "statusChanged", color: "#e879f9", bg: "rgba(232,121,249,.13)" },
-  USER_PIN_ROTATED: { group: "User", labelKey: "pinRotated", color: "#fbbf24", bg: "rgba(251,191,36,.13)" },
-  AGENCY_CREATED: { group: "Agency", labelKey: "created", color: "#fb923c", bg: "rgba(251,146,60,.13)" },
-  AGENCY_UPDATED: { group: "Agency", labelKey: "updated", color: "#fb923c", bg: "rgba(251,146,60,.13)" },
-  CLIENT_CREATED: { group: "Client", labelKey: "created", color: "#f472b6", bg: "rgba(244,114,182,.13)" },
-  CLIENT_UPDATED: { group: "Client", labelKey: "updated", color: "#f472b6", bg: "rgba(244,114,182,.13)" },
-  CLIENT_DELETED: { group: "Client", labelKey: "deleted", color: "#f87171", bg: "rgba(248,113,113,.13)" },
-  BASE_VALUE_SET_CREATED: { group: "BV", labelKey: "setCreated", color: "#2dd4bf", bg: "rgba(45,212,191,.13)" },
-  BASE_VALUE_SET_ACTIVATED: { group: "BV", labelKey: "activated", color: "#2dd4bf", bg: "rgba(45,212,191,.13)" },
-  AUTH_LOGIN: { group: "Auth", labelKey: "login", color: "#94a3b8", bg: "rgba(148,163,184,.10)" },
-  AUTH_LOGOUT: { group: "Auth", labelKey: "logout", color: "#94a3b8", bg: "rgba(148,163,184,.10)" },
-  PUBLIC_ACCESS_ATTEMPT: { group: "Pub", labelKey: "accessAttempt", color: "#facc15", bg: "rgba(250,204,21,.10)" },
+    SIMULATION_CREATED: { group: "Sim", color: "#60a5fa", bg: "rgba(96,165,250,.13)" },
+    SIMULATION_UPDATED: { group: "Sim", color: "#60a5fa", bg: "rgba(96,165,250,.13)" },
+    SIMULATION_CALCULATED: { group: "Sim", color: "#38bdf8", bg: "rgba(56,189,248,.13)" },
+    SIMULATION_SHARED: { group: "Sim", color: "#34d399", bg: "rgba(52,211,153,.13)" },
+    SIMULATION_CLONED: { group: "Sim", color: "#a78bfa", bg: "rgba(167,139,250,.13)" },
+    SIMULATION_DELETED: { group: "Sim", color: "#f87171", bg: "rgba(248,113,113,.13)" },
+    SIMULATION_PIN_ROTATED: { group: "Sim", color: "#fbbf24", bg: "rgba(251,191,36,.13)" },
+    SIMULATION_OCR_APPLIED: { group: "Sim", color: "#a78bfa", bg: "rgba(167,139,250,.13)" },
+    USER_CREATED: { group: "User", color: "#c084fc", bg: "rgba(192,132,252,.13)" },
+    USER_UPDATED: { group: "User", color: "#c084fc", bg: "rgba(192,132,252,.13)" },
+    USER_STATUS_CHANGED: { group: "User", color: "#e879f9", bg: "rgba(232,121,249,.13)" },
+    USER_PIN_ROTATED: { group: "User", color: "#fbbf24", bg: "rgba(251,191,36,.13)" },
+    AGENCY_CREATED: { group: "Agency", color: "#fb923c", bg: "rgba(251,146,60,.13)" },
+    AGENCY_UPDATED: { group: "Agency", color: "#fb923c", bg: "rgba(251,146,60,.13)" },
+    CLIENT_CREATED: { group: "Client", color: "#f472b6", bg: "rgba(244,114,182,.13)" },
+    CLIENT_UPDATED: { group: "Client", color: "#f472b6", bg: "rgba(244,114,182,.13)" },
+    CLIENT_DELETED: { group: "Client", color: "#f87171", bg: "rgba(248,113,113,.13)" },
+    BASE_VALUE_SET_CREATED: { group: "BV", color: "#2dd4bf", bg: "rgba(45,212,191,.13)" },
+    BASE_VALUE_SET_ACTIVATED: { group: "BV", color: "#2dd4bf", bg: "rgba(45,212,191,.13)" },
+    AUTH_LOGIN: { group: "Auth", color: "#94a3b8", bg: "rgba(148,163,184,.10)" },
+    AUTH_LOGOUT: { group: "Auth", color: "#94a3b8", bg: "rgba(148,163,184,.10)" },
+    AUTH_SESSION_AUTO_KEPT: { group: "Auth", color: "#94a3b8", bg: "rgba(148,163,184,.10)" },
+    AUTH_SESSION_AUTO_KICK: { group: "Auth", color: "#f87171", bg: "rgba(248,113,113,.10)" },
+    PUBLIC_ACCESS_ATTEMPT: { group: "Pub", color: "#facc15", bg: "rgba(250,204,21,.10)" },
 };
 
-const GROUP_ORDER = ["Simulation", "User", "Agency", "Client", "Base Values", "Auth", "Public"];
-const EVENT_TYPES = Object.keys(EVENT_REGISTRY);
+const ALL_EVENT_TYPES = Object.keys(EVENT_REGISTRY).sort();
 
-function getEvent(eventType: string): EventMeta {
-  return EVENT_REGISTRY[eventType] ?? { group: "", labelKey: "", color: "#94a3b8", bg: "rgba(148,163,184,.10)" };
+type GroupKey = "simulation" | "user" | "agency" | "client" | "baseValues" | "auth" | "public";
+
+const GROUP_CONFIG: Array<{ key: GroupKey; groupIds: string[]; labelKey: string }> = [
+    { key: "simulation", groupIds: ["Sim"], labelKey: "groupSimulation" },
+    { key: "user", groupIds: ["User"], labelKey: "groupUser" },
+    { key: "agency", groupIds: ["Agency"], labelKey: "groupAgency" },
+    { key: "client", groupIds: ["Client"], labelKey: "groupClient" },
+    { key: "baseValues", groupIds: ["BV"], labelKey: "groupBaseValues" },
+    { key: "auth", groupIds: ["Auth"], labelKey: "groupAuth" },
+    { key: "public", groupIds: ["Pub"], labelKey: "groupPublic" },
+];
+
+// ─── EventChip ────────────────────────────────────────────────────────────────
+
+function getEventTypeLabel(eventType: string, t: ReturnType<typeof useI18n>["t"]): string {
+    if (eventType.endsWith("_CREATED")) return t("auditEvents", "created");
+    if (eventType.endsWith("_UPDATED")) return t("auditEvents", "updated");
+    if (eventType.endsWith("_DELETED")) return t("auditEvents", "deleted");
+    if (eventType.endsWith("_CALCULATED")) return t("auditEvents", "calculated");
+    if (eventType.endsWith("_SHARED")) return t("auditEvents", "shared");
+    if (eventType.endsWith("_CLONED")) return t("auditEvents", "cloned");
+    if (eventType.endsWith("_PIN_ROTATED")) return t("auditEvents", "pinRotated");
+    if (eventType.endsWith("_STATUS_CHANGED")) return t("auditEvents", "statusChanged");
+    if (eventType.endsWith("_ACTIVATED")) return t("auditEvents", "activated");
+    if (eventType.endsWith("_SET_CREATED")) return t("auditEvents", "setCreated");
+    if (eventType.endsWith("_OCR_APPLIED")) return t("auditEvents", "ocrApplied");
+    if (eventType === "AUTH_LOGIN") return t("auditEvents", "login");
+    if (eventType === "AUTH_LOGOUT") return t("auditEvents", "logout");
+    if (eventType === "AUTH_SESSION_AUTO_KEPT") return "Session kept";
+    if (eventType === "AUTH_SESSION_AUTO_KICK") return "Session kicked";
+    if (eventType === "PUBLIC_ACCESS_ATTEMPT") return t("auditEvents", "accessAttempt");
+    return eventType;
 }
 
-function getEventLabel(eventType: string, t: ReturnType<typeof useI18n>["t"]): string {
-  const labelKey = getEvent(eventType).labelKey as AuditEventLabelKey | "";
-  return labelKey ? t("auditEvents", labelKey) : eventType;
-}
+function EventChip({ eventType, t }: { eventType: string; t: ReturnType<typeof useI18n>["t"] }) {
+    const ev = EVENT_REGISTRY[eventType];
+    const label = getEventTypeLabel(eventType, t);
 
-// ─── Badge ────────────────────────────────────────────────────────────────────
-
-function EventBadge({ eventType }: { eventType: string }) {
-  const { t } = useI18n();
-  const ev = getEvent(eventType);
-  const label = getEventLabel(eventType, t);
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 5,
-      padding: "3px 8px", borderRadius: 5,
-      fontSize: 11, fontWeight: 700, letterSpacing: "0.04em",
-      color: ev.color, background: ev.bg, border: `1px solid ${ev.color}28`,
-      whiteSpace: "nowrap",
-    }}>
-      {ev.group && (
-        <span style={{ opacity: 0.5, fontSize: 10, fontWeight: 600 }}>{ev.group}</span>
-      )}
-      {label}
-    </span>
-  );
-}
-
-// ─── Detail diff table ────────────────────────────────────────────────────────
-
-function formatFieldName(key: string): string {
-  return key.replace(/([A-Z])/g, " $1").replace(/^[a-z]/, (c) => c.toUpperCase());
-}
-
-function DetailTable({ meta }: { meta: Record<string, unknown> }) {
-  const hasDiff =
-    "before" in meta && "after" in meta &&
-    typeof meta.before === "object" && meta.before !== null &&
-    typeof meta.after === "object" && meta.after !== null;
-
-  const extraEntries = hasDiff
-    ? Object.entries(meta).filter(([k]) => k !== "before" && k !== "after")
-    : [];
-
-  const renderValue = (v: unknown): React.ReactNode => {
-    if (v === null || v === undefined)
-      return <em style={{ color: "var(--scheme-neutral-700)" }}>—</em>;
-    if (typeof v === "boolean")
-      return <span style={{ color: v ? "#34d399" : "#f87171", fontWeight: 600 }}>{String(v)}</span>;
-    if (typeof v === "object")
-      return <span style={{ fontSize: 11, color: "var(--scheme-neutral-400)" }}>{JSON.stringify(v)}</span>;
-    const s = String(v);
-    const isId = s.length > 18 && /^[a-z0-9_-]+$/i.test(s);
     return (
-      <span style={{ fontFamily: isId ? "'JetBrains Mono','Fira Code',monospace" : "inherit", fontSize: isId ? 11 : 12 }}>
-        {s}
-      </span>
-    );
-  };
-
-  const rowBase: React.CSSProperties = {
-    display: "grid",
-    padding: "6px 14px",
-    borderBottom: "1px solid rgba(148,163,184,.06)",
-    alignItems: "center",
-    gap: 12,
-  };
-
-  const fieldLabel: React.CSSProperties = {
-    fontSize: 11,
-    fontWeight: 600,
-    color: "var(--scheme-neutral-300)",
-    letterSpacing: "0.03em",
-  };
-
-  if (hasDiff) {
-    const before = meta.before as Record<string, unknown>;
-    const after = meta.after as Record<string, unknown>;
-    const fields = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]));
-    return (
-      <div>
-        <div style={{ ...rowBase, gridTemplateColumns: "160px 1fr 1fr", background: "rgba(148,163,184,.03)", borderBottom: "1px solid rgba(148,163,184,.12)" }}>
-          <span style={fieldLabel}>Field</span>
-          <span style={fieldLabel}>Old value</span>
-          <span style={fieldLabel}>New value</span>
-        </div>
-        {fields.map((f) => {
-          const oldVal = before[f];
-          const newVal = after[f];
-          const changed = JSON.stringify(oldVal) !== JSON.stringify(newVal);
-          return (
-            <div key={f} style={{ ...rowBase, gridTemplateColumns: "160px 1fr 1fr", background: changed ? "rgba(251,191,36,.04)" : undefined }}>
-              <span style={fieldLabel}>{formatFieldName(f)}</span>
-              <span style={{ fontSize: 12, color: "var(--scheme-neutral-400)" }}>{renderValue(oldVal)}</span>
-              <span style={{ fontSize: 12, color: changed ? "#fbbf24" : "var(--scheme-neutral-200)", fontWeight: changed ? 600 : 400 }}>{renderValue(newVal)}</span>
-            </div>
-          );
-        })}
-        {extraEntries.map(([k, v]) => (
-          <div key={k} style={{ ...rowBase, gridTemplateColumns: "160px 1fr" }}>
-            <span style={fieldLabel}>{formatFieldName(k)}</span>
-            <span style={{ fontSize: 12, color: "var(--scheme-neutral-100)" }}>{renderValue(v)}</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  // Flat key-value — no header
-  return (
-    <div>
-      {Object.entries(meta).map(([k, v]) => (
-        <div key={k} style={{ ...rowBase, gridTemplateColumns: "180px 1fr" }}>
-          <span style={fieldLabel}>{formatFieldName(k)}</span>
-          <span style={{ fontSize: 12, color: "var(--scheme-neutral-100)" }}>{renderValue(v)}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Custom log table ─────────────────────────────────────────────────────────
-
-const COL_WIDTHS = ["160px", "1fr", "120px", "140px", "40px", "155px"];
-const COL_LABELS = ["Event", "Actor", "Target", "Target ID", "", "Timestamp"];
-
-function LogTable({ rows, expandedId, onToggle }: {
-  rows: AuditLogItem[];
-  expandedId: string | null;
-  onToggle: (id: string, hasMeta: boolean) => void;
-}) {
-  const gridCols = COL_WIDTHS.join(" ");
-  const headerCell: React.CSSProperties = {
-    padding: "8px 12px", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
-    textTransform: "uppercase", color: "var(--scheme-neutral-500)",
-  };
-
-  return (
-    <div style={{ width: "100%" }}>
-      {/* Header */}
-      <div style={{
-        display: "grid", gridTemplateColumns: gridCols,
-        borderBottom: "1px solid rgba(148,163,184,.1)",
-        background: "rgba(148,163,184,.04)",
-      }}>
-        {COL_LABELS.map((l, i) => (
-          <div key={i} style={headerCell}>{l}</div>
-        ))}
-      </div>
-
-      {/* Rows */}
-      {rows.length === 0 && (
-        <div style={{ padding: "32px", textAlign: "center", color: "var(--scheme-neutral-600)", fontSize: 13 }}>
-          No audit log entries found.
-        </div>
-      )}
-      {rows.map((log) => {
-        const name = (log as AuditLogItem & { actorName?: string | null }).actorName;
-        const hasMeta = !!(log.metadataJson && Object.keys(log.metadataJson).length > 0);
-        const isExpanded = expandedId === log.id;
-
-        const rowStyle: React.CSSProperties = {
-          display: "grid", gridTemplateColumns: gridCols, alignItems: "center",
-          borderBottom: isExpanded ? "none" : "1px solid rgba(148,163,184,.07)",
-          cursor: hasMeta ? "pointer" : "default",
-          background: isExpanded ? "rgba(148,163,184,.06)" : undefined,
-          transition: "background .1s",
-        };
-
-        return (
-          <div key={log.id}>
-            <div
-              style={rowStyle}
-              onClick={() => onToggle(log.id, hasMeta)}
-              onMouseEnter={(e) => { if (!isExpanded) (e.currentTarget as HTMLDivElement).style.background = "rgba(148,163,184,.04)"; }}
-              onMouseLeave={(e) => { if (!isExpanded) (e.currentTarget as HTMLDivElement).style.background = ""; }}
-            >
-              {/* Event */}
-              <div style={{ padding: "10px 12px" }}>
-                <EventBadge eventType={log.eventType} />
-              </div>
-
-              {/* Actor */}
-              <div style={{ padding: "10px 12px" }}>
-                {name ? (
-                  <span>
-                    <span style={{ fontSize: 13, fontWeight: 500 }}>{name}</span>
-                    {log.actorEmail && (
-                      <span style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginLeft: 6 }}>{log.actorEmail}</span>
+        <Chip
+            label={
+                <span>
+                    {ev?.group && (
+                        <span style={{ opacity: 0.55, fontSize: 10, fontWeight: 600, marginRight: 4 }}>
+                            {ev.group}
+                        </span>
                     )}
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 13, color: "var(--scheme-neutral-400)" }}>
-                    {log.actorEmail ?? <em style={{ color: "var(--scheme-neutral-600)" }}>system</em>}
-                  </span>
-                )}
-              </div>
-
-              {/* Target */}
-              <div style={{ padding: "10px 12px", fontSize: 11, fontWeight: 700, color: "var(--scheme-neutral-400)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                {log.targetType}
-              </div>
-
-              {/* Target ID */}
-              <div style={{ padding: "10px 12px" }}>
-                <span title={log.targetId ?? undefined} style={{ fontFamily: "'JetBrains Mono','Fira Code',monospace", fontSize: 11, color: "var(--scheme-neutral-500)", cursor: "default" }}>
-                  {log.targetId ? log.targetId.slice(0, 10) + "…" : "—"}
+                    {label}
                 </span>
-              </div>
-
-              {/* Expand toggle */}
-              <div style={{ padding: "10px 4px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {hasMeta && (
-                  <span style={{ fontSize: 10, color: "var(--scheme-neutral-500)", transition: "transform .15s", display: "inline-block", transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
-                )}
-              </div>
-
-              {/* Timestamp */}
-              <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--scheme-neutral-500)", whiteSpace: "nowrap" }}>
-                {new Date(log.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </div>
-            </div>
-
-            {/* Expanded detail row */}
-            {isExpanded && hasMeta && (
-              <div style={{
-                borderBottom: "1px solid rgba(148,163,184,.1)",
-                borderTop: "1px solid rgba(148,163,184,.1)",
-                background: "rgba(148,163,184,.08)",
-              }}>
-                <DetailTable meta={log.metadataJson!} />
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
+            }
+            size="small"
+            sx={{
+                fontSize: 11,
+                height: 22,
+                fontWeight: 700,
+                color: ev?.color ?? "var(--scheme-neutral-400)",
+                backgroundColor: ev?.bg ?? "rgba(148,163,184,.10)",
+                border: `1px solid ${ev?.color ?? "#94a3b8"}28`,
+                "& .MuiChip-label": { px: "8px" },
+            }}
+        />
+    );
 }
 
 // ─── Main module ──────────────────────────────────────────────────────────────
 
-export function AuditLogsModule({ session: _session, actions, onNotify: _onNotify, onActionButtons }: AuditLogsModuleProps) {
-  const { t } = useI18n();
-  const {
-    logs,
-    total,
-    page,
-    totalPages,
-    setPage,
-    loading, errorText, refresh,
-    searchQuery, setSearchQuery,
-    filterEventType, setFilterEventType,
-    filterDateFrom, setFilterDateFrom,
-    filterDateTo, setFilterDateTo,
-    filteredLogs, handleExportCsv,
-  } = actions;
+export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActionButtons }: AuditLogsModuleProps) {
+    const { t } = useI18n();
+    const { preferences } = useUserPreferences();
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+    const getTargetRoute = useCallback((targetType: string, targetId: string): string | null => {
+        switch (targetType) {
+            case "USER": return `/internal/users/${targetId}/edit`;
+            case "AGENCY": return `/internal/agencies/${targetId}/edit`;
+            case "CLIENT": return `/internal/clients/${targetId}/edit`;
+            case "SIMULATION": return `/internal/simulations/${targetId}`;
+            case "BASE_VALUE_SET": return `/internal/base-values/${targetId}/edit`;
+            default: return null;
+        }
+    }, []);
 
-  useEffect(() => {
-    setExpandedId(null);
-  }, [page, searchQuery, filterEventType, filterDateFrom, filterDateTo]);
+    const {
+        logs,
+        total,
+        page,
+        pageSize,
+        totalPages,
+        setPage,
+        setPageSize,
+        loading,
+        errorText,
+        refresh,
+        searchQuery,
+        setSearchQuery,
+        filterEventType,
+        setFilterEventType,
+        filterDateFrom,
+        setFilterDateFrom,
+        filterDateTo,
+        setFilterDateTo,
+        filterActorSearch,
+        setFilterActorSearch,
+        filterTargetType,
+        setFilterTargetType,
+        filteredLogs,
+        handleExportCsv,
+    } = actions;
 
-  // Render action buttons for topbar
-  useLayoutEffect(() => {
-    onActionButtons?.(
-      <>
-        <Button variant="secondary" size="s" onClick={handleExportCsv} label={t("auditLogsModule", "exportCsv")} disabled={filteredLogs.length === 0} />
-        <Button variant="secondary" size="s" onClick={() => refresh()} label={t("actions", "refresh")} loading={loading} />
-      </>
+    // Local (pending) filter state — applied on Search click
+    const [localEventType, setLocalEventType] = useState(filterEventType);
+    const [localDateFrom, setLocalDateFrom] = useState<Date | null>(
+        filterDateFrom ? new Date(filterDateFrom) : null
     );
-    return () => onActionButtons?.(null);
-  }, [onActionButtons, handleExportCsv, t, filteredLogs.length, refresh, loading]);
+    const [localDateTo, setLocalDateTo] = useState<Date | null>(
+        filterDateTo ? new Date(filterDateTo) : null
+    );
+    const [localActorSearch, setLocalActorSearch] = useState(filterActorSearch);
+    const [localTargetType, setLocalTargetType] = useState(filterTargetType);
 
-  const safePage = Math.min(page, Math.max(totalPages, 1));
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const handleToggle = (id: string, hasMeta: boolean) => {
-    if (!hasMeta) return;
-    setExpandedId((prev) => (prev === id ? null : id));
-  };
+    // Agency name resolution cache
+    const agenciesCacheRef = React.useRef<Map<string, string>>(new Map());
+    const agenciesInFlightRef = React.useRef<Map<string, Promise<string | null>>>(new Map());
 
-  return (
-    <Column gap="24">
-      {errorText && <div className="sp-panel-error" style={{ marginBottom: 0 }}>{errorText}</div>}
+    const getAgencyName = useCallback(
+        makeGetAgencyName(session.token, agenciesCacheRef, agenciesInFlightRef),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [session.token]
+    );
 
-      {/* Toolbar */}
-      <div
-        className="panel-card"
-        style={{
-          padding: 0,
-          overflow: "hidden",
-          background: "var(--scheme-neutral-1200)",
-          border: "1px solid var(--scheme-neutral-900)",
-          borderRadius: 10,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid rgba(148,163,184,.1)", gap: 12, flexWrap: "wrap" }}>
-          {/* Search */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ position: "relative" }}>
-              <span style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--scheme-neutral-600)", fontSize: 13, pointerEvents: "none" }}>🔍</span>
-              <input
-                style={{
-                  background: "var(--scheme-neutral-1100)", border: "1px solid var(--scheme-neutral-900)",
-                  borderRadius: 6, padding: "6px 10px 6px 30px", fontSize: 13,
-                  color: "var(--scheme-neutral-100)", outline: "none", width: 220,
-                }}
-                placeholder={t("search", "auditLogs")}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
+    const getCountryName = useCallback((countryCode: string): string | null => {
+        if (!countryCode) return null;
+        try {
+            return Country.getCountryByCode(countryCode)?.name ?? null;
+        } catch {
+            return null;
+        }
+    }, []);
 
-          {/* Filters */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span className="dt-filter-label">Event</span>
-            <select
-              className="dt-filter-select"
-              value={filterEventType}
-              onChange={(e) => setFilterEventType(e.target.value)}
-            >
-              <option value="">{t("auditLogsModule", "allEvents")}</option>
-              {GROUP_ORDER.map((group) => {
-                const items = EVENT_TYPES.filter((t) => EVENT_REGISTRY[t]?.group === group.slice(0, 3) || EVENT_REGISTRY[t]?.group === group || (group === "Base Values" && EVENT_REGISTRY[t]?.group === "BV") || (group === "Public" && EVENT_REGISTRY[t]?.group === "Pub") || (group === "Simulation" && EVENT_REGISTRY[t]?.group === "Sim"));
-                if (!items.length) return null;
-                return (
-                  <optgroup key={group} label={group}>
-                    {items.map((eventType) => <option key={eventType} value={eventType}>{getEventLabel(eventType, t)}</option>)}
-                  </optgroup>
-                );
-              })}
-            </select>
+    useEffect(() => {
+        setExpandedId(null);
+    }, [page, filterEventType, filterDateFrom, filterDateTo]);
 
-            <span className="dt-filter-label">From</span>
-            <input className="dt-filter-input" type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
-            <span className="dt-filter-label">To</span>
-            <input className="dt-filter-input" type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
+    // ── Action buttons ──────────────────────────────────────────────────────
+    useLayoutEffect(() => {
+        onActionButtons?.(
+            <>
+                <OnceButton variant="secondary" size="s" onClick={handleExportCsv} label={t("auditLogsModule", "exportCsv")} disabled={filteredLogs.length === 0} />
+                <OnceButton variant="secondary" size="s" onClick={() => refresh()} label={t("actions", "refresh")} loading={loading} />
+            </>
+        );
+        return () => onActionButtons?.(null);
+    }, [onActionButtons, handleExportCsv, t, filteredLogs.length, refresh, loading]);
 
-            {(filterEventType || filterDateFrom || filterDateTo) && (
-              <button className="dt-filter-clear" onClick={() => { setFilterEventType(""); setFilterDateFrom(""); setFilterDateTo(""); }}>
-                Clear
-              </button>
+    // ── Filter helpers ──────────────────────────────────────────────────────
+
+    const toDateOnly = (date: Date | null): string => {
+        if (!date) return "";
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+    };
+
+    const handleSearch = () => {
+        setFilterEventType(localEventType);
+        setFilterDateFrom(toDateOnly(localDateFrom));
+        setFilterDateTo(toDateOnly(localDateTo));
+        setFilterActorSearch(localActorSearch);
+        setFilterTargetType(localTargetType);
+        setPage(1);
+        setExpandedId(null);
+    };
+
+    const handleClear = () => {
+        setLocalEventType("");
+        setLocalDateFrom(null);
+        setLocalDateTo(null);
+        setLocalActorSearch("");
+        setLocalTargetType("");
+        setFilterEventType("");
+        setFilterDateFrom("");
+        setFilterDateTo("");
+        setFilterActorSearch("");
+        setFilterTargetType("");
+        setSearchQuery("");
+        setPage(1);
+        setExpandedId(null);
+    };
+
+    // ── Field label resolution ──────────────────────────────────────────────
+
+    const resolveSimulationFieldLabel = useCallback((rawKey: string): string | null => {
+        const segments = rawKey.split(".");
+        const last = segments[segments.length - 1] ?? rawKey;
+        const normalizedPath = normalizeAuditFieldKey(rawKey);
+        const normalizedLast = normalizeAuditFieldKey(last);
+
+        const pick = (labelKey: "fieldAnnualConsumption" | "fieldCups" | "fieldCurrentInvoice" | "fieldConsumption" | "fieldReactiveEnergy" | "fieldMeterRental" | "fieldOtherCharges" | "sectionInvoiceData" | "sectionClientInfo" | "fieldCurrentSupplier" | "fieldSalesAgent" | "fieldAccessTariff" | "fieldVat" | "fieldIgic" | "fieldStartDate" | "fieldEndDate" | "fieldAddress" | "fieldClientName") =>
+            t("simulationForm", labelKey);
+
+        if (normalizedLast === "invoicedata") return pick("sectionInvoiceData");
+        if (normalizedLast === "clientdata") return pick("sectionClientInfo");
+        if (normalizedLast === "annualconsumption" || normalizedLast === "consumoanual" || normalizedLast === "consumoanualkwh" || normalizedPath.includes("annualconsumption") || normalizedPath.includes("consumoanual")) return pick("fieldAnnualConsumption");
+        if (normalizedLast === "cups" || normalizedPath.endsWith("clientdatacups") || normalizedPath.includes("fieldcups")) return pick("fieldCups");
+        if (normalizedLast === "currentinvoice" || normalizedPath.includes("currentinvoice")) return pick("fieldCurrentInvoice");
+        if (normalizedLast === "cif") return t("clientFormPage", "fieldCif");
+        if (normalizedLast === "ivatasa" || normalizedLast === "iva") return pick("fieldVat");
+        if (normalizedLast === "igictasa" || normalizedLast === "igic") return pick("fieldIgic");
+        if (normalizedLast === "fechaini" || normalizedLast === "startdate") return pick("fieldStartDate");
+        if (normalizedLast === "fechafin" || normalizedLast === "enddate") return pick("fieldEndDate");
+        if (normalizedLast === "direccion" || normalizedLast === "address") return pick("fieldAddress");
+        if (normalizedLast === "clientename" || normalizedLast === "clientname") return pick("fieldClientName");
+
+        const periodMatch = normalizedLast.match(/^(consumop|potenciap|precioenergiap|preciopotenciap)(\d+)$/);
+        if (periodMatch) {
+            const [, prefix, num] = periodMatch;
+            const period = `P${num}`;
+            if (prefix === "consumop") return `${pick("fieldConsumption")} ${period}`;
+            if (prefix === "potenciap") return `Power ${period}`;
+            if (prefix === "precioenergiap") return `Energy price ${period}`;
+            if (prefix === "preciopotenciap") return `Power price ${period}`;
+        }
+
+        if (normalizedLast === "consumption" || normalizedLast === "consumo" || normalizedPath.includes("totalconsumption")) return pick("fieldConsumption");
+        if (normalizedLast === "accesstariff" || normalizedLast === "tarifaacceso" || normalizedPath.includes("accesstariff") || normalizedPath.includes("tarifaacceso")) return pick("fieldAccessTariff");
+        if (normalizedLast === "currentsupplier" || normalizedLast === "comercializadoraactual" || normalizedPath.includes("currentsupplier")) return pick("fieldCurrentSupplier");
+        if (normalizedLast === "salesagent" || normalizedLast === "comercial" || normalizedPath.endsWith("gascomercial") || normalizedPath.includes("salesagent")) return pick("fieldSalesAgent");
+        if (normalizedLast === "reactiveenergy" || normalizedPath.includes("energiareactiva")) return pick("fieldReactiveEnergy");
+        if (normalizedLast === "meterrental" || normalizedPath.includes("alquilerequipo") || normalizedPath.includes("meterrental")) return pick("fieldMeterRental");
+        if (normalizedLast === "othercharges" || normalizedPath.includes("otroscargos") || normalizedPath.includes("othercharges")) return pick("fieldOtherCharges");
+
+        return null;
+    }, [t]);
+
+    const resolveFieldLabel = useCallback((key: string): string => {
+        const simLabel = resolveSimulationFieldLabel(key);
+        if (simLabel) return simLabel;
+
+        const fallbackSegment = key.includes(".") ? (key.split(".").pop() ?? key) : key;
+
+        switch (fallbackSegment) {
+            case "id": return t("columns", "id");
+            case "name": return t("columns", "name");
+            case "role": return t("columns", "role");
+            case "status": return t("columns", "status");
+            case "agency":
+            case "agencyId": return t("columns", "agency");
+            case "isActive": return t("userFormPage", "fieldIsActive");
+            case "fullName": return t("userFormPage", "fieldFullName");
+            case "email": return t("userFormPage", "fieldEmail");
+            case "mobilePhone": return t("userFormPage", "fieldMobilePhone");
+            case "commercialPhone": return t("userFormPage", "fieldCommercialPhone");
+            case "commercialEmail": return t("userFormPage", "fieldCommercialEmail");
+            case "otherDetails": return t("userFormPage", "fieldOtherDetails");
+            case "maxActiveDevices": return "Max Active Devices";
+            case "cif": return t("clientFormPage", "fieldCif");
+            case "contactName": return t("clientFormPage", "fieldContactName");
+            case "contactPhone": return t("clientFormPage", "fieldContactPhone");
+            case "contactEmail": return t("clientFormPage", "fieldContactEmail");
+            case "street": return t("addressForm", "streetLabel");
+            case "city": return t("addressForm", "cityLabel");
+            case "postalCode": return t("addressForm", "postalCodeLabel");
+            case "province": return t("addressForm", "provinceLabel");
+            case "country": return t("addressForm", "countryLabel");
+            default: return formatFieldName(fallbackSegment);
+        }
+    }, [t, resolveSimulationFieldLabel]);
+
+    const renderValue = useCallback((v: unknown, fieldKey?: string): React.ReactNode => {
+        if (v === null || v === undefined)
+            return <em style={{ color: "var(--scheme-neutral-700)" }}>—</em>;
+        if (typeof v === "boolean")
+            return <span style={{ color: v ? "#34d399" : "#f87171", fontWeight: 600 }}>{String(v)}</span>;
+        if (typeof v === "object") {
+            const raw = JSON.stringify(v);
+            const preview = raw.length > 160 ? `${raw.slice(0, 160)}…` : raw;
+            return (
+                <span title={raw} style={{ display: "inline-block", maxWidth: "100%", fontSize: 11, color: "var(--scheme-neutral-400)", whiteSpace: "normal", wordBreak: "break-word" }}>
+                    {preview}
+                </span>
+            );
+        }
+
+        const s = String(v);
+
+        if (fieldKey) {
+            const nk = fieldKey.toLowerCase();
+            if (nk.includes("agency") && s.length > 18 && /^[a-z0-9_-]+$/i.test(s)) {
+                return <AgencyValueResolver agencyId={s} getAgencyName={getAgencyName} />;
+            }
+            if (nk === "country" || nk.endsWith(".country")) {
+                const name = getCountryName(s);
+                if (name) return <span>{s} ({name})</span>;
+            }
+        }
+
+        const isId = s.length > 18 && /^[a-z0-9_-]+$/i.test(s);
+        const preview = s.length > 160 ? `${s.slice(0, 160)}…` : s;
+        return (
+            <span title={s} style={{ display: "inline-block", maxWidth: "100%", fontFamily: isId ? "'JetBrains Mono','Fira Code',monospace" : "inherit", fontSize: isId ? 11 : 12, whiteSpace: "normal", wordBreak: "break-word" }}>
+                {preview}
+            </span>
+        );
+    }, [getAgencyName, getCountryName]);
+
+    // ── Date format ─────────────────────────────────────────────────────────
+
+    const formatDate = useCallback((isoString: string) => {
+        try {
+            const date = new Date(isoString);
+            const formatted = formatDisplayDate(date, preferences.dateFormat);
+            const hours = String(date.getHours()).padStart(2, "0");
+            const minutes = String(date.getMinutes()).padStart(2, "0");
+            const seconds = String(date.getSeconds()).padStart(2, "0");
+            return `${formatted} ${hours}:${minutes}:${seconds}`;
+        } catch {
+            return isoString;
+        }
+    }, [preferences.dateFormat]);
+
+    // ── Event type options (grouped, filtered by selected target) ────────────
+
+    const TARGET_TO_GROUPS: Record<string, string[]> = {
+        SIMULATION: ["Sim"],
+        USER: ["User"],
+        AGENCY: ["Agency"],
+        CLIENT: ["Client"],
+        BASE_VALUE_SET: ["BV"],
+    };
+
+    const eventTypeOptions = useMemo<FormSelectOption[]>(() => {
+        const inLogs = new Set(logs.map((l) => l.eventType));
+        const allTypes = Array.from(new Set([...ALL_EVENT_TYPES, ...Array.from(inLogs)])).sort();
+
+        const allowedGroups = localTargetType ? TARGET_TO_GROUPS[localTargetType] : null;
+
+        const opts: FormSelectOption[] = [
+            { value: "", label: t("auditLogsModule", "allEvents") },
+        ];
+
+        for (const group of GROUP_CONFIG) {
+            if (allowedGroups && !group.groupIds.some((g) => allowedGroups.includes(g))) continue;
+
+            const groupTypes = allTypes.filter((et) => {
+                const ev = EVENT_REGISTRY[et];
+                return ev && group.groupIds.includes(ev.group);
+            });
+            if (!groupTypes.length) continue;
+
+            const groupLabel = t("auditLogsModule", group.labelKey as Parameters<typeof t>[1]);
+            for (const et of groupTypes) {
+                opts.push({
+                    value: et,
+                    label: getEventTypeLabel(et, t),
+                    secondaryLabel: et,
+                    group: groupLabel,
+                });
+            }
+        }
+
+        return opts;
+    }, [logs, t, localTargetType]);
+
+    // ── Row toggle ──────────────────────────────────────────────────────────
+
+    const handleToggle = (id: string, hasMeta: boolean) => {
+        if (!hasMeta) return;
+        setExpandedId((prev) => (prev === id ? null : id));
+    };
+
+    const safePage = Math.min(page, Math.max(totalPages, 1));
+
+    return (
+        <Column gap="24" style={{ backgroundColor: 'white' }}>
+            {errorText && (
+                <Box sx={{ p: 2, color: "var(--scheme-danger-500)", backgroundColor: "rgba(239,68,68,.05)", borderRadius: 1 }}>
+                    <Typography variant="body2">{errorText}</Typography>
+                </Box>
             )}
-          </div>
 
-          <span className="dt-meta-pill">{total} entries</span>
-        </div>
+            {/* Filters */}
+            <Box
+                sx={{
+                    pt: 2,
+                    px: 2,
+                    backgroundColor: 'white'
+                }}
+            >
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} flexWrap="wrap" sx={{ backgroundColor: 'white' }}>
+                    <Box sx={{ minWidth: 180, flex: 1, }}>
+                        <FormSelect
+                            label=""
+                            options={[
+                                { value: "", label: "All targets" },
+                                { value: "SIMULATION", label: "Simulation" },
+                                { value: "USER", label: "User" },
+                                { value: "AGENCY", label: "Agency" },
+                                { value: "CLIENT", label: "Client" },
+                                { value: "BASE_VALUE_SET", label: "Base Value Set" },
+                            ]}
+                            value={localTargetType}
+                            onChange={(value) => {
+                                const next = String(value ?? "");
+                                setLocalTargetType(next);
+                                // reset event type if it no longer belongs to the new target
+                                if (next && localEventType) {
+                                    const ev = EVENT_REGISTRY[localEventType];
+                                    const allowed = TARGET_TO_GROUPS[next];
+                                    if (!ev || !allowed?.includes(ev.group)) {
+                                        setLocalEventType("");
+                                    }
+                                }
+                            }}
+                        />
+                    </Box>
 
-        {/* Table */}
-        {loading ? (
-          <div style={{ padding: "40px", textAlign: "center", color: "var(--scheme-neutral-600)", fontSize: 13 }}>Loading…</div>
-        ) : (
-          <LogTable rows={logs} expandedId={expandedId} onToggle={handleToggle} />
-        )}
+                    <Box sx={{ minWidth: 200, flex: 1 }}>
+                        <FormSelect
+                            label=""
+                            options={eventTypeOptions}
+                            value={localEventType}
+                            onChange={(value) => setLocalEventType(String(value ?? ""))}
+                        />
+                    </Box>
 
-        {/* Pagination */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderTop: "1px solid rgba(148,163,184,.1)", fontSize: 13, color: "var(--scheme-neutral-500)" }}>
-          <span>Page {safePage} of {totalPages}</span>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button
-              onClick={() => { setPage(Math.max(1, safePage - 1)); setExpandedId(null); }}
-              disabled={safePage <= 1}
-              style={{ padding: "4px 10px", borderRadius: 5, border: "1px solid rgba(148,163,184,.18)", background: "transparent", color: "var(--scheme-neutral-300)", cursor: safePage <= 1 ? "default" : "pointer", opacity: safePage <= 1 ? 0.4 : 1, fontSize: 12 }}
-            >← Prev</button>
-            <button
-              onClick={() => { setPage(Math.min(totalPages, safePage + 1)); setExpandedId(null); }}
-              disabled={safePage >= totalPages}
-              style={{ padding: "4px 10px", borderRadius: 5, border: "1px solid rgba(148,163,184,.18)", background: "transparent", color: "var(--scheme-neutral-300)", cursor: safePage >= totalPages ? "default" : "pointer", opacity: safePage >= totalPages ? 0.4 : 1, fontSize: 12 }}
-            >Next →</button>
-          </div>
-        </div>
-      </div>
-    </Column>
-  );
+                    <Box sx={{ minWidth: 200, flex: 1 }}>
+                        <FormInput
+                            placeholder="Search by name or email…"
+                            value={localActorSearch}
+                            onChange={(e) => setLocalActorSearch(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                        />
+                    </Box>
+
+                    <Box sx={{ minWidth: 280, flex: 2 }}>
+                        <DateRangePicker
+                            variant="inline"
+                            startDate={localDateFrom}
+                            endDate={localDateTo}
+                            onChange={(startDate, endDate) => {
+                                setLocalDateFrom(startDate);
+                                setLocalDateTo(endDate);
+                            }}
+                        />
+                    </Box>
+
+                    <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: "stretch", md: "flex-end" } }}>
+                        <Button variant="contained" onClick={handleSearch} >
+                            <SearchIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                            {t("common", "search")}
+                        </Button>
+                        <Button variant="outlined" onClick={handleClear}>
+                            <ClearIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                            {t("dataTable", "clearFilters")}
+                        </Button>
+                    </Stack>
+                </Stack>
+            </Box>
+
+            {/* Table card */}
+            <Box
+                sx={{
+                    overflow: "hidden",
+                    border: "1px solid var(--scheme-neutral-900)",
+                }}
+            >
+                {loading && logs.length === 0 ? (
+                    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 300 }}>
+                        <CircularProgress size={40} />
+                    </Box>
+                ) : logs.length === 0 ? (
+                    <Box sx={{ p: 3, textAlign: "center" }}>
+                        <Typography variant="body2" sx={{ color: "var(--scheme-neutral-600)" }}>
+                            {t("auditLogsModal", "noLogs")}
+                        </Typography>
+                    </Box>
+                ) : (
+                    <TableContainer component={Paper} sx={{ borderRadius: 0 }}>
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow
+                                    sx={{
+                                        backgroundColor: "var(--scheme-neutral-950)",
+                                        "& th": {
+                                            color: "var(--scheme-neutral-600)",
+                                            fontWeight: 700,
+                                            fontSize: "0.7rem",
+                                            textTransform: "uppercase",
+                                            letterSpacing: "0.08em",
+                                            borderBottom: "1px solid var(--scheme-neutral-900)",
+                                            padding: "14px 12px",
+                                            backgroundColor: "var(--scheme-neutral-950)",
+                                        },
+                                    }}
+                                >
+                                    <TableCell>{t("auditLogsModal", "eventType")}</TableCell>
+                                    <TableCell>{t("auditLogsModal", "actor")}</TableCell>
+                                    <TableCell>Target</TableCell>
+                                    <TableCell>{t("columns", "name")}</TableCell>
+                                    <TableCell>{t("auditLogsModal", "timestamp")}</TableCell>
+                                    <TableCell align="right">{t("auditLogsModal", "details")}</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {logs.map((log) => {
+                                    const hasChanges = log.metadataJson && "before" in log.metadataJson && "after" in log.metadataJson;
+                                    const isExpanded = expandedId === log.id;
+                                    return (
+                                        <React.Fragment key={log.id}>
+                                            <TableRow
+                                                hover
+                                                onClick={() => handleToggle(log.id, !!hasChanges)}
+                                                sx={{
+                                                    cursor: hasChanges ? "pointer" : "default",
+                                                    backgroundColor: isExpanded ? "var(--scheme-neutral-1045)" : undefined,
+                                                    "&:hover": { backgroundColor: "var(--scheme-neutral-1045)" },
+                                                    "& td": {
+                                                        borderBottom: "1px solid var(--scheme-neutral-920)",
+                                                        padding: "10px 12px",
+                                                    },
+                                                }}
+                                            >
+                                                {/* Event */}
+                                                <TableCell>
+                                                    <EventChip eventType={log.eventType} t={t} />
+                                                </TableCell>
+
+                                                {/* Actor */}
+                                                <TableCell>
+                                                    <Stack spacing={0.5}>
+                                                        <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--scheme-neutral-100)" }}>
+                                                            {log.actorName || "System"}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ color: "var(--scheme-neutral-500)", fontSize: "0.65rem" }}>
+                                                            {log.actorEmail || "—"}
+                                                        </Typography>
+                                                    </Stack>
+                                                </TableCell>
+
+                                                {/* Target */}
+                                                <TableCell>
+                                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--scheme-neutral-400)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                                        {log.targetType || "—"}
+                                                    </Typography>
+                                                </TableCell>
+
+                                                {/* Target ID */}
+                                                <TableCell>
+                                                    {(() => {
+                                                        const route = getTargetRoute(log.targetType, log.targetId);
+                                                        const label = log.targetName ?? (log.targetId ? `${log.targetId.slice(0, 10)}…` : "—");
+                                                        if (route && log.targetName) {
+                                                            return (
+                                                                <Typography
+                                                                    variant="caption"
+                                                                    onClick={(e) => { e.stopPropagation(); window.open(route, "_blank"); }}
+                                                                    title={log.targetId ?? undefined}
+                                                                    sx={{
+                                                                        fontSize: "0.72rem",
+                                                                        color: "primary.main",
+                                                                        cursor: "pointer",
+                                                                        fontWeight: 600,
+                                                                        "&:hover": { textDecoration: "underline" },
+                                                                        display: 'flex',
+                                                                        alignItems: 'center'
+                                                                    }}
+                                                                >
+                                                                    {label}
+                                                                    <LaunchIcon fontSize="small" sx={{ ml: 0.5 }} />
+                                                                </Typography>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <Typography
+                                                                variant="caption"
+                                                                title={log.targetId ?? undefined}
+                                                                sx={{ fontFamily: "'JetBrains Mono','Fira Code',monospace", fontSize: "0.68rem", color: "var(--scheme-neutral-500)" }}
+                                                            >
+                                                                {label}
+                                                            </Typography>
+                                                        );
+                                                    })()}
+                                                </TableCell>
+
+                                                {/* Timestamp */}
+                                                <TableCell>
+                                                    <Typography variant="caption" sx={{ color: "var(--scheme-neutral-300)", whiteSpace: "nowrap" }}>
+                                                        {formatDate(log.createdAt)}
+                                                    </Typography>
+                                                </TableCell>
+
+                                                {/* Expand toggle */}
+                                                <TableCell align="right">
+                                                    {hasChanges ? (
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={(e) => { e.stopPropagation(); handleToggle(log.id, true); }}
+                                                            sx={{
+                                                                color: "var(--scheme-primary-500)",
+                                                                transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                                                                transition: "transform 200ms ease",
+                                                            }}
+                                                        >
+                                                            <ExpandMoreIcon fontSize="small" />
+                                                        </IconButton>
+                                                    ) : (
+                                                        <Typography variant="caption" sx={{ color: "var(--scheme-neutral-600)" }}>—</Typography>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+
+                                            {/* Collapsible field change details */}
+                                            {hasChanges && (
+                                                <TableRow
+                                                    sx={{
+                                                        backgroundColor: "var(--scheme-neutral-1045)",
+                                                        "& td": {
+                                                            borderBottom: "1px solid var(--scheme-neutral-920)",
+                                                            padding: 0,
+                                                        },
+                                                    }}
+                                                >
+                                                    <TableCell colSpan={6}>
+                                                        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                                            <FieldChangeDetails
+                                                                metadata={log.metadataJson as Record<string, unknown>}
+                                                                resolveFieldLabel={resolveFieldLabel}
+                                                                renderValue={renderValue}
+                                                            />
+                                                        </Collapse>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                )}
+
+                {/* Pagination */}
+                {total > 0 && (
+                    <TablePagination
+                        rowsPerPageOptions={[10, 25, 50, 100]}
+                        component="div"
+                        count={total}
+                        rowsPerPage={pageSize}
+                        page={safePage - 1}
+                        onPageChange={(_e, newPage) => setPage(newPage + 1)}
+                        onRowsPerPageChange={(e) => { setPageSize(parseInt(e.target.value, 10)); setPage(1); }}
+                        sx={{
+                            backgroundColor: "var(--scheme-neutral-950)",
+                            color: "var(--scheme-neutral-500)",
+                            borderTop: "1px solid var(--scheme-neutral-900)",
+                            "& .MuiTablePagination-toolbar": { paddingRight: "8px", minHeight: "48px" },
+                            "& .MuiTablePagination-select": { color: "var(--scheme-neutral-400)" },
+                            "& .MuiIconButton-root": { color: "var(--scheme-neutral-500)" },
+                        }}
+                    />
+                )}
+            </Box>
+        </Column>
+    );
 }

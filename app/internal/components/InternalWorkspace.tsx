@@ -136,7 +136,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
   const permMap = buildPermissionMap(permItems);
   const canDo = useCallback(
     (userRole: string, key: PermissionKey): boolean => {
-      if (userRole === "ADMIN") return true;
+      if (userRole === "ADMIN" || userRole === "SYS_ADMIN") return true;
       const dbKey = `${userRole}::${key}`;
       if (permMap.has(dbKey)) return permMap.get(dbKey) === true;
       return ROLE_PERMISSION_DEFAULTS[userRole]?.[key] ?? false;
@@ -151,7 +151,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
 
   // Wait for DB permissions to load before rendering the menu.
   // ADMIN skips this gate — canDo always returns true for them.
-  if (role !== "ADMIN" && !permLoaded) return null;
+  if (role !== "ADMIN" && role !== "SYS_ADMIN" && !permLoaded) return null;
 
   // Section-level access guard — fully driven by DB permissions (canDo handles ADMIN)
   const sectionAllowed: Record<string, boolean> = {

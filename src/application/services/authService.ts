@@ -629,7 +629,7 @@ export class AuthService {
     actor: { role: UserRole; agencyId: string },
     payload: CreateUserInput,
   ) {
-    if (actor.role === UserRole.ADMIN) {
+    if (actor.role === UserRole.ADMIN || actor.role === UserRole.SYS_ADMIN) {
       return;
     }
 

@@ -5,7 +5,11 @@ import { NotFoundError, ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole, assertPermission } from "@/application/middleware/rbac";
+import {
+  assertRole,
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 
@@ -162,7 +166,7 @@ export const GET = withErrorHandler(
       throw new ValidationError("Agency id parameter is required");
     }
 
-    if (auth.role !== UserRole.ADMIN && auth.agencyId !== id) {
+    if (!isElevatedRole(auth.role) && auth.agencyId !== id) {
       throw new NotFoundError("Agency", id);
     }
 

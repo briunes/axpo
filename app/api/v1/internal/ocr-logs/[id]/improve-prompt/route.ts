@@ -3,7 +3,66 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
-import { convertPdfToImages } from "@/lib/pdfToImage";
+import { convertPdfToImages, OCR_PDF_RENDER_SCALE } from "@/lib/pdfToImage";
+
+const COMMON_CORRECTION_FIELDS = new Set([
+  "cups",
+  "nombreTitular",
+  "personaContacto",
+  "direccion",
+  "clienteAddress",
+  "comercializadorActual",
+  "cif",
+  "tarifaAcceso",
+  "zonaGeografica",
+  "fechaInicio",
+  "fechaFin",
+  "facturaActual",
+  "alquiler",
+  "otrosCargos",
+  "ivaTasa",
+  "invoiceType",
+]);
+
+const ELECTRICITY_CORRECTION_FIELDS = new Set([
+  ...COMMON_CORRECTION_FIELDS,
+  "perfilCarga",
+  "consumoAnual",
+  "consumoP1",
+  "consumoP2",
+  "consumoP3",
+  "consumoP4",
+  "consumoP5",
+  "consumoP6",
+  "potenciaP1",
+  "potenciaP2",
+  "potenciaP3",
+  "potenciaP4",
+  "potenciaP5",
+  "potenciaP6",
+  "precioPotenciaP1",
+  "precioPotenciaP2",
+  "precioPotenciaP3",
+  "precioPotenciaP4",
+  "precioPotenciaP5",
+  "precioPotenciaP6",
+  "precioEnergiaP1",
+  "precioEnergiaP2",
+  "precioEnergiaP3",
+  "precioEnergiaP4",
+  "precioEnergiaP5",
+  "precioEnergiaP6",
+  "excesoPotencia",
+  "reactiva",
+  "impuestoElectricoTasa",
+]);
+
+const GAS_CORRECTION_FIELDS = new Set([
+  ...COMMON_CORRECTION_FIELDS,
+  "consumoTotal",
+  "impuestoHidrocarburo",
+  "telemedida",
+]);
 
 /**
  * @swagger
@@ -177,6 +236,8 @@ export const POST = withErrorHandler(
       ocrValue: unknown;
       correctedValue: unknown;
     }> = [];
+    const correctionFields =
+      invoiceType === "GAS" ? GAS_CORRECTION_FIELDS : ELECTRICITY_CORRECTION_FIELDS;
 
     const unchanged: string[] = [];
 
@@ -191,6 +252,8 @@ export const POST = withErrorHandler(
       const normalise = (v: unknown) => (typeof v === "string" ? v.trim() : v);
 
       for (const [field, ocrValue] of Object.entries(extractedFields)) {
+        if (!correctionFields.has(field)) continue;
+
         const currentValue = currentInvoiceData[field];
         const ocrNorm = normalise(ocrValue);
         const curNorm = normalise(currentValue);
@@ -207,6 +270,8 @@ export const POST = withErrorHandler(
 
       // Also flag values that OCR missed but user filled in
       for (const [field, curValue] of Object.entries(currentInvoiceData)) {
+        if (!correctionFields.has(field)) continue;
+
         if (
           !(field in extractedFields) &&
           curValue !== null &&
@@ -573,7 +638,7 @@ Return ONLY the complete new prompt text — no commentary, no markdown fences, 
             const pdfImages = await convertPdfToImages(
               Buffer.from(f.base64, "base64"),
               2,
-              1.5,
+              OCR_PDF_RENDER_SCALE,
             );
             for (const img of pdfImages) {
               resolvedFiles.push({

@@ -8,27 +8,44 @@ import { TemplatesCommunications } from "./TemplatesCommunications";
 import { SystemBusinessSettings } from "./SystemBusinessSettings";
 import { UserExperienceSettings } from "./UserExperienceSettings";
 import { IntegrationsSettings } from "./IntegrationsSettings";
+import { OcrUsageDashboard } from "./OcrUsageDashboard";
 import "./configurations.css";
 
 export interface ConfigurationsModuleProps {
     session: SessionState;
     onNotify: (message: string, tone: "success" | "error") => void;
+    role?: string;
 }
 
-type ConfigTab = "templates-communications" | "system-business" | "user-experience" | "integrations";
+type ConfigTab = "templates-communications" | "system-business" | "user-experience" | "integrations" | "ocr-usage";
 
-export function ConfigurationsModule({ session, onNotify }: ConfigurationsModuleProps) {
+export function ConfigurationsModule({ session, onNotify, role }: ConfigurationsModuleProps) {
     const { t } = useI18n();
+    const isSysAdmin = role === "SYS_ADMIN";
     const [activeTab, setActiveTab] = useState<ConfigTab>("templates-communications");
 
-    const TAB_LABELS: Record<ConfigTab, string> = {
+    const ALL_TAB_LABELS: Record<ConfigTab, string> = {
         "templates-communications": t("configurationsModule", "tabTemplatesCommunications"),
         "system-business": t("configurationsModule", "tabSystemBusiness"),
         "user-experience": t("configurationsModule", "tabUserExperience"),
         "integrations": t("configurationsModule", "tabIntegrations"),
+        "ocr-usage": t("ocrUsage", "title"),
     };
 
-    const tabIndex = (Object.keys(TAB_LABELS) as ConfigTab[]).indexOf(activeTab);
+    // SYS_ADMIN-only tabs
+    const SYS_ADMIN_TABS: ConfigTab[] = ["integrations"];
+
+    const visibleTabs = (Object.keys(ALL_TAB_LABELS) as ConfigTab[]).filter(
+        (tab) => !SYS_ADMIN_TABS.includes(tab) || isSysAdmin,
+    );
+
+    const TAB_LABELS: Partial<Record<ConfigTab, string>> = Object.fromEntries(
+        visibleTabs.map((tab) => [tab, ALL_TAB_LABELS[tab]]),
+    );
+
+    const tabIndex = visibleTabs.indexOf(activeTab);
+    // Reset active tab if it becomes invisible
+    const resolvedTab = visibleTabs.includes(activeTab) ? activeTab : visibleTabs[0];
 
     return (
         <div className="configurations-container">
@@ -40,10 +57,9 @@ export function ConfigurationsModule({ session, onNotify }: ConfigurationsModule
                 }}
             >
                 <Tabs
-                    value={tabIndex}
+                    value={visibleTabs.indexOf(resolvedTab)}
                     onChange={(_, newValue) => {
-                        const tabs = Object.keys(TAB_LABELS) as ConfigTab[];
-                        setActiveTab(tabs[newValue]);
+                        setActiveTab(visibleTabs[newValue]);
                     }}
                     sx={{
                         minHeight: 56,
@@ -53,7 +69,7 @@ export function ConfigurationsModule({ session, onNotify }: ConfigurationsModule
                         },
                     }}
                 >
-                    {(Object.keys(TAB_LABELS) as ConfigTab[]).map((tab) => (
+                    {visibleTabs.map((tab) => (
                         <Tab
                             key={tab}
                             label={TAB_LABELS[tab]}
@@ -73,17 +89,20 @@ export function ConfigurationsModule({ session, onNotify }: ConfigurationsModule
             </Box>
 
             <div className="configurations-content">
-                {activeTab === "templates-communications" && (
+                {resolvedTab === "templates-communications" && (
                     <TemplatesCommunications session={session} onNotify={onNotify} />
                 )}
-                {activeTab === "system-business" && (
-                    <SystemBusinessSettings session={session} onNotify={onNotify} />
+                {resolvedTab === "system-business" && (
+                    <SystemBusinessSettings session={session} onNotify={onNotify} role={role} />
                 )}
-                {activeTab === "user-experience" && (
+                {resolvedTab === "user-experience" && (
                     <UserExperienceSettings session={session} onNotify={onNotify} />
                 )}
-                {activeTab === "integrations" && (
+                {resolvedTab === "integrations" && (
                     <IntegrationsSettings session={session} onNotify={onNotify} />
+                )}
+                {resolvedTab === "ocr-usage" && (
+                    <OcrUsageDashboard session={session} onNotify={onNotify} />
                 )}
             </div>
         </div>

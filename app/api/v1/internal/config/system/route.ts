@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
+import { invalidateAppVersionCache } from "@/application/lib/appVersionCache";
 
 /**
  * @swagger
@@ -67,6 +68,12 @@ async function PUT(req: NextRequest) {
       where: { id: config.id },
       data: body,
     });
+  }
+
+  // If appVersion changed, invalidate the in-memory cache so all subsequent
+  // API responses immediately reflect the new version.
+  if (body.appVersion !== undefined) {
+    invalidateAppVersionCache();
   }
 
   return NextResponse.json(config);

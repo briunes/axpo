@@ -12,6 +12,7 @@ import { FormInput, FormSelect } from "../ui";
 export interface SystemBusinessSettingsProps {
     session: SessionState;
     onNotify: (message: string, tone: "success" | "error") => void;
+    role?: string;
 }
 
 type BusinessTab = "general" | "simulation" | "clients" | "sessions" | "calculation" | "pdf-defaults" | "cron";
@@ -101,16 +102,17 @@ const DEFAULT_CONFIG: BusinessConfig = {
     maintenanceMessage: "",
 };
 
-export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSettingsProps) {
+export function SystemBusinessSettings({ session, onNotify, role }: SystemBusinessSettingsProps) {
     const { t } = useI18n();
-    const [activeTab, setActiveTab] = useState<BusinessTab>("general");
+    const isSysAdmin = role === "SYS_ADMIN";
+    const [activeTab, setActiveTab] = useState<BusinessTab>(isSysAdmin ? "general" : "simulation");
     const [calcEnergyTab, setCalcEnergyTab] = useState<"electricity" | "gas">("electricity");
     const [config, setConfig] = useState<BusinessConfig>(DEFAULT_CONFIG);
     const [isDirty, setIsDirty] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [pdfTemplates, setPdfTemplates] = useState<any[]>([]);
 
-    const BUSINESS_TABS: Record<BusinessTab, string> = {
+    const ALL_BUSINESS_TABS: Record<BusinessTab, string> = {
         general: "General",
         simulation: t("systemSettings", "tabSimulation"),
         clients: t("systemSettings", "tabClients"),
@@ -119,6 +121,16 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
         "pdf-defaults": t("systemSettings", "tabPdfDefaults"),
         cron: "Cron Jobs",
     };
+
+    // general and cron are SYS_ADMIN-only
+    const SYS_ADMIN_BUSINESS_TABS: BusinessTab[] = ["general", "cron"];
+    const visibleBusinessTabs = (Object.keys(ALL_BUSINESS_TABS) as BusinessTab[]).filter(
+        (tab) => !SYS_ADMIN_BUSINESS_TABS.includes(tab) || isSysAdmin,
+    );
+    const BUSINESS_TABS: Partial<Record<BusinessTab, string>> = Object.fromEntries(
+        visibleBusinessTabs.map((tab) => [tab, ALL_BUSINESS_TABS[tab]]),
+    );
+    const resolvedBusinessTab = visibleBusinessTabs.includes(activeTab) ? activeTab : visibleBusinessTabs[0];
 
     useEffect(() => {
         loadConfig();
@@ -208,7 +220,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
         setIsDirty(false);
     };
 
-    const tabIndex = (Object.keys(BUSINESS_TABS) as BusinessTab[]).indexOf(activeTab);
+    const tabIndex = visibleBusinessTabs.indexOf(resolvedBusinessTab);
 
     // ── Per-zone config helpers ──────────────────────────────────────────────
     const handleElecZoneChange = <Z extends keyof ElectricityTaxConfig, K extends keyof ElectricityTaxConfig[Z]>(
@@ -376,8 +388,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                         <Tabs
                             value={tabIndex}
                             onChange={(_, newValue) => {
-                                const tabs = Object.keys(BUSINESS_TABS) as BusinessTab[];
-                                setActiveTab(tabs[newValue]);
+                                setActiveTab(visibleBusinessTabs[newValue]);
                             }}
                             sx={{
                                 minHeight: 52,
@@ -387,7 +398,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                                 },
                             }}
                         >
-                            {(Object.keys(BUSINESS_TABS) as BusinessTab[]).map((tab) => (
+                            {visibleBusinessTabs.map((tab) => (
                                 <Tab
                                     key={tab}
                                     label={BUSINESS_TABS[tab]}
@@ -406,7 +417,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                     </Box>
 
                     <div className="system-settings-content">
-                        {activeTab === "general" && (
+                        {resolvedBusinessTab === "general" && (
                             <div className="settings-panel">
                                 <h3 className="settings-panel-title">General</h3>
 
@@ -491,7 +502,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                             </div>
                         )}
 
-                        {activeTab === "simulation" && (
+                        {resolvedBusinessTab === "simulation" && (
                             <div className="settings-panel">
                                 <h3 className="settings-panel-title">{t("systemSettings", "titleSimulation")}</h3>
 
@@ -510,7 +521,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                             </div>
                         )}
 
-                        {activeTab === "clients" && (
+                        {resolvedBusinessTab === "clients" && (
                             <div className="settings-panel">
                                 <h3 className="settings-panel-title">{t("systemSettings", "titleClients")}</h3>
 
@@ -530,7 +541,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                             </div>
                         )}
 
-                        {activeTab === "sessions" && (
+                        {resolvedBusinessTab === "sessions" && (
                             <div className="settings-panel">
                                 <h3 className="settings-panel-title">Sessions</h3>
 
@@ -552,7 +563,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                             </div>
                         )}
 
-                        {activeTab === "calculation" && (
+                        {resolvedBusinessTab === "calculation" && (
                             <div className="settings-panel">
                                 <h3 className="settings-panel-title">{t("systemSettings", "titleCalculation")}</h3>
 
@@ -645,7 +656,7 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                             </div>
                         )}
 
-                        {activeTab === "pdf-defaults" && (
+                        {resolvedBusinessTab === "pdf-defaults" && (
                             <div className="settings-panel">
                                 <h3 className="settings-panel-title">{t("systemSettings", "titlePdfDefaults")}</h3>
                                 <p className="settings-panel-description">{t("systemSettings", "titlePdfDefaultsDesc")}</p>
@@ -686,11 +697,11 @@ export function SystemBusinessSettings({ session, onNotify }: SystemBusinessSett
                             </div>
                         )}
 
-                        {activeTab === "cron" && (
+                        {resolvedBusinessTab === "cron" && (
                             <CronSettings onNotify={onNotify} />
                         )}
 
-                        {activeTab !== "cron" && (
+                        {resolvedBusinessTab !== "cron" && (
                             <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                                 <Button
                                     variant="contained"

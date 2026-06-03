@@ -1,6 +1,5 @@
 "use client";
-import CheckIcon from '@mui/icons-material/Check';
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
     alpha,
     Box,
@@ -15,11 +14,13 @@ import {
     IconButton,
     Tab,
     Tabs,
+    TextField,
     Tooltip,
     Typography,
     useTheme,
 } from "@mui/material";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import type { Theme } from "@mui/material/styles";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
@@ -29,16 +30,22 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
-import TollRoundedIcon from "@mui/icons-material/TollRounded";
 import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
 import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import AutoFixHighRoundedIcon from "@mui/icons-material/AutoFixHighRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
-import DifferenceRoundedIcon from "@mui/icons-material/DifferenceRounded";
-import EditNoteRoundedIcon from "@mui/icons-material/EditNoteRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
+import AssignmentTurnedInRoundedIcon from "@mui/icons-material/AssignmentTurnedInRounded";
+import DoDisturbAltRoundedIcon from "@mui/icons-material/DoDisturbAltRounded";
+import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
 import type { SessionState } from "../../lib/authSession";
 import { DataTable, type ColumnDef } from "../ui";
+import { FormSelect } from "../ui/FormSelect";
+import { DateRangePicker } from "../ui/DateRangePicker";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDate } from "../../lib/formatPreferences";
 import { improveOcrPrompt, testOcrPrompt, type ImproveOcrPromptResult, type TestOcrPromptResult } from "../../lib/internalApi";
 
 interface OcrLogEntry {
@@ -72,12 +79,84 @@ interface OcrLogEntry {
     simulationId?: string | null;
     simulationReferenceNumber?: string | null;
     reportedIssue?: string | null;
+    issueStatus?: OcrIssueStatus | null;
+    issueResolution?: string | null;
+    issueNotes?: string | null;
+    issueSubmittedAt?: string | null;
+    issueHandledAt?: string | null;
+    issueHandledByUserId?: string | null;
+    issueSignalCount?: number;
     files?: Array<{
         id: string;
         fileName: string;
         fileType?: string | null;
         fileSizeBytes: number;
     }>;
+}
+
+type OcrIssueStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "DISMISSED";
+
+type OcrIssueUpdateInput = {
+    status: OcrIssueStatus;
+    resolution?: string | null;
+    notes?: string | null;
+};
+
+function getVisibleCorrections(log: OcrLogEntry): Record<string, { ocr: unknown; corrected: unknown }> {
+    return log.userCorrections ?? {};
+}
+
+function getIssueSignalCount(log: OcrLogEntry): number {
+    return (log.reportedIssue ? 1 : 0) + Object.keys(getVisibleCorrections(log)).length;
+}
+
+function hasIssue(log: OcrLogEntry): boolean {
+    return getIssueSignalCount(log) > 0 || !!log.issueStatus;
+}
+
+function getIssueStatus(log: OcrLogEntry): OcrIssueStatus | null {
+    if (!hasIssue(log)) return null;
+    return log.issueStatus ?? "OPEN";
+}
+
+function getIssueLabel(status: OcrIssueStatus | null): string {
+    const labels: Record<OcrIssueStatus, string> = {
+        OPEN: "Open",
+        IN_PROGRESS: "In progress",
+        RESOLVED: "Resolved",
+        DISMISSED: "Dismissed",
+    };
+    return status ? labels[status] : "No issue";
+}
+
+function getIssueTone(theme: Theme, status: OcrIssueStatus | null) {
+    if (status === "RESOLVED") return { color: theme.palette.success.main, bg: alpha(theme.palette.success.main, theme.palette.mode === "dark" ? 0.18 : 0.11) };
+    if (status === "DISMISSED") return { color: theme.palette.text.secondary, bg: alpha(theme.palette.text.secondary, 0.1) };
+    if (status === "IN_PROGRESS") return { color: theme.palette.info.main, bg: alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.18 : 0.11) };
+    if (status === "OPEN") return { color: theme.palette.warning.main, bg: alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.2 : 0.12) };
+    return { color: theme.palette.text.secondary, bg: alpha(theme.palette.text.secondary, 0.08) };
+}
+
+function IssueChip({ log }: { log: OcrLogEntry }) {
+    const theme = useTheme();
+    const status = getIssueStatus(log);
+    const tone = getIssueTone(theme, status);
+    const signalCount = getIssueSignalCount(log);
+    return (
+        <Chip
+            icon={status ? <PendingActionsRoundedIcon sx={{ fontSize: 14 }} /> : undefined}
+            label={status ? `${getIssueLabel(status)} · ${signalCount}` : "None"}
+            size="small"
+            sx={{
+                fontWeight: 700,
+                fontSize: 11,
+                height: 24,
+                color: tone.color,
+                backgroundColor: tone.bg,
+                "& .MuiChip-icon": { color: tone.color },
+            }}
+        />
+    );
 }
 
 export interface OcrLogsPanelProps {
@@ -171,58 +250,6 @@ function StatusChip({ status }: { status: string }) {
     );
 }
 
-function DetailStatCard({
-    label,
-    value,
-    subvalue,
-    icon,
-    mono = false,
-    accent,
-}: {
-    label: string;
-    value: string;
-    subvalue?: string;
-    icon?: React.ReactNode;
-    mono?: boolean;
-    accent?: string;
-}) {
-    return (
-        <Box
-            sx={{
-                position: "relative",
-                borderRadius: 2.5,
-                border: "1px solid",
-                borderColor: accent ? alpha(accent, 0.28) : "divider",
-                background: (theme) =>
-                    theme.palette.mode === "dark"
-                        ? `linear-gradient(180deg, ${alpha(accent ?? theme.palette.common.white, 0.06)}, rgba(255,255,255,0.02))`
-                        : `linear-gradient(180deg, ${alpha(accent ?? theme.palette.primary.main, 0.06)}, rgba(255,255,255,0.94))`,
-                p: 1.75,
-                minHeight: 104,
-                display: "flex",
-                flexDirection: "column",
-                gap: 0.6,
-                overflow: "hidden",
-            }}
-        >
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, color: accent ?? "text.secondary" }}>
-                {icon}
-                <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "text.secondary" }}>
-                    {label}
-                </Typography>
-            </Box>
-            <Typography sx={{ fontSize: 15, fontWeight: 700, color: "text.primary", fontFamily: mono ? "monospace" : undefined, lineHeight: 1.35, wordBreak: "break-word" }}>
-                {value}
-            </Typography>
-            {subvalue && (
-                <Typography sx={{ fontSize: 12, color: "text.secondary", lineHeight: 1.35 }}>
-                    {subvalue}
-                </Typography>
-            )}
-        </Box>
-    );
-}
-
 // ── Detail dialog ────────────────────────────────────────────────────────────
 
 function OcrLogDetailDialog({
@@ -230,11 +257,13 @@ function OcrLogDetailDialog({
     token,
     onClose,
     onNotify,
+    onIssueUpdate,
 }: {
     log: OcrLogEntry;
     token: string;
     onClose: () => void;
     onNotify?: (text: string, tone: "success" | "error") => void;
+    onIssueUpdate: (log: OcrLogEntry, input: OcrIssueUpdateInput) => Promise<void>;
 }) {
     const theme = useTheme();
     const [tab, setTab] = useState(0);
@@ -249,13 +278,26 @@ function OcrLogDetailDialog({
     const [testResult, setTestResult] = useState<TestOcrPromptResult | null>(null);
     const [improveDialogTab, setImproveDialogTab] = useState(0);
     const [feedbackOpen, setFeedbackOpen] = useState(false);
+    const [issueNotes, setIssueNotes] = useState(log.issueNotes ?? "");
+    const [issueResolution, setIssueResolution] = useState(log.issueResolution ?? "");
+    const [isUpdatingIssue, setIsUpdatingIssue] = useState(false);
+    const [issueAction, setIssueAction] = useState<null | "resolve" | "dismiss">(null);
     const isDark = theme.palette.mode === "dark";
 
+    const visibleCorrections = getVisibleCorrections(log);
+    const correctionEntries = Object.entries(visibleCorrections);
     const hasExtracted = !!log.extractedFields;
-    const hasCorrections = !!log.userCorrections && Object.keys(log.userCorrections).length > 0;
+    const hasCorrections = correctionEntries.length > 0;
     const hasMetadata = !!log.metadata;
     const hasPrompt = !!log.promptText;
     const hasStoredFiles = !!log.files?.length;
+    const issueStatus = getIssueStatus(log);
+
+    useEffect(() => {
+        setIssueNotes(log.issueNotes ?? "");
+        setIssueResolution(log.issueResolution ?? "");
+        setIssueAction(null);
+    }, [log.id, log.issueNotes, log.issueResolution, log.issueStatus]);
 
     const codeBoxSx = {
         backgroundColor: isDark ? "#0d1117" : "#f6f8fa",
@@ -284,9 +326,6 @@ function OcrLogDetailDialog({
     const tokenSummary = log.totalTokens != null
         ? `${log.totalTokens.toLocaleString()} total`
         : "No token data";
-    const tokenBreakdown = log.totalTokens != null
-        ? `${log.promptTokens ?? 0} prompt / ${log.completionTokens ?? 0} completion`
-        : undefined;
     const primaryFileSummary = log.fileName
         ? `${log.fileName}`
         : "No primary file";
@@ -366,12 +405,31 @@ function OcrLogDetailDialog({
         }
     };
 
+    const handleIssueUpdate = async (status: OcrIssueStatus, defaultResolution?: string) => {
+        try {
+            setIsUpdatingIssue(true);
+            await onIssueUpdate(log, {
+                status,
+                resolution: issueResolution.trim() || defaultResolution || null,
+                notes: issueNotes.trim() || null,
+            });
+            setIssueAction(null);
+        } finally {
+            setIsUpdatingIssue(false);
+        }
+    };
+
     // tab indices are dynamic
     const tabPrompt = 1;
     const tabStoredFiles = 1 + (hasPrompt ? 1 : 0);
     const tabExtracted = tabStoredFiles + (hasStoredFiles ? 1 : 0);
     const tabCorrections = tabExtracted + (hasExtracted ? 1 : 0);
     const tabMetadata = tabCorrections + (hasCorrections ? 1 : 0);
+    const canImprovePrompt = log.type === "INVOICE_EXTRACTION" && !!log.extractedFields && !!(log.simulationId || log.reportedIssue);
+
+    useEffect(() => {
+        setTab(hasCorrections ? tabCorrections : 0);
+    }, [hasCorrections, log.id, tabCorrections]);
 
     return (
         <>
@@ -392,12 +450,12 @@ function OcrLogDetailDialog({
                     },
                 }}
             >
-                <DialogTitle sx={{ px: 3, pt: 3, pb: 2 }}>
+                <DialogTitle sx={{ px: 2.5, pt: 2, pb: 1.25 }}>
                     <Box
                         sx={{
-                            borderRadius: 3,
-                            px: 2.25,
-                            py: 2,
+                            borderRadius: 2,
+                            px: 1.75,
+                            py: 1.15,
                             border: "1px solid",
                             borderColor: isDark ? "rgba(96,165,250,0.20)" : "rgba(59,130,246,0.16)",
                             background: isDark
@@ -405,9 +463,9 @@ function OcrLogDetailDialog({
                                 : "linear-gradient(135deg, rgba(248,250,252,0.96), rgba(239,246,255,0.96))",
                         }}
                     >
-                        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }}>
-                            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.15, minWidth: 0 }}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5 }}>
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.7, minWidth: 0 }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 0.7, flexWrap: "wrap" }}>
                                     <StatusChip status={log.status} />
                                     <Chip
                                         label={formatLogType(log.type)}
@@ -422,24 +480,35 @@ function OcrLogDetailDialog({
                                     />
                                     {log.simulationReferenceNumber && (
                                         <Chip
-                                            icon={<LinkRoundedIcon sx={{ fontSize: 14 }} />}
+                                            icon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
                                             label={`Simulation ${log.simulationReferenceNumber}`}
                                             size="small"
+                                            component="a"
+                                            href={`/internal/simulations/${log.simulationId}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            clickable
                                             sx={{
                                                 fontWeight: 700,
                                                 fontSize: 11,
                                                 height: 24,
                                                 color: theme.palette.secondary.main,
                                                 backgroundColor: alpha(theme.palette.secondary.main, isDark ? 0.18 : 0.1),
+                                                cursor: "pointer",
+                                                textDecoration: "none",
+                                                "&:hover": {
+                                                    backgroundColor: alpha(theme.palette.secondary.main, isDark ? 0.28 : 0.18),
+                                                },
                                             }}
                                         />
                                     )}
+                                    {issueStatus && <IssueChip log={log} />}
                                 </Box>
-                                <Box>
-                                    <Typography variant="h6" sx={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.15 }}>
+                                <Box sx={{ display: "flex", alignItems: "baseline", gap: 1.25, flexWrap: "wrap" }}>
+                                    <Typography variant="h6" sx={{ fontSize: 20, fontWeight: 850, letterSpacing: "-0.01em", lineHeight: 1.1 }}>
                                         OCR Request Detail
                                     </Typography>
-                                    <Typography sx={{ mt: 0.6, fontSize: 13, color: "text.secondary", lineHeight: 1.45 }}>
+                                    <Typography sx={{ fontSize: 12.5, color: "text.secondary", lineHeight: 1.35 }}>
                                         {new Date(log.requestedAt).toLocaleString("en-GB", {
                                             day: "2-digit", month: "2-digit", year: "numeric",
                                             hour: "2-digit", minute: "2-digit", second: "2-digit",
@@ -448,81 +517,145 @@ function OcrLogDetailDialog({
                                     </Typography>
                                 </Box>
                             </Box>
-                            <IconButton size="small" onClick={onClose} sx={{ mt: -0.25, mr: -0.25 }}>
-                                <CloseIcon fontSize="small" />
-                            </IconButton>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap", justifyContent: "flex-end", flexShrink: 0 }}>
+                                {issueStatus === "OPEN" && (
+                                    <>
+                                        <Button
+                                            size="small"
+                                            variant="outlined"
+                                            startIcon={<PendingActionsRoundedIcon sx={{ fontSize: 15 }} />}
+                                            disabled={isUpdatingIssue}
+                                            onClick={() => handleIssueUpdate("IN_PROGRESS")}
+                                            sx={{ borderRadius: 999, textTransform: "none", fontWeight: 800, fontSize: 12 }}
+                                        >
+                                            In progress
+                                        </Button>
+                                        <Button
+                                            size="small"
+                                            variant={issueAction === "dismiss" ? "contained" : "outlined"}
+                                            color="inherit"
+                                            startIcon={<DoDisturbAltRoundedIcon sx={{ fontSize: 15 }} />}
+                                            disabled={isUpdatingIssue}
+                                            onClick={() => setIssueAction(issueAction === "dismiss" ? null : "dismiss")}
+                                            sx={{ borderRadius: 999, textTransform: "none", fontWeight: 800, fontSize: 12 }}
+                                        >
+                                            Dismiss
+                                        </Button>
+                                    </>
+                                )}
+                                {issueStatus === "IN_PROGRESS" && (
+                                    <Button
+                                        size="small"
+                                        variant={issueAction === "resolve" ? "contained" : "outlined"}
+                                        color="success"
+                                        startIcon={<AssignmentTurnedInRoundedIcon sx={{ fontSize: 15 }} />}
+                                        disabled={isUpdatingIssue}
+                                        onClick={() => setIssueAction(issueAction === "resolve" ? null : "resolve")}
+                                        sx={{ borderRadius: 999, textTransform: "none", fontWeight: 800, fontSize: 12 }}
+                                    >
+                                        Resolve
+                                    </Button>
+                                )}
+                                {(issueStatus === "RESOLVED" || issueStatus === "DISMISSED") && (
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        disabled={isUpdatingIssue}
+                                        onClick={() => handleIssueUpdate("OPEN")}
+                                        sx={{ borderRadius: 999, textTransform: "none", fontWeight: 800, fontSize: 12 }}
+                                    >
+                                        Reopen
+                                    </Button>
+                                )}
+                                {canImprovePrompt && (
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<AutoFixHighRoundedIcon sx={{ fontSize: 15 }} />}
+                                        onClick={handleImprovePrompt}
+                                        disabled={isImprovingPrompt}
+                                        sx={{
+                                            borderRadius: 999,
+                                            fontWeight: 800,
+                                            textTransform: "none",
+                                            fontSize: 12,
+                                            borderColor: isDark ? alpha(theme.palette.warning.main, 0.45) : alpha(theme.palette.warning.main, 0.5),
+                                            color: theme.palette.warning.main,
+                                            "&:hover": {
+                                                borderColor: theme.palette.warning.main,
+                                                background: alpha(theme.palette.warning.main, 0.08),
+                                            },
+                                        }}
+                                    >
+                                        {isImprovingPrompt ? "Improving..." : "Improve Prompt"}
+                                    </Button>
+                                )}
+                                <IconButton size="small" onClick={onClose}>
+                                    <CloseIcon fontSize="small" />
+                                </IconButton>
+                            </Box>
                         </Box>
                     </Box>
                 </DialogTitle>
 
-                {!isImprovingPrompt && <Box sx={{ px: 3, pb: 2.25 }}>
+                {!isImprovingPrompt && <Box sx={{ px: 2.5, pb: 1.25 }}>
                     <Box
                         sx={{
+                            borderRadius: 2,
+                            border: "1px solid",
+                            borderColor: isDark ? "#30363d" : "#d9e1ec",
+                            backgroundColor: isDark ? "rgba(255,255,255,0.025)" : "#fafbfc",
                             display: "grid",
-                            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" },
-                            gap: 1.5,
+                            gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" },
+                            overflow: "hidden",
                         }}
                     >
-                        <DetailStatCard
-                            label="Request"
-                            value={primaryFileSummary}
-                            subvalue={primaryFileMeta || `Log ID: ${log.id}`}
-                            icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 16 }} />}
-                            accent={theme.palette.primary.main}
-                        />
-                        <DetailStatCard
-                            label="Model"
-                            value={formatProvider(log.provider)}
-                            subvalue={log.model}
-                            icon={<SmartToyOutlinedIcon sx={{ fontSize: 16 }} />}
-                            accent={theme.palette.info.main}
-                        />
-                        <DetailStatCard
-                            label="Performance"
-                            value={log.durationMs != null ? `${(log.durationMs / 1000).toFixed(2)}s` : "—"}
-                            subvalue={log.httpStatusCode != null ? `HTTP ${log.httpStatusCode}` : "No status code"}
-                            icon={<TimerOutlinedIcon sx={{ fontSize: 16 }} />}
-                            accent={theme.palette.warning.main}
-                        />
-                        <DetailStatCard
-                            label="Tokens"
-                            value={tokenSummary}
-                            subvalue={tokenBreakdown}
-                            icon={<TollRoundedIcon sx={{ fontSize: 16 }} />}
-                            accent={theme.palette.success.main}
-                        />
-                    </Box>
-
-                    <Box
-                        sx={{
-                            mt: 1.5,
-                            display: "grid",
-                            gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
-                            gap: 1.5,
-                        }}
-                    >
-                        <DetailStatCard
-                            label="Stored Files"
-                            value={getStoredFilesSummary(log)}
-                            subvalue={log.files?.map((file) => file.fileName).join(" · ") || undefined}
-                            icon={<DownloadRoundedIcon sx={{ fontSize: 16 }} />}
-                            accent={theme.palette.secondary.main}
-                        />
-                        <DetailStatCard
-                            label="Simulation"
-                            value={log.simulationReferenceNumber ?? "Not linked"}
-                            subvalue={log.simulationId ?? undefined}
-                            icon={<LinkRoundedIcon sx={{ fontSize: 16 }} />}
-                            mono={!log.simulationReferenceNumber && !!log.simulationId}
-                            accent={theme.palette.secondary.main}
-                        />
-                        <DetailStatCard
-                            label="Identity"
-                            value={log.userName ?? log.userEmail ?? "Unknown user"}
-                            subvalue={log.userName && log.userEmail ? log.userEmail : `Log ID: ${log.id}`}
-                            icon={<OpenInNewIcon sx={{ fontSize: 16 }} />}
-                            accent={theme.palette.primary.light}
-                        />
+                        {[
+                            {
+                                label: "Request",
+                                value: primaryFileSummary,
+                                subvalue: [primaryFileMeta, getStoredFilesSummary(log)].filter(Boolean).join(" · "),
+                                icon: <InsertDriveFileOutlinedIcon sx={{ fontSize: 14 }} />,
+                            },
+                            {
+                                label: "Model",
+                                value: formatProvider(log.provider),
+                                subvalue: log.model,
+                                icon: <SmartToyOutlinedIcon sx={{ fontSize: 14 }} />,
+                            },
+                            {
+                                label: "Run",
+                                value: log.durationMs != null ? `${(log.durationMs / 1000).toFixed(2)}s` : "—",
+                                subvalue: log.httpStatusCode != null ? `HTTP ${log.httpStatusCode}` : tokenSummary,
+                                icon: <TimerOutlinedIcon sx={{ fontSize: 14 }} />,
+                            },
+                        ].map((item, index) => (
+                            <Box
+                                key={item.label}
+                                sx={{
+                                    px: 2,
+                                    py: 1.25,
+                                    borderTop: { xs: index === 0 ? "none" : "1px solid", sm: "none" },
+                                    borderColor: isDark ? "#30363d" : "#e2e8f0",
+                                    minWidth: 0,
+                                }}
+                            >
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, mb: 0.5, color: "text.secondary" }}>
+                                    {item.icon}
+                                    <Typography sx={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                                        {item.label}
+                                    </Typography>
+                                </Box>
+                                <Typography sx={{ fontSize: 13, fontWeight: 700, color: "text.primary", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {item.value}
+                                </Typography>
+                                <Tooltip title={item.subvalue}>
+                                    <Typography sx={{ mt: 0.25, fontSize: 11, color: "text.secondary", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        {item.subvalue}
+                                    </Typography>
+                                </Tooltip>
+                            </Box>
+                        ))}
                     </Box>
                 </Box>}
 
@@ -546,125 +679,216 @@ function OcrLogDetailDialog({
                     </Box>
                 )}
 
-                {log.reportedIssue && (
+                {issueStatus && issueAction && (
                     <Box sx={{ px: 3, pb: 1.5 }}>
                         <Box
                             sx={{
                                 borderRadius: 2,
                                 border: "1px solid",
-                                borderColor: alpha(theme.palette.warning.main, 0.35),
-                                backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.10 : 0.07),
-                                px: 1.75,
-                                py: 1.4,
-                                display: "flex",
-                                gap: 1,
-                                alignItems: "flex-start",
+                                borderColor: alpha(getIssueTone(theme, issueStatus).color, 0.28),
+                                backgroundColor: isDark ? alpha(getIssueTone(theme, issueStatus).color, 0.06) : alpha(getIssueTone(theme, issueStatus).color, 0.035),
+                                overflow: "hidden",
                             }}
                         >
-                            <WarningAmberIcon sx={{ fontSize: 16, color: "warning.main", mt: "2px", flexShrink: 0 }} />
-                            <Box>
-                                <Typography sx={{ ...labelSx, color: "warning.main" }}>Reported Issue</Typography>
-                                <Typography variant="body2" sx={{ fontSize: 12.5, color: "text.primary", lineHeight: 1.45 }}>
-                                    {log.reportedIssue}
-                                </Typography>
+                            <Box
+                                sx={{
+                                    px: 1.75,
+                                    py: 1.25,
+                                    borderBottom: "1px solid",
+                                    borderColor: alpha(getIssueTone(theme, issueStatus).color, 0.18),
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: 1.5,
+                                    flexWrap: "wrap",
+                                }}
+                            >
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                                    <Typography sx={{ fontSize: 13, fontWeight: 800, color: "text.primary" }}>
+                                        Issue review
+                                    </Typography>
+                                    <IssueChip log={log} />
+                                </Box>
+                                {log.issueHandledAt && (
+                                    <Typography sx={{ fontSize: 11.5, color: "text.secondary" }}>
+                                        Handled {formatDistanceToNow(new Date(log.issueHandledAt), { addSuffix: true })}
+                                    </Typography>
+                                )}
+                            </Box>
+                            <Box sx={{ p: 1.5, display: "flex", flexDirection: "column", gap: 1.25 }}>
+                                <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap", minWidth: 0 }}>
+                                    {log.reportedIssue && (
+                                        <Chip
+                                            size="small"
+                                            icon={<WarningAmberIcon sx={{ fontSize: 13 }} />}
+                                            label="Reported"
+                                            sx={{ height: 22, fontSize: 10.5, fontWeight: 700, color: theme.palette.warning.main, backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.18 : 0.1), "& .MuiChip-icon": { color: theme.palette.warning.main } }}
+                                        />
+                                    )}
+                                    {correctionEntries.length > 0 && (
+                                        <Chip
+                                            size="small"
+                                            icon={<AssignmentTurnedInRoundedIcon sx={{ fontSize: 13 }} />}
+                                            label={`${correctionEntries.length} correction${correctionEntries.length !== 1 ? "s" : ""}`}
+                                            sx={{ height: 22, fontSize: 10.5, fontWeight: 700, color: theme.palette.info.main, backgroundColor: alpha(theme.palette.info.main, isDark ? 0.18 : 0.1), "& .MuiChip-icon": { color: theme.palette.info.main } }}
+                                        />
+                                    )}
+                                </Box>
+
+                                <Box
+                                    sx={{
+                                        display: "grid",
+                                        gridTemplateColumns: { xs: "1fr", md: log.reportedIssue && correctionEntries.length > 0 ? "1fr 1fr" : "1fr" },
+                                        gap: 1.25,
+                                    }}
+                                >
+                                    {log.reportedIssue && (
+                                        <Box>
+                                            <Typography sx={labelSx}>Reported message</Typography>
+                                            <Typography variant="body2" sx={{ fontSize: 12.5, color: "text.primary", lineHeight: 1.45 }}>
+                                                {log.reportedIssue}
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                    {correctionEntries.length > 0 && (
+                                        <Box>
+                                            <Typography sx={labelSx}>Correction preview</Typography>
+                                            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.45 }}>
+                                                {correctionEntries.slice(0, 2).map(([field, { ocr, corrected }]) => (
+                                                    <Box
+                                                        key={field}
+                                                        sx={{
+                                                            display: "grid",
+                                                            gridTemplateColumns: "112px minmax(0, 1fr)",
+                                                            gap: 0.8,
+                                                            borderRadius: 1,
+                                                            border: "1px solid",
+                                                            borderColor: isDark ? "#30363d" : "#e2e8f0",
+                                                            backgroundColor: isDark ? "rgba(255,255,255,0.025)" : "rgba(255,255,255,0.75)",
+                                                            px: 1,
+                                                            py: 0.6,
+                                                        }}
+                                                    >
+                                                        <Typography sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: "monospace", color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                            {field}
+                                                        </Typography>
+                                                        <Typography sx={{ fontSize: 11.5, color: "text.secondary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                            {ocr === null || ocr === undefined ? "empty" : String(ocr)}{" -> "}{corrected === null || corrected === undefined ? "cleared" : String(corrected)}
+                                                        </Typography>
+                                                    </Box>
+                                                ))}
+                                                {correctionEntries.length > 2 && (
+                                                    <Typography sx={{ fontSize: 11.5, color: "text.secondary" }}>
+                                                        +{correctionEntries.length - 2} more in the User Corrections tab
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                        </Box>
+                                    )}
+                                    {!log.reportedIssue && correctionEntries.length === 0 && (
+                                        <Typography sx={{ fontSize: 12.5, color: "text.secondary", lineHeight: 1.45 }}>
+                                            This log is being tracked manually.
+                                        </Typography>
+                                    )}
+                                </Box>
+
+                                {(log.issueResolution || log.issueNotes) && (
+                                    <Box sx={{ borderTop: "1px solid", borderColor: isDark ? "#30363d" : "#e2e8f0", pt: 1 }}>
+                                        {log.issueResolution && (
+                                            <Typography sx={{ fontSize: 12.5, color: "text.primary", fontWeight: 700, mb: 0.35 }}>
+                                                Resolution: {log.issueResolution}
+                                            </Typography>
+                                        )}
+                                        {log.issueNotes && (
+                                            <Typography sx={{ fontSize: 12.5, color: "text.secondary", lineHeight: 1.45 }}>
+                                                {log.issueNotes}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                )}
+
+                                {issueAction && (
+                                    <Box
+                                        sx={{
+                                            borderTop: "1px solid",
+                                            borderColor: alpha(getIssueTone(theme, issueStatus).color, 0.18),
+                                            pt: 1.25,
+                                            display: "grid",
+                                            gridTemplateColumns: { xs: "1fr", md: "260px minmax(0, 1fr) auto" },
+                                            gap: 1,
+                                            alignItems: "start",
+                                        }}
+                                    >
+                                        <TextField
+                                            size="small"
+                                            label="Resolution"
+                                            placeholder={issueAction === "resolve" ? "What fixed it?" : "Why dismiss it?"}
+                                            value={issueResolution}
+                                            onChange={(event) => setIssueResolution(event.target.value)}
+                                            sx={{ "& .MuiInputBase-root": { fontSize: 12.5 } }}
+                                        />
+                                        <TextField
+                                            size="small"
+                                            label="Notes"
+                                            placeholder="Optional details"
+                                            value={issueNotes}
+                                            onChange={(event) => setIssueNotes(event.target.value)}
+                                            multiline
+                                            rows={2}
+                                            sx={{ "& .MuiInputBase-root": { fontSize: 12.5, alignItems: "flex-start" } }}
+                                        />
+                                        <Box sx={{ display: "flex", gap: 0.75, justifyContent: "flex-end" }}>
+                                            <Button
+                                                size="small"
+                                                variant="text"
+                                                disabled={isUpdatingIssue}
+                                                onClick={() => setIssueAction(null)}
+                                                sx={{ borderRadius: 999, textTransform: "none", fontWeight: 700, fontSize: 12 }}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                variant="contained"
+                                                color={issueAction === "resolve" ? "success" : "inherit"}
+                                                disabled={isUpdatingIssue}
+                                                onClick={() => handleIssueUpdate(issueAction === "resolve" ? "RESOLVED" : "DISMISSED", issueAction === "resolve" ? "Fixed" : "Dismissed")}
+                                                sx={{ borderRadius: 999, textTransform: "none", fontWeight: 800, fontSize: 12, whiteSpace: "nowrap" }}
+                                            >
+                                                {issueAction === "resolve" ? "Save resolution" : "Dismiss issue"}
+                                            </Button>
+                                        </Box>
+                                    </Box>
+                                )}
                             </Box>
                         </Box>
                     </Box>
                 )}
 
-                {log.type === "INVOICE_EXTRACTION" && log.extractedFields && (log.simulationId || log.reportedIssue) && (
-                    <Box sx={{ px: 3, pb: 1.5 }}>
-                        {isImprovingPrompt ? (
-                            <Box sx={{
-                                borderRadius: 2,
-                                border: `1px solid ${isDark ? alpha(theme.palette.warning.main, 0.25) : alpha(theme.palette.warning.main, 0.4)}`,
-                                backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.06 : 0.04),
-                                p: 2,
-                            }}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
-                                    <AutoFixHighRoundedIcon sx={{ fontSize: 18, color: theme.palette.warning.main, flexShrink: 0 }} />
-                                    <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: theme.palette.warning.main }}>
-                                        {improveStep === "generating" ? "Generating improved prompt…" : "Testing the new prompt…"}
-                                    </Typography>
-                                </Box>
-                                {/* Step indicators */}
-                                <Box sx={{ display: "flex", gap: 1.5, mb: 1.5 }}>
-                                    {[{ key: "generating", label: "1. Generate prompt" }, { key: "testing", label: "2. Test on invoice" }].map(step => {
-                                        const isDone = improveStep === "testing" && step.key === "generating";
-                                        const isActive = improveStep === step.key;
-                                        return (
-                                            <Box key={step.key} sx={{
-                                                display: "flex", alignItems: "center", gap: 0.6,
-                                                px: 1.25, py: 0.5, borderRadius: 999,
-                                                background: isDone
-                                                    ? alpha(theme.palette.success.main, isDark ? 0.18 : 0.12)
-                                                    : isActive
-                                                        ? alpha(theme.palette.warning.main, isDark ? 0.18 : 0.12)
-                                                        : alpha(theme.palette.action.disabled, 0.06),
-                                                border: `1px solid ${isDone ? alpha(theme.palette.success.main, 0.3)
-                                                    : isActive ? alpha(theme.palette.warning.main, 0.4)
-                                                        : isDark ? "#30363d" : "#d0d7de"
-                                                    }`,
-                                            }}>
-                                                {isDone
-                                                    ? <span style={{ fontSize: 11 }}><CheckIcon fontSize='small' color='success' /></span>
-                                                    : isActive
-                                                        ? <CircularProgress size={9} thickness={5} sx={{ color: theme.palette.warning.main }} />
-                                                        : <span style={{ fontSize: 11, opacity: 0.3 }}>○</span>
-                                                }
-                                                <Typography sx={{ fontSize: 11.5, fontWeight: isActive ? 700 : 400, color: isDone ? theme.palette.success.main : isActive ? theme.palette.warning.main : "text.disabled" }}>
-                                                    {step.label}
-                                                </Typography>
-                                            </Box>
-                                        );
-                                    })}
-                                </Box>
-                                {/* Progress bar */}
-                                <Box sx={{ height: 4, borderRadius: 2, background: isDark ? "#21262d" : "#e0e0e0", overflow: "hidden" }}>
-                                    <Box sx={{
-                                        height: "100%",
-                                        borderRadius: 2,
-                                        background: `linear-gradient(90deg, ${theme.palette.warning.main}, ${alpha(theme.palette.warning.main, 0.5)})`,
-                                        width: improveStep === "testing" ? "75%" : "40%",
-                                        transition: "width 0.6s ease",
-                                        animation: "pulse 1.5s ease-in-out infinite",
-                                    }} />
-                                </Box>
-                                <Typography variant="caption" sx={{ display: "block", mt: 1, color: "text.secondary", fontSize: 11 }}>
-                                    {improveStep === "generating"
-                                        ? "The AI is analysing the invoice, corrections and previous prompt to write a dedicated extraction prompt…"
-                                        : "Running the new prompt against the stored invoice file to compare results…"}
+                {canImprovePrompt && isImprovingPrompt && (
+                    <Box sx={{ px: 2.5, pb: 1 }}>
+                        <Box sx={{
+                            borderRadius: 2,
+                            border: `1px solid ${isDark ? alpha(theme.palette.warning.main, 0.25) : alpha(theme.palette.warning.main, 0.4)}`,
+                            backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.06 : 0.04),
+                            p: 1.5,
+                        }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 1 }}>
+                                <AutoFixHighRoundedIcon sx={{ fontSize: 18, color: theme.palette.warning.main, flexShrink: 0 }} />
+                                <Typography sx={{ fontSize: 13, fontWeight: 800, color: theme.palette.warning.main }}>
+                                    {improveStep === "generating" ? "Generating improved prompt..." : "Testing the new prompt..."}
                                 </Typography>
                             </Box>
-                        ) : (
-                            <>
-                                <Button
-                                    variant="outlined"
-                                    size="small"
-                                    startIcon={<AutoFixHighRoundedIcon sx={{ fontSize: 16 }} />}
-                                    onClick={handleImprovePrompt}
-                                    sx={{
-                                        borderRadius: 999,
-                                        fontWeight: 700,
-                                        textTransform: "none",
-                                        fontSize: 13,
-                                        borderColor: isDark ? alpha(theme.palette.warning.main, 0.45) : alpha(theme.palette.warning.main, 0.5),
-                                        color: theme.palette.warning.main,
-                                        "&:hover": {
-                                            borderColor: theme.palette.warning.main,
-                                            background: alpha(theme.palette.warning.main, 0.08),
-                                        },
-                                    }}
-                                >
-                                    Improve OCR Prompt with AI
-                                </Button>
-                                <Typography variant="caption" sx={{ display: "block", mt: 0.75, fontSize: 11, color: "text.secondary", lineHeight: 1.4 }}>
-                                    {log.simulationId
-                                        ? "Generates a dedicated extraction prompt for this provider using the invoice corrections, then automatically tests it."
-                                        : "Generates a dedicated extraction prompt based on the reported issue, then automatically tests it."}
-                                </Typography>
-                            </>
-                        )}
+                            <Box sx={{ height: 4, borderRadius: 2, background: isDark ? "#21262d" : "#e0e0e0", overflow: "hidden" }}>
+                                <Box sx={{
+                                    height: "100%",
+                                    borderRadius: 2,
+                                    background: `linear-gradient(90deg, ${theme.palette.warning.main}, ${alpha(theme.palette.warning.main, 0.5)})`,
+                                    width: improveStep === "testing" ? "75%" : "40%",
+                                    transition: "width 0.6s ease",
+                                }} />
+                            </Box>
+                        </Box>
                     </Box>
                 )}
 
@@ -681,7 +905,7 @@ function OcrLogDetailDialog({
                         {hasExtracted && <Tab label="Extracted Fields" />}
                         {hasCorrections && (
                             <Tab
-                                label={`User Corrections (${Object.keys(log.userCorrections!).length})`}
+                                label={`User Corrections (${Object.keys(visibleCorrections).length})`}
                                 sx={{ color: `${theme.palette.warning.main} !important` }}
                             />
                         )}
@@ -792,7 +1016,7 @@ function OcrLogDetailDialog({
                                     </Typography>
                                 </Box>
                                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                                    {Object.entries(log.userCorrections!).map(([field, { ocr, corrected }]) => (
+                                    {Object.entries(visibleCorrections).map(([field, { ocr, corrected }]) => (
                                         <Box
                                             key={field}
                                             sx={{
@@ -1212,17 +1436,73 @@ function OcrLogDetailDialog({
 
 export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
     const theme = useTheme();
+    const queryClient = useQueryClient();
+    const { preferences } = useUserPreferences();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
     const [selectedLog, setSelectedLog] = useState<OcrLogEntry | null>(null);
 
+    // Applied filters
+    const [filterType, setFilterType] = useState("");
+    const [filterStatus, setFilterStatus] = useState("");
+    const [filterUserSearch, setFilterUserSearch] = useState("");
+    const [filterDateFrom, setFilterDateFrom] = useState("");
+    const [filterDateTo, setFilterDateTo] = useState("");
+    const [filterIssueStatus, setFilterIssueStatus] = useState("");
+
+    // Local (pending) filter state
+    const [localType, setLocalType] = useState("");
+    const [localStatus, setLocalStatus] = useState("");
+    const [localUserSearch, setLocalUserSearch] = useState("");
+    const [localDateFrom, setLocalDateFrom] = useState<Date | null>(null);
+    const [localDateTo, setLocalDateTo] = useState<Date | null>(null);
+    const [localIssueStatus, setLocalIssueStatus] = useState("");
+
+    const formatDate = useCallback((isoString: string) => {
+        try {
+            const date = new Date(isoString);
+            const formatted = formatDisplayDate(date, preferences.dateFormat);
+            const hh = String(date.getHours()).padStart(2, "0");
+            const mm = String(date.getMinutes()).padStart(2, "0");
+            const ss = String(date.getSeconds()).padStart(2, "0");
+            return `${formatted} ${hh}:${mm}:${ss}`;
+        } catch { return isoString; }
+    }, [preferences.dateFormat]);
+
+    const toDateOnly = (d: Date | null) => {
+        if (!d) return "";
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+
+    const handleSearch = () => {
+        setFilterType(localType);
+        setFilterStatus(localStatus);
+        setFilterUserSearch(localUserSearch);
+        setFilterDateFrom(toDateOnly(localDateFrom));
+        setFilterDateTo(toDateOnly(localDateTo));
+        setFilterIssueStatus(localIssueStatus);
+        setPage(1);
+    };
+
+    const handleClear = () => {
+        setLocalType(""); setLocalStatus(""); setLocalUserSearch(""); setLocalDateFrom(null); setLocalDateTo(null); setLocalIssueStatus("");
+        setFilterType(""); setFilterStatus(""); setFilterUserSearch(""); setFilterDateFrom(""); setFilterDateTo(""); setFilterIssueStatus("");
+        setPage(1);
+    };
+
     const { data, isFetching, error } = useQuery({
-        queryKey: ["ocr-logs", session.token, page, pageSize],
+        queryKey: ["ocr-logs", session.token, page, pageSize, filterType, filterStatus, filterUserSearch, filterDateFrom, filterDateTo, filterIssueStatus],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: pageSize.toString(),
             });
+            if (filterType) params.append("type", filterType);
+            if (filterStatus) params.append("status", filterStatus);
+            if (filterUserSearch) params.append("userSearch", filterUserSearch);
+            if (filterDateFrom) params.append("dateFrom", filterDateFrom);
+            if (filterDateTo) params.append("dateTo", filterDateTo);
+            if (filterIssueStatus) params.append("issueStatus", filterIssueStatus);
 
             const response = await fetch(`/api/v1/internal/ocr-logs?${params}`, {
                 headers: { Authorization: `Bearer ${session.token}` },
@@ -1240,6 +1520,46 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
         staleTime: 30_000,
     });
 
+    const issueMutation = useMutation({
+        mutationFn: async ({ log, input }: { log: OcrLogEntry; input: OcrIssueUpdateInput }) => {
+            const response = await fetch(`/api/v1/internal/ocr-logs/${log.id}/issue`, {
+                method: "PATCH",
+                headers: {
+                    Authorization: `Bearer ${session.token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(input),
+            });
+            const json = await response.json().catch(() => null);
+            if (!response.ok || !json?.success) {
+                throw new Error(json?.error?.message ?? "Failed to update OCR issue");
+            }
+            return { log, data: json.data as Partial<OcrLogEntry> };
+        },
+        onSuccess: ({ log, data }) => {
+            const updatedLog = {
+                ...log,
+                ...data,
+                issueStatus: data.issueStatus ?? log.issueStatus,
+                issueResolution: data.issueResolution ?? null,
+                issueNotes: data.issueNotes ?? null,
+                issueSubmittedAt: data.issueSubmittedAt ?? log.issueSubmittedAt,
+                issueHandledAt: data.issueHandledAt ?? null,
+                issueHandledByUserId: data.issueHandledByUserId ?? null,
+            } as OcrLogEntry;
+            setSelectedLog((current) => current?.id === log.id ? updatedLog : current);
+            queryClient.invalidateQueries({ queryKey: ["ocr-logs"] });
+            onNotify?.(`Issue marked ${getIssueLabel(updatedLog.issueStatus ?? null).toLowerCase()}`, "success");
+        },
+        onError: (err) => {
+            onNotify?.(err instanceof Error ? err.message : "Failed to update OCR issue", "error");
+        },
+    });
+
+    const handleIssueUpdate = async (log: OcrLogEntry, input: OcrIssueUpdateInput) => {
+        await issueMutation.mutateAsync({ log, input });
+    };
+
     useEffect(() => {
         if (error) onNotify?.("Failed to load OCR logs", "error");
     }, [error, onNotify]);
@@ -1254,10 +1574,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
                     <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
-                        {new Date(log.requestedAt).toLocaleString("en-GB", {
-                            day: "2-digit", month: "2-digit", year: "numeric",
-                            hour: "2-digit", minute: "2-digit", second: "2-digit",
-                        })}
+                        {formatDate(log.requestedAt)}
                     </Typography>
                     <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary" }}>
                         {formatDistanceToNow(new Date(log.requestedAt), { addSuffix: true })}
@@ -1422,63 +1739,36 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             },
         },
         {
-            key: "result",
-            label: "Result",
+            key: "issue",
+            label: "Issue",
             renderCell: (log) => {
-                if (log.errorMessage) {
-                    return (
-                        <Tooltip title={`${log.errorType ? `[${log.errorType}] ` : ""}${log.errorMessage}`}>
-                            <Typography variant="body2" sx={{ fontSize: 11, color: "error.main", fontWeight: 500, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "default" }}>
-                                {log.errorMessage}
-                            </Typography>
-                        </Tooltip>
-                    );
+                const status = getIssueStatus(log);
+                const correctionCount = Object.keys(getVisibleCorrections(log)).length;
+                if (!status) {
+                    return <Typography variant="caption" sx={{ color: "text.secondary" }}>—</Typography>;
                 }
-                if (log.type === "PROVIDER_DETECTION") {
-                    const providerName = (log.metadata?.detectedProviderName as string | undefined) ?? log.fileName;
-                    return (
-                        <Typography variant="caption" sx={{ fontSize: 11, color: "text.secondary", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
-                            {providerName ?? "—"}
-                        </Typography>
-                    );
-                }
-                if (log.status === "SUCCESS" && log.extractedFields) {
-                    const f = log.extractedFields as Record<string, unknown>;
-                    const correctionCount = log.userCorrections ? Object.keys(log.userCorrections).length : 0;
-                    const parts = [
-                        f.cups ? `CUPS: …${String(f.cups).slice(-6)}` : null,
-                        f.nombreTitular ? String(f.nombreTitular) : null,
-                        f.tarifaAcceso ? String(f.tarifaAcceso) : null,
-                    ].filter(Boolean);
-                    return (
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.4 }}>
-                            <Typography variant="caption" sx={{ fontSize: 11, color: "text.secondary", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
-                                {parts.join(" · ") || "—"}
-                            </Typography>
+                return (
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.45, minWidth: 150, maxWidth: 190 }}>
+                        <IssueChip log={log} />
+                        <Box sx={{ display: "flex", gap: 0.45, flexWrap: "wrap" }}>
                             {log.reportedIssue && (
-                                <Tooltip title={`Reported: ${log.reportedIssue}`}>
-                                    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.4, cursor: "default" }}>
-                                        <WarningAmberIcon sx={{ fontSize: 12, color: "warning.main" }} />
-                                        <Typography variant="caption" sx={{ fontSize: 10, color: "warning.main", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 150 }}>
-                                            Issue reported
-                                        </Typography>
-                                    </Box>
-                                </Tooltip>
+                                <Typography variant="caption" sx={{ fontSize: 10, color: "warning.main", fontWeight: 700 }}>
+                                    Reported
+                                </Typography>
                             )}
                             {correctionCount > 0 && (
-                                <Tooltip title={`${correctionCount} field${correctionCount !== 1 ? "s" : ""} corrected by user`}>
-                                    <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.4, cursor: "default" }}>
-                                        <EditNoteRoundedIcon sx={{ fontSize: 12, color: "warning.main" }} />
-                                        <Typography variant="caption" sx={{ fontSize: 10, color: "warning.main", fontWeight: 600 }}>
-                                            {correctionCount} correction{correctionCount !== 1 ? "s" : ""}
-                                        </Typography>
-                                    </Box>
-                                </Tooltip>
+                                <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", fontWeight: 600 }}>
+                                    {correctionCount} correction{correctionCount !== 1 ? "s" : ""}
+                                </Typography>
+                            )}
+                            {!log.reportedIssue && correctionCount === 0 && (
+                                <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary" }}>
+                                    Manual
+                                </Typography>
                             )}
                         </Box>
-                    );
-                }
-                return <Typography variant="caption" sx={{ color: "text.secondary" }}>—</Typography>;
+                    </Box>
+                );
             },
         },
         {
@@ -1495,22 +1785,89 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
     ];
 
     return (
-        <div style={{ padding: "24px", color: "var(--scheme-neutral-100)" }}>
-            <div style={{ marginBottom: "20px" }}>
-                <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "6px", color: "var(--scheme-neutral-100)" }}>
-                    OCR Logs
-                </h2>
-                <p style={{ fontSize: "13px", color: "var(--scheme-neutral-600)" }}>
-                    Track invoice extraction and provider detection requests, including stored request files and linked simulations.
-                    Click <strong>↗</strong> on any row to view the full LLM response.
-                </p>
-            </div>
+        <div >
 
             <DataTable
                 columns={columns}
                 rows={logs}
                 loading={isFetching}
-                onClearFilters={() => setPage(1)}
+                renderCustomSearch={() => (
+                    <Box sx={{ display: "flex", gap: 1, width: '100%' }}>
+                        <Box sx={{ flex: 1 }}>
+                            <FormSelect
+                                label=""
+                                options={[
+                                    { value: "", label: "All types" },
+                                    { value: "INVOICE_EXTRACTION", label: "Invoice Extraction" },
+                                    { value: "PROVIDER_DETECTION", label: "Provider Detection" },
+                                ]}
+                                value={localType}
+                                onChange={(v) => setLocalType(String(v ?? ""))}
+                                placeholder="Type"
+                                textFieldProps={{ size: "small" }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                            <FormSelect
+                                label=""
+                                options={[
+                                    { value: "", label: "All statuses" },
+                                    { value: "SUCCESS", label: "Success" },
+                                    { value: "FAILED", label: "Failed" },
+                                    { value: "ERROR", label: "Error" },
+                                    { value: "PARSE_ERROR", label: "Parse Error" },
+                                ]}
+                                value={localStatus}
+                                onChange={(v) => setLocalStatus(String(v ?? ""))}
+                                placeholder="Status"
+                                textFieldProps={{ size: "small" }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                            <FormSelect
+                                label=""
+                                options={[
+                                    { value: "", label: "All issues" },
+                                    { value: "ANY", label: "Has issue" },
+                                    { value: "OPEN", label: "Open" },
+                                    { value: "IN_PROGRESS", label: "In progress" },
+                                    { value: "RESOLVED", label: "Resolved" },
+                                    { value: "DISMISSED", label: "Dismissed" },
+                                ]}
+                                value={localIssueStatus}
+                                onChange={(v) => setLocalIssueStatus(String(v ?? ""))}
+                                placeholder="Issue"
+                                textFieldProps={{ size: "small" }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                            <TextField
+                                size="small"
+                                fullWidth
+                                placeholder="User name or email…"
+                                value={localUserSearch}
+                                onChange={(e) => setLocalUserSearch(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                                sx={{ "& .MuiInputBase-root": { fontSize: 13 } }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                            <DateRangePicker
+                                variant="inline"
+                                label="Timestamp"
+                                startDate={localDateFrom}
+                                endDate={localDateTo}
+                                onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
+                            />
+                        </Box>
+                        <Button variant="contained" size="small" onClick={handleSearch} aria-label="Search">
+                            <SearchIcon />
+                        </Button>
+                        <Button variant="outlined" size="small" onClick={handleClear}>
+                            <ClearIcon />
+                        </Button>
+                    </Box>
+                )}
                 pagination={{
                     page,
                     pageSize,
@@ -1529,6 +1886,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                     log={selectedLog}
                     token={session.token}
                     onNotify={onNotify}
+                    onIssueUpdate={handleIssueUpdate}
                     onClose={() => setSelectedLog(null)}
                 />
             )}

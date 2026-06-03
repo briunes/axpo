@@ -29,14 +29,29 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const page = Math.max(parseInt(searchParams.get("page") ?? "1", 10), 1);
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "25", 10), 100);
   const skip = (page - 1) * limit;
+  const statusFilter = searchParams.get("status") || undefined;
+  const sourceFilter = searchParams.get("source") || undefined;
+  const dateFrom = searchParams.get("dateFrom") || undefined;
+  const dateTo = searchParams.get("dateTo") || undefined;
+
+  const where: any = {};
+  if (statusFilter) where.status = statusFilter;
+  if (sourceFilter) where.metadata = { path: ["source"], equals: sourceFilter };
+  if (dateFrom || dateTo) {
+    where.executedAt = {
+      ...(dateFrom ? { gte: new Date(dateFrom + "T00:00:00.000Z") } : {}),
+      ...(dateTo ? { lte: new Date(dateTo + "T23:59:59.999Z") } : {}),
+    };
+  }
 
   const [logs, total] = await Promise.all([
     prisma.cronLog.findMany({
+      where,
       orderBy: { executedAt: "desc" },
       skip,
       take: limit,
     }),
-    prisma.cronLog.count(),
+    prisma.cronLog.count({ where }),
   ]);
 
   return ResponseHandler.ok(

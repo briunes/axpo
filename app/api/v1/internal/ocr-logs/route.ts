@@ -5,6 +5,21 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 
+function hasJsonValue(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  return Object.keys(value as Record<string, unknown>).length > 0;
+}
+
+function getIssueStatus(log: {
+  issueStatus: string | null;
+  reportedIssue: string | null;
+  userCorrections: unknown;
+}): string | null {
+  const hasIssueSignal = Boolean(log.reportedIssue) || hasJsonValue(log.userCorrections);
+  if (!hasIssueSignal) return log.issueStatus;
+  return log.issueStatus ?? "OPEN";
+}
+
 /**
  * @swagger
  * /api/v1/internal/ocr-logs:
@@ -37,10 +52,45 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const skip = (page - 1) * limit;
   const statusFilter = searchParams.get("status") || undefined;
   const providerFilter = searchParams.get("provider") || undefined;
+  const typeFilter = searchParams.get("type") || undefined;
+  const dateFrom = searchParams.get("dateFrom") || undefined;
+  const dateTo = searchParams.get("dateTo") || undefined;
+  const userSearch = searchParams.get("userSearch") || undefined;
+  const issueStatus = searchParams.get("issueStatus") || undefined;
 
   const where: any = {};
   if (statusFilter) where.status = statusFilter;
   if (providerFilter) where.provider = providerFilter;
+  if (typeFilter) where.type = typeFilter;
+  if (dateFrom || dateTo) {
+    where.requestedAt = {
+      ...(dateFrom ? { gte: new Date(dateFrom + "T00:00:00.000Z") } : {}),
+      ...(dateTo ? { lte: new Date(dateTo + "T23:59:59.999Z") } : {}),
+    };
+  }
+  if (userSearch) {
+    where.OR = [
+      { user: { fullName: { contains: userSearch, mode: "insensitive" } } },
+      { user: { email: { contains: userSearch, mode: "insensitive" } } },
+      { userEmail: { contains: userSearch, mode: "insensitive" } },
+    ];
+  }
+  if (issueStatus) {
+    const issueSignalWhere = {
+      OR: [{ reportedIssue: { not: null } }, { userCorrections: { not: null } }],
+    };
+    if (issueStatus === "ANY") {
+      where.AND = [...(where.AND ?? []), issueSignalWhere];
+    } else if (issueStatus === "OPEN") {
+      where.AND = [
+        ...(where.AND ?? []),
+        issueSignalWhere,
+        { OR: [{ issueStatus: "OPEN" }, { issueStatus: null }] },
+      ];
+    } else {
+      where.issueStatus = issueStatus;
+    }
+  }
 
   const [logs, total] = await Promise.all([
     prisma.ocrLog.findMany({
@@ -101,6 +151,17 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         simulationId: l.simulationId,
         simulationReferenceNumber: l.simulation?.referenceNumber ?? null,
         reportedIssue: l.reportedIssue ?? null,
+        issueStatus: getIssueStatus(l),
+        issueResolution: l.issueResolution ?? null,
+        issueNotes: l.issueNotes ?? null,
+        issueSubmittedAt: (l.issueSubmittedAt ?? l.requestedAt)?.toISOString(),
+        issueHandledAt: l.issueHandledAt?.toISOString() ?? null,
+        issueHandledByUserId: l.issueHandledByUserId ?? null,
+        issueSignalCount:
+          (l.reportedIssue ? 1 : 0) +
+          (hasJsonValue(l.userCorrections)
+            ? Object.keys(l.userCorrections as Record<string, unknown>).length
+            : 0),
         files: l.ocrFiles,
       })),
       pagination: {

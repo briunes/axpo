@@ -89,6 +89,7 @@ export default function ProfilePage() {
         : null;
 
     const roleTone: Record<string, "default" | "primary" | "secondary"> = {
+        SYS_ADMIN: "primary",
         ADMIN: "primary",
         AGENT: "secondary",
         COMMERCIAL: "default",
@@ -119,7 +120,7 @@ export default function ProfilePage() {
                                         {t("profilePage", "role")}
                                     </span>
                                     <Chip
-                                        label={user?.role === "ADMIN" ? t("userFormPage", "roleAdmin") : user?.role === "AGENT" ? t("userFormPage", "roleAgent") : t("userFormPage", "roleCommercial")}
+                                        label={user?.role === "SYS_ADMIN" ? t("userFormPage", "roleSysAdmin") : user?.role === "ADMIN" ? t("userFormPage", "roleAdmin") : user?.role === "AGENT" ? t("userFormPage", "roleAgent") : t("userFormPage", "roleCommercial")}
                                         size="small"
                                         color={roleTone[user?.role ?? "COMMERCIAL"]}
                                         sx={{ fontWeight: 600, fontSize: 12, width: "fit-content" }}

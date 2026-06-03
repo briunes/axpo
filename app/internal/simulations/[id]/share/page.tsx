@@ -18,6 +18,7 @@ import { HtmlEditor } from "../../../components/modules/HtmlEditor";
 import { DraggableVariables } from "../../../components/modules/DraggableVariables";
 import { extractVariableValues, replaceVariables as replaceVars } from "@/infrastructure/pdf/variableReplacer";
 import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
+import { resolveTranslation, getLanguageFromCountry } from "@/lib/supportedLanguages";
 import {
     Box,
     Button,
@@ -70,6 +71,7 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
     const [editedEmailContent, setEditedEmailContent] = useState("");
     const [editedSubject, setEditedSubject] = useState("");
     const [recipientEmail, setRecipientEmail] = useState("");
+    const [clientLanguage, setClientLanguage] = useState<string>("en");
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const [templateViewMode, setTemplateViewMode] = useState<"preview" | "edit">("preview");
@@ -122,29 +124,37 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                 setEmailTemplates(emailTpl.filter((t) => t.active && t.type === "simulation-share"));
                 setTemplateVariables(variables);
 
-                // Set default selections
-                const defaultPdf = pdfTpl.find((t) => t.active);
-                const defaultEmail = emailTpl.find((t) => t.active);
-                if (defaultPdf) {
-                    setSelectedPdfTemplate(defaultPdf.id);
-                    setEditedPdfContent(defaultPdf.htmlContent);
-                }
-                if (defaultEmail) {
-                    setSelectedEmailTemplate(defaultEmail.id);
-                    setEditedEmailContent(defaultEmail.htmlContent);
-                    setEditedSubject(defaultEmail.subject);
-                }
-
-                // Pre-fill recipient email if client exists
+                // Pre-fill recipient email if client exists and detect the client
+                // language so we can pick the matching template translation.
+                let detectedLanguage = "en";
                 if (simData.simulation.clientId) {
                     try {
                         const clientData = await getClient(session.token, simData.simulation.clientId);
                         if (clientData.contactEmail) {
                             setRecipientEmail(clientData.contactEmail);
                         }
+                        detectedLanguage = clientData.language
+                            ? clientData.language
+                            : getLanguageFromCountry(clientData.country);
+                        setClientLanguage(detectedLanguage);
                     } catch (err) {
                         // Client data not available, that's okay
                     }
+                }
+
+                // Set default selections
+                const defaultPdf = filteredPdfTemplates.find((t) => t.active);
+                const defaultEmail = emailTpl.find((t) => t.active);
+                if (defaultPdf) {
+                    const pdfTranslation = resolveTranslation(defaultPdf.translations ?? [], detectedLanguage);
+                    setSelectedPdfTemplate(defaultPdf.id);
+                    setEditedPdfContent(pdfTranslation?.htmlContent ?? defaultPdf.htmlContent);
+                }
+                if (defaultEmail) {
+                    const emailTranslation = resolveTranslation(defaultEmail.translations ?? [], detectedLanguage);
+                    setSelectedEmailTemplate(defaultEmail.id);
+                    setEditedEmailContent(emailTranslation?.htmlContent ?? defaultEmail.htmlContent);
+                    setEditedSubject(emailTranslation?.subject ?? defaultEmail.subject);
                 }
             })
             .catch((err) => {
@@ -161,13 +171,17 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
         if (shareMode === "pdf") {
             setSelectedPdfTemplate(templateId);
             const template = pdfTemplates.find((t) => t.id === templateId);
-            if (template) setEditedPdfContent(template.htmlContent);
+            if (template) {
+                const translation = resolveTranslation(template.translations ?? [], clientLanguage);
+                setEditedPdfContent(translation?.htmlContent ?? template.htmlContent);
+            }
         } else {
             setSelectedEmailTemplate(templateId);
             const template = emailTemplates.find((t) => t.id === templateId);
             if (template) {
-                setEditedEmailContent(template.htmlContent);
-                setEditedSubject(template.subject);
+                const translation = resolveTranslation(template.translations ?? [], clientLanguage);
+                setEditedEmailContent(translation?.htmlContent ?? template.htmlContent);
+                setEditedSubject(translation?.subject ?? template.subject);
             }
         }
     };

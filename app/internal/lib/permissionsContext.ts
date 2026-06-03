@@ -39,7 +39,7 @@ interface PermissionsContextValue {
 
 const PermissionsContext = createContext<PermissionsContextValue>({
   canDo: (role, key) => {
-    if (role === "ADMIN") return true;
+    if (role === "ADMIN" || role === "SYS_ADMIN") return true;
     return ROLE_PERMISSION_DEFAULTS[role]?.[key] ?? false;
   },
   loaded: false,

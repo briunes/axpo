@@ -10,19 +10,21 @@ import {
     DialogActions,
     Typography,
     TextField,
-    MenuItem,
-    Select,
-    FormControl,
-    InputLabel,
     Chip,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { DataTable, StatusBadge } from "../ui";
 import type { ColumnDef } from "../ui";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
+import { FormSelect } from "../ui/FormSelect";
+import { DateRangePicker } from "../ui/DateRangePicker";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDate } from "../../lib/formatPreferences";
 
 interface EmailLog {
     id: string;
@@ -76,14 +78,53 @@ function TriggerBadge({ trigger }: { trigger?: string }) {
 
 export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
     const { t } = useI18n();
+    const { preferences } = useUserPreferences();
     const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
 
-    // Filters
+    // Applied filters (sent to the API)
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [triggerFilter, setTriggerFilter] = useState<string>("all");
     const [searchTerm, setSearchTerm] = useState("");
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
+
+    // Local (pending) filter state
+    const [localStatus, setLocalStatus] = useState<string>("all");
+    const [localTrigger, setLocalTrigger] = useState<string>("all");
+    const [localSearch, setLocalSearch] = useState("");
+    const [localDateFrom, setLocalDateFrom] = useState<Date | null>(null);
+    const [localDateTo, setLocalDateTo] = useState<Date | null>(null);
+
+    const formatDate = useCallback((dateStr: string) => {
+        try {
+            const date = new Date(dateStr);
+            const formatted = formatDisplayDate(date, preferences.dateFormat);
+            const hh = String(date.getHours()).padStart(2, "0");
+            const mm = String(date.getMinutes()).padStart(2, "0");
+            const ss = String(date.getSeconds()).padStart(2, "0");
+            return `${formatted} ${hh}:${mm}:${ss}`;
+        } catch { return dateStr; }
+    }, [preferences.dateFormat]);
+
+    const toDateOnly = (d: Date | null) => {
+        if (!d) return "";
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+
+    const handleSearch = () => {
+        setStatusFilter(localStatus);
+        setTriggerFilter(localTrigger);
+        setSearchTerm(localSearch);
+        setDateFrom(toDateOnly(localDateFrom));
+        setDateTo(toDateOnly(localDateTo));
+        setPage(1);
+    };
+
+    const resetFilters = () => {
+        setLocalStatus("all"); setLocalTrigger("all"); setLocalSearch(""); setLocalDateFrom(null); setLocalDateTo(null);
+        setStatusFilter("all"); setTriggerFilter("all"); setSearchTerm(""); setDateFrom(""); setDateTo("");
+        setPage(1);
+    };
 
     // Pagination
     const [page, setPage] = useState(1);
@@ -175,27 +216,6 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
         setSelectedLogId(logId);
     };
 
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
-        return new Intl.DateTimeFormat("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-        }).format(date);
-    };
-
-    const resetFilters = () => {
-        setStatusFilter("all");
-        setTriggerFilter("all");
-        setSearchTerm("");
-        setDateFrom("");
-        setDateTo("");
-        setPage(1);
-    };
-
     const handleSort = (column: string) => {
         if (sortColumn === column) {
             setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -213,17 +233,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             width: "180",
             renderCell: (log) => (
                 <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
-                    {new Date(log.sentAt).toLocaleString("en-GB", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    })}{" "}
-                    {new Date(log.sentAt).toLocaleTimeString("en-GB", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    })}
+                    {formatDate(log.sentAt)}
                 </Typography>
             ),
         },
@@ -262,71 +272,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
         },
     ];
 
-    const filterBar = (
-        <Stack spacing={2} sx={{ mb: 2 }}>
-            <Stack direction="row" spacing={2}>
-                <FormControl size="small" sx={{ minWidth: 150 }}>
-                    <InputLabel>Status</InputLabel>
-                    <Select
-                        value={statusFilter}
-                        onChange={(e) => {
-                            setStatusFilter(e.target.value);
-                            setPage(1);
-                        }}
-                        label="Status"
-                    >
-                        <MenuItem value="all">All</MenuItem>
-                        <MenuItem value="sent">Sent</MenuItem>
-                        <MenuItem value="failed">Failed</MenuItem>
-                    </Select>
-                </FormControl>
 
-                <FormControl size="small" sx={{ minWidth: 180 }}>
-                    <InputLabel>Triggered By</InputLabel>
-                    <Select
-                        value={triggerFilter}
-                        onChange={(e) => {
-                            setTriggerFilter(e.target.value);
-                            setPage(1);
-                        }}
-                        label="Triggered By"
-                    >
-                        <MenuItem value="all">All</MenuItem>
-                        <MenuItem value="user-creation">User Creation</MenuItem>
-                        <MenuItem value="simulation-share">Simulation Share</MenuItem>
-                        <MenuItem value="test-email">Test Email</MenuItem>
-                    </Select>
-                </FormControl>
-
-                <TextField
-                    size="small"
-                    label="From Date"
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
-                    value={dateFrom}
-                    onChange={(e) => {
-                        setDateFrom(e.target.value);
-                        setPage(1);
-                    }}
-                    sx={{ width: 180 }}
-                />
-
-                <TextField
-                    size="small"
-                    label="To Date"
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
-                    value={dateTo}
-                    onChange={(e) => {
-                        setDateTo(e.target.value);
-                        setPage(1);
-                    }}
-                    sx={{ width: 180 }}
-                />
-
-            </Stack>
-        </Stack>
-    );
 
     return (
         <>
@@ -334,16 +280,67 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                 columns={columns}
                 rows={logs}
                 loading={loading}
-                searchValue={searchTerm}
-                onSearch={(value) => {
-                    setSearchTerm(value);
-                    setPage(1);
-                }}
-                onClearFilters={resetFilters}
-                searchPlaceholder="Search by recipient, subject, or template..."
                 sortState={{ column: sortColumn, direction: sortDir }}
                 onSort={handleSort}
-                filterBar={filterBar}
+                renderCustomSearch={() => (
+                    <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
+                        <Box sx={{ flex: 1, }}>
+                            <FormSelect
+                                label=""
+                                options={[
+                                    { value: "all", label: "All statuses" },
+                                    { value: "sent", label: "Sent" },
+                                    { value: "failed", label: "Failed" },
+                                ]}
+                                value={localStatus}
+                                onChange={(v) => setLocalStatus(String(v ?? "all"))}
+                                placeholder="Status"
+                                textFieldProps={{ size: "small" }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 1, }}>
+                            <FormSelect
+                                label=""
+                                options={[
+                                    { value: "all", label: "All triggers" },
+                                    { value: "user-creation", label: "User Creation" },
+                                    { value: "simulation-share", label: "Simulation Share" },
+                                    { value: "test-email", label: "Test Email" },
+                                ]}
+                                value={localTrigger}
+                                onChange={(v) => setLocalTrigger(String(v ?? "all"))}
+                                placeholder="Triggered By"
+                                textFieldProps={{ size: "small" }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 1, }}>
+                            <TextField
+                                size="small"
+                                fullWidth
+                                placeholder="Recipient, subject…"
+                                value={localSearch}
+                                onChange={(e) => setLocalSearch(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                                sx={{ "& .MuiInputBase-root": { fontSize: 13 } }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 2, }}>
+                            <DateRangePicker
+                                variant="inline"
+                                label="Date"
+                                startDate={localDateFrom}
+                                endDate={localDateTo}
+                                onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
+                            />
+                        </Box>
+                        <Button variant="contained" size="small" onClick={handleSearch} aria-label="Search">
+                            <SearchIcon />
+                        </Button>
+                        <Button variant="outlined" size="small" onClick={resetFilters}>
+                            <ClearIcon />
+                        </Button>
+                    </Box>
+                )}
                 pagination={{
                     page,
                     pageSize,

@@ -62,6 +62,7 @@ export function RolePermissionsEditor({
     const getRoleLabel = (role: string) => {
         if (role === "AGENT") return t("rolePermissionsModule", "roleLabelAgent");
         if (role === "COMMERCIAL") return t("rolePermissionsModule", "roleLabelCommercial");
+        if (role === "SYS_ADMIN") return t("rolePermissionsModule", "roleLabelSysAdmin");
         return t("rolePermissionsModule", "roleLabelAdmin");
     };
     const getPermLabel = (key: PermissionKey) =>
@@ -183,6 +184,10 @@ export function RolePermissionsEditor({
                     <div className="rpe-matrix-header">
                         <div className="rpe-col-perm-label" />
                         <div className="rpe-col-role rpe-col-role--admin">
+                            <span className="rpe-role-chip rpe-role-chip--sys-admin">{t("rolePermissionsModule", "roleLabelSysAdmin")}</span>
+                            <span className="rpe-role-locked">{t("rolePermissionsModule", "alwaysGranted")}</span>
+                        </div>
+                        <div className="rpe-col-role rpe-col-role--admin">
                             <span className="rpe-role-chip rpe-role-chip--admin">{t("rolePermissionsModule", "roleLabelAdmin")}</span>
                             <span className="rpe-role-locked">{t("rolePermissionsModule", "alwaysGranted")}</span>
                         </div>
@@ -207,6 +212,16 @@ export function RolePermissionsEditor({
                                             <span className="rpe-perm-name">{getPermLabel(perm.key)}</span>
                                         </div>
                                     </Tooltip>
+
+                                    {/* SYS_ADMIN column — always ON, not editable */}
+                                    <div className="rpe-col-role rpe-col-role--admin">
+                                        <Switch
+                                            checked
+                                            disabled
+                                            size="small"
+                                            sx={{ opacity: 0.5 }}
+                                        />
+                                    </div>
 
                                     {/* Admin column — always ON, not editable */}
                                     <div className="rpe-col-role rpe-col-role--admin">
@@ -304,7 +319,7 @@ export function RolePermissionsEditor({
         }
         .rpe-matrix-header {
           display: grid;
-          grid-template-columns: 1fr 120px 120px 120px;
+          grid-template-columns: 1fr 120px 120px 120px 120px;
                     background: var(--scheme-neutral-1100);
                     border-bottom: 1px solid var(--scheme-neutral-900);
           padding: 12px 20px;
@@ -334,6 +349,10 @@ export function RolePermissionsEditor({
           font-weight: 700;
           letter-spacing: 0.03em;
           text-transform: uppercase;
+        }
+        .rpe-role-chip--sys-admin {
+                    background: rgba(239, 68, 68, 0.16);
+                    color: #f87171;
         }
         .rpe-role-chip--admin {
                     background: rgba(245, 158, 11, 0.16);
@@ -371,7 +390,7 @@ export function RolePermissionsEditor({
         }
         .rpe-row {
           display: grid;
-          grid-template-columns: 1fr 120px 120px 120px;
+          grid-template-columns: 1fr 120px 120px 120px 120px;
           align-items: center;
           padding: 4px 20px;
           gap: 8px;

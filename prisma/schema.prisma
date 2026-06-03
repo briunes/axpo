@@ -9,27 +9,28 @@ datasource db {
 }
 
 model Agency {
-  id              String         @id @default(cuid())
-  name            String
-  isActive        Boolean        @default(true)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  street          String?
-  city            String?
-  postalCode      String?
-  province        String?
-  country         String?
-  deletedAt       DateTime?
-  isDeleted       Boolean        @default(false)
-  createdByUserId String?
-  updatedByUserId String?
-  createdByUser   User?          @relation("AgencyCreatedBy", fields: [createdByUserId], references: [id])
-  updatedByUser   User?          @relation("AgencyUpdatedBy", fields: [updatedByUserId], references: [id])
-  agencyTariffs   AgencyTariff[]
-  baseValueSets   BaseValueSet[]
-  clients         Client[]
-  simulations     Simulation[]
-  users           User[]
+  id               String            @id @default(cuid())
+  name             String
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  street           String?
+  city             String?
+  postalCode       String?
+  province         String?
+  country          String?
+  deletedAt        DateTime?
+  isDeleted        Boolean           @default(false)
+  createdByUserId  String?
+  updatedByUserId  String?
+  createdByUser    User?             @relation("AgencyCreatedBy", fields: [createdByUserId], references: [id])
+  updatedByUser    User?             @relation("AgencyUpdatedBy", fields: [updatedByUserId], references: [id])
+  agencyTariffs    AgencyTariff[]
+  baseValueSets    BaseValueSet[]
+  clients          Client[]
+  simulations      Simulation[]
+  users            User[]
+  ocrUsageInvoices OcrUsageInvoice[]
 
   @@index([isDeleted])
   @@map("agencies")
@@ -49,31 +50,32 @@ model AgencyTariff {
 }
 
 model Client {
-  id              String       @id @default(cuid())
-  agencyId        String
-  name            String
-  isActive        Boolean      @default(true)
-  isDeleted       Boolean      @default(false)
-  deletedAt       DateTime?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  cif             String?
-  contactName     String?
-  contactEmail    String?
-  contactPhone    String?
-  otherDetails    String?
-  street          String?
-  city            String?
-  postalCode      String?
-  province        String?
-  country         String?
-  language        String?
-  createdByUserId String?
-  updatedByUserId String?
-  agency          Agency       @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  createdByUser   User?        @relation("ClientCreatedBy", fields: [createdByUserId], references: [id])
-  updatedByUser   User?        @relation("ClientUpdatedBy", fields: [updatedByUserId], references: [id])
-  simulations     Simulation[]
+  id               String            @id @default(cuid())
+  agencyId         String
+  name             String
+  isActive         Boolean           @default(true)
+  isDeleted        Boolean           @default(false)
+  deletedAt        DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  cif              String?
+  contactName      String?
+  contactEmail     String?
+  contactPhone     String?
+  otherDetails     String?
+  street           String?
+  city             String?
+  postalCode       String?
+  province         String?
+  country          String?
+  language         String?
+  createdByUserId  String?
+  updatedByUserId  String?
+  agency           Agency            @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  createdByUser    User?             @relation("ClientCreatedBy", fields: [createdByUserId], references: [id])
+  updatedByUser    User?             @relation("ClientUpdatedBy", fields: [updatedByUserId], references: [id])
+  simulations      Simulation[]
+  ocrUsageInvoices OcrUsageInvoice[]
 
   @@index([agencyId, isDeleted])
   @@map("clients")
@@ -126,6 +128,10 @@ model User {
   simulations                 Simulation[]
   preferences                 UserPreferences?
   appErrorLogs                AppErrorLog[]
+  ocrPricesCreated            OcrModelPrice[]     @relation("OcrPriceCreatedBy")
+  ocrPricesUpdated            OcrModelPrice[]     @relation("OcrPriceUpdatedBy")
+  ocrInvoicesCreated          OcrUsageInvoice[]   @relation("OcrInvoiceCreatedBy")
+  ocrInvoicesAsUser           OcrUsageInvoice[]   @relation("OcrInvoiceUser")
   agency                      Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   createdByUser               User?               @relation("UserCreatedBy", fields: [createdByUserId], references: [id])
   createdUsers                User[]              @relation("UserCreatedBy")
@@ -138,26 +144,26 @@ model User {
 }
 
 model UserSession {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   userId             String
-  sessionTokenId     String   @unique
+  sessionTokenId     String    @unique
   deviceFingerprint  String
   ipAddress          String?
   userAgent          String?
   browser            String?
   os                 String?
   authMethod         String
-  loginAt            DateTime @default(now())
-  lastActivityAt     DateTime @default(now())
+  loginAt            DateTime  @default(now())
+  lastActivityAt     DateTime  @default(now())
   logoutAt           DateTime?
-  isActive           Boolean  @default(true)
+  isActive           Boolean   @default(true)
   terminationReason  String?
   terminatedByUserId String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
   metadataJson       Json?
-  user               User     @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
-  terminatedByUser   User?    @relation("SessionTerminatedBy", fields: [terminatedByUserId], references: [id])
+  user               User      @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+  terminatedByUser   User?     @relation("SessionTerminatedBy", fields: [terminatedByUserId], references: [id])
 
   @@index([userId, isActive, loginAt])
   @@index([isActive, lastActivityAt])
@@ -304,67 +310,73 @@ model AuditLog {
 }
 
 model SystemConfig {
-  id                              String   @id @default(cuid())
-  simulationExpirationDays        Int      @default(30)
-  simulationShareText             String   @default("Your simulation is ready. Access it with PIN: {PIN}")
-  enablePixelTracking             Boolean  @default(true)
-  requirePinForAccess             Boolean  @default(true)
-  pinLength                       Int      @default(4)
-  autoCreateClientOnSim           Boolean  @default(false)
-  enableAnalyticsModule           Boolean  @default(true)
-  enableAuditLogsModule           Boolean  @default(true)
-  defaultDashboardView            String   @default("COMMERCIAL")
-  enableRealtimeReports           Boolean  @default(false)
-  updatedAt                       DateTime @updatedAt
-  createdAt                       DateTime @default(now())
+  id                              String    @id @default(cuid())
+  simulationExpirationDays        Int       @default(30)
+  simulationShareText             String    @default("Your simulation is ready. Access it with PIN: {PIN}")
+  enablePixelTracking             Boolean   @default(true)
+  requirePinForAccess             Boolean   @default(true)
+  pinLength                       Int       @default(4)
+  autoCreateClientOnSim           Boolean   @default(false)
+  enableAnalyticsModule           Boolean   @default(true)
+  enableAuditLogsModule           Boolean   @default(true)
+  defaultDashboardView            String    @default("COMMERCIAL")
+  enableRealtimeReports           Boolean   @default(false)
+  updatedAt                       DateTime  @updatedAt
+  createdAt                       DateTime  @default(now())
   smtpFromEmail                   String?
-  smtpFromName                    String?  @default("Axpo Simulator")
+  smtpFromName                    String?   @default("Axpo Simulator")
   smtpHost                        String?
   smtpPassword                    String?
-  smtpPort                        Int?     @default(587)
-  smtpSecure                      Boolean  @default(false)
+  smtpPort                        Int?      @default(587)
+  smtpSecure                      Boolean   @default(false)
   smtpUser                        String?
   userCreationEmailTemplateId     String?
-  electricityTaxRate              Decimal  @default(0.051127)
-  ivaRate                         Decimal  @default(0.21)
-  defaultDateFormat               String   @default("DD/MM/YYYY")
-  defaultItemsPerPage             Int      @default(10)
-  defaultLanguage                 String   @default("en")
-  defaultNumberFormat             String   @default("eu")
-  defaultTimeFormat               String   @default("24h")
-  defaultTimezone                 String   @default("Europe/Madrid")
+  electricityTaxRate              Decimal   @default(0.051127)
+  ivaRate                         Decimal   @default(0.21)
+  defaultDateFormat               String    @default("DD/MM/YYYY")
+  defaultItemsPerPage             Int       @default(10)
+  defaultLanguage                 String    @default("en")
+  defaultNumberFormat             String    @default("eu")
+  defaultTimeFormat               String    @default("24h")
+  defaultTimezone                 String    @default("Europe/Madrid")
   llmApiKey                       String?
   llmBaseUrl                      String?
-  llmEnabled                      Boolean  @default(false)
-  llmMaxTokens                    Int?     @default(2000)
-  llmModelName                    String?  @default("llama3.2")
-  llmProvider                     String?  @default("ollama")
-  llmTemperature                  Decimal? @default(0.1)
-  setupTokenValidityHours         Int      @default(72)
+  llmEnabled                      Boolean   @default(false)
+  llmMaxTokens                    Int?      @default(2000)
+  llmModelName                    String?   @default("llama3.2")
+  llmProvider                     String?   @default("ollama")
+  llmTemperature                  Decimal?  @default(0.1)
+  setupTokenValidityHours         Int       @default(72)
   passwordResetEmailTemplateId    String?
-  passwordResetTokenValidityHours Int      @default(24)
-  magicLinkEnabled                Boolean  @default(false)
+  passwordResetTokenValidityHours Int       @default(24)
+  magicLinkEnabled                Boolean   @default(false)
   magicLinkEmailTemplateId        String?
-  magicLinkTokenValidityMinutes   Int      @default(15)
-  otpEnabled                      Boolean  @default(false)
+  magicLinkTokenValidityMinutes   Int       @default(15)
+  otpEnabled                      Boolean   @default(false)
   otpEmailTemplateId              String?
-  otpCodeValidityMinutes          Int      @default(10)
-  defaultMaxActiveDevices         Int      @default(3)
+  otpCodeValidityMinutes          Int       @default(10)
+  defaultMaxActiveDevices         Int       @default(3)
   defaultPdfTemplateElectricityId String?
   defaultPdfTemplateGasId         String?
-  cronExpirationEnabled           Boolean  @default(true)
-  cronExpirationSchedule          String   @default("0 2 * * *")
-  cronExpirationTimezone          String   @default("UTC")
-  hydrocarbonTaxRate              Decimal  @default(0.00234)
+  cronExpirationEnabled           Boolean   @default(true)
+  cronExpirationSchedule          String    @default("0 2 * * *")
+  cronExpirationTimezone          String    @default("UTC")
+  hydrocarbonTaxRate              Decimal   @default(0.00234)
   ivaRateOptions                  Json?
   electricityTaxRateOptions       Json?
   hydrocarbonTaxRateOptions       Json?
   electricityTaxConfig            Json?
   gasTaxConfig                    Json?
-  appVersion                      String   @default("1.0.0")
-  maintenanceMode                 Boolean  @default(false)
+  appVersion                      String    @default("1.0.0")
+  maintenanceMode                 Boolean   @default(false)
   maintenanceUntil                DateTime?
   maintenanceMessage              String?
+  ocrBillingEnabled               Boolean   @default(false)
+  ocrBillingCurrency              String    @default("USD")
+  ocrBillingUnitTokens            Int       @default(1000)
+  ocrBillingMarkupPercent         Decimal   @default(0)
+  ocrBillingFixedFeePerCall       Decimal   @default(0)
+  ocrBillingIncludeFailedCalls    Boolean   @default(false)
 
   @@map("system_config")
 }
@@ -523,7 +535,7 @@ model CronLog {
 
 model InvoiceProviderPrompt {
   id                String   @id @default(cuid())
-  name              String   // e.g. "Repsol", "NEON", "Iberdrola"
+  name              String // e.g. "Repsol", "NEON", "Iberdrola"
   slug              String   @unique // e.g. "repsol", "neon", "iberdrola"
   prompt            String   @db.Text // Legacy generic prompt (kept for backward compatibility)
   promptElectricity String   @default("") @db.Text // Custom prompt for electricity invoices
@@ -537,12 +549,12 @@ model InvoiceProviderPrompt {
 }
 
 model OcrLog {
-  id                 String      @id @default(cuid())
-  requestedAt        DateTime    @default(now())
+  id                 String       @id @default(cuid())
+  requestedAt        DateTime     @default(now())
   userId             String?
   userEmail          String?
   simulationId       String?
-  type               OcrLogType  @default(INVOICE_EXTRACTION)
+  type               OcrLogType   @default(INVOICE_EXTRACTION)
   provider           String
   model              String
   baseUrl            String?
@@ -550,23 +562,29 @@ model OcrLog {
   fileType           String?
   fileSizeBytes      Int?
   pageCount          Int?
-  status             String      // SUCCESS | FAILED | ERROR | PARSE_ERROR
+  status             String // SUCCESS | FAILED | ERROR | PARSE_ERROR
   durationMs         Int?
   promptTokens       Int?
   completionTokens   Int?
   totalTokens        Int?
-  extractedFields    Json?       // the extracted JSON data (sanitized, no PII beyond what was extracted)
-  fieldsExtracted    Int?        // count of non-null fields
-  userCorrections    Json?       // corrections applied by the user: { fieldName: { ocr: value, corrected: value } }
+  extractedFields    Json? // the extracted JSON data (sanitized, no PII beyond what was extracted)
+  fieldsExtracted    Int? // count of non-null fields
+  userCorrections    Json? // corrections applied by the user: { fieldName: { ocr: value, corrected: value } }
   errorMessage       String?
   errorType          String?
   httpStatusCode     Int?
-  rawResponseSnippet String?     // first 500 chars of response for debugging
-  promptText         String?     @db.Text // the full prompt sent to the LLM
-  metadata           Json?       // any extra provider-specific info
-  reportedIssue      String?     // user-reported issue message when extraction is mostly empty
-  user               User?       @relation(fields: [userId], references: [id])
-  simulation         Simulation? @relation(fields: [simulationId], references: [id], onDelete: SetNull)
+  rawResponseSnippet String? // first 500 chars of response for debugging
+  promptText         String?      @db.Text // the full prompt sent to the LLM
+  metadata           Json? // any extra provider-specific info
+  reportedIssue      String? // user-reported issue message when extraction is mostly empty
+  issueStatus        String? // OPEN | IN_PROGRESS | RESOLVED | DISMISSED
+  issueResolution    String?
+  issueNotes         String?      @db.Text
+  issueSubmittedAt   DateTime?
+  issueHandledAt     DateTime?
+  issueHandledByUserId String?
+  user               User?        @relation(fields: [userId], references: [id])
+  simulation         Simulation?  @relation(fields: [simulationId], references: [id], onDelete: SetNull)
   ocrFiles           OcrLogFile[]
 
   @@index([requestedAt])
@@ -575,6 +593,7 @@ model OcrLog {
   @@index([provider])
   @@index([status])
   @@index([type])
+  @@index([issueStatus])
   @@map("ocr_logs")
 }
 
@@ -598,6 +617,7 @@ enum OcrLogType {
 }
 
 enum UserRole {
+  SYS_ADMIN
   ADMIN
   AGENT
   COMMERCIAL
@@ -615,33 +635,98 @@ enum BaseValueScope {
 }
 
 model AppErrorLog {
-  id          String   @id @default(cuid())
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
   // Error details
-  errorType   String   // e.g. "Error", "ZodError", "DomainError"
-  errorCode   String?  // domain error code, e.g. "NOT_FOUND"
-  message     String
-  stack       String?
+  errorType String // e.g. "Error", "ZodError", "DomainError"
+  errorCode String? // domain error code, e.g. "NOT_FOUND"
+  message   String
+  stack     String?
 
   // HTTP context
-  method      String?  // GET, POST, etc.
-  path        String?  // /api/v1/internal/...
-  statusCode  Int?
+  method     String? // GET, POST, etc.
+  path       String? // /api/v1/internal/...
+  statusCode Int?
 
   // Who triggered it (optional — may be unauthenticated)
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // Sentry event ID for cross-referencing
   sentryEventId String?
 
   // Extra metadata (JSON)
-  metadata    Json?
+  metadata Json?
 
   @@index([createdAt])
   @@index([errorType])
   @@index([path])
   @@index([userId])
   @@map("app_error_logs")
+}
+
+model OcrModelPrice {
+  id                     String    @id @default(cuid())
+  provider               String
+  model                  String
+  inputPricePer1kTokens  Decimal   @db.Decimal(18, 8)
+  outputPricePer1kTokens Decimal   @db.Decimal(18, 8)
+  currency               String    @default("USD")
+  unitTokens             Int       @default(1000)
+  isActive               Boolean   @default(true)
+  effectiveFrom          DateTime  @default(now())
+  effectiveTo            DateTime?
+  note                   String?
+  createdByUserId        String?
+  updatedByUserId        String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  createdByUser User? @relation("OcrPriceCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser User? @relation("OcrPriceUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([provider])
+  @@index([model])
+  @@index([isActive])
+  @@map("ocr_model_prices")
+}
+
+model OcrUsageInvoice {
+  id                    String   @id @default(cuid())
+  label                 String
+  periodStart           DateTime
+  periodEnd             DateTime
+  clientId              String?
+  clientName            String?
+  agencyId              String?
+  userId                String?
+  currency              String   @default("USD")
+  totalCalls            Int      @default(0)
+  successfulCalls       Int      @default(0)
+  failedCalls           Int      @default(0)
+  totalPromptTokens     BigInt   @default(0)
+  totalCompletionTokens BigInt   @default(0)
+  totalTokens           BigInt   @default(0)
+  baseCost              Decimal  @default(0) @db.Decimal(18, 6)
+  markupCost            Decimal  @default(0) @db.Decimal(18, 6)
+  fixedFeeCost          Decimal  @default(0) @db.Decimal(18, 6)
+  totalCost             Decimal  @default(0) @db.Decimal(18, 6)
+  breakdown             Json?
+  status                String   @default("DRAFT") // DRAFT | ISSUED | PAID | VOID
+  note                  String?
+  createdByUserId       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  createdByUser User?   @relation("OcrInvoiceCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  client        Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  agency        Agency? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  user          User?   @relation("OcrInvoiceUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([periodStart])
+  @@index([periodEnd])
+  @@index([clientId])
+  @@index([status])
+  @@map("ocr_usage_invoices")
 }

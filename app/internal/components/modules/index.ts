@@ -24,3 +24,4 @@ export { UserPreferencesSettings } from "./UserPreferencesSettings";
 export { SmtpSettings } from "./SmtpSettings";
 export { AutomatedEmailsSettings } from "./AutomatedEmailsSettings";
 export { AppErrorLogsPanel } from "./AppErrorLogsPanel";
+export { OcrUsageDashboard } from "./OcrUsageDashboard";

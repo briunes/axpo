@@ -8,7 +8,7 @@ import {
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertRole, isElevatedRole } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 import { PasswordService } from "@/application/services/passwordService";
@@ -19,7 +19,7 @@ const assertUserReadable = (
   actor: { userId: string; role: UserRole; agencyId: string },
   user: { id: string; agencyId: string },
 ) => {
-  if (actor.role === UserRole.ADMIN) {
+  if (isElevatedRole(actor.role)) {
     return;
   }
 
@@ -152,6 +152,26 @@ export const PATCH = withErrorHandler(
         throw new ValidationError(
           "Current password is required to change password",
         );
+      }
+    }
+
+    // Role-management guardrails:
+    //   - Only SYS_ADMIN can promote/demote other admins
+    //   - SYS_ADMIN role itself is always locked (no one can change it)
+    if (payload.role !== undefined && payload.role !== existing.role) {
+      if (existing.role === UserRole.SYS_ADMIN) {
+        throw new ForbiddenError("Sys Admin role cannot be changed");
+      }
+      if (
+        (existing.role === UserRole.ADMIN || payload.role === UserRole.ADMIN) &&
+        auth.role !== UserRole.SYS_ADMIN
+      ) {
+        throw new ForbiddenError(
+          "Only Sys Admin can change the role of an Admin user",
+        );
+      }
+      if (payload.role === UserRole.SYS_ADMIN) {
+        throw new ForbiddenError("Cannot assign Sys Admin role from the API");
       }
     }
 
@@ -334,7 +354,7 @@ export const DELETE = withErrorHandler(
 
     // Admin sets isDeleted = true (soft delete)
     // Agent/Commercial can only delete their own user
-    if (auth.role === UserRole.ADMIN) {
+    if (isElevatedRole(auth.role)) {
       await prisma.user.update({
         where: { id },
         data: {

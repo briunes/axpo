@@ -3029,6 +3029,203 @@
         ]
       }
     },
+    "/api/v1/internal/ocr-prices/{id}": {
+      "put": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Update an OCR model price row",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Hard-delete an OCR model price row",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-prices": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "List configured OCR model prices",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "activeOnly",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Create a new OCR model price row",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-usage/available-models": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "List distinct provider/model pairs seen in OCR logs",
+        "description": "Useful for the admin to see which models they should price",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-usage/invoices/{id}": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Get a single OCR usage invoice snapshot",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-usage/invoices": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "List saved OCR usage invoice snapshots",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Snapshot the current period's usage into a billable invoice line",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-usage/overview": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Aggregated OCR usage metrics (tokens, cost) for a date range",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateTo",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "model",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "userId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "groupBy",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "day",
+                "user",
+                "provider",
+                "model",
+                "type"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "granularity",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "hour",
+                "day",
+                "week",
+                "month"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "recentLimit",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 50
+            }
+          }
+        ]
+      }
+    },
     "/api/v1/internal/openapi": {
       "get": {
         "tags": [

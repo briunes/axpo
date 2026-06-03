@@ -270,6 +270,7 @@ export default function EditAgencyPage({
             rows={users}
             loading={loadingUsers}
             onClearFilters={() => undefined}
+            hasActiveFilters={false}
             emptyMessage={t("agencyFormPage", "noUsers")}
             t={t}
           />
