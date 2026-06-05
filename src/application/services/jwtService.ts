@@ -78,4 +78,20 @@ export class JwtService {
       throw new InvalidTokenError();
     }
   }
+
+  static verifyAccessTokenIgnoringExpiration(
+    token: string,
+  ): VerifiedAuthTokenPayload {
+    try {
+      const decoded = jwt.verify(token, getJwtSecret(), {
+        ignoreExpiration: true,
+      });
+      if (!isVerifiedAuthTokenPayload(decoded)) {
+        throw new InvalidTokenError();
+      }
+      return decoded;
+    } catch {
+      throw new InvalidTokenError();
+    }
+  }
 }

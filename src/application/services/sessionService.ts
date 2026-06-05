@@ -19,6 +19,17 @@ export interface SessionRequestContext {
   browserFingerprint?: string | null;
 }
 
+interface AuthRedirectReport {
+  reason: string;
+  statusCode?: number;
+  path?: string;
+  currentPath?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  tokenExpiresAt?: string;
+  tokenExpired?: boolean;
+}
+
 interface SessionUser {
   id: string;
   role: UserRole;
@@ -232,6 +243,75 @@ export class SessionService {
       },
       data: {
         lastActivityAt: new Date(),
+      },
+    });
+  }
+
+  static async recordAuthRedirectToLogin(
+    userId: string,
+    sessionTokenId: string,
+    report: AuthRedirectReport,
+    context: SessionRequestContext,
+  ): Promise<void> {
+    const session = await prisma.userSession.findUnique({
+      where: {
+        sessionTokenId,
+      },
+      select: {
+        id: true,
+        userId: true,
+        metadataJson: true,
+      },
+    });
+
+    if (!session || session.userId !== userId) {
+      return;
+    }
+
+    const existingMetadata =
+      session.metadataJson &&
+      typeof session.metadataJson === "object" &&
+      !Array.isArray(session.metadataJson)
+        ? (session.metadataJson as Record<string, unknown>)
+        : {};
+
+    const existingReports = Array.isArray(
+      existingMetadata.authRedirectReports,
+    )
+      ? existingMetadata.authRedirectReports
+      : [];
+
+    const redirectReport = {
+      ...report,
+      at: new Date().toISOString(),
+      ipAddress: context.ipAddress,
+      browser: context.browser,
+      os: context.os,
+      userAgent: context.userAgent,
+      browserFingerprint: context.browserFingerprint ?? null,
+    };
+
+    await prisma.userSession.update({
+      where: {
+        id: session.id,
+      },
+      data: {
+        metadataJson: {
+          ...existingMetadata,
+          latestAuthRedirect: redirectReport,
+          authRedirectReports: [...existingReports, redirectReport].slice(-10),
+        },
+      },
+    });
+
+    await AuditService.logEvent({
+      actorUserId: userId,
+      eventType: "AUTH_REDIRECT_TO_LOGIN",
+      targetType: "SESSION",
+      targetId: session.id,
+      metadataJson: {
+        sessionTokenId,
+        ...redirectReport,
       },
     });
   }

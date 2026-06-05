@@ -65,6 +65,41 @@ const isRecentlyActive = (lastActivityAt?: string | null): boolean => {
     return Date.now() - activityTime <= thresholdMs;
 };
 
+interface AuthRedirectMetadata {
+    at?: string;
+    statusCode?: number;
+    path?: string;
+    currentPath?: string;
+    errorCode?: string;
+    errorMessage?: string;
+    tokenExpiresAt?: string;
+    tokenExpired?: boolean;
+}
+
+const getLatestAuthRedirect = (item: UserSessionItem): AuthRedirectMetadata | null => {
+    const metadata = item.metadataJson;
+    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+
+    const latest = metadata.latestAuthRedirect;
+    if (!latest || typeof latest !== "object" || Array.isArray(latest)) return null;
+
+    return latest as AuthRedirectMetadata;
+};
+
+const formatAuthRedirect = (item: UserSessionItem): string => {
+    const report = getLatestAuthRedirect(item);
+    if (!report) return "—";
+
+    const parts = [
+        report.statusCode ? String(report.statusCode) : null,
+        report.path,
+        report.errorMessage || report.errorCode,
+    ].filter(Boolean);
+
+    const main = parts.join(" · ") || "Redirected to login";
+    return report.at ? `${main} (${formatDate(report.at)})` : main;
+};
+
 export function UserSessionsPanel({
     session,
     userId,
@@ -378,6 +413,17 @@ export function UserSessionsPanel({
         );
     };
 
+    const renderAuthRedirect = (item: UserSessionItem) => {
+        const report = getLatestAuthRedirect(item);
+        if (!report) return "—";
+
+        return (
+            <Typography variant="caption" color="warning.main" sx={{ display: "block", maxWidth: 360 }}>
+                {formatAuthRedirect(item)}
+            </Typography>
+        );
+    };
+
     return (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {canManageMaxDevices && (
@@ -492,6 +538,7 @@ export function UserSessionsPanel({
                                             <TableCell>{t("userSessions", "device")}</TableCell>
                                             <TableCell>IP</TableCell>
                                             <TableCell>{t("userSessions", "reason")}</TableCell>
+                                            <TableCell>{t("userSessions", "loginRedirect")}</TableCell>
                                             <TableCell align="right">{t("columns", "actions")}</TableCell>
                                         </>
                                     )}
@@ -500,7 +547,7 @@ export function UserSessionsPanel({
                             <TableBody>
                                 {(groupedMode ? groupedActiveUsers.length === 0 : items.length === 0) && (
                                     <TableRow>
-                                        <TableCell colSpan={groupedMode ? 6 : showUserColumn ? 10 : 9}>
+                                        <TableCell colSpan={groupedMode ? 6 : showUserColumn ? 11 : 10}>
                                             {loading ? (
                                                 <Box sx={{ py: 3, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
                                                     <CircularProgress size={24} />
@@ -570,6 +617,7 @@ export function UserSessionsPanel({
                                                                             <TableCell>{t("userSessions", "auth")}</TableCell>
                                                                             <TableCell>{t("userSessions", "device")}</TableCell>
                                                                             <TableCell>IP</TableCell>
+                                                                            <TableCell>{t("userSessions", "loginRedirect")}</TableCell>
                                                                             <TableCell align="right">{t("columns", "actions")}</TableCell>
                                                                         </TableRow>
                                                                     </TableHead>
@@ -583,6 +631,7 @@ export function UserSessionsPanel({
                                                                                     {[activeSession.browser, activeSession.os].filter(Boolean).join(" / ") || "—"}
                                                                                 </TableCell>
                                                                                 <TableCell>{activeSession.ipAddress || "—"}</TableCell>
+                                                                                <TableCell>{renderAuthRedirect(activeSession)}</TableCell>
                                                                                 <TableCell align="right">
                                                                                     <Button
                                                                                         size="small"
@@ -625,6 +674,7 @@ export function UserSessionsPanel({
                                                                                 <TableCell>{t("userSessions", "device")}</TableCell>
                                                                                 <TableCell>IP</TableCell>
                                                                                 <TableCell>{t("userSessions", "reason")}</TableCell>
+                                                                                <TableCell>{t("userSessions", "loginRedirect")}</TableCell>
                                                                             </TableRow>
                                                                         </TableHead>
                                                                         <TableBody>
@@ -639,6 +689,7 @@ export function UserSessionsPanel({
                                                                                     </TableCell>
                                                                                     <TableCell>{pastSession.ipAddress || "—"}</TableCell>
                                                                                     <TableCell>{pastSession.terminationReason || "—"}</TableCell>
+                                                                                    <TableCell>{renderAuthRedirect(pastSession)}</TableCell>
                                                                                 </TableRow>
                                                                             ))}
                                                                         </TableBody>
@@ -693,6 +744,7 @@ export function UserSessionsPanel({
                                             <TableCell>{[item.browser, item.os].filter(Boolean).join(" / ") || "—"}</TableCell>
                                             <TableCell>{item.ipAddress || "—"}</TableCell>
                                             <TableCell>{item.terminationReason || "—"}</TableCell>
+                                            <TableCell>{renderAuthRedirect(item)}</TableCell>
                                             <TableCell align="right">
                                                 <Button
                                                     size="small"

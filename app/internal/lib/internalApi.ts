@@ -536,6 +536,40 @@ function maybePersistRefreshedToken(response: Response): void {
   window.localStorage.setItem("axpo.internal.auth.token", refreshedToken);
 }
 
+async function reportAuthRedirectToLogin(
+  token: string | null,
+  response: Response,
+  body: ApiEnvelope<unknown>,
+  fallbackMessage: string,
+): Promise<void> {
+  if (typeof window === "undefined" || !token) return;
+
+  try {
+    const browserFingerprint = await getBrowserFingerprint();
+    await fetch(`${baseUrl}/api/v1/internal/auth/redirect-report`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        ...(browserFingerprint
+          ? { "x-browser-fingerprint": browserFingerprint }
+          : {}),
+      },
+      body: JSON.stringify({
+        reason: "AUTH_API_REJECTED",
+        statusCode: response.status,
+        path: new URL(response.url).pathname,
+        currentPath: `${window.location.pathname}${window.location.search}`,
+        errorCode: body.error?.code,
+        errorMessage: body.error?.message ?? fallbackMessage,
+      }),
+      keepalive: true,
+    });
+  } catch {
+    // Best-effort diagnostics only; never block the redirect.
+  }
+}
+
 const VERSION_STORAGE_KEY = "axpo_app_version";
 const SESSION_KEYS_TO_PRESERVE = [
   "axpo.internal.auth.token",
@@ -615,6 +649,14 @@ async function parseApiResponse<T>(
     ) {
       if (typeof window !== "undefined") {
         const w = window as Window & { __axpoAuthRedirecting?: boolean };
+        const token = window.localStorage.getItem("axpo.internal.auth.token");
+
+        await reportAuthRedirectToLogin(
+          token,
+          response,
+          body as ApiEnvelope<unknown>,
+          fallbackMessage,
+        );
 
         window.localStorage.removeItem("axpo.internal.auth.token");
         window.localStorage.removeItem("axpo.internal.auth.user");
