@@ -6,7 +6,7 @@ import { Button } from "@mui/material";
 import { FormInput } from "../components/ui/FormInput";
 import { useAlerts } from "../components/shared";
 import { loadSession, saveSession } from "../lib/authSession";
-import { login, verifyOtp } from "../lib/internalApi";
+import { login, maybeReloadOnVersionChange, verifyOtp } from "../lib/internalApi";
 import { useI18n } from "../../../src/lib/i18n-context";
 import "../globals.css";
 
@@ -39,9 +39,13 @@ export default function LoginPage() {
   }, [otpCooldown]);
 
   useEffect(() => {
-    fetch("/api/v1/internal/config/system")
+    fetch("/api/v1/internal/config/system", {
+      cache: "no-store",
+      headers: { pragma: "no-cache", "cache-control": "no-cache" },
+    })
       .then((r) => r.json())
       .then((data) => {
+        maybeReloadOnVersionChange(data?.appVersion);
         setMagicLinkEnabled(data?.data?.magicLinkEnabled === true || data?.magicLinkEnabled === true);
       })
       .catch(() => { });
@@ -372,4 +376,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

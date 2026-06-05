@@ -6,6 +6,7 @@ import {
   convertPdfToImages,
   OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
+import { resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
 /**
  * Sends images to the configured LLM and returns the raw text response.
@@ -168,11 +169,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     );
   }
 
-  const llmBaseUrl = (config as any).llmBaseUrl as string;
-  const llmModelName = (config as any).llmModelName as string;
-  const llmProvider = ((config as any).llmProvider as string) || "ollama";
-  const llmApiKey = (config as any).llmApiKey as string | null;
-  const llmTemperature = Number((config as any).llmTemperature) || 0.1;
+  const aiConfig = resolveAiConfigFromSystemConfig(
+    config as Record<string, any>,
+    "providerDetection",
+    { defaultTemperature: 0.1, defaultMaxTokens: 2000 },
+  );
+  const llmBaseUrl = aiConfig?.baseUrl as string;
+  const llmModelName = aiConfig?.modelName as string;
+  const llmProvider = aiConfig?.provider || "ollama";
+  const llmApiKey = aiConfig?.apiKey as string | null;
+  const llmTemperature = aiConfig?.temperature ?? 0.1;
 
   const saveOcrLog = async (data: {
     status: string;

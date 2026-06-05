@@ -3,6 +3,7 @@ import { UserRole } from "@/domain/types";
 import { AuthContext } from "./auth";
 import { prisma } from "@/infrastructure/database/prisma";
 import {
+  LOG_PERMISSION_KEYS,
   ROLE_PERMISSION_DEFAULTS,
   type PermissionKey,
 } from "../../../app/internal/lib/permissionsDefinitions";
@@ -57,7 +58,13 @@ export async function assertPermission(
   context: AuthContext,
   key: PermissionKey,
 ): Promise<void> {
-  if (isElevated(context.role)) return;
+  if (context.role === UserRole.SYS_ADMIN) return;
+  if (
+    context.role === UserRole.ADMIN &&
+    !LOG_PERMISSION_KEYS.includes(key)
+  ) {
+    return;
+  }
 
   const cacheKey = permissionCacheKey(context.role, key);
   const now = Date.now();

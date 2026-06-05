@@ -54,7 +54,7 @@ interface OcrLogEntry {
     userId?: string;
     userEmail?: string;
     userName?: string;
-    type: "INVOICE_EXTRACTION" | "PROVIDER_DETECTION";
+    type: "INVOICE_EXTRACTION" | "PROVIDER_DETECTION" | "PROMPT_IMPROVEMENT" | "PROMPT_TEST" | "TEMPLATE_BUILDER";
     provider: string;
     model: string;
     baseUrl?: string;
@@ -184,7 +184,14 @@ function formatProvider(provider: string): string {
 }
 
 function formatLogType(type: OcrLogEntry["type"]): string {
-    return type === "PROVIDER_DETECTION" ? "Provider Detection" : "Invoice Extraction";
+    const labels: Record<OcrLogEntry["type"], string> = {
+        INVOICE_EXTRACTION: "Invoice Extraction",
+        PROVIDER_DETECTION: "Provider Detection",
+        PROMPT_IMPROVEMENT: "Prompt Improvement",
+        PROMPT_TEST: "Prompt Test",
+        TEMPLATE_BUILDER: "Template Builder",
+    };
+    return labels[type] ?? type;
 }
 
 function getStoredFilesSummary(log: OcrLogEntry): string {
@@ -1800,6 +1807,9 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                                     { value: "", label: "All types" },
                                     { value: "INVOICE_EXTRACTION", label: "Invoice Extraction" },
                                     { value: "PROVIDER_DETECTION", label: "Provider Detection" },
+                                    { value: "PROMPT_IMPROVEMENT", label: "Prompt Improvement" },
+                                    { value: "PROMPT_TEST", label: "Prompt Test" },
+                                    { value: "TEMPLATE_BUILDER", label: "Template Builder" },
                                 ]}
                                 value={localType}
                                 onChange={(v) => setLocalType(String(v ?? ""))}

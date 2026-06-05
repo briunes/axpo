@@ -12,6 +12,7 @@ import {
     type RolePermissionItem,
 } from "../../lib/internalApi";
 import {
+    LOG_PERMISSION_KEYS,
     PERMISSION_GROUPS,
     ROLE_PERMISSION_DEFAULTS,
     type PermissionKey,
@@ -25,11 +26,27 @@ interface RolePermissionsEditorProps {
 type PermState = Record<string, Record<string, boolean>>;
 
 const EDITABLE_ROLES = ["AGENT", "COMMERCIAL"] as const;
+const SAVE_ROLES = ["ADMIN", "AGENT", "COMMERCIAL"] as const;
 const SESSION_PERMISSION_KEY = "users.sessions.manage" as const;
+const isLogPermission = (permissionKey: PermissionKey) =>
+    LOG_PERMISSION_KEYS.includes(permissionKey);
 
 const isSessionPermissionLocked = (role: string, permissionKey: PermissionKey) => {
     if (permissionKey !== SESSION_PERMISSION_KEY) return false;
     return role === "AGENT" || role === "COMMERCIAL" || role === "AGENT_MASTER";
+};
+
+const isPermissionLocked = (
+    role: string,
+    permissionKey: PermissionKey,
+    adminOnly?: boolean,
+) => {
+    if (role === "SYS_ADMIN") return true;
+    if (role === "ADMIN") return !isLogPermission(permissionKey);
+    if (adminOnly && (role === "AGENT" || role === "COMMERCIAL" || role === "AGENT_MASTER")) {
+        return true;
+    }
+    return isSessionPermissionLocked(role, permissionKey);
 };
 
 function buildState(items: RolePermissionItem[]): PermState {
@@ -71,6 +88,7 @@ export function RolePermissionsEditor({
         t("rolePermissionsModule", `perm_desc_${key.replace(/[.\-]/g, "_")}`);
     const getGroupLabel = (groupId: string) => {
         if (groupId === "sections") return t("rolePermissionsModule", "groupSections");
+        if (groupId === "logs") return t("rolePermissionsModule", "groupLogs");
         if (groupId === "simulations") return t("rolePermissionsModule", "groupSimulations");
         if (groupId === "clients") return t("rolePermissionsModule", "groupClients");
         if (groupId === "users") return t("rolePermissionsModule", "groupUsers");
@@ -108,7 +126,7 @@ export function RolePermissionsEditor({
     }, [session.token]);
 
     const handleToggle = (role: string, key: PermissionKey, value: boolean) => {
-        if (isSessionPermissionLocked(role, key)) {
+        if (isPermissionLocked(role, key)) {
             return;
         }
 
@@ -122,13 +140,14 @@ export function RolePermissionsEditor({
     const handleSave = async () => {
         setSaving(true);
         const updates: Array<{ role: string; permissionKey: string; allowed: boolean }> = [];
-        for (const role of EDITABLE_ROLES) {
+        for (const role of SAVE_ROLES) {
             for (const group of PERMISSION_GROUPS) {
                 for (const perm of group.permissions) {
+                    if (role === "ADMIN" && !isLogPermission(perm.key)) continue;
                     updates.push({
                         role,
                         permissionKey: perm.key,
-                        allowed: isSessionPermissionLocked(role, perm.key)
+                        allowed: isPermissionLocked(role, perm.key, perm.adminOnly)
                             ? false
                             : (state[role]?.[perm.key] ?? false),
                     });
@@ -189,7 +208,7 @@ export function RolePermissionsEditor({
                         </div>
                         <div className="rpe-col-role rpe-col-role--admin">
                             <span className="rpe-role-chip rpe-role-chip--admin">{t("rolePermissionsModule", "roleLabelAdmin")}</span>
-                            <span className="rpe-role-locked">{t("rolePermissionsModule", "alwaysGranted")}</span>
+                            <span className="rpe-role-locked">{t("rolePermissionsModule", "adminLogsConfigurable")}</span>
                         </div>
                         {EDITABLE_ROLES.map((role) => (
                             <div key={role} className="rpe-col-role">
@@ -223,20 +242,29 @@ export function RolePermissionsEditor({
                                         />
                                     </div>
 
-                                    {/* Admin column — always ON, not editable */}
-                                    <div className="rpe-col-role rpe-col-role--admin">
-                                        <Switch
-                                            checked
-                                            disabled
-                                            size="small"
-                                            sx={{ opacity: 0.5 }}
-                                        />
-                                    </div>
+                                    {/* Admin column — configurable for logs only */}
+                                    {(() => {
+                                        const role = "ADMIN";
+                                        const locked = isPermissionLocked(role, perm.key, perm.adminOnly);
+                                        const checked = locked ? true : (state[role]?.[perm.key] ?? true);
+                                        return (
+                                            <div className="rpe-col-role rpe-col-role--admin">
+                                                <Switch
+                                                    checked={checked}
+                                                    disabled={locked}
+                                                    size="small"
+                                                    color="primary"
+                                                    onChange={(_, val) => handleToggle(role, perm.key, val)}
+                                                    sx={locked ? { opacity: 0.5 } : undefined}
+                                                />
+                                            </div>
+                                        );
+                                    })()}
 
                                     {/* Editable role columns */}
                                     {EDITABLE_ROLES.map((role) => {
-                                        const checked = state[role]?.[perm.key] ?? false;
-                                        const locked = isSessionPermissionLocked(role, perm.key);
+                                        const locked = isPermissionLocked(role, perm.key, perm.adminOnly);
+                                        const checked = locked ? false : (state[role]?.[perm.key] ?? false);
                                         return (
                                             <div key={role} className="rpe-col-role">
                                                 <Switch

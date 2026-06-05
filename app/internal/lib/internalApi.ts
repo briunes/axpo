@@ -548,7 +548,7 @@ const SESSION_KEYS_TO_PRESERVE = [
  * the user picks up the latest deployment without needing a manual refresh.
  * Auth session keys are preserved so users aren't logged out.
  */
-function maybeReloadOnVersionChange(serverVersion: string | undefined): void {
+export function maybeReloadOnVersionChange(serverVersion: string | undefined): void {
   if (typeof window === "undefined" || !serverVersion) return;
 
   const storedVersion = localStorage.getItem(VERSION_STORAGE_KEY);
@@ -2347,7 +2347,7 @@ export interface OcrBillingConfig {
 export async function fetchOcrBillingConfig(
   token: string,
 ): Promise<OcrBillingConfig> {
-  const res = await fetch("/api/v1/internal/config/system", {
+  const res = await fetch("/api/v1/internal/config/system?view=admin", {
     headers: authHeaders(token),
   });
   if (!res.ok) {

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import { assertPermission, assertRole } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { convertPdfToImages, OCR_PDF_RENDER_SCALE } from "@/lib/pdfToImage";
+import { getAiUsage, resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
 const COMMON_CORRECTION_FIELDS = new Set([
   "cups",
@@ -89,7 +91,8 @@ export const POST = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    await assertPermission(auth, "section.configurations");
+    assertRole(auth, [UserRole.ADMIN, UserRole.SYS_ADMIN]);
+    await assertPermission(auth, "section.ocr-logs");
 
     const id = context?.params?.id;
     if (!id) {
@@ -320,17 +323,19 @@ export const POST = withErrorHandler(
       );
     }
 
-    const llmBaseUrl = (config as any).llmBaseUrl as string;
-    const llmModelName = (config as any).llmModelName as string;
-    const llmProvider = ((config as any).llmProvider as string) || "ollama";
-    const llmApiKey = (config as any).llmApiKey as string | null;
-    const llmTemperature = Number((config as any).llmTemperature) || 0.1;
+    const aiConfig = resolveAiConfigFromSystemConfig(
+      config as Record<string, any>,
+      "promptImprovement",
+      { defaultTemperature: 0.1, defaultMaxTokens: 4000, minMaxTokens: 8000 },
+    );
+    const llmBaseUrl = aiConfig?.baseUrl as string;
+    const llmModelName = aiConfig?.modelName as string;
+    const llmProvider = aiConfig?.provider || "ollama";
+    const llmApiKey = aiConfig?.apiKey as string | null;
+    const llmTemperature = aiConfig?.temperature ?? 0.1;
     // For prompt generation we need a much larger token budget than for normal extraction.
     // Use at least 8000 tokens so the generated prompt is never truncated mid-way.
-    const llmMaxTokens = Math.max(
-      Number((config as any).llmMaxTokens) || 4000,
-      8000,
-    );
+    const llmMaxTokens = aiConfig?.maxTokens ?? 8000;
 
     if (!llmBaseUrl || !llmModelName) {
       return NextResponse.json(
@@ -802,6 +807,39 @@ Return ONLY the complete new prompt text — no commentary, no markdown fences, 
         { success: false, message: "LLM returned an empty response" },
         { status: 500 },
       );
+    }
+
+    try {
+      const usage = getAiUsage(llmData, llmProvider);
+      await prisma.ocrLog.create({
+        data: {
+          userId: auth.userId,
+          userEmail: auth.email,
+          simulationId: log.simulationId,
+          type: "PROMPT_IMPROVEMENT",
+          status: "SUCCESS",
+          provider: llmProvider,
+          model: llmModelName,
+          baseUrl: llmBaseUrl,
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          totalTokens: usage.totalTokens,
+          promptText: metaPrompt,
+          extractedFields: { improvedPrompt },
+          fieldsExtracted: 1,
+          metadata: {
+            sourceOcrLogId: log.id,
+            invoiceProviderId,
+            invoiceProviderName,
+            invoiceType,
+            correctionsCount: corrections.length,
+            aiProviderConfigId: aiConfig?.id,
+            aiTask: "promptImprovement",
+          },
+        },
+      });
+    } catch (err) {
+      console.error("[OCR Log] Failed to save prompt-improvement usage:", err);
     }
 
     return NextResponse.json({

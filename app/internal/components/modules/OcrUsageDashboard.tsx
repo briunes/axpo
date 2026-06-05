@@ -13,6 +13,11 @@ import {
     MenuItem,
     Stack,
     Switch,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableRow,
     TextField,
     Tooltip,
     Typography,
@@ -23,13 +28,13 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import { PieChart } from "@mui/x-charts/PieChart";
 import type { SessionState } from "../../lib/authSession";
 import { isAdmin as isAdminRole } from "../../lib/internalApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { LoadingState, EmptyState } from "../shared";
 import {
     DataTable,
-    GradientBarChart,
     GradientLineChart,
     type ColumnDef,
 } from "../ui";
@@ -68,6 +73,7 @@ export interface OcrUsageDashboardProps {
 }
 
 type DateRangePreset = "7d" | "30d" | "mtd" | "qtd" | "ytd" | "custom";
+type ChartGranularity = "hour" | "day" | "week" | "month";
 
 const STATUS_TONE: Record<string, string> = {
     SUCCESS: "status-badge--success",
@@ -132,6 +138,52 @@ function fmtDate(iso: string, withTime = true): string {
     }
 }
 
+function getInclusiveDateSpanDays(from: string, to: string): number | null {
+    const start = new Date(`${from}T00:00:00.000Z`);
+    const end = new Date(`${to}T00:00:00.000Z`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+        return null;
+    }
+    return Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
+}
+
+function createEmptyUsageBucket(key: string): OcrUsageBucket {
+    return {
+        key,
+        label: key,
+        calls: 0,
+        successfulCalls: 0,
+        failedCalls: 0,
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        totalCost: 0,
+    };
+}
+
+function fillShortRangeBuckets(
+    buckets: OcrUsageBucket[],
+    granularity: ChartGranularity,
+    from: string,
+    to: string,
+): OcrUsageBucket[] {
+    if (granularity !== "hour") return buckets;
+
+    const start = new Date(`${from}T00:00:00.000Z`);
+    const end = new Date(`${to}T23:00:00.000Z`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+        return buckets;
+    }
+
+    const byKey = new Map(buckets.map((bucket) => [bucket.key, bucket]));
+    const filled: OcrUsageBucket[] = [];
+    for (let cursor = new Date(start); cursor <= end; cursor.setUTCHours(cursor.getUTCHours() + 1)) {
+        const key = cursor.toISOString().replace(/\.\d{3}Z$/, ".000Z");
+        filled.push(byKey.get(key) ?? createEmptyUsageBucket(key));
+    }
+    return filled;
+}
+
 function KpiCard({
     label,
     value,
@@ -175,9 +227,7 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
     const [preset, setPreset] = useState<DateRangePreset>("30d");
     const [dateFrom, setDateFrom] = useState<string>(() => presetDates("30d").from);
     const [dateTo, setDateTo] = useState<string>(() => presetDates("30d").to);
-    const [granularity, setGranularity] = useState<"day" | "week" | "month">(
-        "day",
-    );
+    const [granularity, setGranularity] = useState<"day" | "week" | "month">("day");
     const [providerFilter, setProviderFilter] = useState<string>("");
     const [modelFilter, setModelFilter] = useState<string>("");
     const [statusFilter, setStatusFilter] = useState<string>("");
@@ -208,6 +258,14 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
 
     const currency = overview?.totals.currency ?? "USD";
     const intlLocale = locale === "es" ? "es-ES" : "en-US";
+    const selectedDateSpanDays = useMemo(
+        () => getInclusiveDateSpanDays(dateFrom, dateTo),
+        [dateFrom, dateTo],
+    );
+    const effectiveGranularity: ChartGranularity =
+        selectedDateSpanDays !== null && selectedDateSpanDays <= 3
+            ? "hour"
+            : granularity;
 
     const loadOverview = useCallback(async () => {
         setLoading(true);
@@ -216,7 +274,7 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
             const params: OcrUsageOverviewParams = {
                 dateFrom,
                 dateTo,
-                granularity,
+                granularity: effectiveGranularity,
                 groupBy: "model",
                 recentLimit: 15,
             };
@@ -232,7 +290,7 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
             setLoading(false);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [token, dateFrom, dateTo, granularity, providerFilter, modelFilter, statusFilter]);
+    }, [token, dateFrom, dateTo, effectiveGranularity, providerFilter, modelFilter, statusFilter]);
 
     const loadConfigLists = useCallback(async () => {
         try {
@@ -273,7 +331,16 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
         setDateTo(to);
     };
 
-    const series = overview?.series.buckets ?? [];
+    const series = useMemo(
+        () =>
+            fillShortRangeBuckets(
+                overview?.series.buckets ?? [],
+                effectiveGranularity,
+                dateFrom,
+                dateTo,
+            ),
+        [overview?.series.buckets, effectiveGranularity, dateFrom, dateTo],
+    );
     // Build xData as Date[] for the line charts (band scale would need strings
     // but the chart type only accepts Date[] | number[]).
     const xData = useMemo(
@@ -284,7 +351,7 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
     const tokenSeries = series.map((b) => b.totalTokens);
     const callSeries = series.map((b) => b.calls);
 
-    // Top 6 models by cost (for the bar chart)
+    // Top 6 models by cost (for the model pie chart)
     const modelBuckets = (overview?.groupBy.buckets ?? []).slice(0, 6);
 
     const unpriced = overview?.billing.unpricedModels ?? [];
@@ -883,17 +950,38 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
                                 {t("ocrUsage", "chartModelHint")}
                             </div>
                             {modelBuckets.length > 0 ? (
-                                <GradientBarChart
-                                    xData={modelBuckets.map((b) => b.label)}
-                                    series={[
-                                        {
-                                            data: modelBuckets.map((b) => round6(b.totalCost)),
-                                            label: t("ocrUsage", "kpiTotalCost"),
-                                            color: "#3b82f6",
-                                        },
-                                    ]}
-                                    height={220}
-                                />
+                                <div className="ocr-model-pie">
+                                    <PieChart
+                                        height={220}
+                                        series={[
+                                            {
+                                                data: modelBuckets.map((bucket, index) => ({
+                                                    id: bucket.key,
+                                                    value: round6(bucket.totalCost),
+                                                    label: bucket.label,
+                                                    color: [
+                                                        "#3b82f6",
+                                                        "#10b981",
+                                                        "#f59e0b",
+                                                        "#ef4444",
+                                                        "#8b5cf6",
+                                                        "#06b6d4",
+                                                    ][index % 6],
+                                                })),
+                                                innerRadius: 48,
+                                                outerRadius: 88,
+                                                paddingAngle: 2,
+                                                cornerRadius: 4,
+                                            },
+                                        ]}
+                                        slotProps={{
+                                            legend: {
+                                                direction: "vertical",
+                                                position: { vertical: "middle", horizontal: "end" },
+                                            },
+                                        }}
+                                    />
+                                </div>
                             ) : (
                                 <div className="ocr-muted ocr-empty">
                                     {t("ocrUsage", "noDataInRange")}
@@ -902,25 +990,11 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
                         </div>
                     </div>
 
-                    {/* Top users / providers / models */}
-                    <div className="ocr-grid-3">
-                        <TopList
+                    {/* Top users */}
+                    <div className="ocr-grid-1">
+                        <TopUsersTable
                             title={t("ocrUsage", "topUsers")}
                             items={overview.top.users}
-                            currency={currency}
-                            locale={intlLocale}
-                            emptyMessage={t("ocrUsage", "noDataInRange")}
-                        />
-                        <TopList
-                            title={t("ocrUsage", "topProviders")}
-                            items={overview.top.providers}
-                            currency={currency}
-                            locale={intlLocale}
-                            emptyMessage={t("ocrUsage", "noDataInRange")}
-                        />
-                        <TopList
-                            title={t("ocrUsage", "topModels")}
-                            items={overview.top.models}
                             currency={currency}
                             locale={intlLocale}
                             emptyMessage={t("ocrUsage", "noDataInRange")}
@@ -1000,7 +1074,7 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
     );
 }
 
-function TopList({
+function TopUsersTable({
     title,
     items,
     currency,
@@ -1013,45 +1087,35 @@ function TopList({
     locale: string;
     emptyMessage: string;
 }) {
-    if (items.length === 0) {
-        return (
-            <div className="panel-card">
-                <div className="ocr-panel__title">{title}</div>
-                <div className="ocr-muted ocr-empty">{emptyMessage}</div>
-            </div>
-        );
-    }
-    const max = Math.max(...items.map((i) => i.totalCost), 0.000001);
     return (
         <div className="panel-card">
             <div className="ocr-panel__title">{title}</div>
-            <ul className="ocr-top-list">
-                {items.map((it) => {
-                    const pct = max > 0 ? (it.totalCost / max) * 100 : 0;
-                    return (
-                        <li key={it.key} className="ocr-top-list__item">
-                            <div className="ocr-top-list__head">
-                                <span className="ocr-top-list__label" title={it.label}>
-                                    {it.label}
-                                </span>
-                                <span className="ocr-top-list__cost">
-                                    {formatCurrency(it.totalCost, currency, locale)}
-                                </span>
-                            </div>
-                            <div className="ocr-top-list__meta">
-                                {formatTokens(it.totalTokens)} · {it.calls}{" "}
-                                {it.calls === 1 ? "call" : "calls"}
-                            </div>
-                            <div className="ocr-top-list__bar">
-                                <div
-                                    className="ocr-top-list__bar-fill"
-                                    style={{ width: `${Math.max(2, pct)}%` }}
-                                />
-                            </div>
-                        </li>
-                    );
-                })}
-            </ul>
+            {items.length === 0 ? (
+                <div className="ocr-muted ocr-empty">{emptyMessage}</div>
+            ) : (
+                <Table size="small" className="ocr-top-users-table">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>User</TableCell>
+                            <TableCell align="right">Calls</TableCell>
+                            <TableCell align="right">Tokens</TableCell>
+                            <TableCell align="right">Cost</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {items.map((it) => (
+                            <TableRow key={it.key} hover>
+                                <TableCell title={it.label}>{it.label}</TableCell>
+                                <TableCell align="right">{fmtNumber(it.calls)}</TableCell>
+                                <TableCell align="right">{formatTokens(it.totalTokens)}</TableCell>
+                                <TableCell align="right">
+                                    <strong>{formatCurrency(it.totalCost, currency, locale)}</strong>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            )}
         </div>
     );
 }

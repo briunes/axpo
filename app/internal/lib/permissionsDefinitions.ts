@@ -12,6 +12,9 @@ export type PermissionKey =
   | "section.base-values"
   | "section.audit-logs"
   | "section.email-logs"
+  | "section.cron-logs"
+  | "section.ocr-logs"
+  | "section.app-error-logs"
   | "section.analytics"
   | "section.configurations"
   | "section.ocr-usage"
@@ -53,6 +56,14 @@ export interface PermissionGroup {
   permissions: PermissionDef[];
 }
 
+export const LOG_PERMISSION_KEYS: PermissionKey[] = [
+  "section.audit-logs",
+  "section.email-logs",
+  "section.cron-logs",
+  "section.ocr-logs",
+  "section.app-error-logs",
+];
+
 export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     id: "sections",
@@ -72,17 +83,6 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: "section.base-values",
         label: "Base Values",
         description: "Access price base value sets",
-      },
-      {
-        key: "section.audit-logs",
-        label: "Audit Logs",
-        description: "View system audit log entries",
-      },
-      {
-        key: "section.email-logs",
-        label: "Email Logs",
-        description: "View email delivery logs and status (admin only)",
-        adminOnly: true,
       },
       {
         key: "section.analytics",
@@ -112,6 +112,42 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         label: "OCR Usage & Billing",
         description:
           "Access the OCR token usage / cost dashboard and invoice exports (admin only)",
+        adminOnly: true,
+      },
+    ],
+  },
+  {
+    id: "logs",
+    label: "Logs",
+    permissions: [
+      {
+        key: "section.audit-logs",
+        label: "Audit Logs",
+        description: "View system audit log entries (admin only)",
+        adminOnly: true,
+      },
+      {
+        key: "section.email-logs",
+        label: "Email Logs",
+        description: "View email delivery logs and status (admin only)",
+        adminOnly: true,
+      },
+      {
+        key: "section.cron-logs",
+        label: "Cron Logs",
+        description: "View cron job execution logs (admin only)",
+        adminOnly: true,
+      },
+      {
+        key: "section.ocr-logs",
+        label: "OCR Logs",
+        description: "View OCR extraction and prompt diagnostic logs (admin only)",
+        adminOnly: true,
+      },
+      {
+        key: "section.app-error-logs",
+        label: "App Errors",
+        description: "View application error logs (admin only)",
         adminOnly: true,
       },
     ],
@@ -263,6 +299,9 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.base-values": true,
     "section.audit-logs": true,
     "section.email-logs": true,
+    "section.cron-logs": true,
+    "section.ocr-logs": true,
+    "section.app-error-logs": true,
     "section.analytics": true,
     "section.configurations": true,
     "section.ocr-usage": true,
@@ -294,6 +333,9 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.base-values": true,
     "section.audit-logs": true,
     "section.email-logs": true,
+    "section.cron-logs": true,
+    "section.ocr-logs": true,
+    "section.app-error-logs": true,
     "section.analytics": true,
     "section.configurations": true,
     "section.ocr-usage": true,
@@ -323,8 +365,11 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.agencies": false,
     "section.clients": true,
     "section.base-values": true,
-    "section.audit-logs": true,
+    "section.audit-logs": false,
     "section.email-logs": false,
+    "section.cron-logs": false,
+    "section.ocr-logs": false,
+    "section.app-error-logs": false,
     "section.analytics": true,
     "section.configurations": false,
     "section.ocr-usage": false,
@@ -356,6 +401,9 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.base-values": false,
     "section.audit-logs": false,
     "section.email-logs": false,
+    "section.cron-logs": false,
+    "section.ocr-logs": false,
+    "section.app-error-logs": false,
     "section.analytics": false,
     "section.configurations": false,
     "section.ocr-usage": false,

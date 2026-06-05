@@ -152,7 +152,7 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
     const loadConfig = async () => {
         try {
             setIsLoading(true);
-            const data = await getSystemConfig();
+            const data = await getSystemConfig({ view: "admin" });
             const ivaRateVal = (data as any).ivaRate || 0.21;
             const elecTaxVal = (data as any).electricityTaxRate || 0.051127;
             const hydroVal = (data as any).hydrocarbonTaxRate || 0.00234;

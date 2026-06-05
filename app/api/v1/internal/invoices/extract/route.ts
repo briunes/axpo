@@ -3,6 +3,7 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
 import { convertPdfToImages, OCR_PDF_RENDER_SCALE } from "@/lib/pdfToImage";
+import { resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
 /**
  * LLM Prompts for Invoice Data Extraction
@@ -699,13 +700,17 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     );
   }
 
-  const llmBaseUrl = (config as any).llmBaseUrl;
-  const llmModelName = (config as any).llmModelName;
-  const llmProvider = (config as any).llmProvider || "ollama";
-  const llmApiKey = (config as any).llmApiKey;
-  // Convert Decimal to number for temperature and maxTokens
-  const llmTemperature = Number((config as any).llmTemperature) || 0.1;
-  const llmMaxTokens = Number((config as any).llmMaxTokens) || 2000;
+  const aiConfig = resolveAiConfigFromSystemConfig(
+    config as Record<string, any>,
+    "invoiceExtraction",
+    { defaultTemperature: 0.1, defaultMaxTokens: 2000 },
+  );
+  const llmBaseUrl = aiConfig?.baseUrl;
+  const llmModelName = aiConfig?.modelName;
+  const llmProvider = aiConfig?.provider || "unknown";
+  const llmApiKey = aiConfig?.apiKey;
+  const llmTemperature = aiConfig?.temperature ?? 0.1;
+  const llmMaxTokens = aiConfig?.maxTokens ?? 2000;
 
   console.log("=== INVOICE EXTRACTION REQUEST ===");
   console.log("Provider:", llmProvider);

@@ -460,9 +460,9 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
     const safePage = Math.min(page, Math.max(totalPages, 1));
 
     return (
-        <Column gap="24" style={{ backgroundColor: 'white' }}>
+        <Column gap="24" >
             {errorText && (
-                <Box sx={{ p: 2, color: "var(--scheme-danger-500)", backgroundColor: "rgba(239,68,68,.05)", borderRadius: 1 }}>
+                <Box sx={{ p: 2, color: "var(--scheme-danger-500)", borderRadius: 1 }}>
                     <Typography variant="body2">{errorText}</Typography>
                 </Box>
             )}
@@ -472,10 +472,9 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
                 sx={{
                     pt: 2,
                     px: 2,
-                    backgroundColor: 'white'
                 }}
             >
-                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} flexWrap="wrap" sx={{ backgroundColor: 'white' }}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} flexWrap="wrap" >
                     <Box sx={{ minWidth: 180, flex: 1, }}>
                         <FormSelect
                             label=""

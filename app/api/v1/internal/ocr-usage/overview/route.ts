@@ -82,6 +82,14 @@ function bucketKey(date: Date, granularity: "hour" | "day" | "week" | "month") {
   return `${tmp.getUTCFullYear()}-${wm}-${wd}`;
 }
 
+const OCR_LOG_TYPE_LABELS: Record<string, string> = {
+  INVOICE_EXTRACTION: "Invoice extraction",
+  PROVIDER_DETECTION: "Provider detection",
+  PROMPT_IMPROVEMENT: "Prompt improvement",
+  PROMPT_TEST: "Prompt test",
+  TEMPLATE_BUILDER: "Template builder",
+};
+
 /**
  * @swagger
  * /api/v1/internal/ocr-usage/overview:
@@ -312,7 +320,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         gLabel = `${log.provider} / ${log.model}`;
       } else if (groupBy === "type") {
         gKey = log.type;
-        gLabel = log.type;
+        gLabel = OCR_LOG_TYPE_LABELS[log.type] ?? log.type;
       }
       const gBucket = getGroupedBucket(gKey, gLabel);
       gBucket.calls += 1;

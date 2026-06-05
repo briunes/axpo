@@ -346,6 +346,8 @@ model SystemConfig {
   llmModelName                    String?   @default("llama3.2")
   llmProvider                     String?   @default("ollama")
   llmTemperature                  Decimal?  @default(0.1)
+  aiProviderConfigs               Json?
+  aiTaskConfigs                   Json?
   setupTokenValidityHours         Int       @default(72)
   passwordResetEmailTemplateId    String?
   passwordResetTokenValidityHours Int       @default(24)
@@ -614,6 +616,9 @@ model OcrLogFile {
 enum OcrLogType {
   INVOICE_EXTRACTION
   PROVIDER_DETECTION
+  PROMPT_IMPROVEMENT
+  PROMPT_TEST
+  TEMPLATE_BUILDER
 }
 
 enum UserRole {

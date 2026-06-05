@@ -44,7 +44,7 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
     const loadConfig = async () => {
         try {
             setIsLoading(true);
-            const data = await getSystemConfig();
+            const data = await getSystemConfig({ view: "admin" });
             setConfig({
                 defaultLanguage: (data as any).defaultLanguage || "en",
                 defaultDateFormat: (data as any).defaultDateFormat || "DD/MM/YYYY",

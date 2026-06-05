@@ -70,7 +70,10 @@ export function IntegrationsSettings({ session, onNotify }: IntegrationsSettings
                 </Tabs>
             </Box>
 
-            <div className="system-settings-content">
+            <div
+                className="system-settings-content"
+                style={activeTab === "llm" ? { padding: 0 } : undefined}
+            >
                 {activeTab === "smtp" && (
                     <SmtpSettings session={session} onNotify={onNotify} />
                 )}

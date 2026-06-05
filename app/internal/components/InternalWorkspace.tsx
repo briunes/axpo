@@ -10,13 +10,19 @@ import {
   buildPermissionMap,
   type RolePermissionItem,
 } from "../lib/permissionsContext";
-import { ROLE_PERMISSION_DEFAULTS, type PermissionKey } from "../lib/permissionsDefinitions";
+import {
+  LOG_PERMISSION_KEYS,
+  ROLE_PERMISSION_DEFAULTS,
+  type PermissionKey,
+} from "../lib/permissionsDefinitions";
 import { TopBar, SectionMenu, SidebarHeader, type AppSection } from "./layout";
 import { useUserPreferences } from "./providers/UserPreferencesProvider";
 import { ForbiddenState, LoadingState } from "./shared";
 import { Toast, useToast } from "./ui";
 
 export type { AppSection };
+
+const isElevatedRole = (role: string) => role === "ADMIN" || role === "SYS_ADMIN";
 
 // Context for action buttons
 const ActionButtonsContext = createContext<((buttons: React.ReactNode) => void) | null>(null);
@@ -136,7 +142,8 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
   const permMap = buildPermissionMap(permItems);
   const canDo = useCallback(
     (userRole: string, key: PermissionKey): boolean => {
-      if (userRole === "ADMIN" || userRole === "SYS_ADMIN") return true;
+      if (userRole === "SYS_ADMIN") return true;
+      if (userRole === "ADMIN" && !LOG_PERMISSION_KEYS.includes(key)) return true;
       const dbKey = `${userRole}::${key}`;
       if (permMap.has(dbKey)) return permMap.get(dbKey) === true;
       return ROLE_PERMISSION_DEFAULTS[userRole]?.[key] ?? false;
@@ -150,17 +157,19 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
   const role = session.user.role;
 
   // Wait for DB permissions to load before rendering the menu.
-  // ADMIN skips this gate — canDo always returns true for them.
-  if (role !== "ADMIN" && role !== "SYS_ADMIN" && !permLoaded) return null;
+  // SYS_ADMIN skips this gate — canDo always returns true for it.
+  if (role !== "SYS_ADMIN" && !permLoaded) return null;
 
   // Section-level access guard — fully driven by DB permissions (canDo handles ADMIN)
+  const canSeeAnyLogs =
+    isElevatedRole(role) && LOG_PERMISSION_KEYS.some((key) => canDo(role, key));
   const sectionAllowed: Record<string, boolean> = {
     simulations: canDo(role, "section.simulations"),
     users: canDo(role, "section.users"),
     agencies: canDo(role, "section.agencies"),
     clients: canDo(role, "section.clients"),
     "base-values": canDo(role, "section.base-values"),
-    logs: canDo(role, "section.audit-logs") || canDo(role, "section.email-logs"),
+    logs: canSeeAnyLogs,
     analytics: canDo(role, "section.analytics"),
     configurations: canDo(role, "section.configurations"),
   };
@@ -175,7 +184,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
             canSeeAgenciesSection={canDo(role, "section.agencies")}
             canSeeClientsSection={canDo(role, "section.clients")}
             canSeeBaseValuesSection={canDo(role, "section.base-values")}
-            canSeeLogsSection={canDo(role, "section.audit-logs") || canDo(role, "section.email-logs")}
+            canSeeLogsSection={canSeeAnyLogs}
             canViewAnalytics={canDo(role, "section.analytics")}
             canSeeConfigurationsSection={canDo(role, "section.configurations")}
             onNavigate={handleNavigate}
@@ -227,7 +236,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
                 canSeeAgenciesSection={canDo(role, "section.agencies")}
                 canSeeClientsSection={canDo(role, "section.clients")}
                 canSeeBaseValuesSection={canDo(role, "section.base-values")}
-                canSeeLogsSection={canDo(role, "section.audit-logs") || canDo(role, "section.email-logs")}
+                canSeeLogsSection={canSeeAnyLogs}
                 canViewAnalytics={canDo(role, "section.analytics")}
                 canSeeConfigurationsSection={canDo(role, "section.configurations")}
                 onNavigate={handleNavigate}

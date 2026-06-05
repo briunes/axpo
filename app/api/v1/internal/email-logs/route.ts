@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
+import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import { assertPermission, assertRole } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 
 /**
@@ -38,6 +39,7 @@ import { prisma } from "@/infrastructure/database/prisma";
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
+  assertRole(auth, [UserRole.ADMIN, UserRole.SYS_ADMIN]);
   await assertPermission(auth, "section.email-logs");
 
   const { searchParams } = new URL(request.url);

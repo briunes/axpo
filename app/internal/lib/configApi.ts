@@ -51,6 +51,7 @@ export interface SystemConfig {
   smtpPassword?: string;
   smtpFromEmail?: string;
   smtpFromName?: string;
+  hasSmtpPassword?: boolean;
   userCreationEmailTemplateId?: string;
   passwordResetEmailTemplateId?: string;
   magicLinkEnabled?: boolean;
@@ -68,6 +69,20 @@ export interface SystemConfig {
   llmTemperature?: number;
   llmMaxTokens?: number;
   llmEnabled?: boolean;
+  hasLlmApiKey?: boolean;
+  aiProviderConfigs?: Array<{
+    id: string;
+    name: string;
+    enabled: boolean;
+    provider: string;
+    apiKey?: string;
+    hasApiKey?: boolean;
+    modelName: string;
+    baseUrl: string;
+    temperature?: number;
+    maxTokens?: number;
+  }>;
+  aiTaskConfigs?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
   appVersion: String;
@@ -75,6 +90,13 @@ export interface SystemConfig {
   maintenanceMode?: boolean;
   maintenanceUntil?: string | null;
   maintenanceMessage?: string | null;
+  // OCR billing settings
+  ocrBillingEnabled?: boolean;
+  ocrBillingCurrency?: string;
+  ocrBillingUnitTokens?: number;
+  ocrBillingMarkupPercent?: number;
+  ocrBillingFixedFeePerCall?: number;
+  ocrBillingIncludeFailedCalls?: boolean;
 }
 
 export interface PdfTemplateTranslationInput {
@@ -212,6 +234,7 @@ export async function testLlmConnection(config: {
   apiKey: string;
   baseUrl: string;
   modelName: string;
+  providerConfigId?: string;
 }): Promise<LlmTestResult> {
   const res = await fetch("/api/v1/internal/config/llm/test", {
     method: "POST",
@@ -231,8 +254,12 @@ export async function testLlmConnection(config: {
 }
 
 // System Config
-export async function getSystemConfig(): Promise<SystemConfig> {
-  const res = await fetch("/api/v1/internal/config/system", {
+export async function getSystemConfig(options?: {
+  view?: "runtime" | "admin";
+}): Promise<SystemConfig> {
+  const view = options?.view ?? "runtime";
+  const query = `?view=${view}`;
+  const res = await fetch(`/api/v1/internal/config/system${query}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch system config");

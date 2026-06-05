@@ -1807,6 +1807,7 @@ export const translations = {
       btnSaved: "Saved",
       loading: "Loading permissions…",
       alwaysGranted: "Always granted",
+      adminLogsConfigurable: "Logs configurable",
       adminOnlyBadge: "Admin only",
       adminOnlyTooltip:
         "This permission is Admin only and cannot be granted to other roles",
@@ -1822,6 +1823,8 @@ export const translations = {
       groupClients: "Client Actions",
       groupUsers: "User Management",
       groupAgencies: "Agency Management",
+      groupLogs: "Logs",
+      noLogPermissions: "You do not have permission to view system logs.",
       perm_label_section_simulations: "Simulations",
       perm_label_section_users: "Users",
       perm_label_section_agencies: "Agencies",
@@ -1829,8 +1832,12 @@ export const translations = {
       perm_label_section_base_values: "Base Values",
       perm_label_section_audit_logs: "Audit Logs",
       perm_label_section_email_logs: "Email Logs",
+      perm_label_section_cron_logs: "Cron Logs",
+      perm_label_section_ocr_logs: "OCR Logs",
+      perm_label_section_app_error_logs: "App Errors",
       perm_label_section_analytics: "Analytics & Reports",
       perm_label_section_configurations: "Configurations",
+      perm_label_section_ocr_usage: "OCR Usage & Billing",
       perm_label_simulations_create: "Create simulations",
       perm_label_simulations_share: "Share simulations",
       perm_label_simulations_duplicate: "Duplicate simulations",
@@ -1858,9 +1865,17 @@ export const translations = {
       perm_desc_section_audit_logs: "View system audit log entries",
       perm_desc_section_email_logs:
         "View email delivery logs and status (admin only)",
+      perm_desc_section_cron_logs:
+        "View cron job execution logs (admin only)",
+      perm_desc_section_ocr_logs:
+        "View OCR extraction and prompt diagnostic logs (admin only)",
+      perm_desc_section_app_error_logs:
+        "View application error logs (admin only)",
       perm_desc_section_analytics: "Access analytics dashboard and reports",
       perm_desc_section_configurations:
         "Access system configurations (admin only)",
+      perm_desc_section_ocr_usage:
+        "Access the OCR token usage, cost dashboard, and invoice exports (admin only)",
       perm_desc_simulations_create:
         "Create new simulations from scratch or via OCR",
       perm_desc_simulations_share: "Generate and share public simulation links",
@@ -3738,6 +3753,7 @@ export const translations = {
       btnSaved: "Guardado",
       loading: "Cargando permisos…",
       alwaysGranted: "Siempre concedido",
+      adminLogsConfigurable: "Registros configurables",
       adminOnlyBadge: "Solo Admin",
       adminOnlyTooltip:
         "Este permiso es Solo Admin y no puede otorgarse a otros roles",
@@ -3754,6 +3770,9 @@ export const translations = {
       groupClients: "Acciones de Clientes",
       groupUsers: "Gestión de Usuarios",
       groupAgencies: "Gestión de Agencias",
+      groupLogs: "Registros",
+      noLogPermissions:
+        "No tienes permisos para ver los registros del sistema.",
       perm_label_section_simulations: "Simulaciones",
       perm_label_section_users: "Usuarios",
       perm_label_section_agencies: "Agencias",
@@ -3761,8 +3780,12 @@ export const translations = {
       perm_label_section_base_values: "Valores Base",
       perm_label_section_audit_logs: "Registros de Auditoría",
       perm_label_section_email_logs: "Registros de Correos",
+      perm_label_section_cron_logs: "Registros de Cron",
+      perm_label_section_ocr_logs: "Registros OCR",
+      perm_label_section_app_error_logs: "Errores de Aplicación",
       perm_label_section_analytics: "Analíticas e Informes",
       perm_label_section_configurations: "Configuraciones",
+      perm_label_section_ocr_usage: "Uso y Facturación OCR",
       perm_label_simulations_create: "Crear simulaciones",
       perm_label_simulations_share: "Compartir simulaciones",
       perm_label_simulations_duplicate: "Duplicar simulaciones",
@@ -3793,9 +3816,17 @@ export const translations = {
         "Ver entradas del registro de auditoría del sistema",
       perm_desc_section_email_logs:
         "Ver registros de envío de correos y estado (solo admin)",
+      perm_desc_section_cron_logs:
+        "Ver registros de ejecución de tareas cron (solo admin)",
+      perm_desc_section_ocr_logs:
+        "Ver registros de extracción OCR y diagnóstico de prompts (solo admin)",
+      perm_desc_section_app_error_logs:
+        "Ver registros de errores de aplicación (solo admin)",
       perm_desc_section_analytics: "Acceder al panel de analíticas e informes",
       perm_desc_section_configurations:
         "Acceder a las configuraciones del sistema (solo admin)",
+      perm_desc_section_ocr_usage:
+        "Acceder al uso de tokens OCR, panel de costes y exportación de facturas (solo admin)",
       perm_desc_simulations_create:
         "Crear nuevas simulaciones desde cero o mediante OCR",
       perm_desc_simulations_share:
