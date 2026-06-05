@@ -1077,7 +1077,8 @@ export const translations = {
       excessPowerLabel: "Excess power (€, optional)",
       excessPowerHint: "Total excess power charge from invoice (€)",
       omieLabel: "Estimated OMIE spot price by period",
-      omieHint: "Only affects INDEXED products. Leave at 0 to see margin only.",
+      omieHint:
+        "Affects INDEXED products and the Personalizada OMIE+B / Index calculations. For Personalizada products, enter the all-in price per kWh the client will pay (including access tariff components). Leave at 0 to see margin-only cost.",
       peninsula: "Peninsula",
       peninsulaYBaleares: "Peninsula and Balearic Islands",
       balearics: "Balearics",
@@ -1866,8 +1867,7 @@ export const translations = {
       perm_desc_section_audit_logs: "View system audit log entries",
       perm_desc_section_email_logs:
         "View email delivery logs and status (admin only)",
-      perm_desc_section_cron_logs:
-        "View cron job execution logs (admin only)",
+      perm_desc_section_cron_logs: "View cron job execution logs (admin only)",
       perm_desc_section_ocr_logs:
         "View OCR extraction and prompt diagnostic logs (admin only)",
       perm_desc_section_app_error_logs:
@@ -3004,7 +3004,7 @@ export const translations = {
       excessPowerHint: "Importe total por exceso de potencia de la factura (€)",
       omieLabel: "Precio spot OMIE estimado por período",
       omieHint:
-        "Solo afecta a los productos ÍNDEX. Dejar en 0 para ver solo el margen.",
+        "Afecta a los productos ÍNDEX y a los cálculos Personalizada OMIE+B / Index. Para productos Personalizados, introduce el precio todo incluido (€/kWh) que pagará el cliente (incluyendo peajes de acceso). Dejar en 0 para ver solo el margen.",
       peninsula: "Península",
       peninsulaYBaleares: "Península y Baleares",
       balearics: "Baleares",

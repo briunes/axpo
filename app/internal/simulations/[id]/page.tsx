@@ -576,7 +576,7 @@ export default function SimulationDetailPage({
               {session && (
                 <BaseValueSetSelector
                   token={session.token}
-                  isAdmin={session.user.role === "ADMIN"}
+                  isAdmin={session.user.role === "ADMIN" || session.user.role === "SYS_ADMIN"}
                   usedBaseValueSetId={usedBaseValueSetId}
                   onChange={(id) => setSelectedBaseValueSetId(id)}
                   onChangeItem={(item) =>

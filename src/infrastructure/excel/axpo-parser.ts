@@ -667,19 +667,103 @@ const PRECIO_TE_COLS: Array<{
   tariff: string;
   periods: string[];
   cols: number[];
+  bCols: number[];
 }> = [
   {
     tariff: "6.1TD",
     periods: ["P1", "P2", "P3", "P4", "P5", "P6"],
     cols: [6, 7, 8, 9, 10, 11],
+    bCols: [2, 3, 4, 5, 6, 7],
   },
   {
     tariff: "3.0TD",
     periods: ["P1", "P2", "P3", "P4", "P5", "P6"],
     cols: [25, 26, 27, 28, 29, 30],
+    bCols: [21, 22, 23, 24, 25, 26],
   },
-  { tariff: "2.0TD", periods: ["P1", "P2", "P3"], cols: [45, 46, 47] },
+  {
+    tariff: "2.0TD",
+    periods: ["P1", "P2", "P3"],
+    cols: [45, 46, 47],
+    bCols: [43, 44, 45],
+  },
 ];
+
+const OMIE_B_FACTOR_REFS: Record<
+  string,
+  Record<string, { profileCol: number; predhCol: number }>
+> = {
+  "6.1TD": {
+    P1: { profileCol: 11, predhCol: 9 },
+    P2: { profileCol: 12, predhCol: 10 },
+    P3: { profileCol: 13, predhCol: 11 },
+    P4: { profileCol: 14, predhCol: 12 },
+    P5: { profileCol: 15, predhCol: 13 },
+    P6: { profileCol: 16, predhCol: 14 },
+  },
+  "3.0TD": {
+    P1: { profileCol: 30, predhCol: 28 },
+    P2: { profileCol: 31, predhCol: 29 },
+    P3: { profileCol: 32, predhCol: 30 },
+    P4: { profileCol: 33, predhCol: 31 },
+    P5: { profileCol: 34, predhCol: 32 },
+    P6: { profileCol: 35, predhCol: 33 },
+  },
+  "2.0TD": {
+    P1: { profileCol: 50, predhCol: 48 },
+    P2: { profileCol: 51, predhCol: 49 },
+    P3: { profileCol: 52, predhCol: 50 },
+  },
+};
+
+function computeOmieBFactor(
+  sheet: XLSX.WorkSheet,
+  row: number,
+  tariff: string,
+  period: string,
+): number | null {
+  const factorRefs = OMIE_B_FACTOR_REFS[tariff]?.[period];
+  const profileRow = row - 30;
+  if (!factorRefs || profileRow < 0) return null;
+
+  const profile = safeFloat(
+    sheet[
+      XLSX.utils.encode_cell({
+        r: profileRow,
+        c: factorRefs.profileCol,
+      })
+    ]?.v,
+  );
+  const predh = safeFloat(
+    sheet[XLSX.utils.encode_cell({ r: 6, c: factorRefs.predhCol })]?.v,
+  );
+  if (profile === null || predh === null) return null;
+
+  return Math.round((1 + (profile * predh) / 100) * 1.01528 * 1e10) / 1e10;
+}
+
+function averageRefsFromFormula(
+  formula: string | undefined,
+  zone: string,
+): Array<{ r: number; c: number }> {
+  if (!formula) return [];
+  const averageMatches = Array.from(
+    formula.matchAll(/AVERAGE\(([^)]*)\)/gi),
+    (match) => match[1],
+  );
+  if (averageMatches.length === 0) return [];
+
+  const zoneUp = zone.trim().toUpperCase();
+  const selectedAverage =
+    averageMatches.length > 1 && zoneUp.includes("CANARIAS")
+      ? averageMatches[1]
+      : averageMatches[0];
+
+  return Array.from(
+    selectedAverage.matchAll(/\$?([A-Z]+)\$?(\d+)/gi),
+    (match) => XLSX.utils.decode_cell(`${match[1]}${match[2]}`),
+  );
+}
 
 // Spanish month name → zero-padded month number
 const SPANISH_MONTH_MAP: Record<string, string> = {
@@ -747,6 +831,10 @@ function parseDinamicaSheet(
   // col 4.  Each subsequent row either holds a month ("ENERO-26" etc.) or is the
   // PROMEDIO summary row.  We stop after the PROMEDIO row.
   let inSection = false;
+  const zone = String(
+    sheet[XLSX.utils.encode_cell({ r: 41, c: 6 })]?.v ?? "Peninsula",
+  );
+  const promedioBFactors = new Map<string, { sum: number; count: number }>();
 
   for (let R = range.s.r; R <= range.e.r; R++) {
     const labelCell = sheet[XLSX.utils.encode_cell({ r: R, c: 4 })];
@@ -769,15 +857,61 @@ function parseDinamicaSheet(
     if (!isPromedio && monthKey === null) continue;
 
     // Extract prices for each tariff × period using the known column layout
-    for (const { tariff, periods, cols } of PRECIO_TE_COLS) {
+    for (const { tariff, periods, cols, bCols } of PRECIO_TE_COLS) {
       for (let i = 0; i < periods.length; i++) {
         const cell = sheet[XLSX.utils.encode_cell({ r: R, c: cols[i] })];
         if (!cell || cell.v === undefined || cell.v === null) continue;
         const v = safeFloat(cell.v);
         if (v === null || v <= 0) continue;
-        // €/MWh → €/kWh
-        const numVal = Math.round((v / 1000) * 1e10) / 1e10;
         const baseKey = `ELEC:INDEX:${product}:${tier}:${tariff}:${periods[i]}:MARGEN`;
+        let adjustedMwh = v;
+        let bFactor: number | null = null;
+        const factorKey = `ELEC:INDEX:${product}:${tier}:${tariff}:${periods[i]}:B_FACTOR`;
+
+        if (product === "PERSONALIZADA_OMIE_B") {
+          if (isPromedio) {
+            const factors = averageRefsFromFormula(cell.f, zone)
+              .map((ref) =>
+                computeOmieBFactor(sheet, ref.r, tariff, periods[i]),
+              )
+              .filter((factor): factor is number => factor !== null);
+            if (factors.length > 0) {
+              bFactor =
+                Math.round(
+                  (factors.reduce((acc, factor) => acc + factor, 0) /
+                    factors.length) *
+                    1e10,
+                ) / 1e10;
+            } else {
+              const promedio = promedioBFactors.get(factorKey);
+              if (promedio && promedio.count > 0) {
+                bFactor =
+                  Math.round((promedio.sum / promedio.count) * 1e10) / 1e10;
+              }
+            }
+          } else {
+            bFactor = computeOmieBFactor(sheet, R, tariff, periods[i]);
+            if (bFactor !== null) {
+              const promedio = promedioBFactors.get(factorKey) ?? {
+                sum: 0,
+                count: 0,
+              };
+              promedio.sum += bFactor;
+              promedio.count += 1;
+              promedioBFactors.set(factorKey, promedio);
+            }
+          }
+
+          const embeddedB = safeFloat(
+            sheet[XLSX.utils.encode_cell({ r: 28, c: bCols[i] })]?.v,
+          );
+          if (embeddedB !== null && bFactor !== null) {
+            adjustedMwh = Math.max(0, adjustedMwh - embeddedB * bFactor);
+          }
+        }
+
+        // €/MWh → €/kWh
+        const numVal = Math.round((adjustedMwh / 1000) * 1e10) / 1e10;
 
         if (isPromedio) {
           // 12-month average — stored as the un-suffixed fallback key
@@ -788,6 +922,14 @@ function parseDinamicaSheet(
             key: `${baseKey}:${monthKey}`,
             valueNumeric: numVal,
             unit: "€/kWh",
+          });
+        }
+
+        if (bFactor !== null) {
+          items.push({
+            key: isPromedio ? factorKey : `${factorKey}:${monthKey}`,
+            valueNumeric: bFactor,
+            unit: "multiplier",
           });
         }
       }
@@ -851,7 +993,15 @@ function parseDinamicaSheet(
       const dailyRate = safeFloat(cell.v);
       if (dailyRate === null || dailyRate <= 0) continue;
       // Convert from €/kW/día to €/kW/año
-      const yearlyRate = Math.round(dailyRate * 365 * 1e10) / 1e10;
+      const embeddedPowerMargin =
+        product === "PERSONALIZADA_OMIE_B"
+          ? (safeFloat(
+              sheet[XLSX.utils.encode_cell({ r: R + 8, c: 10 + i })]?.v,
+            ) ?? 0)
+          : 0;
+      const yearlyRate =
+        Math.round(Math.max(0, dailyRate * 365 - embeddedPowerMargin) * 1e10) /
+        1e10;
 
       for (const tariff of tariffsToEmit) {
         items.push({

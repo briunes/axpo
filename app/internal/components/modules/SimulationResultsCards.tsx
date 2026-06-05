@@ -633,15 +633,15 @@ function EditableInputPanel({
                         </button>
                         {expandedSection === "personalizadaIndex" && (
                             <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
-                                {Object.keys(personalizadaIndexPeriods.margenEnergia).length > 0 && (
+                                {Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0 && (
                                     <>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaIndexMargenEnergiaLabel")}</div>
-                                        {Object.entries(personalizadaIndexPeriods.margenEnergia).map(([period, value]) => (
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaIndexMargenPotenciaLabel")}</div>
+                                        {Object.entries(personalizadaIndexPeriods.margenPotencia).map(([period, value]) => (
                                             <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                                                 <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
                                                 <CurrencyInput
                                                     value={value}
-                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenEnergia", period, v); }}
+                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenPotencia", period, v); }}
                                                     currencySymbol=""
                                                     decimals={2}
                                                 />
@@ -649,15 +649,15 @@ function EditableInputPanel({
                                         ))}
                                     </>
                                 )}
-                                {Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0 && (
+                                {Object.keys(personalizadaIndexPeriods.margenEnergia).length > 0 && (
                                     <>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaIndexMargenPotenciaLabel")}</div>
-                                        {Object.entries(personalizadaIndexPeriods.margenPotencia).map(([period, value]) => (
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaIndexMargenEnergiaLabel")}</div>
+                                        {Object.entries(personalizadaIndexPeriods.margenEnergia).map(([period, value]) => (
                                             <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                                                 <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
                                                 <CurrencyInput
                                                     value={value}
-                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenPotencia", period, v); }}
+                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenEnergia", period, v); }}
                                                     currencySymbol=""
                                                     decimals={2}
                                                 />
@@ -695,15 +695,15 @@ function EditableInputPanel({
                         </button>
                         {expandedSection === "personalizadaOmieB" && (
                             <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
-                                {Object.keys(personalizadaOmieBPeriods.terminoB).length > 0 && (
+                                {Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0 && (
                                     <>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaOmieBTerminoBLabel")}</div>
-                                        {Object.entries(personalizadaOmieBPeriods.terminoB).map(([period, value]) => (
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaOmieBMargenPotenciaLabel")}</div>
+                                        {Object.entries(personalizadaOmieBPeriods.margenPotencia).map(([period, value]) => (
                                             <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                                                 <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
                                                 <CurrencyInput
                                                     value={value}
-                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("terminoB", period, v); }}
+                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("margenPotencia", period, v); }}
                                                     currencySymbol=""
                                                     decimals={2}
                                                 />
@@ -711,15 +711,15 @@ function EditableInputPanel({
                                         ))}
                                     </>
                                 )}
-                                {Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0 && (
+                                {Object.keys(personalizadaOmieBPeriods.terminoB).length > 0 && (
                                     <>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaOmieBMargenPotenciaLabel")}</div>
-                                        {Object.entries(personalizadaOmieBPeriods.margenPotencia).map(([period, value]) => (
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaOmieBTerminoBLabel")}</div>
+                                        {Object.entries(personalizadaOmieBPeriods.terminoB).map(([period, value]) => (
                                             <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                                                 <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
                                                 <CurrencyInput
                                                     value={value}
-                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("margenPotencia", period, v); }}
+                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("terminoB", period, v); }}
                                                     currencySymbol=""
                                                     decimals={2}
                                                 />

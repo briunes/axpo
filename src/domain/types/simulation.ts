@@ -168,8 +168,9 @@ export interface ElectricityInputs {
   /**
    * Personalizada OMIE + B: user-supplied "B" term (€/MWh) per period plus
    * power margins (€/kW/year).  When present and at least one B value is > 0,
-   * the calculation emits a single "PERSONALIZADA_OMIE_B" result row using
-   * formula: energyCost = (omieEstimado[p] + terminoB[p]/1000) × consumo[p].
+   * the calculation emits a single "PERSONALIZADA_OMIE_B" result row using the
+   * Excel-derived Precio TE for the billing month plus B adjusted by the
+   * workbook multiplier.
    */
   personalizadaOmieB?: {
     /** B term in €/MWh per period (Término Bi Oferta Personalizada) */
