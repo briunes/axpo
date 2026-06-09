@@ -35,25 +35,38 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   // Build RBAC filter (same as simulations list)
   const simFilter = SimulationService.buildSimulationFilter(auth);
 
-  // Query simulation versions joined through simulations
+  // Resolve the authorized simulations first. PostgREST relation filters use
+  // left-join embeds by default, which can return versions with simulation=null
+  // even when the nested filter does not match.
+  const simulations = await prisma.simulation.findMany({
+    where: {
+      ...simFilter,
+      isDeleted: false,
+      ...(clientId ? { clientId } : {}),
+    },
+    select: {
+      id: true,
+      clientId: true,
+      updatedAt: true,
+      status: true,
+    },
+  });
+  const simulationById = new Map(
+    simulations.map((simulation) => [simulation.id, simulation]),
+  );
+
+  if (simulationById.size === 0) {
+    return ResponseHandler.ok({ items: [] }, 200);
+  }
+
   const versions = await prisma.simulationVersion.findMany({
     where: {
-      simulation: {
-        ...simFilter,
-        isDeleted: false,
-        ...(clientId ? { clientId } : {}),
-      },
+      simulationId: { in: Array.from(simulationById.keys()) },
     },
     orderBy: { createdAt: "desc" },
     select: {
       payloadJson: true,
-      simulation: {
-        select: {
-          clientId: true,
-          updatedAt: true,
-          status: true,
-        },
-      },
+      simulationId: true,
     },
   });
 
@@ -74,6 +87,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   >();
 
   for (const v of versions) {
+    const simulation = simulationById.get(v.simulationId);
+    if (!simulation) continue;
+
     const payload = v.payloadJson as any;
     const clientData = payload?.electricity?.clientData;
     const cups: string | undefined = clientData?.cups;
@@ -89,11 +105,11 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         comercial: clientData?.comercial ?? "",
         direccion: clientData?.direccion ?? "",
         comercializadorActual: clientData?.comercializadorActual ?? "",
-        clientId: v.simulation.clientId ?? null,
-        lastUsed: v.simulation.updatedAt
-          ? v.simulation.updatedAt.toISOString()
+        clientId: simulation.clientId ?? null,
+        lastUsed: simulation.updatedAt
+          ? simulation.updatedAt.toISOString()
           : null,
-        lastStatus: v.simulation.status ?? null,
+        lastStatus: simulation.status ?? null,
       });
     }
   }

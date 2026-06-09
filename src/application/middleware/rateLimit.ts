@@ -5,6 +5,11 @@ interface RateBucket {
   windowStart: number;
 }
 
+interface RateLimitOptions {
+  maxRequests?: number;
+  windowMs?: number;
+}
+
 const buckets = new Map<string, RateBucket>();
 
 const RATE_LIMIT_WINDOW_MS = (() => {
@@ -22,17 +27,21 @@ const RATE_LIMIT_WINDOW_MS = (() => {
 
 const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX_REQUESTS ?? 100);
 
-export const applyRateLimit = (key: string) => {
+export const applyRateLimit = (key: string, options: RateLimitOptions = {}) => {
   const now = Date.now();
+  const windowMs = options.windowMs ?? RATE_LIMIT_WINDOW_MS;
+  const maxRequests = options.maxRequests ?? RATE_LIMIT_MAX;
   const bucket = buckets.get(key);
 
-  if (!bucket || now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
+  if (!bucket || now - bucket.windowStart >= windowMs) {
     buckets.set(key, { count: 1, windowStart: now });
     return;
   }
 
-  if (bucket.count >= RATE_LIMIT_MAX) {
-    const retryAfter = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - bucket.windowStart)) / 1000);
+  if (bucket.count >= maxRequests) {
+    const retryAfter = Math.ceil(
+      (windowMs - (now - bucket.windowStart)) / 1000,
+    );
     throw new RateLimitError(retryAfter);
   }
 

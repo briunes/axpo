@@ -1,4 +1,6 @@
 import { PrismaClient } from "@prisma/client";
+import { getDatabaseConnectionMode } from "./databaseMode";
+import { createSupabaseApiPrismaClient } from "./supabaseApiClient";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -11,9 +13,12 @@ const isLocal =
 const isRemoteDev =
   process.env.APP_ENV === "dev" || process.env.APP_ENV === "preview";
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+const createDatabaseClient = (): PrismaClient => {
+  if (getDatabaseConnectionMode() === "api") {
+    return createSupabaseApiPrismaClient() as PrismaClient;
+  }
+
+  return new PrismaClient({
     log: isLocal
       ? ["error", "warn"]
       : isRemoteDev
@@ -24,6 +29,9 @@ export const prisma =
           ]
         : ["error"],
   });
+};
+
+export const prisma = globalForPrisma.prisma ?? createDatabaseClient();
 
 // Cache singleton in all non-production envs to avoid repeated client initialisation
 // on Next.js hot reload (dev server) or between requests in the same process.

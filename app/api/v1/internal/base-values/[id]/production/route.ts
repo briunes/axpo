@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { requireAuth } from "@/application/middleware/auth";
+import { assertRole } from "@/application/middleware/rbac";
+import { UserRole } from "@/domain/types";
+import { ValidationError } from "@/domain/errors/errors";
 
 /**
  * @swagger
@@ -31,11 +36,13 @@ import { prisma } from "@/infrastructure/database/prisma";
  *       200:
  *         description: Updated base value set
  */
-async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id: baseValueSetId } = await params;
+const POST = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  assertRole(auth, [UserRole.ADMIN, UserRole.SYS_ADMIN]);
+  const baseValueSetId = context?.params?.id;
+  if (!baseValueSetId) {
+    throw new ValidationError("Base value set id parameter is required");
+  }
   const body = await req.json();
   const { isProduction } = body;
 
@@ -90,6 +97,6 @@ async function POST(
   });
 
   return NextResponse.json({ success: true, data: updatedSet });
-}
+});
 
 export { POST };

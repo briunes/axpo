@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "../../../../../src/lib/i18n-context";
-import { getClient, shareSimulation } from "../../../lib/internalApi";
+import { getClient, maybePersistRefreshedToken, shareSimulation } from "../../../lib/internalApi";
+import { loadSession } from "../../../lib/authSession";
 import {
     getPdfTemplates,
     getEmailTemplates,
@@ -316,17 +317,19 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
 
             const processedContent = replaceVariables(editedPdfContent, simulationLink, pdfEditableOverrides);
 
+            const requestToken = loadSession()?.token ?? token;
             const response = await fetch(`/api/v1/internal/simulations/${simulation.id}/generate-pdf`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${requestToken}`,
                 },
                 body: JSON.stringify({
                     htmlContent: processedContent,
                     watermark: isTestingMode ? 'TESTING' : (!markAsShared ? 'DRAFT' : undefined),
                 }),
             });
+            maybePersistRefreshedToken(response);
 
             if (!response.ok) {
                 const errorData = await response.json();

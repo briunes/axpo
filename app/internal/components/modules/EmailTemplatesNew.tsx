@@ -99,6 +99,40 @@ const CLOSED_EMAIL_TYPES = new Set(["user-welcome", "welcome", "password-reset",
 /** Types that should include the button snippets panel */
 const BUTTON_SNIPPET_TYPES = new Set(["user-welcome", "welcome", "password-reset", "simulation-share", "expiring-soon", "converted", "notification"]);
 
+const BUILTIN_EMAIL_VARIABLES: Record<
+    string,
+    Array<{ name: string; label: string; description: string }>
+> = {
+    "user-welcome": [
+        {
+            name: "SETUP_PASSWORD_VALIDITY_HOURS",
+            label: "Setup Password Validity Hours",
+            description: "Configured number of hours the setup-password link remains valid",
+        },
+    ],
+    welcome: [
+        {
+            name: "SETUP_PASSWORD_VALIDITY_HOURS",
+            label: "Setup Password Validity Hours",
+            description: "Configured number of hours the setup-password link remains valid",
+        },
+    ],
+    "magic-link": [
+        {
+            name: "MAGIC_LINK_VALIDITY_MINUTES",
+            label: "Magic Link Validity Minutes",
+            description: "Configured number of minutes the magic login link remains valid",
+        },
+    ],
+    otp: [
+        {
+            name: "OTP_VALIDITY_MINUTES",
+            label: "OTP Validity Minutes",
+            description: "Configured number of minutes the OTP code remains valid",
+        },
+    ],
+};
+
 function getVariablesForEmailTemplate(
     type: string | undefined,
     dbVariables: TemplateVariable[],
@@ -118,6 +152,13 @@ function getVariablesForEmailTemplate(
             .filter((v) => !v.templateTypes || v.templateTypes.split(",").map((s) => s.trim()).includes(type))
             .map((v) => ({ name: v.key, label: v.label, description: v.description || "" }));
     }
+
+    const builtinVariables = type ? (BUILTIN_EMAIL_VARIABLES[type] ?? []) : [];
+    const existingNames = new Set(vars.map((variable) => variable.name));
+    vars = [
+        ...builtinVariables.filter((variable) => !existingNames.has(variable.name)),
+        ...vars,
+    ];
 
     // Prepend relevant button snippets
     if (type && BUTTON_SNIPPET_TYPES.has(type)) {
@@ -432,6 +473,10 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
             .replace(/\{\{commercialPhone\}\}/g, "+351 912 345 678")
             .replace(/\{\{userName\}\}/g, "John Doe")
             .replace(/\{\{userEmail\}\}/g, "john@example.com")
+            .replace(
+                /\{\{\s*SETUP_PASSWORD_VALIDITY_HOURS\s*\}\}/g,
+                "72",
+            )
             .replace(/\{\{magicLink\}\}/g, "https://axpo.example.com/login/magic/abc123");
         return sampleData;
     };

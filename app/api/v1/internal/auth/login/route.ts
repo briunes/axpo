@@ -60,7 +60,10 @@ const loginSchema = z.object({
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const sessionContext = getRequestSessionContext(request);
   const ip = sessionContext.ipAddress;
-  applyRateLimit(getClientRateLimitKey(ip, "login"));
+  applyRateLimit(getClientRateLimitKey(ip, "login"), {
+    maxRequests: 10,
+    windowMs: 15 * 60 * 1000,
+  });
 
   const body = await request.json();
   const payload = loginSchema.parse(body);

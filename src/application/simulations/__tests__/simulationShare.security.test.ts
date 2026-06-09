@@ -4,7 +4,7 @@ import { ForbiddenError, NotFoundError } from "@/domain/errors/errors";
 import { UserRole } from "@/domain/types";
 
 const requireAuthMock = jest.fn();
-const assertRoleMock = jest.fn();
+const assertPermissionMock = jest.fn();
 const shareSimulationMock = jest.fn();
 
 jest.mock("@/application/middleware/auth", () => ({
@@ -12,7 +12,7 @@ jest.mock("@/application/middleware/auth", () => ({
 }));
 
 jest.mock("@/application/middleware/rbac", () => ({
-  assertRole: (...args: unknown[]) => assertRoleMock(...args),
+  assertPermission: (...args: unknown[]) => assertPermissionMock(...args),
 }));
 
 jest.mock("@/application/services/simulationService", () => ({
@@ -33,7 +33,7 @@ describe("simulation share route security", () => {
       agencyId: "agency-1",
       email: "commercial@example.com",
     });
-    assertRoleMock.mockReturnValue(undefined);
+    assertPermissionMock.mockResolvedValue(undefined);
   });
 
   afterEach(() => {

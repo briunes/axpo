@@ -60,6 +60,7 @@ export class JwtService {
   ): string {
     try {
       return jwt.sign(payload, getJwtSecret(), {
+        algorithm: "HS256",
         expiresIn: options?.expiresIn ?? JWT_EXPIRES_IN,
       });
     } catch {
@@ -69,7 +70,9 @@ export class JwtService {
 
   static verifyAccessToken(token: string): VerifiedAuthTokenPayload {
     try {
-      const decoded = jwt.verify(token, getJwtSecret());
+      const decoded = jwt.verify(token, getJwtSecret(), {
+        algorithms: ["HS256"],
+      });
       if (!isVerifiedAuthTokenPayload(decoded)) {
         throw new InvalidTokenError();
       }
@@ -84,6 +87,7 @@ export class JwtService {
   ): VerifiedAuthTokenPayload {
     try {
       const decoded = jwt.verify(token, getJwtSecret(), {
+        algorithms: ["HS256"],
         ignoreExpiration: true,
       });
       if (!isVerifiedAuthTokenPayload(decoded)) {

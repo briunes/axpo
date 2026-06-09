@@ -58,6 +58,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       { message: { contains: search, mode: "insensitive" as const } },
       { errorType: { contains: search, mode: "insensitive" as const } },
       { path: { contains: search, mode: "insensitive" as const } },
+      { pagePath: { contains: search, mode: "insensitive" as const } },
     ];
   }
 
@@ -85,6 +86,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         stack: l.stack,
         method: l.method,
         path: l.path,
+        pagePath: l.pagePath,
         statusCode: l.statusCode,
         sentryEventId: l.sentryEventId,
         metadata: l.metadata,

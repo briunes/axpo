@@ -15,11 +15,9 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
 
-    if (cronSecret) {
-      if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
-        console.warn("[Cron] Unauthorized attempt to run expiration job");
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    if (!cronSecret || !authHeader || authHeader !== `Bearer ${cronSecret}`) {
+      console.warn("[Cron] Unauthorized attempt to run expiration job");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     console.log("[Cron] Starting simulation expiration job...");

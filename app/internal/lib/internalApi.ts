@@ -1,4 +1,5 @@
 import { getBrowserFingerprint } from "./browserFingerprint";
+import { upload } from "@vercel/blob/client";
 
 export interface LoginResult {
   token?: string;
@@ -527,7 +528,7 @@ const baseUrl =
     ? window.location.origin
     : "http://localhost:3000");
 
-function maybePersistRefreshedToken(response: Response): void {
+export function maybePersistRefreshedToken(response: Response): void {
   if (typeof window === "undefined") return;
 
   const refreshedToken = response.headers.get("x-access-token");
@@ -559,7 +560,7 @@ async function reportAuthRedirectToLogin(
         reason: "AUTH_API_REJECTED",
         statusCode: response.status,
         path: new URL(response.url).pathname,
-        currentPath: `${window.location.pathname}${window.location.search}`,
+        currentPath: window.location.pathname,
         errorCode: body.error?.code,
         errorMessage: body.error?.message ?? fallbackMessage,
       }),
@@ -567,62 +568,6 @@ async function reportAuthRedirectToLogin(
     });
   } catch {
     // Best-effort diagnostics only; never block the redirect.
-  }
-}
-
-const VERSION_STORAGE_KEY = "axpo_app_version";
-const SESSION_KEYS_TO_PRESERVE = [
-  "axpo.internal.auth.token",
-  "axpo.internal.auth.user",
-];
-
-/**
- * Checks the appVersion returned by the server against what is stored in
- * localStorage. If they differ, clears all caches and hard-reloads once so
- * the user picks up the latest deployment without needing a manual refresh.
- * Auth session keys are preserved so users aren't logged out.
- */
-export function maybeReloadOnVersionChange(serverVersion: string | undefined): void {
-  if (typeof window === "undefined" || !serverVersion) return;
-
-  const storedVersion = localStorage.getItem(VERSION_STORAGE_KEY);
-
-  if (storedVersion === null) {
-    // First visit — just record the version.
-    localStorage.setItem(VERSION_STORAGE_KEY, serverVersion);
-    return;
-  }
-
-  if (storedVersion !== serverVersion) {
-    console.info(
-      `[VersionCheck] New version detected (${storedVersion} → ${serverVersion}). Clearing cache and reloading.`,
-    );
-
-    // Preserve auth session across the cache wipe.
-    const preserved: Record<string, string> = {};
-    for (const key of SESSION_KEYS_TO_PRESERVE) {
-      const val = localStorage.getItem(key);
-      if (val !== null) preserved[key] = val;
-    }
-    localStorage.clear();
-    for (const [key, val] of Object.entries(preserved)) {
-      localStorage.setItem(key, val);
-    }
-
-    sessionStorage.clear();
-
-    // Store new version before reload to prevent an infinite reload loop.
-    localStorage.setItem(VERSION_STORAGE_KEY, serverVersion);
-
-    // Clear Cache API entries in the background, then reload.
-    const doReload = async () => {
-      if ("caches" in window) {
-        const names = await caches.keys();
-        await Promise.all(names.map((n) => caches.delete(n)));
-      }
-      window.location.reload();
-    };
-    void doReload();
   }
 }
 
@@ -635,18 +580,11 @@ async function parseApiResponse<T>(
 
   const body = (await response.json()) as ApiEnvelope<T>;
 
-  // Version check — piggy-backed on every API response so we never need a
-  // dedicated polling call. If the server reports a different version than
-  // what we have stored, clear caches and hard-reload once.
-  maybeReloadOnVersionChange(body.appVersion);
-
   if (!response.ok || !body.success || !body.data) {
-    // Token expired / revoked / forbidden → clear session and force login redirect once
-    // Skip redirect for login/auth endpoints to avoid page reload
-    if (
-      (response.status === 401 || response.status === 403) &&
-      !skipAuthRedirect
-    ) {
+    // Token expired / revoked → clear session and force login redirect once.
+    // Permission denials (403) should surface to the caller as normal errors.
+    // Skip redirect for login/auth endpoints to avoid page reload.
+    if (response.status === 401 && !skipAuthRedirect) {
       if (typeof window !== "undefined") {
         const w = window as Window & { __axpoAuthRedirecting?: boolean };
         const token = window.localStorage.getItem("axpo.internal.auth.token");
@@ -1826,18 +1764,30 @@ export async function uploadBaseValueFile(
     isActive: boolean;
   };
 }> {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("replace", replace.toString());
+  const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const blob = await upload(
+    `base-values/${Date.now()}-${safeFileName}`,
+    file,
+    {
+      access: "private",
+      handleUploadUrl: `${baseUrl}/api/v1/internal/base-values/upload/blob`,
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      multipart: file.size > 20 * 1024 * 1024,
+    },
+  );
 
   const response = await fetch(
     `${baseUrl}/api/v1/internal/base-values/upload`,
     {
       method: "POST",
-      headers: {
-        authorization: `Bearer ${token}`,
-      },
-      body: formData,
+      headers: authHeaders(token),
+      body: JSON.stringify({
+        blobUrl: blob.url,
+        fileName: file.name,
+        replace,
+      }),
     },
   );
 

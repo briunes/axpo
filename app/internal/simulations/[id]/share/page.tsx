@@ -4,7 +4,7 @@ import { use, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
-import { getSimulation, getClient, shareSimulation } from "../../../lib/internalApi";
+import { getSimulation, getClient, maybePersistRefreshedToken, shareSimulation } from "../../../lib/internalApi";
 import {
     getPdfTemplates,
     getEmailTemplates,
@@ -206,14 +206,16 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
             const processedContent = resolveVariables(editedPdfContent);
 
             // Call backend API to generate PDF
+            const requestToken = loadSession()?.token ?? session.token;
             const response = await fetch(`/api/v1/internal/simulations/${id}/generate-pdf`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.token}`,
+                    'Authorization': `Bearer ${requestToken}`,
                 },
                 body: JSON.stringify({ htmlContent: processedContent }),
             });
+            maybePersistRefreshedToken(response);
 
             if (!response.ok) {
                 const errorData = await response.json();

@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { requireAuth } from "@/application/middleware/auth";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
+import { NotFoundError, ValidationError } from "@/domain/errors/errors";
 
 /**
  * @swagger
@@ -19,11 +26,13 @@ import { prisma } from "@/infrastructure/database/prisma";
  *       200:
  *         description: Agency tariff settings
  */
-async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id: agencyId } = await params;
+const GET = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  const agencyId = context?.params?.id;
+  if (!agencyId) throw new ValidationError("Agency id parameter is required");
+  if (!isElevatedRole(auth.role) && auth.agencyId !== agencyId) {
+    throw new NotFoundError("Agency", agencyId);
+  }
 
   const tariffs = await prisma.agencyTariff.findMany({
     where: { agencyId },
@@ -31,7 +40,7 @@ async function GET(
   });
 
   return NextResponse.json(tariffs);
-}
+});
 
 /**
  * @swagger
@@ -65,11 +74,11 @@ async function GET(
  *       200:
  *         description: Created or updated tariff setting
  */
-async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id: agencyId } = await params;
+const POST = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  await assertPermission(auth, "agencies.edit");
+  const agencyId = context?.params?.id;
+  if (!agencyId) throw new ValidationError("Agency id parameter is required");
   const body = await req.json();
   const { tariffType, isEnabled } = body;
 
@@ -92,7 +101,7 @@ async function POST(
   });
 
   return NextResponse.json(tariff);
-}
+});
 
 /**
  * @swagger
@@ -128,11 +137,11 @@ async function POST(
  *       200:
  *         description: Updated tariff settings
  */
-async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id: agencyId } = await params;
+const PUT = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  await assertPermission(auth, "agencies.edit");
+  const agencyId = context?.params?.id;
+  if (!agencyId) throw new ValidationError("Agency id parameter is required");
   const tariffs = await req.json();
 
   // Bulk upsert tariff settings
@@ -158,6 +167,6 @@ async function PUT(
   );
 
   return NextResponse.json(results);
-}
+});
 
 export { GET, POST, PUT };

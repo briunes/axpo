@@ -652,6 +652,7 @@ model AppErrorLog {
   // HTTP context
   method     String? // GET, POST, etc.
   path       String? // /api/v1/internal/...
+  pagePath   String? // Browser route where the API request originated
   statusCode Int?
 
   // Who triggered it (optional — may be unauthenticated)
@@ -667,6 +668,7 @@ model AppErrorLog {
   @@index([createdAt])
   @@index([errorType])
   @@index([path])
+  @@index([pagePath])
   @@index([userId])
   @@map("app_error_logs")
 }

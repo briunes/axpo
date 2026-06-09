@@ -17,7 +17,6 @@ import {
     TableHead,
     TablePagination,
     TableRow,
-    TextField,
     Typography,
 } from "@mui/material";
 import { FormSelect, type FormSelectOption } from "../ui/FormSelect";
@@ -113,8 +112,8 @@ function getEventTypeLabel(eventType: string, t: ReturnType<typeof useI18n>["t"]
     if (eventType.endsWith("_OCR_APPLIED")) return t("auditEvents", "ocrApplied");
     if (eventType === "AUTH_LOGIN") return t("auditEvents", "login");
     if (eventType === "AUTH_LOGOUT") return t("auditEvents", "logout");
-    if (eventType === "AUTH_SESSION_AUTO_KEPT") return "Session kept";
-    if (eventType === "AUTH_SESSION_AUTO_KICK") return "Session kicked";
+    if (eventType === "AUTH_SESSION_AUTO_KEPT") return t("auditEvents", "sessionKept");
+    if (eventType === "AUTH_SESSION_AUTO_KICK") return t("auditEvents", "sessionKicked");
     if (eventType === "PUBLIC_ACCESS_ATTEMPT") return t("auditEvents", "accessAttempt");
     return eventType;
 }
@@ -341,7 +340,7 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
             case "commercialPhone": return t("userFormPage", "fieldCommercialPhone");
             case "commercialEmail": return t("userFormPage", "fieldCommercialEmail");
             case "otherDetails": return t("userFormPage", "fieldOtherDetails");
-            case "maxActiveDevices": return "Max Active Devices";
+            case "maxActiveDevices": return t("logs", "maxActiveDevices");
             case "cif": return t("clientFormPage", "fieldCif");
             case "contactName": return t("clientFormPage", "fieldContactName");
             case "contactPhone": return t("clientFormPage", "fieldContactPhone");
@@ -479,12 +478,12 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
                         <FormSelect
                             label=""
                             options={[
-                                { value: "", label: "All targets" },
-                                { value: "SIMULATION", label: "Simulation" },
-                                { value: "USER", label: "User" },
-                                { value: "AGENCY", label: "Agency" },
-                                { value: "CLIENT", label: "Client" },
-                                { value: "BASE_VALUE_SET", label: "Base Value Set" },
+                                { value: "", label: t("logs", "allTargets") },
+                                { value: "SIMULATION", label: t("auditLogsModule", "groupSimulation") },
+                                { value: "USER", label: t("auditLogsModule", "groupUser") },
+                                { value: "AGENCY", label: t("auditLogsModule", "groupAgency") },
+                                { value: "CLIENT", label: t("auditLogsModule", "groupClient") },
+                                { value: "BASE_VALUE_SET", label: t("auditLogsModule", "groupBaseValues") },
                             ]}
                             value={localTargetType}
                             onChange={(value) => {
@@ -513,7 +512,7 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
 
                     <Box sx={{ minWidth: 200, flex: 1 }}>
                         <FormInput
-                            placeholder="Search by name or email…"
+                            placeholder={t("logs", "searchActor")}
                             value={localActorSearch}
                             onChange={(e) => setLocalActorSearch(e.target.value)}
                             onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
@@ -583,7 +582,7 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
                                 >
                                     <TableCell>{t("auditLogsModal", "eventType")}</TableCell>
                                     <TableCell>{t("auditLogsModal", "actor")}</TableCell>
-                                    <TableCell>Target</TableCell>
+                                    <TableCell>{t("logs", "target")}</TableCell>
                                     <TableCell>{t("columns", "name")}</TableCell>
                                     <TableCell>{t("auditLogsModal", "timestamp")}</TableCell>
                                     <TableCell align="right">{t("auditLogsModal", "details")}</TableCell>
@@ -617,7 +616,7 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
                                                 <TableCell>
                                                     <Stack spacing={0.5}>
                                                         <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--scheme-neutral-100)" }}>
-                                                            {log.actorName || "System"}
+                                                            {log.actorName || t("auditLogsModule", "groupAuth")}
                                                         </Typography>
                                                         <Typography variant="caption" sx={{ color: "var(--scheme-neutral-500)", fontSize: "0.65rem" }}>
                                                             {log.actorEmail || "—"}

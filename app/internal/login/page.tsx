@@ -6,7 +6,7 @@ import { Button } from "@mui/material";
 import { FormInput } from "../components/ui/FormInput";
 import { useAlerts } from "../components/shared";
 import { loadSession, saveSession } from "../lib/authSession";
-import { login, maybeReloadOnVersionChange, verifyOtp } from "../lib/internalApi";
+import { login, verifyOtp } from "../lib/internalApi";
 import { useI18n } from "../../../src/lib/i18n-context";
 import "../globals.css";
 
@@ -45,7 +45,6 @@ export default function LoginPage() {
     })
       .then((r) => r.json())
       .then((data) => {
-        maybeReloadOnVersionChange(data?.appVersion);
         setMagicLinkEnabled(data?.data?.magicLinkEnabled === true || data?.magicLinkEnabled === true);
       })
       .catch(() => { });

@@ -42,7 +42,9 @@ const verifyPublicSessionToken = (
     throw new InvalidTokenError("JWT secret not configured");
   }
 
-  const decoded = jwt.verify(sessionToken, secret);
+  const decoded = jwt.verify(sessionToken, secret, {
+    algorithms: ["HS256"],
+  });
   if (!decoded || typeof decoded !== "object") {
     throw new InvalidTokenError("Invalid public session token");
   }

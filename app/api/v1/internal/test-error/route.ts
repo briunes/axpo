@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ErrorLoggerService } from "@/application/services/errorLoggerService";
+import { requireAuth } from "@/application/middleware/auth";
+import { assertRole } from "@/application/middleware/rbac";
+import { UserRole } from "@/domain/types";
+import { NotFoundError } from "@/domain/errors/errors";
 
 /**
  * GET /api/v1/internal/test-error
@@ -12,6 +16,12 @@ import { ErrorLoggerService } from "@/application/services/errorLoggerService";
  * REMOVE THIS ROUTE AFTER TESTING.
  */
 export const GET = withErrorHandler(async (req: NextRequest) => {
+  if (process.env.NODE_ENV === "production") {
+    throw new NotFoundError("Route");
+  }
+  const auth = await requireAuth(req);
+  assertRole(auth, [UserRole.SYS_ADMIN]);
+
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type") ?? "unhandled";
 

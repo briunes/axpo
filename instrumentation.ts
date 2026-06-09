@@ -4,9 +4,11 @@ export async function register() {
 
     // Pre-warm the app version cache so the very first API response already
     // contains the correct version without waiting for a DB round-trip.
-    const { warmAppVersionCache } =
-      await import("./src/application/lib/appVersionCache");
-    await warmAppVersionCache();
+    if (process.env.NODE_ENV !== "test") {
+      const { warmAppVersionCache } =
+        await import("./src/application/lib/appVersionCache");
+      await warmAppVersionCache();
+    }
   }
 
   if (process.env.NEXT_RUNTIME === "edge") {

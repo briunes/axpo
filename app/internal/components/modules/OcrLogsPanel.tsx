@@ -22,6 +22,7 @@ import {
 import type { Theme } from "@mui/material/styles";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
@@ -47,6 +48,7 @@ import { DateRangePicker } from "../ui/DateRangePicker";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
 import { improveOcrPrompt, testOcrPrompt, type ImproveOcrPromptResult, type TestOcrPromptResult } from "../../lib/internalApi";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 interface OcrLogEntry {
     id: string;
@@ -119,14 +121,14 @@ function getIssueStatus(log: OcrLogEntry): OcrIssueStatus | null {
     return log.issueStatus ?? "OPEN";
 }
 
-function getIssueLabel(status: OcrIssueStatus | null): string {
+function getIssueLabel(status: OcrIssueStatus | null, t?: ReturnType<typeof useI18n>["t"]): string {
     const labels: Record<OcrIssueStatus, string> = {
-        OPEN: "Open",
-        IN_PROGRESS: "In progress",
-        RESOLVED: "Resolved",
-        DISMISSED: "Dismissed",
+        OPEN: t?.("logs", "open") ?? "Open",
+        IN_PROGRESS: t?.("logs", "inProgress") ?? "In progress",
+        RESOLVED: t?.("logs", "resolved") ?? "Resolved",
+        DISMISSED: t?.("logs", "dismissed") ?? "Dismissed",
     };
-    return status ? labels[status] : "No issue";
+    return status ? labels[status] : (t?.("logs", "noIssue") ?? "No issue");
 }
 
 function getIssueTone(theme: Theme, status: OcrIssueStatus | null) {
@@ -139,13 +141,14 @@ function getIssueTone(theme: Theme, status: OcrIssueStatus | null) {
 
 function IssueChip({ log }: { log: OcrLogEntry }) {
     const theme = useTheme();
+    const { t } = useI18n();
     const status = getIssueStatus(log);
     const tone = getIssueTone(theme, status);
     const signalCount = getIssueSignalCount(log);
     return (
         <Chip
             icon={status ? <PendingActionsRoundedIcon sx={{ fontSize: 14 }} /> : undefined}
-            label={status ? `${getIssueLabel(status)} · ${signalCount}` : "None"}
+            label={status ? `${getIssueLabel(status, t)} · ${signalCount}` : t("logs", "none")}
             size="small"
             sx={{
                 fontWeight: 700,
@@ -183,50 +186,51 @@ function formatProvider(provider: string): string {
     return map[provider] ?? provider;
 }
 
-function formatLogType(type: OcrLogEntry["type"]): string {
+function formatLogType(type: OcrLogEntry["type"], t?: ReturnType<typeof useI18n>["t"]): string {
     const labels: Record<OcrLogEntry["type"], string> = {
-        INVOICE_EXTRACTION: "Invoice Extraction",
-        PROVIDER_DETECTION: "Provider Detection",
-        PROMPT_IMPROVEMENT: "Prompt Improvement",
-        PROMPT_TEST: "Prompt Test",
-        TEMPLATE_BUILDER: "Template Builder",
+        INVOICE_EXTRACTION: t?.("logs", "invoiceExtraction") ?? "Invoice Extraction",
+        PROVIDER_DETECTION: t?.("logs", "providerDetection") ?? "Provider Detection",
+        PROMPT_IMPROVEMENT: t?.("logs", "promptImprovement") ?? "Prompt Improvement",
+        PROMPT_TEST: t?.("logs", "promptTest") ?? "Prompt Test",
+        TEMPLATE_BUILDER: t?.("logs", "templateBuilder") ?? "Template Builder",
     };
     return labels[type] ?? type;
 }
 
-function getStoredFilesSummary(log: OcrLogEntry): string {
+function getStoredFilesSummary(log: OcrLogEntry, t?: ReturnType<typeof useI18n>["t"]): string {
     if (!log.files || log.files.length === 0) return "—";
     if (log.files.length === 1) {
         return `${log.files[0].fileName} (${formatFileSize(log.files[0].fileSizeBytes)})`;
     }
     const totalBytes = log.files.reduce((sum, file) => sum + file.fileSizeBytes, 0);
-    return `${log.files.length} files · ${formatFileSize(totalBytes)}`;
+    return `${t?.("logs", "fileCount", { count: log.files.length }) ?? `${log.files.length} files`} · ${formatFileSize(totalBytes)}`;
 }
 
 function StatusChip({ status }: { status: string }) {
     const theme = useTheme();
+    const { t } = useI18n();
 
     const config: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
         SUCCESS: {
-            label: "Success",
+            label: t("logs", "success"),
             color: theme.palette.success.main,
             bg: alpha(theme.palette.success.main, theme.palette.mode === "dark" ? 0.18 : 0.12),
             icon: <CheckCircleIcon sx={{ fontSize: 14 }} />,
         },
         FAILED: {
-            label: "Failed",
+            label: t("logs", "failed"),
             color: theme.palette.error.main,
             bg: alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.18 : 0.12),
             icon: <ErrorIcon sx={{ fontSize: 14 }} />,
         },
         ERROR: {
-            label: "Error",
+            label: t("logs", "error"),
             color: theme.palette.error.main,
             bg: alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.18 : 0.12),
             icon: <ErrorIcon sx={{ fontSize: 14 }} />,
         },
         PARSE_ERROR: {
-            label: "Parse Error",
+            label: t("logs", "parseError"),
             color: theme.palette.warning.main,
             bg: alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.2 : 0.14),
             icon: <WarningAmberIcon sx={{ fontSize: 14 }} />,
@@ -273,6 +277,7 @@ function OcrLogDetailDialog({
     onIssueUpdate: (log: OcrLogEntry, input: OcrIssueUpdateInput) => Promise<void>;
 }) {
     const theme = useTheme();
+    const { locale, t } = useI18n();
     const [tab, setTab] = useState(0);
     const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
     const [isImprovingPrompt, setIsImprovingPrompt] = useState(false);
@@ -475,7 +480,7 @@ function OcrLogDetailDialog({
                                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.7, flexWrap: "wrap" }}>
                                     <StatusChip status={log.status} />
                                     <Chip
-                                        label={formatLogType(log.type)}
+                                        label={formatLogType(log.type, t)}
                                         size="small"
                                         sx={{
                                             fontWeight: 700,
@@ -488,7 +493,7 @@ function OcrLogDetailDialog({
                                     {log.simulationReferenceNumber && (
                                         <Chip
                                             icon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
-                                            label={`Simulation ${log.simulationReferenceNumber}`}
+                                            label={`${t("logs", "simulation")} ${log.simulationReferenceNumber}`}
                                             size="small"
                                             component="a"
                                             href={`/internal/simulations/${log.simulationId}`}
@@ -513,10 +518,10 @@ function OcrLogDetailDialog({
                                 </Box>
                                 <Box sx={{ display: "flex", alignItems: "baseline", gap: 1.25, flexWrap: "wrap" }}>
                                     <Typography variant="h6" sx={{ fontSize: 20, fontWeight: 850, letterSpacing: "-0.01em", lineHeight: 1.1 }}>
-                                        OCR Request Detail
+                                        {t("logs", "details")}
                                     </Typography>
                                     <Typography sx={{ fontSize: 12.5, color: "text.secondary", lineHeight: 1.35 }}>
-                                        {new Date(log.requestedAt).toLocaleString("en-GB", {
+                                        {new Date(log.requestedAt).toLocaleString(locale === "es" ? "es-ES" : "en-GB", {
                                             day: "2-digit", month: "2-digit", year: "numeric",
                                             hour: "2-digit", minute: "2-digit", second: "2-digit",
                                         })}
@@ -535,7 +540,7 @@ function OcrLogDetailDialog({
                                             onClick={() => handleIssueUpdate("IN_PROGRESS")}
                                             sx={{ borderRadius: 999, textTransform: "none", fontWeight: 800, fontSize: 12 }}
                                         >
-                                            In progress
+                                            {t("logs", "inProgress")}
                                         </Button>
                                         <Button
                                             size="small"
@@ -546,7 +551,7 @@ function OcrLogDetailDialog({
                                             onClick={() => setIssueAction(issueAction === "dismiss" ? null : "dismiss")}
                                             sx={{ borderRadius: 999, textTransform: "none", fontWeight: 800, fontSize: 12 }}
                                         >
-                                            Dismiss
+                                            {t("logs", "dismissed")}
                                         </Button>
                                     </>
                                 )}
@@ -560,7 +565,7 @@ function OcrLogDetailDialog({
                                         onClick={() => setIssueAction(issueAction === "resolve" ? null : "resolve")}
                                         sx={{ borderRadius: 999, textTransform: "none", fontWeight: 800, fontSize: 12 }}
                                     >
-                                        Resolve
+                                        {t("logs", "resolved")}
                                     </Button>
                                 )}
                                 {(issueStatus === "RESOLVED" || issueStatus === "DISMISSED") && (
@@ -571,7 +576,7 @@ function OcrLogDetailDialog({
                                         onClick={() => handleIssueUpdate("OPEN")}
                                         sx={{ borderRadius: 999, textTransform: "none", fontWeight: 800, fontSize: 12 }}
                                     >
-                                        Reopen
+                                        {t("logs", "open")}
                                     </Button>
                                 )}
                                 {canImprovePrompt && (
@@ -594,7 +599,7 @@ function OcrLogDetailDialog({
                                             },
                                         }}
                                     >
-                                        {isImprovingPrompt ? "Improving..." : "Improve Prompt"}
+                                        {isImprovingPrompt ? t("common", "loading") : t("logs", "promptImprovement")}
                                     </Button>
                                 )}
                                 <IconButton size="small" onClick={onClose}>
@@ -619,19 +624,19 @@ function OcrLogDetailDialog({
                     >
                         {[
                             {
-                                label: "Request",
+                                label: t("logs", "file"),
                                 value: primaryFileSummary,
-                                subvalue: [primaryFileMeta, getStoredFilesSummary(log)].filter(Boolean).join(" · "),
+                                subvalue: [primaryFileMeta, getStoredFilesSummary(log, t)].filter(Boolean).join(" · "),
                                 icon: <InsertDriveFileOutlinedIcon sx={{ fontSize: 14 }} />,
                             },
                             {
-                                label: "Model",
+                                label: t("logs", "providerModel"),
                                 value: formatProvider(log.provider),
                                 subvalue: log.model,
                                 icon: <SmartToyOutlinedIcon sx={{ fontSize: 14 }} />,
                             },
                             {
-                                label: "Run",
+                                label: t("logs", "duration"),
                                 value: log.durationMs != null ? `${(log.durationMs / 1000).toFixed(2)}s` : "—",
                                 subvalue: log.httpStatusCode != null ? `HTTP ${log.httpStatusCode}` : tokenSummary,
                                 icon: <TimerOutlinedIcon sx={{ fontSize: 14 }} />,
@@ -678,7 +683,7 @@ function OcrLogDetailDialog({
                                 py: 1.4,
                             }}
                         >
-                            <Typography sx={labelSx}>Error</Typography>
+                            <Typography sx={labelSx}>{t("logs", "error")}</Typography>
                             <Typography variant="body2" sx={{ fontSize: 12.5, color: "error.main", fontWeight: 600, lineHeight: 1.45 }}>
                                 {log.errorType ? `[${log.errorType}] ` : ""}{log.errorMessage}
                             </Typography>
@@ -712,13 +717,13 @@ function OcrLogDetailDialog({
                             >
                                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
                                     <Typography sx={{ fontSize: 13, fontWeight: 800, color: "text.primary" }}>
-                                        Issue review
+                                        {t("logs", "issue")}
                                     </Typography>
                                     <IssueChip log={log} />
                                 </Box>
                                 {log.issueHandledAt && (
                                     <Typography sx={{ fontSize: 11.5, color: "text.secondary" }}>
-                                        Handled {formatDistanceToNow(new Date(log.issueHandledAt), { addSuffix: true })}
+                                        {formatDistanceToNow(new Date(log.issueHandledAt), { addSuffix: true, locale: locale === "es" ? es : undefined })}
                                     </Typography>
                                 )}
                             </Box>
@@ -728,7 +733,7 @@ function OcrLogDetailDialog({
                                         <Chip
                                             size="small"
                                             icon={<WarningAmberIcon sx={{ fontSize: 13 }} />}
-                                            label="Reported"
+                                            label={t("logs", "reported")}
                                             sx={{ height: 22, fontSize: 10.5, fontWeight: 700, color: theme.palette.warning.main, backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.18 : 0.1), "& .MuiChip-icon": { color: theme.palette.warning.main } }}
                                         />
                                     )}
@@ -1444,6 +1449,7 @@ function OcrLogDetailDialog({
 export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
     const theme = useTheme();
     const queryClient = useQueryClient();
+    const { locale, t } = useI18n();
     const { preferences } = useUserPreferences();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
@@ -1556,7 +1562,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             } as OcrLogEntry;
             setSelectedLog((current) => current?.id === log.id ? updatedLog : current);
             queryClient.invalidateQueries({ queryKey: ["ocr-logs"] });
-            onNotify?.(`Issue marked ${getIssueLabel(updatedLog.issueStatus ?? null).toLowerCase()}`, "success");
+            onNotify?.(`Issue marked ${getIssueLabel(updatedLog.issueStatus ?? null, t).toLowerCase()}`, "success");
         },
         onError: (err) => {
             onNotify?.(err instanceof Error ? err.message : "Failed to update OCR issue", "error");
@@ -1568,8 +1574,8 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
     };
 
     useEffect(() => {
-        if (error) onNotify?.("Failed to load OCR logs", "error");
-    }, [error, onNotify]);
+        if (error) onNotify?.(t("logs", "loadOcrLogsFailed"), "error");
+    }, [error, onNotify, t]);
 
     const logs = data?.items ?? [];
     const total = data?.total ?? 0;
@@ -1577,24 +1583,24 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
     const columns: ColumnDef<OcrLogEntry>[] = [
         {
             key: "requestedAt",
-            label: "Timestamp",
+            label: t("logs", "timestamp"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
                     <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
                         {formatDate(log.requestedAt)}
                     </Typography>
                     <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary" }}>
-                        {formatDistanceToNow(new Date(log.requestedAt), { addSuffix: true })}
+                        {formatDistanceToNow(new Date(log.requestedAt), { addSuffix: true, locale: locale === "es" ? es : undefined })}
                     </Typography>
                 </Box>
             ),
         },
         {
             key: "type",
-            label: "Type",
+            label: t("logs", "type"),
             renderCell: (log) => (
                 <Chip
-                    label={formatLogType(log.type)}
+                    label={formatLogType(log.type, t)}
                     size="small"
                     sx={{
                         fontSize: 11,
@@ -1608,16 +1614,16 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
         },
         {
             key: "status",
-            label: "Status",
+            label: t("logs", "status"),
             renderCell: (log) => <StatusChip status={log.status} />,
         },
         {
             key: "user",
-            label: "User",
+            label: t("logs", "user"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2 }}>
                     <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
-                        {log.userName ?? log.userEmail ?? "Unknown"}
+                        {log.userName ?? log.userEmail ?? t("logs", "unknown")}
                     </Typography>
                     {log.userName && log.userEmail && (
                         <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", lineHeight: 1.2 }}>
@@ -1629,7 +1635,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
         },
         {
             key: "provider",
-            label: "Provider / Model",
+            label: t("logs", "providerModel"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2 }}>
                     <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
@@ -1643,7 +1649,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
         },
         {
             key: "file",
-            label: "File",
+            label: t("logs", "file"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2 }}>
                     <Tooltip title={log.fileName ?? ""}>
@@ -1655,7 +1661,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                         {[
                             log.fileType?.replace("application/", "").replace("image/", ""),
                             formatFileSize(log.fileSizeBytes),
-                            log.files && log.files.length > 1 ? `${log.files.length} files` : null,
+                            log.files && log.files.length > 1 ? t("logs", "fileCount", { count: log.files.length }) : null,
                             log.pageCount ? `${log.pageCount}p` : null,
                         ].filter(Boolean).join(" · ")}
                     </Typography>
@@ -1664,15 +1670,15 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
         },
         {
             key: "storedFiles",
-            label: "Stored Files",
+            label: t("logs", "storedFiles"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2, maxWidth: 180 }}>
                     <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
                         {log.files?.length ?? 0}
                     </Typography>
-                    <Tooltip title={log.files?.map((file) => `${file.fileName} (${formatFileSize(file.fileSizeBytes)})`).join(" · ") ?? "No files stored"}>
+                    <Tooltip title={log.files?.map((file) => `${file.fileName} (${formatFileSize(file.fileSizeBytes)})`).join(" · ") ?? t("logs", "noFilesStored")}>
                         <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {getStoredFilesSummary(log)}
+                            {getStoredFilesSummary(log, t)}
                         </Typography>
                     </Tooltip>
                 </Box>
@@ -1680,7 +1686,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
         },
         {
             key: "simulation",
-            label: "Simulation",
+            label: t("logs", "simulation"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2, maxWidth: 130 }}>
                     <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
@@ -1696,7 +1702,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
         },
         {
             key: "duration",
-            label: "Duration",
+            label: t("logs", "duration"),
             renderCell: (log) => (
                 <Typography variant="body2" sx={{ fontSize: 12, fontFamily: "monospace", fontWeight: 600, color: "text.secondary", whiteSpace: "nowrap" }}>
                     {log.durationMs != null ? `${(log.durationMs / 1000).toFixed(1)}s` : "—"}
@@ -1705,7 +1711,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
         },
         {
             key: "tokens",
-            label: "Tokens",
+            label: t("logs", "tokens"),
             renderCell: (log) => {
                 if (!log.totalTokens && !log.promptTokens && !log.completionTokens) {
                     return <Typography variant="caption" sx={{ color: "text.secondary" }}>—</Typography>;
@@ -1724,7 +1730,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
         },
         {
             key: "fieldsExtracted",
-            label: "Fields",
+            label: t("logs", "fields"),
             renderCell: (log) => {
                 if (log.status !== "SUCCESS") {
                     return <Typography variant="caption" sx={{ color: "text.secondary" }}>—</Typography>;
@@ -1747,7 +1753,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
         },
         {
             key: "issue",
-            label: "Issue",
+            label: t("logs", "issue"),
             renderCell: (log) => {
                 const status = getIssueStatus(log);
                 const correctionCount = Object.keys(getVisibleCorrections(log)).length;
@@ -1760,17 +1766,17 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                         <Box sx={{ display: "flex", gap: 0.45, flexWrap: "wrap" }}>
                             {log.reportedIssue && (
                                 <Typography variant="caption" sx={{ fontSize: 10, color: "warning.main", fontWeight: 700 }}>
-                                    Reported
+                                    {t("logs", "reported")}
                                 </Typography>
                             )}
                             {correctionCount > 0 && (
                                 <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", fontWeight: 600 }}>
-                                    {correctionCount} correction{correctionCount !== 1 ? "s" : ""}
+                                    {correctionCount} {t("logs", correctionCount === 1 ? "correction" : "corrections")}
                                 </Typography>
                             )}
                             {!log.reportedIssue && correctionCount === 0 && (
                                 <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary" }}>
-                                    Manual
+                                    {t("logs", "manual")}
                                 </Typography>
                             )}
                         </Box>
@@ -1782,7 +1788,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             key: "view",
             label: "",
             renderCell: (log) => (
-                <Tooltip title="View full response">
+                <Tooltip title={t("logs", "viewFullResponse")}>
                     <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSelectedLog(log); }}>
                         <OpenInNewIcon sx={{ fontSize: 14 }} />
                     </IconButton>
@@ -1804,16 +1810,16 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                             <FormSelect
                                 label=""
                                 options={[
-                                    { value: "", label: "All types" },
-                                    { value: "INVOICE_EXTRACTION", label: "Invoice Extraction" },
-                                    { value: "PROVIDER_DETECTION", label: "Provider Detection" },
-                                    { value: "PROMPT_IMPROVEMENT", label: "Prompt Improvement" },
-                                    { value: "PROMPT_TEST", label: "Prompt Test" },
-                                    { value: "TEMPLATE_BUILDER", label: "Template Builder" },
+                                    { value: "", label: t("logs", "allTypes") },
+                                    { value: "INVOICE_EXTRACTION", label: t("logs", "invoiceExtraction") },
+                                    { value: "PROVIDER_DETECTION", label: t("logs", "providerDetection") },
+                                    { value: "PROMPT_IMPROVEMENT", label: t("logs", "promptImprovement") },
+                                    { value: "PROMPT_TEST", label: t("logs", "promptTest") },
+                                    { value: "TEMPLATE_BUILDER", label: t("logs", "templateBuilder") },
                                 ]}
                                 value={localType}
                                 onChange={(v) => setLocalType(String(v ?? ""))}
-                                placeholder="Type"
+                                placeholder={t("logs", "type")}
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
@@ -1821,15 +1827,15 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                             <FormSelect
                                 label=""
                                 options={[
-                                    { value: "", label: "All statuses" },
-                                    { value: "SUCCESS", label: "Success" },
-                                    { value: "FAILED", label: "Failed" },
-                                    { value: "ERROR", label: "Error" },
-                                    { value: "PARSE_ERROR", label: "Parse Error" },
+                                    { value: "", label: t("logs", "allStatuses") },
+                                    { value: "SUCCESS", label: t("logs", "success") },
+                                    { value: "FAILED", label: t("logs", "failed") },
+                                    { value: "ERROR", label: t("logs", "error") },
+                                    { value: "PARSE_ERROR", label: t("logs", "parseError") },
                                 ]}
                                 value={localStatus}
                                 onChange={(v) => setLocalStatus(String(v ?? ""))}
-                                placeholder="Status"
+                                placeholder={t("logs", "status")}
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
@@ -1837,16 +1843,16 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                             <FormSelect
                                 label=""
                                 options={[
-                                    { value: "", label: "All issues" },
-                                    { value: "ANY", label: "Has issue" },
-                                    { value: "OPEN", label: "Open" },
-                                    { value: "IN_PROGRESS", label: "In progress" },
-                                    { value: "RESOLVED", label: "Resolved" },
-                                    { value: "DISMISSED", label: "Dismissed" },
+                                    { value: "", label: t("logs", "allIssues") },
+                                    { value: "ANY", label: t("logs", "hasIssue") },
+                                    { value: "OPEN", label: t("logs", "open") },
+                                    { value: "IN_PROGRESS", label: t("logs", "inProgress") },
+                                    { value: "RESOLVED", label: t("logs", "resolved") },
+                                    { value: "DISMISSED", label: t("logs", "dismissed") },
                                 ]}
                                 value={localIssueStatus}
                                 onChange={(v) => setLocalIssueStatus(String(v ?? ""))}
-                                placeholder="Issue"
+                                placeholder={t("logs", "issue")}
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
@@ -1854,7 +1860,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                             <TextField
                                 size="small"
                                 fullWidth
-                                placeholder="User name or email…"
+                                placeholder={t("logs", "searchUser")}
                                 value={localUserSearch}
                                 onChange={(e) => setLocalUserSearch(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
@@ -1864,13 +1870,13 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                         <Box sx={{ flex: 1 }}>
                             <DateRangePicker
                                 variant="inline"
-                                label="Timestamp"
+                                label={t("logs", "timestamp")}
                                 startDate={localDateFrom}
                                 endDate={localDateTo}
                                 onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
                             />
                         </Box>
-                        <Button variant="contained" size="small" onClick={handleSearch} aria-label="Search">
+                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
                             <SearchIcon />
                         </Button>
                         <Button variant="outlined" size="small" onClick={handleClear}>
@@ -1888,7 +1894,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                         setPage(1);
                     },
                 }}
-                emptyMessage="No OCR requests found"
+                emptyMessage={t("logs", "noOcrLogs")}
             />
 
             {selectedLog && (

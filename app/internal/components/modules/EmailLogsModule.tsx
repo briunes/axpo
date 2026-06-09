@@ -198,13 +198,13 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
 
     useEffect(() => {
         if (error) {
-            onNotify?.("Failed to load email logs", "error");
+            onNotify?.(t("logs", "loadEmailLogsFailed"), "error");
         }
     }, [error, onNotify]);
 
     useEffect(() => {
         if (selectedLogError) {
-            onNotify?.("Failed to load email details", "error");
+            onNotify?.(t("logs", "loadEmailDetailsFailed"), "error");
         }
     }, [selectedLogError, onNotify]);
 
@@ -228,7 +228,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
     const columns: ColumnDef<EmailLog>[] = [
         {
             key: "sentAt",
-            label: t("columns", "date") || "Date",
+            label: t("logs", "date"),
             sortable: true,
             width: "180",
             renderCell: (log) => (
@@ -239,7 +239,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
         },
         {
             key: "recipientEmail",
-            label: t("columns", "recipient") || "Recipient",
+            label: t("logs", "recipient"),
             renderCell: (log) => (
                 <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
                     {log.recipientEmail}
@@ -248,7 +248,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
         },
         {
             key: "subject",
-            label: t("columns", "subject") || "Subject",
+            label: t("logs", "subject"),
             renderCell: (log) => (
                 <Typography variant="body2" sx={{ fontSize: 13 }}>
                     {log.subject}
@@ -257,12 +257,12 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
         },
         {
             key: "triggeredBy",
-            label: "Triggered By",
+            label: t("logs", "triggeredBy"),
             renderCell: (log) => <TriggerBadge trigger={log.triggeredBy} />,
         },
         {
             key: "status",
-            label: t("columns", "status") || "Status",
+            label: t("logs", "status"),
             renderCell: (log) => (
                 <StatusBadge
                     label={log.status}
@@ -288,13 +288,13 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                             <FormSelect
                                 label=""
                                 options={[
-                                    { value: "all", label: "All statuses" },
-                                    { value: "sent", label: "Sent" },
-                                    { value: "failed", label: "Failed" },
+                                    { value: "all", label: t("logs", "allStatuses") },
+                                    { value: "sent", label: t("logs", "sent") },
+                                    { value: "failed", label: t("logs", "failed") },
                                 ]}
                                 value={localStatus}
                                 onChange={(v) => setLocalStatus(String(v ?? "all"))}
-                                placeholder="Status"
+                                placeholder={t("logs", "status")}
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
@@ -302,14 +302,14 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                             <FormSelect
                                 label=""
                                 options={[
-                                    { value: "all", label: "All triggers" },
-                                    { value: "user-creation", label: "User Creation" },
-                                    { value: "simulation-share", label: "Simulation Share" },
-                                    { value: "test-email", label: "Test Email" },
+                                    { value: "all", label: t("logs", "allTriggers") },
+                                    { value: "user-creation", label: t("auditEvents", "created") },
+                                    { value: "simulation-share", label: t("auditEvents", "shared") },
+                                    { value: "test-email", label: t("logs", "promptTest") },
                                 ]}
                                 value={localTrigger}
                                 onChange={(v) => setLocalTrigger(String(v ?? "all"))}
-                                placeholder="Triggered By"
+                                placeholder={t("logs", "triggeredBy")}
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
@@ -317,7 +317,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                             <TextField
                                 size="small"
                                 fullWidth
-                                placeholder="Recipient, subject…"
+                                placeholder={t("logs", "searchEmail")}
                                 value={localSearch}
                                 onChange={(e) => setLocalSearch(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
@@ -327,13 +327,13 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                         <Box sx={{ flex: 2, }}>
                             <DateRangePicker
                                 variant="inline"
-                                label="Date"
+                                label={t("logs", "date")}
                                 startDate={localDateFrom}
                                 endDate={localDateTo}
                                 onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
                             />
                         </Box>
-                        <Button variant="contained" size="small" onClick={handleSearch} aria-label="Search">
+                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
                             <SearchIcon />
                         </Button>
                         <Button variant="outlined" size="small" onClick={resetFilters}>
@@ -359,10 +359,10 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                         variant="outlined"
                         size="small"
                     >
-                        View
+                        {t("logs", "view")}
                     </Button>
                 )}
-                emptyMessage="No email logs found"
+                emptyMessage={t("logs", "noEmailLogs")}
             />
 
             {/* Detail Dialog */}
@@ -372,18 +372,18 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                 maxWidth="md"
                 fullWidth
             >
-                <DialogTitle>Email Log Details</DialogTitle>
+                <DialogTitle>{t("logs", "details")}</DialogTitle>
                 <DialogContent dividers>
                     {selectedLog && (
                         <Stack spacing={3}>
                             <Box sx={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 2 }}>
                                 <Typography variant="body2" color="text.secondary">
-                                    Sent At
+                                    {t("logs", "sentAt")}
                                 </Typography>
                                 <Typography variant="body2">{formatDate(selectedLog.sentAt)}</Typography>
 
                                 <Typography variant="body2" color="text.secondary">
-                                    Status
+                                    {t("logs", "status")}
                                 </Typography>
                                 <Box>
                                     <StatusBadge
@@ -393,14 +393,14 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 </Box>
 
                                 <Typography variant="body2" color="text.secondary">
-                                    Recipient
+                                    {t("logs", "recipient")}
                                 </Typography>
                                 <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
                                     {selectedLog.recipientEmail}
                                 </Typography>
 
                                 <Typography variant="body2" color="text.secondary">
-                                    Triggered By
+                                    {t("logs", "triggeredBy")}
                                 </Typography>
                                 <Box>
                                     {selectedLog.triggeredByUser ? (
@@ -415,14 +415,14 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.templateName && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            Template
+                                            {t("logs", "template")}
                                         </Typography>
                                         <Typography variant="body2">{selectedLog.templateName}</Typography>
                                     </>
                                 )}
 
                                 <Typography variant="body2" color="text.secondary">
-                                    Subject
+                                    {t("logs", "subject")}
                                 </Typography>
                                 <Typography variant="body2" fontWeight={600}>
                                     {selectedLog.subject}
@@ -432,7 +432,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.fromEmail && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            From
+                                            {t("logs", "from")}
                                         </Typography>
                                         <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
                                             {selectedLog.fromName ? `"${selectedLog.fromName}" <${selectedLog.fromEmail}>` : selectedLog.fromEmail}
@@ -443,7 +443,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.smtpHost && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            SMTP Server
+                                            {t("logs", "smtpServer")}
                                         </Typography>
                                         <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
                                             {selectedLog.smtpHost}:{selectedLog.smtpPort ?? "—"}
@@ -454,7 +454,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.messageId && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            Message ID
+                                            {t("logs", "messageId")}
                                         </Typography>
                                         <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 11, wordBreak: "break-all" }}>
                                             {selectedLog.messageId}
@@ -465,7 +465,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.smtpResponse && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            SMTP Response
+                                            {t("logs", "smtpResponse")}
                                         </Typography>
                                         <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 11, wordBreak: "break-all" }}>
                                             {selectedLog.smtpResponse}
@@ -476,7 +476,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.durationMs !== undefined && selectedLog.durationMs !== null && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            Duration
+                                            {t("logs", "duration")}
                                         </Typography>
                                         <Typography variant="body2">
                                             {selectedLog.durationMs} ms
@@ -487,10 +487,10 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {(selectedLog.hasAttachments || (selectedLog.attachmentsCount ?? 0) > 0) && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            Attachments
+                                            {t("logs", "attachments")}
                                         </Typography>
                                         <Typography variant="body2">
-                                            {selectedLog.attachmentsCount ?? 0} file(s)
+                                            {t("logs", "fileCount", { count: selectedLog.attachmentsCount ?? 0 })}
                                         </Typography>
                                     </>
                                 )}
@@ -498,7 +498,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.errorMessage && (
                                     <>
                                         <Typography variant="body2" color="error">
-                                            Error Message
+                                            {t("logs", "errorMessage")}
                                         </Typography>
                                         <Typography variant="body2" color="error" sx={{ fontFamily: "monospace", fontSize: 12 }}>
                                             {selectedLog.errorMessage}
@@ -509,7 +509,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.errorStack && (
                                     <>
                                         <Typography variant="body2" color="error">
-                                            Error Stack
+                                            {t("logs", "errorStack")}
                                         </Typography>
                                         <Box
                                             sx={{
@@ -535,7 +535,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
 
                             <Box>
                                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                                    Preview
+                                    {t("logs", "preview")}
                                 </Typography>
                                 <Box
                                     sx={{
@@ -555,7 +555,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                     )}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setSelectedLogId(null)}>Close</Button>
+                    <Button onClick={() => setSelectedLogId(null)}>{t("logs", "close")}</Button>
                 </DialogActions>
             </Dialog>
         </>

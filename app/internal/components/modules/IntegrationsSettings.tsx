@@ -24,7 +24,7 @@ export function IntegrationsSettings({ session, onNotify }: IntegrationsSettings
         smtp: t("systemSettings", "tabSmtp"),
         emails: t("systemSettings", "tabAutomatedEmails"),
         llm: t("configurationsModule", "tabLlmSettings"),
-        "invoice-providers": "Invoice Providers",
+        "invoice-providers": t("configurationsModule", "tabInvoiceProviders"),
     };
 
     const tabIndex = (Object.keys(INTEGRATION_TABS) as IntegrationTab[]).indexOf(activeTab);

@@ -150,11 +150,22 @@ function getVariablesForTemplate(
     type: string | undefined,
     commodity: string | undefined,
     dbVariables: TemplateVariable[],
+    t: ReturnType<typeof useI18n>["t"],
 ): Array<{ name: string; label: string; description: string }> {
     const c = commodity || "ELECTRICITY";
+    const translateBuiltInVariable = (variable: { name: string; label: string; description: string }) => {
+        const label = t("pdfTemplateVariables", `${variable.name}_label`);
+        const description = t("pdfTemplateVariables", `${variable.name}_description`);
+        return {
+            ...variable,
+            label: label === `${variable.name}_label` ? variable.label : label,
+            description: description === `${variable.name}_description` ? variable.description : description,
+        };
+    };
 
     if (type === "price-history") {
-        return c === "GAS" ? PRICE_HISTORY_GAS_VARIABLES : PRICE_HISTORY_ELECTRICITY_VARIABLES;
+        return (c === "GAS" ? PRICE_HISTORY_GAS_VARIABLES : PRICE_HISTORY_ELECTRICITY_VARIABLES)
+            .map(translateBuiltInVariable);
     }
 
     if (type === "simulation-output" || type === "simulation-detailed") {
@@ -171,8 +182,8 @@ function getVariablesForTemplate(
         return [
             {
                 name: "CHART_COMPARATIVA",
-                label: "📊 Gráfico Comparativa",
-                description: "Bar chart comparing annual Competencia vs Axpo totals + savings stats",
+                label: `📊 ${t("pdfTemplateVariables", "CHART_COMPARATIVA_label")}`,
+                description: t("pdfTemplateVariables", "CHART_COMPARATIVA_description"),
             },
             ...dbVars,
         ];
@@ -515,7 +526,11 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                     {/* AI Template Builder */}
                                     <AITemplateBuilder
                                         mode="pdf"
-                                        variables={variables}
+                                        variables={getVariablesForTemplate(formData.type, formData.commodity ?? undefined, variables, t).map((variable) => ({
+                                            key: variable.name,
+                                            label: variable.label,
+                                            description: variable.description,
+                                        })) as TemplateVariable[]}
                                         isEditing={editingTemplate !== null}
                                         currentFormData={formData as Record<string, any>}
                                         currentTranslationsMap={translationsMap}
@@ -631,12 +646,12 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                             />
                                             <DraggableVariables variables={[
                                                 // Variables filtered by template type and commodity
-                                                ...getVariablesForTemplate(formData.type, formData.commodity ?? undefined, variables),
+                                                ...getVariablesForTemplate(formData.type, formData.commodity ?? undefined, variables, t),
                                                 // Editable sections as variables
                                                 ...Object.entries((formData.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
                                                     name: key,
                                                     label: `📝 ${section.label || key}`,
-                                                    description: section.description || "Editable section",
+                                                    description: section.description || t("pdfTemplateVariables", "editableSection"),
                                                 }))
                                             ]} />
                                         </div>

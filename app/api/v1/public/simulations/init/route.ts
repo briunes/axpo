@@ -8,6 +8,8 @@ import {
   getClientRateLimitKey,
 } from "@/application/middleware/rateLimit";
 import { prisma } from "@/infrastructure/database/prisma";
+import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
+import { maskEmail } from "@/application/lib/sensitiveData";
 
 const initSchema = z.object({
   token: z.string().min(16),
@@ -41,12 +43,15 @@ const initSchema = z.object({
  *         description: Rate limit exceeded
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
-  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = getRequestSessionContext(request).ipAddress;
 
   const body = await request.json();
   const { token } = initSchema.parse(body);
 
-  applyRateLimit(getClientRateLimitKey(ip, `public-init:${token.slice(0, 8)}`));
+  applyRateLimit(getClientRateLimitKey(ip, `public-init:${token.slice(0, 8)}`), {
+    maxRequests: 20,
+    windowMs: 15 * 60 * 1000,
+  });
 
   const simulation = await prisma.simulation.findFirst({
     where: {
@@ -76,7 +81,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   return ResponseHandler.ok(
     {
       ownerName: simulation.ownerUser.fullName,
-      ownerEmail: simulation.ownerUser.email,
+      ownerEmail: maskEmail(simulation.ownerUser.email),
       agencyName: simulation.ownerUser.agency?.name ?? null,
     },
     200,

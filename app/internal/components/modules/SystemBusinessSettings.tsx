@@ -329,7 +329,7 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                                 </Box>
                             ))}
                             <Box sx={{ display: "flex", justifyContent: "center" }}>
-                                <Tooltip title={isActiveAnywhere(val) ? t("systemSettings", "taxRateRemoveTooltip") : "Remove"}>
+                                <Tooltip title={t("systemSettings", "taxRateRemoveTooltip")}>
                                     <span>
                                         <IconButton
                                             size="small"

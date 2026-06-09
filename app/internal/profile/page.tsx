@@ -155,6 +155,7 @@ export default function ProfilePage() {
                                 submitLabel={t("profilePage", "saveChanges")}
                                 mode="edit"
                                 isEditingSelf
+                                originalRole={user?.role}
                             />
                         </Stack>
                     )}

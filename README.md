@@ -31,6 +31,37 @@ cp .env.example .env
 
 Update `DATABASE_URL` and required environment values in `.env`.
 
+### Database transport
+
+The application supports two server-side database transports:
+
+```bash
+# Existing Prisma/PostgreSQL connection
+DB_CONNECTION_MODE=direct
+
+# Supabase Data API (PostgREST)
+DB_CONNECTION_MODE=api
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_...
+SUPABASE_DB_SCHEMA=public
+```
+
+Use an `sb_secret_...` key or legacy `service_role` JWT only on the server.
+Publishable/anon keys cannot be used by this adapter. Never prefix the key with
+`NEXT_PUBLIC_`. Apply migrations through the direct migration connection before
+using API mode. Verify the selected transport with:
+
+```text
+GET /api/v1/internal/health?checkDatabase=true
+```
+
+API mode supports the Prisma-style CRUD, filtering, projection, relation
+selection, pagination, ordering, bulk-write, upsert, count, and simple max
+aggregate operations used by the application. Prisma transactions, raw SQL,
+and `groupBy` must be implemented as PostgreSQL functions and called through
+the adapter's `$rpc` method. API mode fails explicitly for these operations and
+never falls back to a direct database connection.
+
 ### Database
 
 ```bash

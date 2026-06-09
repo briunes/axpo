@@ -17,9 +17,9 @@ import {
 } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import type { SessionState } from "../../lib/authSession";
@@ -28,6 +28,7 @@ import { FormSelect } from "../ui/FormSelect";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 const SENTRY_BASE_URL = "https://signed-axpo.sentry.io";
 
@@ -46,6 +47,7 @@ interface AppErrorLogEntry {
     stack?: string | null;
     method?: string | null;
     path?: string | null;
+    pagePath?: string | null;
     statusCode?: number | null;
     sentryEventId?: string | null;
     metadata?: Record<string, unknown> | null;
@@ -59,6 +61,7 @@ export interface AppErrorLogsPanelProps {
 
 export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps) {
     const theme = useTheme();
+    const { locale, t } = useI18n();
     const { preferences } = useUserPreferences();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
@@ -132,8 +135,8 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
     });
 
     useEffect(() => {
-        if (error) onNotify?.("Failed to load application error logs", "error");
-    }, [error, onNotify]);
+        if (error) onNotify?.(t("logs", "loadAppErrorsFailed"), "error");
+    }, [error, onNotify, t]);
 
     const logs = data?.items ?? [];
     const total = data?.total ?? 0;
@@ -141,21 +144,21 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
     const columns: ColumnDef<AppErrorLogEntry>[] = [
         {
             key: "createdAt",
-            label: "Timestamp",
+            label: t("logs", "timestamp"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
                     <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
                         {formatDate(log.createdAt)}
                     </Typography>
                     <Typography variant="caption" sx={{ fontSize: 11, color: "text.secondary" }}>
-                        {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
+                        {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true, locale: locale === "es" ? es : undefined })}
                     </Typography>
                 </Box>
             ),
         },
         {
             key: "errorType",
-            label: "Type",
+            label: t("logs", "type"),
             renderCell: (log) => (
                 <Chip
                     label={log.errorCode ?? log.errorType}
@@ -173,7 +176,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
         },
         {
             key: "message",
-            label: "Message",
+            label: t("logs", "message"),
             renderCell: (log) => (
                 <Typography
                     variant="body2"
@@ -193,7 +196,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
         },
         {
             key: "path",
-            label: "Endpoint",
+            label: t("logs", "endpoint"),
             renderCell: (log) =>
                 log.path ? (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -224,8 +227,24 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                 ),
         },
         {
+            key: "pagePath",
+            label: "Page route",
+            renderCell: (log) =>
+                log.pagePath ? (
+                    <Typography
+                        variant="caption"
+                        sx={{ fontFamily: "monospace", fontSize: 11, color: "text.secondary" }}
+                        title={log.pagePath}
+                    >
+                        {log.pagePath.length > 40 ? `...${log.pagePath.slice(-40)}` : log.pagePath}
+                    </Typography>
+                ) : (
+                    <Typography variant="caption" sx={{ color: "text.disabled" }}>—</Typography>
+                ),
+        },
+        {
             key: "user",
-            label: "User",
+            label: t("logs", "user"),
             renderCell: (log) =>
                 log.user ? (
                     <Typography variant="caption" sx={{ fontSize: 11 }}>
@@ -237,10 +256,10 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
         },
         {
             key: "sentryEventId",
-            label: "Sentry",
+            label: t("logs", "sentry"),
             renderCell: (log) =>
                 log.sentryEventId ? (
-                    <Tooltip title="Open in Sentry">
+                    <Tooltip title={t("logs", "openInSentry")}>
                         <IconButton
                             size="small"
                             onClick={(e) => {
@@ -265,7 +284,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
             label: "",
             renderCell: (log) => (
                 <Button size="small" variant="text" onClick={() => setSelected(log)} sx={{ fontSize: 11, minWidth: 0 }}>
-                    Details
+                    {t("logs", "details")}
                 </Button>
             ),
         },
@@ -285,7 +304,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                             <FormSelect
                                 label=""
                                 options={[
-                                    { value: "", label: "All types" },
+                                    { value: "", label: t("logs", "allTypes") },
                                     { value: "Error", label: "Error" },
                                     { value: "ReferenceError", label: "ReferenceError" },
                                     { value: "TypeError", label: "TypeError" },
@@ -293,7 +312,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                                 ]}
                                 value={localErrorType}
                                 onChange={(v) => setLocalErrorType(String(v ?? ""))}
-                                placeholder="Error Type"
+                                placeholder={t("logs", "errorType")}
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
@@ -301,7 +320,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                             <TextField
                                 size="small"
                                 fullWidth
-                                placeholder="Message, error type, endpoint…"
+                                placeholder={t("logs", "searchError")}
                                 value={localSearch}
                                 onChange={(e) => setLocalSearch(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
@@ -311,14 +330,14 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         <Box sx={{ flex: 2 }}>
                             <DateRangePicker
                                 variant="inline"
-                                label="Timestamp"
+                                label={t("logs", "timestamp")}
                                 startDate={localDateFrom}
                                 endDate={localDateTo}
                                 onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
 
                             />
                         </Box>
-                        <Button variant="contained" size="small" onClick={handleSearch} aria-label="Search">
+                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
                             <SearchIcon />
                         </Button>
                         <Button variant="outlined" size="small" onClick={handleClear}>
@@ -334,7 +353,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         onClick={() => window.open(`${SENTRY_BASE_URL}/issues/`, "_blank", "noopener,noreferrer")}
                         sx={{ fontSize: 12, whiteSpace: "nowrap", ml: 2 }}
                     >
-                        Open Sentry
+                        {t("logs", "openSentry")}
                     </Button>}
                 pagination={{
                     page,
@@ -346,7 +365,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         setPage(1);
                     },
                 }}
-                emptyMessage="No application errors recorded"
+                emptyMessage={t("logs", "noAppErrors")}
             />
 
             {/* Detail Drawer */}
@@ -361,7 +380,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         {/* Drawer header */}
                         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
                             <Typography variant="h6" sx={{ fontWeight: 700, fontSize: 16 }}>
-                                Error Details
+                                {t("logs", "errorDetails")}
                             </Typography>
                             <IconButton size="small" onClick={() => setSelected(null)}>
                                 <CloseIcon fontSize="small" />
@@ -373,7 +392,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         <Stack spacing={2}>
                             {/* Type + code */}
                             <Box>
-                                <Typography variant="caption" color="text.secondary">Error Type</Typography>
+                                <Typography variant="caption" color="text.secondary">{t("logs", "errorType")}</Typography>
                                 <Box sx={{ display: "flex", gap: 1, mt: 0.5, flexWrap: "wrap" }}>
                                     <Chip
                                         label={selected.errorType}
@@ -402,16 +421,16 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
 
                             {/* Timestamp */}
                             <Box>
-                                <Typography variant="caption" color="text.secondary">Timestamp</Typography>
+                                <Typography variant="caption" color="text.secondary">{t("logs", "timestamp")}</Typography>
                                 <Typography variant="body2" sx={{ mt: 0.5, fontSize: 13 }}>
                                     {formatDate(selected.createdAt)}
-                                    {" · "}{formatDistanceToNow(new Date(selected.createdAt), { addSuffix: true })}
+                                    {" · "}{formatDistanceToNow(new Date(selected.createdAt), { addSuffix: true, locale: locale === "es" ? es : undefined })}
                                 </Typography>
                             </Box>
 
                             {/* Message */}
                             <Box>
-                                <Typography variant="caption" color="text.secondary">Message</Typography>
+                                <Typography variant="caption" color="text.secondary">{t("logs", "message")}</Typography>
                                 <Box sx={{
                                     mt: 0.5, p: 1.5, borderRadius: 1, bgcolor: alpha(theme.palette.error.main, 0.06),
                                     border: "1px solid", borderColor: alpha(theme.palette.error.main, 0.2),
@@ -425,7 +444,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                             {/* Endpoint */}
                             {selected.path && (
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">Endpoint</Typography>
+                                    <Typography variant="caption" color="text.secondary">{t("logs", "endpoint")}</Typography>
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
                                         {selected.method && (
                                             <Chip
@@ -445,10 +464,19 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                                 </Box>
                             )}
 
+                            {selected.pagePath && (
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Page route</Typography>
+                                    <Typography variant="body2" sx={{ mt: 0.5, fontFamily: "monospace", fontSize: 12 }}>
+                                        {selected.pagePath}
+                                    </Typography>
+                                </Box>
+                            )}
+
                             {/* User */}
                             {selected.user && (
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">User</Typography>
+                                    <Typography variant="caption" color="text.secondary">{t("logs", "user")}</Typography>
                                     <Typography variant="body2" sx={{ mt: 0.5, fontSize: 13 }}>
                                         {selected.user.fullName}
                                         <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
@@ -461,7 +489,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                             {/* Sentry link */}
                             {selected.sentryEventId && (
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">Sentry Event</Typography>
+                                    <Typography variant="caption" color="text.secondary">{t("logs", "sentryEvent")}</Typography>
                                     <Box sx={{ mt: 0.5 }}>
                                         <Button
                                             size="small"
@@ -477,7 +505,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                                             }
                                             sx={{ fontSize: 12 }}
                                         >
-                                            View in Sentry
+                                            {t("logs", "viewInSentry")}
                                         </Button>
                                         <Typography variant="caption" sx={{ display: "block", mt: 0.5, fontFamily: "monospace", color: "text.secondary", fontSize: 10 }}>
                                             {selected.sentryEventId}
@@ -489,7 +517,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                             {/* Stack trace */}
                             {selected.stack && (
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">Stack Trace</Typography>
+                                    <Typography variant="caption" color="text.secondary">{t("logs", "stackTrace")}</Typography>
                                     <Box sx={{
                                         mt: 0.5, p: 1.5, borderRadius: 1,
                                         bgcolor: theme.palette.mode === "dark" ? "grey.900" : "grey.100",
@@ -509,7 +537,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                             {/* Metadata */}
                             {selected.metadata && Object.keys(selected.metadata).length > 0 && (
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">Metadata</Typography>
+                                    <Typography variant="caption" color="text.secondary">{t("logs", "metadata")}</Typography>
                                     <Box sx={{
                                         mt: 0.5, p: 1.5, borderRadius: 1,
                                         bgcolor: theme.palette.mode === "dark" ? "grey.900" : "grey.100",

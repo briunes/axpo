@@ -366,6 +366,8 @@ export class EmailService {
       const setupPasswordUrl = options.setupToken
         ? `${baseUrl}/internal/setup-password?token=${options.setupToken}`
         : "";
+      const setupPasswordValidityHours =
+        config.setupTokenValidityHours ?? 72;
 
       const variables = {
         USER_NAME: options.userName,
@@ -374,6 +376,9 @@ export class EmailService {
         USER_PASSWORD:
           options.userPassword || "Please check with your administrator",
         SETUP_PASSWORD_URL: setupPasswordUrl,
+        SETUP_PASSWORD_VALIDITY_HOURS: String(
+          setupPasswordValidityHours,
+        ),
       };
 
       await this.sendTemplateEmail({

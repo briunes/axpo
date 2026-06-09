@@ -25,6 +25,10 @@ export async function reportClientError(
           (typeof window !== "undefined"
             ? window.location.pathname
             : undefined),
+        pagePath:
+          typeof window !== "undefined"
+            ? window.location.pathname
+            : undefined,
         metadata: extra?.metadata,
       }),
     });

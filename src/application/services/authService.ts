@@ -11,6 +11,11 @@ import { PinService } from "./pinService";
 import { PasswordService } from "./passwordService";
 import { EmailService } from "./emailService";
 import { SessionRequestContext, SessionService } from "./sessionService";
+import {
+  constantTimeEqual,
+  encryptSensitiveValue,
+  keyedDigest,
+} from "@/application/lib/sensitiveData";
 
 interface CreateUserInput {
   agencyId: string;
@@ -51,7 +56,7 @@ export class AuthService {
     const systemConfig = await prisma.systemConfig.findFirst();
     if (systemConfig?.otpEnabled) {
       // Generate 6-digit OTP
-      const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+      const otpCode = String(crypto.randomInt(100000, 1000000));
       const validityMinutes = systemConfig.otpCodeValidityMinutes ?? 10;
       const otpCodeExpiresAt = new Date(
         Date.now() + validityMinutes * 60 * 1000,
@@ -60,11 +65,15 @@ export class AuthService {
       const otpSessionTokenExpiresAt = new Date(
         Date.now() + validityMinutes * 60 * 1000,
       );
+      const otpCodeHash = keyedDigest(
+        `${otpSessionToken}:${otpCode}`,
+        "auth-otp",
+      );
 
       await prisma.user.update({
         where: { id: user.id },
         data: {
-          otpCode,
+          otpCode: otpCodeHash,
           otpCodeExpiresAt,
           otpSessionToken,
           otpSessionTokenExpiresAt,
@@ -147,7 +156,11 @@ export class AuthService {
       throw new ValidationError("OTP session has expired, please log in again");
     }
 
-    if (!user.otpCode || user.otpCode !== code) {
+    const submittedCodeHash = keyedDigest(
+      `${otpSessionToken}:${code}`,
+      "auth-otp",
+    );
+    if (!user.otpCode || !constantTimeEqual(user.otpCode, submittedCodeHash)) {
       throw new ValidationError("Invalid OTP code");
     }
 
@@ -243,7 +256,7 @@ export class AuthService {
         setupToken,
         setupTokenExpiresAt,
         pinHash,
-        pinCurrent: generated,
+        pinCurrent: encryptSensitiveValue(generated),
         createdByUserId: input.createdByUserId,
         updatedByUserId: input.createdByUserId,
       },
@@ -507,7 +520,7 @@ export class AuthService {
       where: { id: userId },
       data: {
         pinHash,
-        pinCurrent: pin,
+        pinCurrent: encryptSensitiveValue(pin),
         pinRotatedAt: rotatedAt,
       },
     });

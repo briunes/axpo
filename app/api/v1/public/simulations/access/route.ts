@@ -17,6 +17,8 @@ import {
   replaceVariables,
 } from "@/infrastructure/pdf/variableReplacer";
 import type { SimulationPayload } from "@/domain/types/simulation";
+import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
+import { keyedDigest } from "@/application/lib/sensitiveData";
 
 const accessSchema = z.object({
   token: z.string().min(16),
@@ -42,7 +44,7 @@ const issuePublicSessionToken = (
       tok: token,
     },
     secret,
-    { expiresIn: PUBLIC_ACCESS_EXPIRES_IN },
+    { algorithm: "HS256", expiresIn: PUBLIC_ACCESS_EXPIRES_IN },
   );
 };
 
@@ -62,13 +64,15 @@ const issuePublicSessionToken = (
  *         description: Rate limit exceeded
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
-  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = getRequestSessionContext(request).ipAddress;
+  const ipFingerprint = keyedDigest(ip, "public-access-ip");
 
   const body = await request.json();
   const payload = accessSchema.parse(body);
 
   applyRateLimit(
     getClientRateLimitKey(ip, `public:${payload.token.slice(0, 8)}`),
+    { maxRequests: 8, windowMs: 15 * 60 * 1000 },
   );
 
   const simulation = await prisma.simulation.findFirst({
@@ -100,7 +104,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       targetId: "unknown",
       metadataJson: {
         tokenFragment: payload.token.slice(0, 8),
-        ip: ip ?? "unknown",
+        ipFingerprint,
         reason: "INVALID_TOKEN",
       },
     });
@@ -113,7 +117,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       data: {
         simulationId: simulation.id,
         tokenFragment: payload.token.slice(0, 8),
-        ipHashOrMask: ip ?? "unknown",
+        ipHashOrMask: ipFingerprint,
         success: false,
         reason: "EXPIRED",
       },
@@ -131,7 +135,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       data: {
         simulationId: simulation.id,
         tokenFragment: payload.token.slice(0, 8),
-        ipHashOrMask: ip ?? "unknown",
+        ipHashOrMask: ipFingerprint,
         success: false,
         reason: "INVALID_PIN",
       },
@@ -144,7 +148,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     data: {
       simulationId: simulation.id,
       tokenFragment: payload.token.slice(0, 8),
-      ipHashOrMask: ip ?? "unknown",
+      ipHashOrMask: ipFingerprint,
       success: true,
       reason: "SUCCESS",
     },
@@ -164,7 +168,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     targetId: simulation.id,
     metadataJson: {
       tokenFragment: payload.token.slice(0, 8),
-      ip: ip ?? "unknown",
+      ipFingerprint,
     },
   });
 

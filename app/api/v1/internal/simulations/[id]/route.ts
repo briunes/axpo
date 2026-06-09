@@ -8,6 +8,7 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
+import { decryptSensitiveValue } from "@/application/lib/sensitiveData";
 
 const updateSimulationSchema = z.object({
   status: z.nativeEnum(SimulationStatus).optional(),
@@ -112,7 +113,9 @@ export const GET = withErrorHandler(
     // Attach payloadJson from latest version to simulation
     const simulationWithPayload = {
       ...simulation,
-      pinSnapshot: simulation.pinSnapshot ?? ownerUser?.pinCurrent ?? null,
+      pinSnapshot: decryptSensitiveValue(
+        simulation.pinSnapshot ?? ownerUser?.pinCurrent,
+      ),
       payloadJson: mergedPayload,
       client: client ?? null,
       ownerUser: ownerUser ?? simulation.ownerUser,

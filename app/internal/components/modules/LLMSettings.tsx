@@ -74,11 +74,11 @@ const DEFAULT_LLM_CONFIG: LLMConfig = {
 };
 
 const AI_TASKS = [
-    { key: "invoiceExtraction", label: "Invoice extraction" },
-    { key: "providerDetection", label: "Provider detection" },
-    { key: "promptImprovement", label: "Improve prompt" },
-    { key: "promptTest", label: "Test improved prompt" },
-    { key: "templateBuilder", label: "Template builder" },
+    { key: "invoiceExtraction", labelKey: "taskInvoiceExtraction" },
+    { key: "providerDetection", labelKey: "taskProviderDetection" },
+    { key: "promptImprovement", labelKey: "taskPromptImprovement" },
+    { key: "promptTest", labelKey: "taskPromptTest" },
+    { key: "templateBuilder", labelKey: "taskTemplateBuilder" },
 ];
 
 // Ollama Cloud models - Update by copying JSON from https://ollama.com/v1/models
@@ -212,7 +212,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
         const provider = LLM_PROVIDERS["ollama-cloud"];
         return {
             id: `ai-provider-${Date.now()}`,
-            name: `AI Provider ${config.aiProviderConfigs.length + 1}`,
+            name: `${t("llmSettings", "provider")} ${config.aiProviderConfigs.length + 1}`,
             enabled: true,
             provider: "ollama-cloud",
             apiKey: "",
@@ -292,7 +292,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
 
     const getProviderSummary = (provider: AIProviderConfig) => {
         const providerName = LLM_PROVIDERS[provider.provider]?.name ?? provider.provider;
-        return `${providerName} / ${provider.modelName || "No model"}`;
+        return `${providerName} / ${provider.modelName || t("llmSettings", "noModel")}`;
     };
 
     const handleSave = async () => {
@@ -343,7 +343,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
             console.error("Failed to test LLM connection:", error);
             const errorResult = {
                 success: false,
-                message: "Failed to test connection",
+                message: t("llmSettings", "testConnectionFailed"),
             };
             setTestResults((prev) => ({ ...prev, [providerConfig.id]: errorResult }));
             onNotify(errorResult.message, "error");
@@ -399,16 +399,16 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                             },
                         }}
                     >
-                        <Tab value="tasks" label="Task routing" sx={{ textTransform: "none", fontWeight: 700 }} />
-                        <Tab value="providers" label="Available LLMs" sx={{ textTransform: "none", fontWeight: 700 }} />
+                        <Tab value="tasks" label={t("llmSettings", "tabTaskRouting")} sx={{ textTransform: "none", fontWeight: 700 }} />
+                        <Tab value="providers" label={t("llmSettings", "tabAvailableLlms")} sx={{ textTransform: "none", fontWeight: 700 }} />
                     </Tabs>
 
                     {activeSubTab === "tasks" && (
                         <Stack spacing={2.5}>
                             <Box>
-                                <h3 className="settings-panel-title">Configured LLM for each task</h3>
+                                <h3 className="settings-panel-title">{t("llmSettings", "taskRoutingTitle")}</h3>
                                 <p style={{ margin: 0, color: "var(--axpo-text-secondary)" }}>
-                                    Select which configured LLM powers each AI feature.
+                                    {t("llmSettings", "taskRoutingDesc")}
                                 </p>
                             </Box>
 
@@ -435,11 +435,11 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
 
                             {!config.llmEnabled ? (
                                 <Box sx={{ color: "var(--axpo-text-secondary)" }}>
-                                    Enable LLM features to activate task routing.
+                                    {t("llmSettings", "enableRoutingHint")}
                                 </Box>
                             ) : providerOptions.length === 0 ? (
                                 <Box sx={{ color: "var(--axpo-text-secondary)" }}>
-                                    No LLMs are configured yet. Add one in Available LLMs.
+                                    {t("llmSettings", "noLlmsConfiguredHint")}
                                 </Box>
                             ) : (
                                 <Stack spacing={2}>
@@ -459,7 +459,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                                     p: 2,
                                                 }}
                                             >
-                                                <Box sx={{ fontWeight: 700 }}>{task.label}</Box>
+                                                <Box sx={{ fontWeight: 700 }}>{t("llmSettings", task.labelKey)}</Box>
                                                 <FormSelect
                                                     label=""
                                                     value={selectedId}
@@ -471,7 +471,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                                     }))}
                                                 />
                                                 <Box sx={{ color: "var(--axpo-text-secondary)", fontSize: 13 }}>
-                                                    {selected ? getProviderSummary(selected) : "No LLM selected"}
+                                                    {selected ? getProviderSummary(selected) : t("llmSettings", "noLlmSelected")}
                                                 </Box>
                                             </Box>
                                         );
@@ -485,13 +485,13 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                         <Stack spacing={2.5}>
                             <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
                                 <Box>
-                                    <h3 className="settings-panel-title">Available configured LLMs</h3>
+                                    <h3 className="settings-panel-title">{t("llmSettings", "providersTitle")}</h3>
                                     <p style={{ margin: 0, color: "var(--axpo-text-secondary)" }}>
-                                    Add and manage the provider/model combinations that tasks can use.
+                                    {t("llmSettings", "providersDesc")}
                                     </p>
                                 </Box>
                                 <Button variant="outlined" startIcon={<AddIcon />} onClick={openAddProviderDialog}>
-                                    Add LLM
+                                    {t("llmSettings", "addLlm")}
                                 </Button>
                             </Stack>
 
@@ -499,15 +499,15 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                 <Table size="small" sx={{ minWidth: 920 }}>
                                     <TableHead>
                                         <TableRow>
-                                            <TableCell sx={{ fontWeight: 700 }}>Enabled</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>Provider</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>Model</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>Base URL</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>API key</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>Temperature</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>Max tokens</TableCell>
-                                            <TableCell sx={{ fontWeight: 700, width: 140 }}>Actions</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "enabled")}</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "name")}</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "provider")}</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "modelName")}</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "baseUrl")}</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "apiKey")}</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "temperature")}</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "maxTokens")}</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, width: 140 }}>{t("llmSettings", "actions")}</TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -519,7 +519,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                                     <TableCell>
                                                         <Chip
                                                             size="small"
-                                                            label={providerConfig.enabled ? "Enabled" : "Disabled"}
+                                                            label={providerConfig.enabled ? t("llmSettings", "enabled") : t("llmSettings", "disabled")}
                                                             color={providerConfig.enabled ? "success" : "default"}
                                                             variant={providerConfig.enabled ? "filled" : "outlined"}
                                                         />
@@ -533,15 +533,15 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                                     <TableCell>
                                                         {providerMeta.requiresApiKey
                                                             ? providerConfig.hasApiKey
-                                                                ? "Saved"
-                                                                : "Missing"
-                                                            : "Not required"}
+                                                                ? t("llmSettings", "apiKeySaved")
+                                                                : t("llmSettings", "apiKeyMissing")
+                                                            : t("llmSettings", "apiKeyNotRequired")}
                                                     </TableCell>
                                                     <TableCell>{providerConfig.temperature}</TableCell>
                                                     <TableCell>{providerConfig.maxTokens}</TableCell>
                                                     <TableCell>
                                                         <Stack direction="row" gap={0.5} alignItems="center">
-                                                            <Tooltip title="Test connection">
+                                                            <Tooltip title={t("llmSettings", "testConnection")}>
                                                                 <span>
                                                                     <IconButton
                                                                         size="small"
@@ -552,7 +552,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                                                     </IconButton>
                                                                 </span>
                                                             </Tooltip>
-                                                            <Tooltip title="Edit LLM">
+                                                            <Tooltip title={t("llmSettings", "editLlm")}>
                                                                 <IconButton
                                                                     size="small"
                                                                     onClick={() => openEditProviderDialog(providerConfig)}
@@ -561,7 +561,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                                                 </IconButton>
                                                             </Tooltip>
                                                             {providerConfig.id !== "legacy-default" && (
-                                                                <Tooltip title="Remove LLM">
+                                                                <Tooltip title={t("llmSettings", "removeLlm")}>
                                                                     <IconButton
                                                                         size="small"
                                                                         color="error"
@@ -580,7 +580,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                                                     color: testResult.success ? "success.main" : "error.main",
                                                                 }}
                                                             >
-                                                                {testResult.success ? "Connected" : testResult.message}
+                                                                {testResult.success ? t("llmSettings", "connected") : testResult.message}
                                                             </Box>
                                                         )}
                                                     </TableCell>
@@ -590,7 +590,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                         {config.aiProviderConfigs.length === 0 && (
                                             <TableRow>
                                                 <TableCell colSpan={9} sx={{ color: "var(--axpo-text-secondary)", py: 3 }}>
-                                                    No configured LLMs yet. Add one to make it available for task routing.
+                                                    {t("llmSettings", "noConfiguredLlms")}
                                                 </TableCell>
                                             </TableRow>
                                         )}
@@ -608,7 +608,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                 fullWidth
             >
                 <DialogTitle>
-                    {providerDialogMode === "edit" ? "Edit LLM" : "Add LLM"}
+                    {providerDialogMode === "edit" ? t("llmSettings", "editLlmTitle") : t("llmSettings", "addLlmTitle")}
                 </DialogTitle>
                 <Divider />
                 {draftProvider && dialogProviderMeta && (
@@ -620,16 +620,16 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                     checked={draftProvider.enabled}
                                     onChange={(e) => updateDraftProvider({ enabled: e.target.checked })}
                                 />
-                                <span>Enabled</span>
+                                <span>{t("llmSettings", "enabled")}</span>
                             </label>
                             <FormInput
-                                label="Configuration name"
+                                label={t("llmSettings", "configurationName")}
                                 type="text"
                                 value={draftProvider.name}
                                 onChange={(e) => updateDraftProvider({ name: e.target.value })}
                             />
                             <FormSelect
-                                label="Provider"
+                                label={t("llmSettings", "provider")}
                                 value={draftProvider.provider}
                                 onChange={(value) => updateDraftProvider({ provider: String(value) })}
                                 options={Object.entries(LLM_PROVIDERS).map(([key, provider]) => ({
@@ -639,14 +639,14 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                 }))}
                             />
                             <FormInput
-                                label="Model"
+                                label={t("llmSettings", "modelName")}
                                 type="text"
                                 value={draftProvider.modelName}
                                 onChange={(e) => updateDraftProvider({ modelName: e.target.value })}
                                 placeholder={dialogProviderMeta.defaultModel || "model-name"}
                             />
                             <FormInput
-                                label="Base URL"
+                                label={t("llmSettings", "baseUrl")}
                                 type="text"
                                 value={draftProvider.baseUrl}
                                 onChange={(e) => updateDraftProvider({ baseUrl: e.target.value })}
@@ -654,23 +654,23 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                             />
                             {dialogProviderMeta.requiresApiKey && (
                                 <FormInput
-                                    label="API key"
-                                    helperText={draftProvider.hasApiKey ? "A key is saved. Leave blank to keep it." : "Required for this provider."}
+                                    label={t("llmSettings", "apiKey")}
+                                    helperText={draftProvider.hasApiKey ? t("llmSettings", "apiKeySavedHint") : t("llmSettings", "apiKeyRequiredHint")}
                                     type="password"
                                     value={draftProvider.apiKey}
                                     onChange={(e) => updateDraftProvider({ apiKey: e.target.value })}
-                                    placeholder={draftProvider.hasApiKey ? "Saved API key" : "Enter API key"}
+                                    placeholder={draftProvider.hasApiKey ? t("llmSettings", "savedApiKeyPlaceholder") : t("llmSettings", "apiKeyPlaceholder")}
                                 />
                             )}
                             <Stack direction={{ xs: "column", md: "row" }} gap={2}>
                                 <FormInput
-                                    label="Temperature"
+                                    label={t("llmSettings", "temperature")}
                                     type="number"
                                     value={draftProvider.temperature}
                                     onChange={(e) => updateDraftProvider({ temperature: Number(e.target.value) })}
                                 />
                                 <FormInput
-                                    label="Max tokens"
+                                    label={t("llmSettings", "maxTokens")}
                                     type="number"
                                     value={draftProvider.maxTokens}
                                     onChange={(e) => updateDraftProvider({ maxTokens: Number(e.target.value) })}
@@ -682,14 +682,14 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                 <Divider />
                 <DialogActions sx={{ px: 3, py: 2 }}>
                     <Button variant="outlined" onClick={closeProviderDialog}>
-                        Cancel
+                        {t("common", "cancel")}
                     </Button>
                     <Button
                         variant="contained"
                         onClick={saveDraftProvider}
                         disabled={!draftProvider?.name || !draftProvider?.provider || !draftProvider?.modelName || !draftProvider?.baseUrl}
                     >
-                        Save LLM
+                        {t("llmSettings", "saveLlm")}
                     </Button>
                 </DialogActions>
             </Dialog>

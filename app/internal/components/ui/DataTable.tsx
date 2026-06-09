@@ -277,6 +277,7 @@ export function DataTable<T extends { id: string }>({
     () => (loading ? [] : rows.map((r) => r.id)),
     [loading, rows]
   );
+  const visibleRowIdsKey = visibleRowIds.join("\u0000");
 
   const allSelected =
     visibleRowIds.length > 0 && visibleRowIds.every((id) => selectedIds.has(id));
@@ -319,8 +320,8 @@ export function DataTable<T extends { id: string }>({
 
   // Clear selection when rows change (e.g. page change)
   useEffect(() => {
-    setSelectedIds(new Set());
-  }, [rows]);
+    setSelectedIds((current) => current.size > 0 ? new Set() : current);
+  }, [visibleRowIdsKey]);
 
   // Build page size options, ensuring the user's preferred size is always included
   const PAGE_SIZE_OPTIONS = useMemo(() => {
@@ -780,7 +781,7 @@ export function DataTable<T extends { id: string }>({
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '14px' }}>
-              <span>{t ? t('pagination', 'rowsPerPage') : 'Rows per page:'}</span>
+              <span>{tI18n('pagination', 'rowsPerPage')}</span>
               <FormControl size="small" sx={{ minWidth: 70 }}>
                 <Select
                   value={pagination.pageSize}
@@ -799,7 +800,7 @@ export function DataTable<T extends { id: string }>({
               {`${(pagination.page - 1) * pagination.pageSize + 1}-${Math.min(
                 pagination.page * pagination.pageSize,
                 pagination.total
-              )} of ${pagination.total}`}
+              )} ${tI18n('pagination', 'of')} ${pagination.total}`}
             </Box>
             <Pagination
               count={Math.ceil(pagination.total / pagination.pageSize)}

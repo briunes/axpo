@@ -8,6 +8,10 @@ import {
 } from "@/domain/errors/errors";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "./auditService";
+import {
+  decryptSensitiveValue,
+  encryptSensitiveValue,
+} from "@/application/lib/sensitiveData";
 
 /** True for roles that have unrestricted access (ADMIN and SYS_ADMIN). */
 const isElevatedRole = (role: UserRole) =>
@@ -349,7 +353,11 @@ export class SimulationService {
             clientId: input.clientId ?? null,
             expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
             pinHashSnapshot: ownerUser.pinHash,
-            pinSnapshot: ownerUser.pinCurrent ?? null,
+            pinSnapshot: ownerUser.pinCurrent
+              ? encryptSensitiveValue(
+                  decryptSensitiveValue(ownerUser.pinCurrent) ?? "",
+                )
+              : null,
             referenceNumber,
           },
         });
@@ -473,7 +481,10 @@ export class SimulationService {
       targetId: created.id,
     });
 
-    return created;
+    return {
+      ...created,
+      pinSnapshot: decryptSensitiveValue(created.pinSnapshot),
+    };
   }
 
   static async updateSimulation(
@@ -598,7 +609,10 @@ export class SimulationService {
           : undefined,
     });
 
-    return updated;
+    return {
+      ...updated,
+      pinSnapshot: decryptSensitiveValue(updated.pinSnapshot),
+    };
   }
 
   static async softDeleteSimulation(actor: ActorContext, simulationId: string) {
@@ -674,7 +688,11 @@ export class SimulationService {
             expiresAt: cloneExpiresAt,
             referenceNumber,
             pinHashSnapshot: newOwner?.pinHash ?? null,
-            pinSnapshot: newOwner?.pinCurrent ?? null,
+            pinSnapshot: newOwner?.pinCurrent
+              ? encryptSensitiveValue(
+                  decryptSensitiveValue(newOwner.pinCurrent) ?? "",
+                )
+              : null,
           },
         });
         break;
@@ -717,7 +735,10 @@ export class SimulationService {
       metadataJson: { sourceSimulationId: simulation.id },
     });
 
-    return cloned;
+    return {
+      ...cloned,
+      pinSnapshot: decryptSensitiveValue(cloned.pinSnapshot),
+    };
   }
 
   static async shareSimulation(
@@ -741,7 +762,11 @@ export class SimulationService {
       data: {
         publicToken,
         pinHashSnapshot: owner.pinHash,
-        pinSnapshot: owner.pinCurrent ?? null,
+        pinSnapshot: owner.pinCurrent
+          ? encryptSensitiveValue(
+              decryptSensitiveValue(owner.pinCurrent) ?? "",
+            )
+          : null,
         status: SimulationStatus.SHARED,
         sharedAt: new Date(),
         ...(sharedVia ? { sharedVia } : {}),

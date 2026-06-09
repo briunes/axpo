@@ -10,6 +10,7 @@ import {
 } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
+import { decryptSensitiveValue } from "@/application/lib/sensitiveData";
 
 const createSimulationSchema = z.object({
   ownerUserId: z.string().min(1).optional(),
@@ -249,6 +250,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     const { versions, ...simWithoutVersions } = sim;
     return {
       ...simWithoutVersions,
+      pinSnapshot: decryptSensitiveValue(sim.pinSnapshot),
       payloadJson: payload ?? null,
       cupsNumber,
     };

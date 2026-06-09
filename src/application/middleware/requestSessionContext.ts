@@ -40,10 +40,11 @@ export const getRequestSessionContext = (
   const userAgent = request.headers.get("user-agent") ?? "unknown";
   const browserFingerprint =
     request.headers.get("x-browser-fingerprint")?.trim() || null;
+  const forwardedIp = firstForwardedIp(request.headers.get("x-forwarded-for"));
   const ipAddress =
-    firstForwardedIp(request.headers.get("x-forwarded-for")) ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
+    forwardedIp !== "unknown"
+      ? forwardedIp
+      : request.headers.get("x-real-ip")?.trim() || "unknown";
 
   return {
     ipAddress,

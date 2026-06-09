@@ -5,13 +5,13 @@
  * into every API response without hitting the database on every request.
  *
  * - Uses `globalThis` so the cache survives Next.js hot-reloads in dev.
- * - TTL of 5 minutes as a safety net; explicit invalidation is the primary
- *   mechanism (call `invalidateAppVersionCache()` whenever appVersion changes).
+ * - A short TTL limits cross-instance staleness after a version bump; explicit
+ *   invalidation remains primary on the instance handling the update.
  */
 
 import { prisma } from "@/infrastructure/database/prisma";
 
-const CACHE_TTL_MS = 5 * 60 * 1_000; // 5 minutes
+const CACHE_TTL_MS = 15_000;
 const FALLBACK_VERSION = "1.0.0";
 
 interface VersionCache {
@@ -32,6 +32,11 @@ export function getCachedAppVersion(): string {
   return globalThis.__axpoAppVersionCache?.version ?? FALLBACK_VERSION;
 }
 
+/** Returns null until the version has been loaded successfully from the DB. */
+export function getLoadedAppVersion(): string | null {
+  return globalThis.__axpoAppVersionCache?.version ?? null;
+}
+
 /** Clears the cache so the next `warmAppVersionCache()` call re-fetches from DB. */
 export function invalidateAppVersionCache(): void {
   globalThis.__axpoAppVersionCache = null;
@@ -42,6 +47,8 @@ export function invalidateAppVersionCache(): void {
  * No-ops if the cache is still fresh (< TTL).
  */
 export async function warmAppVersionCache(): Promise<void> {
+  if (process.env.NODE_ENV === "test") return;
+
   const now = Date.now();
   const cache = globalThis.__axpoAppVersionCache;
   if (cache && now - cache.loadedAt < CACHE_TTL_MS) return;

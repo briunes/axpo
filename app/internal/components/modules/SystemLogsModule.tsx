@@ -24,14 +24,14 @@ type LogType = "audit" | "email" | "cron" | "ocr" | "app-errors";
 
 const LOG_TABS: Array<{
     id: LogType;
-    label: string;
+    labelKey: string;
     permission: PermissionKey;
 }> = [
-    { id: "audit", label: "Audit Logs", permission: "section.audit-logs" },
-    { id: "email", label: "Email Logs", permission: "section.email-logs" },
-    { id: "cron", label: "Cron Logs", permission: "section.cron-logs" },
-    { id: "ocr", label: "OCR Logs", permission: "section.ocr-logs" },
-    { id: "app-errors", label: "App Errors", permission: "section.app-error-logs" },
+    { id: "audit", labelKey: "auditLogs", permission: "section.audit-logs" },
+    { id: "email", labelKey: "emailLogs", permission: "section.email-logs" },
+    { id: "cron", labelKey: "cronLogs", permission: "section.cron-logs" },
+    { id: "ocr", labelKey: "ocrLogs", permission: "section.ocr-logs" },
+    { id: "app-errors", labelKey: "appErrors", permission: "section.app-error-logs" },
 ];
 
 const isElevatedRole = (role: string) => role === "ADMIN" || role === "SYS_ADMIN";
@@ -71,7 +71,7 @@ export function SystemLogsModule({ session, auditLogsActions, onNotify, onAction
                         onClick={() => setActiveTab(tab.id)}
                         data-testid={`logs-tab-${tab.id}`}
                     >
-                        {tab.label}
+                        {t("logs", tab.labelKey)}
                     </button>
                 ))}
             </div>

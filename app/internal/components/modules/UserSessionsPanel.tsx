@@ -90,13 +90,15 @@ const formatAuthRedirect = (item: UserSessionItem): string => {
     const report = getLatestAuthRedirect(item);
     if (!report) return "—";
 
-    const parts = [
+    const apiDetails = [
         report.statusCode ? String(report.statusCode) : null,
         report.path,
         report.errorMessage || report.errorCode,
-    ].filter(Boolean);
-
-    const main = parts.join(" · ") || "Redirected to login";
+    ].filter(Boolean).join(" · ");
+    const main = [
+        report.currentPath ? `Page: ${report.currentPath}` : null,
+        apiDetails ? `API: ${apiDetails}` : null,
+    ].filter(Boolean).join(" | ") || "Redirected to login";
     return report.at ? `${main} (${formatDate(report.at)})` : main;
 };
 
