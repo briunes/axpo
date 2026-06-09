@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Box, Tabs, Tab, Button, Stack, IconButton, Tooltip, TextField, Typography, Checkbox, Switch } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { getSystemConfig, updateSystemConfig } from "../../lib/configApi";
+import { getPdfTemplates, getSystemConfig, updateSystemConfig } from "../../lib/configApi";
 import { LoadingState } from "../shared/LoadingState";
 import { CronSettings } from "./CronSettings";
 import { FormInput, FormSelect } from "../ui";
@@ -139,11 +139,7 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
 
     const loadPdfTemplates = async () => {
         try {
-            const response = await fetch("/api/v1/internal/config/pdf-templates");
-            if (response.ok) {
-                const data = await response.json();
-                setPdfTemplates(data);
-            }
+            setPdfTemplates(await getPdfTemplates());
         } catch (error) {
             console.error("Failed to load PDF templates:", error);
         }
@@ -698,7 +694,7 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                         )}
 
                         {resolvedBusinessTab === "cron" && (
-                            <CronSettings onNotify={onNotify} />
+                            <CronSettings session={session} onNotify={onNotify} />
                         )}
 
                         {resolvedBusinessTab !== "cron" && (

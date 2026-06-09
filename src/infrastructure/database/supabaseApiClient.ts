@@ -227,8 +227,15 @@ const models: Record<string, ModelMeta> = {
     table: "ocr_logs",
     relations: {
       user: { table: "users" },
-      simulation: { table: "simulations" },
-      ocrFiles: { table: "ocr_log_files", many: true },
+      simulation: {
+        table: "simulations",
+        localField: "simulationId",
+      },
+      ocrFiles: {
+        table: "ocr_log_files",
+        many: true,
+        foreignField: "ocrLogId",
+      },
     },
   },
   ocrLogFile: {
@@ -324,6 +331,7 @@ const cuid = (): string =>
 
 const serialize = (value: any): any => {
   if (value instanceof Date) return value.toISOString();
+  if (Prisma.Decimal.isDecimal(value)) return value.toString();
   if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
     return `\\x${Buffer.from(value).toString("hex")}`;
   }
@@ -381,6 +389,12 @@ const deserializeModel = (value: any, modelName: string): any => {
       }
       if (field.type === "DateTime" && typeof fieldValue === "string") {
         return [fieldName, parsePrismaDateTime(fieldValue)];
+      }
+      if (field.type === "Decimal" && fieldValue !== null) {
+        return [fieldName, new Prisma.Decimal(fieldValue as string | number)];
+      }
+      if (field.type === "BigInt" && fieldValue !== null) {
+        return [fieldName, BigInt(fieldValue as string | number)];
       }
       return [fieldName, deserialize(fieldValue)];
     }),
@@ -779,6 +793,24 @@ class SupabaseApi {
       return foreignField;
     };
 
+    const relationLocalField = (
+      relationField: string,
+      relation: RelationMeta,
+    ): string => {
+      if (relation.localField) return relation.localField;
+      const model = prismaModels.get(prismaModelName(modelName));
+      const relationFieldMeta = model?.fields.find(
+        (field) => field.kind === "object" && field.name === relationField,
+      );
+      const localField = relationFieldMeta?.relationFromFields?.[0];
+      if (!localField) {
+        throw new Error(
+          `Supabase API relation metadata is missing for "${modelName}.${relationField}"`,
+        );
+      }
+      return localField;
+    };
+
     const attachCounts = async (
       result: any,
       args: JsonRecord = {},
@@ -897,9 +929,10 @@ class SupabaseApi {
       for (const [key, value] of Object.entries(data)) {
         if (!value || typeof value !== "object") continue;
         const relation = meta.relations?.[key];
-        if ("connect" in value && relation?.localField) {
+        if ("connect" in value && relation) {
           const connect = value.connect as JsonRecord;
-          data[relation.localField] = connect.id ?? Object.values(connect)[0];
+          const localField = relationLocalField(key, relation);
+          data[localField] = connect.id ?? Object.values(connect)[0];
           delete data[key];
           continue;
         }

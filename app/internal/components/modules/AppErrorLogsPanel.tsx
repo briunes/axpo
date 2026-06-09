@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     alpha,
     Box,
@@ -15,15 +15,22 @@ import {
     useTheme,
     Divider,
 } from "@mui/material";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import {
+    keepPreviousData,
+    useMutation,
+    useQuery,
+    useQueryClient,
+} from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import type { SessionState } from "../../lib/authSession";
 import { DataTable, type ColumnDef } from "../ui";
+import { ConfirmDialog } from "../shared";
 import { FormSelect } from "../ui/FormSelect";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
@@ -63,9 +70,13 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
     const theme = useTheme();
     const { locale, t } = useI18n();
     const { preferences } = useUserPreferences();
+    const queryClient = useQueryClient();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
     const [selected, setSelected] = useState<AppErrorLogEntry | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState<AppErrorLogEntry | null>(null);
+    const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
+    const reportedLoadError = useRef<unknown>(null);
 
     // Applied filters
     const [filterErrorType, setFilterErrorType] = useState("");
@@ -135,11 +146,80 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
     });
 
     useEffect(() => {
-        if (error) onNotify?.(t("logs", "loadAppErrorsFailed"), "error");
+        if (!error) {
+            reportedLoadError.current = null;
+            return;
+        }
+        if (reportedLoadError.current === error) return;
+        reportedLoadError.current = error;
+        onNotify?.(t("logs", "loadAppErrorsFailed"), "error");
     }, [error, onNotify, t]);
 
     const logs = data?.items ?? [];
     const total = data?.total ?? 0;
+    const deleteMutation = useMutation({
+        mutationFn: async (log: AppErrorLogEntry) => {
+            const response = await fetch(`/api/v1/internal/app-error-logs/${log.id}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${session.token}` },
+            });
+            if (!response.ok) {
+                const body = await response.json().catch(() => null);
+                throw new Error(body?.error?.message ?? t("logs", "deleteAppErrorFailed"));
+            }
+            return log;
+        },
+        onSuccess: async (log) => {
+            if (selected?.id === log.id) setSelected(null);
+            setConfirmDelete(null);
+            if (logs.length === 1 && page > 1) setPage(page - 1);
+            await queryClient.invalidateQueries({ queryKey: ["app-error-logs"] });
+            onNotify?.(t("logs", "appErrorDeleted"), "success");
+        },
+        onError: (mutationError) => {
+            onNotify?.(
+                mutationError instanceof Error
+                    ? mutationError.message
+                    : t("logs", "deleteAppErrorFailed"),
+                "error",
+            );
+        },
+    });
+    const bulkDeleteMutation = useMutation({
+        mutationFn: async (ids: string[]) => {
+            const response = await fetch("/api/v1/internal/app-error-logs", {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${session.token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ ids }),
+            });
+            const body = await response.json().catch(() => null);
+            if (!response.ok) {
+                throw new Error(body?.error?.message ?? t("logs", "deleteAppErrorsFailed"));
+            }
+            return {
+                ids,
+                deleted: Number(body?.data?.deleted ?? 0),
+            };
+        },
+        onSuccess: async ({ ids, deleted }) => {
+            if (selected && ids.includes(selected.id)) setSelected(null);
+            setConfirmBulkDeleteIds(null);
+            if (logs.length <= deleted && page > 1) setPage(page - 1);
+            await queryClient.invalidateQueries({ queryKey: ["app-error-logs"] });
+            onNotify?.(t("logs", "appErrorsDeleted", { count: deleted }), "success");
+        },
+        onError: (mutationError) => {
+            onNotify?.(
+                mutationError instanceof Error
+                    ? mutationError.message
+                    : t("logs", "deleteAppErrorsFailed"),
+                "error",
+            );
+        },
+    });
 
     const columns: ColumnDef<AppErrorLogEntry>[] = [
         {
@@ -254,40 +334,6 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                     <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 11 }}>—</Typography>
                 ),
         },
-        {
-            key: "sentryEventId",
-            label: t("logs", "sentry"),
-            renderCell: (log) =>
-                log.sentryEventId ? (
-                    <Tooltip title={t("logs", "openInSentry")}>
-                        <IconButton
-                            size="small"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(
-                                    `${SENTRY_BASE_URL}/issues/?query=${log.sentryEventId}`,
-                                    "_blank",
-                                    "noopener,noreferrer",
-                                );
-                            }}
-                            sx={{ color: theme.palette.warning.main }}
-                        >
-                            <OpenInNewIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                    </Tooltip>
-                ) : (
-                    <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 11 }}>—</Typography>
-                ),
-        },
-        {
-            key: "details",
-            label: "",
-            renderCell: (log) => (
-                <Button size="small" variant="text" onClick={() => setSelected(log)} sx={{ fontSize: 11, minWidth: 0 }}>
-                    {t("logs", "details")}
-                </Button>
-            ),
-        },
     ];
 
     return (
@@ -295,9 +341,51 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
 
 
             <DataTable
+                tableId="app-error-logs"
                 columns={columns}
                 rows={logs}
                 loading={isFetching}
+                rowActions={(log) => (
+                    <>
+                        <Button size="small" variant="text" onClick={() => setSelected(log)} sx={{ fontSize: 11, minWidth: 0 }}>
+                            {t("logs", "details")}
+                        </Button>
+                        {log.sentryEventId ? (
+                            <Tooltip title={t("logs", "openInSentry")}>
+                                <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        window.open(
+                                            `${SENTRY_BASE_URL}/issues/?query=${log.sentryEventId}`,
+                                            "_blank",
+                                            "noopener,noreferrer",
+                                        );
+                                    }}
+                                    sx={{ color: theme.palette.warning.main }}
+                                >
+                                    <OpenInNewIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                            </Tooltip>
+                        ) : (
+                            <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 11 }}>—</Typography>
+                        )}
+
+                        <Tooltip title={t("logs", "deleteAppError")}>
+                            <IconButton
+                                size="small"
+                                color="error"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    setConfirmDelete(log);
+                                }}
+                            >
+                                <DeleteOutlineIcon sx={{ fontSize: 17 }} />
+                            </IconButton>
+                        </Tooltip>
+                    </>
+
+                )}
                 renderCustomSearch={({ }) => (
                     <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
                         <Box sx={{ flex: 1, }}>
@@ -365,6 +453,14 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         setPage(1);
                     },
                 }}
+                massActions={[
+                    {
+                        label: t("actions", "delete"),
+                        color: "error",
+                        icon: <DeleteOutlineIcon fontSize="small" />,
+                        onClick: (ids) => setConfirmBulkDeleteIds(ids),
+                    },
+                ]}
                 emptyMessage={t("logs", "noAppErrors")}
             />
 
@@ -382,9 +478,20 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                             <Typography variant="h6" sx={{ fontWeight: 700, fontSize: 16 }}>
                                 {t("logs", "errorDetails")}
                             </Typography>
-                            <IconButton size="small" onClick={() => setSelected(null)}>
-                                <CloseIcon fontSize="small" />
-                            </IconButton>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                <Tooltip title={t("logs", "deleteAppError")}>
+                                    <IconButton
+                                        size="small"
+                                        color="error"
+                                        onClick={() => setConfirmDelete(selected)}
+                                    >
+                                        <DeleteOutlineIcon fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
+                                <IconButton size="small" onClick={() => setSelected(null)}>
+                                    <CloseIcon fontSize="small" />
+                                </IconButton>
+                            </Box>
                         </Box>
 
                         <Divider sx={{ mb: 2 }} />
@@ -556,6 +663,30 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                     </Box>
                 )}
             </Drawer>
+
+            {confirmDelete && (
+                <ConfirmDialog
+                    title={t("logs", "deleteAppError")}
+                    message={t("logs", "deleteAppErrorConfirm")}
+                    confirmLabel={t("actions", "delete")}
+                    busy={deleteMutation.isPending}
+                    onConfirm={() => deleteMutation.mutate(confirmDelete)}
+                    onCancel={() => setConfirmDelete(null)}
+                />
+            )}
+
+            {confirmBulkDeleteIds && (
+                <ConfirmDialog
+                    title={t("logs", "deleteAppErrors")}
+                    message={t("logs", "deleteAppErrorsConfirm", {
+                        count: confirmBulkDeleteIds.length,
+                    })}
+                    confirmLabel={t("actions", "delete")}
+                    busy={bulkDeleteMutation.isPending}
+                    onConfirm={() => bulkDeleteMutation.mutate(confirmBulkDeleteIds)}
+                    onCancel={() => setConfirmBulkDeleteIds(null)}
+                />
+            )}
         </div>
     );
 }

@@ -468,6 +468,16 @@ export const translations = {
       loadEmailDetailsFailed: "Failed to load email details",
       loadCronLogsFailed: "Failed to load cron logs",
       loadOcrLogsFailed: "Failed to load OCR logs",
+      deleteAppError: "Delete application error",
+      deleteAppErrorConfirm:
+        "Delete this application error? It will be hidden from the logs but retained in the database.",
+      appErrorDeleted: "Application error deleted",
+      deleteAppErrorFailed: "Failed to delete application error",
+      deleteAppErrors: "Delete application errors",
+      deleteAppErrorsConfirm:
+        "Delete {count} application errors? They will be hidden from the logs but retained in the database.",
+      appErrorsDeleted: "{count} application errors deleted",
+      deleteAppErrorsFailed: "Failed to delete application errors",
       success: "Success",
       failed: "Failed",
       sent: "Sent",
@@ -2674,6 +2684,16 @@ export const translations = {
       loadEmailDetailsFailed: "No se pudieron cargar los detalles del correo",
       loadCronLogsFailed: "No se pudieron cargar los registros cron",
       loadOcrLogsFailed: "No se pudieron cargar los registros OCR",
+      deleteAppError: "Eliminar error de aplicación",
+      deleteAppErrorConfirm:
+        "¿Eliminar este error de aplicación? Se ocultará de los registros, pero permanecerá en la base de datos.",
+      appErrorDeleted: "Error de aplicación eliminado",
+      deleteAppErrorFailed: "No se pudo eliminar el error de aplicación",
+      deleteAppErrors: "Eliminar errores de aplicación",
+      deleteAppErrorsConfirm:
+        "¿Eliminar {count} errores de aplicación? Se ocultarán de los registros, pero permanecerán en la base de datos.",
+      appErrorsDeleted: "{count} errores de aplicación eliminados",
+      deleteAppErrorsFailed: "No se pudieron eliminar los errores de aplicación",
       success: "Correcto",
       failed: "Fallido",
       sent: "Enviado",

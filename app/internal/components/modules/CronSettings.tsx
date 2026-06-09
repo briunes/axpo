@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import type { SessionState } from "../../lib/authSession";
 
 export interface CronSettingsProps {
+    session: SessionState;
     onNotify: (message: string, tone: "success" | "error") => void;
 }
 
@@ -37,7 +39,7 @@ const COMMON_TIMEZONES = [
     { value: "Asia/Shanghai", label: "Asia/Shanghai" },
 ];
 
-export function CronSettings({ onNotify }: CronSettingsProps) {
+export function CronSettings({ session, onNotify }: CronSettingsProps) {
     const { t } = useI18n();
     const [config, setConfig] = useState<CronConfig>({
         enabled: true,
@@ -58,7 +60,9 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
     const loadConfig = async () => {
         try {
             setIsLoading(true);
-            const response = await fetch("/api/v1/internal/system/cron-config");
+            const response = await fetch("/api/v1/internal/system/cron-config", {
+                headers: { Authorization: `Bearer ${session.token}` },
+            });
             if (!response.ok) throw new Error(t("cronSettings", "loadError"));
 
             const data = await response.json();
@@ -115,7 +119,10 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
             setIsSaving(true);
             const response = await fetch("/api/v1/internal/system/cron-config", {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    Authorization: `Bearer ${session.token}`,
+                    "Content-Type": "application/json",
+                },
                 body: JSON.stringify({
                     enabled: config.enabled,
                     schedule: config.schedule,

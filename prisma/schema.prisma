@@ -642,6 +642,8 @@ enum BaseValueScope {
 model AppErrorLog {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
+  isDeleted Boolean  @default(false)
+  deletedAt DateTime?
 
   // Error details
   errorType String // e.g. "Error", "ZodError", "DomainError"
@@ -670,6 +672,7 @@ model AppErrorLog {
   @@index([path])
   @@index([pagePath])
   @@index([userId])
+  @@index([isDeleted, createdAt(sort: Desc)])
   @@map("app_error_logs")
 }
 

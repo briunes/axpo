@@ -1,5 +1,6 @@
 import { createSupabaseApiPrismaClient } from "../database/supabaseApiClient";
 import { getDatabaseConnectionMode } from "../database/databaseMode";
+import { Prisma } from "@prisma/client";
 
 describe("Supabase Data API database adapter", () => {
   const fetchMock = jest.fn();
@@ -177,6 +178,127 @@ describe("Supabase Data API database adapter", () => {
         languageCode: "pt",
       }),
     ]);
+  });
+
+  it("creates OCR log files through the nested relation", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ id: "ocr-1", status: "SUCCESS" }]), {
+          status: 201,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ id: "file-1", ocrLogId: "ocr-1" }]),
+          { status: 201 },
+        ),
+      );
+    const client = createSupabaseApiPrismaClient();
+
+    await client.ocrLog.create({
+      data: {
+        provider: "openai",
+        model: "gpt-test",
+        status: "SUCCESS",
+        ocrFiles: {
+          create: {
+            fileName: "invoice.pdf",
+            fileSizeBytes: 3,
+            fileData: Buffer.from("pdf"),
+          },
+        },
+      },
+    });
+
+    expect(fetchMock.mock.calls[1][0]).toContain("/rest/v1/ocr_log_files");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual([
+      expect.objectContaining({
+        ocrLogId: "ocr-1",
+        fileName: "invoice.pdf",
+        fileData: "\\x706466",
+      }),
+    ]);
+  });
+
+  it("derives relation foreign keys for Prisma connect writes", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify([{ id: "ocr-1", simulationId: "simulation-1" }]),
+        { status: 200 },
+      ),
+    );
+    const client = createSupabaseApiPrismaClient();
+
+    await client.ocrLog.update({
+      where: { id: "ocr-1" },
+      data: { simulation: { connect: { id: "simulation-1" } } },
+    });
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      simulationId: "simulation-1",
+    });
+  });
+
+  it("serializes Prisma Decimal values as numeric strings", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify([{ id: "invoice-1", totalCost: "1.25" }]), {
+        status: 201,
+      }),
+    );
+    const client = createSupabaseApiPrismaClient();
+
+    await client.ocrUsageInvoice.create({
+      data: {
+        label: "June",
+        periodStart: new Date("2026-06-01T00:00:00.000Z"),
+        periodEnd: new Date("2026-06-30T23:59:59.999Z"),
+        baseCost: new Prisma.Decimal("1.25"),
+        markupCost: new Prisma.Decimal("0.10"),
+        fixedFeeCost: new Prisma.Decimal("0"),
+        totalCost: new Prisma.Decimal("1.35"),
+      },
+    });
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(
+      expect.objectContaining({
+        baseCost: "1.25",
+        markupCost: "0.1",
+        fixedFeeCost: "0",
+        totalCost: "1.35",
+      }),
+    );
+  });
+
+  it("hydrates Prisma Decimal and BigInt fields from PostgREST", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: "invoice-1",
+            totalTokens: "1465100",
+            baseCost: "1.25",
+            totalCost: "1.35",
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const client = createSupabaseApiPrismaClient();
+
+    const invoice = await client.ocrUsageInvoice.findUnique({
+      where: { id: "invoice-1" },
+      select: {
+        id: true,
+        totalTokens: true,
+        baseCost: true,
+        totalCost: true,
+      },
+    });
+
+    expect(invoice.totalTokens).toBe(BigInt("1465100"));
+    expect(invoice.baseCost).toBeInstanceOf(Prisma.Decimal);
+    expect(invoice.baseCost.toNumber()).toBe(1.25);
+    expect(invoice.totalCost.toNumber()).toBe(1.35);
   });
 
   it("attaches relation counts after a nested create", async () => {

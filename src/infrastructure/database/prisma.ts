@@ -12,9 +12,10 @@ const isLocal =
   process.env.APP_ENV === "local" || process.env.NODE_ENV === "development";
 const isRemoteDev =
   process.env.APP_ENV === "dev" || process.env.APP_ENV === "preview";
+const databaseConnectionMode = getDatabaseConnectionMode();
 
 const createDatabaseClient = (): PrismaClient => {
-  if (getDatabaseConnectionMode() === "api") {
+  if (databaseConnectionMode === "api") {
     return createSupabaseApiPrismaClient() as PrismaClient;
   }
 
@@ -31,10 +32,14 @@ const createDatabaseClient = (): PrismaClient => {
   });
 };
 
-export const prisma = globalForPrisma.prisma ?? createDatabaseClient();
+export const prisma =
+  databaseConnectionMode === "api"
+    ? createDatabaseClient()
+    : (globalForPrisma.prisma ?? createDatabaseClient());
 
-// Cache singleton in all non-production envs to avoid repeated client initialisation
-// on Next.js hot reload (dev server) or between requests in the same process.
-if (process.env.NODE_ENV !== "production") {
+// The direct Prisma client needs a development singleton to avoid connection
+// churn. The stateless API adapter must be recreated so hot reloads pick up
+// relation and serialization changes.
+if (process.env.NODE_ENV !== "production" && databaseConnectionMode === "direct") {
   globalForPrisma.prisma = prisma;
 }
