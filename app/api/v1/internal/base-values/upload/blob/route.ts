@@ -1,4 +1,8 @@
-import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { issueSignedToken } from "@vercel/blob";
+import {
+  handleUploadPresigned,
+  type HandleUploadPresignedBody,
+} from "@vercel/blob/client";
 import { NextRequest, NextResponse } from "next/server";
 import { UserRole } from "@/domain/types";
 import { requireAuth } from "@/application/middleware/auth";
@@ -11,11 +15,11 @@ import {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const body = (await request.json()) as HandleUploadBody;
-    const response = await handleUpload({
+    const body = (await request.json()) as HandleUploadPresignedBody;
+    const response = await handleUploadPresigned({
       body,
       request,
-      onBeforeGenerateToken: async (pathname) => {
+      getSignedToken: async (pathname) => {
         const auth = await requireAuth(request);
         assertRole(auth, [UserRole.ADMIN]);
 
@@ -27,10 +31,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
 
         return {
-          allowedContentTypes: BASE_VALUE_WORKBOOK_CONTENT_TYPES,
-          maximumSizeInBytes: MAX_BASE_VALUE_WORKBOOK_SIZE,
-          addRandomSuffix: true,
-          tokenPayload: JSON.stringify({ userId: auth.userId }),
+          token: await issueSignedToken({
+            pathname,
+            operations: ["put"],
+            allowedContentTypes: BASE_VALUE_WORKBOOK_CONTENT_TYPES,
+            maximumSizeInBytes: MAX_BASE_VALUE_WORKBOOK_SIZE,
+            validUntil: Date.now() + 5 * 60 * 1000,
+          }),
+          urlOptions: {
+            allowedContentTypes: BASE_VALUE_WORKBOOK_CONTENT_TYPES,
+            maximumSizeInBytes: MAX_BASE_VALUE_WORKBOOK_SIZE,
+            tokenPayload: JSON.stringify({ userId: auth.userId }),
+          },
         };
       },
     });

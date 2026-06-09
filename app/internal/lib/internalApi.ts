@@ -1,5 +1,5 @@
 import { getBrowserFingerprint } from "./browserFingerprint";
-import { upload } from "@vercel/blob/client";
+import { uploadPresigned } from "@vercel/blob/client";
 
 export interface LoginResult {
   token?: string;
@@ -1765,7 +1765,7 @@ export async function uploadBaseValueFile(
   };
 }> {
   const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const blob = await upload(
+  const blob = await uploadPresigned(
     `base-values/${Date.now()}-${safeFileName}`,
     file,
     {
