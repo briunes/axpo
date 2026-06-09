@@ -11,6 +11,12 @@ export function isBaseValueWorkbookFileName(fileName: string): boolean {
   return normalized.endsWith(".xlsm") || normalized.endsWith(".xlsx");
 }
 
+export function getBaseValueWorkbookContentType(fileName: string): string {
+  return fileName.toLowerCase().endsWith(".xlsm")
+    ? "application/vnd.ms-excel.sheet.macroEnabled.12"
+    : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+}
+
 export function isVercelBlobUrl(value: string): boolean {
   try {
     const url = new URL(value);

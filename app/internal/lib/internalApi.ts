@@ -1,5 +1,6 @@
 import { getBrowserFingerprint } from "./browserFingerprint";
 import { uploadPresigned } from "@vercel/blob/client";
+import { getBaseValueWorkbookContentType } from "@/infrastructure/excel/baseValueUpload";
 
 export interface LoginResult {
   token?: string;
@@ -1770,6 +1771,7 @@ export async function uploadBaseValueFile(
     file,
     {
       access: "private",
+      contentType: getBaseValueWorkbookContentType(file.name),
       handleUploadUrl: `${baseUrl}/api/v1/internal/base-values/upload/blob`,
       headers: {
         authorization: `Bearer ${token}`,
