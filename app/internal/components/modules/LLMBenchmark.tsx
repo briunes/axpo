@@ -294,16 +294,33 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
         setErrors({});
         setProgress(0);
 
+        // Fetch the benchmark PDF from the public folder once
+        let pdfBlob: Blob | null = null;
+        try {
+            const pdfRes = await fetch("/benchmark/serigrafia-arrigorriaga.pdf");
+            if (!pdfRes.ok) throw new Error(`Could not load benchmark PDF (${pdfRes.status})`);
+            pdfBlob = await pdfRes.blob();
+        } catch (err: any) {
+            onNotify(`Failed to load benchmark PDF: ${err.message}`, "error");
+            setRunning(false);
+            return;
+        }
+
         for (let i = 0; i < toTest.length; i++) {
             const p = toTest[i];
             setCurrentlyTesting(p.id);
             setProgress(Math.round((i / toTest.length) * 100));
 
             try {
+                const fd = new FormData();
+                fd.append("providerConfigId", p.id);
+                fd.append("file", pdfBlob, "serigrafia-arrigorriaga.pdf");
+
+                const token = getAuthToken();
                 const res = await fetch("/api/v1/internal/invoices/benchmark", {
                     method: "POST",
-                    headers: authHeaders(),
-                    body: JSON.stringify({ providerConfigId: p.id }),
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    body: fd,
                 });
                 const data = await res.json();
                 if (data.success) {

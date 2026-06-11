@@ -10,74 +10,72 @@ import {
   OCR_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
 import { getConfiguredAiProviders } from "@/application/lib/aiConfig";
-import path from "path";
-import fs from "fs";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Expected results for the benchmark invoice (Serigrafia arrigorriaga.pdf)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const BENCHMARK_EXPECTED_DETECTION = {
-  "providerName": "IBERDROLA CLIENTES, S.A.U.",
-  "matchedSlug": "iberdrola-clientes-s-a-u",
-  "confidence": "high",
-  "invoiceType": "ELECTRICITY"
-}
+  providerName: "IBERDROLA CLIENTES, S.A.U.",
+  matchedSlug: "iberdrola-clientes-s-a-u",
+  confidence: "high",
+  invoiceType: "ELECTRICITY",
+};
 
 export const BENCHMARK_EXPECTED_EXTRACTION = {
-  "cups": "ES00210001674304GE",
-  "nombreTitular": "SERIGRAFIA INDUSTRIAL ARRIGORRIAGA S.L.L.",
-  "personaContacto": "",
-  "cif": "B95701827",
-  "direccion": "POLIGONO ATXUKARRO, 6, BAJO 4 48480 ARRIGORRIAGA (BIZKAIA)",
-  "clienteAddress": {
-    "street": "POLIGONO ATXUKARRO, 6 BAJO",
-    "city": "ARRIGORRIAGA",
-    "postalCode": "48480",
-    "province": "BIZKAIA",
-    "country": "ES"
+  cups: "ES00210001674304GE",
+  nombreTitular: "SERIGRAFIA INDUSTRIAL ARRIGORRIAGA S.L.L.",
+  personaContacto: "",
+  cif: "B95701827",
+  direccion: "POLIGONO ATXUKARRO, 6, BAJO 4 48480 ARRIGORRIAGA (BIZKAIA)",
+  clienteAddress: {
+    street: "POLIGONO ATXUKARRO, 6 BAJO",
+    city: "ARRIGORRIAGA",
+    postalCode: "48480",
+    province: "BIZKAIA",
+    country: "ES",
   },
-  "comercializadorActual": "IBERDROLA CLIENTES, S.A.U.",
-  "tarifaAcceso": "3.0TD",
-  "zonaGeografica": "Peninsula",
-  "perfilCarga": "NORMAL",
-  "fechaInicio": "2025-12-31",
-  "fechaFin": "2026-01-31",
-  "consumoP1": 3461,
-  "consumoP2": 1692,
-  "consumoP3": 0,
-  "consumoP4": 0,
-  "consumoP5": 0,
-  "consumoP6": 678,
-  "consumoAnual": null,
-  "potenciaP1": 40,
-  "potenciaP2": 40,
-  "potenciaP3": 40,
-  "potenciaP4": 40,
-  "potenciaP5": 40,
-  "potenciaP6": 40,
-  "precioPotenciaP1": 0.08235,
-  "precioPotenciaP2": 0.042435,
-  "precioPotenciaP3": 0.018439,
-  "precioPotenciaP4": 0.016033,
-  "precioPotenciaP5": 0.01063,
-  "precioPotenciaP6": 0.020188,
-  "precioEnergiaP1": 0.285745,
-  "precioEnergiaP2": 0.256311,
-  "precioEnergiaP3": null,
-  "precioEnergiaP4": null,
-  "precioEnergiaP5": null,
-  "precioEnergiaP6": 0.198943,
-  "facturaActual": 2616.73,
-  "excesoPotencia": 211.83,
-  "reactiva": 45.94,
-  "alquiler": 6.14,
-  "otrosCargos": 0.59,
-  "ivaTasa": 21,
-  "impuestoElectricoTasa": 5.11269,
-  "telemedida": "",
-  "invoiceType": "ELECTRICITY"
-}
+  comercializadorActual: "IBERDROLA CLIENTES, S.A.U.",
+  tarifaAcceso: "3.0TD",
+  zonaGeografica: "Peninsula",
+  perfilCarga: "NORMAL",
+  fechaInicio: "2025-12-31",
+  fechaFin: "2026-01-31",
+  consumoP1: 3461,
+  consumoP2: 1692,
+  consumoP3: 0,
+  consumoP4: 0,
+  consumoP5: 0,
+  consumoP6: 678,
+  consumoAnual: null,
+  potenciaP1: 40,
+  potenciaP2: 40,
+  potenciaP3: 40,
+  potenciaP4: 40,
+  potenciaP5: 40,
+  potenciaP6: 40,
+  precioPotenciaP1: 0.08235,
+  precioPotenciaP2: 0.042435,
+  precioPotenciaP3: 0.018439,
+  precioPotenciaP4: 0.016033,
+  precioPotenciaP5: 0.01063,
+  precioPotenciaP6: 0.020188,
+  precioEnergiaP1: 0.285745,
+  precioEnergiaP2: 0.256311,
+  precioEnergiaP3: null,
+  precioEnergiaP4: null,
+  precioEnergiaP5: null,
+  precioEnergiaP6: 0.198943,
+  facturaActual: 2616.73,
+  excesoPotencia: 211.83,
+  reactiva: 45.94,
+  alquiler: 6.14,
+  otrosCargos: 0.59,
+  ivaTasa: 21,
+  impuestoElectricoTasa: 5.11269,
+  telemedida: "",
+  invoiceType: "ELECTRICITY",
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Prompts (same as production routes)
@@ -537,12 +535,23 @@ function scoreExtraction(actual: any) {
 // ─────────────────────────────────────────────────────────────────────────────
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
-  const body = await req.json().catch(() => ({}));
-  const { providerConfigId } = body as { providerConfigId?: string };
+  const formData = await req.formData();
+  const providerConfigId = formData.get("providerConfigId") as string | null;
+  const uploadedFile = formData.get("file") as File | null;
 
   if (!providerConfigId) {
     return NextResponse.json(
       { success: false, message: "providerConfigId is required" },
+      { status: 400 },
+    );
+  }
+
+  if (!uploadedFile) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Benchmark PDF file must be provided as 'file' in the request",
+      },
       { status: 400 },
     );
   }
@@ -587,20 +596,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     );
   }
 
-  // Read benchmark PDF from project root
-  const pdfPath = path.join(process.cwd(), "Serigrafia arrigorriaga.pdf");
-  if (!fs.existsSync(pdfPath)) {
-    return NextResponse.json(
-      {
-        success: false,
-        message:
-          "Benchmark PDF file not found: 'Serigrafia arrigorriaga.pdf' must be in the project root.",
-      },
-      { status: 404 },
-    );
-  }
-
-  const pdfBuffer = fs.readFileSync(pdfPath);
+  const pdfBuffer = Buffer.from(await uploadedFile.arrayBuffer());
   const base64File = pdfBuffer.toString("base64");
   const fileMimeType = "application/pdf";
 
@@ -724,7 +720,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     let activePrompt = EXTRACTION_PROMPT;
     try {
       const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-      const workerPath = path.resolve(
+      const nodePath = await import("path");
+      const workerPath = nodePath.resolve(
         process.cwd(),
         "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
       );
