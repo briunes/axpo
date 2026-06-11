@@ -108,6 +108,70 @@ describe("Supabase Data API database adapter", () => {
     expect(url).not.toContain("role_permissionKey");
   });
 
+  it("encodes scalar OR searches containing reference-number slashes", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "content-range": "0-0/0" },
+      }),
+    );
+    const client = createSupabaseApiPrismaClient();
+
+    await client.simulation.findMany({
+      where: {
+        OR: [
+          {
+            referenceNumber: {
+              contains: "00193/2026",
+              mode: "insensitive",
+            },
+          },
+          { clientId: { in: ["client-1"] } },
+          { ownerUserId: { in: ["user-1"] } },
+        ],
+      },
+    });
+
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain("referenceNumber.ilike.*00193%2F2026*");
+    expect(url).toContain("clientId.in.");
+    expect(url).toContain("ownerUserId.in.");
+    expect(url).not.toContain("client.name");
+    expect(url).not.toContain("ownerUser.fullName");
+  });
+
+  it("paginates unbounded findMany queries past the PostgREST row cap", async () => {
+    const firstPage = Array.from({ length: 1000 }, (_, index) => ({
+      key: `ELEC:${index}`,
+      valueNumeric: "0.1",
+    }));
+    const secondPage = [
+      { key: "GAS:FIJO:FIJO:N1:RL01:PEN:ENERGIA", valueNumeric: "0.11" },
+      { key: "GAS:FIJO:FIJO:N1:RL01:TERMINO_DIA", valueNumeric: "0.07" },
+    ];
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(firstPage), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(secondPage), { status: 200 }),
+      );
+    const client = createSupabaseApiPrismaClient();
+
+    const items = await client.baseValueItem.findMany({
+      where: { baseValueSetId: "set-1" },
+      select: { key: true, valueNumeric: true },
+    });
+
+    expect(items).toHaveLength(1002);
+    expect(items[1000].key).toContain("GAS:FIJO");
+    expect(items[1000].valueNumeric).toBeInstanceOf(Prisma.Decimal);
+    expect(fetchMock.mock.calls[0][0]).toContain("offset=0");
+    expect(fetchMock.mock.calls[0][0]).toContain("limit=1000");
+    expect(fetchMock.mock.calls[1][0]).toContain("offset=1000");
+    expect(fetchMock.mock.calls[1][0]).toContain("limit=1000");
+  });
+
   it("creates supported nested child records through related API tables", async () => {
     fetchMock
       .mockResolvedValueOnce(

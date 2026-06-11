@@ -663,6 +663,8 @@ const relationQueryParams = (
   return params;
 };
 
+const POSTGREST_PAGE_SIZE = 1000;
+
 class SupabaseApi {
   private async request(
     path: string,
@@ -954,11 +956,34 @@ class SupabaseApi {
     };
 
     return {
-      findMany: async (args: JsonRecord = {}) =>
-        enrichResult(
-          await this.request(buildPath(args), {}, { modelName }),
-          args,
-        ),
+      findMany: async (args: JsonRecord = {}) => {
+        const rows: any[] = [];
+        const initialSkip = args.skip ?? 0;
+        const requestedRows =
+          args.take === undefined ? Infinity : Math.abs(args.take);
+        for (
+          let offset = initialSkip;
+          rows.length < requestedRows;
+          offset += POSTGREST_PAGE_SIZE
+        ) {
+          const pageSize = Math.min(
+            POSTGREST_PAGE_SIZE,
+            requestedRows - rows.length,
+          );
+          const page = await this.request(
+            buildPath({
+              ...args,
+              skip: offset,
+              take: pageSize,
+            }),
+            {},
+            { modelName },
+          );
+          rows.push(...page);
+          if (page.length < pageSize) break;
+        }
+        return enrichResult(rows, args);
+      },
       findFirst: async (args: JsonRecord = {}) =>
         enrichResult(
           await this.request(

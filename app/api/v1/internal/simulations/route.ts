@@ -149,6 +149,51 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     includeDeleted,
   );
 
+  const [matchingClients, matchingOwners] = search
+    ? await Promise.all([
+        prisma.client.findMany({
+          where: {
+            name: { contains: search, mode: "insensitive" },
+          },
+          select: { id: true },
+        }),
+        prisma.user.findMany({
+          where: {
+            fullName: { contains: search, mode: "insensitive" },
+          },
+          select: { id: true },
+        }),
+      ])
+    : [[], []];
+  const searchFilters = search
+    ? [
+        {
+          referenceNumber: {
+            contains: search,
+            mode: "insensitive" as const,
+          },
+        },
+        ...(matchingClients.length
+          ? [
+              {
+                clientId: {
+                  in: matchingClients.map((client) => client.id),
+                },
+              },
+            ]
+          : []),
+        ...(matchingOwners.length
+          ? [
+              {
+                ownerUserId: {
+                  in: matchingOwners.map((owner) => owner.id),
+                },
+              },
+            ]
+          : []),
+      ]
+    : [];
+
   const where = {
     ...baseWhere,
     ...(ownerUserId ? { ownerUserId } : {}),
@@ -156,24 +201,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ...(status ? { status } : {}),
     ...(search
       ? {
-          OR: [
-            {
-              referenceNumber: {
-                contains: search,
-                mode: "insensitive" as const,
-              },
-            },
-            {
-              client: {
-                name: { contains: search, mode: "insensitive" as const },
-              },
-            },
-            {
-              ownerUser: {
-                fullName: { contains: search, mode: "insensitive" as const },
-              },
-            },
-          ],
+          OR: searchFilters,
         }
       : {}),
     ...(cups
