@@ -105,9 +105,15 @@ import { parseCreateUserPayload } from "./userPayloadValidation";
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  await assertPermission(auth, "users.view");
-
   const sp = request.nextUrl.searchParams;
+  const contextual = sp.get("contextual") === "true";
+
+  // Agents need agency user names for operational filters and audit dialogs,
+  // without receiving access to the Users management module.
+  if (!(contextual && auth.role === UserRole.AGENT)) {
+    await assertPermission(auth, "users.view");
+  }
+
   const page = Math.max(1, parseInt(sp.get("page") || "1", 10));
   const pageSize = Math.min(
     100,
@@ -121,7 +127,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const rawOrderBy = sp.get("orderBy") || "createdAt";
   const sortDir: "asc" | "desc" = sp.get("sortDir") === "asc" ? "asc" : "desc";
   // minimal=true: skip all includes/joins. Used by dropdowns that only need id + name.
-  const minimal = sp.get("minimal") === "true";
+  const minimal =
+    sp.get("minimal") === "true" ||
+    (contextual && auth.role === UserRole.AGENT);
 
   const allowedOrderBy: Record<string, string> = {
     createdAt: "createdAt",

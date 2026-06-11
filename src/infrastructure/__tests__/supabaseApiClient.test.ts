@@ -78,6 +78,25 @@ describe("Supabase Data API database adapter", () => {
     );
   });
 
+  it("returns only ids from updateMany mutations", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify([{ id: "set-1" }, { id: "set-2" }]), {
+        status: 200,
+      }),
+    );
+    const client = createSupabaseApiPrismaClient();
+
+    const result = await client.baseValueSet.updateMany({
+      where: { scopeType: "GLOBAL" },
+      data: { isActive: false },
+    });
+
+    expect(result).toEqual({ count: 2 });
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain("select=id");
+    expect(url).not.toContain("select=*");
+  });
+
   it("flattens Prisma compound unique selectors for PostgREST", async () => {
     fetchMock.mockResolvedValue(
       new Response(
@@ -138,6 +157,39 @@ describe("Supabase Data API database adapter", () => {
     expect(url).toContain("ownerUserId.in.");
     expect(url).not.toContain("client.name");
     expect(url).not.toContain("ownerUser.fullName");
+  });
+
+  it("serializes top-level NOT alongside exact audit-log filters", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "content-range": "0-0/0" },
+      }),
+    );
+    const client = createSupabaseApiPrismaClient();
+
+    await client.auditLog.findMany({
+      where: {
+        NOT: {
+          eventType: { startsWith: "AUTH_" },
+        },
+        targetType: "SIMULATION",
+        targetId: "simulation-1",
+      },
+      include: {
+        actor: {
+          select: { email: true, fullName: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain("and=(not.and(eventType.like.AUTH_*))");
+    expect(url).toContain("targetType=eq.SIMULATION");
+    expect(url).toContain("targetId=eq.simulation-1");
+    expect(url).not.toContain("not=(not.and");
   });
 
   it("paginates unbounded findMany queries past the PostgREST row cap", async () => {
@@ -363,6 +415,33 @@ describe("Supabase Data API database adapter", () => {
     expect(invoice.baseCost).toBeInstanceOf(Prisma.Decimal);
     expect(invoice.baseCost.toNumber()).toBe(1.25);
     expect(invoice.totalCost.toNumber()).toBe(1.35);
+  });
+
+  it("hydrates large bytea fields without regex stack overflow", async () => {
+    const workbookBytes = Buffer.alloc(2_000_000, 0xab);
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: "set-1",
+            name: "Production prices",
+            sourceFileData: `\\x${workbookBytes.toString("hex")}`,
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const client = createSupabaseApiPrismaClient();
+
+    const set = await client.baseValueSet.findUnique({
+      where: { id: "set-1" },
+    });
+
+    expect(Buffer.isBuffer(set.sourceFileData)).toBe(true);
+    expect(set.sourceFileData).toHaveLength(workbookBytes.length);
+    expect(set.sourceFileData.subarray(0, 4)).toEqual(
+      workbookBytes.subarray(0, 4),
+    );
   });
 
   it("attaches relation counts after a nested create", async () => {

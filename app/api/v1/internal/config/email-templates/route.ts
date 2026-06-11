@@ -32,12 +32,18 @@ import { assertPermission } from "@/application/middleware/rbac";
  */
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
-  await assertPermission(auth, "section.configurations");
 
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type");
   const active = searchParams.get("active");
   const excludeType = searchParams.get("excludeType");
+
+  // Active templates are runtime inputs for sharing simulations. Listing
+  // inactive templates remains restricted to configuration management.
+  await assertPermission(
+    auth,
+    active === "true" ? "simulations.share" : "section.configurations",
+  );
 
   const where: any = {};
   if (type) {

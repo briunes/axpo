@@ -16,7 +16,9 @@ import { assertPermission } from "@/application/middleware/rbac";
  */
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
-  await assertPermission(auth, "section.configurations");
+  // This endpoint only returns active variables, which are runtime inputs for
+  // sharing. Mutation endpoints remain configuration-only.
+  await assertPermission(auth, "simulations.share");
 
   const { searchParams } = new URL(req.url);
   const commodity = searchParams.get("commodity"); // e.g. "ELECTRICITY" or "GAS"

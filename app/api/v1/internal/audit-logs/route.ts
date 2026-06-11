@@ -1,14 +1,48 @@
 import { NextRequest } from "next/server";
 import { UserRole } from "@/domain/types";
+import { NotFoundError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
 import {
   assertPermission,
   assertRole,
-  isElevatedRole,
 } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
+
+async function isTargetInAgency(
+  targetType: string,
+  targetId: string,
+  agencyId: string,
+): Promise<boolean> {
+  switch (targetType) {
+    case "CLIENT":
+      return Boolean(
+        await prisma.client.findFirst({
+          where: { id: targetId, agencyId },
+          select: { id: true },
+        }),
+      );
+    case "SIMULATION":
+      return Boolean(
+        await prisma.simulation.findFirst({
+          where: { id: targetId, agencyId },
+          select: { id: true },
+        }),
+      );
+    case "USER":
+      return Boolean(
+        await prisma.user.findFirst({
+          where: { id: targetId, agencyId },
+          select: { id: true },
+        }),
+      );
+    case "AGENCY":
+      return targetId === agencyId;
+    default:
+      return false;
+  }
+}
 
 /**
  * @swagger
@@ -40,9 +74,6 @@ import { prisma } from "@/infrastructure/database/prisma";
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.SYS_ADMIN]);
-  await assertPermission(auth, "section.audit-logs");
-
   const { searchParams } = new URL(request.url);
   const eventType = searchParams.get("eventType") ?? undefined;
   const excludeAuthEvents = searchParams.get("excludeAuthEvents") === "true";
@@ -51,6 +82,26 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const search = searchParams.get("search") ?? undefined;
   const actorSearch = searchParams.get("actorSearch") ?? undefined;
   const targetTypeFilter = searchParams.get("targetType") ?? undefined;
+  const targetIdFilter = searchParams.get("targetId") ?? undefined;
+  const isAgentContextualRequest =
+    auth.role === UserRole.AGENT &&
+    Boolean(targetTypeFilter) &&
+    Boolean(targetIdFilter);
+
+  if (isAgentContextualRequest) {
+    const targetInAgency = await isTargetInAgency(
+      targetTypeFilter!,
+      targetIdFilter!,
+      auth.agencyId,
+    );
+    if (!targetInAgency) {
+      throw new NotFoundError(targetTypeFilter!, targetIdFilter!);
+    }
+  } else {
+    assertRole(auth, [UserRole.ADMIN, UserRole.SYS_ADMIN]);
+    await assertPermission(auth, "section.audit-logs");
+  }
+
   const page = Math.max(parseInt(searchParams.get("page") ?? "1", 10), 1);
   const limit = Math.min(
     Math.max(parseInt(searchParams.get("limit") ?? "25", 10), 1),
@@ -82,14 +133,6 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   // Build where clause
   const where: Record<string, unknown> = {};
-
-  // Role-based scoping
-  if (!isElevatedRole(auth.role)) {
-    where.OR = [
-      { actorUserId: auth.userId },
-      { metadataJson: { path: ["agencyId"], equals: auth.agencyId } },
-    ];
-  }
 
   // Event type filter
   if (eventType) {
@@ -132,6 +175,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   // Target type filter
   if (targetTypeFilter) {
     where.targetType = targetTypeFilter;
+  }
+  if (targetIdFilter) {
+    where.targetId = targetIdFilter;
   }
 
   // Actor search filter

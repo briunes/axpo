@@ -573,10 +573,12 @@ export default function SimulationDetailPage({
         actions={
           !!lastResults && simulation.status === "DRAFT" ? (
             <>
-              {session && (
+              {session &&
+                (session.user.role === "ADMIN" ||
+                  session.user.role === "SYS_ADMIN") && (
                 <BaseValueSetSelector
                   token={session.token}
-                  isAdmin={session.user.role === "ADMIN" || session.user.role === "SYS_ADMIN"}
+                  isAdmin
                   usedBaseValueSetId={usedBaseValueSetId}
                   onChange={(id) => setSelectedBaseValueSetId(id)}
                   onChangeItem={(item) =>
@@ -598,13 +600,16 @@ export default function SimulationDetailPage({
               >
                 {t("actions", "share") || "Share"}
               </Button>
-              <Button
-                variant="outlined"
-                startIcon={<HistoryIcon />}
-                onClick={() => setShowAuditLogsModal(true)}
-              >
-                {t("auditLogsModal", "title")}
-              </Button>
+              {(session.user.role === "AGENT" ||
+                canDo(session.user.role, "section.audit-logs")) && (
+                <Button
+                  variant="outlined"
+                  startIcon={<HistoryIcon />}
+                  onClick={() => setShowAuditLogsModal(true)}
+                >
+                  {t("auditLogsModal", "title")}
+                </Button>
+              )}
             </>
           ) : undefined
         }
@@ -713,7 +718,9 @@ export default function SimulationDetailPage({
       />
 
       {/* Audit Logs Modal */}
-      {session && (
+      {session &&
+        (session.user.role === "AGENT" ||
+          canDo(session.user.role, "section.audit-logs")) && (
         <AuditLogsModal
           open={showAuditLogsModal}
           onClose={() => setShowAuditLogsModal(false)}

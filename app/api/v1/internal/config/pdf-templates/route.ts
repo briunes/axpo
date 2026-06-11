@@ -32,12 +32,25 @@ import { assertPermission } from "@/application/middleware/rbac";
  */
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
-  await assertPermission(auth, "section.configurations");
 
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type");
   const active = searchParams.get("active");
   const excludeType = searchParams.get("excludeType");
+
+  const permission =
+    active === "true" && type === "price-history"
+      ? "section.simulations"
+      : active === "true"
+        ? "simulations.share"
+        : "section.configurations";
+
+  // Active templates are runtime inputs. Price-history templates support the
+  // simulation workflow; other active templates support sharing.
+  await assertPermission(
+    auth,
+    permission,
+  );
 
   const where: any = {};
   if (type) where.type = type;

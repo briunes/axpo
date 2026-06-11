@@ -1149,6 +1149,7 @@ export interface ListUsersParams {
   sortDir?: "asc" | "desc";
   includeDeleted?: boolean;
   minimal?: boolean;
+  contextual?: boolean;
 }
 
 export interface ListSessionsParams {
@@ -1180,6 +1181,7 @@ export async function listUsers(
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
   if (params?.includeDeleted) qs.set("includeDeleted", "true");
   if (params?.minimal) qs.set("minimal", "true");
+  if (params?.contextual) qs.set("contextual", "true");
   const url = `${baseUrl}/api/v1/internal/users${qs.toString() ? `?${qs}` : ""}`;
   const response = await fetch(url, {
     method: "GET",
@@ -1844,6 +1846,7 @@ export interface ListAuditLogsParams {
   search?: string;
   actorSearch?: string;
   targetType?: string;
+  targetId?: string;
 }
 
 export async function listAuditLogs(
@@ -1860,6 +1863,7 @@ export async function listAuditLogs(
   if (params?.search) qs.set("search", params.search);
   if (params?.actorSearch) qs.set("actorSearch", params.actorSearch);
   if (params?.targetType) qs.set("targetType", params.targetType);
+  if (params?.targetId) qs.set("targetId", params.targetId);
   const queryString = qs.toString();
   const url = `${baseUrl}/api/v1/internal/audit-logs${queryString ? `?${queryString}` : ""}`;
 

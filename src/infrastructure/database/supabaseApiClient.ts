@@ -352,7 +352,7 @@ const deserialize = (value: any): any => {
       Object.entries(value).map(([key, item]) => [key, deserialize(item)]),
     );
   }
-  if (typeof value === "string" && /^\\x[0-9a-f]+$/i.test(value)) {
+  if (typeof value === "string" && value.startsWith("\\x")) {
     return Buffer.from(value.slice(2), "hex");
   }
   return value;
@@ -395,6 +395,14 @@ const deserializeModel = (value: any, modelName: string): any => {
       }
       if (field.type === "BigInt" && fieldValue !== null) {
         return [fieldName, BigInt(fieldValue as string | number)];
+      }
+      if (field.type === "Bytes" && typeof fieldValue === "string") {
+        return [
+          fieldName,
+          fieldValue.startsWith("\\x")
+            ? Buffer.from(fieldValue.slice(2), "hex")
+            : Buffer.from(fieldValue, "base64"),
+        ];
       }
       return [fieldName, deserialize(fieldValue)];
     }),
@@ -509,7 +517,14 @@ const expression = (where: JsonRecord): string => {
 const whereToFilters = (where: JsonRecord = {}, prefix = ""): string[] => {
   const filters: string[] = [];
   for (const [field, value] of Object.entries(where)) {
-    if (field === "AND" || field === "OR" || field === "NOT") {
+    if (field === "NOT") {
+      const items = Array.isArray(value) ? value : [value];
+      filters.push(
+        `and=(not.and(${items.map((item) => expression(item as JsonRecord)).join(",")}))`,
+      );
+      continue;
+    }
+    if (field === "AND" || field === "OR") {
       filters.push(
         `${field.toLowerCase()}=(${expression({ [field]: value }).replace(/^(and|or)\(|\)$/g, "")})`,
       );
@@ -1082,10 +1097,13 @@ class SupabaseApi {
           args,
         ),
       updateMany: async (args: JsonRecord) => {
-        const result = await this.request(buildPath({ where: args.where }), {
-          method: "PATCH",
-          body: JSON.stringify(prepareData(args.data, false).data),
-        });
+        const result = await this.request(
+          buildPath({ where: args.where, select: { id: true } }),
+          {
+            method: "PATCH",
+            body: JSON.stringify(prepareData(args.data, false).data),
+          },
+        );
         return { count: result?.length ?? 0 };
       },
       delete: (args: JsonRecord) =>

@@ -10,6 +10,7 @@ import {
   buildSimulationPdfFilenameFromSimulation,
   resolveSimulationProductName,
 } from "@/infrastructure/pdf/pdfFilename";
+import { SimulationService } from "@/application/services/simulationService";
 
 const sendEmailSchema = z.object({
   to: z.string().email("Invalid recipient email address"),
@@ -69,6 +70,7 @@ export const POST = withErrorHandler(
 
     const params = context?.params || {};
     const id = params?.id || "";
+    await SimulationService.assertSimulationAccess(auth, id);
 
     let rawBody: unknown;
     try {

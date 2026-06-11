@@ -28,6 +28,7 @@ export default function SimulationsPage() {
     queryEnabled: !isCommercial,
     usePersistedState: false,
     minimal: true,
+    contextual: true,
   });
 
   const sessionUser: UserItem | null = session

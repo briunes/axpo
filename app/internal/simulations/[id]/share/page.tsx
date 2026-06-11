@@ -84,8 +84,8 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
 
         Promise.all([
             getSimulation(session.token, id),
-            getPdfTemplates(),
-            getEmailTemplates(),
+            getPdfTemplates({ active: true, excludeType: "price-history" }),
+            getEmailTemplates({ active: true, excludeType: "price-history" }),
             getTemplateVariables(),
         ])
             .then(async ([simData, pdfTpl, emailTpl, variables]) => {

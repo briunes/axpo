@@ -431,7 +431,7 @@ export function DownloadHistoryDialog({
         setSelectedTemplateId("");
 
         Promise.all([
-            getPdfTemplates(),
+            getPdfTemplates({ active: true, type: "price-history" }),
             fetch(`/api/v1/internal/simulations/${simulation.id}/price-history`, {
                 headers: { Authorization: `Bearer ${token}` },
             }).then(async (r) => {

@@ -173,7 +173,8 @@ export function AuditLogsModal({
             const firstPage = await listUsers(token, {
                 page: 1,
                 pageSize: 100,
-                includeDeleted: true,
+                minimal: true,
+                contextual: true,
             });
 
             const allUsers: UserItem[] = [...firstPage.items];
@@ -184,7 +185,8 @@ export function AuditLogsModal({
                     const nextResult = await listUsers(token, {
                         page: nextPage,
                         pageSize: 100,
-                        includeDeleted: true,
+                        minimal: true,
+                        contextual: true,
                     });
                     allUsers.push(...nextResult.items);
                 }
@@ -207,7 +209,8 @@ export function AuditLogsModal({
             const baseParams = {
                 limit: 100,
                 excludeAuthEvents: true,
-                search: targetId,
+                targetType,
+                targetId,
                 ...(appliedEventType ? { eventType: appliedEventType } : {}),
                 ...(appliedStartDate ? { dateFrom: toDateOnly(appliedStartDate) } : {}),
                 ...(appliedEndDate ? { dateTo: toDateOnly(appliedEndDate) } : {}),
@@ -238,7 +241,7 @@ export function AuditLogsModal({
         } finally {
             setLoading(false);
         }
-    }, [open, token, targetId, t, appliedEventType, appliedStartDate, appliedEndDate]);
+    }, [open, token, targetType, targetId, t, appliedEventType, appliedStartDate, appliedEndDate]);
 
     useEffect(() => {
         if (open) {
