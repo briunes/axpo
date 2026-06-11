@@ -8,7 +8,7 @@ import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import AddIcon from "@mui/icons-material/Add";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { createSimulation, createClient, listClients, getAgency, calculateSimulation, type ClientItem, type AgencyItem } from "../../lib/internalApi";
+import { createSimulation, createClient, listAllClients, getAgency, calculateSimulation, type ClientItem, type AgencyItem } from "../../lib/internalApi";
 import { CrudPageLayout, LoadingState, useAlerts } from "../../components/shared";
 import { CrudFormContainer } from "../../components/shared/CrudFormContainer";
 import { getSystemConfig } from "../../lib/configApi";
@@ -29,6 +29,18 @@ function addDays(n: number): string {
     const d = new Date();
     d.setDate(d.getDate() + n);
     return d.toISOString().slice(0, 10);
+}
+
+function normalizeClientName(value?: string | null): string {
+    return (value ?? "")
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .toLocaleLowerCase()
+        .replace(/[^\p{Letter}\p{Number}]/gu, "");
+}
+
+function normalizeClientCif(value?: string | null): string {
+    return (value ?? "").toLocaleUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
 // ─── OCR payload helpers (mirrors SimulationForm logic) ───────────────────────
@@ -265,13 +277,15 @@ export default function NewSimulationPage() {
         // Try to find existing client by CIF (most reliable) or name
         let existingClient = null;
         if (data.cif) {
+            const extractedCif = normalizeClientCif(data.cif);
             existingClient = clients.find(
-                c => c.cif && c.cif.toLowerCase() === data.cif?.toLowerCase()
+                c => normalizeClientCif(c.cif) === extractedCif
             );
         }
         if (!existingClient && data.nombreTitular) {
+            const extractedName = normalizeClientName(data.nombreTitular);
             existingClient = clients.find(
-                c => c.name.toLowerCase() === data.nombreTitular?.toLowerCase()
+                c => normalizeClientName(c.name) === extractedName
             );
         }
 
@@ -332,10 +346,10 @@ export default function NewSimulationPage() {
                     setDefaultDays(30);
                     setExpiresAt(addDays(30));
                 }),
-            // Load clients list (minimal: true — only need id+name for the dropdown)
-            listClients(session.token, { pageSize: 1000, minimal: true })
-                .then((res) => {
-                    setClients(res.items);
+            // Load every client page so the dropdown and OCR matching are complete.
+            listAllClients(session.token, { minimal: true, orderBy: "name", sortDir: "asc" })
+                .then((items) => {
+                    setClients(items);
                 })
                 .catch(() => { }),
             // Load the user's own agency for the quick-create client form

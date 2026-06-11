@@ -1156,6 +1156,7 @@ export interface ListSessionsParams {
   page?: number;
   pageSize?: number;
   userId?: string;
+  search?: string;
   activeOnly?: boolean;
   inactiveOnly?: boolean;
 }
@@ -1214,6 +1215,7 @@ export async function listSessions(
   if (params?.page) qs.set("page", String(params.page));
   if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
   if (params?.userId) qs.set("userId", params.userId);
+  if (params?.search) qs.set("search", params.search);
   if (params?.activeOnly) qs.set("activeOnly", "true");
   if (params?.inactiveOnly) qs.set("inactiveOnly", "true");
 
@@ -1482,6 +1484,31 @@ export async function listClients(
     cache: "no-store",
   });
   return parseApiResponse<ListClientsResult>(response, "Client list failed");
+}
+
+export async function listAllClients(
+  token: string,
+  params?: Omit<ListClientsParams, "page" | "pageSize">,
+): Promise<ClientItem[]> {
+  const pageSize = 100;
+  const firstPage = await listClients(token, {
+    ...params,
+    page: 1,
+    pageSize,
+  });
+  const items = [...firstPage.items];
+  const totalPages = Math.ceil(firstPage.total / pageSize);
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const result = await listClients(token, {
+      ...params,
+      page,
+      pageSize,
+    });
+    items.push(...result.items);
+  }
+
+  return items;
 }
 
 export async function getClient(

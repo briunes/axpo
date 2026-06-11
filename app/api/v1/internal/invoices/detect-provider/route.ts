@@ -3,7 +3,7 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
 import {
-  convertPdfToImages,
+  convertAllPdfPagesToImages,
   OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
 import { resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
@@ -387,67 +387,37 @@ If not in the list, set matchedSlug to null and still return the providerName yo
 If you cannot determine the provider at all, return providerName as null.`;
 
   let convertedPdfLogFiles: OcrPersistedFile[] = [];
+  let processedPdfPageCount: number | undefined;
 
   try {
     // Prepare images to send
     let imagesToProcess: Array<{ base64: string; mimeType: string }> = [];
 
     if (fileEntries.length === 1 && fileEntries[0].type === "application/pdf") {
-      // PDF: convert to images, use only first page
+      // Provider details may appear on any page, so inspect the full PDF.
       const bytes = await fileEntries[0].arrayBuffer();
       const buffer = Buffer.from(bytes);
       const fileNameWithoutExt = fileEntries[0].name.replace(/\.[^.]+$/, "");
+      const pdfImages = await convertAllPdfPagesToImages(
+        buffer,
+        OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
+      );
 
-      if (llmProvider === "ollama-cloud") {
-        // Convert PDF to image first (only first page)
-        const pdfImages = await convertPdfToImages(
-          buffer,
-          1,
-          OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
-        );
-        convertedPdfLogFiles = pdfImages.map((img) => {
-          const imageBuffer = Buffer.from(img.base64, "base64");
-          return {
-            fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.png`,
-            fileType: img.mimeType,
-            fileSizeBytes: imageBuffer.length,
-            fileData: imageBuffer,
-          };
-        });
+      convertedPdfLogFiles = pdfImages.map((img) => {
+        const imageBuffer = Buffer.from(img.base64, "base64");
+        return {
+          fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.${img.fileExtension}`,
+          fileType: img.mimeType,
+          fileSizeBytes: imageBuffer.length,
+          fileData: imageBuffer,
+        };
+      });
 
-        imagesToProcess = pdfImages.map((img) => ({
-          base64: img.base64,
-          mimeType: img.mimeType,
-        }));
-      } else {
-        // Providers that handle PDF natively — send as is but only first page via image conversion
-        const pdfImages = await convertPdfToImages(
-          buffer,
-          1,
-          OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
-        );
-        convertedPdfLogFiles = pdfImages.map((img) => {
-          const imageBuffer = Buffer.from(img.base64, "base64");
-          return {
-            fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.png`,
-            fileType: img.mimeType,
-            fileSizeBytes: imageBuffer.length,
-            fileData: imageBuffer,
-          };
-        });
-
-        if (pdfImages.length > 0) {
-          imagesToProcess = [
-            { base64: pdfImages[0].base64, mimeType: pdfImages[0].mimeType },
-          ];
-        } else {
-          // Fallback: send raw PDF as base64 (providers like OpenAI, Anthropic, Google support it)
-          const base64File = buffer.toString("base64");
-          imagesToProcess = [
-            { base64: base64File, mimeType: "application/pdf" },
-          ];
-        }
-      }
+      imagesToProcess = pdfImages.map((img) => ({
+        base64: img.base64,
+        mimeType: img.mimeType,
+      }));
+      processedPdfPageCount = pdfImages.length;
     } else {
       // Images: send all of them
       for (const file of fileEntries) {
@@ -490,6 +460,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         fileName: fileEntries[0]?.name,
         fileType: fileEntries[0]?.type,
         fileSizeBytes: fileEntries[0]?.size,
+        pageCount: processedPdfPageCount,
         files: fileEntries,
         persistedFiles: convertedPdfLogFiles,
         promptTokens,
@@ -522,6 +493,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         fileName: fileEntries[0]?.name,
         fileType: fileEntries[0]?.type,
         fileSizeBytes: fileEntries[0]?.size,
+        pageCount: processedPdfPageCount,
         files: fileEntries,
         persistedFiles: convertedPdfLogFiles,
         promptTokens,
@@ -569,6 +541,7 @@ If you cannot determine the provider at all, return providerName as null.`;
       fileName: firstFile?.name,
       fileType: firstFile?.type,
       fileSizeBytes: firstFile?.size,
+      pageCount: processedPdfPageCount,
       files: fileEntries,
       persistedFiles: convertedPdfLogFiles,
       promptTokens,
@@ -601,6 +574,7 @@ If you cannot determine the provider at all, return providerName as null.`;
       fileName: fileEntries[0]?.name,
       fileType: fileEntries[0]?.type,
       fileSizeBytes: fileEntries[0]?.size,
+      pageCount: processedPdfPageCount,
       files: fileEntries,
       persistedFiles: convertedPdfLogFiles,
       errorMessage: error.message || "Failed to detect provider",

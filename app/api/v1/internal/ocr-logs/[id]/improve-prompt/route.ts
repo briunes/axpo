@@ -4,7 +4,11 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission, assertRole } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
-import { convertPdfToImages, OCR_PDF_RENDER_SCALE } from "@/lib/pdfToImage";
+import {
+  convertPdfToImages,
+  OCR_MAX_PDF_PAGES,
+  OCR_PDF_RENDER_SCALE,
+} from "@/lib/pdfToImage";
 import { getAiUsage, resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
 const COMMON_CORRECTION_FIELDS = new Set([
@@ -642,7 +646,7 @@ Return ONLY the complete new prompt text — no commentary, no markdown fences, 
           if (isPdf(f.mimeType)) {
             const pdfImages = await convertPdfToImages(
               Buffer.from(f.base64, "base64"),
-              2,
+              OCR_MAX_PDF_PAGES,
               OCR_PDF_RENDER_SCALE,
             );
             for (const img of pdfImages) {

@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
-import { convertPdfToImages, OCR_PDF_RENDER_SCALE } from "@/lib/pdfToImage";
+import {
+  convertPdfToImages,
+  OCR_MAX_PDF_PAGES,
+  OCR_PDF_RENDER_SCALE,
+} from "@/lib/pdfToImage";
 import { resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
 /**
@@ -1058,7 +1062,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       if (llmProvider === "ollama" || llmProvider === "ollama-cloud") {
         const pdfImages = await convertPdfToImages(
           buffer,
-          2,
+          OCR_MAX_PDF_PAGES,
           OCR_PDF_RENDER_SCALE,
         );
         const fileNameWithoutExt = file.name.replace(/\.[^.]+$/, "");
@@ -1066,7 +1070,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
         convertedPdfLogFiles = pdfImages.map((img) => {
           const imageBuffer = Buffer.from(img.base64, "base64");
           return {
-            fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.png`,
+            fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.${img.fileExtension}`,
             fileType: img.mimeType,
             fileSizeBytes: imageBuffer.length,
             fileData: imageBuffer,

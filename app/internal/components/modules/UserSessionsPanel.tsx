@@ -15,8 +15,10 @@ import {
     TableCell,
     TableHead,
     TableRow,
+    TextField,
     Typography,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import type { SessionState } from "../../lib/authSession";
@@ -119,6 +121,8 @@ export function UserSessionsPanel({
     const [items, setItems] = useState<UserSessionItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [activeOnly, setActiveOnly] = useState(true);
+    const [userSearch, setUserSearch] = useState("");
+    const [debouncedUserSearch, setDebouncedUserSearch] = useState("");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(initialPageSize);
     const [total, setTotal] = useState(0);
@@ -184,6 +188,15 @@ export function UserSessionsPanel({
     }, [initialPageSize]);
 
     useEffect(() => {
+        const timeout = window.setTimeout(() => {
+            setDebouncedUserSearch(userSearch.trim());
+            setPage(1);
+        }, 300);
+
+        return () => window.clearTimeout(timeout);
+    }, [userSearch]);
+
+    useEffect(() => {
         onNotifyRef.current = onNotify;
     }, [onNotify]);
 
@@ -233,7 +246,7 @@ export function UserSessionsPanel({
     }, [groupedMode, items]);
 
     const fetchSessions = useCallback(async (options?: { force?: boolean }) => {
-        const requestKey = `${page}|${pageSize}|${userId ?? ""}|${groupedMode ? "1" : "0"}|${activeOnly ? "1" : "0"}`;
+        const requestKey = `${page}|${pageSize}|${userId ?? ""}|${debouncedUserSearch}|${groupedMode ? "1" : "0"}|${activeOnly ? "1" : "0"}`;
         const now = Date.now();
         const lastRequest = lastRequestRef.current;
         const isDuplicateBurst =
@@ -253,6 +266,7 @@ export function UserSessionsPanel({
                 page,
                 pageSize,
                 userId,
+                search: groupedMode ? debouncedUserSearch : undefined,
                 activeOnly: groupedMode ? true : activeOnly,
             });
             setItems(result.items);
@@ -268,7 +282,7 @@ export function UserSessionsPanel({
             }
             setLoading(false);
         }
-    }, [activeOnly, groupedMode, page, pageSize, session.token, userId]);
+    }, [activeOnly, debouncedUserSearch, groupedMode, page, pageSize, session.token, userId]);
 
     const fetchPastSessionsForUser = useCallback(
         async (targetUserId: string, targetPage = 1) => {
@@ -482,9 +496,24 @@ export function UserSessionsPanel({
                                 label={t("userSessions", "activeOnly")}
                             />
                         ) : (
-                            <Typography variant="body2" color="text.secondary">
-                                {t("userSessions", "activeUsersCount", { count: groupedActiveUsers.length })}
-                            </Typography>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+                                <TextField
+                                    type="search"
+                                    size="small"
+                                    placeholder={t("search", "users")}
+                                    value={userSearch}
+                                    onChange={(event) => setUserSearch(event.target.value)}
+                                    slotProps={{
+                                        input: {
+                                            startAdornment: <SearchIcon color="action" fontSize="small" sx={{ mr: 1 }} />,
+                                        },
+                                    }}
+                                    sx={{ width: { xs: "100%", sm: 320 } }}
+                                />
+                                <Typography variant="body2" color="text.secondary">
+                                    {t("userSessions", "activeUsersCount", { count: groupedActiveUsers.length })}
+                                </Typography>
+                            </Box>
                         )}
 
                         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>

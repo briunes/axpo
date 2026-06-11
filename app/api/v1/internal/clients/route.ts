@@ -195,6 +195,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         select: {
           id: true,
           name: true,
+          cif: true,
+          contactName: true,
+          contactEmail: true,
           agencyId: true,
           isActive: true,
           isDeleted: true,

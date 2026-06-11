@@ -30,6 +30,7 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { getSystemConfig, updateSystemConfig, testLlmConnection, type LlmTestResult } from "../../lib/configApi";
 import { LoadingState } from "../shared/LoadingState";
 import { FormInput, FormSelect } from "../ui";
+import { LLMBenchmark } from "./LLMBenchmark";
 
 export interface LLMSettingsProps {
     session: SessionState;
@@ -156,7 +157,7 @@ const LLM_PROVIDERS: Record<string, {
 export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
     const { t } = useI18n();
     const [config, setConfig] = useState<LLMConfig>(DEFAULT_LLM_CONFIG);
-    const [activeSubTab, setActiveSubTab] = useState<"tasks" | "providers">("tasks");
+    const [activeSubTab, setActiveSubTab] = useState<"tasks" | "providers" | "benchmark">("tasks");
     const [isDirty, setIsDirty] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -386,220 +387,235 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
             </div>
 
             <div className="settings-panel llm-settings-panel">
-                    <Tabs
-                        value={activeSubTab}
-                        onChange={(_, value) => setActiveSubTab(value)}
-                        sx={{
-                            minHeight: 44,
-                            borderBottom: "1px solid var(--scheme-neutral-900)",
-                            mb: 3,
-                            '& .MuiTabs-indicator': {
-                                backgroundColor: 'var(--scheme-brand-600)',
-                                height: 2,
-                            },
-                        }}
-                    >
-                        <Tab value="tasks" label={t("llmSettings", "tabTaskRouting")} sx={{ textTransform: "none", fontWeight: 700 }} />
-                        <Tab value="providers" label={t("llmSettings", "tabAvailableLlms")} sx={{ textTransform: "none", fontWeight: 700 }} />
-                    </Tabs>
+                <Tabs
+                    value={activeSubTab}
+                    onChange={(_, value) => setActiveSubTab(value)}
+                    sx={{
+                        minHeight: 44,
+                        borderBottom: "1px solid var(--scheme-neutral-900)",
+                        mb: 3,
+                        '& .MuiTabs-indicator': {
+                            backgroundColor: 'var(--scheme-brand-600)',
+                            height: 2,
+                        },
+                    }}
+                >
+                    <Tab value="tasks" label={t("llmSettings", "tabTaskRouting")} sx={{ textTransform: "none", fontWeight: 700 }} />
+                    <Tab value="providers" label={t("llmSettings", "tabAvailableLlms")} sx={{ textTransform: "none", fontWeight: 700 }} />
+                    <Tab value="benchmark" label="Benchmark" sx={{ textTransform: "none", fontWeight: 700 }} />
+                </Tabs>
 
-                    {activeSubTab === "tasks" && (
-                        <Stack spacing={2.5}>
+                {activeSubTab === "tasks" && (
+                    <Stack spacing={2.5}>
+                        <Box>
+                            <h3 className="settings-panel-title">{t("llmSettings", "taskRoutingTitle")}</h3>
+                            <p style={{ margin: 0, color: "var(--axpo-text-secondary)" }}>
+                                {t("llmSettings", "taskRoutingDesc")}
+                            </p>
+                        </Box>
+
+                        <Box
+                            sx={{
+                                border: "1px solid var(--scheme-neutral-900)",
+                                borderRadius: "8px",
+                                p: 2,
+                                backgroundColor: "var(--scheme-neutral-1200)",
+                            }}
+                        >
+                            <label className="config-field-inline">
+                                <input
+                                    type="checkbox"
+                                    checked={config.llmEnabled}
+                                    onChange={(e) => handleChange("llmEnabled", e.target.checked)}
+                                />
+                                <span>{t("llmSettings", "enableLlm")}</span>
+                            </label>
+                            <span className="config-field-description" style={{ marginLeft: "32px", marginBottom: 0 }}>
+                                {t("llmSettings", "enableLlmDesc")}
+                            </span>
+                        </Box>
+
+                        {!config.llmEnabled ? (
+                            <Box sx={{ color: "var(--axpo-text-secondary)" }}>
+                                {t("llmSettings", "enableRoutingHint")}
+                            </Box>
+                        ) : providerOptions.length === 0 ? (
+                            <Box sx={{ color: "var(--axpo-text-secondary)" }}>
+                                {t("llmSettings", "noLlmsConfiguredHint")}
+                            </Box>
+                        ) : (
+                            <Stack spacing={2}>
+                                {AI_TASKS.map((task) => {
+                                    const selectedId = config.aiTaskConfigs[task.key] || providerOptions[0]?.id || "";
+                                    const selected = config.aiProviderConfigs.find((provider) => provider.id === selectedId);
+                                    return (
+                                        <Box
+                                            key={task.key}
+                                            sx={{
+                                                display: "grid",
+                                                gridTemplateColumns: { xs: "1fr", md: "220px 1fr 260px" },
+                                                gap: 2,
+                                                alignItems: "center",
+                                                border: "1px solid var(--scheme-neutral-900)",
+                                                borderRadius: "8px",
+                                                p: 2,
+                                            }}
+                                        >
+                                            <Box sx={{ fontWeight: 700 }}>{t("llmSettings", task.labelKey)}</Box>
+                                            <FormSelect
+                                                label=""
+                                                value={selectedId}
+                                                onChange={(value) => updateTaskProvider(task.key, String(value))}
+                                                options={providerOptions.map((provider) => ({
+                                                    value: provider.id,
+                                                    label: provider.name,
+                                                    secondaryLabel: getProviderSummary(provider),
+                                                }))}
+                                            />
+                                            <Box sx={{ color: "var(--axpo-text-secondary)", fontSize: 13 }}>
+                                                {selected ? getProviderSummary(selected) : t("llmSettings", "noLlmSelected")}
+                                            </Box>
+                                        </Box>
+                                    );
+                                })}
+                            </Stack>
+                        )}
+                    </Stack>
+                )}
+
+                {activeSubTab === "providers" && (
+                    <Stack spacing={2.5}>
+                        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
                             <Box>
-                                <h3 className="settings-panel-title">{t("llmSettings", "taskRoutingTitle")}</h3>
+                                <h3 className="settings-panel-title">{t("llmSettings", "providersTitle")}</h3>
                                 <p style={{ margin: 0, color: "var(--axpo-text-secondary)" }}>
-                                    {t("llmSettings", "taskRoutingDesc")}
+                                    {t("llmSettings", "providersDesc")}
                                 </p>
                             </Box>
-
-                            <Box
-                                sx={{
-                                    border: "1px solid var(--scheme-neutral-900)",
-                                    borderRadius: "8px",
-                                    p: 2,
-                                    backgroundColor: "var(--scheme-neutral-1200)",
-                                }}
-                            >
-                                <label className="config-field-inline">
-                                    <input
-                                        type="checkbox"
-                                        checked={config.llmEnabled}
-                                        onChange={(e) => handleChange("llmEnabled", e.target.checked)}
-                                    />
-                                    <span>{t("llmSettings", "enableLlm")}</span>
-                                </label>
-                                <span className="config-field-description" style={{ marginLeft: "32px", marginBottom: 0 }}>
-                                    {t("llmSettings", "enableLlmDesc")}
-                                </span>
-                            </Box>
-
-                            {!config.llmEnabled ? (
-                                <Box sx={{ color: "var(--axpo-text-secondary)" }}>
-                                    {t("llmSettings", "enableRoutingHint")}
-                                </Box>
-                            ) : providerOptions.length === 0 ? (
-                                <Box sx={{ color: "var(--axpo-text-secondary)" }}>
-                                    {t("llmSettings", "noLlmsConfiguredHint")}
-                                </Box>
-                            ) : (
-                                <Stack spacing={2}>
-                                    {AI_TASKS.map((task) => {
-                                        const selectedId = config.aiTaskConfigs[task.key] || providerOptions[0]?.id || "";
-                                        const selected = config.aiProviderConfigs.find((provider) => provider.id === selectedId);
-                                        return (
-                                            <Box
-                                                key={task.key}
-                                                sx={{
-                                                    display: "grid",
-                                                    gridTemplateColumns: { xs: "1fr", md: "220px 1fr 260px" },
-                                                    gap: 2,
-                                                    alignItems: "center",
-                                                    border: "1px solid var(--scheme-neutral-900)",
-                                                    borderRadius: "8px",
-                                                    p: 2,
-                                                }}
-                                            >
-                                                <Box sx={{ fontWeight: 700 }}>{t("llmSettings", task.labelKey)}</Box>
-                                                <FormSelect
-                                                    label=""
-                                                    value={selectedId}
-                                                    onChange={(value) => updateTaskProvider(task.key, String(value))}
-                                                    options={providerOptions.map((provider) => ({
-                                                        value: provider.id,
-                                                        label: provider.name,
-                                                        secondaryLabel: getProviderSummary(provider),
-                                                    }))}
-                                                />
-                                                <Box sx={{ color: "var(--axpo-text-secondary)", fontSize: 13 }}>
-                                                    {selected ? getProviderSummary(selected) : t("llmSettings", "noLlmSelected")}
-                                                </Box>
-                                            </Box>
-                                        );
-                                    })}
-                                </Stack>
-                            )}
+                            <Button variant="outlined" startIcon={<AddIcon />} onClick={openAddProviderDialog}>
+                                {t("llmSettings", "addLlm")}
+                            </Button>
                         </Stack>
-                    )}
 
-                    {activeSubTab === "providers" && (
-                        <Stack spacing={2.5}>
-                            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2}>
-                                <Box>
-                                    <h3 className="settings-panel-title">{t("llmSettings", "providersTitle")}</h3>
-                                    <p style={{ margin: 0, color: "var(--axpo-text-secondary)" }}>
-                                    {t("llmSettings", "providersDesc")}
-                                    </p>
-                                </Box>
-                                <Button variant="outlined" startIcon={<AddIcon />} onClick={openAddProviderDialog}>
-                                    {t("llmSettings", "addLlm")}
-                                </Button>
-                            </Stack>
-
-                            <Box sx={{ overflowX: "auto", border: "1px solid var(--scheme-neutral-900)", borderRadius: "8px" }}>
-                                <Table size="small" sx={{ minWidth: 920 }}>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "enabled")}</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "name")}</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "provider")}</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "modelName")}</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "baseUrl")}</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "apiKey")}</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "temperature")}</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "maxTokens")}</TableCell>
-                                            <TableCell sx={{ fontWeight: 700, width: 140 }}>{t("llmSettings", "actions")}</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {config.aiProviderConfigs.map((providerConfig) => {
-                                            const providerMeta = LLM_PROVIDERS[providerConfig.provider] ?? LLM_PROVIDERS.custom;
-                                            const testResult = testResults[providerConfig.id];
-                                            return (
-                                                <TableRow key={providerConfig.id} hover>
-                                                    <TableCell>
-                                                        <Chip
-                                                            size="small"
-                                                            label={providerConfig.enabled ? t("llmSettings", "enabled") : t("llmSettings", "disabled")}
-                                                            color={providerConfig.enabled ? "success" : "default"}
-                                                            variant={providerConfig.enabled ? "filled" : "outlined"}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell>{providerConfig.name}</TableCell>
-                                                    <TableCell>{providerMeta.name}</TableCell>
-                                                    <TableCell>{providerConfig.modelName || "—"}</TableCell>
-                                                    <TableCell sx={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                                        {providerConfig.baseUrl || "—"}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {providerMeta.requiresApiKey
-                                                            ? providerConfig.hasApiKey
-                                                                ? t("llmSettings", "apiKeySaved")
-                                                                : t("llmSettings", "apiKeyMissing")
-                                                            : t("llmSettings", "apiKeyNotRequired")}
-                                                    </TableCell>
-                                                    <TableCell>{providerConfig.temperature}</TableCell>
-                                                    <TableCell>{providerConfig.maxTokens}</TableCell>
-                                                    <TableCell>
-                                                        <Stack direction="row" gap={0.5} alignItems="center">
-                                                            <Tooltip title={t("llmSettings", "testConnection")}>
-                                                                <span>
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={() => handleTestConnection(providerConfig)}
-                                                                        disabled={testingProviderId === providerConfig.id || !providerConfig.baseUrl || !providerConfig.modelName}
-                                                                    >
-                                                                        <ScienceIcon fontSize="small" />
-                                                                    </IconButton>
-                                                                </span>
-                                                            </Tooltip>
-                                                            <Tooltip title={t("llmSettings", "editLlm")}>
+                        <Box sx={{ overflowX: "auto", border: "1px solid var(--scheme-neutral-900)", borderRadius: "8px" }}>
+                            <Table size="small" sx={{ minWidth: 920 }}>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "enabled")}</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "name")}</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "provider")}</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "modelName")}</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "baseUrl")}</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "apiKey")}</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "temperature")}</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "maxTokens")}</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, width: 140 }}>{t("llmSettings", "actions")}</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {config.aiProviderConfigs.map((providerConfig) => {
+                                        const providerMeta = LLM_PROVIDERS[providerConfig.provider] ?? LLM_PROVIDERS.custom;
+                                        const testResult = testResults[providerConfig.id];
+                                        return (
+                                            <TableRow key={providerConfig.id} hover>
+                                                <TableCell>
+                                                    <Chip
+                                                        size="small"
+                                                        label={providerConfig.enabled ? t("llmSettings", "enabled") : t("llmSettings", "disabled")}
+                                                        color={providerConfig.enabled ? "success" : "default"}
+                                                        variant={providerConfig.enabled ? "filled" : "outlined"}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>{providerConfig.name}</TableCell>
+                                                <TableCell>{providerMeta.name}</TableCell>
+                                                <TableCell>{providerConfig.modelName || "—"}</TableCell>
+                                                <TableCell sx={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                    {providerConfig.baseUrl || "—"}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {providerMeta.requiresApiKey
+                                                        ? providerConfig.hasApiKey
+                                                            ? t("llmSettings", "apiKeySaved")
+                                                            : t("llmSettings", "apiKeyMissing")
+                                                        : t("llmSettings", "apiKeyNotRequired")}
+                                                </TableCell>
+                                                <TableCell>{providerConfig.temperature}</TableCell>
+                                                <TableCell>{providerConfig.maxTokens}</TableCell>
+                                                <TableCell>
+                                                    <Stack direction="row" gap={0.5} alignItems="center">
+                                                        <Tooltip title={t("llmSettings", "testConnection")}>
+                                                            <span>
                                                                 <IconButton
                                                                     size="small"
-                                                                    onClick={() => openEditProviderDialog(providerConfig)}
+                                                                    onClick={() => handleTestConnection(providerConfig)}
+                                                                    disabled={testingProviderId === providerConfig.id || !providerConfig.baseUrl || !providerConfig.modelName}
                                                                 >
-                                                                    <EditIcon fontSize="small" />
+                                                                    <ScienceIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </span>
+                                                        </Tooltip>
+                                                        <Tooltip title={t("llmSettings", "editLlm")}>
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => openEditProviderDialog(providerConfig)}
+                                                            >
+                                                                <EditIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                        {providerConfig.id !== "legacy-default" && (
+                                                            <Tooltip title={t("llmSettings", "removeLlm")}>
+                                                                <IconButton
+                                                                    size="small"
+                                                                    color="error"
+                                                                    onClick={() => removeAiProvider(providerConfig.id)}
+                                                                >
+                                                                    <DeleteIcon fontSize="small" />
                                                                 </IconButton>
                                                             </Tooltip>
-                                                            {providerConfig.id !== "legacy-default" && (
-                                                                <Tooltip title={t("llmSettings", "removeLlm")}>
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        color="error"
-                                                                        onClick={() => removeAiProvider(providerConfig.id)}
-                                                                    >
-                                                                        <DeleteIcon fontSize="small" />
-                                                                    </IconButton>
-                                                                </Tooltip>
-                                                            )}
-                                                        </Stack>
-                                                        {testResult && (
-                                                            <Box
-                                                                sx={{
-                                                                    mt: 1,
-                                                                    fontSize: 12,
-                                                                    color: testResult.success ? "success.main" : "error.main",
-                                                                }}
-                                                            >
-                                                                {testResult.success ? t("llmSettings", "connected") : testResult.message}
-                                                            </Box>
                                                         )}
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                        {config.aiProviderConfigs.length === 0 && (
-                                            <TableRow>
-                                                <TableCell colSpan={9} sx={{ color: "var(--axpo-text-secondary)", py: 3 }}>
-                                                    {t("llmSettings", "noConfiguredLlms")}
+                                                    </Stack>
+                                                    {testResult && (
+                                                        <Box
+                                                            sx={{
+                                                                mt: 1,
+                                                                fontSize: 12,
+                                                                color: testResult.success ? "success.main" : "error.main",
+                                                            }}
+                                                        >
+                                                            {testResult.success ? t("llmSettings", "connected") : testResult.message}
+                                                        </Box>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </Box>
-                        </Stack>
-                    )}
-                </div>
+                                        );
+                                    })}
+                                    {config.aiProviderConfigs.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={9} sx={{ color: "var(--axpo-text-secondary)", py: 3 }}>
+                                                {t("llmSettings", "noConfiguredLlms")}
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </Box>
+                    </Stack>
+                )}
+
+                {activeSubTab === "benchmark" && (
+                    <LLMBenchmark
+                        session={session}
+                        onNotify={onNotify}
+                        providers={config.aiProviderConfigs.map((p) => ({
+                            id: p.id,
+                            name: p.name,
+                            enabled: p.enabled,
+                            provider: p.provider,
+                            modelName: p.modelName,
+                        }))}
+                    />
+                )}
+            </div>
 
             <Dialog
                 open={Boolean(providerDialogMode && draftProvider)}
