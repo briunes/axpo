@@ -300,7 +300,7 @@ export function extractVariableValues(
     SIMULATION_LINK:
       shareContext?.simulationLink ||
       (simulation.publicToken
-        ? `${process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || process.env.FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es"}/simulador/?token=${simulation.publicToken}`
+        ? `${process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || process.env.FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es"}/?token=${simulation.publicToken}`
         : "N/A"),
     PIN: shareContext?.pin || "N/A",
     EXPIRES_IN_DAYS:
