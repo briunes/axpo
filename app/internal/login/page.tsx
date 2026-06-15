@@ -39,7 +39,10 @@ export default function LoginPage() {
   }, [otpCooldown]);
 
   useEffect(() => {
-    fetch("/api/v1/internal/config/system")
+    fetch("/api/v1/internal/config/system", {
+      cache: "no-store",
+      headers: { pragma: "no-cache", "cache-control": "no-cache" },
+    })
       .then((r) => r.json())
       .then((data) => {
         setMagicLinkEnabled(data?.data?.magicLinkEnabled === true || data?.magicLinkEnabled === true);
@@ -47,7 +50,7 @@ export default function LoginPage() {
       .catch(() => { });
   }, []);
 
-  const canLogin = useMemo(() => email.includes("@") && password.length >= 8, [email, password]);
+  const canLogin = useMemo(() => email.includes("@") && password.length > 0, [email, password]);
   const canRequestMagicLink = useMemo(() => email.includes("@"), [email]);
   const canVerifyOtp = useMemo(() => otpCode.length === 6 && /^\d+$/.test(otpCode), [otpCode]);
 
@@ -372,4 +375,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

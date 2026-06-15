@@ -68,6 +68,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
+      translate="no"
       data-theme="light"
       data-brand="custom"
       data-accent="custom"
@@ -76,9 +77,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       suppressHydrationWarning
     >
       <head>
+        <meta name="google" content="notranslate" />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className={montserrat.className}>
+      <body className={`${montserrat.className} notranslate`}>
         <AppRouterCacheProvider>
           <I18nProvider>
             <VersionChecker />

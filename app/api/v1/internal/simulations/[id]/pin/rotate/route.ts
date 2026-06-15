@@ -7,6 +7,10 @@ import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 import { AuditService } from "@/application/services/auditService";
+import {
+  decryptSensitiveValue,
+  encryptSensitiveValue,
+} from "@/application/lib/sensitiveData";
 
 /**
  * @swagger
@@ -42,7 +46,11 @@ export const POST = withErrorHandler(
       where: { id },
       data: {
         pinHashSnapshot: owner.pinHash,
-        pinSnapshot: owner.pinCurrent ?? null,
+        pinSnapshot: owner.pinCurrent
+          ? encryptSensitiveValue(
+              decryptSensitiveValue(owner.pinCurrent) ?? "",
+            )
+          : null,
       },
     });
 

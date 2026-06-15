@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextRequest } from "next/server";
 import { UserRole } from "@/domain/types";
 import {
@@ -8,8 +9,9 @@ import {
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertRole, isElevatedRole } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
+import { isSupabaseApiMode } from "@/infrastructure/database/databaseMode";
 import { AuditService } from "@/application/services/auditService";
 import { PasswordService } from "@/application/services/passwordService";
 import { SessionService } from "@/application/services/sessionService";
@@ -19,7 +21,7 @@ const assertUserReadable = (
   actor: { userId: string; role: UserRole; agencyId: string },
   user: { id: string; agencyId: string },
 ) => {
-  if (actor.role === UserRole.ADMIN) {
+  if (isElevatedRole(actor.role)) {
     return;
   }
 
@@ -155,6 +157,25 @@ export const PATCH = withErrorHandler(
       }
     }
 
+    // Role-management guardrails:
+    //   - Only SYS_ADMIN can promote/demote admins or assign SYS_ADMIN
+    //   - Existing SYS_ADMIN users remain locked (no one can demote/change them)
+    if (payload.role !== undefined && payload.role !== existing.role) {
+      if (existing.role === UserRole.SYS_ADMIN) {
+        throw new ForbiddenError("Sys Admin role cannot be changed");
+      }
+      if (
+        (existing.role === UserRole.ADMIN ||
+          payload.role === UserRole.ADMIN ||
+          payload.role === UserRole.SYS_ADMIN) &&
+        auth.role !== UserRole.SYS_ADMIN
+      ) {
+        throw new ForbiddenError(
+          "Only Sys Admin can change the role of an Admin or Sys Admin user",
+        );
+      }
+    }
+
     if (payload.password) {
       PasswordService.validatePolicy(payload.password);
     }
@@ -185,68 +206,76 @@ export const PATCH = withErrorHandler(
       ? await prisma.userPreferences.findUnique({ where: { userId: id } })
       : null;
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const updatedUser = await tx.user.update({
-        where: { id },
-        data: {
-          fullName: payload.fullName,
-          email: payload.email,
-          mobilePhone: payload.mobilePhone,
-          commercialPhone: payload.commercialPhone,
-          commercialEmail: payload.commercialEmail,
-          otherDetails: payload.otherDetails,
-          maxActiveDevices: payload.maxActiveDevices,
-          isActive: payload.isActive,
-          role: payload.role,
-          agencyId: payload.agencyId,
-          passwordHash,
-          updatedByUserId: auth.userId,
-        },
-        select: {
-          id: true,
-          agencyId: true,
-          role: true,
-          fullName: true,
-          email: true,
-          mobilePhone: true,
-          commercialPhone: true,
-          commercialEmail: true,
-          otherDetails: true,
-          maxActiveDevices: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-          pinRotatedAt: true,
-          createdByUser: { select: { id: true, fullName: true } },
-          updatedByUser: { select: { id: true, fullName: true } },
-        },
+    const updateData = {
+      fullName: payload.fullName,
+      email: payload.email,
+      mobilePhone: payload.mobilePhone,
+      commercialPhone: payload.commercialPhone,
+      commercialEmail: payload.commercialEmail,
+      otherDetails: payload.otherDetails,
+      maxActiveDevices: payload.maxActiveDevices,
+      isActive: payload.isActive,
+      role: payload.role,
+      agencyId: payload.agencyId,
+      passwordHash,
+      updatedByUserId: auth.userId,
+    };
+    const resultSelect = {
+      id: true,
+      agencyId: true,
+      role: true,
+      fullName: true,
+      email: true,
+      mobilePhone: true,
+      commercialPhone: true,
+      commercialEmail: true,
+      otherDetails: true,
+      maxActiveDevices: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
+      pinRotatedAt: true,
+      createdByUser: { select: { id: true, fullName: true } },
+      updatedByUser: { select: { id: true, fullName: true } },
+    };
+
+    let updated;
+    if (isSupabaseApiMode()) {
+      await (prisma as any).$rpc("axpo_update_user", {
+        p_user_id: id,
+        p_actor_user_id: auth.userId,
+        p_data: updateData,
+        p_preferences: payload.preferences ?? null,
+        p_preference_id: crypto.randomUUID(),
+        p_now: new Date(),
       });
-
-      if (payload.preferences) {
-        await tx.userPreferences.upsert({
-          where: { userId: id },
-          create: {
-            userId: id,
-            language: payload.preferences.language,
-            dateFormat: payload.preferences.dateFormat,
-            timeFormat: payload.preferences.timeFormat,
-            timezone: payload.preferences.timezone,
-            numberFormat: payload.preferences.numberFormat,
-            itemsPerPage: payload.preferences.itemsPerPage,
-          },
-          update: {
-            language: payload.preferences.language,
-            dateFormat: payload.preferences.dateFormat,
-            timeFormat: payload.preferences.timeFormat,
-            timezone: payload.preferences.timezone,
-            numberFormat: payload.preferences.numberFormat,
-            itemsPerPage: payload.preferences.itemsPerPage,
-          },
+      updated = await prisma.user.findUnique({
+        where: { id },
+        select: resultSelect,
+      });
+      if (!updated) throw new NotFoundError("User", id);
+    } else {
+      updated = await prisma.$transaction(async (tx) => {
+        const updatedUser = await tx.user.update({
+          where: { id },
+          data: updateData,
+          select: resultSelect,
         });
-      }
 
-      return updatedUser;
-    });
+        if (payload.preferences) {
+          await tx.userPreferences.upsert({
+            where: { userId: id },
+            create: {
+              userId: id,
+              ...payload.preferences,
+            },
+            update: payload.preferences,
+          });
+        }
+
+        return updatedUser;
+      });
+    }
 
     if (payload.isActive === false) {
       await SessionService.forceLogoutAllSessionsByUser(
@@ -334,7 +363,7 @@ export const DELETE = withErrorHandler(
 
     // Admin sets isDeleted = true (soft delete)
     // Agent/Commercial can only delete their own user
-    if (auth.role === UserRole.ADMIN) {
+    if (isElevatedRole(auth.role)) {
       await prisma.user.update({
         where: { id },
         data: {

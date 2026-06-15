@@ -168,8 +168,9 @@ export interface ElectricityInputs {
   /**
    * Personalizada OMIE + B: user-supplied "B" term (€/MWh) per period plus
    * power margins (€/kW/year).  When present and at least one B value is > 0,
-   * the calculation emits a single "PERSONALIZADA_OMIE_B" result row using
-   * formula: energyCost = (omieEstimado[p] + terminoB[p]/1000) × consumo[p].
+   * the calculation emits a single "PERSONALIZADA_OMIE_B" result row using the
+   * Excel-derived Precio TE for the billing month plus B adjusted by the
+   * workbook multiplier.
    */
   personalizadaOmieB?: {
     /** B term in €/MWh per period (Término Bi Oferta Personalizada) */
@@ -252,7 +253,7 @@ export interface GasInputs {
   };
 
   /**
-   * Personalizada Indexada: user-supplied energy margin (€/kWh) over MIBGAS.
+   * Personalizada Indexada: user-supplied Precio término de energia (€/kWh).
    * When present and margenEnergia > 0, the calculation emits a single
    * "GAS_PERSONALIZADA_INDEX" result row using:
    *   precioEnergia = MIBGAS + margenEnergia
@@ -363,10 +364,12 @@ export interface SimulationPayload {
   results?: SimulationResults;
 
   /** Selected offer to present to client */
-  selectedOffer?: {
-    productKey: string;
-    commodity: "ELECTRICITY" | "GAS";
-    pricingType: "FIXED" | "INDEXED";
-    selectedAt: string;
-  };
+  selectedOffer?:
+    | {
+        productKey: string;
+        commodity: "ELECTRICITY" | "GAS";
+        pricingType: "FIXED" | "INDEXED";
+        selectedAt: string;
+      }
+    | null;
 }

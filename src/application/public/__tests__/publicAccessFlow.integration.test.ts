@@ -7,6 +7,7 @@ const getClientRateLimitKeyMock = jest.fn();
 const verifyPinMock = jest.fn();
 
 const findSimulationMock = jest.fn();
+const updateSimulationMock = jest.fn();
 const findManyVersionMock = jest.fn();
 const accessAttemptCreateMock = jest.fn();
 const auditLogEventMock = jest.fn();
@@ -27,6 +28,7 @@ jest.mock("@/infrastructure/database/prisma", () => ({
   prisma: {
     simulation: {
       findFirst: (...args: unknown[]) => findSimulationMock(...args),
+      update: (...args: unknown[]) => updateSimulationMock(...args),
     },
     simulationVersion: {
       findMany: (...args: unknown[]) => findManyVersionMock(...args),
@@ -56,6 +58,7 @@ describe("public access flow integration", () => {
     applyRateLimitMock.mockReturnValue(undefined);
     verifyPinMock.mockResolvedValue(true);
     accessAttemptCreateMock.mockResolvedValue(undefined);
+    updateSimulationMock.mockResolvedValue(undefined);
     auditLogEventMock.mockResolvedValue(undefined);
     consoleErrorSpy = jest
       .spyOn(console, "error")

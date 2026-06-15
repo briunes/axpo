@@ -108,13 +108,17 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
     };
 
     // Calculate engagement metrics
-    const openRate = analytics.sharedSimulations > 0
-        ? Math.round((analytics.successfulAccess / analytics.sharedSimulations) * 100)
+    // Open rate is computed against email-shared simulations only:
+    // PDF/download shares can never be opened by the client, so including them
+    // would artificially deflate the open rate percentage.
+    const emailSent = analytics.emailSharedSimulations ?? analytics.sharedSimulations;
+    const openRate = emailSent > 0
+        ? Math.round((analytics.successfulAccess / emailSent) * 100)
         : 0;
     const sentRate = analytics.totalSimulations > 0
         ? Math.round((analytics.sharedSimulations / analytics.totalSimulations) * 100)
         : 0;
-    const pendingOpens = analytics.sharedSimulations - (analytics.successfulAccess || 0);
+    const pendingOpens = emailSent - (analytics.successfulAccess || 0);
 
     // Prepare trend data
     const simDates = (analytics.simulationTrend ?? []).map((d) => {
@@ -261,7 +265,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                 <div style={{ display: "flex", gap: 12, alignItems: "stretch", padding: "12px 0", position: "relative" }}>
                     {[
                         { label: t("analyticsModule", "funnelCreated"), value: analytics.totalSimulations, color: "#3b82f6", percent: 100 },
-                        { label: t("analyticsModule", "funnelSent"), value: analytics.sharedSimulations, color: "#10b981", percent: sentRate },
+                        { label: t("analyticsModule", "funnelSentEmail") || "Sent (Email)", value: emailSent, color: "#10b981", percent: analytics.totalSimulations > 0 ? Math.round((emailSent / analytics.totalSimulations) * 100) : 0 },
                         { label: t("analyticsModule", "funnelOpened"), value: analytics.successfulAccess || 0, color: "#06b6d4", percent: openRate },
                     ].map((stage, idx) => (
                         <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, position: "relative" }}>
@@ -439,6 +443,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         rows={(analytics.byUser ?? []).map((r) => ({ ...r, id: r.userId }))}
                         loading={false}
                         onClearFilters={() => undefined}
+                        hasActiveFilters={false}
                         emptyMessage={t("analyticsModule", "emptyCommercialData")}
                         headerRight={<span className="dt-meta-pill">{t("analyticsModule", "pillCommercials").replace("{count}", String(analytics.byUser.length))}</span>}
                     />

@@ -1280,7 +1280,7 @@ export interface SimulationFormProps {
     onClientFieldsChanged?: (clientId: string, data: { name?: string; contactName?: string }) => void;
     onSuccess?: (results: SimulationResults, baseValueSetId?: string) => void;
     onNotify?: (text: string, tone: "success" | "error") => void;
-    onOfferSelected?: (productKey: string) => void;
+    onOfferSelected?: (productKey?: string) => void;
     readOnly?: boolean;
     /** ID of the base value set to use for calculation (Admin override) */
     baseValueSetId?: string;
@@ -1575,6 +1575,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
     const handleSelectOffer = useCallback(async (productKey: string, commodity: "ELECTRICITY" | "GAS", pricingType: "FIXED" | "INDEXED") => {
         const offerData: SimulationPayload["selectedOffer"] = { productKey, commodity, pricingType, selectedAt: new Date().toISOString() };
+        const previousOffer = selectedOffer;
         setSelectedOffer(offerData);
         try {
             // Build the full payload from current state so we never lose inputs or
@@ -1595,10 +1596,33 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "failedToSaveSelection");
             onNotify?.(msg, "error");
-            setSelectedOffer(undefined);
+            setSelectedOffer(previousOffer);
         } finally {
         }
-    }, [simulation.id, token, simType, elecState, gasState, results, onOfferSelected, onNotify]);
+    }, [simulation.id, token, simType, elecState, gasState, results, selectedOffer, onOfferSelected, onNotify]);
+
+    const handleClearOffer = useCallback(async () => {
+        const previousOffer = selectedOffer;
+        setSelectedOffer(undefined);
+        try {
+            const updatedPayload: SimulationPayload = {
+                schemaVersion: "1",
+                type: simType,
+                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
+                gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
+                ...(results ? { results } : {}),
+                selectedOffer: null,
+            };
+            await updateSimulation(token, simulation.id, { payloadJson: updatedPayload as Record<string, unknown> });
+            onOfferSelected?.(undefined);
+            onNotify?.(t("simulationForm", "offerCleared"), "success");
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : t("simulationForm", "failedToClearSelection");
+            setSelectedOffer(previousOffer);
+            onNotify?.(msg, "error");
+            throw err;
+        }
+    }, [simulation.id, token, simType, elecState, gasState, results, selectedOffer, onOfferSelected, onNotify]);
 
     const facturaActual = simType === "ELECTRICITY" ? elecState.facturaActual
         : simType === "GAS" ? gasState.facturaActual : undefined;
@@ -1888,8 +1912,9 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                             }}
                             onRecalculate={readOnly ? undefined : handleCalculate}
                             calculating={calculating}
-                            selectedOffer={selectedOffer}
+                            selectedOffer={selectedOffer ?? undefined}
                             onSelectOffer={readOnly ? undefined : handleSelectOffer}
+                            onClearOffer={readOnly ? undefined : handleClearOffer}
                             readOnly={readOnly}
                             selectedMonth={selectedMonth}
                             availableMonths={readOnly ? undefined : availableMonths}

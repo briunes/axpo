@@ -4,7 +4,10 @@ import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 
@@ -146,12 +149,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   );
   const search = searchParams.get("search") ?? undefined;
   const includeDeleted =
-    searchParams.get("includeDeleted") === "true" &&
-    auth.role === UserRole.ADMIN;
-  const agencyIdFilter =
-    auth.role === UserRole.ADMIN
-      ? (searchParams.get("agencyId") ?? undefined)
-      : undefined;
+    searchParams.get("includeDeleted") === "true" && isElevatedRole(auth.role);
+  const agencyIdFilter = isElevatedRole(auth.role)
+    ? (searchParams.get("agencyId") ?? undefined)
+    : undefined;
   const orderBy = searchParams.get("orderBy") ?? "name";
   const sortDir =
     (searchParams.get("sortDir") ?? "asc") === "asc" ? "asc" : "desc";
@@ -165,13 +166,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   };
   const safeOrderBy = allowedOrderBy[orderBy] ? orderBy : "name";
 
-  const baseWhere =
-    auth.role === UserRole.ADMIN
-      ? {
-          ...(includeDeleted ? {} : { isDeleted: false }),
-          ...(agencyIdFilter ? { agencyId: agencyIdFilter } : {}),
-        }
-      : { agencyId: auth.agencyId, isDeleted: false };
+  const baseWhere = isElevatedRole(auth.role)
+    ? {
+        ...(includeDeleted ? {} : { isDeleted: false }),
+        ...(agencyIdFilter ? { agencyId: agencyIdFilter } : {}),
+      }
+    : { agencyId: auth.agencyId, isDeleted: false };
 
   const where = search
     ? {
@@ -195,6 +195,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         select: {
           id: true,
           name: true,
+          cif: true,
+          contactName: true,
+          contactEmail: true,
           agencyId: true,
           isActive: true,
           isDeleted: true,
@@ -249,10 +252,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const body = await request.json();
   const payload = createClientSchema.parse(body);
 
-  const agencyId =
-    auth.role === UserRole.ADMIN
-      ? (payload.agencyId ?? auth.agencyId)
-      : auth.agencyId;
+  const agencyId = isElevatedRole(auth.role)
+    ? (payload.agencyId ?? auth.agencyId)
+    : auth.agencyId;
 
   const client = await prisma.client.create({
     data: {

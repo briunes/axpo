@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
-import { convertPdfToImages } from "@/lib/pdfToImage";
+import {
+  convertPdfToImages,
+  OCR_MAX_PDF_PAGES,
+  OCR_PDF_RENDER_SCALE,
+} from "@/lib/pdfToImage";
+import { resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
 /**
  * LLM Prompts for Invoice Data Extraction
@@ -273,7 +278,6 @@ CRITICAL FIELDS TO EXTRACT:
    - consumoP4: Consumption in period P4 (kWh)
    - consumoP5: Consumption in period P5 (kWh)
    - consumoP6: Consumption in period P6 (kWh)
-   - consumoAnual: Annual consumption (kWh)
 
    STRICT PERIOD MAPPING:
    - Map values ONLY to their explicitly labeled period number.
@@ -468,7 +472,7 @@ CRITICAL FIELDS TO EXTRACT:
 
 4. GAS CONSUMPTION:
    - consumoTotal: Total gas consumption in kWh or m³ as printed on the invoice
-   - consumoAnual: Annual gas consumption if shown
+   - consumoAnual: Always return null for gas OCR extraction. Do NOT copy consumoTotal into consumoAnual.
    NOTE: Gas invoices do NOT have period-based consumption (P1..P6). Leave consumoP1..P6 as null.
 
 5. FINANCIAL INFORMATION:
@@ -478,11 +482,17 @@ CRITICAL FIELDS TO EXTRACT:
 
 6. GAS-SPECIFIC:
    - telemedida: Remote metering ("SI" or "NO")
-   - impuestoHidrocarburo: Hydrocarbon tax amount (€) if shown
+   - impuestoHidrocarburo: Hydrocarbon tax UNIT RATE in €/kWh, if shown.
+     This is NOT the total euro amount charged for the tax.
+     Example: in a row like "99.393 kWh 0,002340 232,58 Eur", extract 0.002340, NEVER 232.58.
+     Example: if the invoice says "(0,65 Eur/Gj)" and the configured allowed €/kWh option is 0.00234, return 0.00234.
 
 7. TAX RATES (only if explicitly printed):
    - ivaTasa: IVA/VAT rate as a PERCENTAGE number (e.g. 21). Look for "IVA", "I.V.A.". For Canary Islands look for "IGIC".
-   - impuestoHidrocarburo: Hydrocarbon/gas tax amount in € if shown. Look for "Impuesto sobre Hidrocarburos", "I.H.", "Imp. Hidrocarburos".
+   - impuestoHidrocarburo: Hydrocarbon/gas tax UNIT RATE in €/kWh if shown.
+     Look for "Impuesto sobre Hidrocarburos", "I.H.", "Imp. Hidrocarburos".
+     If the invoice prints both a unit price and an importe/total, use the unit price column.
+     If the invoice prints a rate in Eur/Gj plus an equivalence to kWh, convert it to €/kWh only when it matches one configured allowed option.
 
 IMPORTANT NOTES:
 - Convert all dates to YYYY-MM-DD format
@@ -694,13 +704,17 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     );
   }
 
-  const llmBaseUrl = (config as any).llmBaseUrl;
-  const llmModelName = (config as any).llmModelName;
-  const llmProvider = (config as any).llmProvider || "ollama";
-  const llmApiKey = (config as any).llmApiKey;
-  // Convert Decimal to number for temperature and maxTokens
-  const llmTemperature = Number((config as any).llmTemperature) || 0.1;
-  const llmMaxTokens = Number((config as any).llmMaxTokens) || 2000;
+  const aiConfig = resolveAiConfigFromSystemConfig(
+    config as Record<string, any>,
+    "invoiceExtraction",
+    { defaultTemperature: 0.1, defaultMaxTokens: 2000 },
+  );
+  const llmBaseUrl = aiConfig?.baseUrl;
+  const llmModelName = aiConfig?.modelName;
+  const llmProvider = aiConfig?.provider || "unknown";
+  const llmApiKey = aiConfig?.apiKey;
+  const llmTemperature = aiConfig?.temperature ?? 0.1;
+  const llmMaxTokens = aiConfig?.maxTokens ?? 2000;
 
   console.log("=== INVOICE EXTRACTION REQUEST ===");
   console.log("Provider:", llmProvider);
@@ -753,6 +767,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // Load provider-specific prompt if a providerId was supplied
   let activePrompt = defaultPrompt;
+  let invoiceProviderName: string | null = null;
   if (providerId) {
     try {
       const providerRecord = await (
@@ -761,6 +776,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         where: { id: providerId },
       });
       if (providerRecord) {
+        invoiceProviderName = providerRecord.name as string;
         // Pick the per-commodity prompt first, fall back to legacy generic prompt
         const commodityPrompt =
           invoiceType === "GAS"
@@ -829,77 +845,70 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         ]
       : ["2.0TD", "3.0TD", "6.1TD"];
 
-  // Extract available tax options from config for display in OCR prompt
-  const getElectricityTaxOptions = (): number[] => {
-    if (!electricityTaxConfig) return [];
-    const allOptions = new Set<number>();
+  // Extract available tax/rate options from config for display in OCR prompt.
+  const toNumberArray = (value: unknown): number[] =>
+    Array.isArray(value)
+      ? value
+          .map((item) => Number(item))
+          .filter((item) => Number.isFinite(item))
+      : [];
 
-    // Collect IVA options from all zones
-    if (electricityTaxConfig.peninsula?.ivaOptions) {
-      electricityTaxConfig.peninsula.ivaOptions.forEach((v: number) =>
-        allOptions.add(v),
-      );
-    }
-    if (electricityTaxConfig.baleares?.ivaOptions) {
-      electricityTaxConfig.baleares.ivaOptions.forEach((v: number) =>
-        allOptions.add(v),
-      );
-    }
-    if (electricityTaxConfig.canarias?.igicOptions) {
-      electricityTaxConfig.canarias.igicOptions.forEach((v: number) =>
-        allOptions.add(v),
-      );
-    }
+  const uniqueSorted = (values: number[]): number[] =>
+    Array.from(new Set(values.filter((value) => Number.isFinite(value)))).sort(
+      (a, b) => a - b,
+    );
 
-    // Collect electricity tax options from all zones
-    if (electricityTaxConfig.peninsula?.elecTaxOptions) {
-      electricityTaxConfig.peninsula.elecTaxOptions.forEach((v: number) =>
-        allOptions.add(v),
-      );
-    }
-    if (electricityTaxConfig.baleares?.elecTaxOptions) {
-      electricityTaxConfig.baleares.elecTaxOptions.forEach((v: number) =>
-        allOptions.add(v),
-      );
-    }
-    if (electricityTaxConfig.canarias?.elecTaxOptions) {
-      electricityTaxConfig.canarias.elecTaxOptions.forEach((v: number) =>
-        allOptions.add(v),
-      );
-    }
+  const gasTaxConfig = (config as any).gasTaxConfig as
+    | Record<string, any>
+    | undefined;
 
-    return Array.from(allOptions).sort((a, b) => a - b);
-  };
+  const electricityIvaOptions = uniqueSorted([
+    ...toNumberArray((config as any).ivaRateOptions),
+    Number((config as any).ivaRate),
+    ...toNumberArray(electricityTaxConfig?.peninsula?.ivaOptions),
+    ...toNumberArray(electricityTaxConfig?.peninsula?.ivaRates),
+    ...toNumberArray(electricityTaxConfig?.baleares?.ivaOptions),
+    ...toNumberArray(electricityTaxConfig?.baleares?.ivaRates),
+    ...toNumberArray(electricityTaxConfig?.canarias?.igicOptions),
+    ...toNumberArray(electricityTaxConfig?.canarias?.igicRates),
+  ]);
 
-  const getGasTaxOptions = (): number[] => {
-    const gasTaxConfig = (config as any).gasTaxConfig as
-      | Record<string, any>
-      | undefined;
-    if (!gasTaxConfig) return [];
-    const allOptions = new Set<number>();
+  const electricityTaxRateOptions = uniqueSorted([
+    ...toNumberArray((config as any).electricityTaxRateOptions),
+    Number((config as any).electricityTaxRate),
+    ...toNumberArray(electricityTaxConfig?.peninsula?.elecTaxOptions),
+    ...toNumberArray(electricityTaxConfig?.peninsula?.elecTaxRates),
+    ...toNumberArray(electricityTaxConfig?.baleares?.elecTaxOptions),
+    ...toNumberArray(electricityTaxConfig?.baleares?.elecTaxRates),
+    ...toNumberArray(electricityTaxConfig?.canarias?.elecTaxOptions),
+    ...toNumberArray(electricityTaxConfig?.canarias?.elecTaxRates),
+  ]);
 
-    // Collect IVA options from all zones
-    if (gasTaxConfig.peninsula?.ivaOptions) {
-      gasTaxConfig.peninsula.ivaOptions.forEach((v: number) =>
-        allOptions.add(v),
-      );
-    }
-    if (gasTaxConfig.baleares?.ivaOptions) {
-      gasTaxConfig.baleares.ivaOptions.forEach((v: number) =>
-        allOptions.add(v),
-      );
-    }
+  const gasIvaOptions = uniqueSorted([
+    ...toNumberArray((config as any).ivaRateOptions),
+    Number((config as any).ivaRate),
+    ...toNumberArray(gasTaxConfig?.peninsula?.ivaOptions),
+    ...toNumberArray(gasTaxConfig?.peninsula?.ivaRates),
+    ...toNumberArray(gasTaxConfig?.baleares?.ivaOptions),
+    ...toNumberArray(gasTaxConfig?.baleares?.ivaRates),
+  ]);
 
-    return Array.from(allOptions).sort((a, b) => a - b);
-  };
-
-  const elecTaxOptions = getElectricityTaxOptions();
-  const gasTaxOptions = getGasTaxOptions();
+  const hydrocarbonTaxRateOptions = uniqueSorted([
+    ...toNumberArray((config as any).hydrocarbonTaxRateOptions),
+    Number((config as any).hydrocarbonTaxRate),
+    ...toNumberArray(gasTaxConfig?.hydrocarbonTaxOptions),
+    ...toNumberArray(gasTaxConfig?.hydrocarbonTaxRates),
+  ]);
 
   // Format options for display in prompt (convert to percentages)
   const formatTaxOptionsForPrompt = (options: number[]): string => {
     if (options.length === 0) return "not available";
     return options.map((opt) => `${(opt * 100).toFixed(5)}%`).join(", ");
+  };
+
+  const formatRateOptionsForPrompt = (options: number[]): string => {
+    if (options.length === 0) return "not available";
+    return options.map((opt) => opt.toFixed(5)).join(", ");
   };
 
   activePrompt += `
@@ -910,15 +919,20 @@ SYSTEM ALLOWED OPTIONS (MUST FOLLOW)
 - tarifaAcceso: return ONLY one of: ${allowedTariffs.join(", ")}
 ${
   effectiveInvoiceType === "ELECTRICITY"
-    ? `- ivaTasa (for Electricity): return ONLY one of: ${formatTaxOptionsForPrompt(elecTaxOptions)}
+    ? `- ivaTasa (for Electricity): return ONLY one of: ${formatTaxOptionsForPrompt(electricityIvaOptions)}
 - impuestoElectricoTasa (Electricity Tax): return ONLY one of: ${formatTaxOptionsForPrompt(
-        elecTaxOptions.filter((opt) => opt < 0.1),
-      )} (these are the electricity tax rates, NOT VAT)`
-    : `- ivaTasa (for Gas): return ONLY one of: ${formatTaxOptionsForPrompt(gasTaxOptions)}`
+        electricityTaxRateOptions,
+      )} (these are the electricity tax rates, NOT VAT totals)`
+    : `- ivaTasa (for Gas): return ONLY one of: ${formatTaxOptionsForPrompt(gasIvaOptions)}
+- impuestoHidrocarburo (Hydrocarbon Tax €/kWh): return ONLY one of: ${formatRateOptionsForPrompt(
+        hydrocarbonTaxRateOptions,
+      )} (this is the unit rate, NOT the euro total/import amount)`
 }
 ${
   effectiveInvoiceType === "GAS"
-    ? '- For gas invoices, map "Peninsula and Balearic Islands" to zonaGeografica = "Peninsula".'
+    ? `- For gas invoices, map "Peninsula and Balearic Islands" to zonaGeografica = "Peninsula".
+- For gas invoices, when a row shows quantity, unit price, and importe, use the unit price for impuestoHidrocarburo. Example: "99.393 kWh 0,002340 232,58 Eur" => impuestoHidrocarburo = 0.00234.
+- For gas invoices, if the invoice only shows "0,65 Eur/Gj" for hydrocarbon tax and the allowed €/kWh options include 0.00234, return 0.00234.`
     : ""
 }
 If invoice text uses a different format, map it to the closest allowed value above.
@@ -1046,13 +1060,17 @@ If invoice text uses a different format, map it to the closest allowed value abo
     if (file.type === "application/pdf") {
       // For Ollama (local and cloud), convert PDF to images first
       if (llmProvider === "ollama" || llmProvider === "ollama-cloud") {
-        const pdfImages = await convertPdfToImages(buffer, 2, 1.5);
+        const pdfImages = await convertPdfToImages(
+          buffer,
+          OCR_MAX_PDF_PAGES,
+          OCR_PDF_RENDER_SCALE,
+        );
         const fileNameWithoutExt = file.name.replace(/\.[^.]+$/, "");
 
         convertedPdfLogFiles = pdfImages.map((img) => {
           const imageBuffer = Buffer.from(img.base64, "base64");
           return {
-            fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.png`,
+            fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.${img.fileExtension}`,
             fileType: img.mimeType,
             fileSizeBytes: imageBuffer.length,
             fileData: imageBuffer,
@@ -1463,6 +1481,10 @@ If invoice text uses a different format, map it to the closest allowed value abo
       }
     }
 
+    if (effectiveInvoiceType === "GAS") {
+      delete extractedData.consumoAnual;
+    }
+
     // CUPS validation: Spanish CUPS format is ES + exactly 16 digits + 2 uppercase letters.
     // Anything after the 2 trailing letters is cropped.
     // Strip spaces first, then extract.
@@ -1567,26 +1589,63 @@ If invoice text uses a different format, map it to the closest allowed value abo
       return null;
     };
 
-    // Validate electricity tax rates (if electricity invoice)
-    if (effectiveInvoiceType === "ELECTRICITY" && electricityTaxConfig) {
-      // Collect all available electricity tax options from config
-      const allElecTaxOptions: number[] = [];
-      if (electricityTaxConfig.peninsula?.elecTaxOptions) {
-        electricityTaxConfig.peninsula.elecTaxOptions.forEach((v: number) => {
-          if (!allElecTaxOptions.includes(v)) allElecTaxOptions.push(v);
-        });
-      }
-      if (electricityTaxConfig.baleares?.elecTaxOptions) {
-        electricityTaxConfig.baleares.elecTaxOptions.forEach((v: number) => {
-          if (!allElecTaxOptions.includes(v)) allElecTaxOptions.push(v);
-        });
-      }
-      if (electricityTaxConfig.canarias?.elecTaxOptions) {
-        electricityTaxConfig.canarias.elecTaxOptions.forEach((v: number) => {
-          if (!allElecTaxOptions.includes(v)) allElecTaxOptions.push(v);
-        });
+    const matchUnitRateToOption = (
+      ocrValue: number | null | undefined,
+      availableOptions: number[],
+      fieldName: string,
+    ): number | null => {
+      if (
+        ocrValue === null ||
+        ocrValue === undefined ||
+        availableOptions.length === 0
+      ) {
+        return null;
       }
 
+      const numericValue = Number(ocrValue);
+      if (!Number.isFinite(numericValue)) {
+        return null;
+      }
+
+      const exactMatch = availableOptions.find(
+        (opt) => Math.abs(opt - numericValue) < 0.000001,
+      );
+      if (exactMatch !== undefined) {
+        console.log(
+          `[Tax Validation] Field "${fieldName}": OCR value ${ocrValue} matches configured unit rate ${exactMatch.toFixed(5)} exactly`,
+        );
+        return exactMatch;
+      }
+
+      // Hydrocarbon tax rates are tiny €/kWh values, so keep a narrow tolerance
+      // to avoid accepting invoice line totals such as 232.58 as configured rates.
+      const toleranceThreshold = 0.00005;
+      let closestMatch: number | undefined;
+      let closestDistance = Infinity;
+
+      for (const option of availableOptions) {
+        const distance = Math.abs(option - numericValue);
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestMatch = option;
+        }
+      }
+
+      if (closestMatch !== undefined && closestDistance <= toleranceThreshold) {
+        console.log(
+          `[Tax Validation] Field "${fieldName}": OCR value ${ocrValue} corrected to closest configured unit rate ${closestMatch.toFixed(5)} (distance: ${closestDistance.toFixed(5)})`,
+        );
+        return closestMatch;
+      }
+
+      console.warn(
+        `⚠️  [Tax Validation] Field "${fieldName}": OCR value ${ocrValue} does NOT match any configured unit-rate option. Available options: ${availableOptions.map((opt) => opt.toFixed(5)).join(", ")}. Discarding value.`,
+      );
+      return null;
+    };
+
+    // Validate electricity tax rates (if electricity invoice)
+    if (effectiveInvoiceType === "ELECTRICITY") {
       // Validate and correct impuestoElectricoTasa
       if (
         extractedData.impuestoElectricoTasa !== null &&
@@ -1594,7 +1653,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       ) {
         const matched = matchTaxRateToOption(
           extractedData.impuestoElectricoTasa,
-          allElecTaxOptions,
+          electricityTaxRateOptions,
           "impuestoElectricoTasa",
         );
         if (matched !== null) {
@@ -1605,24 +1664,6 @@ If invoice text uses a different format, map it to the closest allowed value abo
         }
       }
 
-      // Collect all available IVA options from config
-      const allIvaOptions: number[] = [];
-      if (electricityTaxConfig.peninsula?.ivaOptions) {
-        electricityTaxConfig.peninsula.ivaOptions.forEach((v: number) => {
-          if (!allIvaOptions.includes(v)) allIvaOptions.push(v);
-        });
-      }
-      if (electricityTaxConfig.baleares?.ivaOptions) {
-        electricityTaxConfig.baleares.ivaOptions.forEach((v: number) => {
-          if (!allIvaOptions.includes(v)) allIvaOptions.push(v);
-        });
-      }
-      if (electricityTaxConfig.canarias?.igicOptions) {
-        electricityTaxConfig.canarias.igicOptions.forEach((v: number) => {
-          if (!allIvaOptions.includes(v)) allIvaOptions.push(v);
-        });
-      }
-
       // Validate and correct ivaTasa
       if (
         extractedData.ivaTasa !== null &&
@@ -1630,7 +1671,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       ) {
         const matched = matchTaxRateToOption(
           extractedData.ivaTasa,
-          allIvaOptions,
+          electricityIvaOptions,
           "ivaTasa (Electricity)",
         );
         if (matched !== null) {
@@ -1644,40 +1685,38 @@ If invoice text uses a different format, map it to the closest allowed value abo
 
     // Validate gas tax rates (if gas invoice)
     if (effectiveInvoiceType === "GAS") {
-      const gasTaxConfig = (config as any).gasTaxConfig as
-        | Record<string, any>
-        | undefined;
-
-      if (gasTaxConfig) {
-        // Collect all available IVA options from gas config
-        const allIvaOptions: number[] = [];
-        if (gasTaxConfig.peninsula?.ivaOptions) {
-          gasTaxConfig.peninsula.ivaOptions.forEach((v: number) => {
-            if (!allIvaOptions.includes(v)) allIvaOptions.push(v);
-          });
+      // Validate and correct ivaTasa
+      if (
+        extractedData.ivaTasa !== null &&
+        extractedData.ivaTasa !== undefined
+      ) {
+        const matched = matchTaxRateToOption(
+          extractedData.ivaTasa,
+          gasIvaOptions,
+          "ivaTasa (Gas)",
+        );
+        if (matched !== null) {
+          // Convert back to percentage format
+          extractedData.ivaTasa = matched * 100;
+        } else {
+          delete extractedData.ivaTasa;
         }
-        if (gasTaxConfig.baleares?.ivaOptions) {
-          gasTaxConfig.baleares.ivaOptions.forEach((v: number) => {
-            if (!allIvaOptions.includes(v)) allIvaOptions.push(v);
-          });
-        }
+      }
 
-        // Validate and correct ivaTasa
-        if (
-          extractedData.ivaTasa !== null &&
-          extractedData.ivaTasa !== undefined
-        ) {
-          const matched = matchTaxRateToOption(
-            extractedData.ivaTasa,
-            allIvaOptions,
-            "ivaTasa (Gas)",
-          );
-          if (matched !== null) {
-            // Convert back to percentage format
-            extractedData.ivaTasa = matched * 100;
-          } else {
-            delete extractedData.ivaTasa;
-          }
+      // Validate and correct impuestoHidrocarburo as a unit rate (€/kWh).
+      if (
+        extractedData.impuestoHidrocarburo !== null &&
+        extractedData.impuestoHidrocarburo !== undefined
+      ) {
+        const matched = matchUnitRateToOption(
+          extractedData.impuestoHidrocarburo,
+          hydrocarbonTaxRateOptions,
+          "impuestoHidrocarburo",
+        );
+        if (matched !== null) {
+          extractedData.impuestoHidrocarburo = matched;
+        } else {
+          delete extractedData.impuestoHidrocarburo;
         }
       }
     }
@@ -1735,6 +1774,9 @@ If invoice text uses a different format, map it to the closest allowed value abo
         temperature: llmTemperature,
         maxTokens: llmMaxTokens,
         imagesProcessed: imagesToProcess.length,
+        invoiceProviderId: providerId ?? null,
+        invoiceProviderName: invoiceProviderName ?? null,
+        invoiceType: effectiveInvoiceType,
       },
     });
 

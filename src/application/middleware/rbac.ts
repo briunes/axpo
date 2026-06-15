@@ -3,11 +3,21 @@ import { UserRole } from "@/domain/types";
 import { AuthContext } from "./auth";
 import { prisma } from "@/infrastructure/database/prisma";
 import {
+  LOG_PERMISSION_KEYS,
   ROLE_PERMISSION_DEFAULTS,
   type PermissionKey,
 } from "../../../app/internal/lib/permissionsDefinitions";
 
+/** SYS_ADMIN is always treated as having the highest privilege level. */
+const isElevated = (role: UserRole) =>
+  role === UserRole.SYS_ADMIN || role === UserRole.ADMIN;
+
+/** Exported helper for route files that need an admin-level check. */
+export const isElevatedRole = isElevated;
+
 export const assertRole = (context: AuthContext, allowedRoles: UserRole[]) => {
+  // SYS_ADMIN passes any role check
+  if (isElevated(context.role)) return;
   if (!allowedRoles.includes(context.role)) {
     throw new ForbiddenError("Insufficient permissions for this operation");
   }
@@ -48,7 +58,13 @@ export async function assertPermission(
   context: AuthContext,
   key: PermissionKey,
 ): Promise<void> {
-  if (context.role === UserRole.ADMIN) return;
+  if (context.role === UserRole.SYS_ADMIN) return;
+  if (
+    context.role === UserRole.ADMIN &&
+    !LOG_PERMISSION_KEYS.includes(key)
+  ) {
+    return;
+  }
 
   const cacheKey = permissionCacheKey(context.role, key);
   const now = Date.now();

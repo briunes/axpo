@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationStatus } from "@/domain/types";
 
@@ -43,18 +44,12 @@ export class SimulationExpirationService {
 
     const expiredIds = expiredSimulations.map((sim) => sim.id);
 
-    // Update all expired simulations to EXPIRED status
-    await prisma.simulation.updateMany({
-      where: {
-        id: {
-          in: expiredIds,
-        },
-      },
-      data: {
-        status: SimulationStatus.EXPIRED,
-        updatedAt: now,
-      },
-    });
+    // Use raw SQL so this scheduled status transition does not touch updatedAt.
+    await prisma.$executeRaw`
+      UPDATE "simulations"
+      SET "status" = ${SimulationStatus.EXPIRED}::"SimulationStatus"
+      WHERE "id" IN (${Prisma.join(expiredIds)})
+    `;
 
     console.log(
       `[SimulationExpirationService] Expired ${expiredIds.length} simulations:`,

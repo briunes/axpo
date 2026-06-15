@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import type { SessionState } from "../../lib/authSession";
 
 export interface CronSettingsProps {
+    session: SessionState;
     onNotify: (message: string, tone: "success" | "error") => void;
 }
 
@@ -15,14 +17,14 @@ interface CronConfig {
 }
 
 const COMMON_SCHEDULES = [
-    { value: "0 2 * * *", label: "Daily at 2:00 AM" },
-    { value: "0 3 * * *", label: "Daily at 3:00 AM" },
-    { value: "0 4 * * *", label: "Daily at 4:00 AM" },
-    { value: "0 0 * * *", label: "Daily at midnight" },
-    { value: "0 */6 * * *", label: "Every 6 hours" },
-    { value: "0 */12 * * *", label: "Every 12 hours" },
-    { value: "0 0 * * 0", label: "Weekly on Sunday" },
-    { value: "custom", label: "Custom schedule..." },
+    { value: "0 2 * * *", labelKey: "scheduleDaily2" },
+    { value: "0 3 * * *", labelKey: "scheduleDaily3" },
+    { value: "0 4 * * *", labelKey: "scheduleDaily4" },
+    { value: "0 0 * * *", labelKey: "scheduleMidnight" },
+    { value: "0 */6 * * *", labelKey: "scheduleEvery6Hours" },
+    { value: "0 */12 * * *", labelKey: "scheduleEvery12Hours" },
+    { value: "0 0 * * 0", labelKey: "scheduleWeeklySunday" },
+    { value: "custom", labelKey: "scheduleCustom" },
 ];
 
 const COMMON_TIMEZONES = [
@@ -37,7 +39,7 @@ const COMMON_TIMEZONES = [
     { value: "Asia/Shanghai", label: "Asia/Shanghai" },
 ];
 
-export function CronSettings({ onNotify }: CronSettingsProps) {
+export function CronSettings({ session, onNotify }: CronSettingsProps) {
     const { t } = useI18n();
     const [config, setConfig] = useState<CronConfig>({
         enabled: true,
@@ -58,8 +60,10 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
     const loadConfig = async () => {
         try {
             setIsLoading(true);
-            const response = await fetch("/api/v1/internal/system/cron-config");
-            if (!response.ok) throw new Error("Failed to load cron configuration");
+            const response = await fetch("/api/v1/internal/system/cron-config", {
+                headers: { Authorization: `Bearer ${session.token}` },
+            });
+            if (!response.ok) throw new Error(t("cronSettings", "loadError"));
 
             const data = await response.json();
             setConfig(data);
@@ -76,7 +80,7 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
             }
         } catch (error) {
             console.error("Error loading cron config:", error);
-            onNotify("Failed to load cron configuration", "error");
+            onNotify(t("cronSettings", "loadError"), "error");
         } finally {
             setIsLoading(false);
         }
@@ -115,7 +119,10 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
             setIsSaving(true);
             const response = await fetch("/api/v1/internal/system/cron-config", {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    Authorization: `Bearer ${session.token}`,
+                    "Content-Type": "application/json",
+                },
                 body: JSON.stringify({
                     enabled: config.enabled,
                     schedule: config.schedule,
@@ -125,16 +132,16 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || "Failed to update cron configuration");
+                throw new Error(error.error || t("cronSettings", "updateError"));
             }
 
             const data = await response.json();
             setConfig(data.config);
             setIsDirty(false);
-            onNotify("Cron configuration updated successfully", "success");
+            onNotify(t("cronSettings", "saveSuccess"), "success");
         } catch (error) {
             console.error("Error saving cron config:", error);
-            onNotify(error instanceof Error ? error.message : "Failed to save configuration", "error");
+            onNotify(error instanceof Error ? error.message : t("cronSettings", "saveError"), "error");
         } finally {
             setIsSaving(false);
         }
@@ -149,7 +156,7 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
         return (
             <div className="settings-panel">
                 <div style={{ padding: "40px", textAlign: "center", color: "var(--axpo-text-muted)" }}>
-                    Loading cron configuration...
+                    {t("cronSettings", "loading")}
                 </div>
             </div>
         );
@@ -157,9 +164,9 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
 
     return (
         <div className="settings-panel">
-            <h3 className="settings-panel-title">Cron Jobs Configuration</h3>
+            <h3 className="settings-panel-title">{t("cronSettings", "title")}</h3>
             <p className="settings-panel-description">
-                Configure automatic scheduled tasks for the system, such as expiring simulations.
+                {t("cronSettings", "description")}
             </p>
 
             <div className="config-field">
@@ -169,19 +176,19 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
                         checked={config.enabled}
                         onChange={(e) => handleToggleEnabled(e.target.checked)}
                     />
-                    <span>Enable automatic simulation expiration</span>
+                    <span>{t("cronSettings", "enableExpiration")}</span>
                 </label>
                 <span className="config-field-description" style={{ marginLeft: "32px" }}>
-                    When enabled, simulations will be automatically expired based on the schedule below.
+                    {t("cronSettings", "enableExpirationDesc")}
                 </span>
             </div>
 
             {config.enabled && (
                 <>
                     <div className="config-field">
-                        <label className="config-field-label">Schedule</label>
+                        <label className="config-field-label">{t("cronSettings", "schedule")}</label>
                         <span className="config-field-description">
-                            Choose when the expiration job should run
+                            {t("cronSettings", "scheduleDesc")}
                         </span>
                         <select
                             value={selectedSchedule}
@@ -189,7 +196,7 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
                         >
                             {COMMON_SCHEDULES.map((schedule) => (
                                 <option key={schedule.value} value={schedule.value}>
-                                    {schedule.label}
+                                    {t("cronSettings", schedule.labelKey)}
                                 </option>
                             ))}
                         </select>
@@ -197,9 +204,9 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
 
                     {showCustom && (
                         <div className="config-field">
-                            <label className="config-field-label">Custom Cron Expression</label>
+                            <label className="config-field-label">{t("cronSettings", "customExpression")}</label>
                             <span className="config-field-description">
-                                Format: minute hour day month weekday (e.g., "0 2 * * *" for daily at 2 AM)
+                                {t("cronSettings", "customExpressionDesc")}
                             </span>
                             <input
                                 type="text"
@@ -215,16 +222,16 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
                                     rel="noopener noreferrer"
                                     style={{ color: "var(--axpo-primary)" }}
                                 >
-                                    → Use crontab.guru to build your expression
+                                    → {t("cronSettings", "crontabGuru")}
                                 </a>
                             </div>
                         </div>
                     )}
 
                     <div className="config-field">
-                        <label className="config-field-label">Timezone</label>
+                        <label className="config-field-label">{t("cronSettings", "timezone")}</label>
                         <span className="config-field-description">
-                            Timezone in which the schedule should run
+                            {t("cronSettings", "timezoneDesc")}
                         </span>
                         <select
                             value={config.timezone}
@@ -247,7 +254,7 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
                                 border: "1px solid var(--axpo-border)",
                             }}>
                                 <div style={{ fontSize: "13px", color: "var(--axpo-text-muted)", marginBottom: "4px" }}>
-                                    Current schedule:
+                                    {t("cronSettings", "currentSchedule")}
                                 </div>
                                 <div style={{ fontSize: "14px", fontWeight: 600 }}>
                                     {config.scheduleDescription} ({config.timezone})
@@ -264,14 +271,14 @@ export function CronSettings({ onNotify }: CronSettingsProps) {
                     onClick={handleSave}
                     disabled={!isDirty || isSaving}
                 >
-                    {isSaving ? "Saving..." : "Save Changes"}
+                    {isSaving ? t("cronSettings", "saving") : t("cronSettings", "saveChanges")}
                 </button>
                 <button
                     className="config-btn config-btn-secondary"
                     onClick={handleReset}
                     disabled={!isDirty || isSaving}
                 >
-                    Reset
+                    {t("cronSettings", "reset")}
                 </button>
             </div>
         </div>

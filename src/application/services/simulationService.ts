@@ -8,6 +8,14 @@ import {
 } from "@/domain/errors/errors";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "./auditService";
+import {
+  decryptSensitiveValue,
+  encryptSensitiveValue,
+} from "@/application/lib/sensitiveData";
+
+/** True for roles that have unrestricted access (ADMIN and SYS_ADMIN). */
+const isElevatedRole = (role: UserRole) =>
+  role === UserRole.ADMIN || role === UserRole.SYS_ADMIN;
 
 interface ActorContext {
   userId: string;
@@ -44,6 +52,65 @@ const toInputJson = (value: unknown): Prisma.InputJsonValue => {
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+const OCR_CORRECTION_COMMON_FIELDS = [
+  "cups",
+  "nombreTitular",
+  "personaContacto",
+  "direccion",
+  "clienteAddress",
+  "comercializadorActual",
+  "cif",
+  "tarifaAcceso",
+  "zonaGeografica",
+  "fechaInicio",
+  "fechaFin",
+  "facturaActual",
+  "alquiler",
+  "otrosCargos",
+  "ivaTasa",
+  "invoiceType",
+] as const;
+
+const OCR_CORRECTION_ELECTRICITY_FIELDS = [
+  ...OCR_CORRECTION_COMMON_FIELDS,
+  "perfilCarga",
+  "consumoAnual",
+  "consumoP1",
+  "consumoP2",
+  "consumoP3",
+  "consumoP4",
+  "consumoP5",
+  "consumoP6",
+  "potenciaP1",
+  "potenciaP2",
+  "potenciaP3",
+  "potenciaP4",
+  "potenciaP5",
+  "potenciaP6",
+  "precioPotenciaP1",
+  "precioPotenciaP2",
+  "precioPotenciaP3",
+  "precioPotenciaP4",
+  "precioPotenciaP5",
+  "precioPotenciaP6",
+  "precioEnergiaP1",
+  "precioEnergiaP2",
+  "precioEnergiaP3",
+  "precioEnergiaP4",
+  "precioEnergiaP5",
+  "precioEnergiaP6",
+  "excesoPotencia",
+  "reactiva",
+  "impuestoElectricoTasa",
+] as const;
+
+const OCR_CORRECTION_GAS_FIELDS = [
+  ...OCR_CORRECTION_COMMON_FIELDS,
+  "consumoTotal",
+  "impuestoHidrocarburo",
+  "telemedida",
+] as const;
 
 const parseJsonLikeString = (value: unknown): unknown => {
   if (typeof value !== "string") return value;
@@ -178,7 +245,7 @@ const applySalesAgentDefaults = (
 
 export class SimulationService {
   static buildSimulationFilter(actor: ActorContext, includeDeleted = false) {
-    if (actor.role === UserRole.ADMIN) {
+    if (isElevatedRole(actor.role)) {
       return includeDeleted ? {} : { isDeleted: false };
     }
 
@@ -212,7 +279,7 @@ export class SimulationService {
       throw new NotFoundError("Simulation", simulationId);
     }
 
-    if (actor.role === UserRole.ADMIN) {
+    if (isElevatedRole(actor.role)) {
       return simulation;
     }
 
@@ -279,15 +346,18 @@ export class SimulationService {
       try {
         created = await prisma.simulation.create({
           data: {
-            agencyId:
-              actor.role === UserRole.ADMIN
-                ? ownerUser.agencyId
-                : actor.agencyId,
+            agencyId: isElevatedRole(actor.role)
+              ? ownerUser.agencyId
+              : actor.agencyId,
             ownerUserId,
             clientId: input.clientId ?? null,
             expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
             pinHashSnapshot: ownerUser.pinHash,
-            pinSnapshot: ownerUser.pinCurrent ?? null,
+            pinSnapshot: ownerUser.pinCurrent
+              ? encryptSensitiveValue(
+                  decryptSensitiveValue(ownerUser.pinCurrent) ?? "",
+                )
+              : null,
             referenceNumber,
           },
         });
@@ -316,15 +386,92 @@ export class SimulationService {
     );
 
     if (ocrLogIds.length > 0) {
-      await prisma.ocrLog.updateMany({
-        where: {
-          id: { in: ocrLogIds },
-          userId: actor.userId,
-        },
-        data: {
-          simulationId: created.id,
-        },
+      // Fetch existing OCR logs so we can compute per-field user corrections
+      const existingLogs = await prisma.ocrLog.findMany({
+        where: { id: { in: ocrLogIds }, userId: actor.userId },
+        select: { id: true, extractedFields: true },
       });
+
+      // invoiceData in the payload holds exactly the flat OCR field names after
+      // the user may have edited them in the extracted-data form
+      const invoiceData = isPlainObject(input.payloadJson?.invoiceData)
+        ? (input.payloadJson!.invoiceData as Record<string, unknown>)
+        : null;
+      const invoiceType =
+        String(
+          invoiceData?.invoiceType ?? input.payloadJson?.type ?? "",
+        ).toUpperCase() === "GAS"
+          ? "GAS"
+          : "ELECTRICITY";
+      const correctionFields = new Set<string>(
+        invoiceType === "GAS"
+          ? OCR_CORRECTION_GAS_FIELDS
+          : OCR_CORRECTION_ELECTRICITY_FIELDS,
+      );
+
+      for (const log of existingLogs) {
+        let userCorrections: Record<
+          string,
+          { ocr: unknown; corrected: unknown }
+        > | null = null;
+
+        if (invoiceData && isPlainObject(log.extractedFields)) {
+          const ocrFields = log.extractedFields as Record<string, unknown>;
+          const corrections: Record<
+            string,
+            { ocr: unknown; corrected: unknown }
+          > = {};
+          const normalise = (v: unknown) =>
+            typeof v === "string" ? v.trim() : v;
+
+          // Only compare fields that are explicitly present in invoiceData
+          // (fields not mapped there were never shown to the user, so can't be corrections)
+          for (const field of Object.keys(invoiceData)) {
+            if (!correctionFields.has(field)) {
+              continue;
+            }
+
+            const submittedValue = invoiceData[field];
+            const ocrValue = ocrFields[field];
+
+            // Field was not in OCR output at all — user filled it from scratch
+            if (!(field in ocrFields)) {
+              if (
+                submittedValue !== null &&
+                submittedValue !== undefined &&
+                submittedValue !== ""
+              ) {
+                corrections[field] = { ocr: null, corrected: submittedValue };
+              }
+              continue;
+            }
+
+            // Both present — compare
+            if (
+              String(normalise(ocrValue)) !== String(normalise(submittedValue))
+            ) {
+              corrections[field] = {
+                ocr: ocrValue,
+                corrected: submittedValue,
+              };
+            }
+          }
+
+          if (Object.keys(corrections).length > 0) {
+            userCorrections = corrections;
+          }
+        }
+
+        await prisma.ocrLog.update({
+          where: { id: log.id },
+          data: {
+            simulation: { connect: { id: created.id } },
+            ...(userCorrections !== null
+              ? { userCorrections: userCorrections as Prisma.InputJsonValue }
+              : {}),
+          },
+        });
+      }
     }
 
     await AuditService.logEvent({
@@ -334,7 +481,10 @@ export class SimulationService {
       targetId: created.id,
     });
 
-    return created;
+    return {
+      ...created,
+      pinSnapshot: decryptSensitiveValue(created.pinSnapshot),
+    };
   }
 
   static async updateSimulation(
@@ -459,7 +609,10 @@ export class SimulationService {
           : undefined,
     });
 
-    return updated;
+    return {
+      ...updated,
+      pinSnapshot: decryptSensitiveValue(updated.pinSnapshot),
+    };
   }
 
   static async softDeleteSimulation(actor: ActorContext, simulationId: string) {
@@ -496,8 +649,9 @@ export class SimulationService {
     // Resolve the actor's own agency: for ADMIN, fall back to the source
     // simulation's agency (admins operate globally); for everyone else use
     // their own agency so the clone belongs to them.
-    const newAgencyId =
-      actor.role === UserRole.ADMIN ? simulation.agencyId : actor.agencyId;
+    const newAgencyId = isElevatedRole(actor.role)
+      ? simulation.agencyId
+      : actor.agencyId;
 
     // Fetch the new owner's PIN snapshot so the cloned simulation is
     // properly associated with the duplicating user's credentials.
@@ -534,7 +688,11 @@ export class SimulationService {
             expiresAt: cloneExpiresAt,
             referenceNumber,
             pinHashSnapshot: newOwner?.pinHash ?? null,
-            pinSnapshot: newOwner?.pinCurrent ?? null,
+            pinSnapshot: newOwner?.pinCurrent
+              ? encryptSensitiveValue(
+                  decryptSensitiveValue(newOwner.pinCurrent) ?? "",
+                )
+              : null,
           },
         });
         break;
@@ -577,7 +735,10 @@ export class SimulationService {
       metadataJson: { sourceSimulationId: simulation.id },
     });
 
-    return cloned;
+    return {
+      ...cloned,
+      pinSnapshot: decryptSensitiveValue(cloned.pinSnapshot),
+    };
   }
 
   static async shareSimulation(
@@ -601,7 +762,11 @@ export class SimulationService {
       data: {
         publicToken,
         pinHashSnapshot: owner.pinHash,
-        pinSnapshot: owner.pinCurrent ?? null,
+        pinSnapshot: owner.pinCurrent
+          ? encryptSensitiveValue(
+              decryptSensitiveValue(owner.pinCurrent) ?? "",
+            )
+          : null,
         status: SimulationStatus.SHARED,
         sharedAt: new Date(),
         ...(sharedVia ? { sharedVia } : {}),

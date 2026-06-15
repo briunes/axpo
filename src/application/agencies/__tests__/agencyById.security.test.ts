@@ -5,6 +5,7 @@ import { UserRole } from "@/domain/types";
 
 const requireAuthMock = jest.fn();
 const assertRoleMock = jest.fn();
+const assertPermissionMock = jest.fn();
 const findAgencyMock = jest.fn();
 const updateAgencyMock = jest.fn();
 
@@ -14,6 +15,9 @@ jest.mock("@/application/middleware/auth", () => ({
 
 jest.mock("@/application/middleware/rbac", () => ({
   assertRole: (...args: unknown[]) => assertRoleMock(...args),
+  assertPermission: (...args: unknown[]) => assertPermissionMock(...args),
+  isElevatedRole: (role: UserRole) =>
+    role === UserRole.ADMIN || role === UserRole.SYS_ADMIN,
 }));
 
 jest.mock("@/infrastructure/database/prisma", () => ({
@@ -31,6 +35,7 @@ describe("agency by id security", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    assertPermissionMock.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -83,7 +88,9 @@ describe("agency by id security", () => {
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.data.id).toBe("agency-2");
-    expect(findAgencyMock).toHaveBeenCalledWith({ where: { id: "agency-2" } });
+    expect(findAgencyMock).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "agency-2" } }),
+    );
   });
 
   it("returns 403 when non-admin tries to patch an agency", async () => {
@@ -93,7 +100,7 @@ describe("agency by id security", () => {
       agencyId: "agency-1",
       email: "agent@example.com",
     });
-    assertRoleMock.mockImplementation(() => {
+    assertPermissionMock.mockImplementation(() => {
       throw new ForbiddenError("Insufficient permissions for this operation");
     });
 

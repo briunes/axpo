@@ -6,6 +6,7 @@ import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertRole } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
+import { isSupabaseApiMode } from "@/infrastructure/database/databaseMode";
 import { AuditService } from "@/application/services/auditService";
 
 /**
@@ -32,21 +33,31 @@ export const POST = withErrorHandler(
       throw new NotFoundError("BaseValueSet", id);
     }
 
-    await prisma.$transaction([
-      prisma.baseValueSet.updateMany({
-        where: {
-          name: set.name,
-          scopeType: set.scopeType,
-          agencyId: set.agencyId,
-          isDeleted: false,
-        },
-        data: { isActive: false },
-      }),
-      prisma.baseValueSet.update({
-        where: { id: set.id },
-        data: { isActive: true },
-      }),
-    ]);
+    if (isSupabaseApiMode()) {
+      await (prisma as any).$rpc("axpo_activate_base_value_set", {
+        p_base_value_set_id: set.id,
+        p_name: set.name,
+        p_scope_type: set.scopeType,
+        p_agency_id: set.agencyId,
+        p_now: new Date(),
+      });
+    } else {
+      await prisma.$transaction([
+        prisma.baseValueSet.updateMany({
+          where: {
+            name: set.name,
+            scopeType: set.scopeType,
+            agencyId: set.agencyId,
+            isDeleted: false,
+          },
+          data: { isActive: false },
+        }),
+        prisma.baseValueSet.update({
+          where: { id: set.id },
+          data: { isActive: true },
+        }),
+      ]);
+    }
 
     await AuditService.logEvent({
       actorUserId: auth.userId,

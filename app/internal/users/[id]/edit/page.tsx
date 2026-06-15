@@ -266,6 +266,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                         onCancel={() => router.push("/internal/users")}
                         mode="edit"
                         isEditingSelf={isEditingSelf}
+                        originalRole={user.role}
                         onRenderActions={setFormActions}
                     />
                 </Box>

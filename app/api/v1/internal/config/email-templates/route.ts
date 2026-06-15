@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { requireAuth } from "@/application/middleware/auth";
+import { assertPermission } from "@/application/middleware/rbac";
 
 /**
  * @swagger
@@ -27,11 +30,20 @@ import { prisma } from "@/infrastructure/database/prisma";
  *       200:
  *         description: List of email templates
  */
-export async function GET(req: NextRequest) {
+export const GET = withErrorHandler(async (req: NextRequest) => {
+  const auth = await requireAuth(req);
+
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type");
   const active = searchParams.get("active");
   const excludeType = searchParams.get("excludeType");
+
+  // Active templates are runtime inputs for sharing simulations. Listing
+  // inactive templates remains restricted to configuration management.
+  await assertPermission(
+    auth,
+    active === "true" ? "simulations.share" : "section.configurations",
+  );
 
   const where: any = {};
   if (type) {
@@ -49,7 +61,7 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json(templates);
-}
+});
 
 /**
  * @swagger
@@ -68,7 +80,10 @@ export async function GET(req: NextRequest) {
  *       201:
  *         description: Created email template
  */
-export async function POST(req: NextRequest) {
+export const POST = withErrorHandler(async (req: NextRequest) => {
+  const auth = await requireAuth(req);
+  await assertPermission(auth, "section.configurations");
+
   const body = await req.json();
 
   const template = await prisma.emailTemplate.create({
@@ -100,4 +115,4 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json(template, { status: 201 });
-}
+});

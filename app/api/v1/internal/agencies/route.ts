@@ -5,7 +5,10 @@ import { AlreadyExistsError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 
 const createAgencySchema = z.object({
@@ -127,8 +130,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   );
   const search = searchParams.get("search") ?? undefined;
   const includeDeleted =
-    searchParams.get("includeDeleted") === "true" &&
-    auth.role === UserRole.ADMIN;
+    searchParams.get("includeDeleted") === "true" && isElevatedRole(auth.role);
   const orderBy = searchParams.get("orderBy") ?? "createdAt";
   const sortDir =
     (searchParams.get("sortDir") ?? "desc") === "asc" ? "asc" : "desc";
@@ -142,12 +144,11 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   };
   const safeOrderBy = allowedOrderBy[orderBy] ? orderBy : "createdAt";
 
-  const baseWhere =
-    auth.role === UserRole.ADMIN
-      ? search
-        ? { name: { contains: search, mode: "insensitive" as const } }
-        : {}
-      : { id: auth.agencyId };
+  const baseWhere = isElevatedRole(auth.role)
+    ? search
+      ? { name: { contains: search, mode: "insensitive" as const } }
+      : {}
+    : { id: auth.agencyId };
 
   const where = {
     ...baseWhere,

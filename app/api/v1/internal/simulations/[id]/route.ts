@@ -8,6 +8,7 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
+import { decryptSensitiveValue } from "@/application/lib/sensitiveData";
 
 const updateSimulationSchema = z.object({
   status: z.nativeEnum(SimulationStatus).optional(),
@@ -92,9 +93,10 @@ export const GET = withErrorHandler(
     const versionsWithResults = versions.filter(
       (v) => (v.payloadJson as Record<string, unknown> | null)?.results,
     );
-    const versionsWithOffer = versions.filter(
-      (v) => (v.payloadJson as Record<string, unknown> | null)?.selectedOffer,
-    );
+    const versionsWithOffer = versions.filter((v) => {
+      const payload = v.payloadJson as Record<string, unknown> | null;
+      return payload !== null && Object.prototype.hasOwnProperty.call(payload, "selectedOffer");
+    });
     const baseVersionPayload = (versionsWithResults[0]?.payloadJson ??
       latestVersion?.payloadJson) as Record<string, unknown> | null;
     const latestSelectedOffer = (
@@ -112,7 +114,9 @@ export const GET = withErrorHandler(
     // Attach payloadJson from latest version to simulation
     const simulationWithPayload = {
       ...simulation,
-      pinSnapshot: simulation.pinSnapshot ?? ownerUser?.pinCurrent ?? null,
+      pinSnapshot: decryptSensitiveValue(
+        simulation.pinSnapshot ?? ownerUser?.pinCurrent,
+      ),
       payloadJson: mergedPayload,
       client: client ?? null,
       ownerUser: ownerUser ?? simulation.ownerUser,

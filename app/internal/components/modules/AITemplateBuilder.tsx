@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { TemplateVariable } from "../../lib/configApi";
 import { SUPPORTED_LANGUAGES } from "../../../../src/lib/supportedLanguages";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Types
@@ -52,6 +53,7 @@ export function AITemplateBuilder({
     onNotify,
     session: _session,
 }: AITemplateBuilderProps) {
+    const { t } = useI18n();
     const [isOpen, setIsOpen] = useState(false);
     const [prompt, setPrompt] = useState("");
     const [useExistingAsBase, setUseExistingAsBase] = useState(true);
@@ -64,7 +66,7 @@ export function AITemplateBuilder({
     // ── Generate ──────────────────────────────────────────────────────────────────
     const handleGenerate = async () => {
         if (!prompt.trim()) {
-            onNotify("Please describe what you want the template to look like.", "error");
+            onNotify(t("aiTemplateBuilder", "promptRequired"), "error");
             return;
         }
 
@@ -119,7 +121,7 @@ export function AITemplateBuilder({
             const data = await res.json();
 
             if (!data.success) {
-                onNotify(data.message || "Failed to generate template", "error");
+                onNotify(data.message || t("aiTemplateBuilder", "generateError"), "error");
                 return;
             }
 
@@ -129,7 +131,7 @@ export function AITemplateBuilder({
             if (firstLang) setPreviewLanguage(firstLang);
         } catch (err) {
             onNotify(
-                err instanceof Error ? err.message : "Failed to generate template",
+                err instanceof Error ? err.message : t("aiTemplateBuilder", "generateError"),
                 "error",
             );
         } finally {
@@ -145,7 +147,7 @@ export function AITemplateBuilder({
         setIsOpen(false);
         setPrompt("");
         onNotify(
-            "✨ AI template applied! Review the content and save when ready.",
+            `✨ ${t("aiTemplateBuilder", "appliedSuccess")}`,
             "success",
         );
     };
@@ -195,7 +197,7 @@ export function AITemplateBuilder({
                         WebkitTextFillColor: "transparent",
                     }}
                 >
-                    AI Template Builder
+                    {t("aiTemplateBuilder", "title")}
                 </span>
                 <span
                     style={{
@@ -208,7 +210,7 @@ export function AITemplateBuilder({
                         fontWeight: 600,
                     }}
                 >
-                    Beta
+                    {t("aiTemplateBuilder", "beta")}
                 </span>
                 <span
                     style={{
@@ -239,7 +241,7 @@ export function AITemplateBuilder({
                             color: "#c4b5fd",
                         }}
                     >
-                        Describe what you want
+                        {t("aiTemplateBuilder", "describeLabel")}
                     </label>
                     <textarea
                         value={prompt}
@@ -249,8 +251,8 @@ export function AITemplateBuilder({
                         }}
                         placeholder={
                             mode === "pdf"
-                                ? "e.g. Create a professional electricity simulation PDF with a two-column layout, savings comparison table, AXPO branding and a dark header section…"
-                                : "e.g. Create a welcome email for new users — friendly tone, AXPO branding, a red 'Set Up Password' button, step-by-step instructions…"
+                                ? t("aiTemplateBuilder", "pdfPlaceholder")
+                                : t("aiTemplateBuilder", "emailPlaceholder")
                         }
                         rows={4}
                         style={{
@@ -287,7 +289,7 @@ export function AITemplateBuilder({
                                 checked={useExistingAsBase}
                                 onChange={(e) => setUseExistingAsBase(e.target.checked)}
                             />
-                            Use current template as base — AI will modify it instead of starting from scratch
+                            {t("aiTemplateBuilder", "useExistingBase")}
                         </label>
                     )}
 
@@ -324,16 +326,16 @@ export function AITemplateBuilder({
                                     >
                                         ⟳
                                     </span>
-                                    Generating…
+                                    {t("aiTemplateBuilder", "generating")}
                                 </>
                             ) : (
-                                <>✨ Generate Template</>
+                                <>✨ {t("aiTemplateBuilder", "generateTemplate")}</>
                             )}
                         </button>
                         <span style={{ fontSize: "12px", color: "#6b7280" }}>
                             {isGenerating
-                                ? "This can take a few minutes..."
-                                : "Cmd+Enter to generate"}
+                                ? t("aiTemplateBuilder", "generatingHint")
+                                : t("aiTemplateBuilder", "shortcutHint")}
                         </span>
                     </div>
 
@@ -359,7 +361,7 @@ export function AITemplateBuilder({
                                 }}
                             >
                                 <span style={{ fontSize: "14px", fontWeight: 700, color: "#a78bfa" }}>
-                                    ✅ Template Generated
+                                    ✅ {t("aiTemplateBuilder", "generatedTitle")}
                                 </span>
                                 {/* Language tabs */}
                                 <div style={{ display: "flex", gap: "6px" }}>
@@ -434,7 +436,7 @@ export function AITemplateBuilder({
                             >
                                 <iframe
                                     key={`${previewLanguage}-${generatedResult.translations.length}`}
-                                    srcDoc={currentPreview?.htmlContent || "<p>No content</p>"}
+                                    srcDoc={currentPreview?.htmlContent || `<p>${t("aiTemplateBuilder", "noContent")}</p>`}
                                     style={{
                                         width: "100%",
                                         height: "420px",
@@ -442,7 +444,7 @@ export function AITemplateBuilder({
                                         display: "block",
                                     }}
                                     sandbox="allow-same-origin"
-                                    title="AI Generated Template Preview"
+                                    title={t("aiTemplateBuilder", "previewTitle")}
                                 />
                             </div>
 
@@ -469,7 +471,7 @@ export function AITemplateBuilder({
                                         cursor: "pointer",
                                     }}
                                 >
-                                    ✅ Apply to Form
+                                    ✅ {t("aiTemplateBuilder", "applyToForm")}
                                 </button>
                                 <button
                                     type="button"
@@ -487,7 +489,7 @@ export function AITemplateBuilder({
                                         opacity: isGenerating ? 0.5 : 1,
                                     }}
                                 >
-                                    🔄 Regenerate
+                                    🔄 {t("aiTemplateBuilder", "regenerate")}
                                 </button>
                                 <button
                                     type="button"
@@ -502,7 +504,7 @@ export function AITemplateBuilder({
                                         cursor: "pointer",
                                     }}
                                 >
-                                    🗑 Discard
+                                    🗑 {t("aiTemplateBuilder", "discard")}
                                 </button>
                             </div>
                         </div>

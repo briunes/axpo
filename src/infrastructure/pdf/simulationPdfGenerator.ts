@@ -15,6 +15,7 @@ export interface PdfTemplateVariables {
   CUPS_NUMBER: string;
 
   // Simulation metadata
+  SIMULATION_REFERENCE: string;
   SIMULATION_PERIOD: string;
   ANNUAL_CONSUMPTION: string;
   PRODUCT_NAME: string;
@@ -138,9 +139,6 @@ export function extractTemplateVariables(
   // Product name
   const productName = selectedResult?.productLabel || "Personalizada Index";
 
-  // Current plan costs (from facturaActual breakdown)
-  const currentTotal = electricity?.facturaActual || 0;
-
   // AXPO plan costs (from results)
   const axpoDesglose = selectedResult?.desglose || {};
   const axpoPowerCost = axpoDesglose.terminoPotencia || 0;
@@ -150,20 +148,58 @@ export function extractTemplateVariables(
     (axpoDesglose.impuestoElectrico || 0) +
     (axpoDesglose.impuestoHidrocarburo || 0);
   const axpoOtherCost = axpoDesglose.otrosCargos || 0;
-  const axpoRentalCost = axpoDesglose.alquiler || electricity?.extras?.alquilerEquipoMedida || 0;
+  const axpoRentalCost =
+    axpoDesglose.alquiler || electricity?.extras?.alquilerEquipoMedida || 0;
   const axpoVat = axpoDesglose.iva || 0;
   const axpoTotal = selectedResult?.totalFactura || 0;
 
-  // Estimate current plan breakdown (proportional distribution)
-  const currentPowerCost = currentTotal * 0.35;
-  const currentEnergyCost = currentTotal * 0.4;
-  const currentExcessCost = electricity?.excesoPotencia
-    ? currentTotal * 0.05
-    : 0;
-  const currentTaxCost = currentTotal * 0.05;
-  const currentOtherCost = currentTotal * 0.03;
+  // Current plan costs (from facturaActual breakdown).
+  // See variableReplacer.ts for the rationale — same logic applies here.
+  // The simulation form only reliably stores `facturaActual` (the total).
+  // Rental / reactiva / otrosCargos / excesoPotencia are read from
+  // `electricity.extras` when present. IE and VAT are back-derived from
+  // the total using the rates captured in `extras`. The remaining base
+  // is split between terminoPotencia and terminoEnergia using the same
+  // per-period distribution that the Axpo plan uses, so the two plans
+  // stay self-consistent.
+  const currentTotal = electricity?.facturaActual || 0;
   const currentRentalCost = electricity?.extras?.alquilerEquipoMedida || 0;
-  const currentVat = currentTotal * 0.12;
+  const currentExcessCost = electricity?.excesoPotencia || 0;
+  const currentIvaTasa =
+    electricity?.extras?.ivaTasa != null ? electricity.extras.ivaTasa : 21;
+  const currentIeTasa =
+    electricity?.extras?.impuestoElectricoTasa != null
+      ? electricity.extras.impuestoElectricoTasa
+      : 5.11269;
+  const currentReactiveCost = electricity?.extras?.reactiva || 0;
+  const currentOtherChargeCost = electricity?.extras?.otrosCargos || 0;
+  const currentKnownBase =
+    currentRentalCost +
+    currentReactiveCost +
+    currentOtherChargeCost +
+    currentExcessCost;
+  const ieR = currentIeTasa / 100;
+  const ivaR = currentIvaTasa / 100;
+  const currentTaxCost = currentTotal * (ieR / ((1 + ieR) * (1 + ivaR)));
+  const currentVat = (currentTotal - currentTaxCost - currentRentalCost) * ivaR;
+  const currentPowerEnergyBase = Math.max(
+    0,
+    currentTotal - currentTaxCost - currentVat - currentKnownBase,
+  );
+  const explicitCurrentPower = (electricity?.extras as any)
+    ?.terminoPotenciaActual;
+  const explicitCurrentEnergy = (electricity?.extras as any)
+    ?.terminoEnergiaActual;
+  const axpoPeSum = axpoPowerCost + axpoEnergyCost || 1;
+  const currentPowerCost =
+    explicitCurrentPower != null
+      ? Number(explicitCurrentPower)
+      : currentPowerEnergyBase * (axpoPowerCost / axpoPeSum);
+  const currentEnergyCost =
+    explicitCurrentEnergy != null
+      ? Number(explicitCurrentEnergy)
+      : currentPowerEnergyBase * (axpoEnergyCost / axpoPeSum);
+  const currentOtherCost = currentReactiveCost + currentOtherChargeCost;
 
   // Savings
   const savingsAmount = selectedResult?.ahorro || 0;
@@ -175,6 +211,8 @@ export function extractTemplateVariables(
     CUPS_NUMBER: simulation.cupsNumber || "ES0031352682800001VB",
 
     // Simulation metadata
+    SIMULATION_REFERENCE:
+      simulation.referenceNumber || simulation.id || "N/A",
     SIMULATION_PERIOD: simulationPeriod,
     ANNUAL_CONSUMPTION: formatNumber(annualConsumption, 0),
     PRODUCT_NAME: productName,

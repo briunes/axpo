@@ -17,6 +17,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     Math.max(1, Number(searchParams.get("pageSize") ?? "25") || 25),
   );
   const userId = searchParams.get("userId") ?? undefined;
+  const search = searchParams.get("search")?.trim().slice(0, 100);
   const activeOnly = searchParams.get("activeOnly") === "true";
   const inactiveOnly = searchParams.get("inactiveOnly") === "true";
 
@@ -24,6 +25,18 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const where = {
     ...(userId ? { userId } : {}),
+    ...(search
+      ? {
+          user: {
+            is: {
+              OR: [
+                { fullName: { contains: search, mode: "insensitive" as const } },
+                { email: { contains: search, mode: "insensitive" as const } },
+              ],
+            },
+          },
+        }
+      : {}),
     ...(typeof isActiveFilter === "boolean"
       ? { isActive: isActiveFilter }
       : {}),

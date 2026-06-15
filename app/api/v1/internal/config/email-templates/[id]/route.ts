@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { requireAuth } from "@/application/middleware/auth";
+import { assertPermission } from "@/application/middleware/rbac";
+import { ValidationError } from "@/domain/errors/errors";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
+export const GET = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  await assertPermission(auth, "section.configurations");
+  const id = context?.params?.id;
+  if (!id) throw new ValidationError("Template id parameter is required");
   const template = await prisma.emailTemplate.findUnique({
     where: { id },
     include: { translations: true },
@@ -16,13 +20,13 @@ export async function GET(
   }
 
   return NextResponse.json(template);
-}
+});
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
+export const PUT = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  await assertPermission(auth, "section.configurations");
+  const id = context?.params?.id;
+  if (!id) throw new ValidationError("Template id parameter is required");
   const body = await req.json();
 
   // Upsert translations when provided
@@ -73,16 +77,16 @@ export async function PUT(
   });
 
   return NextResponse.json(template);
-}
+});
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
+export const DELETE = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  await assertPermission(auth, "section.configurations");
+  const id = context?.params?.id;
+  if (!id) throw new ValidationError("Template id parameter is required");
   await prisma.emailTemplate.delete({
     where: { id },
   });
 
   return new NextResponse(null, { status: 204 });
-}
+});

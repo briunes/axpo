@@ -10,13 +10,8 @@ import {
     DialogContent,
     DialogTitle,
     Divider,
-    FormControl,
     IconButton,
-    InputLabel,
-    MenuItem,
     Paper,
-    Select,
-    Tooltip,
     Typography,
     useTheme,
 } from "@mui/material";
@@ -27,6 +22,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import { useI18n } from "../../../../../src/lib/i18n-context";
 import { getPdfTemplates, type PdfTemplate } from "../../../lib/configApi";
 import { LoadingState } from "../../../components/shared";
+import { FormSelect } from "../../../components/ui/FormSelect";
 import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -66,10 +62,26 @@ function periodAvg(v: PeriodData | number | undefined): number {
     return v.avg ?? 0;
 }
 
-function periodMonthly(v: PeriodData | number | undefined, monthKey: string): number {
-    if (v === undefined || v === null) return 0;
+/**
+ * Get the per-month value for a period entry.
+ *
+ * Returns `null` (NOT 0, NOT the 12-month average) when the requested month
+ * is missing from `monthly` — the Excel's source sheet uses an explicit `0`
+ * to mean "this period was not billed for that month" (e.g. 2.0TD has no
+ * P4/P5/P6 columns, and 3.0TD/6.1TD months can have certain periods with
+ * zero consumption). The Excel renders those as blank cells, and its
+ * MEDIA AVERAGEIF(..., ">0") excludes them from the average.
+ *
+ * Returning the 12-month `avg` here was the previous bug — it caused every
+ * month cell to display roughly the same value.
+ */
+function periodMonthly(v: PeriodData | number | undefined, monthKey: string): number | null {
+    if (v === undefined || v === null) return null;
     if (typeof v === "number") return v;
-    return v.monthly?.[monthKey] ?? v.avg ?? 0;
+    if (v.monthly && Object.prototype.hasOwnProperty.call(v.monthly, monthKey)) {
+        return v.monthly[monthKey];
+    }
+    return null;
 }
 
 export interface DownloadHistoryDialogProps {
@@ -149,6 +161,7 @@ function buildGasHistoryHtml(
             .replace(/\{\{GAS_TARIFA\}\}/g, data.gasTarifaAcceso ?? "")
             .replace(/\{\{CLIENT_NAME\}\}/g, simulation?.client?.name ?? "")
             .replace(/\{\{SIMULATION_ID\}\}/g, simulation?.id ?? "")
+            .replace(/\{\{SIMULATION_REFERENCE\}\}/g, simulation?.referenceNumber ?? simulation?.id ?? "")
             .replace(/\{\{CREATED_AT\}\}/g, createdAt)
             .replace(/\{\{OWNER_NAME\}\}/g, simulation?.ownerUser?.fullName ?? "")
             .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "");
@@ -172,7 +185,9 @@ function buildGasHistoryHtml(
 </html>`;
 }
 
-/** Canonical period counts per electricity tariff */
+/** Canonical period counts per electricity tariff — matches the Excel
+ *  source sheet "." (COMPARATIVA LUZ) which stores 2.0TD with P1–P3 and
+ *  3.0TD / 6.1TD with P1–P6. */
 const TARIFF_PERIODS: Record<string, string[]> = {
     "2.0TD": ["P1", "P2", "P3"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
@@ -181,9 +196,25 @@ const TARIFF_PERIODS: Record<string, string[]> = {
 
 const TARIFF_ORDER = ["2.0TD", "3.0TD", "6.1TD"];
 
+/** Excel-matching palette for the price-history table. */
+const HISTORY_HEADER_RED = "#FD5D66"; // tariff label / month row
+const HISTORY_PERIOD_YELLOW = "#EE57"; // P1..Pn column header (yellow)
+
 // ─── HTML generator ──────────────────────────────────────────────────────────
 
-function fmtMargin(val: number): string {
+/**
+ * Format a €/kWh margin value to 6 decimal places with a comma as the decimal
+ * separator (matches the Excel's "0,000000" formatting).
+ *
+ * IMPORTANT: in the Excel base-data sheet, 2.0TD only has P1–P3 columns and
+ * 3.0TD/6.1TD have P1–P6, but the source still pads the unused cells with
+ * `0` (e.g. 2.0TD's P4/P5/P6 or a 3.0TD month where that period had no
+ * consumption).  Per the Excel, those `0` cells render as blank — not as
+ * "0,000000" — and are also excluded from the MEDIA AVERAGEIF (">0").
+ * So we treat `0` as "no data" here as well.
+ */
+function fmtMargin(val: number | null | undefined): string {
+    if (val == null || val <= 0) return "";
     return val.toFixed(6).replace(".", ",");
 }
 
@@ -207,6 +238,11 @@ function buildHistoryHtml(
     // Build one <table> block per tariff.
     // Each cell shows the full all-in Precio TE (€/kWh) for that month+period,
     // taken from the per-month MARGEN key stored in the base value set.
+    // Visually mirrors the Excel sheet "COMPARATIVA LUZ" panel (R1:Y53):
+    //   - red header (#FD5D66) for tariff label and month rows
+    //   - yellow period header (#EE57) for P1..Pn
+    //   - 6-decimal €/kWh values with comma decimal separator
+    //   - Media row = AVERAGEIF of monthly values > 0 (matches Excel AVERAGEIF)
     const buildTariffBlock = (tariff: string): string => {
         const tariffData = product.tariffs[tariff];
         if (!tariffData) return "";
@@ -219,7 +255,7 @@ function buildHistoryHtml(
         const headerCells = activePeriods
             .map(
                 (p) =>
-                    `<th style="background:${axpoPrimary};color:#fff;padding:5px 10px;text-align:center;font-weight:bold;font-size:11px;border:1px solid #f0f0f0;">${p}</th>`,
+                    `<th style="background:${HISTORY_PERIOD_YELLOW};color:#3A3C39;padding:5px 10px;text-align:center;font-weight:bold;font-size:11px;border:1px solid #f0f0f0;">${p}</th>`,
             )
             .join("");
 
@@ -227,7 +263,7 @@ function buildHistoryHtml(
             .map(
                 (month) =>
                     `<tr>
-              <td style="background:${axpoPrimary};color:#fff;font-weight:bold;padding:5px 10px;font-size:11px;border:1px solid rgba(255,255,255,0.15);white-space:nowrap;">${month.label}</td>
+              <td style="background:${HISTORY_HEADER_RED};color:#fff;font-weight:bold;padding:5px 10px;font-size:11px;border:1px solid rgba(255,255,255,0.15);white-space:nowrap;">${month.label}</td>
               ${activePeriods
                         .map(
                             (p) =>
@@ -238,24 +274,28 @@ function buildHistoryHtml(
             )
             .join("");
 
-        // Average row: compute arithmetic mean from the displayed monthly values
+        // Media row — mirrors the Excel's =AVERAGEIF(T3:T14,">0")
+        // (average of the displayed monthly values, ignoring zeros / blanks)
         const avgCells = activePeriods
             .map((p) => {
                 const vals = sortedMonths
                     .map((m) => periodMonthly(tariffData[p], m.key))
-                    .filter((v) => v > 0);
-                const mean = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+                    .filter((v): v is number => v != null && v > 0);
+                const mean =
+                    vals.length > 0
+                        ? vals.reduce((a, b) => a + b, 0) / vals.length
+                        : 0;
                 return `<td style="padding:5px 10px;text-align:center;font-size:11px;border:1px solid #e8e8e8;font-weight:bold;background:#f5f5f5;">${fmtMargin(mean)}</td>`;
             })
             .join("");
 
         return `
-          <div style="margin-bottom:28px;">
-            <div style="text-align:center;color:${axpoPrimary};font-weight:bold;font-size:13px;margin-bottom:6px;">${tariff}</div>
+          <div class="asim-history-block" style="margin-bottom:28px;break-inside:avoid;page-break-inside:avoid;">
+            <div class="asim-history-title" style="text-align:center;color:${HISTORY_HEADER_RED};font-weight:bold;font-size:13px;margin-bottom:6px;break-after:avoid;page-break-after:avoid;">${tariff}</div>
             <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
               <thead>
                 <tr>
-                  <th style="background:${axpoPrimary};color:#fff;padding:5px 10px;text-align:center;font-weight:bold;font-size:11px;border:1px solid rgba(255,255,255,0.15);">—</th>
+                  <th style="background:${HISTORY_HEADER_RED};color:#fff;padding:5px 10px;text-align:center;font-weight:bold;font-size:11px;border:1px solid rgba(255,255,255,0.15);">—</th>
                   ${headerCells}
                 </tr>
               </thead>
@@ -270,7 +310,14 @@ function buildHistoryHtml(
           </div>`;
     };
 
-    const tariffBlocks = TARIFF_ORDER.map(buildTariffBlock).join("");
+    // Render all 3 electricity tariffs stacked vertically, just like the
+    // Excel sheet "COMPARATIVA LUZ" panel — the user wants to see the full
+    // historical picture for every tariff the product covers, not only the
+    // simulation's own access tariff. Tabs without per-month data in the
+    // base value set are silently skipped by buildTariffBlock.
+    const visibleTariffs = TARIFF_ORDER;
+
+    const tariffBlocks = visibleTariffs.map(buildTariffBlock).join("");
     const block2TD = buildTariffBlock("2.0TD");
     const block3TD = buildTariffBlock("3.0TD");
     const block6TD = buildTariffBlock("6.1TD");
@@ -291,6 +338,7 @@ function buildHistoryHtml(
             .replace(/\{\{TARIFA\}\}/g, data.tarifaAcceso)
             .replace(/\{\{CLIENT_NAME\}\}/g, simulation?.client?.name ?? "")
             .replace(/\{\{SIMULATION_ID\}\}/g, simulation?.id ?? "")
+            .replace(/\{\{SIMULATION_REFERENCE\}\}/g, simulation?.referenceNumber ?? simulation?.id ?? "")
             .replace(/\{\{CREATED_AT\}\}/g, createdAt)
             .replace(/\{\{OWNER_NAME\}\}/g, simulation?.ownerUser?.fullName ?? "")
             .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "");
@@ -381,7 +429,7 @@ export function DownloadHistoryDialog({
         setSelectedTemplateId("");
 
         Promise.all([
-            getPdfTemplates(),
+            getPdfTemplates({ active: true, type: "price-history" }),
             fetch(`/api/v1/internal/simulations/${simulation.id}/price-history`, {
                 headers: { Authorization: `Bearer ${token}` },
             }).then(async (r) => {
@@ -394,23 +442,26 @@ export function DownloadHistoryDialog({
         ])
             .then(([templates, histData]) => {
                 const data = histData as HistoryData;
+                const commodity = data.isGas ? "GAS" : "ELECTRICITY";
                 const historyTpls = templates.filter(
-                    (tpl) => tpl.active && tpl.type === "price-history",
+                    (tpl) =>
+                        tpl.active &&
+                        tpl.type === "price-history" &&
+                        (tpl.commodity || "ELECTRICITY") === commodity,
                 );
                 setHistoryTemplates(historyTpls);
 
-                // For gas simulations use gasProducts as the product list
-                if (data.isGas && data.gasProducts && data.gasProducts.length > 0) {
-                    setHistoryData({ ...data, products: data.gasProducts });
-                } else {
-                    setHistoryData(data);
-                }
+                // Never mix commodity product lists. An empty gas list should
+                // show the no-data state instead of falling back to electricity.
+                setHistoryData(
+                    data.isGas
+                        ? { ...data, products: data.gasProducts ?? [] }
+                        : data,
+                );
 
-                // Default template: prefer commodity-matching template
+                // All templates are already restricted to the simulation commodity.
                 if (historyTpls.length > 0) {
-                    const commodity = data.isGas ? "GAS" : "ELECTRICITY";
-                    const match = historyTpls.find((tpl) => (tpl as any).commodity === commodity);
-                    setSelectedTemplateId((match ?? historyTpls[0]).id);
+                    setSelectedTemplateId(historyTpls[0].id);
                 }
             })
             .catch((err) => {
@@ -547,7 +598,7 @@ export function DownloadHistoryDialog({
                     <Box sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", p: 4 }}>
                         <Typography color="text.secondary" textAlign="center">
                             {t("downloadHistory", "noData") ||
-                                "No indexed products found in this simulation."}
+                                "No price history products are available for this simulation."}
                         </Typography>
                     </Box>
                 ) : (
@@ -565,51 +616,34 @@ export function DownloadHistoryDialog({
                             }}
                         >
                             {/* Product selector */}
-                            <FormControl size="small" sx={{ minWidth: 220 }}>
-                                <InputLabel>
-                                    {t("downloadHistory", "selectProduct") || "Product"}
-                                </InputLabel>
-                                <Select
-                                    value={selectedProductKey}
-                                    onChange={(e) => setSelectedProductKey(e.target.value)}
+                            <Box sx={{ minWidth: 300 }}>
+                                <FormSelect
                                     label={t("downloadHistory", "selectProduct") || "Product"}
-                                >
-                                    {historyData.products.map((p) => (
-                                        <MenuItem key={p.productKey} value={p.productKey}>
-                                            {p.productLabel}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
+                                    value={selectedProductKey}
+                                    onChange={(value) => setSelectedProductKey(String(value ?? ""))}
+                                    options={historyData.products.map((product) => ({
+                                        value: product.productKey,
+                                        label: product.productLabel,
+                                    }))}
+                                    textFieldProps={{ size: "small" }}
+                                />
+                            </Box>
 
                             {/* Template selector — only shown when price-history templates exist */}
                             {historyTemplates.length > 0 && (
-                                <FormControl size="small" sx={{ minWidth: 260 }}>
-                                    <InputLabel>
-                                        {t("downloadHistory", "selectTemplate") || "Template"}
-                                    </InputLabel>
-                                    <Select
-                                        value={selectedTemplateId}
-                                        onChange={(e) => setSelectedTemplateId(e.target.value)}
+                                <Box sx={{ minWidth: 300 }}>
+                                    <FormSelect
                                         label={t("downloadHistory", "selectTemplate") || "Template"}
-                                    >
-                                        {historyTemplates.map((tpl) => (
-                                            <MenuItem key={tpl.id} value={tpl.id}>
-                                                <Box>
-                                                    <Typography variant="body2">{tpl.name}</Typography>
-                                                    {tpl.description && (
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="text.secondary"
-                                                        >
-                                                            {tpl.description}
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
+                                        value={selectedTemplateId}
+                                        onChange={(value) => setSelectedTemplateId(String(value ?? ""))}
+                                        options={historyTemplates.map((template) => ({
+                                            value: template.id,
+                                            label: template.name,
+                                            secondaryLabel: template.description || undefined,
+                                        }))}
+                                        textFieldProps={{ size: "small" }}
+                                    />
+                                </Box>
                             )}
 
                             {/* Info chip */}

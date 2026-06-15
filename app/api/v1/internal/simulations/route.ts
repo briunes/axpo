@@ -4,9 +4,13 @@ import { UserRole, SimulationStatus } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
+import { decryptSensitiveValue } from "@/application/lib/sensitiveData";
 
 const createSimulationSchema = z.object({
   ownerUserId: z.string().min(1).optional(),
@@ -124,7 +128,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const rawOrderBy = sp.get("orderBy") || "updatedAt";
   const sortDir = (sp.get("sortDir") || "desc") as "asc" | "desc";
   const includeDeleted =
-    sp.get("includeDeleted") === "true" && auth.role === UserRole.ADMIN;
+    sp.get("includeDeleted") === "true" && isElevatedRole(auth.role);
   const search = sp.get("search") || undefined;
   const ownerUserId = sp.get("ownerUserId") || undefined;
   const clientId = sp.get("clientId") || undefined;
@@ -145,6 +149,51 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     includeDeleted,
   );
 
+  const [matchingClients, matchingOwners] = search
+    ? await Promise.all([
+        prisma.client.findMany({
+          where: {
+            name: { contains: search, mode: "insensitive" },
+          },
+          select: { id: true },
+        }),
+        prisma.user.findMany({
+          where: {
+            fullName: { contains: search, mode: "insensitive" },
+          },
+          select: { id: true },
+        }),
+      ])
+    : [[], []];
+  const searchFilters = search
+    ? [
+        {
+          referenceNumber: {
+            contains: search,
+            mode: "insensitive" as const,
+          },
+        },
+        ...(matchingClients.length
+          ? [
+              {
+                clientId: {
+                  in: matchingClients.map((client) => client.id),
+                },
+              },
+            ]
+          : []),
+        ...(matchingOwners.length
+          ? [
+              {
+                ownerUserId: {
+                  in: matchingOwners.map((owner) => owner.id),
+                },
+              },
+            ]
+          : []),
+      ]
+    : [];
+
   const where = {
     ...baseWhere,
     ...(ownerUserId ? { ownerUserId } : {}),
@@ -152,24 +201,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ...(status ? { status } : {}),
     ...(search
       ? {
-          OR: [
-            {
-              referenceNumber: {
-                contains: search,
-                mode: "insensitive" as const,
-              },
-            },
-            {
-              client: {
-                name: { contains: search, mode: "insensitive" as const },
-              },
-            },
-            {
-              ownerUser: {
-                fullName: { contains: search, mode: "insensitive" as const },
-              },
-            },
-          ],
+          OR: searchFilters,
         }
       : {}),
     ...(cups
@@ -246,6 +278,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     const { versions, ...simWithoutVersions } = sim;
     return {
       ...simWithoutVersions,
+      pinSnapshot: decryptSensitiveValue(sim.pinSnapshot),
       payloadJson: payload ?? null,
       cupsNumber,
     };

@@ -24,6 +24,7 @@ import BusinessIcon from "@mui/icons-material/Business";
 import SaveIcon from "@mui/icons-material/Save";
 import CloseIcon from "@mui/icons-material/Close";
 import type { SessionState } from "../../lib/authSession";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface InvoiceProviderPromptsSettingsProps {
     session: SessionState;
@@ -56,6 +57,7 @@ Extract ALL available information from the provided invoice and return it as a J
 IMPORTANT: Return ONLY a valid JSON object with the extracted data.`;
 
 export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoiceProviderPromptsSettingsProps) {
+    const { t } = useI18n();
     const [providers, setProviders] = useState<InvoiceProvider[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedProvider, setSelectedProvider] = useState<InvoiceProvider | null>(null);
@@ -82,11 +84,11 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
             const res = await fetch("/api/v1/internal/invoice-providers", {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            if (!res.ok) throw new Error("Failed to load providers");
+            if (!res.ok) throw new Error(t("invoiceProviderPrompts", "loadError"));
             const data = await res.json();
             setProviders(data);
         } catch (err) {
-            onNotify("Failed to load invoice providers", "error");
+            onNotify(t("invoiceProviderPrompts", "loadError"), "error");
         } finally {
             setIsLoading(false);
         }
@@ -137,7 +139,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
 
     const handleSave = async () => {
         if (!formName.trim()) {
-            onNotify("Provider name is required", "error");
+            onNotify(t("invoiceProviderPrompts", "nameRequired"), "error");
             return;
         }
 
@@ -154,10 +156,10 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                 });
                 if (!res.ok) {
                     const err = await res.json();
-                    throw new Error(err.message || "Failed to create provider");
+                    throw new Error(err.message || t("invoiceProviderPrompts", "createError"));
                 }
                 const created = await res.json();
-                onNotify(`Provider "${created.name}" created successfully`, "success");
+                onNotify(t("invoiceProviderPrompts", "createdSuccess", { name: created.name }), "success");
                 await loadProviders();
                 setSelectedProvider(created);
                 setEditMode("view");
@@ -172,16 +174,16 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                 });
                 if (!res.ok) {
                     const err = await res.json();
-                    throw new Error(err.message || "Failed to update provider");
+                    throw new Error(err.message || t("invoiceProviderPrompts", "updateError"));
                 }
                 const updated = await res.json();
-                onNotify(`Provider "${updated.name}" updated successfully`, "success");
+                onNotify(t("invoiceProviderPrompts", "updatedSuccess", { name: updated.name }), "success");
                 await loadProviders();
                 setSelectedProvider(updated);
                 setEditMode("view");
             }
         } catch (err: any) {
-            onNotify(err.message || "Failed to save provider", "error");
+            onNotify(err.message || t("invoiceProviderPrompts", "saveError"), "error");
         } finally {
             setIsSaving(false);
         }
@@ -197,13 +199,13 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                 },
                 body: JSON.stringify({ isActive: !provider.isActive }),
             });
-            if (!res.ok) throw new Error("Failed to update provider");
+            if (!res.ok) throw new Error(t("invoiceProviderPrompts", "updateError"));
             await loadProviders();
             if (selectedProvider?.id === provider.id) {
                 setSelectedProvider({ ...selectedProvider, isActive: !provider.isActive });
             }
         } catch (err: any) {
-            onNotify("Failed to toggle provider status", "error");
+            onNotify(t("invoiceProviderPrompts", "toggleError"), "error");
         }
     };
 
@@ -215,15 +217,15 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
             });
-            if (!res.ok) throw new Error("Failed to delete provider");
-            onNotify(`Provider "${providerToDelete.name}" deleted`, "success");
+            if (!res.ok) throw new Error(t("invoiceProviderPrompts", "deleteError"));
+            onNotify(t("invoiceProviderPrompts", "deletedSuccess", { name: providerToDelete.name }), "success");
             if (selectedProvider?.id === providerToDelete.id) {
                 setSelectedProvider(null);
                 setEditMode("view");
             }
             await loadProviders();
         } catch (err: any) {
-            onNotify("Failed to delete provider", "error");
+            onNotify(t("invoiceProviderPrompts", "deleteError"), "error");
         } finally {
             setIsDeleting(false);
             setDeleteDialogOpen(false);
@@ -239,9 +241,9 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
             <div className="provider-list-panel">
                 <div className="provider-list-header">
                     <div>
-                        <div className="provider-list-title">Invoice Providers</div>
+                        <div className="provider-list-title">{t("invoiceProviderPrompts", "title")}</div>
                         <div className="provider-list-subtitle">
-                            {providers.length} provider{providers.length !== 1 ? "s" : ""} configured
+                            {t("invoiceProviderPrompts", "configuredCount", { count: providers.length })}
                         </div>
                     </div>
                     <Button
@@ -251,7 +253,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                         onClick={handleStartCreate}
                         sx={{ flexShrink: 0 }}
                     >
-                        Add
+                        {t("invoiceProviderPrompts", "add")}
                     </Button>
                 </div>
 
@@ -262,8 +264,8 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                 ) : providers.length === 0 ? (
                     <div className="provider-list-empty">
                         <BusinessIcon sx={{ fontSize: 40, opacity: 0.3, mb: 1 }} />
-                        <div>No providers yet</div>
-                        <div style={{ fontSize: 12, opacity: 0.6 }}>Click Add to create your first provider</div>
+                        <div>{t("invoiceProviderPrompts", "noProviders")}</div>
+                        <div style={{ fontSize: 12, opacity: 0.6 }}>{t("invoiceProviderPrompts", "emptyHint")}</div>
                     </div>
                 ) : (
                     <div className="provider-list">
@@ -279,24 +281,24 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                         <div className="provider-item-name">{provider.name}</div>
                                         <div className="provider-item-meta">
                                             {provider.needsPromptConfig ? (
-                                                <Chip label="⚠️ Needs prompt setup" size="small" color="warning" variant="outlined" sx={{ fontSize: 10, height: 18 }} />
+                                                <Chip label={`⚠️ ${t("invoiceProviderPrompts", "needsPromptSetup")}`} size="small" color="warning" variant="outlined" sx={{ fontSize: 10, height: 18 }} />
                                             ) : (provider.promptElectricity?.trim() || provider.promptGas?.trim()) ? (
-                                                <Chip label="Custom prompts" size="small" color="success" variant="outlined" sx={{ fontSize: 10, height: 18 }} />
+                                                <Chip label={t("invoiceProviderPrompts", "customPrompts")} size="small" color="success" variant="outlined" sx={{ fontSize: 10, height: 18 }} />
                                             ) : (
-                                                <Chip label="No prompt" size="small" variant="outlined" sx={{ fontSize: 10, height: 18, opacity: 0.5 }} />
+                                                <Chip label={t("invoiceProviderPrompts", "noPrompt")} size="small" variant="outlined" sx={{ fontSize: 10, height: 18, opacity: 0.5 }} />
                                             )}
                                         </div>
                                     </div>
                                 </div>
                                 <div className="provider-item-actions" onClick={e => e.stopPropagation()}>
-                                    <Tooltip title={provider.isActive ? "Disable" : "Enable"}>
+                                    <Tooltip title={provider.isActive ? t("invoiceProviderPrompts", "disable") : t("invoiceProviderPrompts", "enable")}>
                                         <Switch
                                             size="small"
                                             checked={provider.isActive}
                                             onChange={() => handleToggleActive(provider)}
                                         />
                                     </Tooltip>
-                                    <Tooltip title="Edit">
+                                    <Tooltip title={t("invoiceProviderPrompts", "edit")}>
                                         <IconButton
                                             size="small"
                                             onClick={() => handleStartEdit(provider)}
@@ -304,7 +306,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                             <EditIcon sx={{ fontSize: 16 }} />
                                         </IconButton>
                                     </Tooltip>
-                                    <Tooltip title="Delete">
+                                    <Tooltip title={t("invoiceProviderPrompts", "delete")}>
                                         <IconButton
                                             size="small"
                                             color="error"
@@ -329,10 +331,10 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                     <div className="provider-detail-empty">
                         <BusinessIcon sx={{ fontSize: 48, opacity: 0.2, mb: 2 }} />
                         <Typography variant="h6" sx={{ opacity: 0.5, mb: 1 }}>
-                            Select a provider
+                            {t("invoiceProviderPrompts", "selectProvider")}
                         </Typography>
                         <Typography variant="body2" sx={{ opacity: 0.4, textAlign: "center", maxWidth: 300 }}>
-                            Select a provider from the list to view or edit its custom extraction prompt, or click Add to create a new one.
+                            {t("invoiceProviderPrompts", "selectProviderDesc")}
                         </Typography>
                     </div>
                 )}
@@ -355,7 +357,8 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                             }}>
                                 <span style={{ fontSize: 18, lineHeight: 1.2, flexShrink: 0 }}>⚠️</span>
                                 <div>
-                                    <strong>Prompt not yet configured.</strong> This provider was added automatically from a simulation page. Please edit this provider and add a custom extraction prompt so the AI knows how to read invoices from <strong>{selectedProvider.name}</strong>.
+                                    <strong>{t("invoiceProviderPrompts", "promptNotConfiguredTitle")}</strong>{" "}
+                                    {t("invoiceProviderPrompts", "promptNotConfiguredDesc", { name: selectedProvider.name })}
                                 </div>
                                 <Button
                                     size="small"
@@ -365,7 +368,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                     onClick={() => handleStartEdit(selectedProvider)}
                                     sx={{ flexShrink: 0, ml: "auto" }}
                                 >
-                                    Configure now
+                                    {t("invoiceProviderPrompts", "configureNow")}
                                 </Button>
                             </div>
                         )}
@@ -373,19 +376,19 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                             <div>
                                 <div className="provider-detail-title">
                                     {editMode === "create"
-                                        ? "New Provider"
+                                        ? t("invoiceProviderPrompts", "newProvider")
                                         : isEditing
-                                            ? `Editing: ${selectedProvider?.name}`
+                                            ? t("invoiceProviderPrompts", "editingProvider", { name: selectedProvider?.name ?? "" })
                                             : selectedProvider?.name}
                                 </div>
                                 {selectedProvider && !isEditing && (
                                     <div className="provider-detail-meta">
-                                        Slug: <code>{selectedProvider.slug}</code>
+                                        {t("invoiceProviderPrompts", "slug")}: <code>{selectedProvider.slug}</code>
                                         {" · "}
                                         {selectedProvider.isActive ? (
-                                            <span style={{ color: "#10b981" }}>Active</span>
+                                            <span style={{ color: "#10b981" }}>{t("invoiceProviderPrompts", "active")}</span>
                                         ) : (
-                                            <span style={{ color: "#f59e0b" }}>Disabled</span>
+                                            <span style={{ color: "#f59e0b" }}>{t("invoiceProviderPrompts", "disabled")}</span>
                                         )}
                                     </div>
                                 )}
@@ -397,7 +400,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                     startIcon={<EditIcon />}
                                     onClick={() => handleStartEdit(selectedProvider)}
                                 >
-                                    Edit
+                                    {t("invoiceProviderPrompts", "edit")}
                                 </Button>
                             )}
                         </div>
@@ -405,32 +408,32 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                         {isEditing ? (
                             <div className="provider-form">
                                 <div className="form-field">
-                                    <label className="form-label">Provider Name *</label>
+                                    <label className="form-label">{t("invoiceProviderPrompts", "providerName")}</label>
                                     <input
                                         type="text"
                                         className="form-input"
                                         value={formName}
                                         onChange={e => setFormName(e.target.value)}
-                                        placeholder="e.g. Repsol, NEON, Iberdrola..."
+                                        placeholder={t("invoiceProviderPrompts", "providerNamePlaceholder")}
                                         autoFocus={editMode === "create"}
                                     />
                                     <span className="form-hint">
-                                        The slug will be auto-generated from this name and is used by the AI to match invoices.
+                                        {t("invoiceProviderPrompts", "providerNameHint")}
                                     </span>
                                 </div>
 
                                 <div className="form-field">
-                                    <label className="form-label">Status</label>
+                                    <label className="form-label">{t("invoiceProviderPrompts", "status")}</label>
                                     <label className="form-toggle">
                                         <Switch
                                             size="small"
                                             checked={formIsActive}
                                             onChange={e => setFormIsActive(e.target.checked)}
                                         />
-                                        <span>{formIsActive ? "Active" : "Disabled"}</span>
+                                        <span>{formIsActive ? t("invoiceProviderPrompts", "active") : t("invoiceProviderPrompts", "disabled")}</span>
                                     </label>
                                     <span className="form-hint">
-                                        Disabled providers won't appear in the detection list sent to the AI.
+                                        {t("invoiceProviderPrompts", "statusHint")}
                                     </span>
                                 </div>
 
@@ -441,34 +444,32 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                         sx={{ borderBottom: 1, borderColor: "divider", mb: 2, minHeight: 36 }}
                                         TabIndicatorProps={{ style: { backgroundColor: "var(--axpo-red, #e30613)" } }}
                                     >
-                                        <Tab value="electricity" label="⚡ Electricity" sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "electricity" ? 600 : 400 }} />
-                                        <Tab value="gas" label="🔥 Gas" sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "gas" ? 600 : 400 }} />
+                                        <Tab value="electricity" label={`⚡ ${t("invoiceProviderPrompts", "electricity")}`} sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "electricity" ? 600 : 400 }} />
+                                        <Tab value="gas" label={`🔥 ${t("invoiceProviderPrompts", "gas")}`} sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "gas" ? 600 : 400 }} />
                                     </Tabs>
                                     {promptTab === "electricity" ? (
                                         <>
                                             <span className="form-hint" style={{ marginBottom: 8 }}>
-                                                Sent to the AI when an <strong>electricity</strong> invoice from this provider is detected.
-                                                Leave empty to use the system default electricity prompt.
+                                                {t("invoiceProviderPrompts", "electricityPromptHint")}
                                             </span>
                                             <textarea
                                                 className="form-textarea"
                                                 value={formPromptElectricity}
                                                 onChange={e => setFormPromptElectricity(e.target.value)}
-                                                placeholder="Enter a custom electricity extraction prompt for this provider..."
+                                                placeholder={t("invoiceProviderPrompts", "electricityPromptPlaceholder")}
                                                 rows={14}
                                             />
                                         </>
                                     ) : (
                                         <>
                                             <span className="form-hint" style={{ marginBottom: 8 }}>
-                                                Sent to the AI when a <strong>gas</strong> invoice from this provider is detected.
-                                                Leave empty to use the system default gas prompt.
+                                                {t("invoiceProviderPrompts", "gasPromptHint")}
                                             </span>
                                             <textarea
                                                 className="form-textarea"
                                                 value={formPromptGas}
                                                 onChange={e => setFormPromptGas(e.target.value)}
-                                                placeholder="Enter a custom gas extraction prompt for this provider..."
+                                                placeholder={t("invoiceProviderPrompts", "gasPromptPlaceholder")}
                                                 rows={14}
                                             />
                                         </>
@@ -482,7 +483,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                         onClick={handleSave}
                                         disabled={isSaving || !formName.trim()}
                                     >
-                                        {isSaving ? "Saving..." : "Save Provider"}
+                                        {isSaving ? t("invoiceProviderPrompts", "saving") : t("invoiceProviderPrompts", "saveProvider")}
                                     </Button>
                                     <Button
                                         variant="outlined"
@@ -490,7 +491,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                         onClick={handleCancelEdit}
                                         disabled={isSaving}
                                     >
-                                        Cancel
+                                        {t("invoiceProviderPrompts", "cancel")}
                                     </Button>
                                 </div>
                             </div>
@@ -502,8 +503,8 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                     sx={{ borderBottom: 1, borderColor: "divider", mb: 2, minHeight: 36 }}
                                     TabIndicatorProps={{ style: { backgroundColor: "var(--axpo-red, #e30613)" } }}
                                 >
-                                    <Tab value="electricity" label="⚡ Electricity" sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "electricity" ? 600 : 400 }} />
-                                    <Tab value="gas" label="🔥 Gas" sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "gas" ? 600 : 400 }} />
+                                    <Tab value="electricity" label={`⚡ ${t("invoiceProviderPrompts", "electricity")}`} sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "electricity" ? 600 : 400 }} />
+                                    <Tab value="gas" label={`🔥 ${t("invoiceProviderPrompts", "gas")}`} sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "gas" ? 600 : 400 }} />
                                 </Tabs>
 
                                 {promptTab === "electricity" ? (
@@ -512,7 +513,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                     ) : (
                                         <div className="prompt-empty">
                                             <Typography variant="body2" sx={{ opacity: 0.5, fontStyle: "italic" }}>
-                                                No custom electricity prompt — the system default will be used.
+                                                {t("invoiceProviderPrompts", "noElectricityPrompt")}
                                             </Typography>
                                             <Button
                                                 variant="outlined"
@@ -521,7 +522,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                                 onClick={() => handleStartEdit(selectedProvider)}
                                                 sx={{ mt: 2 }}
                                             >
-                                                Configure Prompts
+                                                {t("invoiceProviderPrompts", "configurePrompts")}
                                             </Button>
                                         </div>
                                     )
@@ -531,7 +532,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                     ) : (
                                         <div className="prompt-empty">
                                             <Typography variant="body2" sx={{ opacity: 0.5, fontStyle: "italic" }}>
-                                                No custom gas prompt — the system default will be used.
+                                                {t("invoiceProviderPrompts", "noGasPrompt")}
                                             </Typography>
                                             <Button
                                                 variant="outlined"
@@ -540,7 +541,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                                 onClick={() => handleStartEdit(selectedProvider)}
                                                 sx={{ mt: 2 }}
                                             >
-                                                Configure Prompts
+                                                {t("invoiceProviderPrompts", "configurePrompts")}
                                             </Button>
                                         </div>
                                     )
@@ -553,16 +554,15 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
 
             {/* Delete confirmation dialog */}
             <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="xs" fullWidth>
-                <DialogTitle>Delete Provider</DialogTitle>
+                <DialogTitle>{t("invoiceProviderPrompts", "deleteTitle")}</DialogTitle>
                 <DialogContent>
                     <Typography>
-                        Are you sure you want to delete <strong>{providerToDelete?.name}</strong>?
-                        This action cannot be undone.
+                        {t("invoiceProviderPrompts", "deleteConfirm", { name: providerToDelete?.name ?? "" })}
                     </Typography>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
-                        Cancel
+                        {t("invoiceProviderPrompts", "cancel")}
                     </Button>
                     <Button
                         color="error"
@@ -571,7 +571,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                         disabled={isDeleting}
                         startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
                     >
-                        {isDeleting ? "Deleting..." : "Delete"}
+                        {isDeleting ? t("invoiceProviderPrompts", "deleting") : t("invoiceProviderPrompts", "delete")}
                     </Button>
                 </DialogActions>
             </Dialog>

@@ -65,6 +65,7 @@ function deriveGroup(name: string): string {
     if (
         name.startsWith("USER_") ||
         name === "SETUP_PASSWORD_URL" ||
+        name === "SETUP_PASSWORD_VALIDITY_HOURS" ||
         name === "RESET_PASSWORD_URL" ||
         name === "MAGIC_LINK"
     ) return "User / Auth";

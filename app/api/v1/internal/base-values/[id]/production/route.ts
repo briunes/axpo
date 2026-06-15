@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { requireAuth } from "@/application/middleware/auth";
+import { assertRole } from "@/application/middleware/rbac";
+import { UserRole } from "@/domain/types";
+import { ValidationError } from "@/domain/errors/errors";
+import { isSupabaseApiMode } from "@/infrastructure/database/databaseMode";
 
 /**
  * @swagger
@@ -31,25 +37,15 @@ import { prisma } from "@/infrastructure/database/prisma";
  *       200:
  *         description: Updated base value set
  */
-async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id: baseValueSetId } = await params;
+const POST = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  assertRole(auth, [UserRole.ADMIN, UserRole.SYS_ADMIN]);
+  const baseValueSetId = context?.params?.id;
+  if (!baseValueSetId) {
+    throw new ValidationError("Base value set id parameter is required");
+  }
   const body = await req.json();
   const { isProduction } = body;
-
-  // Get the base value set to check scope
-  const baseValueSet = await prisma.baseValueSet.findUnique({
-    where: { id: baseValueSetId },
-  });
-
-  if (!baseValueSet) {
-    return NextResponse.json(
-      { error: "Base value set not found" },
-      { status: 404 },
-    );
-  }
 
   // Prevent removing the production flag — there must always be exactly one production set
   if (!isProduction) {
@@ -62,34 +58,78 @@ async function POST(
     );
   }
 
-  // Build where clause for same scope
-  const whereClause =
-    baseValueSet.scopeType === "GLOBAL"
-      ? { scopeType: "GLOBAL" as const }
-      : { scopeType: "AGENCY" as const, agencyId: baseValueSet.agencyId };
+  const resultSelect = {
+    id: true,
+    scopeType: true,
+    agencyId: true,
+    name: true,
+    version: true,
+    isActive: true,
+    isProduction: true,
+    updatedAt: true,
+  } as const;
 
-  // Set all other sets in same scope to draft (isActive: false) and unmark production
-  await prisma.baseValueSet.updateMany({
-    where: {
-      ...whereClause,
-      id: { not: baseValueSetId },
-    },
-    data: {
-      isProduction: false,
-      isActive: false,
-    },
-  });
+  let updatedSet;
+  if (isSupabaseApiMode()) {
+    const rows = await (prisma as any).$rpc(
+      "axpo_set_base_value_production",
+      {
+        p_base_value_set_id: baseValueSetId,
+        p_now: new Date(),
+      },
+    );
+    updatedSet = Array.isArray(rows) ? rows[0] : rows;
+  } else {
+    updatedSet = await prisma.$transaction(async (tx) => {
+      const baseValueSet = await tx.baseValueSet.findUnique({
+        where: { id: baseValueSetId },
+        select: {
+          id: true,
+          scopeType: true,
+          agencyId: true,
+        },
+      });
+      if (!baseValueSet) return null;
 
-  // Set the target as production and active
-  const updatedSet = await prisma.baseValueSet.update({
-    where: { id: baseValueSetId },
-    data: {
-      isProduction: true,
-      isActive: true,
-    },
-  });
+      const whereClause =
+        baseValueSet.scopeType === "GLOBAL"
+          ? { scopeType: "GLOBAL" as const }
+          : {
+              scopeType: "AGENCY" as const,
+              agencyId: baseValueSet.agencyId,
+            };
+
+      await tx.baseValueSet.updateMany({
+        where: {
+          ...whereClause,
+          id: { not: baseValueSetId },
+          OR: [{ isProduction: true }, { isActive: true }],
+        },
+        data: {
+          isProduction: false,
+          isActive: false,
+        },
+      });
+
+      return tx.baseValueSet.update({
+        where: { id: baseValueSetId },
+        data: {
+          isProduction: true,
+          isActive: true,
+        },
+        select: resultSelect,
+      });
+    });
+  }
+
+  if (!updatedSet) {
+    return NextResponse.json(
+      { error: "Base value set not found" },
+      { status: 404 },
+    );
+  }
 
   return NextResponse.json({ success: true, data: updatedSet });
-}
+});
 
 export { POST };

@@ -46,6 +46,7 @@ export interface UserFormProps {
     onCancel?: () => void;
     mode: "create" | "edit";
     isEditingSelf?: boolean;
+    originalRole?: UserRole;
     onRenderActions?: (actions: React.ReactNode) => void;
 }
 
@@ -67,6 +68,7 @@ export function UserForm({
     onCancel,
     mode,
     isEditingSelf,
+    originalRole,
     onRenderActions,
 }: UserFormProps) {
     const { t } = useI18n();
@@ -74,6 +76,16 @@ export function UserForm({
 
     const canManageRole = mode === "create" || isAdmin(session.user.role);
     const canManageAgency = isAdmin(session.user.role);
+    const isSysAdminViewer = session.user.role === "SYS_ADMIN";
+    const roleAtLoad = originalRole ?? data.role;
+    // Lock rules in edit mode:
+    //   - Any user with ADMIN role is locked unless the viewer is a SYS_ADMIN
+    //     (only SYS_ADMINs can manage other admins)
+    //   - A user who was already SYS_ADMIN when the form loaded is locked
+    //     (selecting SYS_ADMIN for another user should not lock the field mid-edit)
+    const isAdminTargetLocked = mode === "edit" && roleAtLoad === "ADMIN" && !isSysAdminViewer;
+    const isSysAdminTargetLocked = mode === "edit" && roleAtLoad === "SYS_ADMIN";
+    const isRoleLocked = isAdminTargetLocked || isSysAdminTargetLocked;
 
     const clearError = (field: keyof ValidationErrors) => {
         if (validationErrors[field]) {
@@ -237,7 +249,8 @@ export function UserForm({
                         options={[
                             { value: "COMMERCIAL", label: t("userFormPage", "roleCommercial") },
                             { value: "AGENT", label: t("userFormPage", "roleAgent") },
-                            ...(isAdmin(session.user.role) ? [{ value: "ADMIN", label: t("userFormPage", "roleAdmin") }] : [])
+                            ...(isAdmin(session.user.role) ? [{ value: "ADMIN", label: t("userFormPage", "roleAdmin") }] : []),
+                            ...(session.user.role === "SYS_ADMIN" ? [{ value: "SYS_ADMIN", label: t("userFormPage", "roleSysAdmin") }] : []),
                         ]}
                         value={data.role || "COMMERCIAL"}
                         onChange={(value) => {
@@ -245,9 +258,16 @@ export function UserForm({
                             clearError('role');
                         }}
                         required={mode === "create"}
-                        disabled={isSubmitting || (mode === "edit" && data.role === "ADMIN")}
+                        disabled={isSubmitting || isRoleLocked}
                         error={!!validationErrors.role}
-                        helperText={validationErrors.role || (mode === "edit" && data.role === "ADMIN" ? t("userFormPage", "adminRoleCannotBeChanged") : undefined)}
+                        helperText={
+                            validationErrors.role ||
+                            (isAdminTargetLocked
+                                ? t("userFormPage", "adminRoleCannotBeChanged")
+                                : isSysAdminTargetLocked
+                                    ? t("userFormPage", "sysAdminRoleCannotBeChanged")
+                                    : undefined)
+                        }
                     />
 
                     {canManageAgency && (

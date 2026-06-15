@@ -540,16 +540,23 @@ function calcElecPersonalizadaFijo(
  * Uses user-supplied energy margins (€/MWh) and power margins (€/kW/year).
  * Only computed when at least one energy margin period is > 0.
  * Formula: energyCost = (omie[p] + margenEnergia[p]/1000) × consumo[p]
+ *          powerCost  = (atrPower[p] + margenPotencia[p]) × potencia[p] × dias/365
  */
 function calcPersonalizadaIndex(
   inputs: ElectricityInputs,
   map: PriceMap,
 ): ProductResult | null {
-  // Use DB-stored prices from the PERSONALIZADA INDEX Excel sheet.
-  // These are full all-in monthly energy prices (same structure as DINAMICA).
-  // The product has no tier variant — keys use an empty-string tier.
+  // The product has no tier variant — keys use an empty-string tier (POTENCIA lookup).
   const product = "PERSONALIZADA_INDEX";
   const tier = "";
+
+  // Guard: only compute when at least one energy margin or OMIE estimate is provided.
+  const hasAnyMargen =
+    Object.values(inputs.personalizadaIndex?.margenEnergia ?? {}).some(
+      (v) => v != null && v !== 0,
+    ) ||
+    Object.values(inputs.omieEstimado ?? {}).some((v) => v != null && v !== 0);
+  if (!hasAnyMargen) return null;
 
   const {
     tarifaAcceso,
@@ -560,9 +567,6 @@ function calcPersonalizadaIndex(
     facturaActual,
     extras,
   } = inputs;
-  // Use fechaFin to derive the billing month — a period like "2026-01-31 → 2026-02-28"
-  // is a February bill; fechaInicio may land on the last day of the previous month.
-  const billingMonth = inputs.billingMonth ?? periodo.fechaFin.slice(0, 7); // YYYY-MM
   const dias = (() => {
     if (inputs.billingMonth) {
       const [y, m] = inputs.billingMonth.split("-").map(Number);
@@ -578,27 +582,38 @@ function calcPersonalizadaIndex(
     number | undefined
   >;
 
+  const omieMapIdx = (inputs.omieEstimado ?? {}) as Record<
+    string,
+    number | undefined
+  >;
+  const margenEnergiaMap = (inputs.personalizadaIndex?.margenEnergia ??
+    {}) as Record<string, number | undefined>;
+  const margenPotIdxMap = (inputs.personalizadaIndex?.margenPotencia ??
+    {}) as Record<string, number | undefined>;
+
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
-    // Try monthly price first, fall back to 12-month average
-    const precio =
-      priceOf(
-        map,
-        `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:MARGEN:${billingMonth}`,
-      ) ??
-      priceOf(map, `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:MARGEN`);
-    if (precio === undefined) return null; // product not in DB → skip
-    terminoEnergia += precio * pv(consumoMap, p);
+    // Energy price = user's OMIE estimate (€/kWh) + energy margin (€/MWh → /1000 to get €/kWh)
+    // The OMIE estimate should be the all-in cost per kWh the user expects for this
+    // billing month (including access tariff components). The margin is the commercial
+    // add-on agreed with the client on top of OMIE.
+    const omieP = pv(omieMapIdx, p) ?? 0;
+    const margenP = (margenEnergiaMap[p] ?? 0) / 1000;
+    terminoEnergia += (omieP + margenP) * pv(consumoMap, p);
   }
 
   let terminoPotencia = 0;
   for (const p of powerPeriods) {
-    const precioPot = priceOf(
-      map,
-      `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
-    );
-    if (precioPot === undefined) return null;
-    terminoPotencia += precioPot * pv(potenciaMap, p) * (dias / 365);
+    // Base ATR power price comes from the DB (same regulated charge across all indexed products).
+    // The user's margenPotencia is the commercial power margin added on top.
+    const precioPotBase =
+      priceOf(
+        map,
+        `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
+      ) ?? 0;
+    const margenPotP = margenPotIdxMap[p] ?? 0;
+    terminoPotencia +=
+      (precioPotBase + margenPotP) * pv(potenciaMap, p) * (dias / 365);
   }
 
   const terminoExceso = excesoPotencia ?? 0;
@@ -646,10 +661,10 @@ function calcPersonalizadaIndex(
 
 /**
  * Personalizada OMIE + B product.
- * Uses OMIE + user-supplied "B" term (€/MWh) per period as energy price,
- * plus user-supplied power margins (€/kW/year).
+ * Uses the Excel-derived "Precio TE" for the selected billing month plus the
+ * user-supplied "B" term (€/MWh) per period, applying the same B multiplier
+ * used by the workbook before the tariff/overhead adders.
  * Only computed when at least one B term period is > 0.
- * Formula: energyCost = (omie[p] + terminoB[p]/1000) × consumo[p]
  */
 function calcPersonalizadaOmieB(
   inputs: ElectricityInputs,
@@ -677,9 +692,7 @@ function calcPersonalizadaOmieB(
     facturaActual,
     extras,
   } = inputs;
-  // Use fechaFin to derive the billing month — a period like "2026-01-31 → 2026-02-28"
-  // is a February bill; fechaInicio may land on the last day of the previous month.
-  const billingMonth = inputs.billingMonth ?? periodo.fechaFin.slice(0, 7); // YYYY-MM
+  const billingMonthKey = inputs.billingMonth ?? periodo.fechaFin.slice(0, 7);
   const dias = (() => {
     if (inputs.billingMonth) {
       const [y, m] = inputs.billingMonth.split("-").map(Number);
@@ -695,27 +708,42 @@ function calcPersonalizadaOmieB(
     number | undefined
   >;
 
+  const terminoBMap = (inputs.personalizadaOmieB?.terminoB ?? {}) as Record<
+    string,
+    number | undefined
+  >;
+  const margenPotOmieBMap = (inputs.personalizadaOmieB?.margenPotencia ??
+    {}) as Record<string, number | undefined>;
+
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
-    // Try monthly price first, fall back to 12-month average
-    const precio =
-      priceOf(
-        map,
-        `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:MARGEN:${billingMonth}`,
-      ) ??
-      priceOf(map, `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:MARGEN`);
-    if (precio === undefined) return null; // product not in DB → skip
-    terminoEnergia += precio * pv(consumoMap, p);
+    const baseKey = `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}`;
+    const storedPrice =
+      priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) ??
+      priceOf(map, `${baseKey}:MARGEN`) ??
+      priceOf(map, `${baseKey}:ENERGIA`) ??
+      ((inputs.omieEstimado ?? {}) as Record<string, number | undefined>)[p];
+    if (storedPrice === undefined) return null;
+    const bFactor =
+      priceOf(map, `${baseKey}:B_FACTOR:${billingMonthKey}`) ??
+      priceOf(map, `${baseKey}:B_FACTOR`) ??
+      1;
+    const bTermP = ((terminoBMap[p] ?? 0) * bFactor) / 1000;
+    terminoEnergia += (storedPrice + bTermP) * pv(consumoMap, p);
   }
 
   let terminoPotencia = 0;
   for (const p of powerPeriods) {
-    const precioPot = priceOf(
-      map,
-      `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
-    );
-    if (precioPot === undefined) return null;
-    terminoPotencia += precioPot * pv(potenciaMap, p) * (dias / 365);
+    // Base ATR power price comes from the DB (same regulated charge across all indexed products).
+    // The user's margenPotencia is the commercial power margin added on top.
+    const precioPotBase =
+      priceOf(
+        map,
+        `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
+      ) ?? 0;
+    const margenPotP = margenPotOmieBMap[p] ?? 0;
+    terminoPotencia +=
+      (precioPotBase + margenPotP) * pv(potenciaMap, p) * (dias / 365);
   }
 
   const terminoExceso = excesoPotencia ?? 0;

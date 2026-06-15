@@ -10,19 +10,21 @@ import {
     DialogActions,
     Typography,
     TextField,
-    MenuItem,
-    Select,
-    FormControl,
-    InputLabel,
     Chip,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { DataTable, StatusBadge } from "../ui";
 import type { ColumnDef } from "../ui";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
+import { FormSelect } from "../ui/FormSelect";
+import { DateRangePicker } from "../ui/DateRangePicker";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDate } from "../../lib/formatPreferences";
 
 interface EmailLog {
     id: string;
@@ -76,14 +78,53 @@ function TriggerBadge({ trigger }: { trigger?: string }) {
 
 export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
     const { t } = useI18n();
+    const { preferences } = useUserPreferences();
     const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
 
-    // Filters
+    // Applied filters (sent to the API)
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [triggerFilter, setTriggerFilter] = useState<string>("all");
     const [searchTerm, setSearchTerm] = useState("");
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
+
+    // Local (pending) filter state
+    const [localStatus, setLocalStatus] = useState<string>("all");
+    const [localTrigger, setLocalTrigger] = useState<string>("all");
+    const [localSearch, setLocalSearch] = useState("");
+    const [localDateFrom, setLocalDateFrom] = useState<Date | null>(null);
+    const [localDateTo, setLocalDateTo] = useState<Date | null>(null);
+
+    const formatDate = useCallback((dateStr: string) => {
+        try {
+            const date = new Date(dateStr);
+            const formatted = formatDisplayDate(date, preferences.dateFormat);
+            const hh = String(date.getHours()).padStart(2, "0");
+            const mm = String(date.getMinutes()).padStart(2, "0");
+            const ss = String(date.getSeconds()).padStart(2, "0");
+            return `${formatted} ${hh}:${mm}:${ss}`;
+        } catch { return dateStr; }
+    }, [preferences.dateFormat]);
+
+    const toDateOnly = (d: Date | null) => {
+        if (!d) return "";
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+
+    const handleSearch = () => {
+        setStatusFilter(localStatus);
+        setTriggerFilter(localTrigger);
+        setSearchTerm(localSearch);
+        setDateFrom(toDateOnly(localDateFrom));
+        setDateTo(toDateOnly(localDateTo));
+        setPage(1);
+    };
+
+    const resetFilters = () => {
+        setLocalStatus("all"); setLocalTrigger("all"); setLocalSearch(""); setLocalDateFrom(null); setLocalDateTo(null);
+        setStatusFilter("all"); setTriggerFilter("all"); setSearchTerm(""); setDateFrom(""); setDateTo("");
+        setPage(1);
+    };
 
     // Pagination
     const [page, setPage] = useState(1);
@@ -157,13 +198,13 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
 
     useEffect(() => {
         if (error) {
-            onNotify?.("Failed to load email logs", "error");
+            onNotify?.(t("logs", "loadEmailLogsFailed"), "error");
         }
     }, [error, onNotify]);
 
     useEffect(() => {
         if (selectedLogError) {
-            onNotify?.("Failed to load email details", "error");
+            onNotify?.(t("logs", "loadEmailDetailsFailed"), "error");
         }
     }, [selectedLogError, onNotify]);
 
@@ -173,27 +214,6 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
 
     const viewDetails = async (logId: string) => {
         setSelectedLogId(logId);
-    };
-
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
-        return new Intl.DateTimeFormat("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-        }).format(date);
-    };
-
-    const resetFilters = () => {
-        setStatusFilter("all");
-        setTriggerFilter("all");
-        setSearchTerm("");
-        setDateFrom("");
-        setDateTo("");
-        setPage(1);
     };
 
     const handleSort = (column: string) => {
@@ -208,28 +228,18 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
     const columns: ColumnDef<EmailLog>[] = [
         {
             key: "sentAt",
-            label: t("columns", "date") || "Date",
+            label: t("logs", "date"),
             sortable: true,
             width: "180",
             renderCell: (log) => (
                 <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
-                    {new Date(log.sentAt).toLocaleString("en-GB", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    })}{" "}
-                    {new Date(log.sentAt).toLocaleTimeString("en-GB", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    })}
+                    {formatDate(log.sentAt)}
                 </Typography>
             ),
         },
         {
             key: "recipientEmail",
-            label: t("columns", "recipient") || "Recipient",
+            label: t("logs", "recipient"),
             renderCell: (log) => (
                 <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
                     {log.recipientEmail}
@@ -238,7 +248,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
         },
         {
             key: "subject",
-            label: t("columns", "subject") || "Subject",
+            label: t("logs", "subject"),
             renderCell: (log) => (
                 <Typography variant="body2" sx={{ fontSize: 13 }}>
                     {log.subject}
@@ -247,12 +257,12 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
         },
         {
             key: "triggeredBy",
-            label: "Triggered By",
+            label: t("logs", "triggeredBy"),
             renderCell: (log) => <TriggerBadge trigger={log.triggeredBy} />,
         },
         {
             key: "status",
-            label: t("columns", "status") || "Status",
+            label: t("logs", "status"),
             renderCell: (log) => (
                 <StatusBadge
                     label={log.status}
@@ -262,71 +272,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
         },
     ];
 
-    const filterBar = (
-        <Stack spacing={2} sx={{ mb: 2 }}>
-            <Stack direction="row" spacing={2}>
-                <FormControl size="small" sx={{ minWidth: 150 }}>
-                    <InputLabel>Status</InputLabel>
-                    <Select
-                        value={statusFilter}
-                        onChange={(e) => {
-                            setStatusFilter(e.target.value);
-                            setPage(1);
-                        }}
-                        label="Status"
-                    >
-                        <MenuItem value="all">All</MenuItem>
-                        <MenuItem value="sent">Sent</MenuItem>
-                        <MenuItem value="failed">Failed</MenuItem>
-                    </Select>
-                </FormControl>
 
-                <FormControl size="small" sx={{ minWidth: 180 }}>
-                    <InputLabel>Triggered By</InputLabel>
-                    <Select
-                        value={triggerFilter}
-                        onChange={(e) => {
-                            setTriggerFilter(e.target.value);
-                            setPage(1);
-                        }}
-                        label="Triggered By"
-                    >
-                        <MenuItem value="all">All</MenuItem>
-                        <MenuItem value="user-creation">User Creation</MenuItem>
-                        <MenuItem value="simulation-share">Simulation Share</MenuItem>
-                        <MenuItem value="test-email">Test Email</MenuItem>
-                    </Select>
-                </FormControl>
-
-                <TextField
-                    size="small"
-                    label="From Date"
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
-                    value={dateFrom}
-                    onChange={(e) => {
-                        setDateFrom(e.target.value);
-                        setPage(1);
-                    }}
-                    sx={{ width: 180 }}
-                />
-
-                <TextField
-                    size="small"
-                    label="To Date"
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
-                    value={dateTo}
-                    onChange={(e) => {
-                        setDateTo(e.target.value);
-                        setPage(1);
-                    }}
-                    sx={{ width: 180 }}
-                />
-
-            </Stack>
-        </Stack>
-    );
 
     return (
         <>
@@ -334,16 +280,67 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                 columns={columns}
                 rows={logs}
                 loading={loading}
-                searchValue={searchTerm}
-                onSearch={(value) => {
-                    setSearchTerm(value);
-                    setPage(1);
-                }}
-                onClearFilters={resetFilters}
-                searchPlaceholder="Search by recipient, subject, or template..."
                 sortState={{ column: sortColumn, direction: sortDir }}
                 onSort={handleSort}
-                filterBar={filterBar}
+                renderCustomSearch={() => (
+                    <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
+                        <Box sx={{ flex: 1, }}>
+                            <FormSelect
+                                label=""
+                                options={[
+                                    { value: "all", label: t("logs", "allStatuses") },
+                                    { value: "sent", label: t("logs", "sent") },
+                                    { value: "failed", label: t("logs", "failed") },
+                                ]}
+                                value={localStatus}
+                                onChange={(v) => setLocalStatus(String(v ?? "all"))}
+                                placeholder={t("logs", "status")}
+                                textFieldProps={{ size: "small" }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 1, }}>
+                            <FormSelect
+                                label=""
+                                options={[
+                                    { value: "all", label: t("logs", "allTriggers") },
+                                    { value: "user-creation", label: t("auditEvents", "created") },
+                                    { value: "simulation-share", label: t("auditEvents", "shared") },
+                                    { value: "test-email", label: t("logs", "promptTest") },
+                                ]}
+                                value={localTrigger}
+                                onChange={(v) => setLocalTrigger(String(v ?? "all"))}
+                                placeholder={t("logs", "triggeredBy")}
+                                textFieldProps={{ size: "small" }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 1, }}>
+                            <TextField
+                                size="small"
+                                fullWidth
+                                placeholder={t("logs", "searchEmail")}
+                                value={localSearch}
+                                onChange={(e) => setLocalSearch(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                                sx={{ "& .MuiInputBase-root": { fontSize: 13 } }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 2, }}>
+                            <DateRangePicker
+                                variant="inline"
+                                label={t("logs", "date")}
+                                startDate={localDateFrom}
+                                endDate={localDateTo}
+                                onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
+                            />
+                        </Box>
+                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
+                            <SearchIcon />
+                        </Button>
+                        <Button variant="outlined" size="small" onClick={resetFilters}>
+                            <ClearIcon />
+                        </Button>
+                    </Box>
+                )}
                 pagination={{
                     page,
                     pageSize,
@@ -362,10 +359,10 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                         variant="outlined"
                         size="small"
                     >
-                        View
+                        {t("logs", "view")}
                     </Button>
                 )}
-                emptyMessage="No email logs found"
+                emptyMessage={t("logs", "noEmailLogs")}
             />
 
             {/* Detail Dialog */}
@@ -375,18 +372,18 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                 maxWidth="md"
                 fullWidth
             >
-                <DialogTitle>Email Log Details</DialogTitle>
+                <DialogTitle>{t("logs", "details")}</DialogTitle>
                 <DialogContent dividers>
                     {selectedLog && (
                         <Stack spacing={3}>
                             <Box sx={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 2 }}>
                                 <Typography variant="body2" color="text.secondary">
-                                    Sent At
+                                    {t("logs", "sentAt")}
                                 </Typography>
                                 <Typography variant="body2">{formatDate(selectedLog.sentAt)}</Typography>
 
                                 <Typography variant="body2" color="text.secondary">
-                                    Status
+                                    {t("logs", "status")}
                                 </Typography>
                                 <Box>
                                     <StatusBadge
@@ -396,14 +393,14 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 </Box>
 
                                 <Typography variant="body2" color="text.secondary">
-                                    Recipient
+                                    {t("logs", "recipient")}
                                 </Typography>
                                 <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
                                     {selectedLog.recipientEmail}
                                 </Typography>
 
                                 <Typography variant="body2" color="text.secondary">
-                                    Triggered By
+                                    {t("logs", "triggeredBy")}
                                 </Typography>
                                 <Box>
                                     {selectedLog.triggeredByUser ? (
@@ -418,14 +415,14 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.templateName && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            Template
+                                            {t("logs", "template")}
                                         </Typography>
                                         <Typography variant="body2">{selectedLog.templateName}</Typography>
                                     </>
                                 )}
 
                                 <Typography variant="body2" color="text.secondary">
-                                    Subject
+                                    {t("logs", "subject")}
                                 </Typography>
                                 <Typography variant="body2" fontWeight={600}>
                                     {selectedLog.subject}
@@ -435,7 +432,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.fromEmail && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            From
+                                            {t("logs", "from")}
                                         </Typography>
                                         <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
                                             {selectedLog.fromName ? `"${selectedLog.fromName}" <${selectedLog.fromEmail}>` : selectedLog.fromEmail}
@@ -446,7 +443,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.smtpHost && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            SMTP Server
+                                            {t("logs", "smtpServer")}
                                         </Typography>
                                         <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
                                             {selectedLog.smtpHost}:{selectedLog.smtpPort ?? "—"}
@@ -457,7 +454,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.messageId && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            Message ID
+                                            {t("logs", "messageId")}
                                         </Typography>
                                         <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 11, wordBreak: "break-all" }}>
                                             {selectedLog.messageId}
@@ -468,7 +465,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.smtpResponse && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            SMTP Response
+                                            {t("logs", "smtpResponse")}
                                         </Typography>
                                         <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 11, wordBreak: "break-all" }}>
                                             {selectedLog.smtpResponse}
@@ -479,7 +476,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.durationMs !== undefined && selectedLog.durationMs !== null && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            Duration
+                                            {t("logs", "duration")}
                                         </Typography>
                                         <Typography variant="body2">
                                             {selectedLog.durationMs} ms
@@ -490,10 +487,10 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {(selectedLog.hasAttachments || (selectedLog.attachmentsCount ?? 0) > 0) && (
                                     <>
                                         <Typography variant="body2" color="text.secondary">
-                                            Attachments
+                                            {t("logs", "attachments")}
                                         </Typography>
                                         <Typography variant="body2">
-                                            {selectedLog.attachmentsCount ?? 0} file(s)
+                                            {t("logs", "fileCount", { count: selectedLog.attachmentsCount ?? 0 })}
                                         </Typography>
                                     </>
                                 )}
@@ -501,7 +498,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.errorMessage && (
                                     <>
                                         <Typography variant="body2" color="error">
-                                            Error Message
+                                            {t("logs", "errorMessage")}
                                         </Typography>
                                         <Typography variant="body2" color="error" sx={{ fontFamily: "monospace", fontSize: 12 }}>
                                             {selectedLog.errorMessage}
@@ -512,7 +509,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 {selectedLog.errorStack && (
                                     <>
                                         <Typography variant="body2" color="error">
-                                            Error Stack
+                                            {t("logs", "errorStack")}
                                         </Typography>
                                         <Box
                                             sx={{
@@ -538,7 +535,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
 
                             <Box>
                                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                                    Preview
+                                    {t("logs", "preview")}
                                 </Typography>
                                 <Box
                                     sx={{
@@ -558,7 +555,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                     )}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setSelectedLogId(null)}>Close</Button>
+                    <Button onClick={() => setSelectedLogId(null)}>{t("logs", "close")}</Button>
                 </DialogActions>
             </Dialog>
         </>

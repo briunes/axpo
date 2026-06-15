@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import { assertPermission, assertRole } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 
 export const dynamic = "force-dynamic";
 
 export const GET = withErrorHandler(async (request: NextRequest, context) => {
   const auth = await requireAuth(request);
-  await assertPermission(auth, "section.configurations");
+  assertRole(auth, [UserRole.ADMIN, UserRole.SYS_ADMIN]);
+  await assertPermission(auth, "section.ocr-logs");
 
   const id = context?.params?.id;
   const fileId = context?.params?.fileId;

@@ -4,6 +4,10 @@ import { ResponseHandler } from "@/application/middleware/response";
 import { AuthService } from "@/application/services/authService";
 import { ValidationError } from "@/domain/errors/errors";
 import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
+import {
+  applyRateLimit,
+  getClientRateLimitKey,
+} from "@/application/middleware/rateLimit";
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const sessionContext = getRequestSessionContext(request);
@@ -13,6 +17,14 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   if (!otpSessionToken || !code) {
     throw new ValidationError("otpSessionToken and code are required");
   }
+
+  applyRateLimit(
+    getClientRateLimitKey(
+      sessionContext.ipAddress,
+      `otp:${String(otpSessionToken).slice(0, 12)}`,
+    ),
+    { maxRequests: 6, windowMs: 15 * 60 * 1000 },
+  );
 
   const result = await AuthService.verifyOtp(
     otpSessionToken,

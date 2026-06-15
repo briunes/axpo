@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
 import { reloadCronJobs } from "@/lib/cron";
 import cron from "node-cron";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { requireAuth } from "@/application/middleware/auth";
+import { assertPermission } from "@/application/middleware/rbac";
 
 /**
  * GET /api/v1/internal/system/cron-config
  * Get current cron configuration
  */
-export async function GET() {
+export const GET = withErrorHandler(async (request: NextRequest) => {
+  const auth = await requireAuth(request);
+  await assertPermission(auth, "section.configurations");
+
   try {
     const config = await prisma.systemConfig.findFirst({
       select: {
@@ -39,13 +45,16 @@ export async function GET() {
       { status: 500 },
     );
   }
-}
+});
 
 /**
  * PATCH /api/v1/internal/system/cron-config
  * Update cron configuration
  */
-export async function PATCH(request: NextRequest) {
+export const PATCH = withErrorHandler(async (request: NextRequest) => {
+  const auth = await requireAuth(request);
+  await assertPermission(auth, "section.configurations");
+
   try {
     const body = await request.json();
     const { enabled, schedule, timezone } = body;
@@ -112,7 +121,7 @@ export async function PATCH(request: NextRequest) {
       { status: 500 },
     );
   }
-}
+});
 
 /**
  * Helper function to get human-readable schedule description

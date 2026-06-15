@@ -5,7 +5,11 @@ import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole, assertPermission } from "@/application/middleware/rbac";
+import {
+  assertRole,
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 
@@ -58,7 +62,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const sortDir =
     (searchParams.get("sortDir") ?? "desc") === "asc" ? "asc" : "desc";
   const showArchived =
-    searchParams.get("showArchived") === "true" && auth.role === UserRole.ADMIN;
+    searchParams.get("showArchived") === "true" && isElevatedRole(auth.role);
 
   const allowedOrderBy: Record<string, true> = {
     name: true,
@@ -72,17 +76,13 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ? { name: { contains: search, mode: "insensitive" as const } }
     : {};
 
-  const where =
-    auth.role === UserRole.ADMIN
-      ? { ...(showArchived ? {} : { isDeleted: false }), ...searchFilter }
-      : {
-          isDeleted: false,
-          OR: [
-            { scopeType: BaseValueScope.GLOBAL },
-            { agencyId: auth.agencyId },
-          ],
-          ...searchFilter,
-        };
+  const where = isElevatedRole(auth.role)
+    ? { ...(showArchived ? {} : { isDeleted: false }), ...searchFilter }
+    : {
+        isDeleted: false,
+        OR: [{ scopeType: BaseValueScope.GLOBAL }, { agencyId: auth.agencyId }],
+        ...searchFilter,
+      };
 
   const [sets, total] = await Promise.all([
     prisma.baseValueSet.findMany({

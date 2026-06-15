@@ -2,7 +2,10 @@
 
 import { createContext, useContext } from "react";
 import type { PermissionKey } from "./permissionsDefinitions";
-import { ROLE_PERMISSION_DEFAULTS } from "./permissionsDefinitions";
+import {
+  LOG_PERMISSION_KEYS,
+  ROLE_PERMISSION_DEFAULTS,
+} from "./permissionsDefinitions";
 
 export interface RolePermissionItem {
   role: string;
@@ -39,7 +42,8 @@ interface PermissionsContextValue {
 
 const PermissionsContext = createContext<PermissionsContextValue>({
   canDo: (role, key) => {
-    if (role === "ADMIN") return true;
+    if (role === "SYS_ADMIN") return true;
+    if (role === "ADMIN" && !LOG_PERMISSION_KEYS.includes(key)) return true;
     return ROLE_PERMISSION_DEFAULTS[role]?.[key] ?? false;
   },
   loaded: false,

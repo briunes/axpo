@@ -3,6 +3,7 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SUPPORTED_LANGUAGES } from "@/lib/supportedLanguages";
+import { getAiUsage, resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
 // Allow up to 5 minutes — template generation for multiple languages can be slow
 export const maxDuration = 300;
@@ -234,7 +235,7 @@ function extractResponseText(provider: string, llmData: any): string {
 // POST handler
 // ────────────────────────────────────────────────────────────────────────────────
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  await requireAuth(req);
+  const auth = await requireAuth(req);
 
   // ── Load LLM config ──────────────────────────────────────────────────────────
   const config = await prisma.systemConfig.findFirst();
@@ -250,14 +251,19 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     );
   }
 
-  const llmBaseUrl = (config as any).llmBaseUrl as string;
-  const llmModelName = (config as any).llmModelName as string;
-  const llmProvider = ((config as any).llmProvider || "ollama") as string;
-  const llmApiKey = (config as any).llmApiKey as string | null | undefined;
-  const llmTemperature = Number((config as any).llmTemperature) || 0.4;
+  const aiConfig = resolveAiConfigFromSystemConfig(
+    config as Record<string, any>,
+    "templateBuilder",
+    { defaultTemperature: 0.4, defaultMaxTokens: 4000, minMaxTokens: 2000 },
+  );
+  const llmBaseUrl = aiConfig?.baseUrl as string;
+  const llmModelName = aiConfig?.modelName as string;
+  const llmProvider = (aiConfig?.provider || "ollama") as string;
+  const llmApiKey = aiConfig?.apiKey as string | null | undefined;
+  const llmTemperature = aiConfig?.temperature ?? 0.4;
   // Use configured maxTokens per-language call — 4000 is plenty for one language
   const llmMaxTokens = Math.min(
-    Math.max(Number((config as any).llmMaxTokens) || 4000, 2000),
+    Math.max(aiConfig?.maxTokens || 4000, 2000),
     8000,
   );
 
@@ -363,6 +369,27 @@ Return ONLY this JSON (no extra text):
     return JSON.parse(match[1]);
   }
 
+  const usageTotals = {
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    hasUsage: false,
+  };
+  const addUsage = (data: any) => {
+    const usage = getAiUsage(data, llmProvider);
+    if (
+      usage.promptTokens !== undefined ||
+      usage.completionTokens !== undefined ||
+      usage.totalTokens !== undefined
+    ) {
+      usageTotals.hasUsage = true;
+      usageTotals.promptTokens += usage.promptTokens ?? 0;
+      usageTotals.completionTokens += usage.completionTokens ?? 0;
+      usageTotals.totalTokens +=
+        usage.totalTokens ?? (usage.promptTokens ?? 0) + (usage.completionTokens ?? 0);
+    }
+  };
+
   // ── Call primary language ────────────────────────────────────────────────────
   let primaryResponse: Response;
   try {
@@ -396,6 +423,7 @@ Return ONLY this JSON (no extra text):
   }
 
   const primaryData = await primaryResponse.json();
+  addUsage(primaryData);
   const primaryText = extractResponseText(llmProvider, primaryData);
 
   let primaryResult: any;
@@ -465,6 +493,7 @@ Return ONLY this JSON (no extra text):
         }
 
         const langData = await resp.json();
+        addUsage(langData);
         const langText = extractResponseText(llmProvider, langData);
         const langResult = parseSingleLang(langText);
 
@@ -504,6 +533,43 @@ Return ONLY this JSON (no extra text):
       ...otherTranslations,
     ],
   };
+
+  try {
+    await prisma.ocrLog.create({
+      data: {
+        userId: auth.userId,
+        userEmail: auth.email,
+        type: "TEMPLATE_BUILDER",
+        status: "SUCCESS",
+        provider: llmProvider,
+        model: llmModelName,
+        baseUrl: llmBaseUrl,
+        promptTokens: usageTotals.hasUsage ? usageTotals.promptTokens : undefined,
+        completionTokens: usageTotals.hasUsage
+          ? usageTotals.completionTokens
+          : undefined,
+        totalTokens: usageTotals.hasUsage ? usageTotals.totalTokens : undefined,
+        promptText: prompt,
+        extractedFields: {
+          templateMode,
+          isEditing: Boolean(isEditing),
+          name: result.name,
+          type: result.type,
+          translations: result.translations.length,
+        },
+        fieldsExtracted: result.translations.length,
+        metadata: {
+          aiProviderConfigId: aiConfig?.id,
+          aiTask: "templateBuilder",
+          templateMode,
+          isEditing: Boolean(isEditing),
+          languageCount: result.translations.length,
+        },
+      },
+    });
+  } catch (err) {
+    console.error("[OCR Log] Failed to save template-builder usage:", err);
+  }
 
   return NextResponse.json({ success: true, result });
 });

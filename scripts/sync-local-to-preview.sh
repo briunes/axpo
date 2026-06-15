@@ -33,8 +33,142 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_PREVIEW="$ROOT_DIR/.env.preview"
 DUMP_FILE="$(mktemp /tmp/axpo-local-dump-XXXXXX.sql)"
+RESTORE_FILE="$(mktemp /tmp/axpo-local-restore-XXXXXX.sql)"
 # Ensure temp file is cleaned up on exit
-trap 'rm -f "$DUMP_FILE"' EXIT
+trap 'rm -f "$DUMP_FILE" "$RESTORE_FILE"' EXIT
+
+prepare_restore_file() {
+  awk '
+    function progress(message) {
+      gsub(/\047/, "\047\047", message)
+      print "DO $$ BEGIN RAISE NOTICE \047" message "\047; END $$;"
+    }
+
+    FNR == NR {
+      if ($0 ~ /^COPY public\.[^[:space:]]+ .* FROM stdin;$/) {
+        copy_table = $2
+        copy_rows[copy_table] = 0
+        next
+      }
+      if (copy_table != "" && $0 ~ /^\\\.$/) {
+        copy_table = ""
+        next
+      }
+      if (copy_table != "") {
+        copy_rows[copy_table]++
+      }
+      next
+    }
+
+    /^SELECT pg_catalog.set_config\(/ {
+      expr = $0
+      sub(/^SELECT /, "", expr)
+      sub(/;$/, "", expr)
+      progress("  -> Setting restore search_path")
+      print "DO $$ BEGIN PERFORM " expr "; END $$;"
+      next
+    }
+
+    /^-- Name: / {
+      section = $0
+      name = section
+      type = section
+      schema = section
+      sub(/^-- Name: /, "", name)
+      sub(/; Type:.*$/, "", name)
+      sub(/^.*; Type: /, "", type)
+      sub(/; Schema:.*$/, "", type)
+      sub(/^.*; Schema: /, "", schema)
+      sub(/; Owner:.*$/, "", schema)
+
+      if (type != "TABLE DATA" && type != "COMMENT" && type != "ACL") {
+        if (schema == "-" || schema == "") {
+          progress("  -> Restoring " type " " name)
+        } else {
+          progress("  -> Restoring " type " " schema "." name)
+        }
+      }
+
+      print
+      next
+    }
+
+    /^CREATE TABLE public\./ {
+      obj = $3
+      sub(/\($/, "", obj)
+      progress("  -> Creating table " obj)
+      print
+      next
+    }
+
+    /^COPY public\.[^[:space:]]+ .* FROM stdin;$/ {
+      copy_table = $2
+      progress("  -> Loading " copy_table " (" copy_rows[copy_table] " rows)")
+      print
+      next
+    }
+
+    /^\\\.$/ {
+      print
+      if (copy_table != "") {
+        progress("  <- Loaded " copy_table)
+        copy_table = ""
+      }
+      next
+    }
+
+    /^ALTER TABLE ONLY public\./ {
+      obj = $4
+      if ($0 ~ / ADD CONSTRAINT /) {
+        progress("  -> Adding constraints on " obj)
+      }
+      print
+      next
+    }
+
+    /^CREATE INDEX / {
+      progress("  -> Creating index " $3)
+      print
+      next
+    }
+
+    /^CREATE UNIQUE INDEX / {
+      progress("  -> Creating unique index " $4)
+      print
+      next
+    }
+
+    /^CREATE TRIGGER / {
+      progress("  -> Creating trigger " $3)
+      print
+      next
+    }
+
+    /^CREATE POLICY / {
+      progress("  -> Creating policy " $3)
+      print
+      next
+    }
+
+    { print }
+  ' "$DUMP_FILE" "$DUMP_FILE" > "$RESTORE_FILE"
+}
+
+run_with_heartbeat() {
+  "$@" &
+  local restore_pid=$!
+  local elapsed=0
+
+  while kill -0 "$restore_pid" 2>/dev/null; do
+    sleep 30
+    if kill -0 "$restore_pid" 2>/dev/null; then
+      elapsed=$((elapsed + 30))
+      echo "  ... restore still running (${elapsed}s elapsed)"
+    fi
+  done
+
+  wait "$restore_pid"
+}
 
 echo ""
 echo -e "${BOLD}================================================${NC}"
@@ -81,7 +215,7 @@ ok "Preview URL: $(echo "$PREVIEW_URL" | sed 's/:.*@/:***@/')"
 # The DIRECT_URL uses IPv6 (db.*.supabase.co) which Docker containers can't reach.
 # The session pooler on port 5432 is IPv4 and works from Docker.
 DOCKER_PREVIEW_URL="$(grep -E '^DATABASE_URL=' "$ENV_PREVIEW" | head -1 | cut -d= -f2- | tr -d "'\"" \
-  | sed 's/pgbouncer=true//g; s/?$//g; s/&$//g; s/6543/5432/g' || true)"
+  | sed 's/pgbouncer=true//g; s/connection_limit=[^&]*//g; s/pool_timeout=[^&]*//g; s/connect_timeout=[^&]*//g; s/6543/5432/g; s/?&/\?/g; s/&&/\&/g; s/[?&]$//g' || true)"
 if [[ -z "$DOCKER_PREVIEW_URL" ]]; then
   DOCKER_PREVIEW_URL="$PREVIEW_URL"
 fi
@@ -142,6 +276,9 @@ ok "Dump complete ($(du -sh "$DUMP_FILE" | cut -f1))"
 # Patch CREATE SCHEMA to avoid "already exists" error on restore
 sed -i '' 's/^CREATE SCHEMA public;$/CREATE SCHEMA IF NOT EXISTS public;/' "$DUMP_FILE"
 
+echo "  Preparing restore progress output..."
+prepare_restore_file
+
 # ── 2. Drop everything in preview public schema ───────────────────────────────
 step "2/4  Dropping all objects in preview public schema..."
 DROP_SQL="
@@ -177,14 +314,15 @@ ok "Preview public schema cleared"
 
 # ── 3. Restore dump ───────────────────────────────────────────────────────────
 step "3/4  Restoring dump to preview..."
+echo "  Progress will pause during large table loads, then continue after each COPY finishes."
 if $USE_DOCKER_PSQL; then
   # Mount the dump file into a fresh postgres container that has internet access
-  docker run --rm -i \
-    -v "$DUMP_FILE:/dump.sql:ro" \
+  run_with_heartbeat docker run --rm -i \
+    -v "$RESTORE_FILE:/dump.sql:ro" \
     postgres:16-alpine \
-    psql "$DOCKER_PREVIEW_URL" -v ON_ERROR_STOP=1 -q --file=/dump.sql
+    psql "$DOCKER_PREVIEW_URL" -v ON_ERROR_STOP=1 -q --echo-errors --file=/dump.sql
 else
-  psql "$PREVIEW_URL" -v ON_ERROR_STOP=1 -q --file="$DUMP_FILE"
+  run_with_heartbeat psql "$PREVIEW_URL" -v ON_ERROR_STOP=1 -q --echo-errors --file="$RESTORE_FILE"
 fi
 ok "Restore complete"
 

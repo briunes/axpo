@@ -470,18 +470,7 @@ export default function SimulationDetailPage({
         if (payload?.baseValueSetId)
           setUsedBaseValueSetId(payload.baseValueSetId);
 
-        // Find the most-recent selectedOffer across all returned versions.
-        // The latest version may have had its selectedOffer wiped by a
-        // recalculation, so fall back to scanning the full version list.
-        const productKey =
-          payload?.selectedOffer?.productKey ??
-          (
-            versions as Array<{
-              payloadJson?: { selectedOffer?: { productKey: string } } | null;
-            }>
-          ).find((v) => v.payloadJson?.selectedOffer?.productKey)?.payloadJson
-            ?.selectedOffer?.productKey;
-        if (productKey) setSelectedOfferProductKey(productKey);
+        setSelectedOfferProductKey(payload?.selectedOffer?.productKey ?? "");
       })
       .catch((err) => {
         showError(
@@ -573,10 +562,12 @@ export default function SimulationDetailPage({
         actions={
           !!lastResults && simulation.status === "DRAFT" ? (
             <>
-              {session && (
+              {session &&
+                (session.user.role === "ADMIN" ||
+                  session.user.role === "SYS_ADMIN") && (
                 <BaseValueSetSelector
                   token={session.token}
-                  isAdmin={session.user.role === "ADMIN"}
+                  isAdmin
                   usedBaseValueSetId={usedBaseValueSetId}
                   onChange={(id) => setSelectedBaseValueSetId(id)}
                   onChangeItem={(item) =>
@@ -591,20 +582,25 @@ export default function SimulationDetailPage({
               >
                 {t("downloadHistory", "buttonLabel") || "Download History"}
               </Button>
-              <Button
-                variant="outlined"
-                startIcon={<ShareIcon />}
-                onClick={handleShare}
-              >
-                {t("actions", "share") || "Share"}
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<HistoryIcon />}
-                onClick={() => setShowAuditLogsModal(true)}
-              >
-                {t("auditLogsModal", "title")}
-              </Button>
+              {selectedOfferProductKey && (
+                <Button
+                  variant="outlined"
+                  startIcon={<ShareIcon />}
+                  onClick={handleShare}
+                >
+                  {t("actions", "share") || "Share"}
+                </Button>
+              )}
+              {(session.user.role === "AGENT" ||
+                canDo(session.user.role, "section.audit-logs")) && (
+                <Button
+                  variant="outlined"
+                  startIcon={<HistoryIcon />}
+                  onClick={() => setShowAuditLogsModal(true)}
+                >
+                  {t("auditLogsModal", "title")}
+                </Button>
+              )}
             </>
           ) : undefined
         }
@@ -646,7 +642,9 @@ export default function SimulationDetailPage({
         onNotify={(text, tone) =>
           tone === "success" ? showSuccess(text) : showError(text)
         }
-        onOfferSelected={(productKey) => setSelectedOfferProductKey(productKey)}
+        onOfferSelected={(productKey) =>
+          setSelectedOfferProductKey(productKey ?? "")
+        }
         readOnly={simulation.status === "SHARED"}
         baseValueSetId={selectedBaseValueSetId}
       />
@@ -713,7 +711,9 @@ export default function SimulationDetailPage({
       />
 
       {/* Audit Logs Modal */}
-      {session && (
+      {session &&
+        (session.user.role === "AGENT" ||
+          canDo(session.user.role, "section.audit-logs")) && (
         <AuditLogsModal
           open={showAuditLogsModal}
           onClose={() => setShowAuditLogsModal(false)}

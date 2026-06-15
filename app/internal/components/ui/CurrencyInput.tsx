@@ -68,6 +68,8 @@ export interface CurrencyInputProps
     currencySymbol?: string;
     /** Number of decimal places. Defaults to 2. */
     decimals?: number;
+    /** Optional explicit number format. Defaults to the logged user's preference. */
+    numberFormat?: string;
     label?: string;
     required?: boolean;
     helperText?: string;
@@ -83,6 +85,7 @@ export function CurrencyInput({
     onChange,
     currencySymbol = "€",
     decimals = 2,
+    numberFormat: numberFormatOverride,
     label,
     required,
     helperText,
@@ -92,7 +95,7 @@ export function CurrencyInput({
     ...rest
 }: CurrencyInputProps) {
     const { preferences } = useUserPreferences();
-    const { numberFormat } = preferences;
+    const numberFormat = numberFormatOverride ?? preferences.numberFormat;
 
     const decimalSep = getDecimalSep(numberFormat);
 

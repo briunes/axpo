@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
-import { convertPdfToImages } from "@/lib/pdfToImage";
+import {
+  convertAllPdfPagesToImages,
+  OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
+} from "@/lib/pdfToImage";
+import { resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
 /**
  * Sends images to the configured LLM and returns the raw text response.
@@ -165,11 +169,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     );
   }
 
-  const llmBaseUrl = (config as any).llmBaseUrl as string;
-  const llmModelName = (config as any).llmModelName as string;
-  const llmProvider = ((config as any).llmProvider as string) || "ollama";
-  const llmApiKey = (config as any).llmApiKey as string | null;
-  const llmTemperature = Number((config as any).llmTemperature) || 0.1;
+  const aiConfig = resolveAiConfigFromSystemConfig(
+    config as Record<string, any>,
+    "providerDetection",
+    { defaultTemperature: 0.1, defaultMaxTokens: 2000 },
+  );
+  const llmBaseUrl = aiConfig?.baseUrl as string;
+  const llmModelName = aiConfig?.modelName as string;
+  const llmProvider = aiConfig?.provider || "ollama";
+  const llmApiKey = aiConfig?.apiKey as string | null;
+  const llmTemperature = aiConfig?.temperature ?? 0.1;
 
   const saveOcrLog = async (data: {
     status: string;
@@ -338,10 +347,31 @@ Look for:
 
 TASK 2 — COMMODITY TYPE:
 Also determine whether this is an electricity or gas invoice.
-- Look for labels like "Electricidad", "Energía eléctrica", "CUPS eléctrico" → ELECTRICITY
-- Look for labels like "Gas Natural", "Gas", "CUPS gas", "calorífico" → GAS
-- If both are present → BOTH
-- If unclear → null
+
+Important:
+- Do NOT classify as ELECTRICITY merely because the invoice contains "kWh" or "CUPS".
+- Gas invoices may also use kWh and CUPS.
+- Treat "kWh", "CUPS", "consumo", and generic "energía" as neutral unless accompanied by commodity-specific terms.
+
+Strong GAS indicators:
+- "gas", "factura gas", "facturagas", "gas natural"
+- "hidrocarburos", "impuesto especial hidrocarburos"
+- "poder calorífico", "coeficiente de conversión", "Gj", "PCS"
+- "caudal", "peaje gas", "término variable gas"
+
+Strong ELECTRICITY indicators:
+- "electricidad", "energía eléctrica", "luz"
+- "potencia contratada", "término de potencia"
+- "peaje de acceso electricidad", "discriminación horaria"
+- periods like P1/P2/P3 when tied to power or electricity energy charges
+- "alquiler contador electricidad"
+
+Decision rule:
+- If strong GAS indicators appear and no strong ELECTRICITY indicators appear → GAS.
+- If strong ELECTRICITY indicators appear and no strong GAS indicators appear → ELECTRICITY.
+- If strong indicators for both appear → BOTH.
+- If only neutral terms like "kWh", "CUPS", "consumo", or generic "energía" appear → null.
+- If unclear → null.
 
 RESPONSE FORMAT:
 Respond with ONLY a JSON object, no markdown, no explanation:
@@ -357,59 +387,37 @@ If not in the list, set matchedSlug to null and still return the providerName yo
 If you cannot determine the provider at all, return providerName as null.`;
 
   let convertedPdfLogFiles: OcrPersistedFile[] = [];
+  let processedPdfPageCount: number | undefined;
 
   try {
     // Prepare images to send
     let imagesToProcess: Array<{ base64: string; mimeType: string }> = [];
 
     if (fileEntries.length === 1 && fileEntries[0].type === "application/pdf") {
-      // PDF: convert to images, use only first page
+      // Provider details may appear on any page, so inspect the full PDF.
       const bytes = await fileEntries[0].arrayBuffer();
       const buffer = Buffer.from(bytes);
       const fileNameWithoutExt = fileEntries[0].name.replace(/\.[^.]+$/, "");
+      const pdfImages = await convertAllPdfPagesToImages(
+        buffer,
+        OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
+      );
 
-      if (llmProvider === "ollama-cloud") {
-        // Convert PDF to image first (only first page)
-        const pdfImages = await convertPdfToImages(buffer, 1, 1.5);
-        convertedPdfLogFiles = pdfImages.map((img) => {
-          const imageBuffer = Buffer.from(img.base64, "base64");
-          return {
-            fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.png`,
-            fileType: img.mimeType,
-            fileSizeBytes: imageBuffer.length,
-            fileData: imageBuffer,
-          };
-        });
+      convertedPdfLogFiles = pdfImages.map((img) => {
+        const imageBuffer = Buffer.from(img.base64, "base64");
+        return {
+          fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.${img.fileExtension}`,
+          fileType: img.mimeType,
+          fileSizeBytes: imageBuffer.length,
+          fileData: imageBuffer,
+        };
+      });
 
-        imagesToProcess = pdfImages.map((img) => ({
-          base64: img.base64,
-          mimeType: img.mimeType,
-        }));
-      } else {
-        // Providers that handle PDF natively — send as is but only first page via image conversion
-        const pdfImages = await convertPdfToImages(buffer, 1, 1.5);
-        convertedPdfLogFiles = pdfImages.map((img) => {
-          const imageBuffer = Buffer.from(img.base64, "base64");
-          return {
-            fileName: `${fileNameWithoutExt}_page_${img.pageNumber}.png`,
-            fileType: img.mimeType,
-            fileSizeBytes: imageBuffer.length,
-            fileData: imageBuffer,
-          };
-        });
-
-        if (pdfImages.length > 0) {
-          imagesToProcess = [
-            { base64: pdfImages[0].base64, mimeType: pdfImages[0].mimeType },
-          ];
-        } else {
-          // Fallback: send raw PDF as base64 (providers like OpenAI, Anthropic, Google support it)
-          const base64File = buffer.toString("base64");
-          imagesToProcess = [
-            { base64: base64File, mimeType: "application/pdf" },
-          ];
-        }
-      }
+      imagesToProcess = pdfImages.map((img) => ({
+        base64: img.base64,
+        mimeType: img.mimeType,
+      }));
+      processedPdfPageCount = pdfImages.length;
     } else {
       // Images: send all of them
       for (const file of fileEntries) {
@@ -452,6 +460,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         fileName: fileEntries[0]?.name,
         fileType: fileEntries[0]?.type,
         fileSizeBytes: fileEntries[0]?.size,
+        pageCount: processedPdfPageCount,
         files: fileEntries,
         persistedFiles: convertedPdfLogFiles,
         promptTokens,
@@ -484,6 +493,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         fileName: fileEntries[0]?.name,
         fileType: fileEntries[0]?.type,
         fileSizeBytes: fileEntries[0]?.size,
+        pageCount: processedPdfPageCount,
         files: fileEntries,
         persistedFiles: convertedPdfLogFiles,
         promptTokens,
@@ -531,6 +541,7 @@ If you cannot determine the provider at all, return providerName as null.`;
       fileName: firstFile?.name,
       fileType: firstFile?.type,
       fileSizeBytes: firstFile?.size,
+      pageCount: processedPdfPageCount,
       files: fileEntries,
       persistedFiles: convertedPdfLogFiles,
       promptTokens,
@@ -563,6 +574,7 @@ If you cannot determine the provider at all, return providerName as null.`;
       fileName: fileEntries[0]?.name,
       fileType: fileEntries[0]?.type,
       fileSizeBytes: fileEntries[0]?.size,
+      pageCount: processedPdfPageCount,
       files: fileEntries,
       persistedFiles: convertedPdfLogFiles,
       errorMessage: error.message || "Failed to detect provider",

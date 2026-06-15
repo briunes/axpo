@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import { assertPermission, assertRole } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
-import { convertPdfToImages } from "@/lib/pdfToImage";
+import {
+  convertPdfToImages,
+  OCR_MAX_PDF_PAGES,
+  OCR_PDF_RENDER_SCALE,
+} from "@/lib/pdfToImage";
+import { getAiUsage, resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
 /**
  * POST /api/v1/internal/ocr-logs/{id}/test-prompt
@@ -16,7 +22,8 @@ export const POST = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    await assertPermission(auth, "section.configurations");
+    assertRole(auth, [UserRole.ADMIN, UserRole.SYS_ADMIN]);
+    await assertPermission(auth, "section.ocr-logs");
 
     const id = context?.params?.id;
     if (!id) {
@@ -64,12 +71,17 @@ export const POST = withErrorHandler(
       );
     }
 
-    const llmBaseUrl = (config as any).llmBaseUrl as string;
-    const llmModelName = (config as any).llmModelName as string;
-    const llmProvider = ((config as any).llmProvider as string) || "ollama";
-    const llmApiKey = (config as any).llmApiKey as string | null;
-    const llmTemperature = Number((config as any).llmTemperature) || 0.1;
-    const llmMaxTokens = Number((config as any).llmMaxTokens) || 4000;
+    const aiConfig = resolveAiConfigFromSystemConfig(
+      config as Record<string, any>,
+      "promptTest",
+      { defaultTemperature: 0.1, defaultMaxTokens: 4000 },
+    );
+    const llmBaseUrl = aiConfig?.baseUrl as string;
+    const llmModelName = aiConfig?.modelName as string;
+    const llmProvider = aiConfig?.provider || "ollama";
+    const llmApiKey = aiConfig?.apiKey as string | null;
+    const llmTemperature = aiConfig?.temperature ?? 0.1;
+    const llmMaxTokens = aiConfig?.maxTokens ?? 4000;
 
     if (!llmBaseUrl || !llmModelName) {
       return NextResponse.json(
@@ -111,8 +123,8 @@ export const POST = withErrorHandler(
           if (isPdf(f.mimeType)) {
             const imgs = await convertPdfToImages(
               Buffer.from(f.base64, "base64"),
-              2,
-              1.5,
+              OCR_MAX_PDF_PAGES,
+              OCR_PDF_RENDER_SCALE,
             );
             for (const img of imgs) resolvedFiles.push(img);
           } else {
@@ -301,6 +313,37 @@ export const POST = withErrorHandler(
         },
         { status: 500 },
       );
+    }
+
+    try {
+      const usage = getAiUsage(llmData, llmProvider);
+      await prisma.ocrLog.create({
+        data: {
+          userId: auth.userId,
+          userEmail: auth.email,
+          simulationId: log.simulationId,
+          type: "PROMPT_TEST",
+          status: "SUCCESS",
+          provider: llmProvider,
+          model: llmModelName,
+          baseUrl: llmBaseUrl,
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          totalTokens: usage.totalTokens,
+          promptText: prompt,
+          extractedFields: newFields as any,
+          fieldsExtracted: Object.values(newFields).filter(
+            (value) => value !== null && value !== undefined && value !== "",
+          ).length,
+          metadata: {
+            sourceOcrLogId: log.id,
+            aiProviderConfigId: aiConfig?.id,
+            aiTask: "promptTest",
+          },
+        },
+      });
+    } catch (err) {
+      console.error("[OCR Log] Failed to save prompt-test usage:", err);
     }
 
     return NextResponse.json({

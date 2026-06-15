@@ -15,5 +15,5 @@ export default function ConfigurationsPage() {
 
     if (!session) return null;
 
-    return <ConfigurationsModule session={session} onNotify={handleNotify} />;
+    return <ConfigurationsModule session={session} onNotify={handleNotify} role={session.user.role} />;
 }

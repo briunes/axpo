@@ -52,7 +52,7 @@ export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSe
         try {
             setIsLoading(true);
             const [data, templates] = await Promise.all([
-                getSystemConfig(),
+                getSystemConfig({ view: "admin" }),
                 getEmailTemplates({ type: ["user-welcome", "password-reset", "magic-link", "otp"] }),
             ]);
             setConfig({

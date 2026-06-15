@@ -4,19 +4,32 @@
 
 import { NextResponse } from "next/server";
 import { ApiResponse, ApiError } from "@/domain/types";
+import {
+  getCachedAppVersion,
+  warmAppVersionCache,
+} from "@/application/lib/appVersionCache";
+
+// Kick off a background warm on module load so the first request has a version.
+void warmAppVersionCache();
 
 export class ResponseHandler {
   /**
    * Success response
    */
-  static ok<T>(data: T, statusCode: number = 200): NextResponse<ApiResponse<T>> {
+  static ok<T>(
+    data: T,
+    statusCode: number = 200,
+  ): NextResponse<ApiResponse<T>> {
+    // Fire-and-forget refresh — keeps version fresh without blocking the response.
+    void warmAppVersionCache();
     return NextResponse.json(
       {
         success: true,
         data,
         timestamp: new Date().toISOString(),
+        appVersion: getCachedAppVersion(),
       },
-      { status: statusCode }
+      { status: statusCode },
     );
   }
 
@@ -27,8 +40,9 @@ export class ResponseHandler {
     code: string,
     message: string,
     statusCode: number = 400,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ): NextResponse<ApiResponse<null>> {
+    void warmAppVersionCache();
     return NextResponse.json(
       {
         success: false,
@@ -38,8 +52,9 @@ export class ResponseHandler {
           ...(details && { details }),
         } as ApiError,
         timestamp: new Date().toISOString(),
+        appVersion: getCachedAppVersion(),
       },
-      { status: statusCode }
+      { status: statusCode },
     );
   }
 
@@ -51,9 +66,10 @@ export class ResponseHandler {
     page: number,
     pageSize: number,
     total: number,
-    statusCode: number = 200
+    statusCode: number = 200,
   ) {
     const hasMore = page * pageSize < total;
+    void warmAppVersionCache();
     return NextResponse.json(
       {
         success: true,
@@ -67,8 +83,9 @@ export class ResponseHandler {
           },
         },
         timestamp: new Date().toISOString(),
+        appVersion: getCachedAppVersion(),
       },
-      { status: statusCode }
+      { status: statusCode },
     );
   }
 }
@@ -78,7 +95,7 @@ export class ResponseHandler {
  */
 export type ApiHandler<T = any> = (
   request: Request,
-  context?: any
+  context?: any,
 ) => Promise<NextResponse<ApiResponse<T>>>;
 
 /**
@@ -90,19 +107,19 @@ export const withErrorHandling = (handler: ApiHandler) => {
       return await handler(request, context);
     } catch (error) {
       console.error("Unhandled error in handler:", error);
-      
+
       if (error instanceof Error) {
         return ResponseHandler.error(
           "INTERNAL_SERVER_ERROR",
           error.message,
-          500
+          500,
         );
       }
-      
+
       return ResponseHandler.error(
         "INTERNAL_SERVER_ERROR",
         "An unexpected error occurred",
-        500
+        500,
       );
     }
   };

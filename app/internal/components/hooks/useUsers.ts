@@ -129,6 +129,7 @@ interface UseUsersOptions {
   queryEnabled?: boolean;
   usePersistedState?: boolean;
   minimal?: boolean;
+  contextual?: boolean;
 }
 
 interface UsersFilterPersistentState {
@@ -148,6 +149,7 @@ export function useUsers(
   const [successText, setSuccessText] = useState<string | null>(null);
   const usePersistedState = options?.usePersistedState ?? true;
   const minimal = options?.minimal ?? false;
+  const contextual = options?.contextual ?? false;
 
   // Load persisted state from localStorage
   const getPersistedState = () => {
@@ -271,6 +273,7 @@ export function useUsers(
     sortDir,
     includeDeleted: showArchived || undefined,
     minimal: minimal || undefined,
+    contextual: contextual || undefined,
   };
 
   // Create a stable cache key by serializing query params
@@ -283,6 +286,7 @@ export function useUsers(
     orderBy: sortColumn,
     sortDir,
     includeDeleted: showArchived || null,
+    contextual,
   });
 
   const { data, isFetching, refetch } = useQuery({

@@ -1,10 +1,48 @@
 import { NextRequest } from "next/server";
 import { UserRole } from "@/domain/types";
+import { NotFoundError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  assertRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
+
+async function isTargetInAgency(
+  targetType: string,
+  targetId: string,
+  agencyId: string,
+): Promise<boolean> {
+  switch (targetType) {
+    case "CLIENT":
+      return Boolean(
+        await prisma.client.findFirst({
+          where: { id: targetId, agencyId },
+          select: { id: true },
+        }),
+      );
+    case "SIMULATION":
+      return Boolean(
+        await prisma.simulation.findFirst({
+          where: { id: targetId, agencyId },
+          select: { id: true },
+        }),
+      );
+    case "USER":
+      return Boolean(
+        await prisma.user.findFirst({
+          where: { id: targetId, agencyId },
+          select: { id: true },
+        }),
+      );
+    case "AGENCY":
+      return targetId === agencyId;
+    default:
+      return false;
+  }
+}
 
 /**
  * @swagger
@@ -36,14 +74,34 @@ import { prisma } from "@/infrastructure/database/prisma";
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  await assertPermission(auth, "section.audit-logs");
-
   const { searchParams } = new URL(request.url);
   const eventType = searchParams.get("eventType") ?? undefined;
   const excludeAuthEvents = searchParams.get("excludeAuthEvents") === "true";
   const dateFrom = searchParams.get("dateFrom") ?? undefined;
   const dateTo = searchParams.get("dateTo") ?? undefined;
   const search = searchParams.get("search") ?? undefined;
+  const actorSearch = searchParams.get("actorSearch") ?? undefined;
+  const targetTypeFilter = searchParams.get("targetType") ?? undefined;
+  const targetIdFilter = searchParams.get("targetId") ?? undefined;
+  const isAgentContextualRequest =
+    auth.role === UserRole.AGENT &&
+    Boolean(targetTypeFilter) &&
+    Boolean(targetIdFilter);
+
+  if (isAgentContextualRequest) {
+    const targetInAgency = await isTargetInAgency(
+      targetTypeFilter!,
+      targetIdFilter!,
+      auth.agencyId,
+    );
+    if (!targetInAgency) {
+      throw new NotFoundError(targetTypeFilter!, targetIdFilter!);
+    }
+  } else {
+    assertRole(auth, [UserRole.ADMIN, UserRole.SYS_ADMIN]);
+    await assertPermission(auth, "section.audit-logs");
+  }
+
   const page = Math.max(parseInt(searchParams.get("page") ?? "1", 10), 1);
   const limit = Math.min(
     Math.max(parseInt(searchParams.get("limit") ?? "25", 10), 1),
@@ -75,14 +133,6 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   // Build where clause
   const where: Record<string, unknown> = {};
-
-  // Role-based scoping
-  if (auth.role !== UserRole.ADMIN) {
-    where.OR = [
-      { actorUserId: auth.userId },
-      { metadataJson: { path: ["agencyId"], equals: auth.agencyId } },
-    ];
-  }
 
   // Event type filter
   if (eventType) {
@@ -122,6 +172,38 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     };
   }
 
+  // Target type filter
+  if (targetTypeFilter) {
+    where.targetType = targetTypeFilter;
+  }
+  if (targetIdFilter) {
+    where.targetId = targetIdFilter;
+  }
+
+  // Actor search filter
+  if (actorSearch) {
+    const actorConditions = [
+      {
+        actor: {
+          email: { contains: actorSearch, mode: "insensitive" as const },
+        },
+      },
+      {
+        actor: {
+          fullName: { contains: actorSearch, mode: "insensitive" as const },
+        },
+      },
+    ];
+    if (where.AND) {
+      (where.AND as unknown[]).push({ OR: actorConditions });
+    } else if (where.OR) {
+      where.AND = [{ OR: where.OR }, { OR: actorConditions }];
+      delete where.OR;
+    } else {
+      where.OR = actorConditions;
+    }
+  }
+
   // Text search across actor email, eventType, targetType, targetId
   if (search) {
     const searchConditions = [
@@ -158,6 +240,66 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     prisma.auditLog.count({ where }),
   ]);
 
+  // Resolve target names in batch by type
+  const targetIdsByType: Record<string, Set<string>> = {};
+  for (const log of logs) {
+    if (!targetIdsByType[log.targetType])
+      targetIdsByType[log.targetType] = new Set();
+    if (log.targetId) targetIdsByType[log.targetType].add(log.targetId);
+  }
+
+  const targetNameMap = new Map<string, string>();
+
+  await Promise.all([
+    (async () => {
+      const ids = Array.from(targetIdsByType["USER"] ?? []);
+      if (!ids.length) return;
+      const rows = await prisma.user.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, fullName: true },
+      });
+      rows.forEach((r) => targetNameMap.set(r.id, r.fullName));
+    })(),
+    (async () => {
+      const ids = Array.from(targetIdsByType["AGENCY"] ?? []);
+      if (!ids.length) return;
+      const rows = await prisma.agency.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, name: true },
+      });
+      rows.forEach((r) => targetNameMap.set(r.id, r.name));
+    })(),
+    (async () => {
+      const ids = Array.from(targetIdsByType["CLIENT"] ?? []);
+      if (!ids.length) return;
+      const rows = await prisma.client.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, name: true },
+      });
+      rows.forEach((r) => targetNameMap.set(r.id, r.name));
+    })(),
+    (async () => {
+      const ids = Array.from(targetIdsByType["SIMULATION"] ?? []);
+      if (!ids.length) return;
+      const rows = await prisma.simulation.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, referenceNumber: true },
+      });
+      rows.forEach((r) =>
+        targetNameMap.set(r.id, r.referenceNumber ?? r.id.slice(0, 10)),
+      );
+    })(),
+    (async () => {
+      const ids = Array.from(targetIdsByType["BASE_VALUE_SET"] ?? []);
+      if (!ids.length) return;
+      const rows = await prisma.baseValueSet.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, name: true },
+      });
+      rows.forEach((r) => targetNameMap.set(r.id, r.name));
+    })(),
+  ]);
+
   return ResponseHandler.ok(
     {
       items: logs.map((l) => ({
@@ -168,6 +310,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         eventType: l.eventType,
         targetType: l.targetType,
         targetId: l.targetId,
+        targetName: targetNameMap.get(l.targetId) ?? null,
         metadataJson: l.metadataJson,
         createdAt: l.createdAt.toISOString(),
       })),

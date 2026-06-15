@@ -1,54 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../../../src/infrastructure/database/prisma";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { requireAuth } from "@/application/middleware/auth";
+import { assertPermission } from "@/application/middleware/rbac";
+import { SimulationService } from "@/application/services/simulationService";
+import { ValidationError } from "@/domain/errors/errors";
 
 export const dynamic = "force-dynamic";
+
+const MAX_INVOICE_SIZE_BYTES = 15 * 1024 * 1024;
+const ALLOWED_INVOICE_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
 /**
  * POST /api/v1/internal/simulations/upload-invoice
  * Uploads an invoice file and associates it with a simulation
  */
-export async function POST(req: NextRequest) {
-  try {
+export const POST = withErrorHandler(async (req: NextRequest) => {
+    const auth = await requireAuth(req);
+    await assertPermission(auth, "section.simulations");
+
     const formData = await req.formData();
-    const file = formData.get("file") as File;
-    const simulationId = formData.get("simulationId") as string;
+    const file = formData.get("file");
+    const simulationId = formData.get("simulationId");
 
-    if (!file) {
-      return NextResponse.json(
-        { success: false, message: "No file provided" },
-        { status: 400 },
+    if (!(file instanceof File)) {
+      throw new ValidationError("No invoice file provided");
+    }
+
+    if (typeof simulationId !== "string" || !simulationId) {
+      throw new ValidationError("No simulation ID provided");
+    }
+
+    await SimulationService.assertSimulationAccess(auth, simulationId);
+
+    if (!ALLOWED_INVOICE_TYPES.has(file.type)) {
+      throw new ValidationError(
+        "Invoice must be a PDF, JPEG, PNG, or WebP file",
       );
     }
 
-    if (!simulationId) {
-      return NextResponse.json(
-        { success: false, message: "No simulation ID provided" },
-        { status: 400 },
-      );
+    if (file.size <= 0 || file.size > MAX_INVOICE_SIZE_BYTES) {
+      throw new ValidationError("Invoice file must be between 1 byte and 15 MB");
     }
 
-    // Verify simulation exists
-    const simulation = await prisma.simulation.findUnique({
-      where: { id: simulationId },
-    });
-
-    if (!simulation) {
-      return NextResponse.json(
-        { success: false, message: "Simulation not found" },
-        { status: 404 },
-      );
-    }
-
-    // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Get file metadata
-    const fileName = file.name;
-    const mimeType = file.type || "application/octet-stream";
+    const fileName = file.name.replace(/[\r\n"]/g, "_").slice(0, 255);
+    const mimeType = file.type;
     const fileSize = buffer.length;
 
-    // Save file data to database
     await prisma.simulation.update({
       where: { id: simulationId },
       data: {
@@ -65,17 +71,4 @@ export async function POST(req: NextRequest) {
       fileName: fileName,
       fileSize: fileSize,
     });
-  } catch (error) {
-    console.error("Invoice upload error:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to upload invoice file",
-      },
-      { status: 500 },
-    );
-  }
-}
+});

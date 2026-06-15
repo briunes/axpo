@@ -25,6 +25,10 @@ export interface AuditLogsActions {
   setFilterDateFrom: (v: string) => void;
   filterDateTo: string;
   setFilterDateTo: (v: string) => void;
+  filterActorSearch: string;
+  setFilterActorSearch: (v: string) => void;
+  filterTargetType: string;
+  setFilterTargetType: (v: string) => void;
   filteredLogs: AuditLogItem[];
   handleExportCsv: () => void;
 }
@@ -36,6 +40,8 @@ export function useAuditLogs(session: SessionState | null): AuditLogsActions {
   const [filterEventType, setFilterEventType] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
+  const [filterActorSearch, setFilterActorSearch] = useState("");
+  const [filterTargetType, setFilterTargetType] = useState("");
 
   // ── TanStack Query ──────────────────────────────────────────────────────
   const queryParams = {
@@ -45,6 +51,8 @@ export function useAuditLogs(session: SessionState | null): AuditLogsActions {
     dateFrom: filterDateFrom || undefined,
     dateTo: filterDateTo || undefined,
     search: searchQuery || undefined,
+    actorSearch: filterActorSearch || undefined,
+    targetType: filterTargetType || undefined,
   };
 
   const { data, isFetching, error, refetch } = useQuery({
@@ -138,6 +146,16 @@ export function useAuditLogs(session: SessionState | null): AuditLogsActions {
     setFilterDateFrom: handleSetFilterDateFrom,
     filterDateTo,
     setFilterDateTo: handleSetFilterDateTo,
+    filterActorSearch,
+    setFilterActorSearch: (v: string) => {
+      setFilterActorSearch(v);
+      setPage(1);
+    },
+    filterTargetType,
+    setFilterTargetType: (v: string) => {
+      setFilterTargetType(v);
+      setPage(1);
+    },
     filteredLogs,
     handleExportCsv,
   };

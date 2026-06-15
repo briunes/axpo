@@ -70,3 +70,53 @@ describe("CalculationService single-period offer eligibility", () => {
     ).toBe(false);
   });
 });
+
+describe("CalculationService Personalizada OMIE + B", () => {
+  it("applies the Excel B multiplier on top of month-specific Precio TE", () => {
+    const inputs = buildInputs(62000);
+    inputs.personalizadaOmieB = {
+      terminoB: { P1: 2, P2: 2, P3: 2, P4: 2, P5: 2, P6: 2 },
+      margenPotencia: {},
+    };
+    inputs.omieEstimado = {
+      P1: 0.001,
+      P2: 0.001,
+      P3: 0.001,
+      P4: 0.001,
+      P5: 0.001,
+      P6: 0.001,
+    };
+
+    const entries: Array<{ key: string; valueNumeric: number }> = [];
+    for (const period of ["P1", "P2", "P3", "P4", "P5", "P6"] as const) {
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_OMIE_B::3.0TD:${period}:MARGEN:2026-03`,
+        valueNumeric: 0.1,
+      });
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_OMIE_B::3.0TD:${period}:MARGEN`,
+        valueNumeric: 0.5,
+      });
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_OMIE_B::3.0TD:${period}:POTENCIA`,
+        valueNumeric: 0,
+      });
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_OMIE_B::3.0TD:${period}:B_FACTOR:2026-03`,
+        valueNumeric: 1.1,
+      });
+    }
+
+    const results = CalculationService.calculateElectricity(
+      inputs,
+      CalculationService.buildPriceMap(entries),
+    );
+    const offer = results.find(
+      (item) => item.productKey === "PERSONALIZADA_OMIE_B",
+    );
+
+    expect(offer).toBeDefined();
+    expect(offer!.desglose?.terminoEnergia).toBe(61.32);
+    expect(offer!.totalFactura).toBe(77.99);
+  });
+});

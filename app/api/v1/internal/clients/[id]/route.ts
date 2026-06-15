@@ -5,7 +5,10 @@ import { NotFoundError, ForbiddenError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 
@@ -250,7 +253,7 @@ export const GET = withErrorHandler(
       throw new NotFoundError("Client", id);
     }
 
-    if (auth.role !== UserRole.ADMIN && client.agencyId !== auth.agencyId) {
+    if (!isElevatedRole(auth.role) && client.agencyId !== auth.agencyId) {
       throw new ForbiddenError("Access denied");
     }
 
@@ -275,7 +278,7 @@ export const PATCH = withErrorHandler(
     }
 
     // Non-admins can only edit their own agency's clients
-    if (auth.role !== UserRole.ADMIN && client.agencyId !== auth.agencyId) {
+    if (!isElevatedRole(auth.role) && client.agencyId !== auth.agencyId) {
       throw new ForbiddenError("Access denied");
     }
 
@@ -286,7 +289,7 @@ export const PATCH = withErrorHandler(
       where: { id },
       data: {
         ...(payload.name !== undefined && { name: payload.name.trim() }),
-        ...(auth.role === UserRole.ADMIN &&
+        ...(isElevatedRole(auth.role) &&
           payload.agencyId !== undefined && { agencyId: payload.agencyId }),
         ...(payload.cif !== undefined && { cif: payload.cif.trim() || null }),
         ...(payload.contactName !== undefined && {
@@ -375,7 +378,7 @@ export const DELETE = withErrorHandler(
       throw new NotFoundError("Client", id);
     }
 
-    if (auth.role !== UserRole.ADMIN && client.agencyId !== auth.agencyId) {
+    if (!isElevatedRole(auth.role) && client.agencyId !== auth.agencyId) {
       throw new ForbiddenError("Access denied");
     }
 

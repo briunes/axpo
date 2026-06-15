@@ -24,7 +24,7 @@ export function IntegrationsSettings({ session, onNotify }: IntegrationsSettings
         smtp: t("systemSettings", "tabSmtp"),
         emails: t("systemSettings", "tabAutomatedEmails"),
         llm: t("configurationsModule", "tabLlmSettings"),
-        "invoice-providers": "Invoice Providers",
+        "invoice-providers": t("configurationsModule", "tabInvoiceProviders"),
     };
 
     const tabIndex = (Object.keys(INTEGRATION_TABS) as IntegrationTab[]).indexOf(activeTab);
@@ -70,7 +70,10 @@ export function IntegrationsSettings({ session, onNotify }: IntegrationsSettings
                 </Tabs>
             </Box>
 
-            <div className="system-settings-content">
+            <div
+                className="system-settings-content"
+                style={activeTab === "llm" ? { padding: 0 } : undefined}
+            >
                 {activeTab === "smtp" && (
                     <SmtpSettings session={session} onNotify={onNotify} />
                 )}

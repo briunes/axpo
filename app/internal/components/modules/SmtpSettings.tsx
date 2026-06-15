@@ -48,13 +48,13 @@ export function SmtpSettings({ session, onNotify }: SmtpSettingsProps) {
     const loadConfig = async () => {
         try {
             setIsLoading(true);
-            const data = await getSystemConfig();
+            const data = await getSystemConfig({ view: "admin" });
             setConfig({
                 smtpHost: (data as any).smtpHost || "",
                 smtpPort: (data as any).smtpPort || 587,
                 smtpSecure: (data as any).smtpSecure || false,
                 smtpUser: (data as any).smtpUser || "",
-                smtpPassword: (data as any).smtpPassword || "",
+                smtpPassword: "",
                 smtpFromEmail: (data as any).smtpFromEmail || "",
                 smtpFromName: (data as any).smtpFromName || "Axpo Simulator",
             });
@@ -77,7 +77,7 @@ export function SmtpSettings({ session, onNotify }: SmtpSettingsProps) {
                 smtpPort: config.smtpPort,
                 smtpSecure: config.smtpSecure,
                 smtpUser: config.smtpUser,
-                smtpPassword: config.smtpPassword,
+                ...(config.smtpPassword ? { smtpPassword: config.smtpPassword } : {}),
                 smtpFromEmail: config.smtpFromEmail,
                 smtpFromName: config.smtpFromName,
             });

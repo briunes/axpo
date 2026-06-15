@@ -7,6 +7,7 @@ export type UUID = string & { readonly __brand: "UUID" };
 export * from "./simulation";
 
 export enum UserRole {
+  SYS_ADMIN = "SYS_ADMIN",
   ADMIN = "ADMIN",
   AGENT = "AGENT",
   COMMERCIAL = "COMMERCIAL",
@@ -31,6 +32,8 @@ export interface ApiResponse<T> {
   data?: T;
   error?: ApiError;
   timestamp: string;
+  /** Current app version — used by the frontend to detect stale deployments. */
+  appVersion?: string;
 }
 
 export interface ApiError {

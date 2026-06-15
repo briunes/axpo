@@ -8,7 +8,7 @@ import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import AddIcon from "@mui/icons-material/Add";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { createSimulation, createClient, listClients, getAgency, calculateSimulation, type ClientItem, type AgencyItem } from "../../lib/internalApi";
+import { createSimulation, createClient, listAllClients, getAgency, calculateSimulation, type ClientItem, type AgencyItem } from "../../lib/internalApi";
 import { CrudPageLayout, LoadingState, useAlerts } from "../../components/shared";
 import { CrudFormContainer } from "../../components/shared/CrudFormContainer";
 import { getSystemConfig } from "../../lib/configApi";
@@ -29,6 +29,18 @@ function addDays(n: number): string {
     const d = new Date();
     d.setDate(d.getDate() + n);
     return d.toISOString().slice(0, 10);
+}
+
+function normalizeClientName(value?: string | null): string {
+    return (value ?? "")
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .toLocaleLowerCase()
+        .replace(/[^\p{Letter}\p{Number}]/gu, "");
+}
+
+function normalizeClientCif(value?: string | null): string {
+    return (value ?? "").toLocaleUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
 // ─── OCR payload helpers (mirrors SimulationForm logic) ───────────────────────
@@ -120,7 +132,7 @@ function buildGasPayloadFromOcr(data: import("../../components/modules").Extract
     const dias = ocrDaysBetweenGas(fechaInicio, fechaFin);
     return {
         cups: data.cups || undefined,
-        consumoAnual: data.consumoTotal || undefined,
+        consumoAnual: undefined,
         nombreTitular: data.nombreTitular || undefined,
         direccion: data.direccion || undefined,
         comercializadorActual: data.comercializadorActual || undefined,
@@ -226,9 +238,11 @@ export default function NewSimulationPage() {
         const defaultElecTax = elecZoneConf
             ? ((elecZoneConf.elecTaxRates ?? [])[0] ?? 0.051127) * 100
             : 5.11269;
-        const resolvedElecTax = (!isGas && data.impuestoElectricoTasa != null && !isNaN(data.impuestoElectricoTasa))
-            ? data.impuestoElectricoTasa
-            : defaultElecTax;
+        const resolvedElecTax = isGas
+            ? undefined
+            : data.impuestoElectricoTasa != null && !isNaN(data.impuestoElectricoTasa)
+                ? data.impuestoElectricoTasa
+                : defaultElecTax;
 
         setExtractedData({ ...data, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax });
         if (context?.file) {
@@ -263,13 +277,15 @@ export default function NewSimulationPage() {
         // Try to find existing client by CIF (most reliable) or name
         let existingClient = null;
         if (data.cif) {
+            const extractedCif = normalizeClientCif(data.cif);
             existingClient = clients.find(
-                c => c.cif && c.cif.toLowerCase() === data.cif?.toLowerCase()
+                c => normalizeClientCif(c.cif) === extractedCif
             );
         }
         if (!existingClient && data.nombreTitular) {
+            const extractedName = normalizeClientName(data.nombreTitular);
             existingClient = clients.find(
-                c => c.name.toLowerCase() === data.nombreTitular?.toLowerCase()
+                c => normalizeClientName(c.name) === extractedName
             );
         }
 
@@ -330,10 +346,10 @@ export default function NewSimulationPage() {
                     setDefaultDays(30);
                     setExpiresAt(addDays(30));
                 }),
-            // Load clients list (minimal: true — only need id+name for the dropdown)
-            listClients(session.token, { pageSize: 1000, minimal: true })
-                .then((res) => {
-                    setClients(res.items);
+            // Load every client page so the dropdown and OCR matching are complete.
+            listAllClients(session.token, { minimal: true, orderBy: "name", sortDir: "asc" })
+                .then((items) => {
+                    setClients(items);
                 })
                 .catch(() => { }),
             // Load the user's own agency for the quick-create client form
@@ -930,20 +946,16 @@ export default function NewSimulationPage() {
                                                 <CurrencyInput value={extractedData.reactiva ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, reactiva: isNaN(v) ? undefined : v } : prev)} />
                                             </div>
                                         )}
-                                        {/* METER RENTAL - ELECTRICITY ONLY */}
-                                        {simType === "ELECTRICITY" && (
-                                            <div>
-                                                <div style={labelStyle}>{t("simulationForm", "fieldMeterRental")}</div>
-                                                <CurrencyInput value={extractedData.alquiler ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, alquiler: isNaN(v) ? undefined : v } : prev)} />
-                                            </div>
-                                        )}
-                                        {/* OTHER CHARGES - ELECTRICITY ONLY */}
-                                        {simType === "ELECTRICITY" && (
-                                            <div>
-                                                <div style={labelStyle}>{t("simulationForm", "fieldOtherCharges")}</div>
-                                                <CurrencyInput value={extractedData.otrosCargos ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, otrosCargos: isNaN(v) ? undefined : v } : prev)} />
-                                            </div>
-                                        )}
+                                        {/* METER RENTAL */}
+                                        <div>
+                                            <div style={labelStyle}>{t("simulationForm", "fieldMeterRental")}</div>
+                                            <CurrencyInput value={extractedData.alquiler ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, alquiler: isNaN(v) ? undefined : v } : prev)} />
+                                        </div>
+                                        {/* OTHER CHARGES */}
+                                        <div>
+                                            <div style={labelStyle}>{t("simulationForm", "fieldOtherCharges")}</div>
+                                            <CurrencyInput value={extractedData.otrosCargos ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, otrosCargos: isNaN(v) ? undefined : v } : prev)} />
+                                        </div>
                                         {/* TELEMEDIDA - GAS ONLY */}
                                         {simType === "GAS" && (
                                             <div>
@@ -1003,35 +1015,26 @@ export default function NewSimulationPage() {
                                             {/* IVA / IGIC */}
                                             <div>
                                                 <div style={labelStyle2}>{ivaLabel}</div>
-                                                {ivaOptions.length > 1 ? (
-                                                    <FormSelect
-                                                        label=""
-                                                        size="small"
-                                                        value={String(extractedData.ivaTasa ?? ivaOptions[0])}
-                                                        onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, ivaTasa: isNaN(n) ? undefined : n } : prev); }}
-                                                        options={[...new Set([...ivaOptions, extractedData.ivaTasa ?? ivaOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: o + "%" }))}
-                                                    />
-                                                ) : (
-                                                    <FormInput label="" size="small" type="number" value={extractedData.ivaTasa ?? ivaOptions[0] ?? 21}
-                                                        onChange={e => { const n = parseFloat(e.target.value); setExtractedData(prev => prev ? { ...prev, ivaTasa: isNaN(n) ? undefined : n } : prev); }} />
-                                                )}
+                                                <FormSelect
+                                                    label=""
+                                                    size="small"
+                                                    value={String(extractedData.ivaTasa ?? ivaOptions[0])}
+                                                    onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, ivaTasa: isNaN(n) ? undefined : n } : prev); }}
+                                                    options={[...new Set([...ivaOptions, extractedData.ivaTasa ?? ivaOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: o + "%" }))}
+                                                />
                                             </div>
                                             {/* Electricity Tax - ELECTRICITY ONLY */}
                                             {simType === "ELECTRICITY" && (
                                                 <div>
                                                     <div style={labelStyle2}>{elecTaxLabel}</div>
-                                                    {elecTaxOptions.length > 1 ? (
-                                                        <FormSelect
-                                                            label=""
-                                                            size="small"
-                                                            value={String(extractedData.impuestoElectricoTasa ?? elecTaxOptions[0])}
-                                                            onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, impuestoElectricoTasa: isNaN(n) ? undefined : n } : prev); }}
-                                                            options={[...new Set([...elecTaxOptions, extractedData.impuestoElectricoTasa ?? elecTaxOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: o + "%" }))}
-                                                        />
-                                                    ) : (
-                                                        <FormInput label="" size="small" type="number" value={extractedData.impuestoElectricoTasa ?? elecTaxOptions[0] ?? 5.11269}
-                                                            onChange={e => { const n = parseFloat(e.target.value); setExtractedData(prev => prev ? { ...prev, impuestoElectricoTasa: isNaN(n) ? undefined : n } : prev); }} />
-                                                    )}
+                                                    <FormSelect
+                                                        label=""
+                                                        size="small"
+                                                        value={String(extractedData.impuestoElectricoTasa ?? elecTaxOptions[0])}
+                                                        onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, impuestoElectricoTasa: isNaN(n) ? undefined : n } : prev); }}
+                                                        options={[...new Set([...elecTaxOptions, extractedData.impuestoElectricoTasa ?? elecTaxOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: o + "%" }))}
+                                                    />
+
                                                 </div>
                                             )}
                                             {/* Gas Hydrocarbon Tax - GAS ONLY */}

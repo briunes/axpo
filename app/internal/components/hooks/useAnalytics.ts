@@ -14,16 +14,20 @@ export interface AnalyticsActions {
   errorText: string | null;
   days: number;
   setDays: (d: number) => void;
+  energyType: string;
+  setEnergyType: (t: string) => void;
   refresh: (days?: number) => Promise<void>;
 }
 
 export function useAnalytics(session: SessionState | null): AnalyticsActions {
   const queryClient = useQueryClient();
   const [days, setDays] = useState(30);
+  const [energyType, setEnergyType] = useState<string>("");
 
   const { data, isFetching, error, refetch } = useQuery({
-    queryKey: ["analytics", session?.token ?? "", days],
-    queryFn: () => getAnalyticsSummary(session!.token, days),
+    queryKey: ["analytics", session?.token ?? "", days, energyType],
+    queryFn: () =>
+      getAnalyticsSummary(session!.token, days, energyType || undefined),
     enabled: !!session,
   });
 
@@ -37,14 +41,28 @@ export function useAnalytics(session: SessionState | null): AnalyticsActions {
         setDays(overrideDays);
         // The query will auto-run due to key change; also pre-invalidate
         await queryClient.invalidateQueries({
-          queryKey: ["analytics", session?.token ?? "", overrideDays],
+          queryKey: [
+            "analytics",
+            session?.token ?? "",
+            overrideDays,
+            energyType,
+          ],
         });
       } else {
         await refetch();
       }
     },
-    [days, refetch, queryClient, session?.token],
+    [days, energyType, refetch, queryClient, session?.token],
   );
 
-  return { analytics, loading, errorText, days, setDays, refresh };
+  return {
+    analytics,
+    loading,
+    errorText,
+    days,
+    setDays,
+    energyType,
+    setEnergyType,
+    refresh,
+  };
 }

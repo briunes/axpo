@@ -24,7 +24,8 @@ function corsHeaders(origin: string | null): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, X-Axpo-App-Version, X-Axpo-Page-Path, X-Browser-Fingerprint",
     "Access-Control-Max-Age": "86400",
   };
 }
@@ -100,6 +101,11 @@ function checkBasicAuth(request: NextRequest): boolean {
 //   - /api/ (so the admin can toggle maintenance off via the API)
 //   - /internal/configurations (so the admin can reach the toggle)
 //   - /_next/ static files & favicon
+// Static asset extensions served from /public that must remain reachable
+// during maintenance (logos, favicons, OG images, etc.).
+const STATIC_ASSET_EXTENSION =
+  /\.(svg|png|jpg|jpeg|gif|webp|avif|ico|bmp|tif|tiff|woff2?|ttf|otf|eot|mp4|webm|mp3|wav|ogg|pdf|xml|txt|json|css|js|map)(\?.*)?$/i;
+
 function isMaintenanceBypass(pathname: string): boolean {
   return (
     pathname === "/maintenance" ||
@@ -107,7 +113,8 @@ function isMaintenanceBypass(pathname: string): boolean {
     pathname.startsWith("/api/") ||
     pathname.startsWith("/internal/configurations") ||
     pathname.startsWith("/_next/") ||
-    pathname === "/favicon.ico"
+    pathname === "/favicon.ico" ||
+    STATIC_ASSET_EXTENSION.test(pathname)
   );
 }
 

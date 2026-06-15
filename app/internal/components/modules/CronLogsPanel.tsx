@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { alpha, Box, Chip, Typography, useTheme } from "@mui/material";
+import { useCallback, useEffect, useState } from "react";
+import { alpha, Box, Button, Chip, Stack, Typography, useTheme } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { SessionState } from "../../lib/authSession";
-import { DataTable, type ColumnDef, StatusBadge } from "../ui";
+import { DataTable, type ColumnDef } from "../ui";
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Clear";
+import { FormSelect } from "../ui/FormSelect";
+import { DateRangePicker } from "../ui/DateRangePicker";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDate } from "../../lib/formatPreferences";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 interface CronLogEntry {
     id: string;
@@ -34,16 +42,64 @@ export interface CronLogsPanelProps {
 
 export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
     const theme = useTheme();
+    const { locale, t } = useI18n();
+    const { preferences } = useUserPreferences();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
 
+    // Applied filters
+    const [filterStatus, setFilterStatus] = useState("");
+    const [filterSource, setFilterSource] = useState("");
+    const [filterDateFrom, setFilterDateFrom] = useState("");
+    const [filterDateTo, setFilterDateTo] = useState("");
+
+    // Local (pending) filter state
+    const [localStatus, setLocalStatus] = useState("");
+    const [localSource, setLocalSource] = useState("");
+    const [localDateFrom, setLocalDateFrom] = useState<Date | null>(null);
+    const [localDateTo, setLocalDateTo] = useState<Date | null>(null);
+
+    const formatDate = useCallback((isoString: string) => {
+        try {
+            const date = new Date(isoString);
+            const formatted = formatDisplayDate(date, preferences.dateFormat);
+            const hh = String(date.getHours()).padStart(2, "0");
+            const mm = String(date.getMinutes()).padStart(2, "0");
+            const ss = String(date.getSeconds()).padStart(2, "0");
+            return `${formatted} ${hh}:${mm}:${ss}`;
+        } catch { return isoString; }
+    }, [preferences.dateFormat]);
+
+    const toDateOnly = (d: Date | null) => {
+        if (!d) return "";
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+
+    const handleSearch = () => {
+        setFilterStatus(localStatus);
+        setFilterSource(localSource);
+        setFilterDateFrom(toDateOnly(localDateFrom));
+        setFilterDateTo(toDateOnly(localDateTo));
+        setPage(1);
+    };
+
+    const handleClear = () => {
+        setLocalStatus(""); setLocalSource(""); setLocalDateFrom(null); setLocalDateTo(null);
+        setFilterStatus(""); setFilterSource(""); setFilterDateFrom(""); setFilterDateTo("");
+        setPage(1);
+    };
+
     const { data, isFetching, error } = useQuery({
-        queryKey: ["cron-logs", session.token, page, pageSize],
+        queryKey: ["cron-logs", session.token, page, pageSize, filterStatus, filterSource, filterDateFrom, filterDateTo],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: pageSize.toString(),
             });
+            if (filterStatus) params.append("status", filterStatus);
+            if (filterSource) params.append("source", filterSource);
+            if (filterDateFrom) params.append("dateFrom", filterDateFrom);
+            if (filterDateTo) params.append("dateTo", filterDateTo);
 
             const response = await fetch(`/api/v1/internal/cron-logs?${params}`, {
                 headers: { Authorization: `Bearer ${session.token}` },
@@ -63,9 +119,9 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
 
     useEffect(() => {
         if (error) {
-            onNotify?.("Failed to load cron logs", "error");
+            onNotify?.(t("logs", "loadCronLogsFailed"), "error");
         }
-    }, [error, onNotify]);
+    }, [error, onNotify, t]);
 
     const logs = data?.items ?? [];
     const total = data?.total ?? 0;
@@ -74,34 +130,27 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
     const columns: ColumnDef<CronLogEntry>[] = [
         {
             key: "executedAt",
-            label: "Timestamp",
+            label: t("logs", "timestamp"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                    <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 600 }}>
-                        {new Date(log.executedAt).toLocaleString("en-GB", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                        })}
+                    <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>
+                        {formatDate(log.executedAt)}
                     </Typography>
                     <Typography variant="caption" sx={{ fontSize: 11, color: "text.secondary" }}>
-                        {formatDistanceToNow(new Date(log.executedAt), { addSuffix: true })}
+                        {formatDistanceToNow(new Date(log.executedAt), { addSuffix: true, locale: locale === "es" ? es : undefined })}
                     </Typography>
                 </Box>
             ),
         },
         {
             key: "status",
-            label: "Status",
+            label: t("logs", "status"),
             renderCell: (log) => {
                 const isSuccess = log.status === "SUCCESS";
                 return (
                     <Chip
                         icon={isSuccess ? <CheckCircleIcon sx={{ fontSize: 16 }} /> : <ErrorIcon sx={{ fontSize: 16 }} />}
-                        label={isSuccess ? "Success" : "Failed"}
+                        label={isSuccess ? t("logs", "success") : t("logs", "failed")}
                         size="small"
                         sx={{
                             fontWeight: 600,
@@ -121,7 +170,7 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
         },
         {
             key: "totalAffected",
-            label: "Simulations Expired",
+            label: t("logs", "simulationsExpired"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Typography
@@ -136,7 +185,7 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                     </Typography>
                     {log.totalAffected > 0 && (
                         <Typography variant="caption" sx={{ fontSize: 11, color: "text.secondary" }}>
-                            expired
+                            {t("logs", "expired")}
                         </Typography>
                     )}
                 </Box>
@@ -144,7 +193,7 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
         },
         {
             key: "duration",
-            label: "Duration",
+            label: t("logs", "duration"),
             renderCell: (log) => (
                 <Chip
                     label={log.duration ? `${log.duration}ms` : "—"}
@@ -163,13 +212,13 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
         },
         {
             key: "schedule",
-            label: "Trigger Source",
+            label: t("logs", "triggerSource"),
             renderCell: (log) => {
                 const source = log.metadata?.source || "scheduled";
                 const isApi = source === "api";
                 return (
                     <Chip
-                        label={isApi ? "Manual (API)" : "Scheduled"}
+                        label={isApi ? t("logs", "manualApi") : t("logs", "scheduled")}
                         size="small"
                         sx={{
                             fontSize: 11,
@@ -186,25 +235,25 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
         },
         {
             key: "details",
-            label: "Details",
+            label: t("logs", "details"),
             renderCell: (log) => {
                 if (log.errorMessage) {
                     return (
                         <Typography variant="body2" sx={{ fontSize: 12, color: "error.main", fontWeight: 500 }}>
-                            Error: {log.errorMessage}
+                            {t("logs", "error")}: {log.errorMessage}
                         </Typography>
                     );
                 }
                 if (log.metadata?.expiredIds && log.metadata.expiredIds.length > 0) {
                     return (
                         <Typography variant="body2" sx={{ fontSize: 12, color: "success.main" }}>
-                            ✓ {log.metadata.expiredIds.length} simulation(s) processed
+                            {t("logs", "cronProcessed", { count: log.metadata.expiredIds.length })}
                         </Typography>
                     );
                 }
                 return (
                     <Typography variant="body2" sx={{ fontSize: 12, color: "text.secondary", fontStyle: "italic" }}>
-                        No simulations to expire
+                        {t("logs", "noSimulationsToExpire")}
                     </Typography>
                 );
             },
@@ -212,21 +261,58 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
     ];
 
     return (
-        <div style={{ padding: "24px", color: "var(--scheme-neutral-100)" }}>
-            <div style={{ marginBottom: "20px" }}>
-                <h2 style={{ fontSize: "20px", fontWeight: 700, marginBottom: "8px", color: "var(--scheme-neutral-100)" }}>
-                    Simulation Expiration Jobs
-                </h2>
-                <p style={{ fontSize: "14px", color: "var(--scheme-neutral-600)" }}>
-                    Track automatic simulation expiration cron job executions and their results.
-                </p>
-            </div>
-
+        <div>
             <DataTable
                 columns={columns}
                 rows={logs}
                 loading={loading}
-                onClearFilters={() => setPage(1)}
+                renderCustomSearch={() => (
+                    <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+                        <Box sx={{ flex: 1, }}>
+                            <FormSelect
+                                label=""
+                                options={[
+                                    { value: "", label: t("logs", "allStatuses") },
+                                    { value: "SUCCESS", label: t("logs", "success") },
+                                    { value: "FAILED", label: t("logs", "failed") },
+                                ]}
+                                value={localStatus}
+                                onChange={(v) => setLocalStatus(String(v ?? ""))}
+                                placeholder={t("logs", "status")}
+                                textFieldProps={{ size: "small" }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 1, }}>
+                            <FormSelect
+                                label=""
+                                options={[
+                                    { value: "", label: t("logs", "allSources") },
+                                    { value: "api", label: t("logs", "manualApi") },
+                                    { value: "scheduled", label: t("logs", "scheduled") },
+                                ]}
+                                value={localSource}
+                                onChange={(v) => setLocalSource(String(v ?? ""))}
+                                placeholder={t("logs", "triggerSource")}
+                                textFieldProps={{ size: "small" }}
+                            />
+                        </Box>
+                        <Box sx={{ flex: 2, }}>
+                            <DateRangePicker
+                                variant="inline"
+                                label={t("logs", "timestamp")}
+                                startDate={localDateFrom}
+                                endDate={localDateTo}
+                                onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
+                            />
+                        </Box>
+                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
+                            <SearchIcon />
+                        </Button>
+                        <Button variant="outlined" size="small" onClick={handleClear}>
+                            <ClearIcon />
+                        </Button>
+                    </Box>
+                )}
                 pagination={{
                     page,
                     pageSize,
@@ -237,7 +323,7 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                         setPage(1);
                     },
                 }}
-                emptyMessage="No cron job executions found"
+                emptyMessage={t("logs", "noCronLogs")}
             />
         </div>
     );

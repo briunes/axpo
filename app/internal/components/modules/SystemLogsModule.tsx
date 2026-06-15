@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AuditLogsActions } from "../hooks/useAuditLogs";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { usePermissions } from "../../lib/permissionsContext";
+import type { PermissionKey } from "../../lib/permissionsDefinitions";
 import { AuditLogsModule } from "./AuditLogsModule";
 import { EmailLogsModule } from "./EmailLogsModule";
 import { CronLogsPanel } from "./CronLogsPanel";
 import { OcrLogsPanel } from "./OcrLogsPanel";
+import { AppErrorLogsPanel } from "./AppErrorLogsPanel";
 import "./configurations.css";
 
 export interface SystemLogsModuleProps {
@@ -17,30 +20,58 @@ export interface SystemLogsModuleProps {
     onActionButtons?: (buttons: React.ReactNode) => void;
 }
 
-type LogType = "audit" | "email" | "cron" | "ocr";
+type LogType = "audit" | "email" | "cron" | "ocr" | "app-errors";
+
+const LOG_TABS: Array<{
+    id: LogType;
+    labelKey: string;
+    permission: PermissionKey;
+}> = [
+    { id: "audit", labelKey: "auditLogs", permission: "section.audit-logs" },
+    { id: "email", labelKey: "emailLogs", permission: "section.email-logs" },
+    { id: "cron", labelKey: "cronLogs", permission: "section.cron-logs" },
+    { id: "ocr", labelKey: "ocrLogs", permission: "section.ocr-logs" },
+    { id: "app-errors", labelKey: "appErrors", permission: "section.app-error-logs" },
+];
+
+const isElevatedRole = (role: string) => role === "ADMIN" || role === "SYS_ADMIN";
 
 export function SystemLogsModule({ session, auditLogsActions, onNotify, onActionButtons }: SystemLogsModuleProps) {
     const { t } = useI18n();
+    const { canDo } = usePermissions();
     const [activeTab, setActiveTab] = useState<LogType>("audit");
 
-    const TAB_LABELS: Record<LogType, string> = {
-        audit: "Audit Logs",
-        email: "Email Logs",
-        cron: "Cron Logs",
-        ocr: "OCR Logs",
-    };
+    const visibleTabs = isElevatedRole(session.user.role)
+        ? LOG_TABS.filter((tab) => canDo(session.user.role, tab.permission))
+        : [];
+
+    useEffect(() => {
+        if (visibleTabs.length > 0 && !visibleTabs.some((tab) => tab.id === activeTab)) {
+            setActiveTab(visibleTabs[0].id);
+        }
+    }, [activeTab, visibleTabs]);
+
+    if (visibleTabs.length === 0) {
+        return (
+            <div className="configurations-container logs-configurations-container">
+                <div className="settings-panel">
+                    {t("rolePermissionsModule", "noLogPermissions")}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="configurations-container logs-configurations-container">
             <div className="configurations-tabs">
-                {(Object.keys(TAB_LABELS) as LogType[]).map((tab) => (
+                {visibleTabs.map((tab) => (
                     <button
-                        key={tab}
-                        className={`config-tab${activeTab === tab ? " active" : ""}`}
-                        onClick={() => setActiveTab(tab)}
-                        data-testid={`logs-tab-${tab}`}
+                        key={tab.id}
+                        className={`config-tab${activeTab === tab.id ? " active" : ""}`}
+                        onClick={() => setActiveTab(tab.id)}
+                        data-testid={`logs-tab-${tab.id}`}
                     >
-                        {TAB_LABELS[tab]}
+                        {t("logs", tab.labelKey)}
                     </button>
                 ))}
             </div>
@@ -68,6 +99,12 @@ export function SystemLogsModule({ session, auditLogsActions, onNotify, onAction
                 )}
                 {activeTab === "ocr" && (
                     <OcrLogsPanel
+                        session={session}
+                        onNotify={onNotify}
+                    />
+                )}
+                {activeTab === "app-errors" && (
+                    <AppErrorLogsPanel
                         session={session}
                         onNotify={onNotify}
                     />

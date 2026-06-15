@@ -3,6 +3,7 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { EmailService } from "@/application/services/emailService";
+import { prisma } from "@/infrastructure/database/prisma";
 import { z } from "zod";
 
 const TestEmailSchema = z.object({
@@ -51,6 +52,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const body = await req.json();
   const parsed = TestEmailSchema.parse(body);
+  const config = await prisma.systemConfig.findFirst({
+    select: { setupTokenValidityHours: true },
+  });
 
   // Default sample variables if none provided
   const sampleVariables = parsed.sampleVariables || {
@@ -61,6 +65,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     pin: "1234",
     userName: "Test User",
     userEmail: parsed.recipientEmail,
+    SETUP_PASSWORD_VALIDITY_HOURS: String(
+      config?.setupTokenValidityHours ?? 72,
+    ),
     magicLink: "https://axpo.example.com/login/magic-link-token",
     otpCode: "483921",
     otpValidityMinutes: "10",

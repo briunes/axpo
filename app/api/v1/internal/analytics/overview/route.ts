@@ -3,9 +3,229 @@ import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
+import { isSupabaseApiMode } from "@/infrastructure/database/databaseMode";
 import { Prisma } from "@prisma/client";
+
+const payloadEnergyType = (payload: any): string | null =>
+  typeof payload?.type === "string" ? payload.type : null;
+
+const payloadTariff = (payload: any): string | null =>
+  payload?.electricity?.tarifaAcceso ?? payload?.gas?.tarifaAcceso ?? null;
+
+const payloadConsumption = (payload: any): number | null => {
+  const raw =
+    payloadEnergyType(payload) === "ELECTRICITY"
+      ? payload?.electricity?.clientData?.consumoAnual
+      : payloadEnergyType(payload) === "GAS"
+        ? payload?.gas?.consumo
+        : null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+};
+
+const buildApiOverview = async (input: {
+  days: number;
+  since: Date;
+  filterAgencyId?: string;
+  energyTypeFilter?: "ELECTRICITY" | "GAS";
+  elevated: boolean;
+}) => {
+  const simulations = await prisma.simulation.findMany({
+    where: {
+      isDeleted: false,
+      createdAt: { gte: input.since },
+      ...(input.filterAgencyId ? { agencyId: input.filterAgencyId } : {}),
+    },
+    select: {
+      id: true,
+      agencyId: true,
+      ownerUserId: true,
+      status: true,
+      sharedVia: true,
+      createdAt: true,
+      versions: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { payloadJson: true },
+      },
+      accessAttempts: {
+        select: {
+          success: true,
+          createdAt: true,
+          simulationId: true,
+        },
+      },
+    },
+  });
+
+  const periodSimulations = simulations.filter((simulation) => {
+    if (!input.energyTypeFilter) return true;
+    return (
+      payloadEnergyType(simulation.versions[0]?.payloadJson) ===
+      input.energyTypeFilter
+    );
+  });
+  const periodAccess = periodSimulations.flatMap((item) => item.accessAttempts);
+
+  const recentAccess = await prisma.accessAttempt.findMany({
+    where: { createdAt: { gte: input.since } },
+    select: {
+      createdAt: true,
+      success: true,
+      simulationId: true,
+      simulation: { select: { agencyId: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  const trendAccess = recentAccess.filter(
+    (attempt) =>
+      !input.filterAgencyId ||
+      attempt.simulation?.agencyId === input.filterAgencyId,
+  );
+
+  const dayKeys = Array.from({ length: input.days }, (_, index) =>
+    new Date(input.since.getTime() + index * 86_400_000)
+      .toISOString()
+      .slice(0, 10),
+  );
+  const simulationsByDay = new Map(dayKeys.map((key) => [key, 0]));
+  for (const simulation of periodSimulations) {
+    const key = simulation.createdAt.toISOString().slice(0, 10);
+    if (simulationsByDay.has(key)) {
+      simulationsByDay.set(key, (simulationsByDay.get(key) ?? 0) + 1);
+    }
+  }
+
+  const accessByDay = new Map(
+    dayKeys.map((key) => [key, { count: 0, successful: 0 }]),
+  );
+  const openedByDay = new Map<string, Set<string>>();
+  for (const attempt of trendAccess) {
+    const key = attempt.createdAt.toISOString().slice(0, 10);
+    const bucket = accessByDay.get(key);
+    if (!bucket) continue;
+    bucket.count++;
+    if (attempt.success) {
+      const opened = openedByDay.get(key) ?? new Set<string>();
+      if (!opened.has(attempt.simulationId)) bucket.successful++;
+      opened.add(attempt.simulationId);
+      openedByDay.set(key, opened);
+    }
+  }
+
+  const energyCounts = new Map<string, number>();
+  const tariffCounts = new Map<string, number>();
+  const consumptions: number[] = [];
+  for (const simulation of periodSimulations) {
+    const payload = simulation.versions[0]?.payloadJson;
+    const energyType = payloadEnergyType(payload);
+    const tariff = payloadTariff(payload);
+    const consumption = payloadConsumption(payload);
+    if (energyType) {
+      energyCounts.set(energyType, (energyCounts.get(energyType) ?? 0) + 1);
+    }
+    if (tariff) tariffCounts.set(tariff, (tariffCounts.get(tariff) ?? 0) + 1);
+    if (consumption !== null) consumptions.push(consumption);
+  }
+
+  const agencyIds = [...new Set(periodSimulations.map((item) => item.agencyId))];
+  const userIds = [...new Set(periodSimulations.map((item) => item.ownerUserId))];
+  const [agencies, users] = await Promise.all([
+    input.elevated && !input.filterAgencyId && agencyIds.length
+      ? prisma.agency.findMany({
+          where: { id: { in: agencyIds } },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([]),
+    userIds.length
+      ? prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, fullName: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const agencyNames = new Map(agencies.map((item) => [item.id, item.name]));
+  const userNames = new Map(users.map((item) => [item.id, item.fullName]));
+
+  type PeriodSimulation = (typeof periodSimulations)[number];
+  const grouped = (key: "agencyId" | "ownerUserId") => {
+    const groups = new Map<string, PeriodSimulation[]>();
+    for (const item of periodSimulations) {
+      const value = item[key];
+      groups.set(value, [...(groups.get(value) ?? []), item]);
+    }
+    return groups;
+  };
+
+  const byAgencyGroups = grouped("agencyId");
+  const byUserGroups = grouped("ownerUserId");
+  const hasSuccessfulAccess = (simulation: (typeof periodSimulations)[number]) =>
+    simulation.accessAttempts.some((attempt) => attempt.success);
+
+  return {
+    totalSimulations: periodSimulations.length,
+    sharedSimulations: periodSimulations.filter(
+      (item) => item.status === "SHARED",
+    ).length,
+    emailSharedSimulations: periodSimulations.filter(
+      (item) => item.status === "SHARED" && item.sharedVia === "EMAIL",
+    ).length,
+    expiredSimulations: periodSimulations.filter(
+      (item) => item.status === "EXPIRED",
+    ).length,
+    draftSimulations: periodSimulations.filter(
+      (item) => item.status === "DRAFT",
+    ).length,
+    accessAttempts: periodAccess.length,
+    successfulAccess: periodSimulations.filter(hasSuccessfulAccess).length,
+    simulationTrend: dayKeys.map((date) => ({
+      date,
+      count: simulationsByDay.get(date) ?? 0,
+    })),
+    accessTrend: dayKeys.map((date) => ({
+      date,
+      ...(accessByDay.get(date) ?? { count: 0, successful: 0 }),
+    })),
+    periodDays: input.days,
+    energyTypeSplit: [...energyCounts].map(([type, count]) => ({ type, count })),
+    tariffBreakdown: [...tariffCounts]
+      .map(([tariff, count]) => ({ tariff, count }))
+      .sort((left, right) => right.count - left.count),
+    avgConsumoAnual: consumptions.length
+      ? Math.round(
+          consumptions.reduce((sum, value) => sum + value, 0) /
+            consumptions.length,
+        )
+      : null,
+    ...(input.elevated && !input.filterAgencyId
+      ? {
+          byAgency: [...byAgencyGroups].map(([agencyId, items]) => ({
+            agencyId,
+            agencyName: agencyNames.get(agencyId) ?? agencyId,
+            total: items.length,
+            shared: items.filter((item) => item.status === "SHARED").length,
+            expired: items.filter((item) => item.status === "EXPIRED").length,
+            opened: items.filter(hasSuccessfulAccess).length,
+          })),
+        }
+      : {}),
+    byUser: [...byUserGroups]
+      .map(([userId, items]) => ({
+        userId,
+        userName: userNames.get(userId) ?? userId,
+        total: items.length,
+        shared: items.filter((item) => item.status === "SHARED").length,
+        opened: items.filter(hasSuccessfulAccess).length,
+      }))
+      .sort((left, right) => right.total - left.total)
+      .slice(0, 10),
+  };
+};
 
 /**
  * @swagger
@@ -35,14 +255,61 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const since = new Date(Date.now() - days * 86_400_000);
 
   // Admin can optionally scope to a specific agency
-  const filterAgencyId =
-    auth.role === UserRole.ADMIN
-      ? (searchParams.get("agencyId") ?? undefined)
-      : auth.agencyId!;
+  const filterAgencyId = isElevatedRole(auth.role)
+    ? (searchParams.get("agencyId") ?? undefined)
+    : auth.agencyId!;
+
+  // Optional energy type filter: "ELECTRICITY" | "GAS" | undefined (all)
+  const energyTypeParam = searchParams.get("energyType") ?? undefined;
+  const energyTypeFilter =
+    energyTypeParam === "ELECTRICITY" || energyTypeParam === "GAS"
+      ? energyTypeParam
+      : undefined;
+
+  if (isSupabaseApiMode()) {
+    return ResponseHandler.ok(
+      await buildApiOverview({
+        days,
+        since,
+        filterAgencyId,
+        energyTypeFilter,
+        elevated: isElevatedRole(auth.role),
+      }),
+      200,
+    );
+  }
+
+  // SQL clause helpers — used in raw queries
+  const agencyClause = filterAgencyId
+    ? Prisma.sql`AND s."agencyId" = ${filterAgencyId}`
+    : Prisma.sql``;
+
+  // When energy type is set, narrow to matching simulation IDs via the JSON payload
+  let energyTypeIdFilter: { id?: { in: string[] } } = {};
+  if (energyTypeFilter) {
+    const matchingRows = await prisma.$queryRaw<
+      Array<{ simulationId: string }>
+    >`
+      WITH latest AS (
+        SELECT DISTINCT ON ("simulationId") "simulationId", "payloadJson"
+        FROM simulation_versions
+        ORDER BY "simulationId", "createdAt" DESC
+      )
+      SELECT latest."simulationId"
+      FROM latest
+      INNER JOIN simulations s ON s.id = latest."simulationId"
+      WHERE s."isDeleted" = false
+        ${agencyClause}
+        AND latest."payloadJson"->>'type' = ${energyTypeFilter}
+    `;
+    energyTypeIdFilter = {
+      id: { in: matchingRows.map((r) => r.simulationId) },
+    };
+  }
 
   const simulationFilter = filterAgencyId
-    ? { isDeleted: false, agencyId: filterAgencyId }
-    : { isDeleted: false };
+    ? { isDeleted: false, agencyId: filterAgencyId, ...energyTypeIdFilter }
+    : { isDeleted: false, ...energyTypeIdFilter };
 
   const accessFilter = filterAgencyId
     ? { simulation: { agencyId: filterAgencyId } }
@@ -58,12 +325,19 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   // so that "opens" is always comparable to "sent" and open rate stays ≤ 100%
   // (unless a client opens multiple times, which is expected).
   const accessOnPeriodSimsFilter = filterAgencyId
-    ? { simulation: { agencyId: filterAgencyId, createdAt: { gte: since } } }
-    : { simulation: { createdAt: { gte: since } } };
+    ? {
+        simulation: {
+          agencyId: filterAgencyId,
+          createdAt: { gte: since },
+          ...energyTypeIdFilter,
+        },
+      }
+    : { simulation: { createdAt: { gte: since }, ...energyTypeIdFilter } };
 
   const [
     totalSimulations,
     sharedSimulations,
+    emailSharedSimulations,
     expiredSimulations,
     draftSimulations,
     accessAttempts,
@@ -76,6 +350,16 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     prisma.simulation.count({ where: simulationPeriodFilter }),
     prisma.simulation.count({
       where: { ...simulationPeriodFilter, status: "SHARED" },
+    }),
+    // Only simulations sent via email can be "opened" by the client —
+    // PDF/download shares will never register an open, so email-sent is the
+    // correct denominator for open-rate calculations.
+    prisma.simulation.count({
+      where: {
+        ...simulationPeriodFilter,
+        status: "SHARED",
+        sharedVia: "EMAIL",
+      },
     }),
     prisma.simulation.count({
       where: { ...simulationPeriodFilter, status: "EXPIRED" },
@@ -91,7 +375,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         accessAttempts: { some: { success: true } },
       },
     }),
-    auth.role === UserRole.ADMIN && !filterAgencyId
+    isElevatedRole(auth.role) && !filterAgencyId
       ? prisma.simulation.groupBy({
           by: ["agencyId"],
           where: simulationPeriodFilter,
@@ -118,8 +402,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   ]);
 
   // ── Simulation content metrics (raw SQL — JSON payload extraction) ────────
-  const agencyClause = filterAgencyId
-    ? Prisma.sql`AND s."agencyId" = ${filterAgencyId}`
+  const energyTypeClause = energyTypeFilter
+    ? Prisma.sql`AND latest."payloadJson"->>'type' = ${energyTypeFilter}`
     : Prisma.sql``;
 
   const [energyTypeSplitRaw, tariffBreakdownRaw, avgConsumptionRaw] =
@@ -136,6 +420,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         WHERE s."isDeleted" = false
           AND s."createdAt" >= ${since}
           ${agencyClause}
+          ${energyTypeClause}
         GROUP BY latest."payloadJson"->>'type'
       `,
       prisma.$queryRaw<Array<{ tariff: string | null; count: number }>>`
@@ -155,6 +440,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         WHERE s."isDeleted" = false
           AND s."createdAt" >= ${since}
           ${agencyClause}
+          ${energyTypeClause}
         GROUP BY tariff
         ORDER BY count DESC
       `,
@@ -178,6 +464,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         WHERE s."isDeleted" = false
           AND s."createdAt" >= ${since}
           ${agencyClause}
+          ${energyTypeClause}
       `,
     ]);
 
@@ -365,6 +652,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     {
       totalSimulations,
       sharedSimulations,
+      emailSharedSimulations,
       expiredSimulations,
       draftSimulations,
       accessAttempts,

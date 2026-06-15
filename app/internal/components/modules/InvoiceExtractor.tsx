@@ -400,7 +400,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
     };
 
     return (
-        <div className="invoice-extractor">
+        <div className="invoice-extractor notranslate" translate="no">
             <div className="extractor-header">
                 <div className="extractor-icon">
                     <AutoFixHighIcon />
@@ -442,7 +442,10 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                         {currentType === "image" ? (
                             <div className="image-cards-grid">
                                 {files.map((f, i) => (
-                                    <div className="image-card" key={i}>
+                                    <div
+                                        className="image-card"
+                                        key={`${f.name}-${f.size}-${f.lastModified}`}
+                                    >
                                         <button
                                             type="button"
                                             className="image-card-remove"
@@ -462,7 +465,10 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                             <div className="file-row">
                                 <div className="file-list">
                                     {files.map((f, i) => (
-                                        <div className="file-info" key={i}>
+                                        <div
+                                            className="file-info"
+                                            key={`${f.name}-${f.size}-${f.lastModified}`}
+                                        >
                                             <div className="file-info-text">
                                                 <span className="file-name">{f.name}</span>
                                                 <span className="file-size">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
@@ -1220,4 +1226,3 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         </div>
     );
 }
-

@@ -4,7 +4,10 @@ import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertPermission } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { AuthService } from "@/application/services/authService";
 import { prisma } from "@/infrastructure/database/prisma";
 import { parseCreateUserPayload } from "./userPayloadValidation";
@@ -102,9 +105,15 @@ import { parseCreateUserPayload } from "./userPayloadValidation";
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  await assertPermission(auth, "users.view");
-
   const sp = request.nextUrl.searchParams;
+  const contextual = sp.get("contextual") === "true";
+
+  // Agents need agency user names for operational filters and audit dialogs,
+  // without receiving access to the Users management module.
+  if (!(contextual && auth.role === UserRole.AGENT)) {
+    await assertPermission(auth, "users.view");
+  }
+
   const page = Math.max(1, parseInt(sp.get("page") || "1", 10));
   const pageSize = Math.min(
     100,
@@ -114,11 +123,13 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const roleFilter = sp.get("role") || undefined;
   const agencyIdFilter = sp.get("agencyId") || undefined;
   const includeDeleted =
-    sp.get("includeDeleted") === "true" && auth.role === UserRole.ADMIN;
+    sp.get("includeDeleted") === "true" && isElevatedRole(auth.role);
   const rawOrderBy = sp.get("orderBy") || "createdAt";
   const sortDir: "asc" | "desc" = sp.get("sortDir") === "asc" ? "asc" : "desc";
   // minimal=true: skip all includes/joins. Used by dropdowns that only need id + name.
-  const minimal = sp.get("minimal") === "true";
+  const minimal =
+    sp.get("minimal") === "true" ||
+    (contextual && auth.role === UserRole.AGENT);
 
   const allowedOrderBy: Record<string, string> = {
     createdAt: "createdAt",
@@ -129,8 +140,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   };
   const orderByField = allowedOrderBy[rawOrderBy] ?? "createdAt";
 
-  const baseWhere =
-    auth.role === UserRole.ADMIN ? {} : { agencyId: auth.agencyId };
+  const baseWhere = isElevatedRole(auth.role)
+    ? {}
+    : { agencyId: auth.agencyId };
   const searchWhere = search
     ? {
         OR: [
@@ -141,7 +153,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     : {};
   const roleWhere = roleFilter ? { role: roleFilter as UserRole } : {};
   const agencyWhere =
-    agencyIdFilter && auth.role === UserRole.ADMIN
+    agencyIdFilter && isElevatedRole(auth.role)
       ? { agencyId: agencyIdFilter }
       : {};
   const where = {
