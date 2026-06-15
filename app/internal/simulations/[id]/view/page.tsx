@@ -31,9 +31,9 @@ function SimulationMeta({ sim }: { sim: SimulationItem }) {
 
     const handleCopyShareLink = async () => {
         if (!sim.publicToken) return;
-        
+
         const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
-        const shareUrl = `${baseUrl}/simulador/?token=${sim.publicToken}`;
+        const shareUrl = `${baseUrl}/?token=${sim.publicToken}`;
 
         try {
             await navigator.clipboard.writeText(shareUrl);

@@ -310,7 +310,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                     const shared = await shareSimulation(token, simulation.id, "PDF");
                     const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
                     if (shared.publicToken) {
-                        simulationLink = `${baseUrl}/simulador/?token=${shared.publicToken}`;
+                        simulationLink = `${baseUrl}/?token=${shared.publicToken}`;
                     }
                     didShare = true;
                 } catch (err) {
@@ -379,7 +379,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 const shared = await shareSimulation(token, simulation.id, "EMAIL");
                 const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
                 if (shared.publicToken) {
-                    simulationLink = `${baseUrl}/simulador/?token=${shared.publicToken}`;
+                    simulationLink = `${baseUrl}/?token=${shared.publicToken}`;
                 }
                 didShare = true;
             } catch (err) {
