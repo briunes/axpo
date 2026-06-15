@@ -46,6 +46,11 @@ const PRICE_HISTORY_COMMON_VARIABLES = [
         description: "Unique simulation identifier",
     },
     {
+        name: "SIMULATION_REFERENCE",
+        label: "Simulation Reference",
+        description: "Human-readable simulation reference number",
+    },
+    {
         name: "CREATED_AT",
         label: "Creation Date",
         description: "Date the simulation was created",

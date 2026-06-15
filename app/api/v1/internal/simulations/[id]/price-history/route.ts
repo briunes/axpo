@@ -5,6 +5,27 @@ import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 
 const PRODUCT_LABELS: Record<string, string> = {
+  "ESTABLE:N1": "Estable N1",
+  "ESTABLE:N2": "Estable N2",
+  "ESTABLE:N3": "Estable N3",
+  "ESTABLE_PLUS:N1": "Estable Plus N1",
+  "ESTABLE_PLUS:N2": "Estable Plus N2",
+  "ESTABLE_PLUS:N3": "Estable Plus N3",
+  "1P_PLUS:N1": "1P Plus N1",
+  "1P_PLUS:N2": "1P Plus N2",
+  "1P_PLUS:N3": "1P Plus N3",
+  "1P_PLUS_XL:N1": "1P Plus XL N1",
+  "1P_PLUS_XL:N2": "1P Plus XL N2",
+  "1P_PLUS_XL:N3": "1P Plus XL N3",
+  "1P_PLUS_SSCC_LIBRES:N1": "1P Plus SSCC Libres N1",
+  "1P_PLUS_SSCC_LIBRES:N2": "1P Plus SSCC Libres N2",
+  "1P_PLUS_SSCC_LIBRES:N3": "1P Plus SSCC Libres N3",
+  "ESTABLE_TALLERES:N1": "Estable Talleres N1",
+  "ESTABLE_TALLERES:N2": "Estable Talleres N2",
+  "ESTABLE_TALLERES:N3": "Estable Talleres N3",
+  "ESTABLE_PLUS_TALLERES:N1": "Estable Plus Talleres N1",
+  "ESTABLE_PLUS_TALLERES:N2": "Estable Plus Talleres N2",
+  "ESTABLE_PLUS_TALLERES:N3": "Estable Plus Talleres N3",
   "DINAMICA:N1": "Dinámica N1",
   "DINAMICA:N2": "Dinámica N2",
   "DINAMICA:N3": "Dinámica N3",
@@ -23,6 +44,12 @@ const PRODUCT_LABELS: Record<string, string> = {
 };
 
 const GAS_PRODUCT_LABELS: Record<string, string> = {
+  "FIJO:N1": "Gas Fijo N1",
+  "FIJO:N2": "Gas Fijo N2",
+  "FIJO:N3": "Gas Fijo N3",
+  "ESTABLE_PLUS:N1": "Gas Estable Plus N1",
+  "ESTABLE_PLUS:N2": "Gas Estable Plus N2",
+  "ESTABLE_PLUS:N3": "Gas Estable Plus N3",
   "INDEXADO:N1": "Gas Dinámica N1",
   "INDEXADO:N2": "Gas Dinámica N2",
   "INDEXADO:N3": "Gas Dinámica N3",
@@ -83,6 +110,53 @@ function latestDataMonth(items: { key: string }[]): Date | undefined {
   return new Date(y, m - 1, 1);
 }
 
+async function loadCommodityBaseValueItems(
+  commodity: "ELEC" | "GAS",
+  agencyId?: string | null,
+): Promise<{ key: string; valueNumeric: any }[]> {
+  const matchingItems = await prisma.baseValueItem.findMany({
+    where: { key: { startsWith: `${commodity}:` } },
+    select: { baseValueSetId: true },
+    orderBy: { updatedAt: "desc" },
+    take: 1000,
+  });
+
+  const setIds = [...new Set(matchingItems.map((item) => item.baseValueSetId))];
+  if (setIds.length === 0) return [];
+
+  const sets = await prisma.baseValueSet.findMany({
+    where: {
+      id: { in: setIds },
+      isDeleted: false,
+      OR: [
+        { scopeType: "GLOBAL" },
+        ...(agencyId ? [{ agencyId }] : []),
+      ],
+    },
+    select: {
+      id: true,
+      isActive: true,
+      isProduction: true,
+      version: true,
+      updatedAt: true,
+    },
+    orderBy: [
+      { isProduction: "desc" },
+      { isActive: "desc" },
+      { version: "desc" },
+      { updatedAt: "desc" },
+    ],
+  });
+
+  const selectedSet = sets[0];
+  if (!selectedSet) return [];
+
+  return prisma.baseValueItem.findMany({
+    where: { baseValueSetId: selectedSet.id },
+    select: { key: true, valueNumeric: true },
+  });
+}
+
 /**
  * @swagger
  * /api/v1/internal/simulations/{id}/price-history:Menu 'Comunicações':
@@ -130,6 +204,7 @@ export async function GET(
     }
 
     const payload = latestVersion.payloadJson as Record<string, any>;
+    const isGas = payload?.type === "GAS" || !!payload?.gas;
     const baseValueSetId =
       latestVersion.baseValueSetId ??
       (payload?.results as any)?.baseValueSetId ??
@@ -155,8 +230,31 @@ export async function GET(
       baseValueItems = globalSet?.items ?? [];
     }
 
-    // Determine simulation type
-    const isGas = payload?.type === "GAS" || !!payload?.gas;
+    // Older simulation versions can point to a base-value set containing only
+    // the other commodity. For history, fall back to the active global set
+    // when the attached set has no entries for this simulation's commodity.
+    const hasCommodityHistory = (
+      items: Array<{ key: string }>,
+    ): boolean =>
+      items.some((item) =>
+        isGas
+          ? item.key.startsWith("GAS:") &&
+            (item.key.endsWith(":MARGEN") ||
+              item.key.endsWith(":ENERGIA"))
+          : item.key.startsWith("ELEC:") &&
+            (item.key.includes(":MARGEN") ||
+              item.key.endsWith(":ENERGIA")),
+      );
+
+    if (!hasCommodityHistory(baseValueItems)) {
+      const commodityItems = await loadCommodityBaseValueItems(
+        isGas ? "GAS" : "ELEC",
+        auth.agencyId,
+      );
+      if (hasCommodityHistory(commodityItems)) {
+        baseValueItems = commodityItems;
+      }
+    }
 
     // Filter all indexed electricity margin items:
     //   12-month average: ELEC:INDEX:{PRODUCT}:{TIER}:{TARIFA}:{PERIODO}:MARGEN
@@ -178,7 +276,10 @@ export async function GET(
         productLabel: string;
         tariffs: Record<
           string,
-          Record<string, { avg: number; monthly: Record<string, number> }>
+          Record<
+            string,
+            { avg: number; monthly: Record<string, number> } | number
+          >
         >;
       }
     > = {};
@@ -218,6 +319,7 @@ export async function GET(
       }
 
       const entry = productData[productTierKey].tariffs[tariff][period];
+      if (typeof entry === "number") continue;
       const v = Number(item.valueNumeric) ?? 0;
 
       if (monthKey) {
@@ -227,17 +329,48 @@ export async function GET(
       }
     }
 
-    // Prioritise products that appear in the simulation results
-    const indexedResults = (
-      (payload?.results as any)?.electricity ?? []
-    ).filter((r: any) => r.pricingType === "INDEXED");
+    // Fixed electricity products have one current price per tariff/period,
+    // rather than month-specific snapshots. Store them as plain numeric
+    // period values; the history renderer displays that fixed value for each
+    // month while indexed products retain their real monthly series.
+    const fixedElectricityItems = baseValueItems.filter(
+      (item) =>
+        item.key.startsWith("ELEC:FIJO:") && item.key.endsWith(":ENERGIA"),
+    );
 
-    const simulationProducts =
-      indexedResults.length > 0
-        ? indexedResults
-            .map((r: any) => productData[r.productKey] ?? null)
-            .filter(Boolean)
-        : Object.values(productData);
+    for (const item of fixedElectricityItems) {
+      // ELEC : FIJO : PRODUCT : TIER : TARIFA : PERIODO : ENERGIA
+      const parts = item.key.split(":");
+      if (parts.length !== 7) continue;
+
+      const product = parts[2];
+      const tier = parts[3];
+      const tariff = parts[4];
+      const period = parts[5];
+      const productTierKey = `${product}:${tier}`;
+
+      if (!productData[productTierKey]) {
+        productData[productTierKey] = {
+          productKey: productTierKey,
+          productLabel:
+            PRODUCT_LABELS[productTierKey] ??
+            `${product.replace(/_/g, " ")} ${tier}`,
+          tariffs: {},
+        };
+      }
+
+      if (!productData[productTierKey].tariffs[tariff]) {
+        productData[productTierKey].tariffs[tariff] = {};
+      }
+
+      productData[productTierKey].tariffs[tariff][period] =
+        Number(item.valueNumeric) ?? 0;
+    }
+
+    // History is a catalogue view, so expose every product for which the
+    // imported base-value set contains historical data. Restricting this to
+    // the current simulation results hid valid product families.
+    const simulationProducts = Object.values(productData);
 
     // ── Gas indexed margin items ──────────────────────────────────────────
     // Key format: GAS:INDEX:{PRODUCT}:{TIER}:{TARIFA}:{ZONE}:MARGEN
@@ -289,20 +422,43 @@ export async function GET(
         Number(item.valueNumeric) ?? 0;
     }
 
-    // Prioritise gas products that appear in simulation results
-    const gasIndexedResults = ((payload?.results as any)?.gas ?? []).filter(
-      (r: any) => r.pricingType === "INDEXED",
+    const fixedGasItems = baseValueItems.filter(
+      (item) =>
+        item.key.startsWith("GAS:FIJO:") && item.key.endsWith(":ENERGIA"),
     );
 
-    const gasSimulationProducts =
-      gasIndexedResults.length > 0
-        ? gasIndexedResults
-            .map((r: any) => {
-              const key = `GAS:${r.productKey}`;
-              return gasProductData[key] ?? null;
-            })
-            .filter(Boolean)
-        : Object.values(gasProductData);
+    for (const item of fixedGasItems) {
+      // GAS : FIJO : PRODUCT : TIER : TARIFA : ZONE : ENERGIA
+      const parts = item.key.split(":");
+      if (parts.length !== 7) continue;
+
+      const product = parts[2];
+      const tier = parts[3];
+      const tariff = parts[4];
+      const zone = parts[5];
+      const productTierKey = `GAS:${product}:${tier}`;
+
+      if (!gasProductData[productTierKey]) {
+        const labelKey = `${product}:${tier}`;
+        gasProductData[productTierKey] = {
+          productKey: productTierKey,
+          productLabel:
+            GAS_PRODUCT_LABELS[labelKey] ??
+            `Gas ${product.replace(/_/g, " ")} ${tier}`,
+          tariffs: {},
+          type: "GAS",
+        };
+      }
+
+      if (!gasProductData[productTierKey].tariffs[tariff]) {
+        gasProductData[productTierKey].tariffs[tariff] = {};
+      }
+
+      gasProductData[productTierKey].tariffs[tariff][zone] =
+        Number(item.valueNumeric) ?? 0;
+    }
+
+    const gasSimulationProducts = Object.values(gasProductData);
 
     const electricity = payload?.electricity as any;
     const tarifaAcceso = electricity?.tarifaAcceso ?? "2.0TD";

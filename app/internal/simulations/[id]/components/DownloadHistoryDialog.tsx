@@ -10,13 +10,8 @@ import {
     DialogContent,
     DialogTitle,
     Divider,
-    FormControl,
     IconButton,
-    InputLabel,
-    MenuItem,
     Paper,
-    Select,
-    Tooltip,
     Typography,
     useTheme,
 } from "@mui/material";
@@ -27,6 +22,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import { useI18n } from "../../../../../src/lib/i18n-context";
 import { getPdfTemplates, type PdfTemplate } from "../../../lib/configApi";
 import { LoadingState } from "../../../components/shared";
+import { FormSelect } from "../../../components/ui/FormSelect";
 import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -165,6 +161,7 @@ function buildGasHistoryHtml(
             .replace(/\{\{GAS_TARIFA\}\}/g, data.gasTarifaAcceso ?? "")
             .replace(/\{\{CLIENT_NAME\}\}/g, simulation?.client?.name ?? "")
             .replace(/\{\{SIMULATION_ID\}\}/g, simulation?.id ?? "")
+            .replace(/\{\{SIMULATION_REFERENCE\}\}/g, simulation?.referenceNumber ?? simulation?.id ?? "")
             .replace(/\{\{CREATED_AT\}\}/g, createdAt)
             .replace(/\{\{OWNER_NAME\}\}/g, simulation?.ownerUser?.fullName ?? "")
             .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "");
@@ -341,6 +338,7 @@ function buildHistoryHtml(
             .replace(/\{\{TARIFA\}\}/g, data.tarifaAcceso)
             .replace(/\{\{CLIENT_NAME\}\}/g, simulation?.client?.name ?? "")
             .replace(/\{\{SIMULATION_ID\}\}/g, simulation?.id ?? "")
+            .replace(/\{\{SIMULATION_REFERENCE\}\}/g, simulation?.referenceNumber ?? simulation?.id ?? "")
             .replace(/\{\{CREATED_AT\}\}/g, createdAt)
             .replace(/\{\{OWNER_NAME\}\}/g, simulation?.ownerUser?.fullName ?? "")
             .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "");
@@ -444,23 +442,26 @@ export function DownloadHistoryDialog({
         ])
             .then(([templates, histData]) => {
                 const data = histData as HistoryData;
+                const commodity = data.isGas ? "GAS" : "ELECTRICITY";
                 const historyTpls = templates.filter(
-                    (tpl) => tpl.active && tpl.type === "price-history",
+                    (tpl) =>
+                        tpl.active &&
+                        tpl.type === "price-history" &&
+                        (tpl.commodity || "ELECTRICITY") === commodity,
                 );
                 setHistoryTemplates(historyTpls);
 
-                // For gas simulations use gasProducts as the product list
-                if (data.isGas && data.gasProducts && data.gasProducts.length > 0) {
-                    setHistoryData({ ...data, products: data.gasProducts });
-                } else {
-                    setHistoryData(data);
-                }
+                // Never mix commodity product lists. An empty gas list should
+                // show the no-data state instead of falling back to electricity.
+                setHistoryData(
+                    data.isGas
+                        ? { ...data, products: data.gasProducts ?? [] }
+                        : data,
+                );
 
-                // Default template: prefer commodity-matching template
+                // All templates are already restricted to the simulation commodity.
                 if (historyTpls.length > 0) {
-                    const commodity = data.isGas ? "GAS" : "ELECTRICITY";
-                    const match = historyTpls.find((tpl) => (tpl as any).commodity === commodity);
-                    setSelectedTemplateId((match ?? historyTpls[0]).id);
+                    setSelectedTemplateId(historyTpls[0].id);
                 }
             })
             .catch((err) => {
@@ -597,7 +598,7 @@ export function DownloadHistoryDialog({
                     <Box sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", p: 4 }}>
                         <Typography color="text.secondary" textAlign="center">
                             {t("downloadHistory", "noData") ||
-                                "No indexed products found in this simulation."}
+                                "No price history products are available for this simulation."}
                         </Typography>
                     </Box>
                 ) : (
@@ -615,51 +616,34 @@ export function DownloadHistoryDialog({
                             }}
                         >
                             {/* Product selector */}
-                            <FormControl size="small" sx={{ minWidth: 220 }}>
-                                <InputLabel>
-                                    {t("downloadHistory", "selectProduct") || "Product"}
-                                </InputLabel>
-                                <Select
-                                    value={selectedProductKey}
-                                    onChange={(e) => setSelectedProductKey(e.target.value)}
+                            <Box sx={{ minWidth: 300 }}>
+                                <FormSelect
                                     label={t("downloadHistory", "selectProduct") || "Product"}
-                                >
-                                    {historyData.products.map((p) => (
-                                        <MenuItem key={p.productKey} value={p.productKey}>
-                                            {p.productLabel}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
+                                    value={selectedProductKey}
+                                    onChange={(value) => setSelectedProductKey(String(value ?? ""))}
+                                    options={historyData.products.map((product) => ({
+                                        value: product.productKey,
+                                        label: product.productLabel,
+                                    }))}
+                                    textFieldProps={{ size: "small" }}
+                                />
+                            </Box>
 
                             {/* Template selector — only shown when price-history templates exist */}
                             {historyTemplates.length > 0 && (
-                                <FormControl size="small" sx={{ minWidth: 260 }}>
-                                    <InputLabel>
-                                        {t("downloadHistory", "selectTemplate") || "Template"}
-                                    </InputLabel>
-                                    <Select
-                                        value={selectedTemplateId}
-                                        onChange={(e) => setSelectedTemplateId(e.target.value)}
+                                <Box sx={{ minWidth: 300 }}>
+                                    <FormSelect
                                         label={t("downloadHistory", "selectTemplate") || "Template"}
-                                    >
-                                        {historyTemplates.map((tpl) => (
-                                            <MenuItem key={tpl.id} value={tpl.id}>
-                                                <Box>
-                                                    <Typography variant="body2">{tpl.name}</Typography>
-                                                    {tpl.description && (
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="text.secondary"
-                                                        >
-                                                            {tpl.description}
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
+                                        value={selectedTemplateId}
+                                        onChange={(value) => setSelectedTemplateId(String(value ?? ""))}
+                                        options={historyTemplates.map((template) => ({
+                                            value: template.id,
+                                            label: template.name,
+                                            secondaryLabel: template.description || undefined,
+                                        }))}
+                                        textFieldProps={{ size: "small" }}
+                                    />
+                                </Box>
                             )}
 
                             {/* Info chip */}

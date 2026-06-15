@@ -97,15 +97,13 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                 } | null;
 
                 if (payload?.results) setHasResults(true);
-                const productKey =
-                    payload?.selectedOffer?.productKey ??
-                    (simData.versions as Array<{ payloadJson?: { selectedOffer?: { productKey: string } } | null }>)
-                        ?.find((v) => v.payloadJson?.selectedOffer?.productKey)
-                        ?.payloadJson?.selectedOffer?.productKey;
-                if (productKey) setSelectedOfferProductKey(productKey);
+                setSelectedOfferProductKey(payload?.selectedOffer?.productKey ?? "");
 
                 // Get simulation type from payload (defaults to ELECTRICITY if not specified)
-                const simulationType = payload?.type || "ELECTRICITY";
+                const simulationType =
+                    payload?.type === "GAS" || (payload as any)?.gas
+                        ? "GAS"
+                        : "ELECTRICITY";
 
                 // Filter PDF templates by commodity and type
                 const filteredPdfTemplates = pdfTpl.filter((t) => {

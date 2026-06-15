@@ -15,6 +15,7 @@ export interface PdfTemplateVariables {
   CUPS_NUMBER: string;
 
   // Simulation metadata
+  SIMULATION_REFERENCE: string;
   SIMULATION_PERIOD: string;
   ANNUAL_CONSUMPTION: string;
   PRODUCT_NAME: string;
@@ -210,6 +211,8 @@ export function extractTemplateVariables(
     CUPS_NUMBER: simulation.cupsNumber || "ES0031352682800001VB",
 
     // Simulation metadata
+    SIMULATION_REFERENCE:
+      simulation.referenceNumber || simulation.id || "N/A",
     SIMULATION_PERIOD: simulationPeriod,
     ANNUAL_CONSUMPTION: formatNumber(annualConsumption, 0),
     PRODUCT_NAME: productName,

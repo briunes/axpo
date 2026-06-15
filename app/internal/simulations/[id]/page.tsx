@@ -470,18 +470,7 @@ export default function SimulationDetailPage({
         if (payload?.baseValueSetId)
           setUsedBaseValueSetId(payload.baseValueSetId);
 
-        // Find the most-recent selectedOffer across all returned versions.
-        // The latest version may have had its selectedOffer wiped by a
-        // recalculation, so fall back to scanning the full version list.
-        const productKey =
-          payload?.selectedOffer?.productKey ??
-          (
-            versions as Array<{
-              payloadJson?: { selectedOffer?: { productKey: string } } | null;
-            }>
-          ).find((v) => v.payloadJson?.selectedOffer?.productKey)?.payloadJson
-            ?.selectedOffer?.productKey;
-        if (productKey) setSelectedOfferProductKey(productKey);
+        setSelectedOfferProductKey(payload?.selectedOffer?.productKey ?? "");
       })
       .catch((err) => {
         showError(
@@ -593,13 +582,15 @@ export default function SimulationDetailPage({
               >
                 {t("downloadHistory", "buttonLabel") || "Download History"}
               </Button>
-              <Button
-                variant="outlined"
-                startIcon={<ShareIcon />}
-                onClick={handleShare}
-              >
-                {t("actions", "share") || "Share"}
-              </Button>
+              {selectedOfferProductKey && (
+                <Button
+                  variant="outlined"
+                  startIcon={<ShareIcon />}
+                  onClick={handleShare}
+                >
+                  {t("actions", "share") || "Share"}
+                </Button>
+              )}
               {(session.user.role === "AGENT" ||
                 canDo(session.user.role, "section.audit-logs")) && (
                 <Button
@@ -651,7 +642,9 @@ export default function SimulationDetailPage({
         onNotify={(text, tone) =>
           tone === "success" ? showSuccess(text) : showError(text)
         }
-        onOfferSelected={(productKey) => setSelectedOfferProductKey(productKey)}
+        onOfferSelected={(productKey) =>
+          setSelectedOfferProductKey(productKey ?? "")
+        }
         readOnly={simulation.status === "SHARED"}
         baseValueSetId={selectedBaseValueSetId}
       />

@@ -361,7 +361,7 @@
           },
           "password": {
             "type": "string",
-            "minLength": 12,
+            "minLength": 1,
             "maxLength": 128
           }
         }
@@ -685,7 +685,7 @@
           "Public"
         ],
         "summary": "Retrieve basic simulation info by token (no PIN required)",
-        "description": "Returns the owner name, email, and agency name for the simulation identified by the token. Used to pre-populate the access screen before PIN entry.",
+        "description": "Returns the owner name, email, agency name and the client's preferred language (falls back to the owner's preferred language, then the system default) for the simulation identified by the token. Used to pre-populate the access screen before PIN entry.",
         "security": [],
         "requestBody": {
           "required": true,

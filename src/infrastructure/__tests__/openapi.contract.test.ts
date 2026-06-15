@@ -79,6 +79,21 @@ describe("OpenAPI contract coverage", () => {
     }
   });
 
+  it("login accepts any non-empty password for credential verification", () => {
+    const schemas = (
+      openapiInternal as {
+        components?: {
+          schemas?: Record<string, { properties?: Record<string, unknown> }>;
+        };
+      }
+    ).components?.schemas;
+    const passwordSchema = schemas?.LoginRequest?.properties?.password;
+
+    expect(passwordSchema).toEqual(
+      expect.objectContaining({ minLength: 1, maxLength: 128 }),
+    );
+  });
+
   it("public spec contains only public simulation endpoints", () => {
     const paths =
       (openapiPublic as { paths?: Record<string, Record<string, unknown>> })

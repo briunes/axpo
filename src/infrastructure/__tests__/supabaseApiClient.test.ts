@@ -42,6 +42,67 @@ describe("Supabase Data API database adapter", () => {
     );
   });
 
+  it("disambiguates the user agency relation", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: "user-1",
+            agency: { id: "agency-1", name: "AXPO Porto" },
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const client = createSupabaseApiPrismaClient();
+
+    await client.user.findFirst({
+      select: {
+        id: true,
+        agency: { select: { id: true, name: true } },
+      },
+    });
+
+    expect(decodeURIComponent(fetchMock.mock.calls[0][0] as string)).toContain(
+      "agency:agencies!users_agencyId_fkey(id,name)",
+    );
+  });
+
+  it("disambiguates the agency nested under a simulation owner", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: "simulation-1",
+            ownerUser: {
+              id: "user-1",
+              agency: { id: "agency-1", name: "AXPO Porto" },
+            },
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const client = createSupabaseApiPrismaClient();
+
+    await client.simulation.findFirst({
+      select: {
+        id: true,
+        ownerUser: {
+          select: {
+            id: true,
+            agency: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    const url = decodeURIComponent(fetchMock.mock.calls[0][0] as string);
+    expect(url).toContain(
+      "ownerUser:users!simulations_ownerUserId_fkey(id,agency:agencies!users_agencyId_fkey(id,name))",
+    );
+  });
+
   it("rejects publishable keys before sending a database request", async () => {
     process.env.SUPABASE_SECRET_KEY = "sb_publishable_test";
     const client = createSupabaseApiPrismaClient();

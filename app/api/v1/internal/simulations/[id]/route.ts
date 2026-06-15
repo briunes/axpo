@@ -93,9 +93,10 @@ export const GET = withErrorHandler(
     const versionsWithResults = versions.filter(
       (v) => (v.payloadJson as Record<string, unknown> | null)?.results,
     );
-    const versionsWithOffer = versions.filter(
-      (v) => (v.payloadJson as Record<string, unknown> | null)?.selectedOffer,
-    );
+    const versionsWithOffer = versions.filter((v) => {
+      const payload = v.payloadJson as Record<string, unknown> | null;
+      return payload !== null && Object.prototype.hasOwnProperty.call(payload, "selectedOffer");
+    });
     const baseVersionPayload = (versionsWithResults[0]?.payloadJson ??
       latestVersion?.payloadJson) as Record<string, unknown> | null;
     const latestSelectedOffer = (

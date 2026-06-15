@@ -50,7 +50,7 @@ export default function LoginPage() {
       .catch(() => { });
   }, []);
 
-  const canLogin = useMemo(() => email.includes("@") && password.length >= 8, [email, password]);
+  const canLogin = useMemo(() => email.includes("@") && password.length > 0, [email, password]);
   const canRequestMagicLink = useMemo(() => email.includes("@"), [email]);
   const canVerifyOtp = useMemo(() => otpCode.length === 6 && /^\d+$/.test(otpCode), [otpCode]);
 

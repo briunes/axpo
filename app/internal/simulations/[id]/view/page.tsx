@@ -222,12 +222,7 @@ export default function SimulationViewPage({ params }: { params: Promise<{ id: s
                 setSimulation(sim);
                 const payload = sim.payloadJson as { results?: SimulationResults; selectedOffer?: { productKey: string } } | null;
                 if (payload?.results) setLastResults(payload.results);
-                const productKey =
-                    payload?.selectedOffer?.productKey ??
-                    (versions as Array<{ payloadJson?: { selectedOffer?: { productKey: string } } | null }>)
-                        .find((v) => v.payloadJson?.selectedOffer?.productKey)
-                        ?.payloadJson?.selectedOffer?.productKey;
-                if (productKey) setSelectedOfferProductKey(productKey);
+                setSelectedOfferProductKey(payload?.selectedOffer?.productKey ?? "");
             })
             .catch((err) => {
                 showError(err instanceof Error ? err.message : t("simulationDetail", "notFound"));

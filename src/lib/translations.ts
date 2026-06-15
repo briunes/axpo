@@ -1294,7 +1294,7 @@ export const translations = {
       sectionGasPersonalizadaIndex: "Personalized Indexed (custom)",
       gasPersonalizadaIndexDescription:
         "Custom indexed gas offer — fills the 'Personalized Index' row in results. Enter the energy margin (€/kWh) on top of MIBGAS. Leave at 0 to omit.",
-      gasPersonalizadaIndexMargenLabel: "Energy margin (€/kWh) over MIBGAS",
+      gasPersonalizadaIndexMargenLabel: "Precio término de energia (€/kWh)",
       gasPersonalizadaIndexMargenHint:
         "Flat margin added on top of MIBGAS reference price — €/kWh (Precio Término Energía oferta)",
       // Gas contract section
@@ -1331,8 +1331,10 @@ export const translations = {
       testDataFilled: "Test data filled successfully",
       calculationComplete: "Calculation complete — {count} products evaluated",
       offerSaved: "Offer selected and saved successfully",
+      offerCleared: "Offer selection removed successfully",
       calculationFailed: "Calculation failed",
       failedToSaveSelection: "Failed to save selection",
+      failedToClearSelection: "Failed to remove selection",
     },
     simulationResults: {
       colProduct: "Product",
@@ -1412,7 +1414,7 @@ export const translations = {
       downloading: "Generating…",
       loading: "Loading history data…",
       success: "History PDF downloaded successfully.",
-      noData: "No indexed products found in this simulation.",
+      noData: "No price history products are available for this simulation.",
     },
     configurationsModule: {
       title: "Configurations",
@@ -1870,6 +1872,8 @@ export const translations = {
       CLIENT_NAME_description: "Company or client name linked to the simulation",
       SIMULATION_ID_label: "Simulation ID",
       SIMULATION_ID_description: "Unique simulation identifier",
+      SIMULATION_REFERENCE_label: "Simulation Reference",
+      SIMULATION_REFERENCE_description: "Human-readable simulation reference number",
       CREATED_AT_label: "Creation Date",
       CREATED_AT_description: "Date the simulation was created",
       OWNER_NAME_label: "Owner Name",
@@ -3562,8 +3566,10 @@ export const translations = {
       testDataFilled: "Datos de prueba rellenados correctamente",
       calculationComplete: "Cálculo completado — {count} productos evaluados",
       offerSaved: "Oferta seleccionada y guardada correctamente",
+      offerCleared: "Selección de oferta eliminada correctamente",
       calculationFailed: "Error en el cálculo",
       failedToSaveSelection: "Error al guardar la selección",
+      failedToClearSelection: "Error al eliminar la selección",
     },
     simulationResults: {
       colProduct: "Producto",
@@ -3644,7 +3650,7 @@ export const translations = {
       downloading: "Generando…",
       loading: "Cargando datos históricos…",
       success: "PDF de histórico descargado correctamente.",
-      noData: "No se encontraron productos indexados en esta simulación.",
+      noData: "No hay productos con histórico de precios disponibles para esta simulación.",
     },
     configurationsModule: {
       title: "Configuraciones",
@@ -4116,6 +4122,8 @@ export const translations = {
       CLIENT_NAME_description: "Empresa o cliente vinculado a la simulación",
       SIMULATION_ID_label: "ID de Simulación",
       SIMULATION_ID_description: "Identificador único de la simulación",
+      SIMULATION_REFERENCE_label: "Referencia de Simulación",
+      SIMULATION_REFERENCE_description: "Número de referencia legible de la simulación",
       CREATED_AT_label: "Fecha de Creación",
       CREATED_AT_description: "Fecha en la que se creó la simulación",
       OWNER_NAME_label: "Nombre del Propietario",

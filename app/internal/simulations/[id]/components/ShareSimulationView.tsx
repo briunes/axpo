@@ -98,7 +98,10 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             .then(async ([pdfTpl, emailTpl, variables]) => {
                 // Get simulation type from payload (defaults to ELECTRICITY if not specified)
                 const payload = simulation.payloadJson as { type?: "ELECTRICITY" | "GAS" } | null;
-                const simulationType = payload?.type || "ELECTRICITY";
+                const simulationType =
+                    payload?.type === "GAS" || (payload as any)?.gas
+                        ? "GAS"
+                        : "ELECTRICITY";
 
                 // Filter PDF templates by commodity and type
                 const simulationPdfTemplates = pdfTpl.filter((t) => {

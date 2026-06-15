@@ -5,6 +5,7 @@ import type { SimulationResults, ProductResult } from "@/domain/types";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { FormSelect } from "../ui/FormSelect";
 import { CurrencyInput } from "../ui/CurrencyInput";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
 
 const MESES_ES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
 
@@ -28,6 +29,7 @@ interface SimulationResultsCardsProps {
     calculating?: boolean;
     selectedOffer?: { productKey: string; commodity: "ELECTRICITY" | "GAS" };
     onSelectOffer?: (productKey: string, commodity: "ELECTRICITY" | "GAS", pricingType: "FIXED" | "INDEXED") => Promise<void>;
+    onClearOffer?: () => Promise<void>;
     readOnly?: boolean;
     /** Currently displayed billing month (YYYY-MM) */
     selectedMonth?: string;
@@ -417,6 +419,7 @@ function EditableInputPanel({
     onUpdateGasPersonalizadaFijo?: (field: "terminoDia" | "terminoVariable", value: number) => void;
 }) {
     const { t } = useI18n();
+    const { preferences: { numberFormat } } = useUserPreferences();
     const [expandedSection, setExpandedSection] = useState<"energy" | "power" | "omie" | "personalizadaIndex" | "personalizadaOmieB" | "personalizadaFijo" | "gasPersonalizadaFijo" | null>(null);
 
     const handleInputChange = (type: "energy" | "power" | "omie", period: string, value: string) => {
@@ -759,10 +762,12 @@ function EditableInputPanel({
                             <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
                                 <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "gasPersonalizadaIndexMargenLabel")}</div>
                                 <CurrencyInput
+                                    key={`gas-personalizada-index-${numberFormat}`}
                                     value={gasPersonalizadaIndexMargen}
                                     onChange={(v) => { if (!isNaN(v)) onUpdateGasPersonalizadaIndex?.(v); }}
                                     currencySymbol=""
                                     decimals={5}
+                                    numberFormat={numberFormat}
                                 />
                             </div>
                         )}
@@ -850,17 +855,21 @@ function EditableInputPanel({
                             <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
                                 <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>Término Fijo (€/día)</div>
                                 <CurrencyInput
+                                    key={`gas-personalizada-fixed-day-${numberFormat}`}
                                     value={gasPersonalizadaFijo.terminoDia}
                                     onChange={(v) => { if (!isNaN(v)) onUpdateGasPersonalizadaFijo?.("terminoDia", v); }}
                                     currencySymbol=""
                                     decimals={4}
+                                    numberFormat={numberFormat}
                                 />
                                 <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>Término Variable (€/kWh)</div>
                                 <CurrencyInput
+                                    key={`gas-personalizada-fixed-variable-${numberFormat}`}
                                     value={gasPersonalizadaFijo.terminoVariable}
                                     onChange={(v) => { if (!isNaN(v)) onUpdateGasPersonalizadaFijo?.("terminoVariable", v); }}
                                     currencySymbol=""
                                     decimals={5}
+                                    numberFormat={numberFormat}
                                 />
                             </div>
                         )}
@@ -933,6 +942,7 @@ export function SimulationResultsCards({
     calculating,
     selectedOffer,
     onSelectOffer,
+    onClearOffer,
     readOnly,
     selectedMonth,
     availableMonths,
@@ -957,7 +967,17 @@ export function SimulationResultsCards({
     const hasElec = (results.electricity?.length ?? 0) > 0;
     const hasGas = (results.gas?.length ?? 0) > 0;
 
-    const handleOfferClick = (product: ProductResult, commodity: "ELECTRICITY" | "GAS") => {
+    const handleOfferClick = async (product: ProductResult, commodity: "ELECTRICITY" | "GAS") => {
+        const isSelected = selectedOffer?.productKey === product.productKey && selectedOffer?.commodity === commodity;
+        if (isSelected && onClearOffer) {
+            setSaving(true);
+            try {
+                await onClearOffer();
+            } finally {
+                setSaving(false);
+            }
+            return;
+        }
         setPendingOffer({ product, commodity });
     };
 

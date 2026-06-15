@@ -186,9 +186,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     recentVersions.find(
       (v) => (v.payloadJson as Record<string, unknown> | null)?.results,
     ) ?? recentVersions[0];
-  const latestOfferPayload = recentVersions.find(
-    (v) => (v.payloadJson as Record<string, unknown> | null)?.selectedOffer,
-  )?.payloadJson as Record<string, unknown> | null;
+  const latestOfferPayload = recentVersions.find((v) => {
+    const payload = v.payloadJson as Record<string, unknown> | null;
+    return payload !== null && Object.prototype.hasOwnProperty.call(payload, "selectedOffer");
+  })?.payloadJson as Record<string, unknown> | null;
   const mergedPayload: Record<string, unknown> | null = baseVersion?.payloadJson
     ? {
         ...(baseVersion.payloadJson as Record<string, unknown>),

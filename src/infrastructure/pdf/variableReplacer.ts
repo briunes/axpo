@@ -283,6 +283,8 @@ export function extractVariableValues(
 
     // Simulation metadata
     SIMULATION_ID: simulation.id,
+    SIMULATION_REFERENCE:
+      simulation.referenceNumber || simulation.id || "N/A",
     SIMULATION_PERIOD: isGas ? gasSimulationPeriod : simulationPeriod,
     ANNUAL_CONSUMPTION: formatNumber(annualConsumption, 0),
     PRODUCT_NAME: isGas ? gasProductName : productName,

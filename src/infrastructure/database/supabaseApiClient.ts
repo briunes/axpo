@@ -72,7 +72,10 @@ const models: Record<string, ModelMeta> = {
     table: "users",
     timestamps: true,
     relations: {
-      agency: { table: "agencies" },
+      agency: {
+        table: "agencies",
+        constraint: "users_agencyId_fkey",
+      },
       sessions: { table: "user_sessions", many: true },
       preferences: { table: "user_preferences" },
       simulations: { table: "simulations", many: true },

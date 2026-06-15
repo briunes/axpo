@@ -253,7 +253,7 @@ export interface GasInputs {
   };
 
   /**
-   * Personalizada Indexada: user-supplied energy margin (€/kWh) over MIBGAS.
+   * Personalizada Indexada: user-supplied Precio término de energia (€/kWh).
    * When present and margenEnergia > 0, the calculation emits a single
    * "GAS_PERSONALIZADA_INDEX" result row using:
    *   precioEnergia = MIBGAS + margenEnergia
@@ -364,10 +364,12 @@ export interface SimulationPayload {
   results?: SimulationResults;
 
   /** Selected offer to present to client */
-  selectedOffer?: {
-    productKey: string;
-    commodity: "ELECTRICITY" | "GAS";
-    pricingType: "FIXED" | "INDEXED";
-    selectedAt: string;
-  };
+  selectedOffer?:
+    | {
+        productKey: string;
+        commodity: "ELECTRICITY" | "GAS";
+        pricingType: "FIXED" | "INDEXED";
+        selectedAt: string;
+      }
+    | null;
 }
