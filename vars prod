@@ -16,7 +16,7 @@ SWAGGER_BASIC_AUTH_PASS="cdvRBH#3tenrwbvCE#WVB"
 CORS_ORIGIN="*"
 
 # Node Environment
-NODE_ENV=preview
+NODE_ENV=prod
 
 # Rate Limiting
 RATE_LIMIT_MAX_REQUESTS=100
@@ -38,3 +38,12 @@ NEXT_PUBLIC_SENTRY_DSN=https://a515453df8bc25f40b2a1444b3135e37@o451147251862732
 SENTRY_ORG=signed-axpo
 SENTRY_PROJECT=javascript-nextjs
 SENTRY_AUTH_TOKEN=your_sentry_auth_token_here
+
+
+DB_CONNECTION_MODE=api
+SUPABASE_URL=https://setjontjekewboeovprv.supabase.co
+SUPABASE_SECRET_KEY=sb_publishable_uMeg7sgy1z266vBNpQ5ocQ__7RNfBja
+SUPABASE_DB_SCHEMA=public
+
+NEXT_PUBLIC_SUPABASE_URL=https://setjontjekewboeovprv.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_uMeg7sgy1z266vBNpQ5ocQ__7RNfBja
