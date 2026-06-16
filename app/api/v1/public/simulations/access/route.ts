@@ -17,6 +17,8 @@ import {
   replaceVariables,
 } from "@/infrastructure/pdf/variableReplacer";
 import type { SimulationPayload } from "@/domain/types/simulation";
+import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
+import { keyedDigest } from "@/application/lib/sensitiveData";
 
 const accessSchema = z.object({
   token: z.string().min(16),
@@ -42,7 +44,7 @@ const issuePublicSessionToken = (
       tok: token,
     },
     secret,
-    { expiresIn: PUBLIC_ACCESS_EXPIRES_IN },
+    { algorithm: "HS256", expiresIn: PUBLIC_ACCESS_EXPIRES_IN },
   );
 };
 
@@ -62,13 +64,15 @@ const issuePublicSessionToken = (
  *         description: Rate limit exceeded
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
-  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = getRequestSessionContext(request).ipAddress;
+  const ipFingerprint = keyedDigest(ip, "public-access-ip");
 
   const body = await request.json();
   const payload = accessSchema.parse(body);
 
   applyRateLimit(
     getClientRateLimitKey(ip, `public:${payload.token.slice(0, 8)}`),
+    { maxRequests: 8, windowMs: 15 * 60 * 1000 },
   );
 
   const simulation = await prisma.simulation.findFirst({
@@ -82,6 +86,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           id: true,
           fullName: true,
           email: true,
+          agency: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       },
     },
@@ -94,7 +104,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       targetId: "unknown",
       metadataJson: {
         tokenFragment: payload.token.slice(0, 8),
-        ip: ip ?? "unknown",
+        ipFingerprint,
         reason: "INVALID_TOKEN",
       },
     });
@@ -107,7 +117,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       data: {
         simulationId: simulation.id,
         tokenFragment: payload.token.slice(0, 8),
-        ipHashOrMask: ip ?? "unknown",
+        ipHashOrMask: ipFingerprint,
         success: false,
         reason: "EXPIRED",
       },
@@ -125,7 +135,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       data: {
         simulationId: simulation.id,
         tokenFragment: payload.token.slice(0, 8),
-        ipHashOrMask: ip ?? "unknown",
+        ipHashOrMask: ipFingerprint,
         success: false,
         reason: "INVALID_PIN",
       },
@@ -138,11 +148,19 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     data: {
       simulationId: simulation.id,
       tokenFragment: payload.token.slice(0, 8),
-      ipHashOrMask: ip ?? "unknown",
+      ipHashOrMask: ipFingerprint,
       success: true,
       reason: "SUCCESS",
     },
   });
+
+  // Record the first time the client opens the simulation
+  if (!simulation.clientOpenedAt) {
+    await prisma.simulation.update({
+      where: { id: simulation.id },
+      data: { clientOpenedAt: new Date() },
+    });
+  }
 
   await AuditService.logEvent({
     eventType: "PUBLIC_ACCESS_GRANTED",
@@ -150,7 +168,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     targetId: simulation.id,
     metadataJson: {
       tokenFragment: payload.token.slice(0, 8),
-      ip: ip ?? "unknown",
+      ipFingerprint,
     },
   });
 
@@ -168,9 +186,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     recentVersions.find(
       (v) => (v.payloadJson as Record<string, unknown> | null)?.results,
     ) ?? recentVersions[0];
-  const latestOfferPayload = recentVersions.find(
-    (v) => (v.payloadJson as Record<string, unknown> | null)?.selectedOffer,
-  )?.payloadJson as Record<string, unknown> | null;
+  const latestOfferPayload = recentVersions.find((v) => {
+    const payload = v.payloadJson as Record<string, unknown> | null;
+    return payload !== null && Object.prototype.hasOwnProperty.call(payload, "selectedOffer");
+  })?.payloadJson as Record<string, unknown> | null;
   const mergedPayload: Record<string, unknown> | null = baseVersion?.payloadJson
     ? {
         ...(baseVersion.payloadJson as Record<string, unknown>),
@@ -230,6 +249,50 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     }
   }
 
+  // Build a lean payload: keep inputs + only the selected plan result
+  let leanPayload: Record<string, unknown> | null = null;
+  if (mergedPayload) {
+    const selectedOffer = mergedPayload.selectedOffer as
+      | { productKey?: string; commodity?: string }
+      | undefined;
+
+    // Resolve the selected result from the full results list
+    const rawResults = mergedPayload.results as
+      | Record<string, unknown>
+      | undefined;
+    let selectedResult: unknown = null;
+    if (rawResults && selectedOffer?.productKey) {
+      const commodity = (
+        selectedOffer.commodity ?? "electricity"
+      ).toLowerCase() as string;
+      const allResults = rawResults[commodity] as
+        | Array<{ productKey: string }>
+        | undefined;
+      selectedResult =
+        allResults?.find((r) => r.productKey === selectedOffer.productKey) ??
+        null;
+    }
+
+    // Strip the full results array; expose only the selected plan result
+    const { results: _results, ...payloadWithoutResults } = mergedPayload;
+    leanPayload = {
+      ...payloadWithoutResults,
+      ...(selectedResult !== null
+        ? {
+            selectedResult,
+            results: rawResults
+              ? {
+                  calculatedAt: (rawResults as Record<string, unknown>)
+                    .calculatedAt,
+                  baseValueSetId: (rawResults as Record<string, unknown>)
+                    .baseValueSetId,
+                }
+              : undefined,
+          }
+        : {}),
+    };
+  }
+
   return ResponseHandler.ok(
     {
       accessSessionToken: issuePublicSessionToken(simulation.id, payload.token),
@@ -243,7 +306,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       latestVersion: baseVersion
         ? {
             id: baseVersion.id,
-            payloadJson: mergedPayload,
+            payloadJson: leanPayload,
             createdAt: baseVersion.createdAt,
           }
         : null,

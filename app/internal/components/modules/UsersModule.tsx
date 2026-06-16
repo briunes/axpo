@@ -16,10 +16,11 @@ import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import Link from "next/link";
-import { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { useEffect, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, RotatePinResult } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
+import { usePermissions } from "../../lib/permissionsContext";
 import type { UsersActions } from "../hooks/useUsers";
 import { ConfirmDialog, PinResultDialog } from "../shared";
 import { DataTable, StatusBadge, FormSelect, FormInput } from "../ui";
@@ -27,6 +28,7 @@ import type { ColumnDef } from "../ui";
 import { RefreshIcon } from "../ui/icons";
 import SyncIcon from '@mui/icons-material/Sync';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
 import FiberPinIcon from '@mui/icons-material/FiberPin';
@@ -56,10 +58,11 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
     editUserPassword, setEditUserPassword, editUserCurrentPassword, setEditUserCurrentPassword,
     openUserEditor, closeUserEditor, handleUpdateUser,
     handleToggleUserStatus, handleRotateUserPin,
-    handleDeleteUser,
+    handleDeleteUser, handleBulkDeleteUsers,
   } = actions;
 
   const [lastPinResult, setLastPinResult] = useState<RotatePinResult | null>(null);
+  const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
   const [confirmToggleUser, setConfirmToggleUser] = useState<UserItem | null>(null);
   const [confirmPinRotateUser, setConfirmPinRotateUser] = useState<UserItem | null>(null);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<UserItem | null>(null);
@@ -68,18 +71,6 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
     items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
-
-  // Single effect handles both the initial fetch and pagination/sort/search changes.
-  // Using a params-key ref makes it safe under React 18 Strict Mode double-mounting:
-  // on the second mount the key is already set so the duplicate call is skipped.
-  const paramsRef = useRef("");
-  useEffect(() => {
-    const key = `${page}|${pageSize}|${sortColumn}|${sortDir}|${search}|${roleFilter}|${agencyFilter}|${showArchived}`;
-    if (paramsRef.current === key) return;
-    paramsRef.current = key;
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, sortColumn, sortDir, search, roleFilter, agencyFilter, showArchived]);
 
   // Bubble success up
   useEffect(() => {
@@ -98,8 +89,12 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
     }
   }, [errorText]);
 
-  const canCreateUsers = isAdmin(session.user.role) || session.user.role === "AGENT";
-  const isAdminUser = isAdmin(session.user.role);
+  const { canDo } = usePermissions();
+  const role = session.user.role;
+
+  const canCreateUsers = canDo(role, "users.create");
+  const isAdminUser = isAdmin(role);
+  const canManageUserSessions = canDo(role, "users.sessions.manage");
 
   // Render action buttons for topbar
   useLayoutEffect(() => {
@@ -116,6 +111,11 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
           </Button>
         )}
+        {canManageUserSessions && (
+          <Link href="/internal/users/sessions" style={{ textDecoration: "none" }}>
+            <Button variant="outlined" size="small">{t("userSessions", "openSessionsPage")}</Button>
+          </Link>
+        )}
         {canCreateUsers && (
           <Link href="/internal/users/new" style={{ textDecoration: "none" }}>
             <Button variant="contained" size="small">{t("actions", "newUser")}</Button>
@@ -124,15 +124,17 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       </>
     );
     return () => onActionButtons?.(null);
-  }, [onActionButtons, refresh, loading, canCreateUsers, isAdminUser, showArchived, setShowArchived, t]);
+  }, [onActionButtons, refresh, loading, canCreateUsers, isAdminUser, canManageUserSessions, showArchived, setShowArchived, t]);
 
   const editingOwnUser = selectedUserId === session.user.id;
 
   const columns: ColumnDef<UserItem>[] = [
     {
-      key: "name",
+      key: "fullName",
       label: t("columns", "name"),
       sortable: true,
+      copyable: true,
+      copyText: (u) => [u.fullName, u.email].filter(Boolean).join(', '),
       renderCell: (u) => (
         <Box >
           <Typography variant="body1">
@@ -147,16 +149,19 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
     {
       key: "role",
       label: t("columns", "role"),
+      sortable: true,
       renderCell: (u) => (
         <StatusBadge
-          label={u.role}
-          tone={u.role === "ADMIN" ? "brand" : u.role === "AGENT" ? "accent" : "neutral"}
+          label={u.role === "SYS_ADMIN" ? t("userFormPage", "roleSysAdmin") : u.role === "ADMIN" ? t("userFormPage", "roleAdmin") : u.role === "AGENT" ? t("userFormPage", "roleAgent") : t("userFormPage", "roleCommercial")}
+          tone={u.role === "SYS_ADMIN" ? "warning" : u.role === "ADMIN" ? "brand" : u.role === "AGENT" ? "accent" : "neutral"}
         />
       ),
     },
     {
       key: "agency",
       label: t("columns", "agency"),
+      copyable: true,
+      copyText: (u) => agencies.find((a) => a.id === u.agencyId)?.name ?? '',
       renderCell: (u) => (
         <span className="dt-cell-secondary">
           {agencies.find((a) => a.id === u.agencyId)?.name ?? u.agencyId.slice(0, 8)}
@@ -204,10 +209,10 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       key: "actions",
       label: t("columns", "actions"),
       renderCell: (u) => {
-        const canEdit = true; // All users can see edit action based on their role
-        const canToggle = true; // Can activate/deactivate
-        const canRotatePin = true; // Can rotate PIN
-        const canDelete = canEdit; // For now, same permission as edit
+        const canEdit = canDo(role, "users.edit");
+        const canToggle = canDo(role, "users.deactivate");
+        const canRotatePin = canDo(role, "users.edit");
+        const canDelete = canDo(role, "users.edit");
 
         const primaryLabel = t("actions", "edit");
         const primaryOnClick = () => window.location.href = `/internal/users/${u.id}/edit`;
@@ -238,21 +243,23 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
 
         return (
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
-            <ButtonGroup variant="outlined" size="small">
-              <Button onClick={primaryOnClick}>
-                {primaryLabel}
-              </Button>
-              {hasDropdown && (
-                <Button
-                  size="small"
-                  onClick={(e) => setDropdownState({ anchorEl: e.currentTarget, items: secondaryItems })}
-                  aria-label="More actions"
-                  sx={{ px: 0.5, minWidth: 32 }}
-                >
-                  <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
+            {canEdit ? (
+              <ButtonGroup variant="outlined" size="small">
+                <Button onClick={primaryOnClick} sx={{ minWidth: '80px !important' }}>
+                  {primaryLabel}
                 </Button>
-              )}
-            </ButtonGroup>
+                {hasDropdown && (
+                  <Button
+                    size="small"
+                    onClick={(e) => setDropdownState({ anchorEl: e.currentTarget, items: secondaryItems })}
+                    aria-label="More actions"
+                    sx={{ px: 0.5, minWidth: 32 }}
+                  >
+                    <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
+                  </Button>
+                )}
+              </ButtonGroup>
+            ) : null}
           </div>
         );
       },
@@ -260,7 +267,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
   ];
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
       {lastPinResult && (
         <PinResultDialog
           pin={lastPinResult.newPin}
@@ -269,11 +276,18 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       )}
 
       <DataTable<UserItem>
+        tableId="users"
         columns={columns}
         rows={users}
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
+        onClearFilters={() => {
+          setSearch("");
+          setRoleFilter("");
+          setAgencyFilter("");
+          setPage(1);
+        }}
         searchPlaceholder={t("search", "users")}
         emptyMessage={t("search", "emptyUsers")}
         sortState={{ column: sortColumn, direction: sortDir }}
@@ -290,6 +304,14 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
         }}
         t={t}
+        massActions={[
+          {
+            label: t("actions", "delete"),
+            color: "error",
+            icon: <DeleteOutlineIcon fontSize="small" />,
+            onClick: (ids) => setConfirmBulkDeleteIds(ids),
+          },
+        ]}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
           <>
             <Box sx={{ width: 280 }}>
@@ -321,9 +343,10 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
                 label=""
                 options={[
                   { value: "", label: t("search", "allRoles") },
-                  { value: "ADMIN", label: "ADMIN" },
-                  { value: "AGENT", label: "AGENT" },
-                  { value: "COMMERCIAL", label: "COMMERCIAL" },
+                  { value: "SYS_ADMIN", label: t("userFormPage", "roleSysAdmin") },
+                  { value: "ADMIN", label: t("userFormPage", "roleAdmin") },
+                  { value: "AGENT", label: t("userFormPage", "roleAgent") },
+                  { value: "COMMERCIAL", label: t("userFormPage", "roleCommercial") },
                 ]}
                 value={roleFilter}
                 onChange={(val) => {
@@ -334,7 +357,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
                 textFieldProps={{ size: "small" }}
               />
             </Box>
-            {isAdmin(session.user.role) && (
+            {isAdmin(role) && (
               <Box sx={{ width: 280 }}>
                 <FormSelect
                   label=""
@@ -370,6 +393,20 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           </>
         )}
       />
+
+      {confirmBulkDeleteIds && (
+        <ConfirmDialog
+          title={t("usersModule", "bulkDeleteTitle")}
+          message={t("usersModule", "bulkDeleteConfirm", { count: confirmBulkDeleteIds.length })}
+          confirmLabel={t("actions", "delete")}
+          busy={busyAction === "bulk-delete-users"}
+          onConfirm={async () => {
+            await handleBulkDeleteUsers(confirmBulkDeleteIds);
+            setConfirmBulkDeleteIds(null);
+          }}
+          onCancel={() => setConfirmBulkDeleteIds(null)}
+        />
+      )}
 
       <Drawer
         anchor="right"

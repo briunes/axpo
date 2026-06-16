@@ -26,6 +26,7 @@ import {
   ConfigurationsIcon,
 } from "../ui/icons";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useThemeMode } from "../../lib/ThemeModeContext";
 
 export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "logs" | "analytics" | "configurations";
 
@@ -133,6 +134,7 @@ export function SectionMenu({
   collapsed: boolean;
 }) {
   const { t, locale, setLocale } = useI18n();
+  const { mode, toggleMode } = useThemeMode();
   const router = useRouter();
 
   const items = (Object.keys(sectionLabel) as AppSection[])
@@ -406,6 +408,36 @@ export function SectionMenu({
               🇪🇸
             </Button>
           </Tooltip>
+          <Tooltip title={mode === "dark" ? "Light mode" : "Dark mode"} placement="right">
+            <Button
+              onClick={toggleMode}
+              variant="outlined"
+              size="small"
+              sx={{
+                minWidth: collapsed ? 32 : 36,
+                minHeight: collapsed ? 32 : 36,
+                width: collapsed ? 32 : 36,
+                height: collapsed ? 32 : 36,
+                p: 0.5,
+                fontSize: collapsed ? 16 : 18,
+                lineHeight: 1,
+                borderRadius: 1.5,
+                borderWidth: 2,
+                borderColor: "transparent",
+                bgcolor: "var(--scheme-neutral-1100)",
+                opacity: 0.7,
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  opacity: 1,
+                  transform: "scale(1.05)",
+                  borderColor: "var(--scheme-neutral-800)",
+                  bgcolor: "var(--scheme-neutral-1000)",
+                },
+              }}
+            >
+              {mode === "dark" ? "☀️" : "🌙"}
+            </Button>
+          </Tooltip>
         </Box>
 
         <Box sx={{ display: "flex", flexDirection: collapsed ? "column" : "row", alignItems: "center", gap: collapsed ? 1 : 0.5, px: collapsed ? 1 : 0 }}>
@@ -430,11 +462,10 @@ export function SectionMenu({
                 gap: 1,
                 textAlign: "left",
                 borderRadius: 1.5,
-                transition: "background 0.15s",
-                width: collapsed ? "auto" : "100%",
-                justifyContent: collapsed ? "center" : "flex-start",
+                color: "var(--scheme-neutral-300)",
                 "&:hover": {
                   bgcolor: "var(--scheme-neutral-1100)",
+                  color: "var(--scheme-neutral-100)",
                 },
               }}
             >
@@ -451,8 +482,8 @@ export function SectionMenu({
               </Box>
               {!collapsed && (
                 <Box className="app-user-detail" sx={{ flex: 1, overflow: "hidden" }}>
-                  <Box className="app-user-name">{session.user.fullName}</Box>
-                  <Box className="app-user-role">{session.user.role}</Box>
+                  <Box className="app-user-name" sx={{ color: "var(--scheme-neutral-100)" }}>{session.user.fullName}</Box>
+                  <Box className="app-user-role">{session.user.role === "SYS_ADMIN" ? t("userFormPage", "roleSysAdmin") : session.user.role === "ADMIN" ? t("userFormPage", "roleAdmin") : session.user.role === "AGENT" ? t("userFormPage", "roleAgent") : t("userFormPage", "roleCommercial")}</Box>
                 </Box>
               )}
             </Box>

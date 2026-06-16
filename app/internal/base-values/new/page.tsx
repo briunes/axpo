@@ -19,7 +19,7 @@ export default function NewBaseValueSetPage() {
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
 
-    const agenciesActions = useAgencies(session);
+    const agenciesActions = useAgencies(session, 1000, { minimal: true });
 
     const [name, setName] = useState("");
     const [scopeType, setScopeType] = useState<"GLOBAL" | "AGENCY">("GLOBAL");
@@ -37,8 +37,7 @@ export default function NewBaseValueSetPage() {
             router.replace("/internal/base-values");
             return;
         }
-        agenciesActions.refresh();
-    }, [session]);
+    }, [router, session]);
 
     if (!session) return null;
 

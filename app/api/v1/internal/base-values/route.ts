@@ -5,7 +5,11 @@ import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import {
+  assertRole,
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 
@@ -45,7 +49,7 @@ const createSchema = z.object({
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.AGENT]);
+  await assertPermission(auth, "section.base-values");
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
@@ -58,7 +62,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const sortDir =
     (searchParams.get("sortDir") ?? "desc") === "asc" ? "asc" : "desc";
   const showArchived =
-    searchParams.get("showArchived") === "true" && auth.role === UserRole.ADMIN;
+    searchParams.get("showArchived") === "true" && isElevatedRole(auth.role);
 
   const allowedOrderBy: Record<string, true> = {
     name: true,
@@ -72,22 +76,33 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ? { name: { contains: search, mode: "insensitive" as const } }
     : {};
 
-  const where =
-    auth.role === UserRole.ADMIN
-      ? { ...(showArchived ? {} : { isDeleted: false }), ...searchFilter }
-      : {
-          isDeleted: false,
-          OR: [
-            { scopeType: BaseValueScope.GLOBAL },
-            { agencyId: auth.agencyId },
-          ],
-          ...searchFilter,
-        };
+  const where = isElevatedRole(auth.role)
+    ? { ...(showArchived ? {} : { isDeleted: false }), ...searchFilter }
+    : {
+        isDeleted: false,
+        OR: [{ scopeType: BaseValueScope.GLOBAL }, { agencyId: auth.agencyId }],
+        ...searchFilter,
+      };
 
   const [sets, total] = await Promise.all([
     prisma.baseValueSet.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        scopeType: true,
+        agencyId: true,
+        name: true,
+        sourceWorkbookRef: true,
+        sourceScope: true,
+        sourceFileName: true,
+        version: true,
+        isActive: true,
+        isProduction: true,
+        isDeleted: true,
+        deletedAt: true,
+        createdBy: true,
+        createdAt: true,
+        updatedAt: true,
         _count: { select: { items: true } },
         createdByUser: { select: { id: true, fullName: true, email: true } },
       },

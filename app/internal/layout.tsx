@@ -26,6 +26,7 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
     if (pathname.startsWith("/internal/email-logs")) return "logs"; // Redirect old route
     if (pathname.startsWith("/internal/analytics")) return "analytics";
     if (pathname.startsWith("/internal/configurations")) return "configurations";
+    if (pathname.startsWith("/internal/ocr-usage")) return "configurations";
     return "simulations";
   };
 
@@ -34,6 +35,7 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
   // Login, setup-password, forgot-password, and reset-password pages should not have the workspace wrapper
   if (
     pathname === "/internal/login" ||
+    pathname === "/internal/login/magic" ||
     pathname === "/internal/setup-password" ||
     pathname === "/internal/forgot-password" ||
     pathname === "/internal/reset-password" ||

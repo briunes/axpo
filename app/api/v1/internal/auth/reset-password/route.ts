@@ -2,6 +2,11 @@ import { z } from "zod";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { AuthService } from "@/application/services/authService";
+import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
+import {
+  applyRateLimit,
+  getClientRateLimitKey,
+} from "@/application/middleware/rateLimit";
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1),
@@ -37,10 +42,19 @@ const resetPasswordSchema = z.object({
  *         description: Invalid token or password does not meet policy
  */
 export const POST = withErrorHandler(async (request) => {
+  const sessionContext = getRequestSessionContext(request);
+  applyRateLimit(
+    getClientRateLimitKey(sessionContext.ipAddress, "reset-password"),
+    { maxRequests: 10, windowMs: 60 * 60 * 1000 },
+  );
   const body = await request.json();
   const { token, password } = resetPasswordSchema.parse(body);
 
-  const result = await AuthService.resetPassword(token, password);
+  const result = await AuthService.resetPassword(
+    token,
+    password,
+    sessionContext,
+  );
 
   return ResponseHandler.ok(result);
 });

@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { Box, Tabs, Tab } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { SmtpSettings } from "./SmtpSettings";
 import { AutomatedEmailsSettings } from "./AutomatedEmailsSettings";
 import { LLMSettings } from "./LLMSettings";
+import { InvoiceProviderPromptsSettings } from "./InvoiceProviderPromptsSettings";
 
 export interface IntegrationsSettingsProps {
     session: SessionState;
     onNotify: (message: string, tone: "success" | "error") => void;
 }
 
-type IntegrationTab = "smtp" | "emails" | "llm";
+type IntegrationTab = "smtp" | "emails" | "llm" | "invoice-providers";
 
 export function IntegrationsSettings({ session, onNotify }: IntegrationsSettingsProps) {
     const { t } = useI18n();
@@ -22,23 +24,56 @@ export function IntegrationsSettings({ session, onNotify }: IntegrationsSettings
         smtp: t("systemSettings", "tabSmtp"),
         emails: t("systemSettings", "tabAutomatedEmails"),
         llm: t("configurationsModule", "tabLlmSettings"),
+        "invoice-providers": t("configurationsModule", "tabInvoiceProviders"),
     };
+
+    const tabIndex = (Object.keys(INTEGRATION_TABS) as IntegrationTab[]).indexOf(activeTab);
 
     return (
         <div className="system-settings-container">
-            <div className="system-settings-tabs">
-                {(Object.keys(INTEGRATION_TABS) as IntegrationTab[]).map((tab) => (
-                    <button
-                        key={tab}
-                        className={`settings-subtab${activeTab === tab ? " active" : ""}`}
-                        onClick={() => setActiveTab(tab)}
-                    >
-                        {INTEGRATION_TABS[tab]}
-                    </button>
-                ))}
-            </div>
+            <Box
+                sx={{
+                    borderBottom: "1px solid var(--scheme-neutral-900)",
+                    px: 1,
+                    background: "linear-gradient(180deg, var(--scheme-neutral-1200) 0%, var(--scheme-neutral-1100) 100%)",
+                }}
+            >
+                <Tabs
+                    value={tabIndex}
+                    onChange={(_, newValue) => {
+                        const tabs = Object.keys(INTEGRATION_TABS) as IntegrationTab[];
+                        setActiveTab(tabs[newValue]);
+                    }}
+                    sx={{
+                        minHeight: 52,
+                        '& .MuiTabs-indicator': {
+                            backgroundColor: 'var(--scheme-brand-600)',
+                            height: 2,
+                        },
+                    }}
+                >
+                    {(Object.keys(INTEGRATION_TABS) as IntegrationTab[]).map((tab) => (
+                        <Tab
+                            key={tab}
+                            label={INTEGRATION_TABS[tab]}
+                            sx={{
+                                textTransform: 'none',
+                                minHeight: 52,
+                                color: 'var(--scheme-neutral-500)',
+                                fontWeight: 600,
+                                '&.Mui-selected': {
+                                    color: 'var(--scheme-brand-600)',
+                                },
+                            }}
+                        />
+                    ))}
+                </Tabs>
+            </Box>
 
-            <div className="system-settings-content">
+            <div
+                className="system-settings-content"
+                style={activeTab === "llm" ? { padding: 0 } : undefined}
+            >
                 {activeTab === "smtp" && (
                     <SmtpSettings session={session} onNotify={onNotify} />
                 )}
@@ -47,6 +82,11 @@ export function IntegrationsSettings({ session, onNotify }: IntegrationsSettings
                 )}
                 {activeTab === "llm" && (
                     <LLMSettings session={session} onNotify={onNotify} />
+                )}
+                {activeTab === "invoice-providers" && (
+                    <div style={{  height: "100%", boxSizing: "border-box" }}>
+                        <InvoiceProviderPromptsSettings session={session} onNotify={onNotify} />
+                    </div>
                 )}
             </div>
         </div>

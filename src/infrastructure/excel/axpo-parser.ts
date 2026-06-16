@@ -199,11 +199,16 @@ function parseFijo(rows: SheetData): BaseValueItem[] {
     if (Object.keys(nonEmpty).length === 1 && nonEmpty["K"]) {
       const rawName = nonEmpty["K"];
       const cleanName = rawName.replace(/\s*\(.*?\)\s*$/, "").trim();
-      const slug = FIJO_PRODUCT_NAMES[rawName] || FIJO_PRODUCT_NAMES[cleanName];
+      const slug =
+        FIJO_PRODUCT_NAMES[rawName] ||
+        FIJO_PRODUCT_NAMES[cleanName] ||
+        // Auto-slug unknown products so new products are captured automatically
+        cleanName
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, "_")
+          .replace(/^_|_$/g, "");
 
-      if (slug) {
-        productStarts.push([rowNum, slug]);
-      }
+      productStarts.push([rowNum, slug]);
     }
   }
 
@@ -337,6 +342,17 @@ function parseIndex(rows: SheetData): BaseValueItem[] {
       const [slug, tier] = parseIndexProductTier(nonEmpty["A"]);
       if (slug && tier) {
         productStarts.push([rowNum, slug, tier]);
+      } else {
+        // Auto-slug unknown index products (e.g. new tier variants)
+        const match = nonEmpty["A"].trim().match(/^(.*?)\s+(N[123])$/);
+        if (match) {
+          const autoSlug = match[1]
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "");
+          productStarts.push([rowNum, autoSlug, match[2]]);
+        }
       }
     }
   }
@@ -359,7 +375,7 @@ function parseIndex(rows: SheetData): BaseValueItem[] {
 
         if (v !== null) {
           items.push({
-            key: `ELEC:INDEX:${slug}:${tier}:${tariff}:P${i + 1}:ENERGIA`,
+            key: `ELEC:INDEX:${slug}:${tier}:${tariff}:P${i + 1}:MARGEN`,
             valueNumeric: Math.round(v * 1e10) / 1e10,
             unit: "€/kWh",
           });
@@ -403,12 +419,24 @@ function parseGasFijo(rows: SheetData): BaseValueItem[] {
         {} as Record<string, string>,
       );
 
-    if (
-      nonEmpty["A"] &&
-      GAS_FIJO_PRODUCT_MAP[nonEmpty["A"]] &&
-      Object.keys(nonEmpty).length <= 2
-    ) {
-      productStarts.push([rowNum, nonEmpty["A"]]);
+    if (nonEmpty["A"] && Object.keys(nonEmpty).length <= 2) {
+      if (GAS_FIJO_PRODUCT_MAP[nonEmpty["A"]]) {
+        productStarts.push([rowNum, nonEmpty["A"]]);
+      } else {
+        // Auto-capture unknown gas fijo products using a synthetic map entry
+        const rawName = nonEmpty["A"];
+        const match = rawName.trim().match(/^(.*?)\s+(N[123])$/);
+        if (match) {
+          const autoSlug = match[1]
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "");
+          // Register dynamically so the parser block below can consume it
+          GAS_FIJO_PRODUCT_MAP[rawName] = [autoSlug, match[2]];
+          productStarts.push([rowNum, rawName]);
+        }
+      }
     }
   }
 
@@ -448,7 +476,15 @@ function parseGasFijo(rows: SheetData): BaseValueItem[] {
       }
 
       // RL fixed terms
-      const tariffRl = String(cells["I"] || "").trim();
+      // Note: ESTABLE PLUS uses "RLTB5"/"RLTB6" as aliases for RL05/RL06 in the
+      // terminoDia column; normalise them to the canonical tariff names.
+      const tariffRlRaw = String(cells["I"] || "").trim();
+      const tariffRl =
+        tariffRlRaw === "RLTB5"
+          ? "RL05"
+          : tariffRlRaw === "RLTB6"
+            ? "RL06"
+            : tariffRlRaw;
       if (tariffRl.startsWith("RL") && GAS_TARIFFS.has(tariffRl)) {
         const vDia = safeFloat(cells["J"]);
         const vAnio = safeFloat(cells["K"]);
@@ -511,12 +547,23 @@ function parseGasIndex(rows: SheetData): BaseValueItem[] {
         {} as Record<string, string>,
       );
 
-    if (
-      nonEmpty["A"] &&
-      GAS_INDEX_PRODUCT_MAP[nonEmpty["A"]] &&
-      Object.keys(nonEmpty).length <= 2
-    ) {
-      productStarts.push([rowNum, nonEmpty["A"]]);
+    if (nonEmpty["A"] && Object.keys(nonEmpty).length <= 2) {
+      if (GAS_INDEX_PRODUCT_MAP[nonEmpty["A"]]) {
+        productStarts.push([rowNum, nonEmpty["A"]]);
+      } else {
+        // Auto-capture unknown gas index products
+        const rawName = nonEmpty["A"];
+        const match = rawName.trim().match(/^(.*?)\s+(N[123])$/);
+        if (match) {
+          const autoSlug = match[1]
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "");
+          GAS_INDEX_PRODUCT_MAP[rawName] = [autoSlug, match[2]];
+          productStarts.push([rowNum, rawName]);
+        }
+      }
     }
   }
 
@@ -576,6 +623,492 @@ function parseGasIndex(rows: SheetData): BaseValueItem[] {
   return items;
 }
 
+// ─── DINAMICA / DINAMICA PLUS individual sheet parsers ──────────────────────
+//
+// Each product sheet (e.g. "DINAMICA N1", "DINAMICA PLUS N2") contains a
+// "PROMEDIO 12 MESES" row with the full all-in 12-month average "Precio TE"
+// per tariff per period (€/MWh).  This value includes:
+//   PMDh (OMIE pool price) + Sobrecostes + ATRe + CMi + CG
+//
+// We store these as the canonical MARGEN key (overwriting the placeholder
+// CG-only values that BASE DE DATOS INDEX stores for DINAMICA products).
+// Column layout in the "Precio TE" section (rows ~44-58 in each sheet):
+//   6.1TD : P1-P6 at 0-indexed cols 6,7,8,9,10,11
+//   3.0TD : P1-P6 at 0-indexed cols 25,26,27,28,29,30
+//   2.0TD : P1-P3 at 0-indexed cols 45,46,47
+
+// Sheet name → [product slug, tier]
+// Sheet names are trimmed before lookup (some have trailing spaces in the workbook).
+// Personalizada products use an empty-string tier (they have no N1/N2/N3 tiers).
+const DINAMICA_SHEET_MAP: Record<string, [string, string]> = {
+  "DINAMICA N1": ["DINAMICA", "N1"],
+  "DINAMICA N2": ["DINAMICA", "N2"],
+  "DINAMICA N3": ["DINAMICA", "N3"],
+  "DINAMICA PLUS N1": ["DINAMICA_PLUS", "N1"],
+  "DINAMICA PLUS N2": ["DINAMICA_PLUS", "N2"],
+  "DINAMICA PLUS N3": ["DINAMICA_PLUS", "N3"],
+  "DINAMICA CONTROL N1": ["DINAMICA_CONTROL", "N1"],
+  "DINAMICA CONTROL N2": ["DINAMICA_CONTROL", "N2"],
+  "DINAMICA CONTROL N3": ["DINAMICA_CONTROL", "N3"],
+  "DINAMICA CONTROL PLUS N1": ["DINAMICA_CONTROL_PLUS", "N1"],
+  "DINAMICA CONTROL PLUS N2": ["DINAMICA_CONTROL_PLUS", "N2"],
+  "DINAMICA CONTROL PLUS N3": ["DINAMICA_CONTROL_PLUS", "N3"],
+  "DINAMICA CONTROL TECHO N1": ["DINAMICA_CONTROL_TECHO", "N1"],
+  "DINAMICA CONTROL TECHO N2": ["DINAMICA_CONTROL_TECHO", "N2"],
+  "DINAMICA CONTROL TECHO N3": ["DINAMICA_CONTROL_TECHO", "N3"],
+  // Personalizada products — same sheet layout as DINAMICA, no tier variant
+  "PERSONALIZADA INDEX": ["PERSONALIZADA_INDEX", ""],
+  "PERSONALIZADA OMIE + B": ["PERSONALIZADA_OMIE_B", ""],
+};
+
+// Per-tariff column positions (0-indexed) for the Precio TE average values.
+// Layout confirmed from DINAMICA N1 sheet analysis.
+const PRECIO_TE_COLS: Array<{
+  tariff: string;
+  periods: string[];
+  cols: number[];
+  bCols: number[];
+}> = [
+  {
+    tariff: "6.1TD",
+    periods: ["P1", "P2", "P3", "P4", "P5", "P6"],
+    cols: [6, 7, 8, 9, 10, 11],
+    bCols: [2, 3, 4, 5, 6, 7],
+  },
+  {
+    tariff: "3.0TD",
+    periods: ["P1", "P2", "P3", "P4", "P5", "P6"],
+    cols: [25, 26, 27, 28, 29, 30],
+    bCols: [21, 22, 23, 24, 25, 26],
+  },
+  {
+    tariff: "2.0TD",
+    periods: ["P1", "P2", "P3"],
+    cols: [45, 46, 47],
+    bCols: [43, 44, 45],
+  },
+];
+
+const OMIE_B_FACTOR_REFS: Record<
+  string,
+  Record<string, { profileCol: number; predhCol: number }>
+> = {
+  "6.1TD": {
+    P1: { profileCol: 11, predhCol: 9 },
+    P2: { profileCol: 12, predhCol: 10 },
+    P3: { profileCol: 13, predhCol: 11 },
+    P4: { profileCol: 14, predhCol: 12 },
+    P5: { profileCol: 15, predhCol: 13 },
+    P6: { profileCol: 16, predhCol: 14 },
+  },
+  "3.0TD": {
+    P1: { profileCol: 30, predhCol: 28 },
+    P2: { profileCol: 31, predhCol: 29 },
+    P3: { profileCol: 32, predhCol: 30 },
+    P4: { profileCol: 33, predhCol: 31 },
+    P5: { profileCol: 34, predhCol: 32 },
+    P6: { profileCol: 35, predhCol: 33 },
+  },
+  "2.0TD": {
+    P1: { profileCol: 50, predhCol: 48 },
+    P2: { profileCol: 51, predhCol: 49 },
+    P3: { profileCol: 52, predhCol: 50 },
+  },
+};
+
+function computeOmieBFactor(
+  sheet: XLSX.WorkSheet,
+  row: number,
+  tariff: string,
+  period: string,
+): number | null {
+  const factorRefs = OMIE_B_FACTOR_REFS[tariff]?.[period];
+  const profileRow = row - 30;
+  if (!factorRefs || profileRow < 0) return null;
+
+  const profile = safeFloat(
+    sheet[
+      XLSX.utils.encode_cell({
+        r: profileRow,
+        c: factorRefs.profileCol,
+      })
+    ]?.v,
+  );
+  const predh = safeFloat(
+    sheet[XLSX.utils.encode_cell({ r: 6, c: factorRefs.predhCol })]?.v,
+  );
+  if (profile === null || predh === null) return null;
+
+  return Math.round((1 + (profile * predh) / 100) * 1.01528 * 1e10) / 1e10;
+}
+
+function averageRefsFromFormula(
+  formula: string | undefined,
+  zone: string,
+): Array<{ r: number; c: number }> {
+  if (!formula) return [];
+  const averageMatches = Array.from(
+    formula.matchAll(/AVERAGE\(([^)]*)\)/gi),
+    (match) => match[1],
+  );
+  if (averageMatches.length === 0) return [];
+
+  const zoneUp = zone.trim().toUpperCase();
+  const selectedAverage =
+    averageMatches.length > 1 && zoneUp.includes("CANARIAS")
+      ? averageMatches[1]
+      : averageMatches[0];
+
+  return Array.from(
+    selectedAverage.matchAll(/\$?([A-Z]+)\$?(\d+)/gi),
+    (match) => XLSX.utils.decode_cell(`${match[1]}${match[2]}`),
+  );
+}
+
+// Spanish month name → zero-padded month number
+const SPANISH_MONTH_MAP: Record<string, string> = {
+  ENERO: "01",
+  FEBRERO: "02",
+  MARZO: "03",
+  ABRIL: "04",
+  MAYO: "05",
+  JUNIO: "06",
+  JULIO: "07",
+  AGOSTO: "08",
+  SEPTIEMBRE: "09",
+  OCTUBRE: "10",
+  NOVIEMBRE: "11",
+  DICIEMBRE: "12",
+};
+
+/**
+ * Parse a Spanish month-year label like "ENERO-26" or "MARZO-26" into an
+ * ISO year-month string like "2026-01" / "2026-03".
+ */
+function parseSpanishMonthYear(s: string): string | null {
+  const m = s
+    .trim()
+    .toUpperCase()
+    .match(/^([A-ZÁÉÍÓÚ]+)-(\d{2})$/);
+  if (!m) return null;
+  const month = SPANISH_MONTH_MAP[m[1]];
+  if (!month) return null;
+  const year = 2000 + parseInt(m[2], 10);
+  return `${year}-${month}`;
+}
+
+/**
+ * Parse a DINAMICA / DINAMICA PLUS product sheet.
+ *
+ * The "Precio TE" section (rows ~45-58) contains:
+ *   - One row per billing month (label like "ENERO-26") with the actual
+ *     all-in energy price (PMDh + ATRe + CMi + Sobrecostes + CG) in €/MWh.
+ *   - A "PROMEDIO 12 MESES" summary row with the 12-month average.
+ *
+ * We store:
+ *   - Per-month keys:  ELEC:INDEX:<product>:<tier>:<tariff>:<P>:MARGEN:YYYY-MM
+ *     (used by the calculation to match the simulation's billing month exactly,
+ *      which is what the Excel simulator does)
+ *   - PROMEDIO key:    ELEC:INDEX:<product>:<tier>:<tariff>:<P>:MARGEN
+ *     (used as a fallback when no month-specific key is available)
+ *
+ * @param potenciaByTariff
+ *   When true (always recommended): each tariff row is emitted only for its own
+ *   tariff.  Earlier code used false for DINAMICA products under the (incorrect)
+ *   assumption that the Excel VLOOKUP always referenced the 6.1TD row regardless
+ *   of tariff — analysis of simulator results confirmed this was wrong.
+ */
+function parseDinamicaSheet(
+  sheet: XLSX.WorkSheet,
+  product: string,
+  tier: string,
+  potenciaByTariff = false,
+): BaseValueItem[] {
+  const items: BaseValueItem[] = [];
+  const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
+
+  // The "Precio TE" section starts after the header row that has "Precio TE" at
+  // col 4.  Each subsequent row either holds a month ("ENERO-26" etc.) or is the
+  // PROMEDIO summary row.  We stop after the PROMEDIO row.
+  let inSection = false;
+  const zone = String(
+    sheet[XLSX.utils.encode_cell({ r: 41, c: 6 })]?.v ?? "Peninsula",
+  );
+  const promedioBFactors = new Map<string, { sum: number; count: number }>();
+
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    const labelCell = sheet[XLSX.utils.encode_cell({ r: R, c: 4 })];
+    const labelRaw = labelCell?.v != null ? String(labelCell.v).trim() : "";
+    const labelUp = labelRaw.toUpperCase();
+
+    // Detect the header that begins the Precio TE section
+    if (!inSection) {
+      if (labelUp.startsWith("PRECIO TE")) {
+        inSection = true;
+      }
+      continue;
+    }
+
+    // Determine row type
+    const isPromedio = labelUp.includes("PROMEDIO");
+    const monthKey = isPromedio ? null : parseSpanishMonthYear(labelRaw);
+
+    // Skip rows that are neither a month row nor the PROMEDIO row
+    if (!isPromedio && monthKey === null) continue;
+
+    // Extract prices for each tariff × period using the known column layout
+    for (const { tariff, periods, cols, bCols } of PRECIO_TE_COLS) {
+      for (let i = 0; i < periods.length; i++) {
+        const cell = sheet[XLSX.utils.encode_cell({ r: R, c: cols[i] })];
+        if (!cell || cell.v === undefined || cell.v === null) continue;
+        const v = safeFloat(cell.v);
+        if (v === null || v <= 0) continue;
+        const baseKey = `ELEC:INDEX:${product}:${tier}:${tariff}:${periods[i]}:MARGEN`;
+        let adjustedMwh = v;
+        let bFactor: number | null = null;
+        const factorKey = `ELEC:INDEX:${product}:${tier}:${tariff}:${periods[i]}:B_FACTOR`;
+
+        if (product === "PERSONALIZADA_OMIE_B") {
+          if (isPromedio) {
+            const factors = averageRefsFromFormula(cell.f, zone)
+              .map((ref) =>
+                computeOmieBFactor(sheet, ref.r, tariff, periods[i]),
+              )
+              .filter((factor): factor is number => factor !== null);
+            if (factors.length > 0) {
+              bFactor =
+                Math.round(
+                  (factors.reduce((acc, factor) => acc + factor, 0) /
+                    factors.length) *
+                    1e10,
+                ) / 1e10;
+            } else {
+              const promedio = promedioBFactors.get(factorKey);
+              if (promedio && promedio.count > 0) {
+                bFactor =
+                  Math.round((promedio.sum / promedio.count) * 1e10) / 1e10;
+              }
+            }
+          } else {
+            bFactor = computeOmieBFactor(sheet, R, tariff, periods[i]);
+            if (bFactor !== null) {
+              const promedio = promedioBFactors.get(factorKey) ?? {
+                sum: 0,
+                count: 0,
+              };
+              promedio.sum += bFactor;
+              promedio.count += 1;
+              promedioBFactors.set(factorKey, promedio);
+            }
+          }
+
+          const embeddedB = safeFloat(
+            sheet[XLSX.utils.encode_cell({ r: 28, c: bCols[i] })]?.v,
+          );
+          if (embeddedB !== null && bFactor !== null) {
+            adjustedMwh = Math.max(0, adjustedMwh - embeddedB * bFactor);
+          }
+        }
+
+        // €/MWh → €/kWh
+        const numVal = Math.round((adjustedMwh / 1000) * 1e10) / 1e10;
+
+        if (isPromedio) {
+          // 12-month average — stored as the un-suffixed fallback key
+          items.push({ key: baseKey, valueNumeric: numVal, unit: "€/kWh" });
+        } else {
+          // Month-specific price — stored with YYYY-MM suffix
+          items.push({
+            key: `${baseKey}:${monthKey}`,
+            valueNumeric: numVal,
+            unit: "€/kWh",
+          });
+        }
+
+        if (bFactor !== null) {
+          items.push({
+            key: isPromedio ? factorKey : `${factorKey}:${monthKey}`,
+            valueNumeric: bFactor,
+            unit: "multiplier",
+          });
+        }
+      }
+    }
+
+    // Stop scanning after the PROMEDIO row
+    if (isPromedio) break;
+  }
+
+  // ── POTENCIA section ────────────────────────────────────────────────────────
+  // Each DINAMICA product sheet contains a static POTENCIA table below the
+  // Precio TE section.  Layout (col B = c=1 is the label column):
+  //
+  //   Row "POTENCIA"  → section header
+  //   Row "2.0TD"     → daily rates (€/kW/día) for P1…P6 at cols C–H (c=2–7)
+  //   Row "3.0TD"     → daily rates for P1…P6
+  //   Row "6.1TD"     → daily rates for P1…P6
+  //
+  // Each tariff row is emitted under its own tariff key only.
+  // These items are added AFTER parseIndex() in allItems so the last-write-wins
+  // deduplication in parseAxpoExcel() ensures they override the stale values
+  // that the static BASE DE DATOS INDEX sheet carries for these products.
+
+  let inPotenciaSection = false;
+
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    const labelCell = sheet[XLSX.utils.encode_cell({ r: R, c: 1 })]; // col B
+    const labelRaw = labelCell?.v != null ? String(labelCell.v).trim() : "";
+    const labelUp = labelRaw.toUpperCase();
+
+    if (!inPotenciaSection) {
+      if (labelUp === "POTENCIA") {
+        inPotenciaSection = true;
+      }
+      continue;
+    }
+
+    const isTariff2 = labelUp === "2.0TD";
+    const isTariff3 = labelUp === "3.0TD";
+    const isTariff6 = labelUp === "6.1TD";
+
+    if (!isTariff2 && !isTariff3 && !isTariff6) {
+      if (labelRaw !== "") break; // reached next section, stop
+      continue;
+    }
+
+    // Each tariff row is emitted only for its own tariff.
+    // Earlier versions assumed the Excel VLOOKUP always used the 6.1TD row for
+    // both 3.0TD and 6.1TD, but analysis of the actual simulator results confirms
+    // each tariff uses its own dedicated power-price row.
+    const tariffsToEmit: string[] = isTariff2
+      ? ["2.0TD"]
+      : isTariff3
+        ? ["3.0TD"]
+        : ["6.1TD"];
+    const periods = ["P1", "P2", "P3", "P4", "P5", "P6"];
+
+    for (let i = 0; i < periods.length; i++) {
+      const cell = sheet[XLSX.utils.encode_cell({ r: R, c: 2 + i })]; // cols C–H
+      if (!cell || cell.v === undefined || cell.v === null) continue;
+      const dailyRate = safeFloat(cell.v);
+      if (dailyRate === null || dailyRate <= 0) continue;
+      // Convert from €/kW/día to €/kW/año
+      const embeddedPowerMargin =
+        product === "PERSONALIZADA_OMIE_B"
+          ? (safeFloat(
+              sheet[XLSX.utils.encode_cell({ r: R + 8, c: 10 + i })]?.v,
+            ) ?? 0)
+          : 0;
+      const yearlyRate =
+        Math.round(Math.max(0, dailyRate * 365 - embeddedPowerMargin) * 1e10) /
+        1e10;
+
+      for (const tariff of tariffsToEmit) {
+        items.push({
+          key: `ELEC:INDEX:${product}:${tier}:${tariff}:${periods[i]}:POTENCIA`,
+          valueNumeric: yearlyRate,
+          unit: "€/kW/año",
+        });
+      }
+    }
+  }
+
+  return items;
+}
+
+// ─── Comparativa Libre LUZ parser ─────────────────────────────────────────────
+
+/**
+ * Parses the "COMPARATIVA LIBRE LUZ" sheet which contains the user-filled
+ * custom fixed-price offer inputs:
+ *   Row 43 (0-based: 42), cols I–N (8–13): TERMINO POTENCIA in €/kWdia for P1–P6
+ *   Row 48 (0-based: 47), cols I–N (8–13): TÉRMINO ENERGÍA in €/kWh for P1–P6
+ *
+ * Stored under keys:
+ *   ELEC:LIBRE:PERSONALIZADA_FIJO:P{n}:POTENCIA  (€/kWdia)
+ *   ELEC:LIBRE:PERSONALIZADA_FIJO:P{n}:ENERGIA   (€/kWh)
+ */
+function parseComparativaLibreLuz(sheet: XLSX.WorkSheet): BaseValueItem[] {
+  const items: BaseValueItem[] = [];
+  const periods = ["P1", "P2", "P3", "P4", "P5", "P6"];
+  const potenciaRowIdx = 42; // row 43, 0-based
+  const energiaRowIdx = 47; // row 48, 0-based
+
+  for (let i = 0; i < 6; i++) {
+    const col = 8 + i; // cols I–N
+
+    const potAddr = XLSX.utils.encode_cell({ r: potenciaRowIdx, c: col });
+    const potCell = sheet[potAddr];
+    if (potCell && potCell.v != null) {
+      const v = parseFloat(String(potCell.v));
+      if (!isNaN(v) && v > 0) {
+        items.push({
+          key: `ELEC:LIBRE:PERSONALIZADA_FIJO:${periods[i]}:POTENCIA`,
+          valueNumeric: Math.round(v * 1e10) / 1e10,
+          unit: "€/kWdia",
+        });
+      }
+    }
+
+    const enaAddr = XLSX.utils.encode_cell({ r: energiaRowIdx, c: col });
+    const enaCell = sheet[enaAddr];
+    if (enaCell && enaCell.v != null) {
+      const v = parseFloat(String(enaCell.v));
+      if (!isNaN(v) && v > 0) {
+        items.push({
+          key: `ELEC:LIBRE:PERSONALIZADA_FIJO:${periods[i]}:ENERGIA`,
+          valueNumeric: Math.round(v * 1e10) / 1e10,
+          unit: "€/kWh",
+        });
+      }
+    }
+  }
+
+  return items;
+}
+
+// ─── Comparativa Libre GAS parser ─────────────────────────────────────────────
+
+/**
+ * Parses the "COMPARATIVA LIBRE GAS" sheet which contains the user-filled
+ * custom fixed-price gas offer inputs:
+ *   Row 42 (0-based: 41), col K (index 10): TERMINO FIJO value in €/día
+ *   Row 47 (0-based: 46), col K (index 10): TÉRMINO VARIABLE value in €/kWh
+ *
+ * Stored under keys:
+ *   GAS:LIBRE:PERSONALIZADA_FIJO:TERMINO_DIA      (€/día)
+ *   GAS:LIBRE:PERSONALIZADA_FIJO:TERMINO_VARIABLE (€/kWh)
+ */
+function parseComparativaLibreGas(sheet: XLSX.WorkSheet): BaseValueItem[] {
+  const items: BaseValueItem[] = [];
+
+  const terminoDiaCell = sheet[XLSX.utils.encode_cell({ r: 41, c: 10 })];
+  if (terminoDiaCell && terminoDiaCell.v != null) {
+    const v = parseFloat(String(terminoDiaCell.v));
+    if (!isNaN(v) && v > 0) {
+      items.push({
+        key: "GAS:LIBRE:PERSONALIZADA_FIJO:TERMINO_DIA",
+        valueNumeric: Math.round(v * 1e10) / 1e10,
+        unit: "€/día",
+      });
+    }
+  }
+
+  const terminoVarCell = sheet[XLSX.utils.encode_cell({ r: 46, c: 10 })];
+  if (terminoVarCell && terminoVarCell.v != null) {
+    const v = parseFloat(String(terminoVarCell.v));
+    if (!isNaN(v) && v > 0) {
+      items.push({
+        key: "GAS:LIBRE:PERSONALIZADA_FIJO:TERMINO_VARIABLE",
+        valueNumeric: Math.round(v * 1e10) / 1e10,
+        unit: "€/kWh",
+      });
+    }
+  }
+
+  return items;
+}
+
 // ─── Main Parser ─────────────────────────────────────────────────────────────
 
 export function parseAxpoExcel(
@@ -602,6 +1135,49 @@ export function parseAxpoExcel(
     allItems.push(...indexItems);
   }
 
+  // Parse individual DINAMICA / DINAMICA PLUS / DINAMICA CONTROL product sheets.
+  // These store the full 12-month average "Precio TE" per period and OVERRIDE
+  // the placeholder CG-only values that BASE DE DATOS INDEX has for these products.
+  // Sheet names are trimmed before lookup to handle trailing spaces in the workbook.
+  const trimmedSheetNames = new Map(
+    workbook.SheetNames.map((n) => [n.trim(), n]),
+  );
+  // Auto-detect any sheets that look like DINAMICA product sheets but aren't in
+  // the hardcoded map (e.g. new products added in future file versions).
+  for (const [trimmed, actual] of trimmedSheetNames) {
+    if (!DINAMICA_SHEET_MAP[trimmed]) {
+      // Match patterns like "SOME PRODUCT N1", "SOME PRODUCT N2", "SOME PRODUCT N3"
+      const m = trimmed.match(/^(.+?)\s+(N[123])$/);
+      if (m) {
+        const autoSlug = m[1]
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, "_")
+          .replace(/^_|_$/g, "");
+        const isPersonalizada = autoSlug.startsWith("PERSONALIZADA");
+        const dinamicaItems = parseDinamicaSheet(
+          workbook.Sheets[actual],
+          autoSlug,
+          m[2],
+          isPersonalizada,
+        );
+        allItems.push(...dinamicaItems);
+      }
+    }
+  }
+
+  for (const [sheetName, [product, tier]] of Object.entries(
+    DINAMICA_SHEET_MAP,
+  )) {
+    const actualSheetName = trimmedSheetNames.get(sheetName);
+    if (actualSheetName) {
+      const sheet = workbook.Sheets[actualSheetName];
+      // All sheets use tariff-specific POTENCIA rows.
+      const dinamicaItems = parseDinamicaSheet(sheet, product, tier, true);
+      allItems.push(...dinamicaItems);
+    }
+  }
+
   // Parse GAS FIJO sheet (note: sheet name is "PRECIOS FIJOS GAS" in actual files)
   if (workbook.SheetNames.includes("PRECIOS FIJOS GAS")) {
     const sheet = workbook.Sheets["PRECIOS FIJOS GAS"];
@@ -626,6 +1202,22 @@ export function parseAxpoExcel(
     const rows = worksheetToRows(sheet, 110);
     const gasIndexItems = parseGasIndex(rows);
     allItems.push(...gasIndexItems);
+  }
+
+  // Parse COMPARATIVA LIBRE LUZ (custom personalizada fijo electricity offer defaults)
+  if (trimmedSheetNames.has("COMPARATIVA LIBRE LUZ")) {
+    const sheet =
+      workbook.Sheets[trimmedSheetNames.get("COMPARATIVA LIBRE LUZ")!];
+    const libreElecItems = parseComparativaLibreLuz(sheet);
+    allItems.push(...libreElecItems);
+  }
+
+  // Parse COMPARATIVA LIBRE GAS (custom personalizada fijo gas offer defaults)
+  if (trimmedSheetNames.has("COMPARATIVA LIBRE GAS")) {
+    const sheet =
+      workbook.Sheets[trimmedSheetNames.get("COMPARATIVA LIBRE GAS")!];
+    const libreGasItems = parseComparativaLibreGas(sheet);
+    allItems.push(...libreGasItems);
   }
 
   // Deduplicate by key (last one wins, matching Python behavior)

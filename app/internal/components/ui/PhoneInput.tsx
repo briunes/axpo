@@ -35,8 +35,19 @@ export function PhoneInput({
     defaultCountry = "es",
 }: PhoneInputProps) {
     const theme = useTheme();
-    
-    // Only show countries that have a phone code (filter none out)
+    const isDark = theme.palette.mode === "dark";
+
+    const borderColor = error
+        ? theme.palette.error.main
+        : isDark ? "rgba(255, 255, 255, 0.23)" : "rgba(0, 0, 0, 0.23)";
+    const borderHover = error
+        ? theme.palette.error.main
+        : isDark ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)";
+    const bgColor = disabled
+        ? isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)"
+        : theme.palette.background.paper;
+    const textColor = theme.palette.text.primary;
+    const dropdownBg = isDark ? "#1e1e1e" : "#f5f5f5";
     const countries = defaultCountries.filter((c) => {
         const parsed = parseCountry(c);
         return !!parsed.dialCode;
@@ -46,29 +57,30 @@ export function PhoneInput({
         <Box sx={{ width: "100%" }}>
             <style jsx>{`
                 .phone-input-wrapper .react-international-phone-input:focus {
-                    border-color: ${error ? "#d32f2f" : theme.palette.primary.main} !important;
+                    border-color: ${error ? theme.palette.error.main : theme.palette.primary.main} !important;
                 }
                 
                 .phone-input-wrapper:has(.react-international-phone-input:focus) .react-international-phone-country-selector-button {
-                    border-color: ${error ? "#d32f2f" : theme.palette.primary.main} !important;
+                    border-color: ${error ? theme.palette.error.main : theme.palette.primary.main} !important;
                 }
                 
                 .phone-input-wrapper .react-international-phone-input:hover:not(:focus) {
-                    border-color: rgba(0, 0, 0, 0.4);
+                    border-color: ${borderHover};
                 }
                 
                 .phone-input-wrapper:has(.react-international-phone-input:hover:not(:focus)) .react-international-phone-country-selector-button {
-                    border-color: rgba(0, 0, 0, 0.4);
+                    border-color: ${borderHover};
                 }
             `}</style>
-            
+
             <label
                 style={{
                     display: "block",
                     marginBottom: "8px",
                     fontSize: "14px",
                     fontWeight: 500,
-                    color: "#333",
+                    color: "inherit",
+                    opacity: disabled ? 0.5 : 1,
                 }}
             >
                 {label}
@@ -81,45 +93,42 @@ export function PhoneInput({
 
             <Box className="phone-input-wrapper">
                 <BasePhoneInput
-                defaultCountry={defaultCountry}
-                value={value}
-                onChange={onChange}
-                disabled={disabled}
-                countries={countries}
-                style={
-                    {
-                        "--react-international-phone-border-radius": "6px",
-                        "--react-international-phone-border-color": error
-                            ? "#d32f2f"
-                            : "rgba(0, 0, 0, 0.23)",
-                        "--react-international-phone-background-color": disabled
-                            ? "rgba(0,0,0,0.04)"
-                            : "#fafafa",
-                        "--react-international-phone-text-color": "#333",
-                        "--react-international-phone-selected-dropdown-item-background-color": "#f5f5f5",
-                        "--react-international-phone-font-size": "14px",
+                    defaultCountry={defaultCountry}
+                    value={value}
+                    onChange={onChange}
+                    disabled={disabled}
+                    countries={countries}
+                    style={
+                        {
+                            "--react-international-phone-border-radius": "6px",
+                            "--react-international-phone-border-color": borderColor,
+                            "--react-international-phone-background-color": bgColor,
+                            "--react-international-phone-text-color": textColor,
+                            "--react-international-phone-selected-dropdown-item-background-color": dropdownBg,
+                            "--react-international-phone-font-size": "14px",
+                            width: "100%",
+                        } as React.CSSProperties
+                    }
+                    inputStyle={{
                         width: "100%",
-                    } as React.CSSProperties
-                }
-                inputStyle={{
-                    width: "100%",
-                    fontSize: "14px",
-                    borderColor: error ? "#d32f2f" : "rgba(0, 0, 0, 0.23)",
-                    borderRadius: "0 6px 6px 0",
-                    outline: "none",
-                    transition: "border-color 0.2s",
-                    backgroundColor: disabled ? "rgba(0,0,0,0.04)" : "#fafafa",
-                }}
-                inputClassName="phone-input-field"
-                countrySelectorStyleProps={{
-                    buttonStyle: {
-                        borderRadius: "6px 0 0 6px",
-                        borderColor: error ? "#d32f2f" : "rgba(0, 0, 0, 0.23)",
-                        backgroundColor: disabled ? "rgba(0,0,0,0.04)" : "#fafafa",
-                        padding: "0 8px",
-                    },
-                }}
-            />
+                        fontSize: "14px",
+                        borderColor: borderColor,
+                        borderRadius: "0 6px 6px 0",
+                        outline: "none",
+                        transition: "border-color 0.2s",
+                        backgroundColor: bgColor,
+                        color: textColor,
+                    }}
+                    inputClassName="phone-input-field"
+                    countrySelectorStyleProps={{
+                        buttonStyle: {
+                            borderRadius: "6px 0 0 6px",
+                            borderColor: borderColor,
+                            backgroundColor: bgColor,
+                            padding: "0 8px",
+                        },
+                    }}
+                />
             </Box>
 
             {helperText && (

@@ -1,30 +1,16 @@
 import { NextRequest } from "next/server";
-import { z } from "zod";
 import { UserRole } from "@/domain/types";
 import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { AuthService } from "@/application/services/authService";
 import { prisma } from "@/infrastructure/database/prisma";
-
-const createUserSchema = z.object({
-  agencyId: z.string().min(1),
-  role: z.nativeEnum(UserRole),
-  fullName: z.string().min(2),
-  email: z.string().email(),
-  mobilePhone: z.string().min(1),
-  commercialPhone: z.string().min(1),
-  commercialEmail: z.string().email(),
-  otherDetails: z.string().max(5000).optional(),
-  password: z
-    .string()
-    .min(12)
-    .max(128)
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/),
-  pin: z.string().regex(/^\d+$/).optional(),
-});
+import { parseCreateUserPayload } from "./userPayloadValidation";
 
 /**
  * @swagger
@@ -119,9 +105,15 @@ const createUserSchema = z.object({
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN]);
-
   const sp = request.nextUrl.searchParams;
+  const contextual = sp.get("contextual") === "true";
+
+  // Agents need agency user names for operational filters and audit dialogs,
+  // without receiving access to the Users management module.
+  if (!(contextual && auth.role === UserRole.AGENT)) {
+    await assertPermission(auth, "users.view");
+  }
+
   const page = Math.max(1, parseInt(sp.get("page") || "1", 10));
   const pageSize = Math.min(
     100,
@@ -131,20 +123,26 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const roleFilter = sp.get("role") || undefined;
   const agencyIdFilter = sp.get("agencyId") || undefined;
   const includeDeleted =
-    sp.get("includeDeleted") === "true" && auth.role === UserRole.ADMIN;
+    sp.get("includeDeleted") === "true" && isElevatedRole(auth.role);
   const rawOrderBy = sp.get("orderBy") || "createdAt";
   const sortDir: "asc" | "desc" = sp.get("sortDir") === "asc" ? "asc" : "desc";
+  // minimal=true: skip all includes/joins. Used by dropdowns that only need id + name.
+  const minimal =
+    sp.get("minimal") === "true" ||
+    (contextual && auth.role === UserRole.AGENT);
 
   const allowedOrderBy: Record<string, string> = {
     createdAt: "createdAt",
+    updatedAt: "updatedAt",
     fullName: "fullName",
     email: "email",
     role: "role",
   };
   const orderByField = allowedOrderBy[rawOrderBy] ?? "createdAt";
 
-  const baseWhere =
-    auth.role === UserRole.ADMIN ? {} : { agencyId: auth.agencyId };
+  const baseWhere = isElevatedRole(auth.role)
+    ? {}
+    : { agencyId: auth.agencyId };
   const searchWhere = search
     ? {
         OR: [
@@ -155,7 +153,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     : {};
   const roleWhere = roleFilter ? { role: roleFilter as UserRole } : {};
   const agencyWhere =
-    agencyIdFilter && auth.role === UserRole.ADMIN
+    agencyIdFilter && isElevatedRole(auth.role)
       ? { agencyId: agencyIdFilter }
       : {};
   const where = {
@@ -163,8 +161,32 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ...searchWhere,
     ...roleWhere,
     ...agencyWhere,
-    ...(includeDeleted ? {} : { isDeleted: false }), // Only filter out deleted if not including them
+    ...(includeDeleted ? {} : { isDeleted: false }),
   };
+
+  if (minimal) {
+    // Lean query: no joins. Used for dropdown/select UI.
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          agencyId: true,
+          role: true,
+          fullName: true,
+          email: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { [orderByField]: sortDir },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.user.count({ where }),
+    ]);
+    return ResponseHandler.ok({ items: users, total, page, pageSize }, 200);
+  }
 
   const [users, total] = await Promise.all([
     prisma.user.findMany({
@@ -179,6 +201,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         commercialPhone: true,
         commercialEmail: true,
         otherDetails: true,
+        maxActiveDevices: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -248,10 +271,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN]);
+  await assertPermission(auth, "users.create");
 
   const body = await request.json();
-  const payload = createUserSchema.parse(body);
+  const payload = await parseCreateUserPayload(body);
 
   AuthService.enforceCreatePermissions(
     { role: auth.role, agencyId: auth.agencyId },

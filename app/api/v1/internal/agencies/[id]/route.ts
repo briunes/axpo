@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { UserRole } from "@/domain/types";
@@ -5,8 +6,13 @@ import { NotFoundError, ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import {
+  assertRole,
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
+import { isSupabaseApiMode } from "@/infrastructure/database/databaseMode";
 import { AuditService } from "@/application/services/auditService";
 
 const updateAgencySchema = z.object({
@@ -17,6 +23,14 @@ const updateAgencySchema = z.object({
   province: z.string().optional(),
   country: z.string().optional(),
   isActive: z.boolean().optional(),
+  tariffs: z
+    .array(
+      z.object({
+        tariffType: z.string().min(1),
+        isEnabled: z.boolean(),
+      }),
+    )
+    .optional(),
 });
 
 /**
@@ -154,7 +168,7 @@ export const GET = withErrorHandler(
       throw new ValidationError("Agency id parameter is required");
     }
 
-    if (auth.role !== UserRole.ADMIN && auth.agencyId !== id) {
+    if (!isElevatedRole(auth.role) && auth.agencyId !== id) {
       throw new NotFoundError("Agency", id);
     }
 
@@ -191,7 +205,7 @@ export const PATCH = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN]);
+    await assertPermission(auth, "agencies.edit");
 
     const id = context?.params?.id;
     if (!id) {
@@ -206,49 +220,111 @@ export const PATCH = withErrorHandler(
       throw new NotFoundError("Agency", id);
     }
 
-    const updated = await prisma.agency.update({
-      where: { id },
-      data: {
-        name: payload.name,
-        street: payload.street,
-        city: payload.city,
-        postalCode: payload.postalCode,
-        province: payload.province,
-        country: payload.country,
-        isActive: payload.isActive,
-        updatedByUserId: auth.userId,
-      },
-      include: {
-        createdByUser: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
-        },
-        updatedByUser: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const existingTariffs = payload.tariffs
+      ? await prisma.agencyTariff.findMany({
+          where: { agencyId: id },
+          select: { tariffType: true, isEnabled: true },
+        })
+      : [];
 
-    const changedKeys = Object.keys(payload) as (keyof typeof payload)[];
+    const updateData = {
+      name: payload.name,
+      street: payload.street,
+      city: payload.city,
+      postalCode: payload.postalCode,
+      province: payload.province,
+      country: payload.country,
+      isActive: payload.isActive,
+      updatedByUserId: auth.userId,
+    };
+    const resultInclude = {
+      createdByUser: {
+        select: { id: true, fullName: true, email: true },
+      },
+      updatedByUser: {
+        select: { id: true, fullName: true, email: true },
+      },
+    };
+
+    let updated;
+    if (isSupabaseApiMode()) {
+      await (prisma as any).$rpc("axpo_update_agency", {
+        p_agency_id: id,
+        p_actor_user_id: auth.userId,
+        p_data: updateData,
+        p_tariffs: payload.tariffs
+          ? payload.tariffs.map((tariff) => ({
+              id: crypto.randomUUID(),
+              ...tariff,
+            }))
+          : null,
+        p_now: new Date(),
+      });
+      updated = await prisma.agency.findUnique({
+        where: { id },
+        include: resultInclude,
+      });
+      if (!updated) throw new NotFoundError("Agency", id);
+    } else {
+      updated = await prisma.$transaction(async (tx) => {
+        const updatedAgency = await tx.agency.update({
+          where: { id },
+          data: updateData,
+          include: resultInclude,
+        });
+
+        if (payload.tariffs) {
+          await Promise.all(
+            payload.tariffs.map((tariff) =>
+              tx.agencyTariff.upsert({
+                where: {
+                  agencyId_tariffType: {
+                    agencyId: id,
+                    tariffType: tariff.tariffType,
+                  },
+                },
+                update: { isEnabled: tariff.isEnabled },
+                create: {
+                  agencyId: id,
+                  tariffType: tariff.tariffType,
+                  isEnabled: tariff.isEnabled,
+                },
+              }),
+            ),
+          );
+        }
+
+        return updatedAgency;
+      });
+    }
+
+    const { tariffs, ...agencyFields } = payload;
+    const changedKeys = Object.keys(
+      agencyFields,
+    ) as (keyof typeof agencyFields)[];
     const before: Record<string, unknown> = {};
     const after: Record<string, unknown> = {};
     for (const key of changedKeys) {
       before[key] = (existing as Record<string, unknown>)[key] ?? null;
       after[key] = (updated as Record<string, unknown>)[key] ?? null;
     }
+
+    const metadata: Record<string, unknown> = {};
+    if (changedKeys.length > 0) {
+      metadata.before = before;
+      metadata.after = after;
+    }
+    if (tariffs) {
+      metadata.tariffsBefore = existingTariffs;
+      metadata.tariffsAfter = tariffs;
+    }
+
     await AuditService.logEvent({
       actorUserId: auth.userId,
       eventType: "AGENCY_UPDATED",
       targetType: "AGENCY",
       targetId: updated.id,
-      metadataJson: changedKeys.length > 0 ? { before, after } : undefined,
+      metadataJson: Object.keys(metadata).length > 0 ? metadata : undefined,
     });
 
     return ResponseHandler.ok(updated, 200);
@@ -270,7 +346,7 @@ export const DELETE = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN]);
+    await assertPermission(auth, "agencies.deactivate");
 
     const id = context?.params?.id;
     if (!id) {

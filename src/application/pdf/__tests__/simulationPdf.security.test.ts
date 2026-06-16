@@ -4,16 +4,17 @@ import { ForbiddenError, NotFoundError } from "@/domain/errors/errors";
 import { UserRole } from "@/domain/types";
 
 const requireAuthMock = jest.fn();
-const assertRoleMock = jest.fn();
+const assertPermissionMock = jest.fn();
 const assertSimulationAccessMock = jest.fn();
 const findVersionMock = jest.fn();
+const findClientMock = jest.fn();
 
 jest.mock("@/application/middleware/auth", () => ({
   requireAuth: (...args: unknown[]) => requireAuthMock(...args),
 }));
 
 jest.mock("@/application/middleware/rbac", () => ({
-  assertRole: (...args: unknown[]) => assertRoleMock(...args),
+  assertPermission: (...args: unknown[]) => assertPermissionMock(...args),
 }));
 
 jest.mock("@/application/services/simulationService", () => ({
@@ -26,6 +27,9 @@ jest.mock("@/infrastructure/database/prisma", () => ({
   prisma: {
     simulationVersion: {
       findFirst: (...args: unknown[]) => findVersionMock(...args),
+    },
+    client: {
+      findUnique: (...args: unknown[]) => findClientMock(...args),
     },
   },
 }));
@@ -43,7 +47,8 @@ describe("simulation PDF route security", () => {
       agencyId: "agency-1",
       email: "commercial@example.com",
     });
-    assertRoleMock.mockReturnValue(undefined);
+    assertPermissionMock.mockResolvedValue(undefined);
+    findClientMock.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -102,6 +107,6 @@ describe("simulation PDF route security", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/pdf");
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(response.headers.get("content-disposition")).toContain("simulation-sim-1.pdf");
+    expect(response.headers.get("content-disposition")).toContain("sim-1.pdf");
   });
 });

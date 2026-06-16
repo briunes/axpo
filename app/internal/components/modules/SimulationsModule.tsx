@@ -26,17 +26,22 @@ import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
+import DeleteIcon from "@mui/icons-material/Delete";
+import ArchiveIcon from "@mui/icons-material/Archive";
 import { useEffect, useState, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, ClientItem, SimulationItem, UserItem } from "../../lib/internalApi";
-import { isAdmin, simulationStatusTone } from "../../lib/internalApi";
+import { getSimulation, isAdmin, simulationStatusTone } from "../../lib/internalApi";
 import { usePermissions } from "../../lib/permissionsContext";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDate } from "../../lib/formatPreferences";
 import type { SimulationsActions } from "../hooks/useSimulations";
 import { ConfirmDialog } from "../shared";
 import { DataTable, SlidePanel, StatusBadge, FormInput, FormSelect } from "../ui";
 import type { ColumnDef } from "../ui";
+import { ShareSimulationView } from "../../simulations/[id]/components/ShareSimulationView";
 
 interface SimulationsModuleProps {
   session: SessionState;
@@ -51,6 +56,7 @@ interface SimulationsModuleProps {
 export function SimulationsModule({ session, actions, agencies, clients, users, onNotify, onActionButtons }: SimulationsModuleProps) {
   const router = useRouter();
   const { t } = useI18n();
+  const { preferences } = useUserPreferences();
   const { canDo } = usePermissions();
   const {
     simulations, loading, busyAction, errorText, successText, clearFeedback, refresh,
@@ -61,27 +67,24 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     filterClientId, setFilterClientId,
     filterCups, setFilterCups,
     filterStatus, setFilterStatus,
-    applyFilters, filtersAppliedAt,
+    applyFilters, clearFilters, filtersAppliedAt,
     selectedSimulationId, editPayloadJson, setEditPayloadJson,
     openSimulationEditor, closeSimulationEditor, handleUpdateSimulation,
     handleShare, handleClone, handleRotatePin, handleOcrPrefill, handlePdfDownload, handleArchive,
+    handleBulkDelete, handleBulkArchive,
   } = actions;
 
   const [shareSim, setShareSim] = useState<SimulationItem | null>(null);
+  const [shareModalLoading, setShareModalLoading] = useState(false);
   const [confirmArchiveSim, setConfirmArchiveSim] = useState<SimulationItem | null>(null);
   const [confirmDeleteSim, setConfirmDeleteSim] = useState<SimulationItem | null>(null);
-  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
+  const [confirmBulkArchiveIds, setConfirmBulkArchiveIds] = useState<string[] | null>(null);
   const [dropdownState, setDropdownState] = useState<{
     anchorEl: HTMLElement | null;
-    items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }>;
+    items: Array<{ label: string; onClick: () => void; warning?: boolean; danger?: boolean; disabled?: boolean }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
-
-  // Refresh when pagination, sort, archived toggle, or filters are applied
-  useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, sortColumn, sortDir, showArchived, filtersAppliedAt]);
 
   useEffect(() => {
     if (successText) {
@@ -120,42 +123,56 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
   const displayData = showArchived ? simulations : simulations.filter(s => !s.isDeleted);
 
   const handleShareAction = async (sim: SimulationItem) => {
-    if (sim.publicToken) { setShareSim(sim); return; }
-    const updated = await handleShare(sim);
-    if (updated) setShareSim(updated);
-  };
-
-  const getPublicUrl = (sim: SimulationItem) => {
-    if (!sim.publicToken) return null;
-    if (typeof window !== "undefined") {
-      return `${window.location.origin}/sim/${sim.publicToken}`;
+    setShareModalLoading(true);
+    setShareSim(sim);
+    try {
+      const { simulation: freshSim } = await getSimulation(session.token, sim.id);
+      setShareSim(freshSim);
+    } catch (error) {
+      onNotify?.(error instanceof Error ? error.message : "Could not load simulation for sharing.", "error");
+    } finally {
+      setShareModalLoading(false);
     }
-    return `https://example.com/sim/${sim.publicToken}`;
   };
 
-  const handleCopyUrl = async (sim: SimulationItem) => {
-    const url = getPublicUrl(sim);
-    if (!url) return;
-    await navigator.clipboard.writeText(url);
-    setCopiedUrl(true);
-    setTimeout(() => setCopiedUrl(false), 2000);
+  const formatDateTime = (value: string | null | undefined) => {
+    if (!value) return "—";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+
+    const datePart = formatDisplayDate(date, preferences.dateFormat);
+
+    try {
+      const timePart = new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: preferences.timeFormat === "12h",
+        timeZone: preferences.timezone,
+      }).format(date);
+
+      return `${datePart} ${timePart}`;
+    } catch {
+      const timePart = new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: preferences.timeFormat === "12h",
+      }).format(date);
+
+      return `${datePart} ${timePart}`;
+    }
+  };
+
+  const hasSelectedProduct = (sim: SimulationItem) => {
+    const payload = sim.payloadJson as { selectedOffer?: { productKey?: string } } | null;
+    return Boolean(payload?.selectedOffer?.productKey);
   };
 
   const columns: ColumnDef<SimulationItem>[] = [
     {
-      key: "owner",
-      label: t("columns", "owner"),
-      width: "150",
-      renderCell: (s) => (
-        <span className="dt-cell-primary" style={{ opacity: s.isDeleted ? 0.5 : 1 }}>
-          {s.ownerUser?.fullName ?? "—"}
-        </span>
-      ),
-    },
-    {
-      key: "client",
-      label: t("columns", "client"),
-      width: "200",
+      key: "type",
+      label: t("columns", "type"),
+      width: '55px',
       renderCell: (s) => {
         const payload = s.payloadJson as { type?: string; schemaVersion?: string } | null;
         let commodityIcon: React.ReactNode;
@@ -169,8 +186,61 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         return (
           <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: s.isDeleted ? 0.5 : 1 }}>
             {commodityIcon}
+          </div>
+        );
+      },
+    },
+    {
+      key: "referenceNumber",
+      label: t("columns", "reference"),
+      width: "120",
+      copyable: true,
+      sortable: true,
+      renderCell: (s) => (
+        <span className="dt-cell-mono" style={{ fontSize: 12, letterSpacing: "0.08em", opacity: s.isDeleted ? 0.4 : 1, color: "var(--scheme-neutral-300)" }}>
+          {s.referenceNumber ?? <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
+        </span>
+      ),
+    },
+    {
+      key: "owner",
+      label: t("columns", "owner"),
+      width: "150",
+      copyable: true,
+      copyText: (s) => s.ownerUser?.fullName ?? '',
+      sortable: true,
+      renderCell: (s) => (
+        <span className="dt-cell-primary" style={{ opacity: s.isDeleted ? 0.5 : 1 }}>
+          {s.ownerUser?.fullName ?? "—"}
+        </span>
+      ),
+    },
+    {
+      key: "client",
+      label: t("columns", "client"),
+      width: "200",
+      copyable: true,
+      copyText: (s) => s.client?.name ?? '',
+      sortable: true,
+      renderCell: (s) => {
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: s.isDeleted ? 0.5 : 1 }}>
             <span className="dt-cell-primary" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {s.client?.name || <span style={{ color: "var(--scheme-neutral-500)", fontStyle: "italic" }}>{t("status", "noClient")}</span>}
+              {s.client?.name
+                ? <Box
+                  component={'a'}
+                  href={`/internal/clients/${s.client.id}/edit`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ color: "primary", textDecoration: "none" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {s.client.name}
+                </Box>
+                : <span style={{ color: "var(--scheme-neutral-500)", fontStyle: "italic" }}>{t("status", "noClient")}</span>
+              }
             </span>
           </div>
         );
@@ -179,6 +249,13 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     {
       key: "cups",
       label: t("columns", "cups"),
+      copyable: true,
+      copyText: (s: any) => {
+        const payload = s.payloadJson as { electricity?: { clientData?: { cups?: string } }; gas?: { clientData?: { cups?: string } } } | null;
+        const cupsElec = payload?.electricity?.clientData?.cups;
+        const cupsGas = payload?.gas?.clientData?.cups;
+        return s.cupsNumber || cupsElec || cupsGas || s?.invoiceData?.cups || '';
+      },
       renderCell: (s) => {
         const payload = s.payloadJson as { electricity?: { clientData?: { cups?: string } }; gas?: { clientData?: { cups?: string } } } | null;
         const cupsElec = payload?.electricity?.clientData?.cups;
@@ -203,33 +280,44 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     {
       key: "status",
       label: t("columns", "status"),
-      renderCell: (s) => <StatusBadge label={s.status} tone={simulationStatusTone(s.status)} />,
-    },
-    {
-      key: "pin",
-      label: "PIN",
-      width: "70",
+      sortable: true,
       renderCell: (s) => (
-        <span className="dt-cell-mono" style={{ fontSize: 13, letterSpacing: "0.12em", opacity: s.isDeleted ? 0.4 : 1 }}>
-          {s.pinSnapshot ?? <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <StatusBadge label={s.status} tone={simulationStatusTone(s.status)} />
+          {s.status === "SHARED" && s.clientOpenedAt && (
+            <StatusBadge label={t("simulationsModule", "clientViewed") || "Viewed"} tone="accent" />
+          )}
         </span>
       ),
     },
+    // {
+    //   key: "pinSnapshot",
+    //   label: "PIN",
+    //   width: "70",
+    //   sortable: true,
+    //   renderCell: (s) => (
+    //     <span className="dt-cell-mono" style={{ fontSize: 13, letterSpacing: "0.12em", opacity: s.isDeleted ? 0.4 : 1 }}>
+    //       {s.pinSnapshot ?? <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
+    //     </span>
+    //   ),
+    // },
     {
       key: "expiresAt",
       label: t("columns", "expires"),
+      sortable: true,
       renderCell: (s) => (
         <span style={{ whiteSpace: "nowrap", fontSize: 13 }}>
-          {s.expiresAt ? new Date(s.expiresAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—"}
+          {formatDateTime(s.expiresAt)}
         </span>
       ),
     },
     {
       key: "createdAt",
       label: t("columns", "created"),
+      sortable: true,
       renderCell: (s) => (
         <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
-          {s.createdAt ? new Date(s.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—"}
+          {formatDateTime(s.createdAt)}
           {" - "}
           <span style={{ color: "var(--scheme-neutral-400)" }}>
             {s.ownerUser?.fullName || "—"}
@@ -240,9 +328,10 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     {
       key: "updatedAt",
       label: t("columns", "updated"),
+      sortable: true,
       renderCell: (s) => (
         <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
-          {s.updatedAt ? new Date(s.updatedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—"}
+          {formatDateTime(s.updatedAt)}
           {" - "}
           <span style={{ color: "var(--scheme-neutral-400)" }}>
             {s.ownerUser?.fullName || "—"}
@@ -259,7 +348,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         const canDelete = !s.isDeleted && canDo(session.user.role, "simulations.delete");
         const canShare = canDo(session.user.role, "simulations.share");
         const canDuplicate = canDo(session.user.role, "simulations.duplicate");
-        const canCreate = canDo(session.user.role, "simulations.create");
+        const canDraftShare = !s.isDeleted && s.status === "DRAFT" && canShare && hasSelectedProduct(s);
 
         const primaryLabel = isShared ? t("actions", "view") : t("actions", "simulate");
         const primaryVariant = isShared ? "outlined" : "outlined";
@@ -267,7 +356,14 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
           isShared ? `/internal/simulations/${s.id}/view` : `/internal/simulations/${s.id}`
         );
 
-        const secondaryItems: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
+        const secondaryItems: Array<{ label: string; onClick: () => void; warning?: boolean; danger?: boolean; disabled?: boolean }> = [];
+        if (canDraftShare) {
+          secondaryItems.push({
+            label: t("actions", "share"),
+            warning: true,
+            onClick: () => handleShareAction(s),
+          });
+        }
         if (canDuplicate) {
           secondaryItems.push({ label: t("actions", "duplicate"), onClick: () => handleClone(s), disabled: busyAction === `clone-${s.id}` });
         }
@@ -283,7 +379,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         return (
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
             <ButtonGroup variant={primaryVariant} size="small">
-              <Button onClick={primaryOnClick}>
+              <Button onClick={primaryOnClick} sx={{ minWidth: '80px !important' }}>
                 {primaryLabel}
               </Button>
               {hasDropdown && (
@@ -304,15 +400,23 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
   ];
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
       <DataTable<SimulationItem>
+        tableId="simulations"
         columns={columns}
         rows={displayData}
         loading={loading}
         searchValue={filterSearch}
         onSearch={(v) => { setFilterSearch(v); }}
+        onClearFilters={clearFilters}
         searchPlaceholder={t("search", "simulations")}
         emptyMessage={t("search", "emptySimulations")}
+        sortState={{ column: sortColumn, direction: sortDir }}
+        onSort={(col) => {
+          const newDir = col === sortColumn && sortDir === "asc" ? "desc" : "asc";
+          setSort(col, newDir);
+          setPage(1);
+        }}
         pagination={{
           page,
           pageSize,
@@ -323,7 +427,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         t={t}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
           <>
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
               <FormInput
                 label=""
                 placeholder={searchPlaceholder}
@@ -347,29 +451,36 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 }}
               />
             </Box>
-            <Box sx={{ width: 280 }}>
-              <FormSelect
-                label=""
-                options={[
-                  { value: "", label: t("search", "allOwners") },
-                  ...users
-                    .filter(u => u.isActive)
-                    .map(user => ({
-                      value: user.id,
-                      label: user.fullName || user.email,
-                    }))
-                    .sort((a, b) => a.label.localeCompare(b.label)),
-                ]}
-                value={filterOwnerUserId}
-                onChange={(val) => {
-                  setFilterOwnerUserId(val as string);
-                }}
-                placeholder="Owner"
-                onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
-                textFieldProps={{ size: "small" }}
-              />
-            </Box>
-            <Box sx={{ width: 280 }}>
+            {session.user.role !== "COMMERCIAL" && (
+              <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
+                <FormSelect
+                  label=""
+                  options={[
+                    { value: "", label: t("search", "allOwners") },
+                    ...Array.from(new Map(
+                      users
+                        .filter(u => u.isActive)
+                        .map((u) => [u.id, u]),
+                    ).values())
+                      .map(user => ({
+                        value: user.id,
+                        label: user.fullName || user.email,
+                        secondaryLabel: user.email,
+                      }))
+                      .sort((a, b) => a.label.localeCompare(b.label)),
+                  ]}
+                  value={filterOwnerUserId}
+                  onChange={(val) => {
+                    setFilterOwnerUserId(val as string);
+                  }}
+                  placeholder="Owner"
+                  onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
+                  textFieldProps={{ size: "small" }}
+                />
+              </Box>
+            )}
+
+            <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
               <FormSelect
                 label=""
                 options={[
@@ -391,7 +502,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 textFieldProps={{ size: "small" }}
               />
             </Box>
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
               <FormInput
                 label=""
                 placeholder="CUPS"
@@ -415,7 +526,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 }}
               />
             </Box>
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
               <FormSelect
                 label=""
                 options={[
@@ -438,12 +549,27 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
               size="small"
               onClick={() => { setFilterSearch(draft); applyFilters(); }}
               aria-label="Search"
+              sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
             >
               <SearchIcon />
               {t('common', 'search')}
             </Button>
           </>
         )}
+        massActions={[
+          {
+            label: t("actions", "delete"),
+            color: "error",
+            icon: <DeleteIcon />,
+            onClick: (ids) => setConfirmBulkDeleteIds(ids),
+          },
+          {
+            label: t("actions", "archive"),
+            color: "warning",
+            icon: <ArchiveIcon />,
+            onClick: (ids) => setConfirmBulkArchiveIds(ids),
+          },
+        ]}
       />
 
       {/* ── Edit payload panel ── */}
@@ -482,67 +608,45 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       <Dialog
         open={!!shareSim}
         onClose={() => setShareSim(null)}
-        maxWidth="sm"
+        maxWidth="lg"
         fullWidth
       >
-        <DialogTitle sx={{ pb: 1.5 }}>{t("simulationsModule", "shareTitle")}</DialogTitle>
+        <DialogTitle sx={{ pb: 1.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {t("simulationDetail", "shareTitle") || t("actions", "share")}
+          <IconButton
+            edge="end"
+            color="inherit"
+            onClick={() => setShareSim(null)}
+            aria-label="close"
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
         <Divider />
-        <DialogContent sx={{ pt: 3, pb: 3 }}>
-          {shareSim && (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              <Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  Status
-                </Typography>
-                <StatusBadge label={shareSim.status} tone={simulationStatusTone(shareSim.status)} />
-              </Box>
-              {shareSim.publicToken ? (
-                <>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      {t("simulationsModule", "publicUrl")}
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      value={getPublicUrl(shareSim) ?? ""}
-                      slotProps={{
-                        input: {
-                          readOnly: true,
-                          style: { fontFamily: "monospace", fontSize: 13 },
-                        },
-                      }}
-                      size="small"
-                    />
-                  </Box>
-                  {shareSim.expiresAt && (
-                    <Typography variant="caption" color="text.secondary">
-                      Expires: {new Date(shareSim.expiresAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                    </Typography>
-                  )}
-                </>
-              ) : (
-                <Typography color="text.secondary">
-                  {t("simulationsModule", "notShared")}
-                </Typography>
-              )}
+        <DialogContent sx={{ p: 0 }}>
+          {shareModalLoading ? (
+            <Box sx={{ p: 4, textAlign: "center" }}>
+              <Typography variant="body2" color="text.secondary">{t("common", "loading") || "Loading..."}</Typography>
             </Box>
-          )}
+          ) : shareSim ? (
+            <ShareSimulationView
+              simulation={shareSim}
+              token={session.token}
+              isTestingMode={false}
+              loggedUserEmail={session.user.email}
+              onSuccess={(msg) => {
+                onNotify?.(msg, "success");
+                setShareSim(null);
+                refresh();
+              }}
+              onError={(msg) => onNotify?.(msg, "error")}
+              onStatusChange={() => {
+                refresh();
+                setShareSim(null);
+              }}
+            />
+          ) : null}
         </DialogContent>
-        <Divider />
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setShareSim(null)} variant="outlined">
-            {t("actions", "done")}
-          </Button>
-          {shareSim?.publicToken && (
-            <Button
-              onClick={() => handleCopyUrl(shareSim)}
-              variant="contained"
-              autoFocus
-            >
-              {copiedUrl ? t("actions", "copied") : t("actions", "copyUrl")}
-            </Button>
-          )}
-        </DialogActions>
       </Dialog>
 
       {confirmArchiveSim && (
@@ -573,6 +677,34 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         />
       )}
 
+      {confirmBulkDeleteIds && (
+        <ConfirmDialog
+          title={t("simulationsModule", "bulkDeleteTitle")}
+          message={t("simulationsModule", "bulkDeleteConfirm", { count: confirmBulkDeleteIds.length })}
+          confirmLabel={t("simulationsModule", "bulkDeleteConfirmLabel")}
+          busy={busyAction === "bulk-delete"}
+          onConfirm={async () => {
+            await handleBulkDelete(confirmBulkDeleteIds);
+            setConfirmBulkDeleteIds(null);
+          }}
+          onCancel={() => setConfirmBulkDeleteIds(null)}
+        />
+      )}
+
+      {confirmBulkArchiveIds && (
+        <ConfirmDialog
+          title={t("simulationsModule", "bulkArchiveTitle")}
+          message={t("simulationsModule", "bulkArchiveConfirm", { count: confirmBulkArchiveIds.length })}
+          confirmLabel={t("simulationsModule", "bulkArchiveConfirmLabel")}
+          busy={busyAction === "bulk-archive"}
+          onConfirm={async () => {
+            await handleBulkArchive(confirmBulkArchiveIds);
+            setConfirmBulkArchiveIds(null);
+          }}
+          onCancel={() => setConfirmBulkArchiveIds(null)}
+        />
+      )}
+
       {/* ── Actions dropdown menu ── */}
       <Menu
         open={!!dropdownState.anchorEl}
@@ -598,7 +730,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             disabled={item.disabled}
             sx={{
               fontSize: 13,
-              color: item.danger ? "error.main" : "text.primary",
+              color: item.danger ? "error.main" : item.warning ? "warning.main" : "text.primary",
               py: 0.75,
             }}
           >

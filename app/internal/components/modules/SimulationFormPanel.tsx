@@ -80,9 +80,9 @@ interface GasFormState {
 
 type SimType = "ELECTRICITY" | "GAS";
 
-function daysBetween(from: string, to: string): number {
+function daysBetween(from: string, to: string, inclusive = false): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-    return Math.max(1, d);
+    return Math.max(1, inclusive ? d + 1 : d);
 }
 
 function defaultElecState(): ElecFormState {
@@ -330,7 +330,7 @@ function ElectricityForm({
                             className="sp-form-input"
                             type="number"
                             readOnly
-                            value={daysBetween(state.fechaInicio, state.fechaFin)}
+                            value={daysBetween(state.fechaInicio, state.fechaFin, true)}
                             style={{ background: "var(--scheme-neutral-1000)", opacity: 0.7 }}
                         />
                     </Field>
@@ -443,8 +443,7 @@ function GasForm({
                             value={state.zonaGeografica}
                             onChange={(v) => up("zonaGeografica", v as GasZona)}
                             options={[
-                                { value: "Peninsula", label: t("simulationForm", "peninsula") },
-                                { value: "Baleares", label: t("simulationForm", "balearics") },
+                                { value: "Peninsula", label: t("simulationForm", "peninsulaYBaleares") },
                             ]}
                         />
                     </Field>
@@ -519,7 +518,7 @@ function GasForm({
 // ─── Payload builders ──────────────────────────────────────────────────────────
 
 function buildElecInputs(s: ElecFormState): ElectricityInputs {
-    const dias = daysBetween(s.fechaInicio, s.fechaFin);
+    const dias = daysBetween(s.fechaInicio, s.fechaFin, true);
     return {
         tarifaAcceso: s.tarifaAcceso,
         zonaGeografica: s.zonaGeografica,

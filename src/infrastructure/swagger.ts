@@ -236,7 +236,7 @@ All responses follow a standard structure:
           required: ["email", "password"],
           properties: {
             email: { type: "string", format: "email" },
-            password: { type: "string", minLength: 12, maxLength: 128 },
+            password: { type: "string", minLength: 1, maxLength: 128 },
           },
         },
         LoginResponse: {
@@ -279,6 +279,10 @@ All responses follow a standard structure:
             expiresAt: { type: "string", format: "date-time" },
             payloadJson: { type: "object" },
             baseValueSetId: { type: "string", format: "uuid" },
+            ocrLogIds: {
+              type: "array",
+              items: { type: "string", format: "uuid" },
+            },
           },
         },
         CreateUserRequest: {

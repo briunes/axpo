@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { UserRole } from "@/domain/types";
@@ -5,8 +6,9 @@ import { NotFoundError, ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertRole, assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
+import { isSupabaseApiMode } from "@/infrastructure/database/databaseMode";
 import { AuditService } from "@/application/services/auditService";
 
 const itemsSchema = z.object({
@@ -42,7 +44,7 @@ export const GET = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT]);
+    await assertPermission(auth, "section.base-values");
 
     const id = context?.params?.id;
     if (!id) {
@@ -92,22 +94,34 @@ export const PUT = withErrorHandler(
     const body = await request.json();
     const payload = itemsSchema.parse(body);
 
-    await prisma.$transaction([
-      prisma.baseValueItem.deleteMany({ where: { baseValueSetId: id } }),
-      prisma.baseValueItem.createMany({
-        data: payload.items.map((item) => ({
-          baseValueSetId: id,
-          key: item.key,
-          valueNumeric: item.valueNumeric,
-          valueText: item.valueText,
-          unit: item.unit,
-          effectiveFrom: item.effectiveFrom
-            ? new Date(item.effectiveFrom)
-            : null,
-          effectiveTo: item.effectiveTo ? new Date(item.effectiveTo) : null,
-        })),
-      }),
-    ]);
+    const replacementItems = payload.items.map((item) => ({
+      id: crypto.randomUUID(),
+      key: item.key,
+      valueNumeric: item.valueNumeric,
+      valueText: item.valueText,
+      unit: item.unit,
+      effectiveFrom: item.effectiveFrom
+        ? new Date(item.effectiveFrom)
+        : null,
+      effectiveTo: item.effectiveTo ? new Date(item.effectiveTo) : null,
+    }));
+    if (isSupabaseApiMode()) {
+      await (prisma as any).$rpc("axpo_replace_base_value_items", {
+        p_base_value_set_id: id,
+        p_items: replacementItems,
+        p_now: new Date(),
+      });
+    } else {
+      await prisma.$transaction([
+        prisma.baseValueItem.deleteMany({ where: { baseValueSetId: id } }),
+        prisma.baseValueItem.createMany({
+          data: replacementItems.map(({ id: _id, ...item }) => ({
+            baseValueSetId: id,
+            ...item,
+          })),
+        }),
+      ]);
+    }
 
     await AuditService.logEvent({
       actorUserId: auth.userId,

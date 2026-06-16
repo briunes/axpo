@@ -5,14 +5,18 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import { SimulationResultsCards } from "./SimulationResultsCards";
 import type { SimulationItem, ClientItem, CupsLookupEntry } from "../../lib/internalApi";
-import { calculateSimulation, updateSimulation, fetchCupsLookup } from "../../lib/internalApi";
+import { calculateSimulation, updateSimulation, fetchCupsLookup, listBaseValueSets, listBaseValueItems } from "../../lib/internalApi";
+import { getSystemConfig } from "../../lib/configApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatNumber } from "../../lib/formatPreferences";
 import { FormSelect } from "../ui/FormSelect";
 import { DateInput } from "../ui/DateInput";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { FormInput } from "../ui/FormInput";
 import { CurrencyInput } from "../ui/CurrencyInput";
-import { Autocomplete, TextField, Collapse } from "@mui/material";
+import { Autocomplete, TextField, Collapse, Divider, Box, Button } from "@mui/material";
+import { Country } from "country-state-city";
 import type {
     SimulationPayload,
     ElectricityInputs,
@@ -69,6 +73,15 @@ interface ElecFormState {
     potencia: PeriodMap;
     exceso: number;
     omie: PeriodMap;
+    // Personalizada Index
+    personalizadaIndexMargenEnergia: PeriodMap;
+    personalizadaIndexMargenPotencia: PeriodMap;
+    // Personalizada OMIE + B
+    personalizadaOmieBTerminoB: PeriodMap;
+    personalizadaOmieBMargenPotencia: PeriodMap;
+    // Personalizada Fijo (custom fixed offer)
+    personalizadaFijoPotencia: PeriodMap;
+    personalizadaFijoEnergia: PeriodMap;
     facturaActual: number;
     reactiva: number;
     alquiler: number;
@@ -98,17 +111,65 @@ interface GasFormState {
     otrosCargos: number;
     ivaTasa: number;
     impuestoHidrocarburo: number;
+    /** Personalizada Indexada margin over MIBGAS in €/kWh */
+    personalizadaIndexMargen: number;
+    /** Personalizada Fijo: all-in fixed daily term in €/día */
+    personalizadaFijoTerminoDia: number;
+    /** Personalizada Fijo: all-in variable term in €/kWh */
+    personalizadaFijoTerminoVariable: number;
 }
 
-function daysBetween(from: string, to: string): number {
+function daysBetween(from: string, to: string, inclusive = false): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-    return Math.max(1, d + 1); // inclusive end date, matching Excel E25 = (E24-D24)+1
+    return Math.max(1, inclusive ? d + 1 : d); // electricity: inclusive (end-start+1), gas: non-inclusive (end-start)
 }
 
 function parseLocalDate(isoDateString: string): Date {
     // Parse YYYY-MM-DD as local date instead of UTC
     const [y, m, d] = isoDateString.split('-').map(Number);
     return new Date(y, m - 1, d);
+}
+
+function formatYYYYMM(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getDominantBillingMonth(fechaInicio?: string, fechaFin?: string): string {
+    if (!fechaInicio) return "";
+    if (!fechaFin) return fechaInicio.slice(0, 7);
+
+    const start = parseLocalDate(fechaInicio);
+    const end = parseLocalDate(fechaFin);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+        return fechaInicio.slice(0, 7);
+    }
+
+    let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+
+    let bestMonth = formatYYYYMM(cursor);
+    let maxDays = -1;
+
+    while (cursor <= endMonth) {
+        const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+        const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+
+        const overlapStart = start > monthStart ? start : monthStart;
+        const overlapEnd = end < monthEnd ? end : monthEnd;
+
+        const overlapDays = overlapEnd >= overlapStart
+            ? Math.floor((overlapEnd.getTime() - overlapStart.getTime()) / 86400000) + 1
+            : 0;
+
+        if (overlapDays > maxDays) {
+            maxDays = overlapDays;
+            bestMonth = formatYYYYMM(monthStart);
+        }
+
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    }
+
+    return bestMonth;
 }
 
 function prevMonthRange() {
@@ -140,6 +201,12 @@ function defaultElecState(): ElecFormState {
         potencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
         exceso: 0,
         omie: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+        personalizadaIndexMargenEnergia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+        personalizadaIndexMargenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+        personalizadaOmieBTerminoB: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+        personalizadaOmieBMargenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+        personalizadaFijoPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+        personalizadaFijoEnergia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
         facturaActual: 0,
         reactiva: 0,
         alquiler: 0,
@@ -170,13 +237,16 @@ function defaultGasState(): GasFormState {
         otrosCargos: 0,
         ivaTasa: 21,
         impuestoHidrocarburo: 0.00234,
+        personalizadaIndexMargen: 0,
+        personalizadaFijoTerminoDia: 0,
+        personalizadaFijoTerminoVariable: 0,
     };
 }
 
 // ─── Payload builders ──────────────────────────────────────────────────────────
 
 function buildElecInputs(s: ElecFormState): ElectricityInputs {
-    const dias = daysBetween(s.fechaInicio, s.fechaFin);
+    const dias = daysBetween(s.fechaInicio, s.fechaFin, true);
     return {
         clientData: {
             cups: s.cups || undefined,
@@ -194,6 +264,18 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
         excesoPotencia: s.exceso,
         consumo: s.consumo as ElectricityInputs["consumo"],
         omieEstimado: s.omie,
+        personalizadaIndex: {
+            margenEnergia: s.personalizadaIndexMargenEnergia,
+            margenPotencia: s.personalizadaIndexMargenPotencia,
+        },
+        personalizadaOmieB: {
+            terminoB: s.personalizadaOmieBTerminoB,
+            margenPotencia: s.personalizadaOmieBMargenPotencia,
+        },
+        personalizadaFijo: {
+            preciosEnergia: s.personalizadaFijoEnergia,
+            preciosPotencia: s.personalizadaFijoPotencia,
+        },
         periodo: { fechaInicio: s.fechaInicio, fechaFin: s.fechaFin, dias },
         facturaActual: s.facturaActual,
         extras: {
@@ -207,7 +289,7 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
 }
 
 function buildGasInputs(s: GasFormState): GasInputs {
-    const dias = daysBetween(s.fechaInicio, s.fechaFin);
+    const dias = daysBetween(s.fechaInicio, s.fechaFin); // gas: non-inclusive
     return {
         cups: s.cups || undefined,
         consumoAnual: s.consumoAnual || undefined,
@@ -228,6 +310,12 @@ function buildGasInputs(s: GasFormState): GasInputs {
         },
         ivaTasa: s.ivaTasa || undefined,
         impuestoHidrocarburo: s.impuestoHidrocarburo || undefined,
+        personalizadaIndex: s.personalizadaIndexMargen > 0
+            ? { margenEnergia: s.personalizadaIndexMargen }
+            : undefined,
+        personalizadaFijo: (s.personalizadaFijoTerminoVariable > 0 || s.personalizadaFijoTerminoDia > 0)
+            ? { terminoVariable: s.personalizadaFijoTerminoVariable, terminoDia: s.personalizadaFijoTerminoDia }
+            : undefined,
     };
 }
 
@@ -285,7 +373,7 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
 
         return {
             cups: invoiceData.cups || "",
-            consumoAnual: invoiceData.consumoTotal || 0,
+            consumoAnual: invoiceData.consumoAnual || invoiceData.consumoTotal || 0,
             nombreTitular: invoiceData.nombreTitular || "",
             personaContacto: "",
             comercial: "",
@@ -298,14 +386,20 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
             fechaFin,
             consumo,
             potencia,
-            exceso: 0,
+            exceso: invoiceData.excesoPotencia ?? 0,
             omie: emptyPeriods(ep),
+            personalizadaIndexMargenEnergia: emptyPeriods(ep),
+            personalizadaIndexMargenPotencia: emptyPeriods(ep),
+            personalizadaOmieBTerminoB: emptyPeriods(ep),
+            personalizadaOmieBMargenPotencia: emptyPeriods(ep),
+            personalizadaFijoPotencia: emptyPeriods(ep),
+            personalizadaFijoEnergia: emptyPeriods(ep),
             facturaActual: invoiceData.facturaActual ?? 0,
             reactiva: invoiceData.reactiva ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
             otrosCargos: invoiceData.otrosCargos ?? 0,
-            ivaTasa: 21,
-            impuestoElectricoTasa: 5.11269,
+            ivaTasa: invoiceData.ivaTasa ?? 21,
+            impuestoElectricoTasa: invoiceData.impuestoElectricoTasa ?? 5.11269,
         };
     }
 
@@ -333,6 +427,12 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
         potencia: Object.fromEntries(pp.map((p) => [p, potMap[p] ?? 0])),
         exceso: typeof e.excesoPotencia === "number" ? e.excesoPotencia : 0,
         omie: Object.fromEntries(ep.map((p) => [p, omieMap[p] ?? 0])),
+        personalizadaIndexMargenEnergia: Object.fromEntries(ep.map((p) => [p, ((e.personalizadaIndex?.margenEnergia ?? {}) as Record<string, number>)[p] ?? 0])),
+        personalizadaIndexMargenPotencia: Object.fromEntries(pp.map((p) => [p, ((e.personalizadaIndex?.margenPotencia ?? {}) as Record<string, number>)[p] ?? 0])),
+        personalizadaOmieBTerminoB: Object.fromEntries(ep.map((p) => [p, ((e.personalizadaOmieB?.terminoB ?? {}) as Record<string, number>)[p] ?? 0])),
+        personalizadaOmieBMargenPotencia: Object.fromEntries(pp.map((p) => [p, ((e.personalizadaOmieB?.margenPotencia ?? {}) as Record<string, number>)[p] ?? 0])),
+        personalizadaFijoEnergia: Object.fromEntries(ep.map((p) => [p, ((e.personalizadaFijo?.preciosEnergia ?? {}) as Record<string, number>)[p] ?? 0])),
+        personalizadaFijoPotencia: Object.fromEntries(pp.map((p) => [p, ((e.personalizadaFijo?.preciosPotencia ?? {}) as Record<string, number>)[p] ?? 0])),
         facturaActual: e.facturaActual,
         reactiva: e.extras?.reactiva ?? 0,
         alquiler: e.extras?.alquilerEquipoMedida ?? 0,
@@ -340,6 +440,22 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
         ivaTasa: e.extras?.ivaTasa ?? 21,
         impuestoElectricoTasa: e.extras?.impuestoElectricoTasa ?? 5.11269,
     };
+}
+
+const GAS_TARIFA_VALUES: GasTarifa[] = ["RL01", "RL02", "RL03", "RL04", "RL05", "RL06", "RLPS1", "RLPS2", "RLPS3", "RLPS4", "RLPS5", "RLPS6"];
+
+function normalizeGasTarifa(raw: string | undefined | null): GasTarifa {
+    if (!raw) return "RL01";
+    const upper = raw.toUpperCase().trim();
+    // Exact match
+    if (GAS_TARIFA_VALUES.includes(upper as GasTarifa)) return upper as GasTarifa;
+    // Handle formats like "RL.2", "RL.02", "RLPS.1", "RL2", "RL 2"
+    const m = upper.match(/^(RLPS|RL)[.\s-]?0?(\d)$/);
+    if (m) {
+        const candidate = `${m[1]}0${m[2]}` as GasTarifa;
+        if (GAS_TARIFA_VALUES.includes(candidate)) return candidate;
+    }
+    return "RL01";
 }
 
 function hydrateGas(p: SimulationPayload): GasFormState | null {
@@ -360,17 +476,20 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
             comercial: invoiceData.comercial || "",
             direccion: invoiceData.direccion || "",
             comercializadorActual: invoiceData.comercializadorActual || "",
-            tarifaAcceso: (invoiceData.tarifaAcceso || "RL01") as GasTarifa,
+            tarifaAcceso: normalizeGasTarifa(invoiceData.tarifaAcceso),
             zonaGeografica: "Peninsula",
             consumo: invoiceData.consumoTotal || 0,
-            telemedida: "NO",
+            telemedida: invoiceData.telemedida === "SI" ? "SI" : "NO",
             fechaInicio,
             fechaFin,
             facturaActual: invoiceData.facturaActual ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
             otrosCargos: invoiceData.otrosCargos ?? 0,
-            ivaTasa: 21,
-            impuestoHidrocarburo: 0.00234,
+            ivaTasa: invoiceData.ivaTasa ?? 21,
+            impuestoHidrocarburo: invoiceData.impuestoHidrocarburo ?? 0.00234,
+            personalizadaIndexMargen: 0,
+            personalizadaFijoTerminoDia: 0,
+            personalizadaFijoTerminoVariable: 0,
         };
     }
 
@@ -394,6 +513,9 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
         otrosCargos: g.extras?.otrosCargos ?? 0,
         ivaTasa: g.ivaTasa ?? 21,
         impuestoHidrocarburo: g.impuestoHidrocarburo ?? 0.00234,
+        personalizadaIndexMargen: g.personalizadaIndex?.margenEnergia ?? 0,
+        personalizadaFijoTerminoDia: g.personalizadaFijo?.terminoDia ?? 0,
+        personalizadaFijoTerminoVariable: g.personalizadaFijo?.terminoVariable ?? 0,
     };
 }
 
@@ -431,7 +553,7 @@ function HelpIcon({ text }: { text: string }) {
 }
 
 function Sec({ title, children, block, collapsible, defaultOpen = true, optional, complete }: {
-    title: string;
+    title?: string;
     children: React.ReactNode;
     block?: boolean;
     collapsible?: boolean;
@@ -445,11 +567,11 @@ function Sec({ title, children, block, collapsible, defaultOpen = true, optional
         <div style={{
             marginBottom: 24,
             ...(block ? {
-                background: "white",
+                background: "var(--scheme-neutral-1200)",
                 border: `1px solid var(--scheme-neutral-${complete ? '700' : '900'}, rgba(255,255,255,0.08))`,
                 borderRadius: 12,
                 padding: "24px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.02)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.03)",
             } : {})
         }}>
             <div
@@ -461,7 +583,7 @@ function Sec({ title, children, block, collapsible, defaultOpen = true, optional
                     color: block ? "var(--scheme-neutral-200)" : "var(--scheme-neutral-400)",
                     marginBottom: isOpen ? (block ? 16 : 12) : 0,
                     paddingBottom: isOpen ? (block ? 12 : 6) : 0,
-                    borderBottom: isOpen ? `1px solid var(--scheme-neutral-${block ? '850' : '900'})` : "none",
+                    borderBottom: isOpen && title ? `1px solid var(--scheme-neutral-${block ? '850' : '900'})` : "none",
                     cursor: collapsible ? "pointer" : "default",
                     display: "flex",
                     alignItems: "center",
@@ -534,7 +656,8 @@ function Num({ value, onChange, step }: { value: number; onChange: (v: number) =
                 htmlInput: {
                     step: step ?? 1,
                     min: 0
-                }
+                },
+
             }}
             value={value}
             onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
@@ -585,16 +708,19 @@ function PeriodGrid({ label, periods, values, onChange, step, hint, errorPeriods
 
 // ─── Electricity sub-form ─────────────────────────────────────────────────────
 
-function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFieldsChanged }: {
+function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFieldsChanged, ivaRateOptions = [], electricityTaxRateOptions = [] }: {
     state: ElecFormState;
     onChange: (s: ElecFormState) => void;
     errors?: Record<string, string>;
     cupsHistory?: CupsLookupEntry[];
     onClientFieldsChanged?: (data: { name?: string; contactName?: string }) => void;
+    ivaRateOptions?: number[];
+    electricityTaxRateOptions?: number[];
 }) {
     const { t } = useI18n();
+    const { preferences: { numberFormat } } = useUserPreferences();
     const up = <K extends keyof ElecFormState>(k: K, v: ElecFormState[K]) => onChange({ ...state, [k]: v });
-    const upP = (field: "consumo" | "potencia" | "omie") => (p: string, v: number) => up(field, { ...state[field], [p]: v });
+    const upP = (field: "consumo" | "potencia" | "omie" | "personalizadaIndexMargenEnergia" | "personalizadaIndexMargenPotencia" | "personalizadaOmieBTerminoB" | "personalizadaOmieBMargenPotencia" | "personalizadaFijoPotencia" | "personalizadaFijoEnergia") => (p: string, v: number) => up(field, { ...state[field], [p]: v });
     const ep = ELEC_ENERGY_PERIODS[state.tarifaAcceso];
     const pp = ELEC_POWER_PERIODS[state.tarifaAcceso];
     const xp = ELEC_EXCESS_PERIODS[state.tarifaAcceso];
@@ -623,7 +749,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     const clientComplete = !!state.cups && !!state.nombreTitular;
     const invoiceComplete = !!state.fechaInicio && !!state.fechaFin && state.facturaActual > 0;
     const powerComplete = pp.every((p) => (state.potencia[p] ?? 0) > 0);
-    const consumptionComplete = ep.every((p) => (state.consumo[p] ?? 0) > 0);
+    const consumptionComplete = ep.some((p) => (state.consumo[p] ?? 0) > 0);
 
     const requiredSteps = [clientComplete, invoiceComplete, powerComplete, consumptionComplete];
     const completedCount = requiredSteps.filter(Boolean).length;
@@ -668,41 +794,78 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                         hint={cupsHistory.length > 0 ? t("simulationForm", "cupsLookupHint", { count: cupsHistory.length }) : undefined}>
                         <Autocomplete
                             freeSolo
-                            options={cupsHistory.map((entry) => entry.cups)}
+                            options={cupsHistory}
+                            getOptionLabel={(option) => typeof option === 'string' ? option : option.cups}
                             value={state.cups}
                             onChange={(_, newValue) => {
-                                handleCupsChange(newValue || "");
+                                handleCupsChange(typeof newValue === 'string' ? newValue : (newValue as CupsLookupEntry)?.cups || "");
                             }}
                             onInputChange={(_, newInputValue) => {
                                 handleCupsChange(newInputValue);
+                            }}
+                            renderOption={(props, option) => {
+                                const { key, ...restProps } = props as typeof props & { key?: React.Key };
+                                const entry = option as CupsLookupEntry;
+                                const statusColor: Record<string, string> = {
+                                    DRAFT: '#f59e0b',
+                                    SHARED: '#22c55e',
+                                    EXPIRED: '#ef4444',
+                                };
+                                const color = statusColor[entry.lastStatus ?? ''] ?? '#94a3b8';
+                                const dateStr = entry.lastUsed
+                                    ? new Date(entry.lastUsed).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+                                    : null;
+                                return (
+                                    <li key={key ?? entry.cups} {...restProps} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 14px', gap: 2, cursor: 'pointer' }}>
+                                        <span style={{ fontWeight: 600, fontSize: 13, letterSpacing: '0.03em' }}>{entry.cups}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+
+                                            {entry.lastStatus && (
+                                                <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color, background: color + '1a', borderRadius: 4, padding: '1px 6px' }}>{entry.lastStatus}</span>
+                                            )}
+                                            {dateStr && (
+                                                <span style={{ fontSize: 10, color: 'var(--scheme-neutral-500)' }}>{dateStr}</span>
+                                            )}
+                                        </div>
+                                    </li>
+                                );
                             }}
                             renderInput={(params) => (
                                 <TextField
                                     {...params}
                                     placeholder={t("simulationForm", "placeholderCups")}
                                     size="small"
-                                    sx={{
+                                    sx={(theme) => ({
                                         '& .MuiOutlinedInput-root': {
-                                            backgroundColor: '#fafafa',
+                                            backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.paper : '#fafafa',
                                             borderRadius: '6px',
                                             fontSize: '14px',
+                                            color: theme.palette.text.primary,
                                             '& fieldset': {
                                                 borderWidth: '1px',
-                                                borderColor: 'rgba(0, 0, 0, 0.23)',
+                                                borderColor: theme.palette.mode === 'dark'
+                                                    ? 'rgba(255, 255, 255, 0.23)'
+                                                    : 'rgba(0, 0, 0, 0.23)',
                                             },
                                             '&:hover fieldset': {
-                                                borderColor: 'rgba(0, 0, 0, 0.4)',
+                                                borderColor: theme.palette.mode === 'dark'
+                                                    ? 'rgba(255, 255, 255, 0.4)'
+                                                    : 'rgba(0, 0, 0, 0.4)',
                                             },
                                             '&.Mui-focused fieldset': {
                                                 borderWidth: '1px',
                                             },
                                         },
-                                    }}
+                                        '& .MuiInputBase-input::placeholder': {
+                                            color: theme.palette.text.secondary,
+                                            opacity: 1,
+                                        },
+                                    })}
                                 />
                             )}
                             ListboxProps={{
                                 style: {
-                                    maxHeight: '240px',
+                                    maxHeight: '300px',
                                 }
                             }}
                         />
@@ -714,7 +877,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                         <Sel value={state.zonaGeografica} onChange={(v) => up("zonaGeografica", v as ElecFormState["zonaGeografica"])} options={[{ value: "Peninsula", label: t("simulationForm", "peninsula") }, { value: "Baleares", label: t("simulationForm", "balearics") }, { value: "Canarias", label: t("simulationForm", "canarias") }]} />
                     </Field>
                 </Row>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginTop: 20, marginBottom: 12, paddingBottom: 6, borderBottom: "1px solid var(--scheme-neutral-900)" }}>{t("simulationForm", "clientDetailsSubtitle")}</div>
+                <Divider sx={{ mb: 2 }} />
                 <Row>
                     <Field label={t("simulationForm", "fieldClientName")} required>
                         <FormInput
@@ -739,7 +902,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                 </Row>
                 <Row>
                     <Field label={t("simulationForm", "fieldSalesAgent")}>
-                        <FormInput label="" type="text" value={state.comercial} onChange={(e) => up("comercial", e.target.value)} placeholder={t("simulationForm", "placeholderSalesAgent")} />
+                        <FormInput disabled label="" type="text" value={state.comercial} onChange={(e) => up("comercial", e.target.value)} placeholder={t("simulationForm", "placeholderSalesAgent")} />
                     </Field>
                     <Field label={t("simulationForm", "fieldAddress")}>
                         <FormInput label="" type="text" value={state.direccion} onChange={(e) => up("direccion", e.target.value)} placeholder={t("simulationForm", "placeholderAddress")} />
@@ -752,103 +915,92 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                 </Row>
             </Sec>
 
-            {/* Contract + Billing period with completion indicator */}
-            <div style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 16,
-                marginBottom: 24,
-                background: "white",
-                border: `1px solid var(--scheme-neutral-${invoiceComplete ? '700' : '900'}, rgba(255,255,255,0.08))`,
-                borderRadius: 12,
-                padding: "24px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.02)",
-            }}>
-                <Sec title={t("simulationForm", "sectionInvoiceData")}>
-                    <Field label={t("simulationForm", "fieldTariff")} required help={t("simulationForm", "helpAccessTariff")}>
-                        <Sel value={state.tarifaAcceso} onChange={(v) => {
-                            const tariff = v as ElecTarifa;
-                            onChange({
-                                ...state,
-                                tarifaAcceso: tariff,
-                                consumo: emptyPeriods(ELEC_ENERGY_PERIODS[tariff]),
-                                potencia: emptyPeriods(ELEC_POWER_PERIODS[tariff]),
-                                exceso: 0,
-                                omie: emptyPeriods(ELEC_ENERGY_PERIODS[tariff]),
-                            });
-                        }} options={[{ value: "2.0TD", label: t("simulationForm", "optionLowVoltage15") }, { value: "3.0TD", label: t("simulationForm", "optionLowVoltage15Plus") }, { value: "6.1TD", label: t("simulationForm", "optionHighVoltage") }]} />
-                    </Field>
-                    <div style={{ height: 10 }} />
-                    <Field label={t("simulationForm", "fieldLoadProfile")}>
-                        <Sel value={state.perfilCarga} onChange={(v) => up("perfilCarga", v as "NORMAL" | "DIURNO")} options={[{ value: "NORMAL", label: t("simulationForm", "normal") }, { value: "DIURNO", label: t("simulationForm", "daytime") }]} />
-                    </Field>
-                </Sec>
-
-                <Sec title={t("simulationForm", "sectionBillingPeriod")}>
-                    <Row>
-                        <Field label={t("simulationForm", "fieldBillingPeriod")} error={errors.fechaInicio || errors.fechaFin} required>
-                            <DateRangePicker
-                                startDate={state.fechaInicio ? parseLocalDate(state.fechaInicio) : null}
-                                endDate={state.fechaFin ? parseLocalDate(state.fechaFin) : null}
-                                onChange={(start, end) => {
-                                    const formatDate = (date: Date) => {
-                                        const y = date.getFullYear();
-                                        const m = String(date.getMonth() + 1).padStart(2, '0');
-                                        const d = String(date.getDate()).padStart(2, '0');
-                                        return `${y}-${m}-${d}`;
-                                    };
-
-                                    const newState: Partial<ElecFormState> = {};
-
-                                    if (start) {
-                                        newState.fechaInicio = formatDate(start);
-                                    }
-
-                                    if (end) {
-                                        newState.fechaFin = formatDate(end);
-                                    } else if (start && !end) {
-                                        // When starting a new selection, clear the end date
-                                        newState.fechaFin = "";
-                                    }
-
-                                    onChange({ ...state, ...newState });
-                                }}
-                                error={!!errors.fechaInicio || !!errors.fechaFin}
-                                nopadding
-                                months={2}
-                            />
+            <Sec title={t("simulationForm", "sectionInvoiceBreakdown")} block collapsible complete={powerComplete && consumptionComplete && invoiceComplete}>
+                <Box style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 16,
+                }}>
+                    <Sec>
+                        <Field label={t("simulationForm", "fieldTariff")} required help={t("simulationForm", "helpAccessTariff")}>
+                            <Sel value={state.tarifaAcceso} onChange={(v) => {
+                                const tariff = v as ElecTarifa;
+                                onChange({
+                                    ...state,
+                                    tarifaAcceso: tariff,
+                                    consumo: emptyPeriods(ELEC_ENERGY_PERIODS[tariff]),
+                                    potencia: emptyPeriods(ELEC_POWER_PERIODS[tariff]),
+                                    exceso: 0,
+                                    omie: emptyPeriods(ELEC_ENERGY_PERIODS[tariff]),
+                                });
+                            }} options={[{ value: "2.0TD", label: t("simulationForm", "optionLowVoltage15") }, { value: "3.0TD", label: t("simulationForm", "optionLowVoltage15Plus") }, { value: "6.1TD", label: t("simulationForm", "optionHighVoltage") }]} />
                         </Field>
-                        <Field label={t("simulationForm", "fieldDays")} flex="0 0 70px">
-                            <FormInput label="" type="number" slotProps={{ htmlInput: { readOnly: true } }} value={daysBetween(state.fechaInicio, state.fechaFin)} sx={{ opacity: 0.6 }} />
+                        <div style={{ height: 10 }} />
+                        <Field label={t("simulationForm", "fieldLoadProfile")}>
+                            <Sel value={state.perfilCarga} onChange={(v) => up("perfilCarga", v as "NORMAL" | "DIURNO")} options={[{ value: "NORMAL", label: t("simulationForm", "normal") }, { value: "DIURNO", label: t("simulationForm", "daytime") }]} />
                         </Field>
-                    </Row>
-                </Sec>
-            </div>
+                    </Sec>
+                    <Sec>
+                        <Row>
+                            <Field label={t("simulationForm", "fieldBillingPeriod")} error={errors.fechaInicio || errors.fechaFin} required>
+                                <DateRangePicker
+                                    variant="inline"
+                                    startDate={state.fechaInicio ? parseLocalDate(state.fechaInicio) : null}
+                                    endDate={state.fechaFin ? parseLocalDate(state.fechaFin) : null}
+                                    onChange={(start, end) => {
+                                        const formatDate = (date: Date) => {
+                                            const y = date.getFullYear();
+                                            const m = String(date.getMonth() + 1).padStart(2, '0');
+                                            const d = String(date.getDate()).padStart(2, '0');
+                                            return `${y}-${m}-${d}`;
+                                        };
 
-            <Sec title={t("simulationForm", "sectionContractedPower")} block collapsible complete={powerComplete}>
+                                        const newState: Partial<ElecFormState> = {};
+
+                                        if (start) {
+                                            newState.fechaInicio = formatDate(start);
+                                        }
+
+                                        if (end) {
+                                            newState.fechaFin = formatDate(end);
+                                        } else if (start && !end) {
+                                            newState.fechaFin = "";
+                                        }
+
+                                        onChange({ ...state, ...newState });
+                                    }}
+                                    error={!!errors.fechaInicio || !!errors.fechaFin}
+                                    nopadding
+                                    months={2}
+                                />
+                            </Field>
+                            <Field label={t("simulationForm", "fieldDays")} flex="0 0 88px">
+                                <FormInput label="" type="number" slotProps={{ htmlInput: { readOnly: true } }} value={daysBetween(state.fechaInicio, state.fechaFin, true)} sx={{ opacity: 0.6 }} />
+                            </Field>
+                        </Row>
+                    </Sec>
+                </Box>
+                <Divider sx={{ my: 2 }} />
+
                 <PeriodGrid label={`${t("simulationForm", "powerPeriodsLabel", { periods: pp.join(" · ") })}`} periods={pp} values={state.potencia} onChange={upP("potencia")} step={0.1} hint={t("simulationForm", "powerPeriodsHintInvoice")} errorPeriods={potenciaErrPeriods} />
                 {xp.length > 0 && (
                     <>
                         <div style={{ height: 12 }} />
                         <Row>
                             <Field label={t("simulationForm", "excessPowerLabel")} hint={t("simulationForm", "excessPowerHint")} flex="0 0 200px">
-                                <Num
-                                    value={state.exceso}
-                                    onChange={(v) => up("exceso", v)}
-                                    step={0.1}
-                                />
+                                <CurrencyInput value={state.exceso} onChange={(v) => up("exceso", isNaN(v) ? 0 : v)} />
                             </Field>
                         </Row>
                     </>
                 )}
-            </Sec>
-
-            <Sec title={t("simulationForm", "sectionEnergyConsumption")} block collapsible complete={consumptionComplete}>
+                <Divider sx={{ my: 2 }} />
                 <PeriodGrid label={`${t("simulationForm", "energyPeriodsLabel", { periods: ep.join(" · ") })}`} periods={ep} values={state.consumo} onChange={upP("consumo")} step={100} hint={t("simulationForm", "energyPeriodsHintInvoice")} errorPeriods={consumoErrPeriods} />
-            </Sec>
+                <Divider sx={{ my: 2 }} />
 
-            <Sec title={t("simulationForm", "sectionInvoiceBreakdown")} block collapsible defaultOpen={false} complete={invoiceComplete}>
                 <Row>
+                    <Field label={t("simulationForm", "fieldInvoiceTotal")} hint={t("simulationForm", "fieldCurrentInvoiceHint")} error={errors.facturaActual} flex="1 1 0" required help={t("simulationForm", "helpInvoiceTotal")}>
+                        <CurrencyInput value={state.facturaActual} onChange={(v) => up("facturaActual", isNaN(v) ? 0 : v)} error={!!errors.facturaActual} />
+                    </Field>
                     <Field label={t("simulationForm", "fieldReactiveEnergy")} hint={t("simulationForm", "fieldReactiveHint")} flex="1 1 0">
                         <CurrencyInput value={state.reactiva} onChange={(v) => up("reactiva", isNaN(v) ? 0 : v)} />
                     </Field>
@@ -859,41 +1011,42 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                         <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
                     </Field>
                 </Row>
-                <div style={{ height: 6 }} />
+                <Divider sx={{ my: 2 }} />
                 <Row>
-                    <Field label={t("simulationForm", "fieldVat")} hint={t("simulationForm", "fieldVatHint")} flex="1 1 0">
-                        <Num value={state.ivaTasa} onChange={(v) => up("ivaTasa", v)} step={0.01} />
+                    <Field label={state.zonaGeografica === "Canarias" ? t("simulationForm", "fieldIgic") : t("simulationForm", "fieldVat")} hint={state.zonaGeografica === "Canarias" ? t("simulationForm", "fieldIgicHint") : t("simulationForm", "fieldVatHint")} flex="1 1 0">
+                        {ivaRateOptions.length > 0 ? (
+                            <Sel
+                                value={String(state.ivaTasa)}
+                                onChange={(v) => { const n = parseFloat(v); if (!isNaN(n)) up("ivaTasa", n); }}
+                                options={[...new Set([...ivaRateOptions, state.ivaTasa])].filter((o) => !isNaN(o)).sort((a, b) => a - b).map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) + "%" }))}
+                            />
+                        ) : (
+                            <Num value={state.ivaTasa} onChange={(v) => up("ivaTasa", v)} step={0.01} />
+                        )}
                     </Field>
-                    <Field label={t("simulationForm", "fieldElecTax")} hint={t("simulationForm", "fieldElecTaxHint")} flex="1 1 0">
-                        <Num value={state.impuestoElectricoTasa} onChange={(v) => up("impuestoElectricoTasa", v)} step={0.001} />
-                    </Field>
-                    <Field label={t("simulationForm", "fieldInvoiceTotal")} hint={t("simulationForm", "fieldCurrentInvoiceHint")} error={errors.facturaActual} flex="1 1 0" required help={t("simulationForm", "helpInvoiceTotal")}>
-                        <CurrencyInput value={state.facturaActual} onChange={(v) => up("facturaActual", isNaN(v) ? 0 : v)} error={!!errors.facturaActual} />
+                    <Field label={t("simulationForm", "fieldElecTax")} hint={t("simulationForm", "fieldElecTaxHint", { tax: formatNumber(state.impuestoElectricoTasa, numberFormat) + "%" })} flex="1 1 0">
+                        {electricityTaxRateOptions.length > 0 ? (
+                            <Sel
+                                value={String(state.impuestoElectricoTasa)}
+                                onChange={(v) => { const n = parseFloat(v); if (!isNaN(n)) up("impuestoElectricoTasa", n); }}
+                                options={[...new Set([...electricityTaxRateOptions, state.impuestoElectricoTasa])].filter((o) => !isNaN(o)).sort((a, b) => a - b).map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) + "%" }))}
+                            />
+                        ) : (
+                            <Num value={state.impuestoElectricoTasa} onChange={(v) => up("impuestoElectricoTasa", v)} step={0.001} />
+                        )}
                     </Field>
                 </Row>
             </Sec>
 
-            <Sec title={t("simulationForm", "fieldLoadProfile")} block collapsible defaultOpen={false} optional>
-                <div style={{ fontSize: 12, color: "var(--scheme-neutral-400)", marginBottom: 8 }}>{t("simulationForm", "loadProfileDescription")}</div>
-                <Field label={t("simulationForm", "fieldProfile")}>
-                    <Sel value={state.perfilCarga} onChange={(v) => up("perfilCarga", v as "NORMAL" | "DIURNO")} options={[{ value: "NORMAL", label: t("simulationForm", "normal") }, { value: "DIURNO", label: t("simulationForm", "daytime") }]} />
-                </Field>
-            </Sec>
-
-            <Sec title={t("simulationForm", "sectionIndexedPricing")} block collapsible defaultOpen={false} optional>
-                <div style={{ fontSize: 12, color: "var(--scheme-neutral-400)", marginBottom: 12 }}>
-                    {t("simulationForm", "omieDescription")}
-                </div>
-                <PeriodGrid label={t("simulationForm", "omieSpotLabel")} periods={ep} values={state.omie} onChange={upP("omie")} step={0.001} hint={t("simulationForm", "omieSpotHint")} />
-            </Sec>
         </>
     );
 }
 
 // ─── Gas sub-form ─────────────────────────────────────────────────────────────
 
-function GasForm({ state, onChange, errors = {} }: { state: GasFormState; onChange: (s: GasFormState) => void; errors?: Record<string, string> }) {
+function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbonTaxRateOptions = [] }: { state: GasFormState; onChange: (s: GasFormState) => void; errors?: Record<string, string>; ivaRateOptions?: number[]; hydrocarbonTaxRateOptions?: number[] }) {
     const { t } = useI18n();
+    const { preferences: { numberFormat } } = useUserPreferences();
     const up = <K extends keyof GasFormState>(k: K, v: GasFormState[K]) => onChange({ ...state, [k]: v });
 
     // Completion checks for gas
@@ -937,7 +1090,7 @@ function GasForm({ state, onChange, errors = {} }: { state: GasFormState; onChan
             </div>
 
             {/* CLIENT INFORMATION section */}
-            <Sec title={t("simulationForm", "sectionClientInfo")} block>
+            <Sec title={t("simulationForm", "sectionClientInfo")} block collapsible complete={!!(state.nombreTitular)}>
                 <Row>
                     <Field label={t("simulationForm", "fieldCups")} flex="1 1 260px" error={errors.cups}>
                         <FormInput label="" value={state.cups} onChange={(e) => up("cups", e.target.value)} placeholder={t("simulationForm", "placeholderCups")} />
@@ -946,10 +1099,10 @@ function GasForm({ state, onChange, errors = {} }: { state: GasFormState; onChan
                         <Num value={state.consumoAnual} onChange={(v) => up("consumoAnual", v)} step={1000} />
                     </Field>
                     <Field label={t("simulationForm", "fieldZone")} flex="1 1 160px" required>
-                        <Sel value={state.zonaGeografica} onChange={(v) => up("zonaGeografica", v as GasZona)} options={[{ value: "Peninsula", label: t("simulationForm", "peninsula") }, { value: "Baleares", label: t("simulationForm", "balearics") }]} />
+                        <Sel value={state.zonaGeografica} onChange={(v) => up("zonaGeografica", v as GasZona)} options={[{ value: "Peninsula", label: t("simulationForm", "peninsulaYBaleares") }]} />
                     </Field>
                 </Row>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginTop: 20, marginBottom: 12, paddingBottom: 6, borderBottom: "1px solid var(--scheme-neutral-900)" }}>{t("simulationForm", "clientDetailsSubtitle")}</div>
+                <Divider sx={{ mb: 2 }} />
                 <Row>
                     <Field label={t("simulationForm", "fieldClientName")} error={errors.nombreTitular}>
                         <FormInput
@@ -972,7 +1125,7 @@ function GasForm({ state, onChange, errors = {} }: { state: GasFormState; onChan
                 </Row>
                 <Row>
                     <Field label={t("simulationForm", "fieldSalesAgent")} error={errors.comercial}>
-                        <FormInput label="" type="text" value={state.comercial} onChange={(e) => up("comercial", e.target.value)} placeholder={t("simulationForm", "placeholderSalesAgent")} />
+                        <FormInput disabled label="" type="text" value={state.comercial} onChange={(e) => up("comercial", e.target.value)} placeholder={t("simulationForm", "placeholderSalesAgent")} />
                     </Field>
                     <Field label={t("simulationForm", "fieldAddress")} error={errors.direccion}>
                         <FormInput label="" type="text" value={state.direccion} onChange={(e) => up("direccion", e.target.value)} placeholder={t("simulationForm", "placeholderAddress")} />
@@ -985,105 +1138,107 @@ function GasForm({ state, onChange, errors = {} }: { state: GasFormState; onChan
                 </Row>
             </Sec>
 
-            {/* Contract + Billing period side by side */}
-            <div style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 16,
-                marginBottom: 24,
-                background: "white",
-                border: "1px solid var(--scheme-neutral-900, rgba(255,255,255,0.08))",
-                borderRadius: 12,
-                padding: "24px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.02)",
-            }}>
-                <Sec title={t("simulationForm", "sectionGasContractDetails")}>
-                    <Field label={t("simulationForm", "fieldTariff")}>
-                        <Sel value={state.tarifaAcceso} onChange={(v) => up("tarifaAcceso", v as GasTarifa)} options={["RL01", "RL02", "RL03", "RL04", "RL05", "RL06", "RLPS1", "RLPS2", "RLPS3", "RLPS4", "RLPS5", "RLPS6"].map((v) => ({ value: v, label: v }))} />
-                    </Field>
-                    <div style={{ height: 10 }} />
-                    <Field label={t("simulationForm", "fieldTelemetering")}>
-                        <Sel value={state.telemedida} onChange={(v) => up("telemedida", v as "SI" | "NO")} options={[{ value: "NO", label: t("simulationForm", "no") }, { value: "SI", label: t("simulationForm", "yes") }]} />
-                    </Field>
-                </Sec>
-
-                <Sec title={t("simulationForm", "sectionBillingPeriod")} complete={invoiceComplete}>
-                    <Row>
-                        <Field label={t("simulationForm", "fieldBillingPeriod")} error={errors.fechaInicio || errors.fechaFin}>
-                            <DateRangePicker
-                                startDate={state.fechaInicio ? parseLocalDate(state.fechaInicio) : null}
-                                endDate={state.fechaFin ? parseLocalDate(state.fechaFin) : null}
-                                onChange={(start, end) => {
-                                    const formatDate = (date: Date) => {
-                                        const y = date.getFullYear();
-                                        const m = String(date.getMonth() + 1).padStart(2, '0');
-                                        const d = String(date.getDate()).padStart(2, '0');
-                                        return `${y}-${m}-${d}`;
-                                    };
-
-                                    const newState: Partial<GasFormState> = {};
-
-                                    if (start) {
-                                        newState.fechaInicio = formatDate(start);
-                                    }
-
-                                    if (end) {
-                                        newState.fechaFin = formatDate(end);
-                                    } else if (start && !end) {
-                                        // When starting a new selection, clear the end date
-                                        newState.fechaFin = "";
-                                    }
-
-                                    onChange({ ...state, ...newState });
-                                }}
-                                error={!!errors.fechaInicio || !!errors.fechaFin}
-                                nopadding
-                                months={2}
-                            />
+            {/* Invoice breakdown section */}
+            <Sec title={t("simulationForm", "sectionInvoiceBreakdown")} block collapsible complete={invoiceComplete && consumptionComplete}>
+                <Box style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 16,
+                }}>
+                    <Sec>
+                        <Field label={t("simulationForm", "fieldTariff")}>
+                            <Sel value={state.tarifaAcceso} onChange={(v) => up("tarifaAcceso", v as GasTarifa)} options={["RL01", "RL02", "RL03", "RL04", "RL05", "RL06", "RLPS1", "RLPS2", "RLPS3", "RLPS4", "RLPS5", "RLPS6"].map((v) => ({ value: v, label: v }))} />
                         </Field>
-                        <Field label={t("simulationForm", "fieldDays")} flex="0 0 70px">
-                            <FormInput label="" type="number" slotProps={{ htmlInput: { readOnly: true } }} value={daysBetween(state.fechaInicio, state.fechaFin)} sx={{ opacity: 0.6 }} />
+                        <div style={{ height: 10 }} />
+                        <Field label={t("simulationForm", "fieldTelemetering")}>
+                            <Sel value={state.telemedida} onChange={(v) => up("telemedida", v as "SI" | "NO")} options={[{ value: "NO", label: t("simulationForm", "no") }, { value: "SI", label: t("simulationForm", "yes") }]} />
                         </Field>
-                    </Row>
-                    <div style={{ height: 10 }} />
-                    <Field label={t("simulationForm", "fieldCurrentInvoice")} hint={t("simulationForm", "fieldGasCurrentInvoiceHint")} error={errors.facturaActual}>
-                        <CurrencyInput value={state.facturaActual} onChange={(v) => up("facturaActual", isNaN(v) ? 0 : v)} error={!!errors.facturaActual} />
-                    </Field>
-                </Sec>
-            </div>
+                    </Sec>
+                    <Sec>
+                        <Row>
+                            <Field label={t("simulationForm", "fieldBillingPeriod")} error={errors.fechaInicio || errors.fechaFin}>
+                                <DateRangePicker
+                                    variant="inline"
+                                    startDate={state.fechaInicio ? parseLocalDate(state.fechaInicio) : null}
+                                    endDate={state.fechaFin ? parseLocalDate(state.fechaFin) : null}
+                                    onChange={(start, end) => {
+                                        const formatDate = (date: Date) => {
+                                            const y = date.getFullYear();
+                                            const m = String(date.getMonth() + 1).padStart(2, '0');
+                                            const d = String(date.getDate()).padStart(2, '0');
+                                            return `${y}-${m}-${d}`;
+                                        };
 
-            <Sec title={t("simulationForm", "sectionGasConsumption")} block complete={consumptionComplete}>
+                                        const newState: Partial<GasFormState> = {};
+
+                                        if (start) {
+                                            newState.fechaInicio = formatDate(start);
+                                        }
+
+                                        if (end) {
+                                            newState.fechaFin = formatDate(end);
+                                        } else if (start && !end) {
+                                            newState.fechaFin = "";
+                                        }
+
+                                        onChange({ ...state, ...newState });
+                                    }}
+                                    error={!!errors.fechaInicio || !!errors.fechaFin}
+                                    nopadding
+                                    months={2}
+                                />
+                            </Field>
+                            <Field label={t("simulationForm", "fieldDays")} flex="0 0 70px">
+                                <FormInput label="" type="number" slotProps={{ htmlInput: { readOnly: true } }} value={daysBetween(state.fechaInicio, state.fechaFin)} sx={{ opacity: 0.6 }} />
+                            </Field>
+                        </Row>
+                    </Sec>
+                </Box>
+                <Divider sx={{ my: 2 }} />
                 <Row>
                     <Field label={t("simulationForm", "fieldConsumption")} hint={t("simulationForm", "fieldTotalConsumptionHint")} flex="1 1 260px" error={errors.consumo}>
                         <Num value={state.consumo} onChange={(v) => up("consumo", v)} step={500} />
                     </Field>
                 </Row>
-            </Sec>
-
-            <Sec title={t("simulationForm", "sectionExtraCharges")} block>
+                <Divider sx={{ my: 2 }} />
                 <Row>
-                    <Field label={t("simulationForm", "fieldMeterRental")} hint={t("simulationForm", "fieldMeterRentalMonthlyHint")}>
+                    <Field label={t("simulationForm", "fieldCurrentInvoice")} hint={t("simulationForm", "fieldGasCurrentInvoiceHint")} error={errors.facturaActual} flex="1 1 0">
+                        <CurrencyInput value={state.facturaActual} onChange={(v) => up("facturaActual", isNaN(v) ? 0 : v)} error={!!errors.facturaActual} />
+                    </Field>
+                    <Field label={t("simulationForm", "fieldMeterRental")} hint={t("simulationForm", "fieldMeterRentalMonthlyHint")} flex="1 1 0">
                         <CurrencyInput value={state.alquiler} onChange={(v) => up("alquiler", isNaN(v) ? 0 : v)} />
                     </Field>
-                    <Field label={t("simulationForm", "fieldOtherCharges")} hint={t("simulationForm", "fieldOtherChargesLineHint")}>
+                    <Field label={t("simulationForm", "fieldOtherCharges")} hint={t("simulationForm", "fieldOtherChargesLineHint")} flex="1 1 0">
                         <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
                     </Field>
                 </Row>
-            </Sec>
-
-            <Sec title={t("simulationForm", "sectionTaxes")} block collapsible defaultOpen={false} optional>
-                <div style={{ fontSize: 12, color: "var(--scheme-neutral-400)", marginBottom: 12 }}>
-                    {t("simulationForm", "taxesDescription")}
-                </div>
+                <Divider sx={{ my: 2 }} />
                 <Row>
-                    <Field label={t("simulationForm", "fieldIVA")} hint={t("simulationForm", "fieldIVAHint")}>
-                        <Num value={state.ivaTasa} onChange={(v) => up("ivaTasa", v)} step={0.1} />
+                    <Field label={t("simulationForm", "fieldIVA")} hint={t("simulationForm", "fieldIVAHint")} flex="1 1 0">
+                        {ivaRateOptions.length > 0 ? (
+                            <Sel
+                                value={String(state.ivaTasa)}
+                                onChange={(v) => { const n = parseFloat(v); if (!isNaN(n)) up("ivaTasa", n); }}
+                                options={[...new Set([...ivaRateOptions, state.ivaTasa])].filter((o) => !isNaN(o)).sort((a, b) => a - b).map((o) => ({ value: String(o), label: formatNumber(o, numberFormat) + "%" }))}
+                            />
+                        ) : (
+                            <Num value={state.ivaTasa} onChange={(v) => up("ivaTasa", v)} step={0.1} />
+                        )}
                     </Field>
-                    <Field label={t("simulationForm", "fieldHydrocarbonTax")} hint={t("simulationForm", "fieldHydrocarbonTaxHint")}>
-                        <Num value={state.impuestoHidrocarburo} onChange={(v) => up("impuestoHidrocarburo", v)} step={0.00001} />
+                    <Field label={t("simulationForm", "fieldHydrocarbonTax")} hint={t("simulationForm", "fieldHydrocarbonTaxHint")} flex="1 1 0">
+                        {hydrocarbonTaxRateOptions.length > 0 ? (
+                            <Sel
+                                value={String(state.impuestoHidrocarburo)}
+                                onChange={(v) => { const n = parseFloat(v); if (!isNaN(n)) up("impuestoHidrocarburo", n); }}
+                                options={[...new Set([...hydrocarbonTaxRateOptions, state.impuestoHidrocarburo])].filter((o) => !isNaN(o)).sort((a, b) => a - b).map((o) => ({ value: String(o), label: formatNumber(o, numberFormat, 5) }))}
+                            />
+                        ) : (
+                            <Num value={state.impuestoHidrocarburo} onChange={(v) => up("impuestoHidrocarburo", v)} step={0.00001} />
+                        )}
                     </Field>
                 </Row>
             </Sec>
+
         </>
     );
 }
@@ -1125,7 +1280,7 @@ export interface SimulationFormProps {
     onClientFieldsChanged?: (clientId: string, data: { name?: string; contactName?: string }) => void;
     onSuccess?: (results: SimulationResults, baseValueSetId?: string) => void;
     onNotify?: (text: string, tone: "success" | "error") => void;
-    onOfferSelected?: (productKey: string) => void;
+    onOfferSelected?: (productKey?: string) => void;
     readOnly?: boolean;
     /** ID of the base value set to use for calculation (Admin override) */
     baseValueSetId?: string;
@@ -1134,10 +1289,19 @@ export interface SimulationFormProps {
 export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormProps>(function SimulationForm({ simulation, token, clients, onClientFieldsChanged, onSuccess, onNotify, onOfferSelected, readOnly, baseValueSetId }: SimulationFormProps, ref) {
     const { t } = useI18n();
     const existingPayload = (simulation.payloadJson ?? {}) as SimulationPayload;
+    const isOcrFilled = !!(existingPayload as any).invoiceData;
+
+    const ownerName = simulation.ownerUser?.fullName ?? "";
 
     const [simType, setSimType] = useState<SimType>(existingPayload.type ?? "ELECTRICITY");
-    const [elecState, setElecState] = useState<ElecFormState>(() => hydrateElec(existingPayload) ?? defaultElecState());
-    const [gasState, setGasState] = useState<GasFormState>(() => hydrateGas(existingPayload) ?? defaultGasState());
+    const [elecState, setElecState] = useState<ElecFormState>(() => {
+        const s = hydrateElec(existingPayload) ?? defaultElecState();
+        return s.comercial ? s : { ...s, comercial: ownerName };
+    });
+    const [gasState, setGasState] = useState<GasFormState>(() => {
+        const s = hydrateGas(existingPayload) ?? defaultGasState();
+        return s.comercial ? s : { ...s, comercial: ownerName };
+    });
     const [results, setResults] = useState<SimulationResults | null>(existingPayload.results ?? null);
     const [calculating, setCalculating] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -1146,8 +1310,15 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     const [selectedOffer, setSelectedOffer] = useState<SimulationPayload["selectedOffer"]>(
         existingPayload.selectedOffer ?? undefined
     );
-    const [savingSelection, setSavingSelection] = useState(false);
+    // Tracks the billing month explicitly chosen by the user via the month selector.
+    // null means "derive from the billing period dates" (the default).
+    const [billingMonthOverride, setBillingMonthOverride] = useState<string | null>(null);
     const [cupsHistory, setCupsHistory] = useState<CupsLookupEntry[]>([]);
+    const [ivaRateOptions, setIvaRateOptions] = useState<number[]>([]);
+    const [electricityTaxRateOptions, setElectricityTaxRateOptions] = useState<number[]>([]);
+    const [hydrocarbonTaxRateOptions, setHydrocarbonTaxRateOptions] = useState<number[]>([]);
+    const [electricityTaxConfig, setElectricityTaxConfig] = useState<any>(null);
+    const [gasTaxConfig, setGasTaxConfig] = useState<any>(null);
 
     // Load CUPS history (scoped to simulation's client if set)
     useEffect(() => {
@@ -1156,11 +1327,89 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             .catch(() => { /* non-critical */ });
     }, [token, simulation.clientId]);
 
+    // Load tax rate options + active defaults from system config
+    useEffect(() => {
+        getSystemConfig().then((cfg) => {
+            const opts = cfg as any;
+
+            // Store full tax configs for zone-aware lookups
+            if (opts.electricityTaxConfig) setElectricityTaxConfig(opts.electricityTaxConfig);
+            if (opts.gasTaxConfig) setGasTaxConfig(opts.gasTaxConfig);
+
+            // Legacy flat options (fallback)
+            if (opts.ivaRateOptions?.length > 1) setIvaRateOptions(opts.ivaRateOptions.map((v: any) => Number(v) * 100));
+            if (opts.electricityTaxRateOptions?.length > 1) setElectricityTaxRateOptions(opts.electricityTaxRateOptions.map((v: any) => Number(v) * 100));
+            if (opts.hydrocarbonTaxRateOptions?.length >= 1) setHydrocarbonTaxRateOptions(opts.hydrocarbonTaxRateOptions.map(Number));
+
+            // Pre-fill active values into form state for new simulations (no saved payload data)
+            const hasExistingElec = !!(existingPayload as any).electricity?.extras;
+            const hasExistingGas = !!(existingPayload as any).gas;
+
+            if (!hasExistingElec && opts.electricityTaxConfig) {
+                const zone = (existingPayload as any).electricity?.zonaGeografica ?? "Peninsula";
+                const zoneKey = zone === "Baleares" ? "baleares" : zone === "Canarias" ? "canarias" : "peninsula";
+                const zoneConf = opts.electricityTaxConfig[zoneKey];
+                const ivaRates: number[] = (zoneConf?.ivaRates ?? zoneConf?.igicRates ?? []).map((v: any) => Number(v) * 100);
+                const elecTaxRates: number[] = (zoneConf?.elecTaxRates ?? []).map((v: any) => Number(v) * 100);
+                setElecState((prev) => ({
+                    ...prev,
+                    ...(ivaRates.length > 0 ? { ivaTasa: ivaRates[0] } : {}),
+                    ...(elecTaxRates.length > 0 ? { impuestoElectricoTasa: elecTaxRates[0] } : {}),
+                }));
+            } else if (!hasExistingElec) {
+                const ivaPercent = opts.ivaRate != null ? Number(opts.ivaRate) * 100 : undefined;
+                const elecTaxPercent = opts.electricityTaxRate != null ? Number(opts.electricityTaxRate) * 100 : undefined;
+                setElecState((prev) => ({
+                    ...prev,
+                    ...(ivaPercent != null ? { ivaTasa: ivaPercent } : {}),
+                    ...(elecTaxPercent != null ? { impuestoElectricoTasa: elecTaxPercent } : {}),
+                }));
+            }
+
+            if (!hasExistingGas && opts.gasTaxConfig) {
+                const zone = (existingPayload as any).gas?.zonaGeografica ?? "Peninsula";
+                const zoneKey = zone === "Baleares" ? "baleares" : "peninsula";
+                const zoneConf = opts.gasTaxConfig[zoneKey];
+                const ivaRates: number[] = (zoneConf?.ivaRates ?? []).map((v: any) => Number(v) * 100);
+                const hydroRates: number[] = (opts.gasTaxConfig.hydrocarbonTaxRates ?? []).map(Number);
+                setGasState((prev) => ({
+                    ...prev,
+                    ...(ivaRates.length > 0 ? { ivaTasa: ivaRates[0] } : {}),
+                    ...(hydroRates.length > 0 ? { impuestoHidrocarburo: hydroRates[0] } : {}),
+                }));
+            } else if (!hasExistingGas) {
+                const ivaPercent = opts.ivaRate != null ? Number(opts.ivaRate) * 100 : undefined;
+                const hydroRate = opts.hydrocarbonTaxRate != null ? Number(opts.hydrocarbonTaxRate) : undefined;
+                setGasState((prev) => ({
+                    ...prev,
+                    ...(ivaPercent != null ? { ivaTasa: ivaPercent } : {}),
+                    ...(hydroRate != null ? { impuestoHidrocarburo: hydroRate } : {}),
+                }));
+            }
+        }).catch(() => { /* non-critical */ });
+    }, []);
+
     // Pre-fill client fields from ClientItem when a client is linked and form client data is empty
     useEffect(() => {
         if (!simulation.clientId || !clients?.length) return;
         const client = clients.find((c) => c.id === simulation.clientId);
         if (!client) return;
+
+        // Build a formatted address string from the client's address parts
+        const buildClientAddress = (c: typeof client): string => {
+            const parts: string[] = [];
+            if (c.street) parts.push(c.street);
+            const cityLine = [c.postalCode, c.city].filter(Boolean).join(" ");
+            if (cityLine) parts.push(cityLine);
+            if (c.province) parts.push(c.province);
+            if (c.country) {
+                const countryObj = Country.getCountryByCode(c.country);
+                parts.push(countryObj ? countryObj.name : c.country);
+            }
+            return parts.join(", ");
+        };
+
+        const clientAddress = buildClientAddress(client);
 
         setElecState((prev) => {
             // Only pre-fill if the simulation payload had no client data at all
@@ -1170,6 +1419,18 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 ...prev,
                 nombreTitular: client.name ?? prev.nombreTitular,
                 personaContacto: client.contactName ?? prev.personaContacto,
+                direccion: clientAddress || prev.direccion,
+            };
+        });
+
+        setGasState((prev) => {
+            const hasExistingData = prev.nombreTitular || prev.personaContacto;
+            if (hasExistingData) return prev;
+            return {
+                ...prev,
+                nombreTitular: client.name ?? prev.nombreTitular,
+                personaContacto: client.contactName ?? prev.personaContacto,
+                direccion: clientAddress || prev.direccion,
             };
         });
     }, [simulation.clientId, clients]);
@@ -1208,6 +1469,12 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 otrosCargos: 0,
                 ivaTasa: 21,
                 impuestoElectricoTasa: 5.11269,
+                personalizadaIndexMargenEnergia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+                personalizadaIndexMargenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+                personalizadaOmieBTerminoB: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+                personalizadaOmieBMargenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+                personalizadaFijoPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+                personalizadaFijoEnergia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
             };
             setElecState(testElec);
         }
@@ -1231,6 +1498,9 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 otrosCargos: 0,
                 ivaTasa: 21,
                 impuestoHidrocarburo: 0.00234,
+                personalizadaIndexMargen: 0,
+                personalizadaFijoTerminoDia: 0,
+                personalizadaFijoTerminoVariable: 0,
             };
             setGasState(testGas);
         }
@@ -1268,30 +1538,26 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify, baseValueSetId]);
 
     const calculateWithMonth = useCallback(async (month: string) => {
-        const [year, mon] = month.split('-').map(Number);
-        const fechaInicio = `${year}-${String(mon).padStart(2, '0')}-01`;
-        const lastDay = new Date(year, mon, 0).getDate();
-        const fechaFin = `${year}-${String(mon).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-
-        const newElecState: ElecFormState = { ...elecState, fechaInicio, fechaFin };
-        const newGasState: GasFormState = { ...gasState, fechaInicio, fechaFin };
-
-        // Update state so inputs tab stays in sync
-        if (simType !== "GAS") setElecState(newElecState);
-        if (simType !== "ELECTRICITY") setGasState(newGasState);
-
+        // Do NOT change fechaInicio/fechaFin — the billing period must stay as-is.
+        // Instead, pass selectedMonth to the API so indexed calculations use the
+        // correct month's prices and days, while fixed calculations keep using
+        // the billing period's days.
+        setBillingMonthOverride(month);
         setError(null);
         setCalculating(true);
         try {
             const payload: SimulationPayload = {
                 schemaVersion: "1",
                 type: simType,
-                electricity: simType !== "GAS" ? buildElecInputs(newElecState) : undefined,
-                gas: simType !== "ELECTRICITY" ? buildGasInputs(newGasState) : undefined,
+                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
+                gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
                 ...(selectedOffer ? { selectedOffer } : {}),
             };
             await updateSimulation(token, simulation.id, { payloadJson: payload as Record<string, unknown> });
-            const calcResult = await calculateSimulation(token, simulation.id, baseValueSetId ? { baseValueSetId } : undefined);
+            const calcResult = await calculateSimulation(token, simulation.id, {
+                ...(baseValueSetId ? { baseValueSetId } : {}),
+                selectedMonth: month,
+            });
             setResults(calcResult.results);
             setActiveTab("results");
             onSuccess?.(calcResult.results, calcResult.baseValueSetId);
@@ -1309,8 +1575,8 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
     const handleSelectOffer = useCallback(async (productKey: string, commodity: "ELECTRICITY" | "GAS", pricingType: "FIXED" | "INDEXED") => {
         const offerData: SimulationPayload["selectedOffer"] = { productKey, commodity, pricingType, selectedAt: new Date().toISOString() };
+        const previousOffer = selectedOffer;
         setSelectedOffer(offerData);
-        setSavingSelection(true);
         try {
             // Build the full payload from current state so we never lose inputs or
             // results when only the selectedOffer changes.  Using simulation.payloadJson
@@ -1330,16 +1596,42 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "failedToSaveSelection");
             onNotify?.(msg, "error");
-            setSelectedOffer(undefined);
+            setSelectedOffer(previousOffer);
         } finally {
-            setSavingSelection(false);
         }
-    }, [simulation.id, token, simType, elecState, gasState, results, onOfferSelected, onNotify]);
+    }, [simulation.id, token, simType, elecState, gasState, results, selectedOffer, onOfferSelected, onNotify]);
+
+    const handleClearOffer = useCallback(async () => {
+        const previousOffer = selectedOffer;
+        setSelectedOffer(undefined);
+        try {
+            const updatedPayload: SimulationPayload = {
+                schemaVersion: "1",
+                type: simType,
+                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
+                gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
+                ...(results ? { results } : {}),
+                selectedOffer: null,
+            };
+            await updateSimulation(token, simulation.id, { payloadJson: updatedPayload as Record<string, unknown> });
+            onOfferSelected?.(undefined);
+            onNotify?.(t("simulationForm", "offerCleared"), "success");
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : t("simulationForm", "failedToClearSelection");
+            setSelectedOffer(previousOffer);
+            onNotify?.(msg, "error");
+            throw err;
+        }
+    }, [simulation.id, token, simType, elecState, gasState, results, selectedOffer, onOfferSelected, onNotify]);
 
     const facturaActual = simType === "ELECTRICITY" ? elecState.facturaActual
         : simType === "GAS" ? gasState.facturaActual : undefined;
 
-    const selectedMonth = (simType !== "GAS" ? elecState.fechaInicio : gasState.fechaInicio).slice(0, 7);
+    const selectedMonth = billingMonthOverride ?? (
+        simType !== "GAS"
+            ? getDominantBillingMonth(elecState.fechaInicio, elecState.fechaFin)
+            : getDominantBillingMonth(gasState.fechaInicio, gasState.fechaFin)
+    );
     const availableMonths = (() => {
         const today = new Date();
         const months: string[] = [];
@@ -1347,17 +1639,27 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             const d = new Date(today.getFullYear(), today.getMonth() - delta, 1);
             months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
         }
+        if (selectedMonth && !months.includes(selectedMonth)) {
+            months.unshift(selectedMonth);
+        }
         return months; // most recent first
     })();
 
     const resultCount = (results?.electricity?.length ?? 0) + (results?.gas?.length ?? 0);
+    const isOfferLocked = !!selectedOffer;
+
+    useEffect(() => {
+        if (isOfferLocked && activeTab !== "results") {
+            setActiveTab("results");
+        }
+    }, [isOfferLocked, activeTab]);
 
     return (
         <div>
             {/* Tabs */}
             <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--scheme-neutral-900)", marginBottom: 28 }}>
                 {[
-                    { key: "inputs" as const, label: t("simulationForm", "tabInputs") },
+                    ...(!isOfferLocked ? [{ key: "inputs" as const, label: t("simulationForm", "tabInputs") }] : []),
                     { key: "results" as const, label: results ? t("simulationForm", "tabResultsWithCount", { count: resultCount }) : t("simulationForm", "tabResults") },
                 ].map((tab) => (
                     <button
@@ -1382,8 +1684,27 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             </div>
 
             {/* Inputs tab */}
-            {activeTab === "inputs" && (
+            {!isOfferLocked && activeTab === "inputs" && (
                 <div>
+                    {/* OCR disclaimer */}
+                    {isOcrFilled && (
+                        <div style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 8,
+                            padding: "10px 14px",
+                            borderRadius: 8,
+                            marginBottom: 20,
+                            fontSize: 13,
+                            background: "rgba(245, 158, 11, 0.08)",
+                            color: "var(--scheme-warning-400, #f59e0b)",
+                            border: "1px solid rgba(245, 158, 11, 0.3)",
+                        }}>
+                            <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>⚠️</span>
+                            <span>{t("invoiceExtractor", "ocrDisclaimer") ?? "O OCR pode conter erros. Por favor, valide os dados preenchidos antes de continuar."}</span>
+                        </div>
+                    )}
+
                     {/* Commodity type indicator (read-only) */}
                     <div style={{
                         marginBottom: 28,
@@ -1404,29 +1725,91 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
                     {(simType === "ELECTRICITY") && (
                         <div>
-
-                            <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, opacity: readOnly ? 0.7 : 1 }}>
-                                <ElecForm
-                                    state={elecState}
-                                    onChange={setElecState}
-                                    errors={elecErrors}
-                                    cupsHistory={cupsHistory}
-                                    onClientFieldsChanged={
-                                        simulation.clientId && onClientFieldsChanged
-                                            ? (data) => onClientFieldsChanged(simulation.clientId!, data)
-                                            : undefined
-                                    }
-                                />
-                            </fieldset>
+                            {(() => {
+                                const zone = elecState.zonaGeografica;
+                                const zoneKey = zone === "Baleares" ? "baleares" : zone === "Canarias" ? "canarias" : "peninsula";
+                                const zoneConf = electricityTaxConfig?.[zoneKey];
+                                const zoneIvaOptions: number[] = zoneConf
+                                    ? (zoneConf.ivaRates ?? zoneConf.igicRates ?? []).map((v: any) => Number(v) * 100)
+                                    : ivaRateOptions;
+                                const zoneElecTaxOptions: number[] = zoneConf
+                                    ? (zoneConf.elecTaxRates ?? []).map((v: any) => Number(v) * 100)
+                                    : electricityTaxRateOptions;
+                                return (
+                                    <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, opacity: readOnly ? 0.7 : 1 }}>
+                                        <ElecForm
+                                            state={elecState}
+                                            onChange={(s) => {
+                                                // When zone changes, auto-update tax values to first configured rate for new zone
+                                                if (s.zonaGeografica !== elecState.zonaGeografica && electricityTaxConfig) {
+                                                    const newZoneKey = s.zonaGeografica === "Baleares" ? "baleares" : s.zonaGeografica === "Canarias" ? "canarias" : "peninsula";
+                                                    const newZoneConf = electricityTaxConfig[newZoneKey];
+                                                    const newIvaRates: number[] = (newZoneConf?.ivaRates ?? newZoneConf?.igicRates ?? []).map((v: any) => Number(v) * 100);
+                                                    const newElecTaxRates: number[] = (newZoneConf?.elecTaxRates ?? []).map((v: any) => Number(v) * 100);
+                                                    setElecState({
+                                                        ...s,
+                                                        ...(newIvaRates.length > 0 ? { ivaTasa: newIvaRates[0] } : {}),
+                                                        ...(newElecTaxRates.length > 0 ? { impuestoElectricoTasa: newElecTaxRates[0] } : {}),
+                                                    });
+                                                } else {
+                                                    setElecState(s);
+                                                }
+                                            }}
+                                            errors={elecErrors}
+                                            cupsHistory={cupsHistory}
+                                            ivaRateOptions={zoneIvaOptions}
+                                            electricityTaxRateOptions={zoneElecTaxOptions}
+                                            onClientFieldsChanged={
+                                                simulation.clientId && onClientFieldsChanged
+                                                    ? (data) => onClientFieldsChanged(simulation.clientId!, data)
+                                                    : undefined
+                                            }
+                                        />
+                                    </fieldset>
+                                );
+                            })()}
                         </div>
                     )}
 
 
                     {(simType === "GAS") && (
                         <div>
-                            <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, opacity: readOnly ? 0.7 : 1 }}>
-                                <GasForm state={gasState} onChange={setGasState} errors={gasErrors} />
-                            </fieldset>
+                            {(() => {
+                                const zone = gasState.zonaGeografica;
+                                const zoneKey = zone === "Baleares" ? "baleares" : "peninsula";
+                                const zoneConf = gasTaxConfig?.[zoneKey];
+                                const zoneIvaOptions: number[] = zoneConf
+                                    ? (zoneConf.ivaRates ?? []).map((v: any) => Number(v) * 100)
+                                    : ivaRateOptions;
+                                const zoneHydroOptions: number[] = gasTaxConfig
+                                    ? (gasTaxConfig.hydrocarbonTaxRates ?? []).map(Number)
+                                    : hydrocarbonTaxRateOptions;
+                                return (
+                                    <fieldset disabled={readOnly} style={{ border: "none", padding: 0, margin: 0, opacity: readOnly ? 0.7 : 1 }}>
+                                        <GasForm
+                                            state={gasState}
+                                            onChange={(s) => {
+                                                if (s.zonaGeografica !== gasState.zonaGeografica && gasTaxConfig) {
+                                                    const newZoneKey = s.zonaGeografica === "Baleares" ? "baleares" : "peninsula";
+                                                    const newZoneConf = gasTaxConfig[newZoneKey];
+                                                    const newIvaRates: number[] = (newZoneConf?.ivaRates ?? []).map((v: any) => Number(v) * 100);
+                                                    const newHydroRates: number[] = (gasTaxConfig.hydrocarbonTaxRates ?? []).map(Number);
+                                                    setGasState({
+                                                        ...s,
+                                                        ...(newIvaRates.length > 0 ? { ivaTasa: newIvaRates[0] } : {}),
+                                                        ...(newHydroRates.length > 0 ? { impuestoHidrocarburo: newHydroRates[0] } : {}),
+                                                    });
+                                                } else {
+                                                    setGasState(s);
+                                                }
+                                            }}
+                                            errors={gasErrors}
+                                            ivaRateOptions={zoneIvaOptions}
+                                            hydrocarbonTaxRateOptions={zoneHydroOptions}
+                                        />
+                                    </fieldset>
+                                );
+                            })()}
                         </div>
                     )}
 
@@ -1441,35 +1824,22 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                         <div className="crud-alert crud-alert--error" style={{ marginBottom: 16 }}>{error}</div>
                     )}
                     {!readOnly && (
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, paddingTop: 8, borderTop: "1px solid var(--scheme-neutral-900)" }}>
-                            <button
-                                type="button"
-                                className="sp-btn-secondary"
-                                onClick={fillTestData}
-                                style={{ padding: "10px 20px", fontSize: 14 }}
-                            >
-                                {t("simulationForm", "fillTestData")}
-                            </button>
-                            <div style={{ display: "flex", gap: 10 }}>
-                                {results && (
-                                    <button
-                                        type="button"
-                                        className="sp-btn-secondary"
-                                        onClick={() => setActiveTab("results")}
-                                    >
-                                        {t("simulationForm", "viewPreviousResults")}
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    className="sp-btn-primary"
-                                    onClick={handleCalculate}
-                                    disabled={calculating}
-                                    style={{ minWidth: 180, padding: "10px 24px", fontSize: 14 }}
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 8, borderTop: "1px solid var(--scheme-neutral-900)" }}>
+                            {results && (
+                                <Button
+                                    variant="contained"
+                                    onClick={() => setActiveTab("results")}
                                 >
-                                    {calculating ? t("simulationForm", "btnCalculating") : t("simulationForm", "btnCalculate")}
-                                </button>
-                            </div>
+                                    {t("simulationForm", "viewPreviousResults")}
+                                </Button>
+                            )}
+                            <Button
+                                variant="contained"
+                                onClick={handleCalculate}
+                                disabled={calculating}
+                            >
+                                {calculating ? t("simulationForm", "btnCalculating") : t("simulationForm", "btnCalculate")}
+                            </Button>
                         </div>
                     )}
                 </div>
@@ -1498,10 +1868,53 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                                     }));
                                 }
                             }}
+                            personalizadaIndexPeriods={simType !== "GAS" ? { margenEnergia: elecState.personalizadaIndexMargenEnergia, margenPotencia: elecState.personalizadaIndexMargenPotencia } : undefined}
+                            onUpdatePersonalizadaIndex={readOnly ? undefined : (field, period, value) => {
+                                if (simType !== "GAS") {
+                                    setElecState(prev => ({
+                                        ...prev,
+                                        [field === "margenEnergia" ? "personalizadaIndexMargenEnergia" : "personalizadaIndexMargenPotencia"]: {
+                                            ...prev[field === "margenEnergia" ? "personalizadaIndexMargenEnergia" : "personalizadaIndexMargenPotencia"],
+                                            [period]: value,
+                                        },
+                                    }));
+                                }
+                            }}
+                            personalizadaOmieBPeriods={simType !== "GAS" ? { terminoB: elecState.personalizadaOmieBTerminoB, margenPotencia: elecState.personalizadaOmieBMargenPotencia } : undefined}
+                            onUpdatePersonalizadaOmieB={readOnly ? undefined : (field, period, value) => {
+                                if (simType !== "GAS") {
+                                    setElecState(prev => ({
+                                        ...prev,
+                                        [field === "terminoB" ? "personalizadaOmieBTerminoB" : "personalizadaOmieBMargenPotencia"]: {
+                                            ...prev[field === "terminoB" ? "personalizadaOmieBTerminoB" : "personalizadaOmieBMargenPotencia"],
+                                            [period]: value,
+                                        },
+                                    }));
+                                }
+                            }}
+                            elecPersonalizadaFijoPeriods={simType !== "GAS" ? { preciosPotencia: elecState.personalizadaFijoPotencia, preciosEnergia: elecState.personalizadaFijoEnergia } : undefined}
+                            onUpdateElecPersonalizadaFijo={readOnly || simType === "GAS" ? undefined : (field, period, value) => {
+                                setElecState(prev => ({
+                                    ...prev,
+                                    [field === "preciosPotencia" ? "personalizadaFijoPotencia" : "personalizadaFijoEnergia"]: {
+                                        ...prev[field === "preciosPotencia" ? "personalizadaFijoPotencia" : "personalizadaFijoEnergia"],
+                                        [period]: value,
+                                    },
+                                }));
+                            }}
+                            gasPersonalizadaIndexMargen={simType === "GAS" ? gasState.personalizadaIndexMargen : undefined}
+                            onUpdateGasPersonalizadaIndex={readOnly || simType !== "GAS" ? undefined : (margen) => {
+                                setGasState(prev => ({ ...prev, personalizadaIndexMargen: margen }));
+                            }}
+                            gasPersonalizadaFijo={simType === "GAS" ? { terminoDia: gasState.personalizadaFijoTerminoDia, terminoVariable: gasState.personalizadaFijoTerminoVariable } : undefined}
+                            onUpdateGasPersonalizadaFijo={readOnly || simType !== "GAS" ? undefined : (field, value) => {
+                                setGasState(prev => ({ ...prev, [field === "terminoDia" ? "personalizadaFijoTerminoDia" : "personalizadaFijoTerminoVariable"]: value }));
+                            }}
                             onRecalculate={readOnly ? undefined : handleCalculate}
                             calculating={calculating}
-                            selectedOffer={selectedOffer}
+                            selectedOffer={selectedOffer ?? undefined}
                             onSelectOffer={readOnly ? undefined : handleSelectOffer}
+                            onClearOffer={readOnly ? undefined : handleClearOffer}
                             readOnly={readOnly}
                             selectedMonth={selectedMonth}
                             availableMonths={readOnly ? undefined : availableMonths}
@@ -1512,9 +1925,11 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                             <div style={{ marginBottom: 12 }}><BoltIcon sx={{ fontSize: 48, color: "#f59e0b" }} /></div>
                             <div style={{ fontSize: 15, marginBottom: 8 }}>{t("simulationForm", "noResultsYet")}</div>
                             <div style={{ fontSize: 13 }}>{t("simulationForm", "noResultsInstructions")}</div>
-                            <button type="button" className="sp-btn-primary" onClick={() => setActiveTab("inputs")} style={{ marginTop: 20 }}>
-                                {t("simulationForm", "goToInputs")}
-                            </button>
+                            {!isOfferLocked && (
+                                <button type="button" className="sp-btn-primary" onClick={() => setActiveTab("inputs")} style={{ marginTop: 20 }}>
+                                    {t("simulationForm", "goToInputs")}
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>

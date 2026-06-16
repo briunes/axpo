@@ -9,6 +9,10 @@ import { createAgency } from "../../lib/internalApi";
 import { AddressForm, CrudFormContainer, CrudPageLayout, useAlerts, type AddressData } from "../../components/shared";
 import { FormInput } from "../../components/ui";
 
+interface ValidationErrors {
+    name?: string;
+}
+
 export default function NewAgencyPage() {
     const router = useRouter();
     const [session] = useState(loadSession());
@@ -19,16 +23,33 @@ export default function NewAgencyPage() {
     const [address, setAddress] = useState<AddressData>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
 
     if (!session) return null;
 
+    const clearError = (field: keyof ValidationErrors) => {
+        if (validationErrors[field]) {
+            setValidationErrors((prev) => {
+                const next = { ...prev };
+                delete next[field];
+                return next;
+            });
+        }
+    };
+
+    const validateForm = (): boolean => {
+        const errors: ValidationErrors = {};
+        if (!name.trim()) {
+            errors.name = t("agencyFormPage", "validNameRequired");
+        }
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) {
-            setErrorMessage(t("agencyFormPage", "nameRequired"));
-            return;
-        }
+        if (!validateForm()) return;
         setIsSubmitting(true);
         setErrorMessage(null);
         try {
@@ -72,11 +93,18 @@ export default function NewAgencyPage() {
                         label={t("agencyFormPage", "nameLabel")}
                         type="text"
                         value={name}
-                        onChange={(e) => setName((e.target as HTMLInputElement).value)}
+                        onChange={(e) => {
+                            setName((e.target as HTMLInputElement).value);
+                            clearError("name");
+                        }}
                         placeholder="e.g. Energía Sur S.L."
                         autoFocus
+                        required
+                        disabled={isSubmitting}
+                        error={!!validationErrors.name}
+                        helperText={validationErrors.name}
                     />
-                    <AddressForm value={address} onChange={setAddress} />
+                    <AddressForm value={address} onChange={setAddress} disabled={isSubmitting} />
                 </Stack>
             </CrudFormContainer>
         </CrudPageLayout>

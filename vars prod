@@ -1,0 +1,49 @@
+# Preview/Staging Environment Variables
+
+# Database
+DATABASE_URL=postgresql://postgres.setjontjekewboeovprv:VsKbQ8KdtPTA2uHA@aws-1-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+DIRECT_URL=postgresql://postgres.setjontjekewboeovprv:VsKbQ8KdtPTA2uHA@aws-1-eu-west-1.pooler.supabase.com:5432/postgres
+
+# JWT Configuration
+JWT_SECRET=5d99876217d166b5337cffedabb63082add0157c2a9d84307374bb0db01f8bc7
+JWT_EXPIRES_IN=24h
+
+# Swagger Basic Auth
+SWAGGER_BASIC_AUTH_USER="axpo"
+SWAGGER_BASIC_AUTH_PASS="cdvRBH#3tenrwbvCE#WVB"
+
+# CORS
+CORS_ORIGIN="*"
+
+# Node Environment
+NODE_ENV=prod
+
+# Rate Limiting
+RATE_LIMIT_MAX_REQUESTS=100
+RATE_LIMIT_WINDOW=15m
+
+# Token Configuration
+PUBLIC_TOKEN_LENGTH=64
+PIN_LENGTH=4
+PIN_SALT_ROUNDS=10
+
+# Feature Flags
+FEATURE_OCR_ENABLED="false"
+FEATURE_PDF_EXPORT_ENABLED="false"
+FEATURE_ANALYTICS_ENABLED="true"
+
+NEXT_PUBLIC_BACKEND_URL="https://misimulador.axpoiberia.es"
+
+NEXT_PUBLIC_SENTRY_DSN=https://a515453df8bc25f40b2a1444b3135e37@o4511472518627328.ingest.de.sentry.io/4511472520659024
+SENTRY_ORG=signed-axpo
+SENTRY_PROJECT=javascript-nextjs
+SENTRY_AUTH_TOKEN=your_sentry_auth_token_here
+
+
+DB_CONNECTION_MODE=api
+SUPABASE_URL=https://setjontjekewboeovprv.supabase.co
+SUPABASE_SECRET_KEY=sb_publishable_uMeg7sgy1z266vBNpQ5ocQ__7RNfBja
+SUPABASE_DB_SCHEMA=public
+
+NEXT_PUBLIC_SUPABASE_URL=https://setjontjekewboeovprv.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_uMeg7sgy1z266vBNpQ5ocQ__7RNfBja

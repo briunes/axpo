@@ -5,7 +5,10 @@ import { NotFoundError, ForbiddenError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 
@@ -18,6 +21,12 @@ const updateClientSchema = z.object({
   contactPhone: z.string().max(50).optional(),
   otherDetails: z.string().max(5000).optional(),
   isActive: z.boolean().optional(),
+  street: z.string().max(300).optional(),
+  city: z.string().max(200).optional(),
+  postalCode: z.string().max(20).optional(),
+  province: z.string().max(200).optional(),
+  country: z.string().max(10).optional(),
+  language: z.string().max(10).optional(),
 });
 
 /**
@@ -216,7 +225,7 @@ export const GET = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT]);
+    await assertPermission(auth, "clients.view");
 
     const id = context?.params?.id;
     if (!id) throw new NotFoundError("Client");
@@ -244,7 +253,7 @@ export const GET = withErrorHandler(
       throw new NotFoundError("Client", id);
     }
 
-    if (auth.role === UserRole.AGENT && client.agencyId !== auth.agencyId) {
+    if (!isElevatedRole(auth.role) && client.agencyId !== auth.agencyId) {
       throw new ForbiddenError("Access denied");
     }
 
@@ -258,7 +267,7 @@ export const PATCH = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT]);
+    await assertPermission(auth, "clients.edit");
 
     const id = context?.params?.id;
     if (!id) throw new NotFoundError("Client");
@@ -268,8 +277,8 @@ export const PATCH = withErrorHandler(
       throw new NotFoundError("Client", id);
     }
 
-    // Agents can only edit their own agency's clients
-    if (auth.role === UserRole.AGENT && client.agencyId !== auth.agencyId) {
+    // Non-admins can only edit their own agency's clients
+    if (!isElevatedRole(auth.role) && client.agencyId !== auth.agencyId) {
       throw new ForbiddenError("Access denied");
     }
 
@@ -280,7 +289,7 @@ export const PATCH = withErrorHandler(
       where: { id },
       data: {
         ...(payload.name !== undefined && { name: payload.name.trim() }),
-        ...(auth.role === UserRole.ADMIN &&
+        ...(isElevatedRole(auth.role) &&
           payload.agencyId !== undefined && { agencyId: payload.agencyId }),
         ...(payload.cif !== undefined && { cif: payload.cif.trim() || null }),
         ...(payload.contactName !== undefined && {
@@ -296,6 +305,24 @@ export const PATCH = withErrorHandler(
           otherDetails: payload.otherDetails.trim() || null,
         }),
         ...(payload.isActive !== undefined && { isActive: payload.isActive }),
+        ...(payload.street !== undefined && {
+          street: payload.street.trim() || null,
+        }),
+        ...(payload.city !== undefined && {
+          city: payload.city.trim() || null,
+        }),
+        ...(payload.postalCode !== undefined && {
+          postalCode: payload.postalCode.trim() || null,
+        }),
+        ...(payload.province !== undefined && {
+          province: payload.province.trim() || null,
+        }),
+        ...(payload.country !== undefined && {
+          country: payload.country.trim() || null,
+        }),
+        ...(payload.language !== undefined && {
+          language: payload.language.trim() || null,
+        }),
         updatedByUserId: auth.userId,
       },
       include: {
@@ -341,7 +368,7 @@ export const DELETE = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT]);
+    await assertPermission(auth, "clients.delete");
 
     const id = context?.params?.id;
     if (!id) throw new NotFoundError("Client");
@@ -351,7 +378,7 @@ export const DELETE = withErrorHandler(
       throw new NotFoundError("Client", id);
     }
 
-    if (auth.role === UserRole.AGENT && client.agencyId !== auth.agencyId) {
+    if (!isElevatedRole(auth.role) && client.agencyId !== auth.agencyId) {
       throw new ForbiddenError("Access denied");
     }
 

@@ -15,12 +15,14 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import UnarchiveIcon from "@mui/icons-material/Unarchive";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import DownloadIcon from "@mui/icons-material/Download";
 import StarIcon from "@mui/icons-material/Star";
 import StarOutlineIcon from "@mui/icons-material/StarOutline";
 import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { BaseValueSetItem } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
+import { downloadBaseValueFile } from "../../lib/internalApi";
 import type { BaseValuesActions } from "../hooks/useBaseValues";
 import { ConfirmDialog } from "../shared";
 import { DataTable, StatusBadge } from "../ui";
@@ -50,19 +52,6 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
 
   const [confirmAction, setConfirmAction] = useState<{ id: string; type: "activate" | "archive" | "restore" } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const fetchedRef = useRef(false);
-  useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-    refresh();
-  }, []);
-
-  const isFirstRender = useRef(true);
-  useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return; }
-    refresh();
-  }, [page, pageSize, sortColumn, sortDir, search, showArchived]);
 
   useEffect(() => {
     if (successText) { onNotify?.(successText, "success"); clearFeedback(); }
@@ -117,6 +106,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
     {
       key: "version",
       label: t("baseValuesModule", "colVersion"),
+      sortable: true,
       renderCell: (s) => <Typography variant="body2" color="text.secondary">v{s.version}</Typography>,
     },
     {
@@ -136,6 +126,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
     {
       key: "createdAt",
       label: "Created",
+      sortable: true,
       renderCell: (s) => (
         <Typography variant="body2" color="text.secondary">
           {new Date(s.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
@@ -192,6 +183,17 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
               <EditIcon fontSize="small" />
             </IconButton>
           </Tooltip>
+          {s.sourceFileName && (
+            <Tooltip title={t("baseValuesModule", "download_tooltip")} placement="top">
+              <IconButton
+                onClick={() => downloadBaseValueFile(session.token, s.id)}
+                size="small"
+                sx={{ color: "text.secondary", "&:hover": { color: "info.main" } }}
+              >
+                <DownloadIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           {!s.isActive && !s.isDeleted && (
             <Tooltip title={t("baseValuesModule", "activate_tooltip")} placement="top">
               <IconButton
@@ -280,13 +282,14 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
   }, [onActionButtons, showArchived, loading, canManage, refresh, t, busyAction, handleFileSelect, fileInputRef]);
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
       <DataTable<BaseValueSetItem>
         columns={columns}
         rows={baseValueSets}
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
+        onClearFilters={() => { setSearch(""); setPage(1); }}
         searchPlaceholder={t("search", "baseValues")}
         emptyMessage={t("search", "emptyBaseValues")}
         sortState={{ column: sortColumn, direction: sortDir }}

@@ -59,26 +59,7 @@ export function BaseValueItemsViewer({ items, pageSize = 25 }: BaseValueItemsVie
 
     return (
         <Box>
-            <Box
-                sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    mb: 2,
-                    p: 1.5,
-                    borderRadius: 1,
-                    bgcolor: "info.50",
-                    border: "1px solid",
-                    borderColor: "info.200",
-                }}
-            >
-                <InfoOutlinedIcon fontSize="small" sx={{ color: "info.main", flexShrink: 0 }} />
-                <Typography variant="body2" color="text.secondary">
-                    This set has <strong>{items.length} items</strong> — manual editing is disabled for large sets. Re-run{" "}
-                    <code style={{ fontSize: "0.78em" }}>pnpm run db:import-prices:replace</code> to update prices from the Excel file.
-                </Typography>
-            </Box>
-
+            
             {/* Summary chips */}
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 2 }}>
                 {prefixCounts.map(([prefix, count]) => (

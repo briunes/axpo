@@ -361,7 +361,7 @@
           },
           "password": {
             "type": "string",
-            "minLength": 12,
+            "minLength": 1,
             "maxLength": 128
           }
         }
@@ -675,6 +675,72 @@
           },
           "429": {
             "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/v1/public/simulations/init": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Retrieve basic simulation info by token (no PIN required)",
+        "description": "Returns the owner name, email, agency name and the client's preferred language (falls back to the owner's preferred language, then the system default) for the simulation identified by the token. Used to pre-populate the access screen before PIN entry.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 16
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Simulation info retrieved"
+          },
+          "401": {
+            "description": "Invalid token"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/api/v1/public/version": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Get current app version",
+        "description": "Returns the current app version stored in system configuration. Used by the frontend to detect stale caches after deployments.",
+        "responses": {
+          "200": {
+            "description": "App version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

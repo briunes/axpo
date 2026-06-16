@@ -5,18 +5,17 @@ import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, UserRole } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
 import { CrudFormContainer, CrudFormRow } from "../shared";
-import { FormAutocomplete, FormInput, FormSelect, PasswordStrengthInput, PhoneInput } from "../ui";
+import { FormAutocomplete, FormInput, FormSelect, PhoneInput } from "../ui";
 import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface UserFormData {
     fullName: string;
     email: string;
+    maxActiveDevices?: number;
     mobilePhone: string;
     commercialPhone: string;
     commercialEmail: string;
     otherDetails?: string;
-    password?: string;
-    currentPassword?: string;
     role?: UserRole;
     agencyId?: string;
     isActive?: boolean;
@@ -25,11 +24,10 @@ export interface UserFormData {
 interface ValidationErrors {
     fullName?: string;
     email?: string;
+    maxActiveDevices?: string;
     mobilePhone?: string;
     commercialPhone?: string;
     commercialEmail?: string;
-    password?: string;
-    currentPassword?: string;
     role?: string;
     agencyId?: string;
 }
@@ -48,6 +46,7 @@ export interface UserFormProps {
     onCancel?: () => void;
     mode: "create" | "edit";
     isEditingSelf?: boolean;
+    originalRole?: UserRole;
     onRenderActions?: (actions: React.ReactNode) => void;
 }
 
@@ -69,6 +68,7 @@ export function UserForm({
     onCancel,
     mode,
     isEditingSelf,
+    originalRole,
     onRenderActions,
 }: UserFormProps) {
     const { t } = useI18n();
@@ -76,7 +76,16 @@ export function UserForm({
 
     const canManageRole = mode === "create" || isAdmin(session.user.role);
     const canManageAgency = isAdmin(session.user.role);
-    const requirePassword = mode === "create";
+    const isSysAdminViewer = session.user.role === "SYS_ADMIN";
+    const roleAtLoad = originalRole ?? data.role;
+    // Lock rules in edit mode:
+    //   - Any user with ADMIN role is locked unless the viewer is a SYS_ADMIN
+    //     (only SYS_ADMINs can manage other admins)
+    //   - A user who was already SYS_ADMIN when the form loaded is locked
+    //     (selecting SYS_ADMIN for another user should not lock the field mid-edit)
+    const isAdminTargetLocked = mode === "edit" && roleAtLoad === "ADMIN" && !isSysAdminViewer;
+    const isSysAdminTargetLocked = mode === "edit" && roleAtLoad === "SYS_ADMIN";
+    const isRoleLocked = isAdminTargetLocked || isSysAdminTargetLocked;
 
     const clearError = (field: keyof ValidationErrors) => {
         if (validationErrors[field]) {
@@ -113,26 +122,6 @@ export function UserForm({
             errors.commercialEmail = t("userFormPage", "validCommercialEmailRequired");
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.commercialEmail)) {
             errors.commercialEmail = t("userFormPage", "validCommercialEmailInvalid");
-        }
-
-        if (mode === "create" && (!data.password || data.password === "")) {
-            errors.password = t("userFormPage", "validPasswordRequired");
-        } else if (data.password && data.password.length > 0) {
-            if (data.password.length < 12) {
-                errors.password = t("userFormPage", "validPasswordMinLength");
-            } else if (!/(?=.*[a-z])/.test(data.password)) {
-                errors.password = t("userFormPage", "validPasswordLowercase");
-            } else if (!/(?=.*[A-Z])/.test(data.password)) {
-                errors.password = t("userFormPage", "validPasswordUppercase");
-            } else if (!/(?=.*\d)/.test(data.password)) {
-                errors.password = t("userFormPage", "validPasswordNumber");
-            } else if (!/(?=.*[@$!%*?&#])/.test(data.password)) {
-                errors.password = t("userFormPage", "validPasswordSpecial");
-            }
-        }
-
-        if (mode === "edit" && isEditingSelf && data.password && !data.currentPassword) {
-            errors.currentPassword = t("userFormPage", "validCurrentPasswordRequired");
         }
 
         if (mode === "create" && canManageRole && !data.role) {
@@ -260,7 +249,8 @@ export function UserForm({
                         options={[
                             { value: "COMMERCIAL", label: t("userFormPage", "roleCommercial") },
                             { value: "AGENT", label: t("userFormPage", "roleAgent") },
-                            ...(isAdmin(session.user.role) ? [{ value: "ADMIN", label: t("userFormPage", "roleAdmin") }] : [])
+                            ...(isAdmin(session.user.role) ? [{ value: "ADMIN", label: t("userFormPage", "roleAdmin") }] : []),
+                            ...(session.user.role === "SYS_ADMIN" ? [{ value: "SYS_ADMIN", label: t("userFormPage", "roleSysAdmin") }] : []),
                         ]}
                         value={data.role || "COMMERCIAL"}
                         onChange={(value) => {
@@ -268,9 +258,16 @@ export function UserForm({
                             clearError('role');
                         }}
                         required={mode === "create"}
-                        disabled={isSubmitting || (mode === "edit" && data.role === "ADMIN")}
+                        disabled={isSubmitting || isRoleLocked}
                         error={!!validationErrors.role}
-                        helperText={validationErrors.role || (mode === "edit" && data.role === "ADMIN" ? t("userFormPage", "adminRoleCannotBeChanged") : undefined)}
+                        helperText={
+                            validationErrors.role ||
+                            (isAdminTargetLocked
+                                ? t("userFormPage", "adminRoleCannotBeChanged")
+                                : isSysAdminTargetLocked
+                                    ? t("userFormPage", "sysAdminRoleCannotBeChanged")
+                                    : undefined)
+                        }
                     />
 
                     {canManageAgency && (
@@ -293,41 +290,7 @@ export function UserForm({
                 </CrudFormRow>
             )}
 
-            {mode === "edit" && isEditingSelf && (
-                <FormInput
-                    label={t("userFormPage", "fieldCurrentPassword")}
-                    type="password"
-                    helperText={validationErrors.currentPassword || t("userFormPage", "fieldCurrentPasswordHint")}
-                    value={data.currentPassword || ""}
-                    onChange={(e) => {
-                        onChange({ ...data, currentPassword: e.target.value });
-                        clearError('currentPassword');
-                    }}
-                    disabled={isSubmitting}
-                    error={!!validationErrors.currentPassword}
-                />
-            )}
-
             <CrudFormRow>
-                <PasswordStrengthInput
-                    label={mode === "create" ? t("userFormPage", "fieldPassword") : t("userFormPage", "fieldNewPassword")}
-                    value={data.password || ""}
-                    onChange={(val) => {
-                        onChange({ ...data, password: val });
-                        clearError('password');
-                    }}
-                    required={requirePassword}
-                    disabled={isSubmitting}
-                    error={!!validationErrors.password}
-                    helperText={
-                        validationErrors.password ||
-                        (mode === "create"
-                            ? t("userFormPage", "fieldPasswordHintCreate")
-                            : t("userFormPage", "fieldPasswordHintEdit"))
-                    }
-                    showGenerator
-                />
-
                 <FormInput
                     label={t("userFormPage", "fieldOtherDetails")}
                     value={data.otherDetails || ""}

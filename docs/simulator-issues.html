@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulator Issues — Axpo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 32px 24px 64px;
+    }
+
+    header {
+      max-width: 960px;
+      margin: 0 auto 40px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    header p {
+      font-size: 14px;
+      color: #64748b;
+    }
+
+    .stats {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .stat {
+      background: #1e2330;
+      border: 1px solid #2d3548;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 22px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 2px;
+    }
+
+    .filters {
+      max-width: 960px;
+      margin: 0 auto 28px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid #2d3548;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+      background: #6366f1;
+      border-color: #6366f1;
+      color: #fff;
+    }
+
+    .search {
+      margin-left: auto;
+      background: #1e2330;
+      border: 1px solid #2d3548;
+      border-radius: 8px;
+      padding: 7px 14px;
+      color: #e2e8f0;
+      font-size: 13px;
+      outline: none;
+      width: 220px;
+      transition: border-color 0.15s;
+    }
+
+    .search:focus { border-color: #6366f1; }
+    .search::placeholder { color: #475569; }
+
+    .section {
+      max-width: 960px;
+      margin: 0 auto 32px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #475569;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title span.count {
+      background: #1e2330;
+      border: 1px solid #2d3548;
+      border-radius: 10px;
+      padding: 1px 8px;
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .cards {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .card {
+      background: #1a1f2e;
+      border: 1px solid #232a3d;
+      border-radius: 10px;
+      padding: 16px 18px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .card:hover {
+      background: #1e2433;
+      border-color: #2d3757;
+    }
+
+    .card.open { border-left: 3px solid #f59e0b; }
+    .card.closed { border-left: 3px solid #22c55e; opacity: 0.6; }
+    .card.ignored { border-left: 3px solid #6366f1; opacity: 0.45; }
+    .card.no-status { border-left: 3px solid #475569; }
+
+    .card-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: #475569;
+      background: #0f1117;
+      border: 1px solid #2d3548;
+      border-radius: 6px;
+      padding: 3px 7px;
+      min-width: 36px;
+      text-align: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .card-body { flex: 1; min-width: 0; }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .card-comment {
+      font-size: 12px;
+      color: #64748b;
+      font-style: italic;
+      border-left: 2px solid #2d3548;
+      padding-left: 10px;
+      margin-bottom: 8px;
+    }
+
+    .card-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 9px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .tag-open { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .tag-closed { background: rgba(34,197,94,0.12); color: #22c55e; }
+    .tag-ignored { background: rgba(99,102,241,0.15); color: #818cf8; }
+    .tag-no-status { background: rgba(71,85,105,0.2); color: #64748b; }
+
+    .tag-category {
+      background: #1e2a3d;
+      color: #7c9ccc;
+      border: 1px solid #2d3f5f;
+    }
+
+    .reporter {
+      font-size: 11px;
+      color: #475569;
+      margin-left: auto;
+    }
+
+    .hidden { display: none !important; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #475569;
+      font-size: 14px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ Simulator Issues</h1>
+  <p>Incidencias Simulador — translated from Spanish · 51 items</p>
+  <div class="stats">
+    <div class="stat"><strong id="count-open">—</strong>Open</div>
+    <div class="stat"><strong id="count-closed">—</strong>Closed</div>
+    <div class="stat"><strong id="count-ignored">—</strong>Ignored</div>
+    <div class="stat"><strong id="count-total">—</strong>Total</div>
+  </div>
+</header>
+
+<div class="filters">
+  <button class="filter-btn active" data-filter="all">All</button>
+  <button class="filter-btn" data-filter="open">Open</button>
+  <button class="filter-btn" data-filter="closed">Closed</button>
+  <button class="filter-btn" data-filter="ignored">Ignored</button>
+  <button class="filter-btn" data-filter="ocr">OCR</button>
+  <button class="filter-btn" data-filter="results">Results</button>
+  <button class="filter-btn" data-filter="pdf">PDF</button>
+  <button class="filter-btn" data-filter="ux">UX / Order</button>
+  <button class="filter-btn" data-filter="suggestion">Suggestions</button>
+  <input class="search" type="text" placeholder="Search issues…" id="search" />
+</div>
+
+<div id="main" style="max-width:960px;margin:0 auto;">
+  <div class="empty-state" id="empty">No issues match your filter.</div>
+</div>
+
+<script>
+const issues = [
+  // ── ACCESS ──────────────────────────────────────────────────────────────────
+  { id: 1, title: "Login — Jesus Millan", desc: "Cannot log in with the credentials received by email.", comment: "", reporter: "Jesus Millan", status: "ignored", categories: ["access"] },
+  { id: 2, title: "Login — Eva Morales", desc: "Cannot log in with the credentials received by email.", comment: "", reporter: "Eva Morales", status: "ignored", categories: ["access"] },
+
+  // ── CALCULATIONS ────────────────────────────────────────────────────────────
+  { id: 3, title: "Savings amount mismatch", desc: "The savings amount doesn't match the selected tariff.", comment: "", reporter: "Ruth Chucad", status: "closed", categories: ["results", "calculation"] },
+  { id: 5, title: "Power prices inconsistent in comparison", desc: "Power prices in comparison results are inconsistent — Annual Power Cost difference is too large; origin of competitor power prices is unclear.", comment: "", reporter: "Ruth Chucad", status: "open", categories: ["results", "calculation"] },
+  { id: 46, title: "Total power amount calculated incorrectly", desc: "Incorrect total power amount calculated in simulation (reported with client: 'Panificadora Amaya').", comment: "", reporter: "", status: "open", categories: ["calculation"] },
+  { id: 47, title: "Billing month not detected correctly", desc: "Simulation does not detect the billing month correctly from the invoice.", comment: "", reporter: "Sergio", status: "closed", categories: ["ocr", "calculation"] },
+
+  // ── OCR ─────────────────────────────────────────────────────────────────────
+  { id: 6, title: "OCR: annual consumption and access tariff not extracted", desc: "OCR doesn't calculate annual consumption from invoice, nor does it fill in the access tariff. Can be completed manually.", comment: "Data that could be obtained and filled in manually.", reporter: "José Campo", status: "closed", categories: ["ocr"] },
+  { id: 19, title: "OCR: data placed in wrong fields", desc: "OCR places extracted data in incorrect fields. Tested with a specific invoice.", comment: "", reporter: "Jorge López", status: "closed", categories: ["ocr"] },
+  { id: 20, title: "OCR: drag-and-drop upload not implemented", desc: "Users naturally try to drag invoices to the upload area but it's not implemented. If not costly, should be added.", comment: "", reporter: "Francisco Zarzuela", status: "closed", categories: ["ocr", "ux"] },
+  { id: 21, title: "OCR: CUPS not extracted from Naturgy invoices", desc: "CUPS field is not auto-extracted from Naturgy electricity invoices.", comment: "", reporter: "Francisco Zarzuela", status: "closed", categories: ["ocr"] },
+  { id: 32, title: "OCR: CUPS not auto-completed", desc: "CUPS is not auto-completed — possibly because Iberdrola invoices have digits separated, requiring manual digit-by-digit entry.", comment: "", reporter: "Ruth Chucad", status: "closed", categories: ["ocr"] },
+  { id: 33, title: "OCR: excess power not auto-filled", desc: "Excess power ('Excesos de Potencias') is not auto-filled from the invoice even when clearly visible.", comment: "", reporter: "Ruth Chucad", status: "closed", categories: ["ocr"] },
+  { id: 43, title: "OCR: fails to read any invoice for some users", desc: "OCR shows 'try again later' error and never reads invoices. Tested with multiple formats and users.", comment: "", reporter: "David García", status: "closed", categories: ["ocr"] },
+  { id: 51, title: "OCR: only accepts single JPEG upload", desc: "Upload only supports one JPEG file — should support multiple file uploads.", comment: "", reporter: "Samuel", status: "closed", categories: ["ocr"] },
+
+  // ── INPUT / FORMS ───────────────────────────────────────────────────────────
+  { id: 13, title: "Client name doesn't populate all fields", desc: "When editing client data manually, the client name doesn't fill all related fields — each must be edited individually.", comment: "", reporter: "Jorge López", status: "closed", categories: ["ux"] },
+  { id: 14, title: "Cannot clear date fields all at once", desc: "Date fields in invoice reading section cannot be fully cleared in one action.", comment: "", reporter: "Jorge López", status: "closed", categories: ["ux"] },
+  { id: 15, title: "Invoice amount formatting bug with comma", desc: "When typing a comma in the invoice amount field, the number formats incorrectly. E.g. typing '54,45' results in '54,00045'.", comment: "", reporter: "Jorge López", status: "closed", categories: ["ux"] },
+  { id: 16, title: "Agent name requires manual input", desc: "Agent name should auto-fill based on the logged-in user, not require manual input.", comment: "", reporter: "Jorge López", status: "closed", categories: ["ux"] },
+  { id: 35, title: "Power input defaults to 0, can't be cleared", desc: "Power input field defaults to 0 and doesn't allow the user to clear it and type a value.", comment: "Should allow direct typing of the power value.", reporter: "Ana", status: "closed", categories: ["ux"] },
+  { id: 50, title: "Billing periods cannot be edited manually", desc: "Billing period fields cannot be edited manually.", comment: "", reporter: "Carmen", status: "closed", categories: ["ux"] },
+
+  // ── RESULTS & DISPLAY ───────────────────────────────────────────────────────
+  { id: 10, title: "Energy price only shown as total cost", desc: "Energy prices are only shown as Total Cost. Should also display price per unit in €/kWh.", comment: "", reporter: "Ruth Chucad", status: "ignored", categories: ["results", "suggestion"] },
+  { id: 11, title: "Results not sorted by savings", desc: "After calculating comparison, tariffs should be sorted by savings percentage (highest first).", comment: "", reporter: "Ruth Chucad", status: "closed", categories: ["results", "suggestion"] },
+  { id: 27, title: "Price history repeats same values for all months", desc: "When 'Dynamic Control' tariff is selected, price history shows the same values repeated for every month.", comment: "", reporter: "Francisco Zarzuela", status: "closed", categories: ["results"] },
+  { id: 34, title: "PDF comparison shows identical data in first two rows", desc: "In the PDF comparison ('Current Plan' vs 'Axpo Plan'), the first two rows compare identical data (Contracted Power / Invoice Consumption). Should instead compare prices.", comment: "", reporter: "Ruth Chucad", status: "ignored", categories: ["pdf", "results"] },
+  { id: 44, title: "PDF missing annual savings percentage and value", desc: "PDF export of simulation result is missing the annual savings percentage and the monetized annual savings amount.", comment: "", reporter: "David García", status: "closed", categories: ["pdf"] },
+
+  // ── PDF / SHARING ────────────────────────────────────────────────────────────
+  { id: 17, title: "PDF generation fails or doesn't download", desc: "PDF doesn't appear or fails on download.", comment: "", reporter: "Jorge López", status: "closed", categories: ["pdf"] },
+  { id: 28, title: "PDF download location unclear", desc: "It's not clear where to download the simulation PDF. The 'Share' button is confusing.", comment: "", reporter: "Francisco Zarzuela", status: "closed", categories: ["pdf", "ux"] },
+  { id: 39, title: "Simulations list: last column unclear + no PDF download", desc: "The last column in the Simulations list is unclear. There should also be a direct PDF download option in that view.", comment: "", reporter: "Ana", status: "closed", categories: ["pdf", "ux"] },
+  { id: 40, title: "Cannot re-enter simulation after selecting a product", desc: "After completing a simulation and selecting a product, it's not possible to re-open the same simulation. The flow is unclear.", comment: "Not how the system works, as soon as the simulation is shared, cant change it anymore", reporter: "Ana", status: "ignored", categories: ["ux"] },
+  { id: 41, title: "PDF missing price disclaimer", desc: "PDF should include a disclaimer: 'These prices are not guaranteed'.", comment: "", reporter: "Ana", status: "closed", categories: ["pdf", "suggestion"] },
+
+  // ── UX / STRUCTURE ───────────────────────────────────────────────────────────
+  { id: 22, title: "Invoice data fields split across sections", desc: "Section 3 'Invoice Data' should consolidate all related fields (contracted power, consumption, equipment rental, total) into one section.", comment: "All fields (tariff, load profile, billing period, contracted power, energy consumption, invoice totals, taxes) are now consolidated inside a single collapsible 'Invoice Breakdown' section.", reporter: "Francisco Zarzuela", status: "closed", categories: ["ux", "order"] },
+  { id: 23, title: "Load Profile appears twice", desc: "Load Profile appears duplicated in the form. Remove it from the Invoice Data section; keep only one instance and explain what selecting it implies.", comment: "Load Profile is now shown only once, inside the Invoice Data sub-section of the Invoice Breakdown block.", reporter: "Francisco Zarzuela", status: "closed", categories: ["ux", "order"] },
+  { id: 24, title: "Personalized options shown in wrong section", desc: "The 3 'Personalized' options should appear in section 4 next to the results table, not before it — users shouldn't need to go back to configure them.", comment: "Personalized options (Index margin, OMIE+B margin, power margin) are displayed in the Results tab inline with their respective result cards.", reporter: "Francisco Zarzuela", status: "closed", categories: ["ux", "order"] },
+  { id: 25, title: "Add 'Custom Fixed' price option", desc: "Add a 'Custom Fixed' option where users can directly enter custom energy and power prices freely.", comment: "", reporter: "Francisco Zarzuela", status: "closed", categories: ["ux", "suggestion"] },
+  { id: 26, title: "Results section UX improvements", desc: "In section 4 (Results): editing consumption doesn't make sense there — power editing for optimization does. OMIE €/MWh meaning is unclear. Move personalized options here, linked to specific result rows.", comment: "OMIE €/MWh  was not suposed to be there.", reporter: "Francisco Zarzuela", status: "closed", categories: ["ux", "results"] },
+  { id: 36, title: "VAT / electricity tax should be a checklist", desc: "VAT and electricity tax options should be presented as a checklist with all options visible at once.", comment: "VAT and electricity tax are now displayed as dropdown selects populated from configurable option lists in System Settings. When only one option exists it falls back to a numeric input.", reporter: "Ana", status: "closed", categories: ["ux", "suggestion"] },
+  { id: 37, title: "Load Profile duplicated in form", desc: "Load Profile is shown twice in the form.", comment: "Duplicate removed — Load Profile now appears only once, inside the Invoice Data section.", reporter: "Ana", status: "closed", categories: ["ux"] },
+  { id: 38, title: "Add price input for 1PT product (TLV tariff)", desc: "A price entry field for the 1PT product for TLV tariff is missing.", comment: "Fixed in calculation engine: 1P_PLUS and 1P_PLUS_XL are 'Periodo Único' products — the P1 price is now used for all energy and power periods, so they work correctly with 6.1TD (TLV) access tariff using only a single price entry per tier.", reporter: "Ana", status: "closed", categories: ["ux"] },
+  { id: 42, title: "Add visual savings charts", desc: "Add visual charts showing savings — both annual and per billing cycle.", comment: "", reporter: "Ana", status: "closed", categories: ["suggestion"] },
+
+  // ── COMMISSIONS & USERS ──────────────────────────────────────────────────────
+  { id: 8, title: "Commission per operation in user management", desc: "User management should include commissions per operation, configurable per profile. Sub-agents should be assignable a % by the master agent (similar to Salesforce estimated commission).", comment: "Risk: users sharing the same profile may see each other's commission data — the agent's responsibility.", reporter: "José Campo", status: "ignored", categories: ["users", "suggestion"] },
+  { id: 12, title: "Commissions must appear in simulation results", desc: "Commissions for each simulated product/tariff must be shown. Sub-agents should have a configurable % assigned by the master agent.", comment: "Deferred to next phase.", reporter: "Jorge López", status: "ignored", categories: ["users", "results"] },
+  { id: 45, title: "Agencies should only see their own simulations", desc: "Agency users should only see simulations they created, not all simulations across all users.", comment: "Agencies users only see their own simulations, not those of other agencies. Agents see the simulations of the agencie they manage, and Commercial's only see their own.", reporter: "David García", status: "ignored", categories: ["users"] },
+
+  // ── PRODUCTS & NAMING ─────────────────────────────────────────────────────────
+  { id: 4, title: "Wrong translations in invoice concept labels", desc: "Translation errors in invoice concept labels: 'Potencia Contraída', 'Potencia Excedente', 'Alquiler Parquímetro', 'Historial de Descarga' — agents use these labels.", comment: "", reporter: "Ruth Chucad", status: "closed", categories: ["ux"] },
+  { id: 18, title: "Gas products incomplete and incorrectly named", desc: "'Gas Estable N2' and 'Gas Estable N3' products are missing. Products are labelled 'Gas Fijo' which is not a valid campaign product name.", comment: "", reporter: "Jorge López", status: "closed", categories: ["products"] },
+  { id: 48, title: "Campaign price updates need monitoring", desc: "Campaign prices need to be reviewed and kept up to date carefully.", comment: "", reporter: "Sergio", status: "ignore", categories: ["products"] },
+
+  // ── INTEGRATIONS ─────────────────────────────────────────────────────────────
+  { id: 31, title: "Auto-fill annual consumption from CUPS via Nemon", desc: "When CUPS is entered, annual consumption should be automatically retrieved via Nemon integration.", comment: "", reporter: "Ruth Chucad", status: "ignored", categories: ["ocr", "suggestion"] },
+
+  // ── TEMPLATES ────────────────────────────────────────────────────────────────
+  { id: 29, title: "Allow custom PDF templates per agency", desc: "Allow agencies to customize PDF templates, including uploading their own agency logo to appear in the output.", comment: "", reporter: "Francisco Zarzuela", status: "ignored", categories: ["pdf", "suggestion"] },
+  { id: 49, title: "Price history data needs review", desc: "Price history data should be reviewed for accuracy.", comment: "", reporter: "Sergio", status: "closed", categories: ["results"] },
+
+  // ── GENERAL ──────────────────────────────────────────────────────────────────
+  { id: 7, title: "Simulations list resembles an email inbox", desc: "The simulations list presentation is good but resembles an email management screen too closely.", comment: "", reporter: "José Campo", status: "ignored", categories: ["ux"] },
+  { id: 9, title: "Client list, what clients are included?", desc: "Good access to the client list. Clarify which clients appear here. Possibility to import leads provided to agents (could serve as an incentive).", comment: "Each agency sees only its own clients. If its an admin, can see other agencies's clients. Agent sees all clients that belong to their agency. Commercials see only their own clients, created by them.", reporter: "José Campo", status: "ignored", categories: ["users", "suggestion"] },
+  { id: 30, title: "Final simulation design doesn't match Excel layout", desc: "The final simulation screen doesn't resemble the Excel design — it appears in two columns that are nearly mirrored.", comment: "", reporter: "Francisco Zarzuela", status: "ignored", categories: ["ux"] },
+];
+
+const categoryLabels = {
+  access: "Access", ocr: "OCR", results: "Results", calculation: "Calculation",
+  pdf: "PDF", ux: "UX", order: "Order", suggestion: "Suggestion",
+  users: "Users", products: "Products",
+};
+
+const sections = [
+  { key: "access",      label: "🔐 Access & Auth",           cats: ["access"] },
+  { key: "ocr",         label: "📄 OCR / Invoice Reading",   cats: ["ocr"] },
+  { key: "calculation", label: "🧮 Calculations",            cats: ["calculation"] },
+  { key: "results",     label: "📊 Results & Display",       cats: ["results"] },
+  { key: "pdf",         label: "🖨️ PDF / Sharing",           cats: ["pdf"] },
+  { key: "ux",          label: "🧩 UX / Forms",              cats: ["ux", "order"] },
+  { key: "users",       label: "🏢 Users & Commissions",     cats: ["users"] },
+  { key: "products",    label: "🏷️ Products & Naming",       cats: ["products"] },
+  { key: "suggestion",  label: "💡 Suggestions",             cats: ["suggestion"] },
+];
+
+function renderCard(issue) {
+  const statusClass = issue.status === "open" ? "open" : issue.status === "closed" ? "closed" : issue.status === "ignored" ? "ignored" : "no-status";
+  const statusTag = issue.status === "open"
+    ? `<span class="tag tag-open">Open</span>`
+    : issue.status === "closed"
+    ? `<span class="tag tag-closed">Closed</span>`
+    : issue.status === "ignored"
+    ? `<span class="tag tag-ignored">Ignored</span>`
+    : `<span class="tag tag-no-status">No status</span>`;
+
+  const cats = issue.categories
+    .filter(c => categoryLabels[c])
+    .map(c => `<span class="tag tag-category">${categoryLabels[c]}</span>`)
+    .join("");
+
+  const comment = issue.comment
+    ? `<div class="card-comment">${issue.comment}</div>`
+    : "";
+
+  const reporter = issue.reporter
+    ? `<span class="reporter">— ${issue.reporter}</span>`
+    : "";
+
+  return `
+    <div class="card ${statusClass}" data-cats="${issue.categories.join(" ")}" data-status="${issue.status}" data-text="${(issue.title + " " + issue.desc + " " + issue.comment).toLowerCase()}">
+      <div class="card-num">#${issue.id}</div>
+      <div class="card-body">
+        <div class="card-title">${issue.title}</div>
+        <div class="card-desc">${issue.desc}</div>
+        ${comment}
+        <div class="card-meta">${statusTag}${cats}${reporter}</div>
+      </div>
+    </div>`;
+}
+
+function render(filterKey = "all", searchVal = "") {
+  const main = document.getElementById("main");
+  const empty = document.getElementById("empty");
+  main.innerHTML = "";
+  main.appendChild(empty);
+
+  // For each section, find matching issues
+  let totalVisible = 0;
+
+  sections.forEach(sec => {
+    const matching = issues.filter(issue => {
+      // Section match
+      const inSection = issue.categories.some(c => sec.cats.includes(c));
+      if (!inSection) return false;
+      // Filter
+      if (filterKey !== "all") {
+        if (filterKey === "open" && issue.status !== "open") return false;
+        if (filterKey === "closed" && issue.status !== "closed") return false;
+        if (filterKey === "ignored" && issue.status !== "ignored") return false;
+        if (!["all","open","closed","ignored"].includes(filterKey) && !issue.categories.includes(filterKey)) return false;
+      }
+      // Search
+      if (searchVal && !issue.title.toLowerCase().includes(searchVal) && !issue.desc.toLowerCase().includes(searchVal) && !issue.comment.toLowerCase().includes(searchVal)) return false;
+      return true;
+    });
+
+    if (matching.length === 0) return;
+    totalVisible += matching.length;
+
+    const section = document.createElement("div");
+    section.className = "section";
+    section.innerHTML = `
+      <div class="section-title">${sec.label} <span class="count">${matching.length}</span></div>
+      <div class="cards">${matching.map(renderCard).join("")}</div>
+    `;
+    main.appendChild(section);
+  });
+
+  empty.style.display = totalVisible === 0 ? "block" : "none";
+}
+
+function updateStats() {
+  document.getElementById("count-open").textContent = issues.filter(i => i.status === "open").length;
+  document.getElementById("count-closed").textContent = issues.filter(i => i.status === "closed").length;
+  document.getElementById("count-ignored").textContent = issues.filter(i => i.status === "ignored").length;
+  document.getElementById("count-total").textContent = issues.length;
+}
+
+let activeFilter = "all";
+let searchVal = "";
+
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeFilter = btn.dataset.filter;
+    render(activeFilter, searchVal);
+  });
+});
+
+document.getElementById("search").addEventListener("input", e => {
+  searchVal = e.target.value.toLowerCase();
+  render(activeFilter, searchVal);
+});
+
+updateStats();
+render();
+</script>
+</body>
+</html>

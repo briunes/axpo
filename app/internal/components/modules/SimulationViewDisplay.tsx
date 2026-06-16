@@ -7,6 +7,8 @@ import { SimulationResultsCards } from "./SimulationResultsCards";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { Collapse, IconButton } from "@mui/material";
 
 function Section({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
     return (
@@ -116,15 +118,15 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
             <div style={{
                 padding: 60,
                 textAlign: "center",
-                background: "#f9fafb",
+                background: "var(--scheme-neutral-1050)",
                 borderRadius: 12,
-                border: "2px dashed #d1d5db",
+                border: "2px dashed var(--scheme-neutral-800)",
             }}>
                 <div style={{ fontSize: 48, marginBottom: 16 }}>📋</div>
-                <div style={{ fontSize: 18, fontWeight: 600, color: "#111827", marginBottom: 8 }}>
+                <div style={{ fontSize: 18, fontWeight: 600, color: "var(--scheme-neutral-200)", marginBottom: 8 }}>
                     {t("simulationView", "noDataTitle") || "No Simulation Data"}
                 </div>
-                <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 20 }}>
+                <div style={{ fontSize: 14, color: "var(--scheme-neutral-500)", marginBottom: 20 }}>
                     {t("simulationView", "noDataMessage") || "This simulation hasn't been configured yet. Use the 'Open & Edit' button above to add inputs and calculate offers."}
                 </div>
             </div>
@@ -220,7 +222,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                 <div style={{
                     marginBottom: 32,
                     padding: 24,
-                    background: "linear-gradient(135deg, #e0e7ff 0%, #f5f3ff 100%)",
+                    background: "linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.08) 100%)",
                     border: "3px solid #6366f1",
                     borderRadius: 16,
                     boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.2)",
@@ -236,7 +238,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                             margin: 0,
                             fontSize: 20,
                             fontWeight: 700,
-                            color: "#111827",
+                            color: "var(--scheme-neutral-100)",
                         }}>
                             {t("simulationView", "selectedOfferTitle")}
                         </h2>
@@ -244,14 +246,14 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
 
                     <div style={{
                         padding: 20,
-                        background: "#fff",
+                        background: "var(--scheme-neutral-1050)",
                         borderRadius: 12,
                         marginBottom: 16,
                     }}>
                         <div style={{
                             fontSize: 18,
                             fontWeight: 700,
-                            color: "#111827",
+                            color: "var(--scheme-neutral-100)",
                             marginBottom: 12,
                         }}>
                             {selectedProduct.productLabel}
@@ -265,8 +267,8 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                             <span style={{
                                 fontSize: 11,
                                 fontWeight: 600,
-                                color: "#6b7280",
-                                background: "#f3f4f6",
+                                color: "var(--scheme-neutral-400)",
+                                background: "var(--scheme-neutral-900)",
                                 padding: "4px 10px",
                                 borderRadius: 12,
                                 textTransform: "uppercase",
@@ -279,8 +281,8 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                             <span style={{
                                 fontSize: 11,
                                 fontWeight: 600,
-                                color: "#6b7280",
-                                background: "#f3f4f6",
+                                color: "var(--scheme-neutral-400)",
+                                background: "var(--scheme-neutral-900)",
                                 padding: "4px 10px",
                                 borderRadius: 12,
                                 textTransform: "uppercase",
@@ -294,19 +296,19 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                             gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
                             gap: 16,
                             padding: 16,
-                            background: "#f9fafb",
+                            background: "var(--scheme-neutral-1000)",
                             borderRadius: 8,
                         }}>
                             <div>
-                                <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4, textTransform: "uppercase" }}>
+                                <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginBottom: 4, textTransform: "uppercase" }}>
                                     {t("simulationView", "labelTotalInvoice")}
                                 </div>
-                                <div style={{ fontSize: 24, fontWeight: 700, color: "#111827" }}>
+                                <div style={{ fontSize: 24, fontWeight: 700, color: "var(--scheme-neutral-100)" }}>
                                     {selectedProduct.totalFactura.toFixed(2)} €
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4, textTransform: "uppercase" }}>
+                                <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginBottom: 4, textTransform: "uppercase" }}>
                                     {t("simulationView", "labelMonthlySavings")}
                                 </div>
                                 <div style={{
@@ -318,7 +320,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4, textTransform: "uppercase" }}>
+                                <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginBottom: 4, textTransform: "uppercase" }}>
                                     {t("simulationView", "labelPctDifference")}
                                 </div>
                                 <div style={{
@@ -330,7 +332,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4, textTransform: "uppercase" }}>
+                                <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginBottom: 4, textTransform: "uppercase" }}>
                                     {t("simulationView", "labelAnnualSavings")}
                                 </div>
                                 <div style={{
@@ -346,7 +348,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
 
                     <div style={{
                         fontSize: 12,
-                        color: "#6b7280",
+                        color: "var(--scheme-neutral-500)",
                         display: "flex",
                         alignItems: "center",
                         gap: 6,
@@ -371,48 +373,44 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                     <div
                         onClick={() => setShowAllOffers(!showAllOffers)}
                         style={{
-                            padding: "16px 20px",
-                            background: "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)",
-                            border: "2px solid #d1d5db",
-                            borderRadius: 12,
+                            padding: "14px 20px",
+                            background: "var(--scheme-neutral-1000)",
+                            border: "2px solid var(--scheme-neutral-800)",
+                            borderRadius: showAllOffers ? "12px 12px 0 0" : 12,
                             cursor: "pointer",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "space-between",
-                            transition: "all 0.2s ease",
                             userSelect: "none",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)";
+                            transition: "border-radius 0.15s ease",
                         }}
                     >
                         <h2 style={{
                             margin: 0,
                             fontSize: 18,
                             fontWeight: 700,
-                            color: "#111827",
+                            color: "var(--scheme-neutral-100)",
                         }}>
                             {t("simulationView", "allOffersTitle")}
                         </h2>
-                        <span style={{
-                            fontSize: 20,
-                            transition: "transform 0.2s ease",
-                            transform: showAllOffers ? "rotate(180deg)" : "rotate(0deg)",
-                            display: "inline-block",
-                        }}>
-                            ▼
-                        </span>
+                        <IconButton
+                            size="small"
+                            onClick={(e) => { e.stopPropagation(); setShowAllOffers(!showAllOffers); }}
+                            sx={{
+                                color: "var(--scheme-neutral-400)",
+                                transform: showAllOffers ? "rotate(180deg)" : "rotate(0deg)",
+                                transition: "transform 0.2s ease",
+                            }}
+                        >
+                            <ExpandMoreIcon />
+                        </IconButton>
                     </div>
 
-                    {showAllOffers && (
+                    <Collapse in={showAllOffers} unmountOnExit>
                         <div style={{
-                            marginTop: -2,
                             padding: 20,
-                            background: "#fff",
-                            border: "2px solid #d1d5db",
+                            background: "var(--scheme-neutral-1050)",
+                            border: "2px solid var(--scheme-neutral-800)",
                             borderTop: "none",
                             borderRadius: "0 0 12px 12px",
                         }}>
@@ -442,7 +440,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                                 readOnly
                             />
                         </div>
-                    )}
+                    </Collapse>
                 </div>
             )}
         </div>

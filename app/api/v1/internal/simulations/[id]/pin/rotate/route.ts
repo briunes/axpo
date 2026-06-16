@@ -1,13 +1,16 @@
 import { NextRequest } from "next/server";
-import { UserRole } from "@/domain/types";
 import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 import { AuditService } from "@/application/services/auditService";
+import {
+  decryptSensitiveValue,
+  encryptSensitiveValue,
+} from "@/application/lib/sensitiveData";
 
 /**
  * @swagger
@@ -24,7 +27,7 @@ export const POST = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+    await assertPermission(auth, "section.simulations");
 
     const id = context?.params?.id;
     if (!id) {
@@ -43,7 +46,11 @@ export const POST = withErrorHandler(
       where: { id },
       data: {
         pinHashSnapshot: owner.pinHash,
-        pinSnapshot: owner.pinCurrent ?? null,
+        pinSnapshot: owner.pinCurrent
+          ? encryptSensitiveValue(
+              decryptSensitiveValue(owner.pinCurrent) ?? "",
+            )
+          : null,
       },
     });
 

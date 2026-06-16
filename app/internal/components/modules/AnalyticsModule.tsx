@@ -4,11 +4,16 @@ import { useEffect, useState, useLayoutEffect } from "react";
 import Skeleton from "@mui/material/Skeleton";
 import type { SessionState } from "../../lib/authSession";
 import type { AnalyticsActions } from "../hooks/useAnalytics";
-import { isAdmin } from "../../lib/internalApi";
+import { isAdmin, fetchAnalyticsForAgency, listAgencies } from "../../lib/internalApi";
+import type { AnalyticsOverview } from "../../lib/internalApi";
 import { EmptyState, LoadingState } from "../shared";
+import { FormSelect } from "../ui/FormSelect";
+import type { FormSelectOption } from "../ui/FormSelect";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { AdminAnalyticsView } from "./AdminAnalyticsView";
 import { AgentAnalyticsView } from "./AgentAnalyticsView";
+import { RefreshIcon } from "../ui/icons";
+import { Button } from "@mui/material";
 
 // ─── Skeleton components ──────────────────────────────────────────────────────
 
@@ -263,24 +268,18 @@ function DaysFilter({
   return (
     <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
       {[7, 30, 90].map((d) => (
-        <button
+        <Button
           key={d}
-          type="button"
           onClick={() => onChange(d)}
           disabled={loading}
+          size="small"
+          variant={selected === d ? "contained" : "outlined"}
           style={{
-            padding: "5px 12px",
-            borderRadius: 6,
-            border: `1px solid ${selected === d ? "var(--scheme-brand-600, #4ade80)" : "var(--scheme-neutral-800)"}`,
-            background: selected === d ? "rgba(74,222,128,0.1)" : "transparent",
-            color: selected === d ? "var(--scheme-neutral-100)" : "var(--scheme-neutral-500)",
-            fontSize: 12,
-            fontWeight: selected === d ? 600 : 400,
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
           {d}d
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -297,41 +296,109 @@ interface AnalyticsModuleProps {
 
 export function AnalyticsModule({ session, actions, onNotify, onActionButtons }: AnalyticsModuleProps) {
   const { t } = useI18n();
-  const { analytics, loading, errorText, refresh } = actions;
+  const { analytics, loading, errorText, refresh, energyType, setEnergyType } = actions;
   const [selectedDays, setSelectedDays] = useState(30);
   const isAdminView = isAdmin(session.user.role);
 
+  // ── Per-agency drill-down (admin only) ────────────────────────────────────
+  const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
+  const [agencyAnalytics, setAgencyAnalytics] = useState<AnalyticsOverview | null>(null);
+  const [agencyLoading, setAgencyLoading] = useState(false);
+  const [allAgencies, setAllAgencies] = useState<FormSelectOption[]>([]);
+
   useEffect(() => { refresh(30); }, []);
+
+  // Fetch all agencies once for the selector
+  useEffect(() => {
+    if (!isAdminView) return;
+    listAgencies(session.token, { pageSize: 500 })
+      .then((res) =>
+        setAllAgencies(res.items.map((a) => ({ value: a.id, label: a.name })))
+      )
+      .catch(() => { });
+  }, [isAdminView]);
+
+  useEffect(() => {
+    if (!selectedAgencyId) { setAgencyAnalytics(null); return; }
+    setAgencyLoading(true);
+    fetchAnalyticsForAgency(session.token, selectedAgencyId, selectedDays, energyType || undefined)
+      .then(setAgencyAnalytics)
+      .catch(() => setAgencyAnalytics(null))
+      .finally(() => setAgencyLoading(false));
+  }, [selectedAgencyId, selectedDays, energyType]);
 
   const handleDaysChange = (d: number) => {
     setSelectedDays(d);
     refresh(d);
   };
 
+  const energyOptions: Array<{ value: string; label: string; icon: string }> = [
+    { value: "", label: t("analyticsModule", "energyTypeAll") || "All", icon: "🔋" },
+    { value: "ELECTRICITY", label: t("analyticsModule", "energyTypeElectricity") || "Electricity", icon: "⚡" },
+    { value: "GAS", label: t("analyticsModule", "energyTypeGas") || "Gas", icon: "🔥" },
+  ];
+
   // Render action buttons for topbar
   useLayoutEffect(() => {
     onActionButtons?.(
       <>
+        {/* Energy type toggle */}
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          {energyOptions.map((opt) => (
+            <Button
+              key={opt.value}
+              size="small"
+              variant={energyType === opt.value ? "contained" : "outlined"}
+              onClick={() => setEnergyType(opt.value)}
+              disabled={loading}
+              style={{ cursor: loading ? "not-allowed" : "pointer", minWidth: 0 }}
+            >
+              {opt.icon} {opt.label}
+            </Button>
+          ))}
+        </div>
+        {isAdminView && allAgencies.length > 0 && (
+          <div style={{ minWidth: 200 }}>
+            <FormSelect
+              label=""
+              options={[{ value: "", label: t("analyticsModule", "allAgencies") || "All agencies" }, ...allAgencies]}
+              value={selectedAgencyId ?? ""}
+              onChange={(v) => setSelectedAgencyId(v === "" || v === null ? null : String(v))}
+              fullWidth
+              size="small"
+              textFieldProps={{ size: "small" }}
+            />
+          </div>
+        )}
         <DaysFilter selected={selectedDays} onChange={handleDaysChange} loading={loading} />
-        <button
-          type="button"
-          className="sp-btn-secondary"
+        <Button
+          variant="contained"
+          size="small"
           onClick={() => refresh(selectedDays)}
           disabled={loading}
-          style={{ fontSize: 12, padding: "6px 14px" }}
         >
-          {loading ? t("common", "loading") : `↺ ${t("actions", "refresh")}`}
-        </button>
+          {loading ? t("common", "loading") : <><RefreshIcon fontSize="small" /> {t("actions", "refresh")}</>}
+        </Button>
       </>
     );
     return () => onActionButtons?.(null);
-  }, [onActionButtons, selectedDays, handleDaysChange, loading, t, refresh]);
+  }, [onActionButtons, selectedDays, handleDaysChange, loading, t, refresh, selectedAgencyId, isAdminView, allAgencies, energyType, setEnergyType]);
+
+  // Determine what to render
+  const showAgencyDrillDown = isAdminView && selectedAgencyId !== null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {errorText && <div className="sp-panel-error">{errorText}</div>}
 
-      {loading ? (
+      {showAgencyDrillDown ? (
+        agencyLoading ? (
+          <AgentAnalyticsViewSkeleton />
+        ) : !agencyAnalytics ? (
+          <EmptyState message={t("analyticsModule", "noData")} />
+        ) :
+          <AgentAnalyticsView analytics={agencyAnalytics} selectedDays={selectedDays} />
+      ) : loading ? (
         isAdminView ? <AdminAnalyticsViewSkeleton /> : <AgentAnalyticsViewSkeleton />
       ) : !analytics ? (
         <EmptyState message={t("analyticsModule", "noData")} />

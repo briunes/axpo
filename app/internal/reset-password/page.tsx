@@ -56,7 +56,9 @@ function ResetPasswordContent() {
         setErrorText(null);
         try {
             const result = await resetPassword(token, password);
-            saveSession({ token: result.token, user: result.user });
+            if (result.token && result.user) {
+                saveSession({ token: result.token, user: result.user });
+            }
             setStatus("success");
             setTimeout(() => router.replace("/internal/simulations"), 1200);
         } catch (err) {

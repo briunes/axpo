@@ -1,8 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAuth } from "@/application/middleware/auth";
-import { UserRole } from "@/domain/types";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
+import { prisma } from "@/infrastructure/database/prisma";
 import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
+import {
+  buildSimulationPdfFilenameFromSimulation,
+  resolveSimulationProductName,
+} from "@/infrastructure/pdf/pdfFilename";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { SimulationService } from "@/application/services/simulationService";
+import { ValidationError } from "@/domain/errors/errors";
+
+const generatePdfSchema = z.object({
+  htmlContent: z.string().min(1, "htmlContent is required"),
+  watermark: z.string().optional(),
+});
+
+const isBlockedPdfResource = (rawUrl: string): boolean => {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return true;
+  }
+
+  if (["data:", "blob:", "about:"].includes(url.protocol)) return false;
+  if (!["http:", "https:"].includes(url.protocol)) return true;
+
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (
+    host === "localhost" ||
+    host === "::1" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host === "metadata.google.internal"
+  ) {
+    return true;
+  }
+
+  const parts = host.split(".").map(Number);
+  if (parts.length === 4 && parts.every((part) => Number.isInteger(part))) {
+    const [a, b] = parts;
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      a >= 224
+    );
+  }
+
+  return false;
+};
 
 /**
  * @swagger
@@ -46,25 +98,51 @@ import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
  *       500:
  *         description: Server error
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
+export const POST = withErrorHandler(
+  async (
+    request: NextRequest,
+    context?: { params?: Record<string, string> },
+  ) => {
     // Verify authentication
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+    await assertPermission(auth, "section.simulations");
 
-    const { id } = await params;
-    const body = await request.json();
-    const { htmlContent, watermark } = body;
-
-    if (!htmlContent) {
-      return NextResponse.json(
-        { error: "htmlContent is required" },
-        { status: 400 },
-      );
+    const id = context?.params?.id ?? "";
+    if (!id) {
+      throw new ValidationError("Simulation id parameter is required");
     }
+    await SimulationService.assertSimulationAccess(auth, id);
+
+    const rawBody = await request.json();
+    const { htmlContent, watermark } = generatePdfSchema.parse(rawBody);
+
+    const simulation = await prisma.simulation.findFirst({
+      where: { id, isDeleted: false },
+      select: {
+        id: true,
+        referenceNumber: true,
+        client: { select: { name: true } },
+        versions: {
+          select: { payloadJson: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+    });
+    const latestPayload = simulation?.versions?.[0]?.payloadJson as any;
+    const filename = simulation
+      ? buildSimulationPdfFilenameFromSimulation(
+          {
+            id: simulation.id,
+            referenceNumber: simulation.referenceNumber,
+            client: simulation.client,
+            payloadJson: latestPayload,
+          },
+          {
+            productName: resolveSimulationProductName(latestPayload),
+          },
+        )
+      : `simulation-${id}.pdf`;
 
     // Inject watermark style if requested
     const watermarkStyle = watermark
@@ -98,8 +176,11 @@ export async function POST(
         @media print {
           *  { box-sizing: border-box; }
           body { margin: 0; padding: 0; }
-          /* Only prevent breaks inside small leaf elements — not large containers */
+          /* Prevent page breaks inside key layout containers and leaf elements */
           table, figure, img,
+          .asim-comparison,
+          .asim-plan-card, .asim-plan-body,
+          .asim-data-section,
           .asim-period-grid, .asim-period-item,
           .asim-cost-breakdown, .asim-cost-item,
           .asim-total-section, .asim-savings-badge,
@@ -124,42 +205,44 @@ export async function POST(
 
     // Use Puppeteer to generate PDF
     const browser = await launchBrowser();
+    let pdfBuffer: Uint8Array;
 
-    const page = await browser.newPage();
-    await page.setContent(enrichedHtml, {
-      waitUntil: "networkidle0",
-    });
+    try {
+      const page = await browser.newPage();
+      await page.setRequestInterception(true);
+      page.on("request", (resourceRequest) => {
+        if (isBlockedPdfResource(resourceRequest.url())) {
+          resourceRequest.abort("blockedbyclient");
+        } else {
+          resourceRequest.continue();
+        }
+      });
+      await page.setContent(enrichedHtml, {
+        waitUntil: "networkidle0",
+      });
 
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      margin: {
-        top: "15mm",
-        right: "12mm",
-        bottom: "15mm",
-        left: "12mm",
-      },
-      printBackground: true,
-      preferCSSPageSize: false,
-    });
-
-    await browser.close();
+      pdfBuffer = await page.pdf({
+        format: "A4",
+        margin: {
+          top: "15mm",
+          right: "12mm",
+          bottom: "15mm",
+          left: "12mm",
+        },
+        printBackground: true,
+        preferCSSPageSize: false,
+      });
+    } finally {
+      await browser.close();
+    }
 
     // Return PDF as response
     return new NextResponse(Buffer.from(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="simulation-${id}.pdf"`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
-  } catch (error) {
-    console.error("PDF generation error:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to generate PDF",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

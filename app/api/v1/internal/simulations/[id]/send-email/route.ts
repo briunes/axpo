@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAuth } from "@/application/middleware/auth";
-import { UserRole } from "@/domain/types";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
+import { prisma } from "@/infrastructure/database/prisma";
 import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
 import { EmailService } from "@/application/services/emailService";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
+import {
+  buildSimulationPdfFilenameFromSimulation,
+  resolveSimulationProductName,
+} from "@/infrastructure/pdf/pdfFilename";
+import { SimulationService } from "@/application/services/simulationService";
+
+const sendEmailSchema = z.object({
+  to: z.string().email("Invalid recipient email address"),
+  subject: z.string().min(1, "subject is required"),
+  htmlContent: z.string().min(1, "htmlContent is required"),
+  pdfHtmlContent: z.string().optional(),
+});
 
 /**
  * @swagger
@@ -53,12 +66,13 @@ export const POST = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+    await assertPermission(auth, "simulations.share");
 
     const params = context?.params || {};
     const id = params?.id || "";
+    await SimulationService.assertSimulationAccess(auth, id);
 
-    let body;
+    let rawBody: unknown;
     try {
       const text = await request.text();
       if (!text || text.trim() === "") {
@@ -67,22 +81,30 @@ export const POST = withErrorHandler(
           { status: 400 },
         );
       }
-      body = JSON.parse(text);
-    } catch (error) {
+      rawBody = JSON.parse(text);
+    } catch {
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
         { status: 400 },
       );
     }
 
-    const { to, subject, htmlContent, pdfHtmlContent } = body;
+    const { to, subject, htmlContent, pdfHtmlContent } =
+      sendEmailSchema.parse(rawBody);
 
-    if (!to || !subject || !htmlContent) {
-      return NextResponse.json(
-        { error: "to, subject, and htmlContent are required" },
-        { status: 400 },
-      );
-    }
+    const simulation = await prisma.simulation.findFirst({
+      where: { id, isDeleted: false },
+      select: {
+        id: true,
+        referenceNumber: true,
+        client: { select: { name: true } },
+        versions: {
+          select: { payloadJson: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+    });
 
     let attachments = undefined;
 
@@ -94,6 +116,9 @@ export const POST = withErrorHandler(
             *  { box-sizing: border-box; }
             body { margin: 0; padding: 0; }
             table, figure, img,
+            .asim-comparison,
+            .asim-plan-card, .asim-plan-body,
+            .asim-data-section,
             .asim-period-grid, .asim-period-item,
             .asim-cost-breakdown, .asim-cost-item,
             .asim-total-section, .asim-savings-badge,
@@ -136,9 +161,24 @@ export const POST = withErrorHandler(
 
         await browser.close();
 
+        const latestPayload = simulation?.versions?.[0]?.payloadJson as any;
+        const filename = simulation
+          ? buildSimulationPdfFilenameFromSimulation(
+              {
+                id: simulation.id,
+                referenceNumber: simulation.referenceNumber,
+                client: simulation.client,
+                payloadJson: latestPayload,
+              },
+              {
+                productName: resolveSimulationProductName(latestPayload),
+              },
+            )
+          : `simulation-${id}.pdf`;
+
         attachments = [
           {
-            filename: `simulation-${id}.pdf`,
+            filename,
             content: Buffer.from(pdfBuffer),
             contentType: "application/pdf",
           },
@@ -152,24 +192,16 @@ export const POST = withErrorHandler(
       }
     }
 
-    try {
-      await EmailService.sendEmail({
-        to,
-        subject,
-        html: htmlContent,
-        attachments,
-        triggeredBy: "simulation-share",
-        triggeredByUserId: auth.userId,
-        relatedSimulationId: id,
-      });
+    await EmailService.sendEmail({
+      to,
+      subject,
+      html: htmlContent,
+      attachments,
+      triggeredBy: "simulation-share",
+      triggeredByUserId: auth.userId,
+      relatedSimulationId: id || undefined,
+    });
 
-      return NextResponse.json({ success: true });
-    } catch (err) {
-      console.error("Failed to send simulation email:", err);
-      return NextResponse.json(
-        { error: err instanceof Error ? err.message : "Failed to send email" },
-        { status: 500 },
-      );
-    }
+    return NextResponse.json({ success: true });
   },
 );

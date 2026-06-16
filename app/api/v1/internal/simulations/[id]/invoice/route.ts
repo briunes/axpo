@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../../../../src/infrastructure/database/prisma";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { requireAuth } from "@/application/middleware/auth";
+import { assertPermission } from "@/application/middleware/rbac";
+import { SimulationService } from "@/application/services/simulationService";
+import { ValidationError } from "@/domain/errors/errors";
 
 export const dynamic = "force-dynamic";
 
@@ -7,14 +12,21 @@ export const dynamic = "force-dynamic";
  * GET /api/v1/internal/simulations/[id]/invoice
  * Downloads the invoice file associated with a simulation
  */
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const { id: simulationId } = await params;
+export const GET = withErrorHandler(
+  async (
+    req: NextRequest,
+    context?: { params?: Record<string, string> },
+  ) => {
+    const auth = await requireAuth(req);
+    await assertPermission(auth, "section.simulations");
 
-    // Get simulation with invoice file data
+    const simulationId = context?.params?.id;
+    if (!simulationId) {
+      throw new ValidationError("Simulation id parameter is required");
+    }
+
+    await SimulationService.assertSimulationAccess(auth, simulationId);
+
     const simulation = await prisma.simulation.findUnique({
       where: { id: simulationId },
       select: {
@@ -38,11 +50,14 @@ export async function GET(
       const fileBuffer = Buffer.from(simulation.invoiceFileData);
       const contentType =
         simulation.invoiceFileMimeType || "application/octet-stream";
+      const fileName = simulation.invoiceFileName.replace(/[\r\n"]/g, "_");
 
       return new NextResponse(fileBuffer, {
         headers: {
           "Content-Type": contentType,
-          "Content-Disposition": `inline; filename="${simulation.invoiceFileName}"`,
+          "Content-Disposition": `inline; filename="${fileName}"`,
+          "Cache-Control": "private, no-store",
+          "X-Content-Type-Options": "nosniff",
         },
       });
     }
@@ -66,17 +81,5 @@ export async function GET(
       },
       { status: 404 },
     );
-  } catch (error) {
-    console.error("Invoice download error:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to download invoice file",
-      },
-      { status: 500 },
-    );
-  }
-}
+  },
+);

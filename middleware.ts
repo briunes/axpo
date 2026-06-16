@@ -24,7 +24,8 @@ function corsHeaders(origin: string | null): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, X-Axpo-App-Version, X-Axpo-Page-Path, X-Browser-Fingerprint",
     "Access-Control-Max-Age": "86400",
   };
 }
@@ -92,11 +93,93 @@ function checkBasicAuth(request: NextRequest): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Middleware
+// Maintenance Mode
 // ---------------------------------------------------------------------------
-export function middleware(request: NextRequest): NextResponse {
+// Bypass paths that must always be accessible during maintenance:
+//   - /maintenance (the page itself)
+//   - /api/maintenance (the status endpoint)
+//   - /api/ (so the admin can toggle maintenance off via the API)
+//   - /internal/configurations (so the admin can reach the toggle)
+//   - /_next/ static files & favicon
+// Static asset extensions served from /public that must remain reachable
+// during maintenance (logos, favicons, OG images, etc.).
+const STATIC_ASSET_EXTENSION =
+  /\.(svg|png|jpg|jpeg|gif|webp|avif|ico|bmp|tif|tiff|woff2?|ttf|otf|eot|mp4|webm|mp3|wav|ogg|pdf|xml|txt|json|css|js|map)(\?.*)?$/i;
+
+function isMaintenanceBypass(pathname: string): boolean {
+  return (
+    pathname === "/maintenance" ||
+    pathname.startsWith("/maintenance/") ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/internal/configurations") ||
+    pathname.startsWith("/_next/") ||
+    pathname === "/favicon.ico" ||
+    STATIC_ASSET_EXTENSION.test(pathname)
+  );
+}
+
+let maintenanceCache: {
+  mode: boolean;
+  until: string | null;
+  message: string | null;
+  ts: number;
+} | null = null;
+const MAINTENANCE_CACHE_TTL_MS = 2_000; // 2 seconds
+
+async function getMaintenanceStatus(
+  req: NextRequest,
+): Promise<{ mode: boolean; until: string | null; message: string | null }> {
+  const now = Date.now();
+  if (
+    maintenanceCache &&
+    now - maintenanceCache.ts < MAINTENANCE_CACHE_TTL_MS
+  ) {
+    return {
+      mode: maintenanceCache.mode,
+      until: maintenanceCache.until,
+      message: maintenanceCache.message,
+    };
+  }
+
+  try {
+    const url = new URL("/api/maintenance", req.nextUrl.origin);
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      maintenanceCache = {
+        mode: !!data.maintenanceMode,
+        until: data.maintenanceUntil ?? null,
+        message: data.maintenanceMessage ?? null,
+        ts: now,
+      };
+      return {
+        mode: maintenanceCache.mode,
+        until: maintenanceCache.until,
+        message: maintenanceCache.message,
+      };
+    }
+  } catch {
+    // If the check fails, don't block the site
+  }
+  return { mode: false, until: null, message: null };
+}
+
+export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const origin = request.headers.get("origin");
+
+  // Maintenance mode gate — check before everything else
+  if (!isMaintenanceBypass(pathname)) {
+    const { mode, until, message } = await getMaintenanceStatus(request);
+    if (mode) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/maintenance";
+      url.search = "";
+      if (until) url.searchParams.set("until", until);
+      if (message) url.searchParams.set("message", encodeURIComponent(message));
+      return NextResponse.redirect(url);
+    }
+  }
 
   // Handle CORS preflight for API routes
   if (request.method === "OPTIONS" && pathname.startsWith("/api/")) {
@@ -135,20 +218,7 @@ export function middleware(request: NextRequest): NextResponse {
 
 export const config = {
   matcher: [
-    // Core API routes
-    "/api/:path*",
-    // Swagger documentation (direct and rewritten paths)
-    "/api/v1/internal/docs",
-    "/api/v1/internal/docs/:path*",
-    "/api/v1/internal/openapi",
-    "/api/v1/internal/openapi/:path*",
-    "/internal/docs",
-    "/internal/docs/:path*",
-    "/internal/openapi",
-    "/internal/openapi/:path*",
-    "/docs",
-    "/docs/:path*",
-    "/openapi",
-    "/openapi/:path*",
+    // Match all routes except Next.js internals and static files
+    "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };

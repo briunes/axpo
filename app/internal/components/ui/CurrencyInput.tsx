@@ -68,6 +68,8 @@ export interface CurrencyInputProps
     currencySymbol?: string;
     /** Number of decimal places. Defaults to 2. */
     decimals?: number;
+    /** Optional explicit number format. Defaults to the logged user's preference. */
+    numberFormat?: string;
     label?: string;
     required?: boolean;
     helperText?: string;
@@ -83,6 +85,7 @@ export function CurrencyInput({
     onChange,
     currencySymbol = "€",
     decimals = 2,
+    numberFormat: numberFormatOverride,
     label,
     required,
     helperText,
@@ -92,7 +95,7 @@ export function CurrencyInput({
     ...rest
 }: CurrencyInputProps) {
     const { preferences } = useUserPreferences();
-    const { numberFormat } = preferences;
+    const numberFormat = numberFormatOverride ?? preferences.numberFormat;
 
     const decimalSep = getDecimalSep(numberFormat);
 
@@ -177,7 +180,7 @@ export function CurrencyInput({
                         marginBottom: "8px",
                         fontSize: "14px",
                         fontWeight: 500,
-                        color: "#333",
+                        color: "inherit",
                     }}
                 >
                     {label}
@@ -209,7 +212,7 @@ export function CurrencyInput({
                 inputMode="decimal"
                 slotProps={{
                     input: {
-                        startAdornment: (
+                        startAdornment: currencySymbol ? (
                             <InputAdornment position="start">
                                 <Box
                                     component="span"
@@ -222,32 +225,15 @@ export function CurrencyInput({
                                     {currencySymbol}
                                 </Box>
                             </InputAdornment>
-                        ),
+                        ) : undefined,
                     },
                 }}
                 sx={{
                     "& .MuiOutlinedInput-root": {
-                        backgroundColor: "#fafafa",
                         borderRadius: "6px",
                         fontSize: "14px",
-                        "& fieldset": {
-                            borderWidth: "1px",
-                            borderColor: error
-                                ? "#d32f2f"
-                                : "rgba(0, 0, 0, 0.23)",
-                        },
-                        "&:hover fieldset": {
-                            borderColor: error
-                                ? "#d32f2f"
-                                : "rgba(0, 0, 0, 0.4)",
-                        },
-                        "&.Mui-focused fieldset": {
-                            borderWidth: "1px",
-                            borderColor: error ? "#d32f2f" : "primary.main",
-                        },
                     },
                     "& .MuiFormHelperText-root": {
-                        color: error ? "#d32f2f" : "#666",
                         marginLeft: 0,
                         marginTop: "4px",
                         fontSize: "12px",

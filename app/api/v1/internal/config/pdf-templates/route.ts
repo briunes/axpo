@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { requireAuth } from "@/application/middleware/auth";
+import { assertPermission } from "@/application/middleware/rbac";
 
 /**
  * @swagger
@@ -27,11 +30,27 @@ import { prisma } from "@/infrastructure/database/prisma";
  *       200:
  *         description: List of PDF templates
  */
-export async function GET(req: NextRequest) {
+export const GET = withErrorHandler(async (req: NextRequest) => {
+  const auth = await requireAuth(req);
+
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type");
   const active = searchParams.get("active");
   const excludeType = searchParams.get("excludeType");
+
+  const permission =
+    active === "true" && type === "price-history"
+      ? "section.simulations"
+      : active === "true"
+        ? "simulations.share"
+        : "section.configurations";
+
+  // Active templates are runtime inputs. Price-history templates support the
+  // simulation workflow; other active templates support sharing.
+  await assertPermission(
+    auth,
+    permission,
+  );
 
   const where: any = {};
   if (type) where.type = type;
@@ -40,30 +59,17 @@ export async function GET(req: NextRequest) {
 
   const templates = await prisma.pdfTemplate.findMany({
     where,
+    include: { translations: true },
     orderBy: { createdAt: "desc" },
   });
 
   return NextResponse.json(templates);
-}
+});
 
-/**
- * @swagger
- * /api/v1/internal/config/pdf-templates:
- *   post:
- *     tags: [Configuration]
- *     summary: Create a new PDF template
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name, type, description, htmlContent]
- *     responses:
- *       201:
- *         description: Created PDF template
- */
-export async function POST(req: NextRequest) {
+export const POST = withErrorHandler(async (req: NextRequest) => {
+  const auth = await requireAuth(req);
+  await assertPermission(auth, "section.configurations");
+
   const body = await req.json();
 
   const template = await prisma.pdfTemplate.create({
@@ -75,8 +81,19 @@ export async function POST(req: NextRequest) {
       active: body.active ?? true,
       htmlContent: body.htmlContent,
       editableSections: body.editableSections ?? undefined,
+      translations: body.translations?.length
+        ? {
+            create: body.translations.map(
+              (tr: { languageCode: string; htmlContent: string }) => ({
+                languageCode: tr.languageCode,
+                htmlContent: tr.htmlContent,
+              }),
+            ),
+          }
+        : undefined,
     },
+    include: { translations: true },
   });
 
   return NextResponse.json(template, { status: 201 });
-}
+});

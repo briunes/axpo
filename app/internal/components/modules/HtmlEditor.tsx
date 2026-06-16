@@ -80,7 +80,12 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
             }
 
             // Insert the variable at the drop position
-            document.execCommand("insertText", false, variable);
+            // If the dropped content is an HTML snippet, insert as HTML; otherwise as plain text
+            if (variable.trimStart().startsWith("<")) {
+                document.execCommand("insertHTML", false, variable);
+            } else {
+                document.execCommand("insertText", false, variable);
+            }
             handleContentChange();
         } else {
             // Insert at cursor position in code mode
@@ -209,78 +214,83 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
             <style jsx>{`
                 .html-editor-wrapper {
                     margin: 20px 0;
-                    border: 1px solid #e5e7eb;
+                    border: 1px solid var(--scheme-neutral-900);
                     border-radius: 8px;
                     overflow: hidden;
-                    background: white;
+                    background: var(--scheme-neutral-1200);
                 }
                 .editor-help-text {
-                    background: #f0f9ff;
-                    border-bottom: 1px solid #bae6fd;
+                    background: rgba(56, 189, 248, 0.12);
+                    border-bottom: 1px solid rgba(56, 189, 248, 0.22);
                     padding: 12px 16px;
                     font-size: 13px;
-                    color: #075985;
+                    color: #7dd3fc;
                 }
                 .editor-toolbar {
                     display: flex;
                     flex-wrap: wrap;
                     gap: 4px;
                     padding: 10px;
-                    background: #f9fafb;
-                    border-bottom: 1px solid #e5e7eb;
+                    background: var(--scheme-neutral-1100);
+                    border-bottom: 1px solid var(--scheme-neutral-900);
                     align-items: center;
                 }
                 .editor-toolbar button {
                     padding: 6px 12px;
-                    border: 1px solid #d1d5db;
-                    background: white;
+                    border: 1px solid var(--scheme-neutral-900);
+                    background: var(--scheme-neutral-1200);
+                    color: var(--scheme-neutral-300);
                     border-radius: 4px;
                     cursor: pointer;
                     font-size: 13px;
                     transition: all 0.2s;
                 }
                 .editor-toolbar button:hover {
-                    background: #dc2626;
+                    background: var(--scheme-brand-600);
                     color: white;
-                    border-color: #dc2626;
+                    border-color: var(--scheme-brand-600);
                 }
                 .mode-toggle {
                     font-weight: 600;
-                    background: #dc2626 !important;
+                    background: var(--scheme-brand-600) !important;
                     color: white !important;
-                    border-color: #dc2626 !important;
+                    border-color: var(--scheme-brand-600) !important;
                 }
                 .mode-toggle:hover {
-                    background: #b91c1c !important;
-                    border-color: #b91c1c !important;
+                    background: var(--scheme-brand-700) !important;
+                    border-color: var(--scheme-brand-700) !important;
                 }
                 .toolbar-select {
                     padding: 6px 8px;
-                    border: 1px solid #d1d5db;
+                    border: 1px solid var(--scheme-neutral-900);
                     border-radius: 4px;
                     font-size: 13px;
-                    background: white;
+                    background: var(--scheme-neutral-1200);
+                    color: var(--scheme-neutral-300);
                     cursor: pointer;
                 }
                 .toolbar-select:hover {
-                    border-color: #dc2626;
+                    border-color: var(--scheme-brand-600);
                 }
                 .toolbar-divider {
                     width: 1px;
                     height: 24px;
-                    background: #d1d5db;
+                    background: var(--scheme-neutral-900);
                     margin: 0 4px;
                 }
                 .color-picker {
                     width: 40px;
                     height: 32px;
-                    border: 1px solid #d1d5db;
+                    border: 1px solid var(--scheme-neutral-900);
                     border-radius: 4px;
                     cursor: pointer;
+                    background: var(--scheme-neutral-1200);
                 }
                 .visual-editor {
                     padding: 20px;
                     outline: none;
+                    color: var(--scheme-neutral-100);
+                    background: var(--scheme-neutral-1200);
                     font-family: Arial, Helvetica, sans-serif;
                     font-size: 14px;
                     line-height: 1.6;
@@ -288,12 +298,14 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
                     max-height: 700px;
                 }
                 .visual-editor:focus {
-                    background: #fafafa;
+                    background: var(--scheme-neutral-1100);
                 }
                 .code-editor {
                     width: 100%;
                     padding: 20px;
                     border: none;
+                    color: var(--scheme-neutral-100);
+                    background: var(--scheme-neutral-1200);
                     font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
                     font-size: 13px;
                     line-height: 1.6;
@@ -301,7 +313,7 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
                     outline: none;
                 }
                 .code-editor:focus {
-                    background: #fafafa;
+                    background: var(--scheme-neutral-1100);
                 }
             `}</style>
         </div>

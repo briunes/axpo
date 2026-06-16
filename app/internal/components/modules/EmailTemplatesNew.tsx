@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE } from "../../../../src/lib/supportedLanguages";
 import { HtmlEditor } from "./HtmlEditor";
+import { AITemplateBuilder, type AIGeneratedTemplate } from "./AITemplateBuilder";
 import { DraggableVariables } from "./DraggableVariables";
 import { EditableSectionsEditor } from "./EditableSectionsEditor";
 import {
@@ -14,6 +16,7 @@ import {
     getTemplateVariables,
     sendTestEmail,
     type EmailTemplate,
+    type EmailTemplateTranslationInput,
     type TemplateVariable,
 } from "../../lib/configApi";
 import { LoadingState } from "../shared/LoadingState";
@@ -26,6 +29,7 @@ export interface EmailTemplatesProps {
 export type EmailTemplateType =
     | "simulation-share"
     | "magic-link"
+    | "otp"
     | "welcome"
     | "user-welcome"
     | "password-reset"
@@ -33,11 +37,148 @@ export type EmailTemplateType =
     | "converted"
     | "notification";
 
+/**
+ * Returns the relevant variable list for the DraggableVariables panel
+ * based on the selected email template type.
+ */
+/** Button snippet variables — dropped as complete HTML blocks instead of {{VAR}} placeholders. */
+const BUTTON_SNIPPETS: Array<{ name: string; label: string; description: string; dragContent: string; isButton: true }> = [
+    {
+        name: "BTN_SETUP_PASSWORD",
+        label: "🔴 Button — Set Up Password",
+        description: "Drops a styled CTA button linked to {{SETUP_PASSWORD_URL}}",
+        isButton: true,
+        dragContent: `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:25px 0;">
+  <tbody><tr>
+    <td align="center">
+      <a href="{{ SETUP_PASSWORD_URL }}" style="display:inline-block; padding:15px 40px; background-color:#FF3254; color:#ffffff; text-decoration:none; font-weight:bold; border-radius:6px; font-size:16px;">
+        Set Up Your Password
+      </a>
+    </td>
+  </tr></tbody>
+</table>`,
+    },
+    {
+        name: "BTN_RESET_PASSWORD",
+        label: "🔴 Button — Reset Password",
+        description: "Drops a styled CTA button linked to {{RESET_PASSWORD_URL}}",
+        isButton: true,
+        dragContent: `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:25px 0;">
+  <tbody><tr>
+    <td align="center">
+      <a href="{{ RESET_PASSWORD_URL }}" style="display:inline-block; padding:15px 40px; background-color:#FF3254; color:#ffffff; text-decoration:none; font-weight:bold; border-radius:6px; font-size:16px;">
+        Reset Your Password
+      </a>
+    </td>
+  </tr></tbody>
+</table>`,
+    },
+    {
+        name: "BTN_VIEW_SIMULATION",
+        label: "🔴 Button — View Simulation",
+        description: "Drops a styled CTA button linked to {{SIMULATION_LINK}}",
+        isButton: true,
+        dragContent: `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:25px 0;">
+  <tbody><tr>
+    <td align="center">
+      <a href="{{SIMULATION_LINK}}" style="display:inline-block; padding:15px 40px; background-color:#FF3254; color:#ffffff; text-decoration:none; font-weight:bold; border-radius:6px; font-size:16px;">
+        View Simulation
+      </a>
+    </td>
+  </tr></tbody>
+</table>`,
+    },
+];
+
+/**
+ * Email template types that should ONLY show variables explicitly tagged for
+ * them — no "universal" (untagged) variables.
+ */
+const CLOSED_EMAIL_TYPES = new Set(["user-welcome", "welcome", "password-reset", "magic-link", "otp"]);
+
+/** Types that should include the button snippets panel */
+const BUTTON_SNIPPET_TYPES = new Set(["user-welcome", "welcome", "password-reset", "simulation-share", "expiring-soon", "converted", "notification"]);
+
+const BUILTIN_EMAIL_VARIABLES: Record<
+    string,
+    Array<{ name: string; label: string; description: string }>
+> = {
+    "user-welcome": [
+        {
+            name: "SETUP_PASSWORD_VALIDITY_HOURS",
+            label: "Setup Password Validity Hours",
+            description: "Configured number of hours the setup-password link remains valid",
+        },
+    ],
+    welcome: [
+        {
+            name: "SETUP_PASSWORD_VALIDITY_HOURS",
+            label: "Setup Password Validity Hours",
+            description: "Configured number of hours the setup-password link remains valid",
+        },
+    ],
+    "magic-link": [
+        {
+            name: "MAGIC_LINK_VALIDITY_MINUTES",
+            label: "Magic Link Validity Minutes",
+            description: "Configured number of minutes the magic login link remains valid",
+        },
+    ],
+    otp: [
+        {
+            name: "OTP_VALIDITY_MINUTES",
+            label: "OTP Validity Minutes",
+            description: "Configured number of minutes the OTP code remains valid",
+        },
+    ],
+};
+
+function getVariablesForEmailTemplate(
+    type: string | undefined,
+    dbVariables: TemplateVariable[],
+): Array<{ name: string; label: string; description: string; dragContent?: string; isButton?: boolean }> {
+    let vars: Array<{ name: string; label: string; description: string; dragContent?: string; isButton?: boolean }>;
+
+    if (!type) {
+        vars = dbVariables
+            .filter((v) => !v.templateTypes)
+            .map((v) => ({ name: v.key, label: v.label, description: v.description || "" }));
+    } else if (CLOSED_EMAIL_TYPES.has(type)) {
+        vars = dbVariables
+            .filter((v) => v.templateTypes?.split(",").map((s) => s.trim()).includes(type))
+            .map((v) => ({ name: v.key, label: v.label, description: v.description || "" }));
+    } else {
+        vars = dbVariables
+            .filter((v) => !v.templateTypes || v.templateTypes.split(",").map((s) => s.trim()).includes(type))
+            .map((v) => ({ name: v.key, label: v.label, description: v.description || "" }));
+    }
+
+    const builtinVariables = type ? (BUILTIN_EMAIL_VARIABLES[type] ?? []) : [];
+    const existingNames = new Set(vars.map((variable) => variable.name));
+    vars = [
+        ...builtinVariables.filter((variable) => !existingNames.has(variable.name)),
+        ...vars,
+    ];
+
+    // Prepend relevant button snippets
+    if (type && BUTTON_SNIPPET_TYPES.has(type)) {
+        const relevantButtons = BUTTON_SNIPPETS.filter((b) => {
+            if (type === "password-reset") return b.name === "BTN_RESET_PASSWORD";
+            if (type === "simulation-share" || type === "expiring-soon" || type === "converted" || type === "notification") return b.name === "BTN_VIEW_SIMULATION";
+            return b.name === "BTN_SETUP_PASSWORD" || b.name === "BTN_RESET_PASSWORD"; // user-welcome / welcome get both password buttons
+        });
+        vars = [...relevantButtons, ...vars];
+    }
+
+    return vars;
+}
+
 export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
     const { t } = useI18n();
     const TEMPLATE_TYPE_LABELS: Record<EmailTemplateType, string> = {
         "simulation-share": t("emailTemplatesModule", "typeSimulationShare"),
         "magic-link": t("emailTemplatesModule", "typeMagicLink"),
+        "otp": t("emailTemplatesModule", "typeOtp"),
         "welcome": t("emailTemplatesModule", "typeWelcome"),
         "user-welcome": t("emailTemplatesModule", "typeUserWelcome"),
         "password-reset": t("emailTemplatesModule", "typePasswordReset"),
@@ -50,6 +191,9 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
     const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [formData, setFormData] = useState<Partial<EmailTemplate>>({});
+    // translations map: languageCode -> { subject, htmlContent }
+    const [translationsMap, setTranslationsMap] = useState<Record<string, { subject: string; htmlContent: string }>>({});
+    const [activeLanguage, setActiveLanguage] = useState<string>(DEFAULT_LANGUAGE);
     const [showPreview, setShowPreview] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [showTestEmailInput, setShowTestEmailInput] = useState(false);
@@ -88,14 +232,25 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
         }
     };
 
+    /** Build an empty translations map with all supported languages */
+    const buildEmptyTranslationsMap = () => {
+        return SUPPORTED_LANGUAGES.reduce<Record<string, { subject: string; htmlContent: string }>>((acc, lang) => {
+            acc[lang.code] = { subject: "", htmlContent: "" };
+            return acc;
+        }, {});
+    };
+
+    /** Build a translations map from existing template translations */
+    const buildTranslationsMapFromTemplate = (template: EmailTemplate) => {
+        const map = buildEmptyTranslationsMap();
+        (template.translations ?? []).forEach((tr) => {
+            map[tr.languageCode] = { subject: tr.subject, htmlContent: tr.htmlContent };
+        });
+        return map;
+    };
+
     const handleCreate = () => {
-        setFormData({
-            name: "",
-            description: "",
-            type: "simulation-share",
-            active: true,
-            subject: "",
-            htmlContent: `<!DOCTYPE html>
+        const defaultHtml = `<!DOCTYPE html>
 <html>
 <head>
     <style>
@@ -109,13 +264,27 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
         <p>Your content here...</p>
     </div>
 </body>
-</html>`,
+</html>`;
+        const emptyMap = buildEmptyTranslationsMap();
+        // Pre-fill the default language with empty content
+        emptyMap[DEFAULT_LANGUAGE] = { subject: "", htmlContent: defaultHtml };
+        setTranslationsMap(emptyMap);
+        setActiveLanguage(DEFAULT_LANGUAGE);
+        setFormData({
+            name: "",
+            description: "",
+            type: "simulation-share",
+            active: true,
+            subject: "",
+            htmlContent: defaultHtml,
         });
         setIsCreating(true);
     };
 
     const handleEdit = (template: EmailTemplate) => {
         setFormData({ ...template });
+        setTranslationsMap(buildTranslationsMapFromTemplate(template));
+        setActiveLanguage(DEFAULT_LANGUAGE);
         setEditingTemplate(template);
     };
 
@@ -148,19 +317,41 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
 
     const handleSave = async () => {
         try {
+            // Build translations array from the map
+            const translations: EmailTemplateTranslationInput[] = Object.entries(translationsMap)
+                .filter(([, val]) => val.subject.trim() || val.htmlContent.trim())
+                .map(([languageCode, val]) => ({
+                    languageCode,
+                    subject: val.subject,
+                    htmlContent: val.htmlContent,
+                }));
+
+            // Use en (or first language) content as the parent fallback columns
+            const primaryTranslation =
+                translationsMap[DEFAULT_LANGUAGE] ?? Object.values(translationsMap)[0];
+
+            const payload = {
+                ...formData,
+                subject: primaryTranslation?.subject ?? formData.subject ?? "",
+                htmlContent: primaryTranslation?.htmlContent ?? formData.htmlContent ?? "",
+                translations,
+            };
+
             if (isCreating) {
                 const newTemplate = await createEmailTemplate({
-                    name: formData.name!,
-                    description: formData.description!,
-                    type: formData.type!,
-                    active: formData.active ?? true,
-                    subject: formData.subject!,
-                    htmlContent: formData.htmlContent!,
+                    name: payload.name!,
+                    description: payload.description!,
+                    type: payload.type!,
+                    active: payload.active ?? true,
+                    subject: payload.subject,
+                    htmlContent: payload.htmlContent,
+                    editableSections: payload.editableSections,
+                    translations,
                 });
                 setTemplates([...templates, newTemplate]);
                 onNotify(t("emailTemplatesModule", "createdSuccess"), "success");
             } else if (editingTemplate) {
-                const updated = await updateEmailTemplate(editingTemplate.id, formData);
+                const updated = await updateEmailTemplate(editingTemplate.id, payload);
                 setTemplates(templates.map(t =>
                     t.id === editingTemplate.id ? updated : t
                 ));
@@ -176,7 +367,42 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
         setEditingTemplate(null);
         setIsCreating(false);
         setFormData({});
+        setTranslationsMap({});
+        setActiveLanguage(DEFAULT_LANGUAGE);
         setShowPreview(false);
+    };
+
+    const handleAIApply = (result: AIGeneratedTemplate) => {
+        // Fill in metadata fields if AI provided them
+        if (result.name || result.description || result.type) {
+            setFormData((prev) => ({
+                ...prev,
+                ...(result.name ? { name: result.name } : {}),
+                ...(result.description ? { description: result.description } : {}),
+                ...(result.type ? { type: result.type as EmailTemplateType } : {}),
+            }));
+        }
+        // Fill in HTML + subject per language
+        if (result.translations?.length) {
+            setTranslationsMap((prev) => {
+                const updated = { ...prev };
+                result.translations.forEach((tr) => {
+                    updated[tr.languageCode] = {
+                        subject: tr.subject ?? prev[tr.languageCode]?.subject ?? "",
+                        htmlContent: tr.htmlContent,
+                    };
+                });
+                return updated;
+            });
+            // Also update top-level subject from primary language
+            const primaryTr =
+                result.translations.find((tr) => tr.languageCode === DEFAULT_LANGUAGE) ??
+                result.translations[0];
+            if (primaryTr?.subject) {
+                setFormData((prev) => ({ ...prev, subject: primaryTr.subject }));
+            }
+            setActiveLanguage(result.translations[0].languageCode);
+        }
     };
 
     const handleSubjectDrop = (e: React.DragEvent<HTMLInputElement>) => {
@@ -187,7 +413,10 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
         const end = input.selectionEnd || 0;
         const text = input.value;
         const newValue = text.substring(0, start) + variable + text.substring(end);
-        setFormData({ ...formData, subject: newValue });
+        setTranslationsMap((prev) => ({
+            ...prev,
+            [activeLanguage]: { ...prev[activeLanguage], subject: newValue },
+        }));
 
         // Set cursor position after the inserted variable
         setTimeout(() => {
@@ -231,7 +460,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
     };
 
     const renderPreview = () => {
-        const html = formData.htmlContent || "";
+        const html = translationsMap[activeLanguage]?.htmlContent || formData.htmlContent || "";
         const sampleData = html
             .replace(/\{\{contactPerson\}\}/g, "John Doe")
             .replace(/\{\{clientName\}\}/g, "Sample Company Ltd.")
@@ -244,12 +473,16 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
             .replace(/\{\{commercialPhone\}\}/g, "+351 912 345 678")
             .replace(/\{\{userName\}\}/g, "John Doe")
             .replace(/\{\{userEmail\}\}/g, "john@example.com")
+            .replace(
+                /\{\{\s*SETUP_PASSWORD_VALIDITY_HOURS\s*\}\}/g,
+                "72",
+            )
             .replace(/\{\{magicLink\}\}/g, "https://axpo.example.com/login/magic/abc123");
         return sampleData;
     };
 
     const renderSubjectPreview = () => {
-        const subject = formData.subject || "";
+        const subject = translationsMap[activeLanguage]?.subject || formData.subject || "";
         return subject
             .replace(/\{\{simulationCode\}\}/g, "SIM-2026-001")
             .replace(/\{\{userName\}\}/g, "John Doe")
@@ -294,7 +527,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                                 {TEMPLATE_TYPE_LABELS[template.type as EmailTemplateType]}
                                             </span>
                                         </td>
-                                        <td style={{ color: "#6b7280", fontSize: "13px", maxWidth: "300px" }}>
+                                        <td style={{ color: "var(--scheme-neutral-500)", fontSize: "13px", maxWidth: "300px" }}>
                                             {template.subject}
                                         </td>
                                         <td>
@@ -302,7 +535,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                                 {template.active ? t("emailTemplatesModule", "statusActive") : t("emailTemplatesModule", "statusInactive")}
                                             </span>
                                         </td>
-                                        <td style={{ fontSize: "13px", color: "#6b7280" }}>
+                                        <td style={{ fontSize: "13px", color: "var(--scheme-neutral-500)" }}>
                                             {(() => { const d = new Date(template.updatedAt); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; })()}
                                         </td>
                                         <td>
@@ -345,7 +578,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                             border: "none",
                                             fontSize: "24px",
                                             cursor: "pointer",
-                                            color: "#6b7280",
+                                            color: "var(--scheme-neutral-500)",
                                         }}
                                     >
                                         ×
@@ -353,6 +586,18 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                 </div>
 
                                 <div className="template-editor-body">
+                                    {/* AI Template Builder */}
+                                    <AITemplateBuilder
+                                        mode="email"
+                                        variables={variables}
+                                        isEditing={editingTemplate !== null}
+                                        currentFormData={formData as Record<string, any>}
+                                        currentTranslationsMap={translationsMap}
+                                        onApply={handleAIApply}
+                                        onNotify={onNotify}
+                                        session={session}
+                                    />
+
                                     {/* Row 1: Name, Type, Description */}
                                     <div style={{ display: "grid", gridTemplateColumns: "1fr 200px 1fr", gap: "12px", marginBottom: "12px" }}>
                                         <div className="config-field" style={{ marginBottom: 0 }}>
@@ -391,22 +636,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                     {/* Row 2: Subject and Active */}
                                     <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "12px", alignItems: "center", marginBottom: "12px" }}>
                                         <div className="config-field" style={{ marginBottom: 0 }}>
-                                            <label className="config-field-label">{t("emailTemplatesModule", "fieldSubject")}</label>
-                                            <input
-                                                type="text"
-                                                value={formData.subject || ""}
-                                                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                                                onDrop={handleSubjectDrop}
-                                                onDragOver={handleSubjectDragOver}
-                                                placeholder={t("emailTemplatesModule", "fieldSubjectPlaceholder")}
-                                            />
-                                            {formData.subject && (
-                                                <div style={{ marginTop: "8px", padding: "8px", background: "#f9fafb", borderRadius: "6px", fontSize: "13px", color: "#6b7280" }}>
-                                                    {t("emailTemplatesModule", "subjectPreviewLabel")} <strong>{renderSubjectPreview()}</strong>
-                                                </div>
-                                            )}
                                         </div>
-
                                         <div className="config-field" style={{ marginBottom: 0, paddingBottom: "8px" }}>
                                             <label className="config-field-inline">
                                                 <input
@@ -419,29 +649,84 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                         </div>
                                     </div>
 
-                                    <div className="config-field">
-                                        <label className="config-field-label">{t("emailTemplatesModule", "fieldHtml")}</label>
-                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "16px" }}>
-                                            <HtmlEditor
-                                                key={editingTemplate?.id || "new-template"}
-                                                initialHtml={formData.htmlContent || ""}
-                                                onChange={(html) => setFormData({ ...formData, htmlContent: html })}
-                                                height="500px"
+                                    {/* Language Tabs */}
+                                    <div style={{ marginBottom: "16px" }}>
+                                        <div style={{ display: "flex", gap: "4px", borderBottom: "1px solid var(--scheme-neutral-900)", marginBottom: "16px" }}>
+                                            {SUPPORTED_LANGUAGES.map((lang) => {
+                                                const hasContent = !!(translationsMap[lang.code]?.subject || translationsMap[lang.code]?.htmlContent);
+                                                return (
+                                                    <button
+                                                        key={lang.code}
+                                                        onClick={() => setActiveLanguage(lang.code)}
+                                                        style={{
+                                                            padding: "8px 16px",
+                                                            border: "none",
+                                                            borderBottom: activeLanguage === lang.code ? "2px solid var(--scheme-brand-600)" : "2px solid transparent",
+                                                            background: "none",
+                                                            cursor: "pointer",
+                                                            fontWeight: activeLanguage === lang.code ? 700 : 400,
+                                                            color: activeLanguage === lang.code ? "var(--scheme-brand-600)" : "var(--scheme-neutral-500)",
+                                                            fontSize: "14px",
+                                                            marginBottom: "-2px",
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            gap: "6px",
+                                                        }}
+                                                    >
+                                                        {lang.flag} {lang.label}
+                                                        {hasContent && (
+                                                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Subject for active language */}
+                                        <div className="config-field" style={{ marginBottom: "12px" }}>
+                                            <label className="config-field-label">{t("emailTemplatesModule", "fieldSubject")}</label>
+                                            <input
+                                                type="text"
+                                                value={translationsMap[activeLanguage]?.subject ?? ""}
+                                                onChange={(e) => setTranslationsMap((prev) => ({
+                                                    ...prev,
+                                                    [activeLanguage]: { ...prev[activeLanguage], subject: e.target.value },
+                                                }))}
+                                                onDrop={handleSubjectDrop}
+                                                onDragOver={handleSubjectDragOver}
+                                                placeholder={t("emailTemplatesModule", "fieldSubjectPlaceholder")}
                                             />
-                                            <DraggableVariables variables={[
-                                                // Regular template variables
-                                                ...variables.map(v => ({
-                                                    name: v.key,
-                                                    label: v.label,
-                                                    description: v.description || "",
-                                                })),
-                                                // Editable sections as variables
-                                                ...Object.entries((formData.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
-                                                    name: key,
-                                                    label: `📝 ${section.label || key}`,
-                                                    description: section.description || "Editable section",
-                                                }))
-                                            ]} />
+                                            {translationsMap[activeLanguage]?.subject && (
+                                                <div style={{ marginTop: "8px", padding: "8px", background: "var(--scheme-neutral-1100)", borderRadius: "6px", fontSize: "13px", color: "var(--scheme-neutral-500)", border: "1px solid var(--scheme-neutral-900)" }}>
+                                                    {t("emailTemplatesModule", "subjectPreviewLabel")} <strong>{renderSubjectPreview()}</strong>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* HTML content for active language */}
+                                        <div className="config-field">
+                                            <label className="config-field-label">{t("emailTemplatesModule", "fieldHtml")}</label>
+                                            <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "16px" }}>
+                                                <HtmlEditor
+                                                    key={`${editingTemplate?.id ?? "new"}-${activeLanguage}`}
+                                                    initialHtml={translationsMap[activeLanguage]?.htmlContent ?? ""}
+                                                    onChange={(html) => setTranslationsMap((prev) => ({
+                                                        ...prev,
+                                                        [activeLanguage]: { ...prev[activeLanguage], htmlContent: html },
+                                                    }))}
+                                                    height="500px"
+                                                />
+                                                <DraggableVariables variables={[
+                                                    // Variables filtered by email template type
+                                                    ...getVariablesForEmailTemplate(formData.type, variables),
+                                                    // Editable sections as variables
+                                                    ...Object.entries((formData.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
+                                                        name: key,
+                                                        label: `📝 ${section.label || key}`,
+                                                        description: section.description || "Editable section",
+                                                    }))
+                                                ]} />
+                                            </div>
                                         </div>
                                     </div>
 
@@ -471,7 +756,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                                         value={testEmailAddress}
                                                         onChange={(e) => setTestEmailAddress(e.target.value)}
                                                         placeholder={t("emailTemplatesModule", "testEmailPlaceholder")}
-                                                        style={{ padding: "8px", border: "1px solid #ccc", borderRadius: "4px" }}
+                                                        style={{ padding: "8px", border: "1px solid var(--scheme-neutral-900)", borderRadius: "4px", background: "var(--scheme-neutral-1200)", color: "var(--scheme-neutral-100)" }}
                                                     />
                                                     <button
                                                         className="config-btn config-btn-primary"
@@ -485,7 +770,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                         </div>
 
                                         {!formData.id && showTestEmailInput && (
-                                            <div style={{ color: "red", fontSize: "12px", marginBottom: "16px" }}>
+                                            <div style={{ color: "#f87171", fontSize: "12px", marginBottom: "16px" }}>
                                                 {t("emailTemplatesModule", "errorNotSaved")}
                                             </div>
                                         )}
@@ -495,9 +780,9 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                                 <div className="template-preview-title">{t("emailTemplatesModule", "previewTitle")}</div>
                                                 <div
                                                     style={{
-                                                        border: "2px solid #e5e7eb",
+                                                        border: "1px solid var(--scheme-neutral-900)",
                                                         padding: "20px",
-                                                        background: "white",
+                                                        background: "var(--scheme-neutral-1200)",
                                                         minHeight: "400px",
                                                     }}
                                                     dangerouslySetInnerHTML={{ __html: renderPreview() }}

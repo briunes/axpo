@@ -144,9 +144,6 @@ export function extractVariableValues(
   // Product name
   const productName = selectedResult?.productLabel || "N/A";
 
-  // Current plan costs
-  const currentTotal = electricity?.facturaActual || 0;
-
   // AXPO plan costs (from results)
   const axpoDesglose = selectedResult?.desglose || {};
   const axpoPowerCost = axpoDesglose.terminoPotencia || 0;
@@ -155,24 +152,126 @@ export function extractVariableValues(
   const axpoTaxCost =
     (axpoDesglose.impuestoElectrico || 0) +
     (axpoDesglose.impuestoHidrocarburo || 0);
-  const axpoOtherCost = axpoDesglose.extras || 0;
-  const axpoRentalCost = electricity?.extras?.alquilerEquipoMedida || 0;
+  const axpoOtherCost = axpoDesglose.otrosCargos || 0;
+  const axpoRentalCost =
+    axpoDesglose.alquiler || electricity?.extras?.alquilerEquipoMedida || 0;
   const axpoVat = axpoDesglose.iva || 0;
   const axpoTotal = selectedResult?.totalFactura || 0;
 
-  // Estimate current plan breakdown (proportional distribution)
-  const currentPowerCost = currentTotal * 0.35;
-  const currentEnergyCost = currentTotal * 0.4;
-  const currentExcessCost = electricity?.excesoPotencia
-    ? currentTotal * 0.05
-    : 0;
-  const currentTaxCost = currentTotal * 0.05;
-  const currentOtherCost = currentTotal * 0.03;
+  // Current plan costs.
+  // The simulation form only reliably stores `facturaActual` (the total).
+  // Anything else is sourced from `electricity.extras` if present; the
+  // remaining base is split between terminoPotencia and terminoEnergia
+  // using the same per-period distribution that Axpo uses, so the two
+  // plans stay self-consistent. Tax (IE) and VAT are back-derived from
+  // the total using the rates captured in `extras` (matches the way
+  // the gas side is already handled further down in this function).
+  const currentTotal = electricity?.facturaActual || 0;
+  const currentIvaTasa =
+    electricity?.extras?.ivaTasa != null ? electricity.extras.ivaTasa : 21;
+  const currentIeTasa =
+    electricity?.extras?.impuestoElectricoTasa != null
+      ? electricity.extras.impuestoElectricoTasa
+      : 5.11269;
   const currentRentalCost = electricity?.extras?.alquilerEquipoMedida || 0;
-  const currentVat = currentTotal * 0.12;
+  const currentReactiveCost = electricity?.extras?.reactiva || 0;
+  const currentOtherChargeCost = electricity?.extras?.otrosCargos || 0;
+  const currentExcessCost = electricity?.excesoPotencia || 0;
+  // Lines that are KNOWN exactly from the form (always real € values).
+  const currentKnownBase =
+    currentRentalCost +
+    currentReactiveCost +
+    currentOtherChargeCost +
+    currentExcessCost;
+  // Back-derive IE + VAT from currentTotal using the input rates.
+  // The Spanish tax chain is:  total = (base + base*ie) * (1+iva) + alquiler
+  // Solving for IE directly (rental is OUTSIDE the IE base but inside IVA):
+  //   ie  = total * ieR / ((1+ieR) * (1+ivaR))
+  //   vat = (total - ie - alquiler) * ivaR
+  const ieR = currentIeTasa / 100;
+  const ivaR = currentIvaTasa / 100;
+  const currentTaxCost = currentTotal * (ieR / ((1 + ieR) * (1 + ivaR)));
+  const currentVat = (currentTotal - currentTaxCost - currentRentalCost) * ivaR;
+  // Base for terminoPotencia + terminoEnergia (the only lines we can't
+  // observe directly) = total − tax − vat − known lines.
+  const currentPowerEnergyBase = Math.max(
+    0,
+    currentTotal - currentTaxCost - currentVat - currentKnownBase,
+  );
+  // If the OCR or the form captured the real split, prefer it.
+  const explicitCurrentPower = (electricity?.extras as any)
+    ?.terminoPotenciaActual;
+  const explicitCurrentEnergy = (electricity?.extras as any)
+    ?.terminoEnergiaActual;
+  // Otherwise, mirror the Axpo plan's power/energy ratio — a much
+  // better estimate than fixed 35%/40% because it adapts to the
+  // access tariff, period mix and consumption profile of THIS simulation.
+  const axpoPeSum = axpoPowerCost + axpoEnergyCost || 1;
+  const currentPowerCost =
+    explicitCurrentPower != null
+      ? Number(explicitCurrentPower)
+      : currentPowerEnergyBase * (axpoPowerCost / axpoPeSum);
+  const currentEnergyCost =
+    explicitCurrentEnergy != null
+      ? Number(explicitCurrentEnergy)
+      : currentPowerEnergyBase * (axpoEnergyCost / axpoPeSum);
+  // CURRENT_OTHER_COST keeps its semantic of "reactiva + otros cargos"
+  // to mirror the Axpo desglose shape so a side-by-side comparison
+  // shows comparable line items.
+  const currentOtherCost = currentReactiveCost + currentOtherChargeCost;
 
   // Savings
   const savingsAmount = selectedResult?.ahorro || 0;
+
+  // ─── Gas variables ────────────────────────────────────────────────────────
+  const gas = payload?.gas as any;
+  const gasResults = payload?.results?.gas;
+  const selectedGasOfferKey =
+    payload?.selectedOffer?.commodity === "GAS"
+      ? payload?.selectedOffer?.productKey
+      : undefined;
+  const selectedGasResult = selectedGasOfferKey
+    ? gasResults?.find((r: any) => r.productKey === selectedGasOfferKey)
+    : gasResults?.[0];
+
+  // Gas consumption — prefer consumoAnual, fall back to consumo (monthly * 12)
+  const gasAnnualConsumptionKwh =
+    gas?.consumoAnual || (gas?.consumo ? (gas.consumo as number) * 12 : 0);
+
+  // Current gas costs
+  const gasCurrentTotal: number = gas?.facturaActual || 0;
+  const gasIvaTasa: number = gas?.ivaTasa ?? 21;
+  // Back-calculate VAT and tax from current total using input rates
+  const gasCurrentVat = gasCurrentTotal * (gasIvaTasa / (100 + gasIvaTasa));
+  const gasCurrentPreVat = gasCurrentTotal - gasCurrentVat;
+  const gasImpHidro: number = gas?.impuestoHidrocarburo ?? 0;
+  // IEH = impuestoHidrocarburo (€/kWh) * consumption in billing period
+  const gasBillingConsumption: number = gas?.consumo || 0;
+  const gasCurrentTax = gasImpHidro * gasBillingConsumption;
+  const gasCurrentBase = gasCurrentPreVat - gasCurrentTax;
+  // Rough 70/30 split of base into variable/fixed
+  const gasCurrentVariableCost = gasCurrentBase * 0.7;
+  const gasCurrentFixedCost = gasCurrentBase * 0.3;
+
+  // AXPO gas costs from selected result desglose
+  const gasAxpoDesglose = selectedGasResult?.desglose || {};
+  const gasAxpoFixedCost: number = gasAxpoDesglose.terminoFijo || 0;
+  const gasAxpoVariableCost: number = gasAxpoDesglose.terminoEnergia || 0;
+  const gasAxpoTax: number = gasAxpoDesglose.impuestoHidrocarburo || 0;
+  const gasAxpoVat: number = gasAxpoDesglose.iva || 0;
+  const gasAxpoTotal: number = selectedGasResult?.totalFactura || 0;
+
+  // Gas savings and product
+  const gasSavingsAmount: number = selectedGasResult?.ahorro || 0;
+  const gasProductName: string = selectedGasResult?.productLabel || "N/A";
+
+  // Gas period dates
+  const gasPeriodStart = gas?.periodo?.fechaInicio || "N/A";
+  const gasPeriodEnd = gas?.periodo?.fechaFin || "N/A";
+  const gasSimulationPeriod = `${gasPeriodStart} — ${gasPeriodEnd}`;
+
+  // Determine if this is a gas simulation
+  const isGas = payload?.type === "GAS" || !!gas;
 
   // Build complete variable map
   const variables: Record<string, string> = {
@@ -184,9 +283,11 @@ export function extractVariableValues(
 
     // Simulation metadata
     SIMULATION_ID: simulation.id,
-    SIMULATION_PERIOD: simulationPeriod,
+    SIMULATION_REFERENCE:
+      simulation.referenceNumber || simulation.id || "N/A",
+    SIMULATION_PERIOD: isGas ? gasSimulationPeriod : simulationPeriod,
     ANNUAL_CONSUMPTION: formatNumber(annualConsumption, 0),
-    PRODUCT_NAME: productName,
+    PRODUCT_NAME: isGas ? gasProductName : productName,
     CREATED_AT: simulation.createdAt
       ? new Date(simulation.createdAt).toLocaleDateString()
       : "N/A",
@@ -199,7 +300,7 @@ export function extractVariableValues(
     SIMULATION_LINK:
       shareContext?.simulationLink ||
       (simulation.publicToken
-        ? `${process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || process.env.FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es"}/simulador/?token=${simulation.publicToken}`
+        ? `${process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || process.env.FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es"}/?token=${simulation.publicToken}`
         : "N/A"),
     PIN: shareContext?.pin || "N/A",
     EXPIRES_IN_DAYS:
@@ -282,7 +383,34 @@ export function extractVariableValues(
     AXPO_TOTAL: formatCurrency(axpoTotal),
 
     // Savings
-    SAVINGS_AMOUNT: formatCurrency(savingsAmount),
+    SAVINGS_AMOUNT: formatCurrency(isGas ? gasSavingsAmount : savingsAmount),
+
+    // ─── Charts ──────────────────────────────────────────────────────────────
+    CHART_COMPARATIVA: buildComparativaChart(
+      isGas ? gasCurrentTotal : currentTotal,
+      isGas ? gasAxpoTotal : axpoTotal,
+      isGas ? gasSavingsAmount : savingsAmount,
+      isGas ? gas?.periodo?.dias || 30 : electricity?.periodo?.dias || 30,
+      isGas
+        ? (selectedGasResult?.ahorroAnual ?? null)
+        : (selectedResult?.ahorroAnual ?? null),
+    ),
+
+    // ─── Gas-specific variables ──────────────────────────────────────────────
+    GAS_ANNUAL_CONSUMPTION_KWH: formatNumber(gasAnnualConsumptionKwh, 0),
+    GAS_ANNUAL_CONSUMPTION_M3: formatNumber(gasAnnualConsumptionKwh / 11.63, 0), // approx kWh → m³
+
+    CURRENT_GAS_FIXED_COST: formatCurrency(gasCurrentFixedCost),
+    CURRENT_GAS_VARIABLE_COST: formatCurrency(gasCurrentVariableCost),
+    CURRENT_GAS_TAX: formatCurrency(gasCurrentTax),
+    CURRENT_GAS_VAT: formatCurrency(gasCurrentVat),
+    CURRENT_GAS_TOTAL: formatCurrency(gasCurrentTotal),
+
+    AXPO_GAS_FIXED_COST: formatCurrency(gasAxpoFixedCost),
+    AXPO_GAS_VARIABLE_COST: formatCurrency(gasAxpoVariableCost),
+    AXPO_GAS_TAX: formatCurrency(gasAxpoTax),
+    AXPO_GAS_VAT: formatCurrency(gasAxpoVat),
+    AXPO_GAS_TOTAL: formatCurrency(gasAxpoTotal),
   };
 
   // Merge editable sections if template defines them
@@ -298,6 +426,133 @@ export function extractVariableValues(
 }
 
 /**
+ * Builds a self-contained HTML snippet for the Comparativa bar chart.
+ * Uses pure SVG + inline CSS — no JavaScript — so it renders in Puppeteer PDFs.
+ *
+ * Both currentTotal and axpoTotal are period figures (€).
+ * The chart displays annual totals using (value / dias) × 365 extrapolation.
+ * If dias = 365, uses the direct annual difference.
+ */
+function buildComparativaChart(
+  currentTotal: number,
+  axpoTotal: number,
+  savingsAmount: number,
+  dias: number = 30,
+  ahorroAnualOverride: number | null = null,
+): string {
+  const annualCurrent =
+    dias === 365 ? currentTotal : (currentTotal / dias) * 365;
+  const annualAxpo = dias === 365 ? axpoTotal : (axpoTotal / dias) * 365;
+  const annualSavings =
+    ahorroAnualOverride !== null
+      ? ahorroAnualOverride
+      : dias === 365
+        ? savingsAmount
+        : (savingsAmount / dias) * 365;
+  const monthlySavings = savingsAmount;
+  const savingsPct =
+    currentTotal > 0 ? (savingsAmount / currentTotal) * 100 : 0;
+
+  const fmt = (n: number) =>
+    n.toLocaleString("es-ES", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+  // Chart dimensions
+  const svgW = 340;
+  const svgH = 220;
+  const barW = 80;
+  const maxBarH = 150;
+  const barY0 = 170; // baseline y
+
+  const maxVal = Math.max(annualCurrent, annualAxpo, 1);
+  const hCurrent = (annualCurrent / maxVal) * maxBarH;
+  const hAxpo = (annualAxpo / maxVal) * maxBarH;
+
+  const xCurrent = 60;
+  const xAxpo = 180;
+
+  // Y-axis ticks (4 ticks)
+  const tickCount = 4;
+  const ticks = Array.from({ length: tickCount + 1 }, (_, i) => {
+    const val = (maxVal / tickCount) * i;
+    const y = barY0 - (val / maxVal) * maxBarH;
+    return { val, y };
+  });
+
+  const tickLines = ticks
+    .map(
+      (t) =>
+        `<line x1="45" y1="${t.y.toFixed(1)}" x2="${svgW - 10}" y2="${t.y.toFixed(1)}" stroke="#e5e7eb" stroke-width="1"/>` +
+        `<text x="40" y="${(t.y + 4).toFixed(1)}" text-anchor="end" font-size="9" fill="#6b7280">${Math.round(t.val)}</text>`,
+    )
+    .join("");
+
+  // SVG width fills most of the left column; we scale it via viewBox so it
+  // stretches to whatever width the left flex child occupies.
+  return `
+<div style="display:block;width:100%;box-sizing:border-box;padding:16px 0;font-family:Arial,sans-serif;page-break-inside:avoid">
+
+  <div style="font-size:13px;font-weight:700;color:#3b3bd4;margin-bottom:12px">Comparativa</div>
+
+  <!-- Two-column row: chart left, stats right -->
+  <div style="display:flex;width:100%;gap:24px;align-items:flex-start">
+
+    <!-- Bar chart — 50% width -->
+    <div style="flex:0 0 50%;min-width:0">
+      <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block">
+        <defs>
+          <linearGradient id="axpoGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#facc15"/>
+            <stop offset="50%" stop-color="#f97316"/>
+            <stop offset="100%" stop-color="#ef4444"/>
+          </linearGradient>
+        </defs>
+
+        ${tickLines}
+
+        <!-- X axis -->
+        <line x1="45" y1="${barY0}" x2="${svgW - 10}" y2="${barY0}" stroke="#9ca3af" stroke-width="1.5"/>
+
+        <!-- Current bar -->
+        <rect x="${xCurrent}" y="${(barY0 - hCurrent).toFixed(1)}" width="${barW}" height="${hCurrent.toFixed(1)}" fill="#9ca3af" rx="4"/>
+
+        <!-- AXPO bar -->
+        <rect x="${xAxpo}" y="${(barY0 - hAxpo).toFixed(1)}" width="${barW}" height="${hAxpo.toFixed(1)}" fill="url(#axpoGrad)" rx="4"/>
+
+        <!-- X labels -->
+        <text x="${xCurrent + barW / 2}" y="${barY0 + 16}" text-anchor="middle" font-size="10" fill="#374151">Competencia</text>
+        <text x="${xAxpo + barW / 2}" y="${barY0 + 16}" text-anchor="middle" font-size="10" fill="#374151">Axpo</text>
+
+        <!-- Value labels on top of bars -->
+        <text x="${xCurrent + barW / 2}" y="${(barY0 - hCurrent - 5).toFixed(1)}" text-anchor="middle" font-size="9" fill="#374151">${fmt(annualCurrent)} €</text>
+        <text x="${xAxpo + barW / 2}" y="${(barY0 - hAxpo - 5).toFixed(1)}" text-anchor="middle" font-size="9" fill="#374151">${fmt(annualAxpo)} €</text>
+      </svg>
+    </div>
+
+    <!-- Stats boxes — 50% width, stacked vertically -->
+    <div style="flex:0 0 50%;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;padding-left:12px">
+      <div style="background:#3b3bd4;border-radius:8px;padding:12px 16px;color:white">
+        <div style="font-size:10px;font-weight:600;margin-bottom:6px">Ahorro Anual</div>
+        <div style="font-size:22px;font-weight:700;text-align:right">${fmt(annualSavings)} €</div>
+      </div>
+      <div style="background:#3b3bd4;border-radius:8px;padding:12px 16px;color:white">
+        <div style="font-size:10px;font-weight:600;margin-bottom:6px">Ahorro Mensual</div>
+        <div style="font-size:22px;font-weight:700;text-align:right">${fmt(monthlySavings)} €</div>
+      </div>
+      <div style="background:#3b3bd4;border-radius:8px;padding:12px 16px;color:white">
+        <div style="font-size:10px;font-weight:600;margin-bottom:6px">% Ahorrado</div>
+        <div style="font-size:22px;font-weight:700;text-align:right">${savingsPct.toFixed(2).replace(".", ",")} %</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>`;
+}
+
+/**
  * Replaces template variables in content
  * Supports both {{VARIABLE}} format
  */
@@ -309,7 +564,7 @@ export function replaceVariables(
 
   // Replace all variables
   Object.entries(variableValues).forEach(([key, value]) => {
-    const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
+    const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "g");
     result = result.replace(regex, value);
   });
 

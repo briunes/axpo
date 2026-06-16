@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
-import { UserRole } from "@/domain/types";
+import { assertPermission } from "@/application/middleware/rbac";
+import { prisma } from "@/infrastructure/database/prisma";
+import { getConfiguredAiProviders } from "@/application/lib/aiConfig";
 
 /**
  * @swagger
@@ -33,10 +34,25 @@ import { UserRole } from "@/domain/types";
  */
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
-  assertRole(auth, [UserRole.ADMIN]);
+  await assertPermission(auth, "section.configurations");
 
   const body = await req.json();
-  const { provider, apiKey, baseUrl, modelName } = body;
+  let { provider, baseUrl, modelName } = body;
+  let { apiKey } = body;
+
+  if (!apiKey) {
+    const config = await prisma.systemConfig.findFirst();
+    const providerConfigId = body.providerConfigId as string | undefined;
+    const providerConfig = providerConfigId && config
+      ? getConfiguredAiProviders(config as Record<string, any>).find(
+          (item) => item.id === providerConfigId,
+        )
+      : null;
+    apiKey = providerConfig?.apiKey ?? config?.llmApiKey ?? "";
+    provider = provider ?? providerConfig?.provider;
+    baseUrl = baseUrl ?? providerConfig?.baseUrl;
+    modelName = modelName ?? providerConfig?.modelName;
+  }
 
   // Validate inputs
   if (!baseUrl) {

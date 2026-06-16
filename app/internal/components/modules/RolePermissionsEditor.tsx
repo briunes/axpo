@@ -12,6 +12,7 @@ import {
     type RolePermissionItem,
 } from "../../lib/internalApi";
 import {
+    LOG_PERMISSION_KEYS,
     PERMISSION_GROUPS,
     ROLE_PERMISSION_DEFAULTS,
     type PermissionKey,
@@ -25,6 +26,28 @@ interface RolePermissionsEditorProps {
 type PermState = Record<string, Record<string, boolean>>;
 
 const EDITABLE_ROLES = ["AGENT", "COMMERCIAL"] as const;
+const SAVE_ROLES = ["ADMIN", "AGENT", "COMMERCIAL"] as const;
+const SESSION_PERMISSION_KEY = "users.sessions.manage" as const;
+const isLogPermission = (permissionKey: PermissionKey) =>
+    LOG_PERMISSION_KEYS.includes(permissionKey);
+
+const isSessionPermissionLocked = (role: string, permissionKey: PermissionKey) => {
+    if (permissionKey !== SESSION_PERMISSION_KEY) return false;
+    return role === "AGENT" || role === "COMMERCIAL" || role === "AGENT_MASTER";
+};
+
+const isPermissionLocked = (
+    role: string,
+    permissionKey: PermissionKey,
+    adminOnly?: boolean,
+) => {
+    if (role === "SYS_ADMIN") return true;
+    if (role === "ADMIN") return !isLogPermission(permissionKey);
+    if (adminOnly && (role === "AGENT" || role === "COMMERCIAL" || role === "AGENT_MASTER")) {
+        return true;
+    }
+    return isSessionPermissionLocked(role, permissionKey);
+};
 
 function buildState(items: RolePermissionItem[]): PermState {
     const state: PermState = {
@@ -36,6 +59,15 @@ function buildState(items: RolePermissionItem[]): PermState {
         if (!state[item.role]) state[item.role] = {};
         state[item.role][item.permissionKey] = item.allowed;
     }
+
+    if (state.AGENT) {
+        state.AGENT[SESSION_PERMISSION_KEY] = false;
+    }
+
+    if (state.COMMERCIAL) {
+        state.COMMERCIAL[SESSION_PERMISSION_KEY] = false;
+    }
+
     return state;
 }
 
@@ -47,6 +79,7 @@ export function RolePermissionsEditor({
     const getRoleLabel = (role: string) => {
         if (role === "AGENT") return t("rolePermissionsModule", "roleLabelAgent");
         if (role === "COMMERCIAL") return t("rolePermissionsModule", "roleLabelCommercial");
+        if (role === "SYS_ADMIN") return t("rolePermissionsModule", "roleLabelSysAdmin");
         return t("rolePermissionsModule", "roleLabelAdmin");
     };
     const getPermLabel = (key: PermissionKey) =>
@@ -55,6 +88,7 @@ export function RolePermissionsEditor({
         t("rolePermissionsModule", `perm_desc_${key.replace(/[.\-]/g, "_")}`);
     const getGroupLabel = (groupId: string) => {
         if (groupId === "sections") return t("rolePermissionsModule", "groupSections");
+        if (groupId === "logs") return t("rolePermissionsModule", "groupLogs");
         if (groupId === "simulations") return t("rolePermissionsModule", "groupSimulations");
         if (groupId === "clients") return t("rolePermissionsModule", "groupClients");
         if (groupId === "users") return t("rolePermissionsModule", "groupUsers");
@@ -92,6 +126,10 @@ export function RolePermissionsEditor({
     }, [session.token]);
 
     const handleToggle = (role: string, key: PermissionKey, value: boolean) => {
+        if (isPermissionLocked(role, key)) {
+            return;
+        }
+
         setState((prev) => ({
             ...prev,
             [role]: { ...prev[role], [key]: value },
@@ -102,13 +140,16 @@ export function RolePermissionsEditor({
     const handleSave = async () => {
         setSaving(true);
         const updates: Array<{ role: string; permissionKey: string; allowed: boolean }> = [];
-        for (const role of EDITABLE_ROLES) {
+        for (const role of SAVE_ROLES) {
             for (const group of PERMISSION_GROUPS) {
                 for (const perm of group.permissions) {
+                    if (role === "ADMIN" && !isLogPermission(perm.key)) continue;
                     updates.push({
                         role,
                         permissionKey: perm.key,
-                        allowed: state[role]?.[perm.key] ?? false,
+                        allowed: isPermissionLocked(role, perm.key, perm.adminOnly)
+                            ? false
+                            : (state[role]?.[perm.key] ?? false),
                     });
                 }
             }
@@ -162,8 +203,12 @@ export function RolePermissionsEditor({
                     <div className="rpe-matrix-header">
                         <div className="rpe-col-perm-label" />
                         <div className="rpe-col-role rpe-col-role--admin">
-                            <span className="rpe-role-chip rpe-role-chip--admin">{t("rolePermissionsModule", "roleLabelAdmin")}</span>
+                            <span className="rpe-role-chip rpe-role-chip--sys-admin">{t("rolePermissionsModule", "roleLabelSysAdmin")}</span>
                             <span className="rpe-role-locked">{t("rolePermissionsModule", "alwaysGranted")}</span>
+                        </div>
+                        <div className="rpe-col-role rpe-col-role--admin">
+                            <span className="rpe-role-chip rpe-role-chip--admin">{t("rolePermissionsModule", "roleLabelAdmin")}</span>
+                            <span className="rpe-role-locked">{t("rolePermissionsModule", "adminLogsConfigurable")}</span>
                         </div>
                         {EDITABLE_ROLES.map((role) => (
                             <div key={role} className="rpe-col-role">
@@ -187,7 +232,7 @@ export function RolePermissionsEditor({
                                         </div>
                                     </Tooltip>
 
-                                    {/* Admin column — always ON, not editable */}
+                                    {/* SYS_ADMIN column — always ON, not editable */}
                                     <div className="rpe-col-role rpe-col-role--admin">
                                         <Switch
                                             checked
@@ -197,9 +242,29 @@ export function RolePermissionsEditor({
                                         />
                                     </div>
 
+                                    {/* Admin column — configurable for logs only */}
+                                    {(() => {
+                                        const role = "ADMIN";
+                                        const locked = isPermissionLocked(role, perm.key, perm.adminOnly);
+                                        const checked = locked ? true : (state[role]?.[perm.key] ?? true);
+                                        return (
+                                            <div className="rpe-col-role rpe-col-role--admin">
+                                                <Switch
+                                                    checked={checked}
+                                                    disabled={locked}
+                                                    size="small"
+                                                    color="primary"
+                                                    onChange={(_, val) => handleToggle(role, perm.key, val)}
+                                                    sx={locked ? { opacity: 0.5 } : undefined}
+                                                />
+                                            </div>
+                                        );
+                                    })()}
+
                                     {/* Editable role columns */}
                                     {EDITABLE_ROLES.map((role) => {
-                                        const checked = state[role]?.[perm.key] ?? false;
+                                        const locked = isPermissionLocked(role, perm.key, perm.adminOnly);
+                                        const checked = locked ? false : (state[role]?.[perm.key] ?? false);
                                         return (
                                             <div key={role} className="rpe-col-role">
                                                 <Switch
@@ -207,6 +272,7 @@ export function RolePermissionsEditor({
                                                     size="small"
                                                     color="primary"
                                                     onChange={(_, val) => handleToggle(role, perm.key, val)}
+                                                    disabled={locked}
                                                 />
                                             </div>
                                         );
@@ -232,7 +298,7 @@ export function RolePermissionsEditor({
         }
         .rpe-description {
           font-size: 14px;
-          color: #6b7280;
+                    color: var(--scheme-neutral-500);
           margin: 0;
           line-height: 1.6;
           max-width: 560px;
@@ -240,9 +306,9 @@ export function RolePermissionsEditor({
         .rpe-save-btn {
           padding: 9px 22px;
           border-radius: 8px;
-          border: 1px solid #d1d5db;
-          background: #f9fafb;
-          color: #6b7280;
+                    border: 1px solid var(--scheme-neutral-900);
+                    background: var(--scheme-neutral-1100);
+                    color: var(--scheme-neutral-500);
           font-size: 14px;
           font-weight: 600;
           cursor: default;
@@ -253,13 +319,13 @@ export function RolePermissionsEditor({
           flex-shrink: 0;
         }
         .rpe-save-btn--active {
-          background: #1d4ed8;
-          border-color: #1d4ed8;
+                    background: var(--scheme-brand-600);
+                    border-color: var(--scheme-brand-600);
           color: #fff;
           cursor: pointer;
         }
         .rpe-save-btn--active:hover:not(:disabled) {
-          background: #1e40af;
+                    background: var(--scheme-brand-700);
         }
         .rpe-save-btn:disabled {
           opacity: 0.7;
@@ -270,20 +336,20 @@ export function RolePermissionsEditor({
           align-items: center;
           gap: 12px;
           padding: 40px 0;
-          color: #6b7280;
+          color: var(--scheme-neutral-500);
           font-size: 14px;
         }
         .rpe-matrix {
-          border: 1px solid #e5e7eb;
+                    border: 1px solid var(--scheme-neutral-900);
           border-radius: 12px;
           overflow: hidden;
-          background: #fff;
+                    background: var(--scheme-neutral-1200);
         }
         .rpe-matrix-header {
           display: grid;
-          grid-template-columns: 1fr 120px 120px 120px;
-          background: #f9fafb;
-          border-bottom: 2px solid #e5e7eb;
+          grid-template-columns: 1fr 120px 120px 120px 120px;
+                    background: var(--scheme-neutral-1100);
+                    border-bottom: 1px solid var(--scheme-neutral-900);
           padding: 12px 20px;
           align-items: center;
           gap: 8px;
@@ -312,26 +378,30 @@ export function RolePermissionsEditor({
           letter-spacing: 0.03em;
           text-transform: uppercase;
         }
+        .rpe-role-chip--sys-admin {
+                    background: rgba(239, 68, 68, 0.16);
+                    color: #f87171;
+        }
         .rpe-role-chip--admin {
-          background: #fef3c7;
-          color: #92400e;
+                    background: rgba(245, 158, 11, 0.16);
+                    color: #fbbf24;
         }
         .rpe-role-chip--agent {
-          background: #dbeafe;
-          color: #1e40af;
+                    background: rgba(59, 130, 246, 0.16);
+                    color: #60a5fa;
         }
         .rpe-role-chip--commercial {
-          background: #f3e8ff;
-          color: #6b21a8;
+                    background: rgba(168, 85, 247, 0.16);
+                    color: #c084fc;
         }
         .rpe-role-locked {
           font-size: 10px;
-          color: #9ca3af;
+                    color: var(--scheme-neutral-600);
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
         .rpe-group {
-          border-bottom: 1px solid #f3f4f6;
+                    border-bottom: 1px solid var(--scheme-neutral-900);
         }
         .rpe-group:last-child {
           border-bottom: none;
@@ -341,30 +411,30 @@ export function RolePermissionsEditor({
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.06em;
-          color: #9ca3af;
+                    color: var(--scheme-neutral-600);
           padding: 12px 20px 6px;
-          background: #fafafa;
-          border-bottom: 1px solid #f3f4f6;
+                    background: var(--scheme-neutral-1100);
+                    border-bottom: 1px solid var(--scheme-neutral-900);
         }
         .rpe-row {
           display: grid;
-          grid-template-columns: 1fr 120px 120px 120px;
+          grid-template-columns: 1fr 120px 120px 120px 120px;
           align-items: center;
           padding: 4px 20px;
           gap: 8px;
-          border-bottom: 1px solid #f9fafb;
+                    border-bottom: 1px solid var(--scheme-neutral-900);
           transition: background 0.1s;
         }
         .rpe-row:last-child {
           border-bottom: none;
         }
         .rpe-row:hover {
-          background: #f9fafb;
+                    background: var(--scheme-neutral-1100);
         }
         .rpe-perm-name {
           font-size: 14px;
           font-weight: 500;
-          color: #374151;
+                    color: var(--scheme-neutral-300);
         }
         .rpe-admin-badge {
           display: inline-flex;

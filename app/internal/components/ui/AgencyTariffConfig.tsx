@@ -14,6 +14,9 @@ interface AgencyTariffConfigProps {
     agencyId: string;
     token: string;
     onNotify?: (message: string, tone: "success" | "error") => void;
+    hideSaveButton?: boolean;
+    onDirtyChange?: (isDirty: boolean) => void;
+    onTariffsChange?: (tariffs: Array<{ tariffType: string; isEnabled: boolean }>) => void;
 }
 
 const ELECTRICITY_TARIFFS = ["ELEC:2.0TD", "ELEC:3.0TD", "ELEC:6.1TD"];
@@ -32,7 +35,14 @@ const GAS_TARIFFS = [
     "GAS:RLPS6",
 ];
 
-export function AgencyTariffConfig({ agencyId, token, onNotify }: AgencyTariffConfigProps) {
+export function AgencyTariffConfig({
+    agencyId,
+    token,
+    onNotify,
+    hideSaveButton = false,
+    onDirtyChange,
+    onTariffsChange,
+}: AgencyTariffConfigProps) {
     const { t } = useI18n();
     const [tariffs, setTariffs] = useState<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
@@ -42,6 +52,19 @@ export function AgencyTariffConfig({ agencyId, token, onNotify }: AgencyTariffCo
     useEffect(() => {
         loadTariffs();
     }, [agencyId]);
+
+    useEffect(() => {
+        onDirtyChange?.(isDirty);
+    }, [isDirty, onDirtyChange]);
+
+    useEffect(() => {
+        onTariffsChange?.(
+            Object.entries(tariffs).map(([tariffType, isEnabled]) => ({
+                tariffType,
+                isEnabled,
+            }))
+        );
+    }, [onTariffsChange, tariffs]);
 
     const loadTariffs = async () => {
         setLoading(true);
@@ -112,6 +135,7 @@ export function AgencyTariffConfig({ agencyId, token, onNotify }: AgencyTariffCo
                 error instanceof Error ? error.message : t("agencyTariffs", "saveError"),
                 "error"
             );
+            throw error;
         } finally {
             setSaving(false);
         }
@@ -215,17 +239,18 @@ export function AgencyTariffConfig({ agencyId, token, onNotify }: AgencyTariffCo
                     </Box>
                 </Box>
 
-                {/* Save Button */}
-                <Box sx={{ display: "flex", justifyContent: "flex-start", pt: 1 }}>
-                    <Button
-                        variant="contained"
-                        onClick={handleSave}
-                        disabled={!isDirty || saving}
-                        size="large"
-                    >
-                        {saving ? t("actions", "saving") : t("agencyTariffs", "save")}
-                    </Button>
-                </Box>
+                {!hideSaveButton && (
+                    <Box sx={{ display: "flex", justifyContent: "flex-start", pt: 1 }}>
+                        <Button
+                            variant="contained"
+                            onClick={() => void handleSave()}
+                            disabled={!isDirty || saving}
+                            size="large"
+                        >
+                            {saving ? t("actions", "saving") : t("agencyTariffs", "save")}
+                        </Button>
+                    </Box>
+                )}
             </Stack>
         </Box>
     );

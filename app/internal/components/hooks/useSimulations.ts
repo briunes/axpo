@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   cloneSimulation,
   applySimulationOcrPrefill,
@@ -14,11 +15,14 @@ import {
   updateSimulation,
   validateCups,
   calculateSimulation,
+  bulkDeleteSimulations,
+  bulkArchiveSimulations,
   type CupsValidationResult,
   type SimulationItem,
 } from "../../lib/internalApi";
 import type { SimulationPayload, SimulationResults } from "@/domain/types";
 import type { SessionState } from "../../lib/authSession";
+import { keepPreviousData } from "@tanstack/react-query";
 
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "N/A";
@@ -61,6 +65,7 @@ export interface SimulationsActions {
   filterStatus: string;
   setFilterStatus: (v: string) => void;
   applyFilters: () => void;
+  clearFilters: () => void;
   filtersAppliedAt: number;
   // create form state
   clientName: string;
@@ -95,6 +100,8 @@ export interface SimulationsActions {
   handleOcrPrefill: (sim: SimulationItem) => Promise<void>;
   handlePdfDownload: (sim: SimulationItem) => Promise<void>;
   handleArchive: (sim: SimulationItem) => Promise<void>;
+  handleBulkDelete: (ids: string[]) => Promise<void>;
+  handleBulkArchive: (ids: string[]) => Promise<void>;
   handleSaveAndCalculate: (
     simId: string,
     payload: SimulationPayload,
@@ -107,28 +114,70 @@ export interface SimulationsActions {
   formatDate: typeof formatDate;
 }
 
+interface SimulationsFilterPersistentState {
+  ownerUserId: string;
+  clientId: string;
+  cups: string;
+  status: string;
+}
+
 export function useSimulations(
   session: SessionState | null,
   initialPageSize = 25,
 ): SimulationsActions {
-  const [simulations, setSimulations] = useState<SimulationItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
 
+  // Load persisted state from localStorage
+  const getPersistedState = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_dt_state_simulations");
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+  const persistedState = getPersistedState();
+
+  const getPersistedFilters = (): SimulationsFilterPersistentState | null => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_simulations_filters");
+      if (!raw) return null;
+      const parsed = JSON.parse(
+        raw,
+      ) as Partial<SimulationsFilterPersistentState>;
+      return {
+        ownerUserId: parsed.ownerUserId ?? "",
+        clientId: parsed.clientId ?? "",
+        cups: parsed.cups ?? "",
+        status: parsed.status ?? "",
+      };
+    } catch {
+      return null;
+    }
+  };
+  const persistedFilters = getPersistedFilters();
+
   // pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
-  const [total, setTotal] = useState(0);
   // sync pageSize when user preferences load
   useEffect(() => {
     setPageSize(initialPageSize);
     setPage(1);
   }, [initialPageSize]);
-  // sort
-  const [sortColumn, setSortColumn] = useState("updatedAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // sort - load from persisted state if available
+  const [sortColumn, setSortColumn] = useState(
+    persistedState?.sortColumn || "updatedAt",
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    persistedState?.sortDirection || "desc",
+  );
   const setSort = (column: string, dir: "asc" | "desc") => {
     setSortColumn(column);
     setSortDir(dir);
@@ -136,18 +185,52 @@ export function useSimulations(
   const [showArchived, setShowArchived] = useState(false);
 
   // filters — pending = what the user is typing; applied = what was last submitted
-  const [filterSearch, setFilterSearch] = useState("");
-  const [filterOwnerUserId, setFilterOwnerUserId] = useState("");
-  const [filterClientId, setFilterClientId] = useState("");
-  const [filterCups, setFilterCups] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const isCommercial = session?.user.role === "COMMERCIAL";
+  const selfUserId = isCommercial ? (session?.user.id ?? "") : "";
+  const initialOwnerUserId = isCommercial
+    ? selfUserId
+    : (persistedFilters?.ownerUserId ?? "");
+  const initialClientId = persistedFilters?.clientId ?? "";
+  const initialCups = persistedFilters?.cups ?? "";
+  const initialStatus = persistedFilters?.status ?? "";
 
-  const [appliedSearch, setAppliedSearch] = useState("");
-  const [appliedOwnerUserId, setAppliedOwnerUserId] = useState("");
-  const [appliedClientId, setAppliedClientId] = useState("");
-  const [appliedCups, setAppliedCups] = useState("");
-  const [appliedStatus, setAppliedStatus] = useState("");
+  const [filterSearch, setFilterSearch] = useState(
+    persistedState?.search || "",
+  );
+  const [filterOwnerUserId, setFilterOwnerUserId] =
+    useState(initialOwnerUserId);
+  const [filterClientId, setFilterClientId] = useState(initialClientId);
+  const [filterCups, setFilterCups] = useState(initialCups);
+  const [filterStatus, setFilterStatus] = useState(initialStatus);
+
+  const [appliedSearch, setAppliedSearch] = useState(
+    persistedState?.search || "",
+  );
+  const [appliedOwnerUserId, setAppliedOwnerUserId] =
+    useState(initialOwnerUserId);
+  const [appliedClientId, setAppliedClientId] = useState(initialClientId);
+  const [appliedCups, setAppliedCups] = useState(initialCups);
+  const [appliedStatus, setAppliedStatus] = useState(initialStatus);
   const [filtersAppliedAt, setFiltersAppliedAt] = useState(0);
+
+  // Persist custom simulation filters (owner/client/cups/status) across navigation
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const nextState: SimulationsFilterPersistentState = {
+        ownerUserId: filterOwnerUserId,
+        clientId: filterClientId,
+        cups: filterCups,
+        status: filterStatus,
+      };
+      localStorage.setItem(
+        "axpo_simulations_filters",
+        JSON.stringify(nextState),
+      );
+    } catch {
+      // ignore persistence failures
+    }
+  }, [filterOwnerUserId, filterClientId, filterCups, filterStatus]);
 
   // create form
   const [clientName, setClientName] = useState("");
@@ -179,6 +262,56 @@ export function useSimulations(
     setSuccessText(null);
   };
 
+  // ── TanStack Query ──────────────────────────────────────────────────────
+  const queryParams = {
+    page,
+    pageSize,
+    orderBy: sortColumn,
+    sortDir,
+    includeDeleted: showArchived || undefined,
+    search: appliedSearch || undefined,
+    ownerUserId: appliedOwnerUserId || undefined,
+    clientId: appliedClientId || undefined,
+    cups: appliedCups || undefined,
+    status: appliedStatus || undefined,
+  };
+
+  // Create a stable cache key by serializing query params
+  const queryKeyString = JSON.stringify({
+    page,
+    pageSize,
+    orderBy: sortColumn,
+    sortDir,
+    includeDeleted: showArchived || null,
+    search: appliedSearch || null,
+    ownerUserId: appliedOwnerUserId || null,
+    clientId: appliedClientId || null,
+    cups: appliedCups || null,
+    status: appliedStatus || null,
+  });
+
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: ["simulations", session?.token ?? "", queryKeyString],
+    queryFn: () => listSimulations(session!.token, queryParams),
+    enabled: !!session,
+    placeholderData: keepPreviousData,
+  });
+
+  const simulations = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const loading = isFetching;
+
+  const invalidate = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["simulations", session?.token ?? ""],
+    });
+  }, [queryClient, session?.token]);
+
+  const refresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+  // ────────────────────────────────────────────────────────────────────────
+
   const runAction = async (id: string, fn: () => Promise<void>) => {
     try {
       setBusyAction(id);
@@ -190,54 +323,6 @@ export function useSimulations(
       setBusyAction(null);
     }
   };
-
-  const refresh = useCallback(
-    async (
-      overrides?: import("../../lib/internalApi").ListSimulationsParams,
-    ) => {
-      if (!session) return;
-      setLoading(true);
-      try {
-        const params = {
-          page,
-          pageSize,
-          orderBy: sortColumn,
-          sortDir,
-          includeDeleted: showArchived || undefined,
-          search: appliedSearch || undefined,
-          ownerUserId: appliedOwnerUserId || undefined,
-          clientId: appliedClientId || undefined,
-          cups: appliedCups || undefined,
-          status: appliedStatus || undefined,
-          ...overrides,
-        };
-        const result = await listSimulations(session.token, params);
-        setSimulations(result.items);
-        setTotal(result.total);
-      } catch (error) {
-        setErrorText(
-          error instanceof Error
-            ? error.message
-            : "Could not load simulations.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [
-      session,
-      page,
-      pageSize,
-      sortColumn,
-      sortDir,
-      showArchived,
-      appliedSearch,
-      appliedOwnerUserId,
-      appliedClientId,
-      appliedCups,
-      appliedStatus,
-    ],
-  );
 
   const applyFilters = useCallback(() => {
     setAppliedSearch(filterSearch);
@@ -254,6 +339,24 @@ export function useSimulations(
     filterCups,
     filterStatus,
   ]);
+
+  const clearFilters = useCallback(() => {
+    const resetOwnerUserId = isCommercial ? selfUserId : "";
+    setFilterSearch("");
+    setFilterOwnerUserId(resetOwnerUserId);
+    setFilterClientId("");
+    setFilterCups("");
+    setFilterStatus("");
+
+    setAppliedSearch("");
+    setAppliedOwnerUserId(resetOwnerUserId);
+    setAppliedClientId("");
+    setAppliedCups("");
+    setAppliedStatus("");
+
+    setFiltersAppliedAt((n) => n + 1);
+    setPage(1);
+  }, [isCommercial, selfUserId]);
 
   const handleValidateCups = async () => {
     if (!session) return;
@@ -296,7 +399,7 @@ export function useSimulations(
         ...(clientId && { clientId }),
         payloadJson: { clientName, cups, offerType, source: "internal-ui" },
       });
-      await refresh();
+      await invalidate();
       setSuccessText("Simulation created as draft.");
     });
   };
@@ -333,7 +436,7 @@ export function useSimulations(
         expiresAt,
         payloadJson: parsedPayload,
       });
-      await refresh();
+      await invalidate();
       setSuccessText("Simulation updated.");
       setSelectedSimulationId(null);
     });
@@ -342,7 +445,7 @@ export function useSimulations(
   const handleShare = async (sim: SimulationItem): Promise<SimulationItem> => {
     if (!session) throw new Error("No session.");
     const shared = await shareSimulation(session.token, sim.id);
-    await refresh();
+    await invalidate();
     setSuccessText(
       shared.publicToken
         ? `Shared. Token: ${shared.publicToken.slice(0, 14)}...`
@@ -355,7 +458,7 @@ export function useSimulations(
     await runAction(`clone-${sim.id}`, async () => {
       if (!session) return;
       await cloneSimulation(session.token, sim.id);
-      await refresh();
+      await invalidate();
       setSuccessText("Simulation cloned.");
     });
   };
@@ -364,7 +467,7 @@ export function useSimulations(
     await runAction(`rotate-sim-pin-${sim.id}`, async () => {
       if (!session) return;
       await rotateSimulationPinSnapshot(session.token, sim.id);
-      await refresh();
+      await invalidate();
       setSuccessText("PIN snapshot refreshed.");
     });
   };
@@ -376,7 +479,7 @@ export function useSimulations(
         ocrClientName: sim.ownerUser?.fullName ?? "AXPO OCR",
         ocrValidation: "manual-sample",
       });
-      await refresh();
+      await invalidate();
       setSuccessText("OCR prefill version created.");
     });
   };
@@ -393,8 +496,30 @@ export function useSimulations(
     await runAction(`delete-${sim.id}`, async () => {
       if (!session) return;
       await softDeleteSimulation(session.token, sim.id);
-      await refresh();
+      await invalidate();
       setSuccessText("Simulation archived.");
+    });
+  };
+
+  const handleBulkDelete = async (ids: string[]) => {
+    await runAction("bulk-delete", async () => {
+      if (!session) return;
+      const result = await bulkDeleteSimulations(session.token, ids);
+      await invalidate();
+      setSuccessText(
+        `Deleted ${result.succeeded} of ${result.total} simulation(s).`,
+      );
+    });
+  };
+
+  const handleBulkArchive = async (ids: string[]) => {
+    await runAction("bulk-archive", async () => {
+      if (!session) return;
+      const result = await bulkArchiveSimulations(session.token, ids);
+      await invalidate();
+      setSuccessText(
+        `Archived ${result.succeeded} of ${result.total} simulation(s).`,
+      );
     });
   };
 
@@ -409,8 +534,8 @@ export function useSimulations(
     });
     // Run calculation
     const calcResult = await calculateSimulation(session.token, simId);
-    // Refresh list so payloadJson is up to date
-    await refresh();
+    // Invalidate so list shows latest payloadJson
+    await invalidate();
     // Update calcSim with fresh data so the panel can show latest payload
     setCalcSim((prev) =>
       prev?.id === simId
@@ -458,6 +583,7 @@ export function useSimulations(
     filterStatus,
     setFilterStatus,
     applyFilters,
+    clearFilters,
     filtersAppliedAt,
     clientName,
     setClientName,
@@ -489,6 +615,8 @@ export function useSimulations(
     handleOcrPrefill,
     handlePdfDownload,
     handleArchive,
+    handleBulkDelete,
+    handleBulkArchive,
     handleSaveAndCalculate,
     calcSim,
     openCalcPanel,

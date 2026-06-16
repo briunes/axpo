@@ -1,0 +1,21 @@
+.git/
+.next/
+.vercel/
+node_modules/
+docker-data/
+coverage/
+
+.env*
+vars
+vars prod
+*.tsbuildinfo
+
+# Local reference and debugging files at the repository root.
+/*.pdf
+/*.png
+/*.zip
+/*.z
+/*.csv
+/*.xlsm
+/*.textClipping
+/invoices_Examples/

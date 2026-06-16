@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { requireAuth } from "@/application/middleware/auth";
+import { assertPermission } from "@/application/middleware/rbac";
+import { ValidationError } from "@/domain/errors/errors";
 
 /**
  * @swagger
@@ -23,11 +27,11 @@ import { prisma } from "@/infrastructure/database/prisma";
  *       200:
  *         description: Updated template variable
  */
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
+export const PUT = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  await assertPermission(auth, "section.configurations");
+  const id = context?.params?.id;
+  if (!id) throw new ValidationError("Template variable id is required");
   const body = await req.json();
 
   const variable = await prisma.templateVariable.update({
@@ -44,7 +48,7 @@ export async function PUT(
   });
 
   return NextResponse.json(variable);
-}
+});
 
 /**
  * @swagger
@@ -62,15 +66,15 @@ export async function PUT(
  *       204:
  *         description: Variable deleted
  */
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
+export const DELETE = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  await assertPermission(auth, "section.configurations");
+  const id = context?.params?.id;
+  if (!id) throw new ValidationError("Template variable id is required");
 
   await prisma.templateVariable.delete({
     where: { id },
   });
 
   return new NextResponse(null, { status: 204 });
-}
+});

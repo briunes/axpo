@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Box, Tabs, Tab } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { UserPreferencesSettings } from "./UserPreferencesSettings";
@@ -22,19 +23,48 @@ export function UserExperienceSettings({ session, onNotify }: UserExperienceSett
         permissions: t("configurationsModule", "tabRolePermissions"),
     };
 
+    const tabIndex = (Object.keys(UX_TABS) as UxTab[]).indexOf(activeTab);
+
     return (
         <div className="system-settings-container">
-            <div className="system-settings-tabs">
-                {(Object.keys(UX_TABS) as UxTab[]).map((tab) => (
-                    <button
-                        key={tab}
-                        className={`settings-subtab${activeTab === tab ? " active" : ""}`}
-                        onClick={() => setActiveTab(tab)}
-                    >
-                        {UX_TABS[tab]}
-                    </button>
-                ))}
-            </div>
+            <Box
+                sx={{
+                    borderBottom: "1px solid var(--scheme-neutral-900)",
+                    px: 1,
+                    background: "linear-gradient(180deg, var(--scheme-neutral-1200) 0%, var(--scheme-neutral-1100) 100%)",
+                }}
+            >
+                <Tabs
+                    value={tabIndex}
+                    onChange={(_, newValue) => {
+                        const tabs = Object.keys(UX_TABS) as UxTab[];
+                        setActiveTab(tabs[newValue]);
+                    }}
+                    sx={{
+                        minHeight: 52,
+                        '& .MuiTabs-indicator': {
+                            backgroundColor: 'var(--scheme-brand-600)',
+                            height: 2,
+                        },
+                    }}
+                >
+                    {(Object.keys(UX_TABS) as UxTab[]).map((tab) => (
+                        <Tab
+                            key={tab}
+                            label={UX_TABS[tab]}
+                            sx={{
+                                textTransform: 'none',
+                                minHeight: 52,
+                                color: 'var(--scheme-neutral-500)',
+                                fontWeight: 600,
+                                '&.Mui-selected': {
+                                    color: 'var(--scheme-brand-600)',
+                                },
+                            }}
+                        />
+                    ))}
+                </Tabs>
+            </Box>
 
             <div className="system-settings-content">
                 {activeTab === "preferences" && (

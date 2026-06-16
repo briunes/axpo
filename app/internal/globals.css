@@ -6,7 +6,7 @@ body {
 
 body {
   margin: 0;
-  background: #ffffff;
+  background: var(--scheme-surface-content);
   color: var(--scheme-neutral-200);
   font-family: var(--font-montserrat, "Montserrat"), "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -15,6 +15,18 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* Remove number input spinners and prevent scroll from changing value */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .admin-shell {
@@ -424,7 +436,7 @@ textarea {
   height: 100vh;
   max-height: 100vh;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--scheme-surface-content);
 }
 
 /* Adjust app-shell height when environment banner exists */
@@ -438,7 +450,7 @@ textarea {
   width: 240px;
   min-width: 240px;
   height: 100%;
-  background: var(--scheme-neutral-1200);
+  background: var(--scheme-surface-chrome);
   border-right: 1px solid var(--scheme-neutral-900);
   display: flex;
   flex-direction: column;
@@ -744,7 +756,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--scheme-neutral-900);
-  background: var(--scheme-neutral-1200);
+  background: var(--scheme-surface-chrome);
   flex-shrink: 0;
   gap: 16px;
 }
@@ -1019,6 +1031,8 @@ textarea {
 .dt-root {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   background: var(--scheme-neutral-1200);
   border: 1px solid var(--scheme-neutral-900);
   border-radius: 10px;

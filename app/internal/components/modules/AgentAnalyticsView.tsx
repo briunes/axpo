@@ -1,10 +1,8 @@
 "use client";
 
-import { LineChart } from "@mui/x-charts/LineChart";
-import { BarChart } from "@mui/x-charts/BarChart";
 import { PieChart } from "@mui/x-charts/PieChart";
 import type { AnalyticsOverview, AnalyticsUserStat } from "../../lib/internalApi";
-import { DataTable } from "../ui";
+import { DataTable, GradientLineChart, GradientBarChart } from "../ui";
 import type { ColumnDef } from "../ui";
 import { useI18n } from "../../../../src/lib/i18n-context";
 
@@ -110,13 +108,17 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
     };
 
     // Calculate engagement metrics
-    const openRate = analytics.sharedSimulations > 0
-        ? Math.round((analytics.successfulAccess / analytics.sharedSimulations) * 100)
+    // Open rate is computed against email-shared simulations only:
+    // PDF/download shares can never be opened by the client, so including them
+    // would artificially deflate the open rate percentage.
+    const emailSent = analytics.emailSharedSimulations ?? analytics.sharedSimulations;
+    const openRate = emailSent > 0
+        ? Math.round((analytics.successfulAccess / emailSent) * 100)
         : 0;
     const sentRate = analytics.totalSimulations > 0
         ? Math.round((analytics.sharedSimulations / analytics.totalSimulations) * 100)
         : 0;
-    const pendingOpens = analytics.sharedSimulations - (analytics.successfulAccess || 0);
+    const pendingOpens = emailSent - (analytics.successfulAccess || 0);
 
     // Prepare trend data
     const simDates = (analytics.simulationTrend ?? []).map((d) => {
@@ -188,9 +190,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             key: "openRate",
             label: t("analyticsModule", "colOpenRate"),
             renderCell: (r) => {
-                // For now we don't have per-user open data, so we show a placeholder
-                // You might need to update the API to return this
-                const rate = 0; // TODO: Get actual open rate per user from API
+                const rate = r.shared > 0 ? Math.round(((r.opened ?? 0) / r.shared) * 100) : 0;
                 const color = rate > 70 ? "#10b981" : rate > 40 ? "#06b6d4" : "#f59e0b";
                 return (
                     <div style={{
@@ -265,7 +265,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                 <div style={{ display: "flex", gap: 12, alignItems: "stretch", padding: "12px 0", position: "relative" }}>
                     {[
                         { label: t("analyticsModule", "funnelCreated"), value: analytics.totalSimulations, color: "#3b82f6", percent: 100 },
-                        { label: t("analyticsModule", "funnelSent"), value: analytics.sharedSimulations, color: "#10b981", percent: sentRate },
+                        { label: t("analyticsModule", "funnelSentEmail") || "Sent (Email)", value: emailSent, color: "#10b981", percent: analytics.totalSimulations > 0 ? Math.round((emailSent / analytics.totalSimulations) * 100) : 0 },
                         { label: t("analyticsModule", "funnelOpened"), value: analytics.successfulAccess || 0, color: "#06b6d4", percent: openRate },
                     ].map((stage, idx) => (
                         <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, position: "relative" }}>
@@ -302,23 +302,16 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                     title={t("analyticsModule", "chartActivityOverTime")}
                     subtitle={t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))}
                 >
-                    {hasSimTrend ? (
-                        <BarChart
-                            xAxis={[{ data: simDates, scaleType: "band" }]}
-                            series={[
-                                { data: simCounts, label: t("analyticsModule", "funnelCreated"), color: "#3b82f6", stack: "sims" },
-                                { data: sentCounts, label: t("analyticsModule", "funnelSent"), color: "#10b981", stack: "sims" },
-                            ]}
-                            height={220}
-                            sx={chartSx}
-                            slotProps={{ legend: { direction: "horizontal" as const, position: { vertical: "top" as const, horizontal: "end" as const } } }}
-                            margin={{ left: 36, right: 12, top: 40, bottom: 32 }}
-                        />
-                    ) : (
-                        <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
-                            {t("analyticsModule", "noActivityInPeriod")}
-                        </div>
-                    )}
+                    <GradientBarChart
+                        xData={simDates}
+                        series={[
+                            { data: simCounts, label: t("analyticsModule", "funnelCreated"), color: "#3b82f6" },
+                            { data: sentCounts, label: t("analyticsModule", "funnelSent"), color: "#10b981" },
+                        ]}
+                        height={220}
+                        margin={{ left: 36, right: 12, top: 40, bottom: 32 }}
+                        emptyMessage={t("analyticsModule", "noActivityInPeriod")}
+                    />
                 </ChartPanel>
 
                 <ChartPanel title={t("analyticsModule", "chartStatusDistribution")}>
@@ -449,6 +442,8 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         columns={commercialColumns}
                         rows={(analytics.byUser ?? []).map((r) => ({ ...r, id: r.userId }))}
                         loading={false}
+                        onClearFilters={() => undefined}
+                        hasActiveFilters={false}
                         emptyMessage={t("analyticsModule", "emptyCommercialData")}
                         headerRight={<span className="dt-meta-pill">{t("analyticsModule", "pillCommercials").replace("{count}", String(analytics.byUser.length))}</span>}
                     />
@@ -461,21 +456,94 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                     title={t("analyticsModule", "chartClientOpens")}
                     subtitle={`${t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))} - ${t("analyticsModule", "chartClientOpensSub")}`}
                 >
-                    <LineChart
-                        xAxis={[{ data: accessDates, scaleType: "time" }]}
-                        series={[{
-                            data: opensPerDay,
-                            label: t("analyticsModule", "funnelOpened"),
-                            color: "#06b6d4",
-                            area: true,
-                            showMark: true,
-                            curve: "natural",
-                        }]}
-                        height={200}
-                        sx={chartSx}
-                        margin={{ left: 36, right: 12, top: 12, bottom: 32 }}
+                    <GradientLineChart
+                        xData={accessDates}
+                        yData={opensPerDay}
+                        label={t("analyticsModule", "funnelOpened")}
+                        color="#06b6d4"
+                        areaOpacityTop={0.5}
+                        emptyMessage={t("analyticsModule", "noOpensInPeriod")}
                     />
                 </ChartPanel>
+            )}
+
+            {/* ── Simulation Content ─────────────────────────────────────────── */}
+            {(analytics.energyTypeSplit?.length || analytics.tariffBreakdown?.length || analytics.avgConsumoAnual != null) && (
+                <div>
+                    <div style={{ marginBottom: 12 }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--scheme-neutral-100)", marginBottom: 4 }}>
+                            {t("analyticsModule", "sectionSimContent")}
+                        </h3>
+                        <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
+                            {t("analyticsModule", "sectionSimContentSub")}
+                        </p>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, paddingBottom: "2rem" }}>
+                        {/* Energy type split */}
+                        <ChartPanel title={t("analyticsModule", "chartEnergyType")} subtitle={t("analyticsModule", "chartEnergyTypeSub")}>
+                            {(analytics.energyTypeSplit?.length ?? 0) > 0 ? (
+                                <PieChart
+                                    series={[{
+                                        data: (analytics.energyTypeSplit ?? []).map((e, i) => ({
+                                            id: i,
+                                            value: e.count,
+                                            label: e.type === "ELECTRICITY"
+                                                ? t("analyticsModule", "labelElectricity")
+                                                : t("analyticsModule", "labelGas"),
+                                            color: e.type === "ELECTRICITY" ? "#f59e0b" : "#3b82f6",
+                                        })),
+                                        innerRadius: 40,
+                                        outerRadius: 70,
+                                        paddingAngle: 3,
+                                        cornerRadius: 4,
+                                        cx: 80,
+                                    }]}
+                                    height={300}
+                                    sx={chartSx}
+                                    slotProps={{ legend: { direction: "vertical" as const, position: { vertical: "middle" as const, horizontal: "end" as const } } }}
+                                    margin={{ left: 0, right: 120, top: 10, bottom: 10 }}
+                                />
+                            ) : (
+                                <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
+                                    {t("analyticsModule", "noDataAvailable")}
+                                </div>
+                            )}
+                        </ChartPanel>
+
+                        {/* Tariff breakdown */}
+                        <ChartPanel title={t("analyticsModule", "chartTariffBreakdown")} subtitle={t("analyticsModule", "chartTariffBreakdownSub")}>
+                            <GradientBarChart
+                                xData={(analytics.tariffBreakdown ?? []).map((r) => r.tariff)}
+                                series={[{
+                                    data: (analytics.tariffBreakdown ?? []).map((r) => r.count),
+                                    label: t("analyticsModule", "labelSimulations"),
+                                    color: "#8b5cf6",
+                                }]}
+                                margin={{ left: 32, right: 8, top: 12, bottom: 36 }}
+                                emptyMessage={t("analyticsModule", "noDataAvailable")}
+                            />
+                        </ChartPanel>
+
+                        {/* Avg consumption */}
+                        <ChartPanel title={t("analyticsModule", "kpiAvgConsumption")} subtitle={t("analyticsModule", "kpiAvgConsumptionSub")}>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 150, gap: 8 }}>
+                                {analytics.avgConsumoAnual != null ? (
+                                    <>
+                                        <div style={{ fontSize: 44, fontWeight: 700, color: "#10b981", lineHeight: 1 }}>
+                                            {analytics.avgConsumoAnual.toLocaleString()}
+                                        </div>
+                                        <div style={{ fontSize: 14, color: "var(--scheme-neutral-400)", fontWeight: 500 }}>kWh / año</div>
+                                        <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", textAlign: "center", marginTop: 4 }}>
+                                            {t("analyticsModule", "kpiAvgConsumptionContext")}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div style={{ opacity: 0.4, fontSize: 13 }}>{t("analyticsModule", "noDataAvailable")}</div>
+                                )}
+                            </div>
+                        </ChartPanel>
+                    </div>
+                </div>
             )}
         </>
     );

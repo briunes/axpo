@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
+import {
   createUser,
   listUsers,
   rotateUserPin,
@@ -61,11 +66,12 @@ export interface UsersActions {
     data?: {
       name: string;
       email: string;
+      maxActiveDevices?: number;
       mobilePhone: string;
       commercialPhone: string;
       commercialEmail: string;
       otherDetails?: string;
-      password: string;
+      password?: string;
       role: UserRole;
       agencyId: string;
     },
@@ -88,14 +94,21 @@ export interface UsersActions {
       userId: string;
       name: string;
       email: string;
+      maxActiveDevices?: number;
       mobilePhone: string;
       commercialPhone: string;
       commercialEmail: string;
       otherDetails?: string;
-      password: string;
-      currentPassword: string;
       role?: string;
       agencyId?: string;
+      preferences?: {
+        language?: string | null;
+        dateFormat?: string | null;
+        timeFormat?: string | null;
+        timezone?: string | null;
+        numberFormat?: string | null;
+        itemsPerPage?: number | null;
+      };
     },
   ) => Promise<void>;
   // self-service profile
@@ -109,40 +122,98 @@ export interface UsersActions {
   handleRotateUserPin: (user: UserItem) => Promise<RotatePinResult | null>;
   handleRequestPasswordReset: (user: UserItem) => Promise<void>;
   handleDeleteUser: (user: UserItem) => Promise<void>;
+  handleBulkDeleteUsers: (ids: string[]) => Promise<void>;
+}
+
+interface UseUsersOptions {
+  queryEnabled?: boolean;
+  usePersistedState?: boolean;
+  minimal?: boolean;
+  contextual?: boolean;
+}
+
+interface UsersFilterPersistentState {
+  roleFilter: string;
+  agencyFilter: string;
+  showArchived: boolean;
 }
 
 export function useUsers(
   session: SessionState | null,
   initialPageSize = 25,
+  options?: UseUsersOptions,
 ): UsersActions {
-  const [users, setUsers] = useState<UserItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
+  const usePersistedState = options?.usePersistedState ?? true;
+  const minimal = options?.minimal ?? false;
+  const contextual = options?.contextual ?? false;
+
+  // Load persisted state from localStorage
+  const getPersistedState = () => {
+    if (!usePersistedState) return null;
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_dt_state_users");
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+  const persistedState = getPersistedState();
+
+  const getPersistedFilters = (): UsersFilterPersistentState | null => {
+    if (!usePersistedState) return null;
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_users_filters");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<UsersFilterPersistentState>;
+      return {
+        roleFilter: parsed.roleFilter ?? "",
+        agencyFilter: parsed.agencyFilter ?? "",
+        showArchived: parsed.showArchived ?? false,
+      };
+    } catch {
+      return null;
+    }
+  };
+  const persistedFilters = getPersistedFilters();
 
   // pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
-  const [total, setTotal] = useState(0);
   // sync pageSize when user preferences load
   useEffect(() => {
     setPageSize(initialPageSize);
     setPage(1);
   }, [initialPageSize]);
-  // sort
-  const [sortColumn, setSortColumn] = useState("createdAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // sort - load from persisted state if available
+  const [sortColumn, setSortColumn] = useState(
+    persistedState?.sortColumn || "createdAt",
+  );
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    persistedState?.sortDirection || "desc",
+  );
   const setSort = (column: string, dir: "asc" | "desc") => {
     setSortColumn(column);
     setSortDir(dir);
   };
-  // search
-  const [search, setSearch] = useState("");
+  // search - load from persisted state if available
+  const [search, setSearch] = useState(persistedState?.search || "");
   // filters
-  const [roleFilter, setRoleFilter] = useState("");
-  const [agencyFilter, setAgencyFilter] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
+  const [roleFilter, setRoleFilter] = useState(
+    persistedFilters?.roleFilter || "",
+  );
+  const [agencyFilter, setAgencyFilter] = useState(
+    persistedFilters?.agencyFilter || "",
+  );
+  const [showArchived, setShowArchived] = useState(
+    persistedFilters?.showArchived || false,
+  );
 
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -163,6 +234,7 @@ export function useUsers(
   const [editUserOtherDetails, setEditUserOtherDetails] = useState("");
   const [editUserPassword, setEditUserPassword] = useState("");
   const [editUserCurrentPassword, setEditUserCurrentPassword] = useState("");
+  const queryEnabled = options?.queryEnabled ?? true;
 
   const [profileFullName, setProfileFullName] = useState(
     session?.user.fullName ?? "",
@@ -173,6 +245,82 @@ export function useUsers(
     setErrorText(null);
     setSuccessText(null);
   };
+
+  // Persist custom users filters (role/agency/archived) across navigation
+  useEffect(() => {
+    if (!usePersistedState) return;
+    if (typeof window === "undefined") return;
+    try {
+      const nextState: UsersFilterPersistentState = {
+        roleFilter,
+        agencyFilter,
+        showArchived,
+      };
+      localStorage.setItem("axpo_users_filters", JSON.stringify(nextState));
+    } catch {
+      // ignore persistence failures
+    }
+  }, [usePersistedState, roleFilter, agencyFilter, showArchived]);
+
+  // ── TanStack Query ──────────────────────────────────────────────────────
+  const queryParams: ListUsersParams = {
+    page,
+    pageSize,
+    search: search || undefined,
+    role: roleFilter || undefined,
+    agencyId: agencyFilter || undefined,
+    orderBy: sortColumn,
+    sortDir,
+    includeDeleted: showArchived || undefined,
+    minimal: minimal || undefined,
+    contextual: contextual || undefined,
+  };
+
+  // Create a stable cache key by serializing query params
+  const queryKeyString = JSON.stringify({
+    page,
+    pageSize,
+    search: search || null,
+    role: roleFilter || null,
+    agencyId: agencyFilter || null,
+    orderBy: sortColumn,
+    sortDir,
+    includeDeleted: showArchived || null,
+    contextual,
+  });
+
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: ["users", session?.token ?? "", queryKeyString],
+    queryFn: async () => {
+      const result = await listUsers(session!.token, queryParams);
+      // seed the agencyId for the create form if not yet set
+      setNewUserAgencyId(
+        (curr) =>
+          curr || session!.user.agencyId || result.items[0]?.agencyId || "",
+      );
+      return result;
+    },
+    enabled: !!session && queryEnabled,
+    placeholderData: keepPreviousData,
+  });
+
+  const users = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const loading = isFetching;
+
+  const invalidate = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["users", session?.token ?? ""],
+    });
+  }, [queryClient, session?.token]);
+
+  const refresh = useCallback(
+    async (_overrides?: ListUsersParams) => {
+      await refetch();
+    },
+    [refetch],
+  );
+  // ────────────────────────────────────────────────────────────────────────
 
   const runAction = async (id: string, fn: () => Promise<void>) => {
     try {
@@ -186,50 +334,6 @@ export function useUsers(
     }
   };
 
-  const refresh = useCallback(
-    async (overrides?: ListUsersParams) => {
-      if (!session) return;
-      setLoading(true);
-      try {
-        const params: ListUsersParams = {
-          page,
-          pageSize,
-          search: search || undefined,
-          role: roleFilter || undefined,
-          agencyId: agencyFilter || undefined,
-          orderBy: sortColumn,
-          sortDir,
-          includeDeleted: showArchived || undefined,
-          ...overrides,
-        };
-        const result = await listUsers(session.token, params);
-        setUsers(result.items);
-        setTotal(result.total);
-        setNewUserAgencyId(
-          (curr) =>
-            curr || session.user.agencyId || result.items[0]?.agencyId || "",
-        );
-      } catch (error) {
-        setErrorText(
-          error instanceof Error ? error.message : "Could not load users.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [
-      session,
-      page,
-      pageSize,
-      search,
-      roleFilter,
-      agencyFilter,
-      sortColumn,
-      sortDir,
-      showArchived,
-    ],
-  );
-
   const handleCreateUser = async (
     e: React.FormEvent,
     data?: {
@@ -238,8 +342,9 @@ export function useUsers(
       mobilePhone: string;
       commercialPhone: string;
       commercialEmail: string;
+      maxActiveDevices?: number;
       otherDetails?: string;
-      password: string;
+      password?: string;
       role: UserRole;
       agencyId: string;
     },
@@ -252,6 +357,7 @@ export function useUsers(
     const mobilePhone = data?.mobilePhone ?? newUserMobilePhone;
     const commercialPhone = data?.commercialPhone ?? newUserCommercialPhone;
     const commercialEmail = data?.commercialEmail ?? newUserCommercialEmail;
+    const maxActiveDevices = data?.maxActiveDevices;
     const otherDetails = data?.otherDetails ?? newUserOtherDetails;
     const password = data?.password ?? newUserPassword;
     const role = data?.role ?? newUserRole;
@@ -263,15 +369,15 @@ export function useUsers(
       !email.trim() ||
       !mobilePhone.trim() ||
       !commercialPhone.trim() ||
-      !commercialEmail.trim() ||
-      !password
+      !commercialEmail.trim()
     ) {
       setErrorText(
-        "Name, email, mobile phone, commercial contact, password and agency are required.",
+        "Name, email, mobile phone, commercial contact and agency are required.",
       );
       return null;
     }
     if (
+      password &&
       !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{12,128}$/.test(
         password,
       )
@@ -301,8 +407,9 @@ export function useUsers(
         mobilePhone: mobilePhone.trim(),
         commercialPhone: commercialPhone.trim(),
         commercialEmail: commercialEmail.trim(),
+        ...(maxActiveDevices ? { maxActiveDevices } : {}),
         otherDetails: otherDetails.trim() || undefined,
-        password,
+        ...(password ? { password } : {}),
       });
       setNewUserName("");
       setNewUserEmail("");
@@ -311,7 +418,7 @@ export function useUsers(
       setNewUserCommercialEmail("");
       setNewUserOtherDetails("");
       setNewUserPassword("");
-      await refresh();
+      await invalidate();
       setSuccessText(
         result?.generatedPinMasked
           ? `User created. Temporary PIN: ${result.generatedPinMasked}`
@@ -348,12 +455,21 @@ export function useUsers(
       mobilePhone: string;
       commercialPhone: string;
       commercialEmail: string;
+      maxActiveDevices?: number;
       otherDetails?: string;
-      password: string;
-      currentPassword: string;
+      password?: string;
+      currentPassword?: string;
       role?: string;
       agencyId?: string;
       isActive?: boolean;
+      preferences?: {
+        language?: string | null;
+        dateFormat?: string | null;
+        timeFormat?: string | null;
+        timezone?: string | null;
+        numberFormat?: string | null;
+        itemsPerPage?: number | null;
+      };
     },
   ) => {
     e.preventDefault();
@@ -365,12 +481,14 @@ export function useUsers(
     const mobilePhone = data?.mobilePhone ?? editUserMobilePhone;
     const commercialPhone = data?.commercialPhone ?? editUserCommercialPhone;
     const commercialEmail = data?.commercialEmail ?? editUserCommercialEmail;
+    const maxActiveDevices = data?.maxActiveDevices;
     const otherDetails = data?.otherDetails ?? editUserOtherDetails;
     const password = data?.password ?? editUserPassword;
     const currentPassword = data?.currentPassword ?? editUserCurrentPassword;
     const role = data?.role as UserRole | undefined;
     const agencyId = data?.agencyId;
     const isActive = data?.isActive;
+    const preferences = data?.preferences;
 
     if (!userId) return;
     if (
@@ -408,10 +526,12 @@ export function useUsers(
         mobilePhone: mobilePhone.trim(),
         commercialPhone: commercialPhone.trim(),
         commercialEmail: commercialEmail.trim(),
+        ...(maxActiveDevices ? { maxActiveDevices } : {}),
         otherDetails: otherDetails?.trim() || "",
         ...(role ? { role } : {}),
         ...(agencyId ? { agencyId } : {}),
         ...(isActive !== undefined ? { isActive } : {}),
+        ...(preferences ? { preferences } : {}),
         ...(changingPassword
           ? {
               password: password,
@@ -420,7 +540,7 @@ export function useUsers(
             }
           : {}),
       });
-      await refresh();
+      await invalidate();
       setSuccessText(
         changingPassword ? "User and password updated." : "User updated.",
       );
@@ -450,7 +570,7 @@ export function useUsers(
     await runAction(`toggle-user-${user.id}`, async () => {
       if (!session) return;
       await updateUserStatus(session.token, user.id, !user.isActive);
-      await refresh();
+      await invalidate();
       setSuccessText("User status updated.");
     });
   };
@@ -462,7 +582,7 @@ export function useUsers(
     let result: RotatePinResult | null = null;
     await runAction(`rotate-user-${user.id}`, async () => {
       result = await rotateUserPin(session.token, user.id);
-      await refresh();
+      await invalidate();
       setSuccessText(`PIN rotated: ${result?.newPinMasked}`);
     });
     return result;
@@ -472,8 +592,19 @@ export function useUsers(
     if (!session) return;
     await runAction(`delete-user-${user.id}`, async () => {
       await deleteUser(session.token, user.id);
-      await refresh();
+      await invalidate();
       setSuccessText("User deleted.");
+    });
+  };
+
+  const handleBulkDeleteUsers = async (ids: string[]): Promise<void> => {
+    await runAction("bulk-delete-users", async () => {
+      if (!session) return;
+      await Promise.all(ids.map((id) => deleteUser(session.token, id)));
+      await invalidate();
+      setSuccessText(
+        `${ids.length} user${ids.length !== 1 ? "s" : ""} deleted.`,
+      );
     });
   };
 
@@ -541,5 +672,6 @@ export function useUsers(
     handleRotateUserPin,
     handleRequestPasswordReset,
     handleDeleteUser,
+    handleBulkDeleteUsers,
   };
 }

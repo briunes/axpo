@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
-import { UserRole } from "@/domain/types";
+import { assertPermission } from "@/application/middleware/rbac";
 import { EmailService } from "@/application/services/emailService";
+import { prisma } from "@/infrastructure/database/prisma";
 import { z } from "zod";
 
 const TestEmailSchema = z.object({
@@ -48,10 +48,13 @@ const TestEmailSchema = z.object({
  */
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
-  assertRole(auth, [UserRole.ADMIN]);
+  await assertPermission(auth, "section.configurations");
 
   const body = await req.json();
   const parsed = TestEmailSchema.parse(body);
+  const config = await prisma.systemConfig.findFirst({
+    select: { setupTokenValidityHours: true },
+  });
 
   // Default sample variables if none provided
   const sampleVariables = parsed.sampleVariables || {
@@ -62,7 +65,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     pin: "1234",
     userName: "Test User",
     userEmail: parsed.recipientEmail,
+    SETUP_PASSWORD_VALIDITY_HOURS: String(
+      config?.setupTokenValidityHours ?? 72,
+    ),
     magicLink: "https://axpo.example.com/login/magic-link-token",
+    otpCode: "483921",
+    otpValidityMinutes: "10",
     expirationDate: new Date(
       Date.now() + 30 * 24 * 60 * 60 * 1000,
     ).toLocaleDateString(),

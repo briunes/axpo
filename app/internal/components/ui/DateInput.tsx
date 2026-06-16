@@ -5,7 +5,6 @@ import {
     Box,
     IconButton,
     InputAdornment,
-    InputLabel,
     Popover,
     TextField,
     Typography,
@@ -16,12 +15,14 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CloseIcon from '@mui/icons-material/Close';
 import { useUserPreferences } from '../providers/UserPreferencesProvider';
+import { useI18n } from '../../../../src/lib/i18n-context';
 import {
     formatDisplayDate,
     parseDisplayDate,
     autoFormatDateInput,
     getDatePlaceholder,
 } from '../../lib/formatPreferences';
+import { getLocalizedDayNames, getLocalizedMonthNames } from '../../lib/datePickerLocalization';
 
 // ─── Date utilities ───────────────────────────────────────────────────────────
 
@@ -50,19 +51,11 @@ const StyledTextField = styled(TextField, {
         display: 'none',
     },
     '& .MuiOutlinedInput-root': {
-        backgroundColor: '#fafafa',
         borderRadius: '6px',
         fontSize: '14px',
-        '& fieldset': {
-            borderWidth: '1px',
-            borderColor: error ? '#d32f2f' : 'rgba(0, 0, 0, 0.23)',
-        },
-        '&:hover fieldset': {
-            borderColor: error ? '#d32f2f' : 'rgba(0, 0, 0, 0.4)',
-        },
         '&.Mui-focused fieldset': {
             borderWidth: '1px',
-            borderColor: error ? '#d32f2f' : theme.palette.primary.main,
+            borderColor: error ? theme.palette.error.main : theme.palette.primary.main,
         },
         '& .MuiInputAdornment-positionStart': {
             marginRight: '8px',
@@ -70,7 +63,6 @@ const StyledTextField = styled(TextField, {
     },
     '& .MuiInputAdornment-root': { backgroundColor: 'transparent' },
     '& .MuiFormHelperText-root': {
-        color: error ? '#d32f2f' : '#666',
         marginLeft: 0,
         marginTop: '4px',
         fontSize: '12px',
@@ -103,12 +95,6 @@ export interface DateInputProps {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const MONTH_NAMES = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-];
-const DAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
-
 function isSameDay(a: Date | null, b: Date | null): boolean {
     if (!a || !b) return false;
     return a.getDate() === b.getDate() &&
@@ -133,8 +119,11 @@ export function DateInput({
     id,
 }: DateInputProps) {
     const { preferences } = useUserPreferences();
+    const { locale, t } = useI18n();
     const dateFormat = preferences.dateFormat;
     const resolvedPlaceholder = placeholder ?? getDatePlaceholder(dateFormat);
+    const monthNames = getLocalizedMonthNames(locale);
+    const dayNames = getLocalizedDayNames(locale);
 
     const generatedId = useId();
     const inputId = id || generatedId;
@@ -334,7 +323,7 @@ export function DateInput({
         return (
             <Box sx={{ px: 2, py: 1 }}>
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
-                    {MONTH_NAMES.map((month, idx) => (
+                    {monthNames.map((month, idx) => (
                         <Box
                             key={idx}
                             onClick={() => {
@@ -407,7 +396,7 @@ export function DateInput({
                             '&:hover': { backgroundColor: 'action.hover' },
                         }}
                     >
-                        {MONTH_NAMES[currentMonth.getMonth()]}
+                        {monthNames[currentMonth.getMonth()]}
                     </Typography>
                     {pickerMode === 'day' && (
                         <>
@@ -433,10 +422,10 @@ export function DateInput({
                 <>
                     {/* Day name headers */}
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0.5, mb: 1 }}>
-                        {DAY_NAMES.map((d) => (
+                        {dayNames.map((d) => (
                             <Box key={d} sx={{
                                 width: 40, height: 30, display: 'flex', alignItems: 'center',
-                                justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#666',
+                                justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: 'text.secondary',
                             }}>
                                 {d}
                             </Box>
@@ -449,19 +438,19 @@ export function DateInput({
                     </Box>
 
                     {/* Footer */}
-                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, pt: 2, borderTop: '1px solid #e0e0e0' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
                         <Typography
                             onClick={handleToday}
                             sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}
                         >
-                            Hoje
+                            {t('datePicker', 'today')}
                         </Typography>
                         {selectedDate && clearable && (
                             <Typography
                                 onClick={handleClear}
                                 sx={{ cursor: 'pointer', color: 'error.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}
                             >
-                                Limpar
+                                {t('datePicker', 'clear')}
                             </Typography>
                         )}
                     </Box>
@@ -531,7 +520,8 @@ export function DateInput({
                         marginBottom: '8px',
                         fontSize: '14px',
                         fontWeight: 500,
-                        color: disabled ? '#999' : '#333',
+                        color: 'inherit',
+                        opacity: disabled ? 0.5 : 1,
                     }}
                 >
                     {label}

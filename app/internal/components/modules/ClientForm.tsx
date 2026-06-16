@@ -4,8 +4,9 @@ import { useState } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
-import { CrudFormContainer, CrudFormRow } from "../shared";
-import { FormAutocomplete, FormInput, PhoneInput } from "../ui";
+import { AddressForm, CrudFormContainer, CrudFormRow } from "../shared";
+import type { AddressData } from "../shared";
+import { FormAutocomplete, FormInput, FormSelect, PhoneInput } from "../ui";
 import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface ClientFormData {
@@ -16,11 +17,14 @@ export interface ClientFormData {
     contactPhone: string;
     otherDetails: string;
     agencyId?: string;
+    address: AddressData;
+    language?: string;
 }
 
 interface ValidationErrors {
     name?: string;
     contactEmail?: string;
+    country?: string;
 }
 
 export interface ClientFormProps {
@@ -74,8 +78,11 @@ export function ClientForm({
         if (!data.name || data.name.trim() === "") {
             errors.name = t("clientFormPage", "validNameRequired");
         }
-        if (data.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.contactEmail)) {
+        if (data.contactEmail && data.contactEmail.trim() !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.contactEmail)) {
             errors.contactEmail = t("clientFormPage", "validContactEmailInvalid");
+        }
+        if (!data.address.country) {
+            errors.country = t("clientFormPage", "validCountryRequired");
         }
         setValidationErrors(errors);
         return Object.keys(errors).length === 0;
@@ -155,20 +162,45 @@ export function ClientForm({
                     error={!!validationErrors.contactEmail}
                     helperText={validationErrors.contactEmail}
                 />
-            </CrudFormRow>
-
-            {/* Agency (admin only) */}
-            {canManageAgency && agencies.length > 0 && (
+                {/* Agency (admin only) */}
                 <FormAutocomplete
                     label={t("clientFormPage", "fieldAgency")}
                     options={agencies.map((a) => ({ value: a.id, label: a.name }))}
                     value={data.agencyId || ""}
                     onChange={(val) => onChange({ ...data, agencyId: val })}
                     placeholder={t("clientFormPage", "selectAgencyPlaceholder")}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || (!canManageAgency && agencies.length > 0)}
                     disableClearable={mode === "edit"}
                 />
-            )}
+
+            </CrudFormRow>
+
+
+            {/* Address */}
+            <AddressForm
+                value={data.address}
+                onChange={(addr) => {
+                    onChange({ ...data, address: addr });
+                    if (addr.country) {
+                        setValidationErrors((prev) => { const n = { ...prev }; delete n.country; return n; });
+                    }
+                }}
+                disabled={isSubmitting}
+                countryRequired
+                countryError={validationErrors.country}
+            />
+
+            {/* Language preference */}
+            <FormSelect
+                label={t("clientFormPage", "fieldLanguage")}
+                value={data.language ?? ""}
+                onChange={(val) => onChange({ ...data, language: (val as string) || undefined })}
+                options={[
+                    { value: "en", label: "🇬🇧 English" },
+                    { value: "es", label: "🇪🇸 Español" },
+                ]}
+                disabled={isSubmitting}
+            />
 
             {/* Other details */}
             <FormInput

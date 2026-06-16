@@ -1,29 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { requireAuth } from "@/application/middleware/auth";
+import { assertPermission } from "@/application/middleware/rbac";
+import { ValidationError } from "@/domain/errors/errors";
 
-/**
- * @swagger
- * /api/v1/internal/config/email-templates/{id}:
- *   get:
- *     tags: [Configuration]
- *     summary: Get an email template by ID
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Email template
- */
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
+export const GET = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  await assertPermission(auth, "section.configurations");
+  const id = context?.params?.id;
+  if (!id) throw new ValidationError("Template id parameter is required");
   const template = await prisma.emailTemplate.findUnique({
     where: { id },
+    include: { translations: true },
   });
 
   if (!template) {
@@ -31,30 +20,47 @@ export async function GET(
   }
 
   return NextResponse.json(template);
-}
+});
 
-/**
- * @swagger
- * /api/v1/internal/config/email-templates/{id}:
- *   put:
- *     tags: [Configuration]
- *     summary: Update an email template
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Updated email template
- */
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
+export const PUT = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  await assertPermission(auth, "section.configurations");
+  const id = context?.params?.id;
+  if (!id) throw new ValidationError("Template id parameter is required");
   const body = await req.json();
+
+  // Upsert translations when provided
+  if (body.translations && Array.isArray(body.translations)) {
+    await Promise.all(
+      body.translations.map(
+        (tr: { languageCode: string; subject: string; htmlContent: string }) =>
+          prisma.emailTemplateTranslation.upsert({
+            where: {
+              emailTemplateId_languageCode: {
+                emailTemplateId: id,
+                languageCode: tr.languageCode,
+              },
+            },
+            update: {
+              subject: tr.subject,
+              htmlContent: tr.htmlContent,
+            },
+            create: {
+              emailTemplateId: id,
+              languageCode: tr.languageCode,
+              subject: tr.subject,
+              htmlContent: tr.htmlContent,
+            },
+          }),
+      ),
+    );
+  }
+
+  // Derive canonical subject/htmlContent from the "en" (or first) translation
+  // so the parent columns stay in sync as a fallback.
+  const firstTranslation =
+    body.translations?.find((tr: any) => tr.languageCode === "en") ??
+    body.translations?.[0];
 
   const template = await prisma.emailTemplate.update({
     where: { id },
@@ -63,39 +69,24 @@ export async function PUT(
       description: body.description,
       type: body.type,
       active: body.active,
-      subject: body.subject,
-      htmlContent: body.htmlContent,
+      subject: firstTranslation?.subject ?? body.subject,
+      htmlContent: firstTranslation?.htmlContent ?? body.htmlContent,
       editableSections: body.editableSections ?? undefined,
     },
+    include: { translations: true },
   });
 
   return NextResponse.json(template);
-}
+});
 
-/**
- * @swagger
- * /api/v1/internal/config/email-templates/{id}:
- *   delete:
- *     tags: [Configuration]
- *     summary: Delete an email template
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       204:
- *         description: Template deleted
- */
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
+export const DELETE = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  await assertPermission(auth, "section.configurations");
+  const id = context?.params?.id;
+  if (!id) throw new ValidationError("Template id parameter is required");
   await prisma.emailTemplate.delete({
     where: { id },
   });
 
   return new NextResponse(null, { status: 204 });
-}
+});

@@ -1,11 +1,18 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { listAuditLogs, type AuditLogItem } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
 
 export interface AuditLogsActions {
   logs: AuditLogItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  setPage: (page: number) => void;
+  setPageSize: (pageSize: number) => void;
   loading: boolean;
   errorText: string | null;
   refresh: () => Promise<void>;
@@ -18,70 +25,83 @@ export interface AuditLogsActions {
   setFilterDateFrom: (v: string) => void;
   filterDateTo: string;
   setFilterDateTo: (v: string) => void;
+  filterActorSearch: string;
+  setFilterActorSearch: (v: string) => void;
+  filterTargetType: string;
+  setFilterTargetType: (v: string) => void;
   filteredLogs: AuditLogItem[];
   handleExportCsv: () => void;
 }
 
 export function useAuditLogs(session: SessionState | null): AuditLogsActions {
-  const [logs, setLogs] = useState<AuditLogItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [errorText, setErrorText] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterEventType, setFilterEventType] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
+  const [filterActorSearch, setFilterActorSearch] = useState("");
+  const [filterTargetType, setFilterTargetType] = useState("");
+
+  // ── TanStack Query ──────────────────────────────────────────────────────
+  const queryParams = {
+    page,
+    limit: pageSize,
+    eventType: filterEventType || undefined,
+    dateFrom: filterDateFrom || undefined,
+    dateTo: filterDateTo || undefined,
+    search: searchQuery || undefined,
+    actorSearch: filterActorSearch || undefined,
+    targetType: filterTargetType || undefined,
+  };
+
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: ["audit-logs", session?.token ?? "", queryParams],
+    queryFn: () => listAuditLogs(session!.token, queryParams),
+    enabled: !!session,
+    placeholderData: keepPreviousData,
+    staleTime: 60_000, // audit logs change less frequently
+  });
+
+  const logs = data?.items ?? [];
+  const total = data?.pagination?.total ?? 0;
+  const totalPages = data?.pagination?.totalPages ?? 1;
+  const loading = isFetching;
+  const errorText = error instanceof Error ? error.message : null;
 
   const refresh = useCallback(async () => {
-    if (!session) return;
-    setLoading(true);
-    setErrorText(null);
-    try {
-      const data = await listAuditLogs(session.token, {
-        eventType: filterEventType || undefined,
-        dateFrom: filterDateFrom || undefined,
-        dateTo: filterDateTo || undefined,
-      });
-      setLogs(data);
-    } catch (error) {
-      setErrorText(
-        error instanceof Error ? error.message : "Could not load audit logs.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [session, filterEventType, filterDateFrom, filterDateTo]);
+    await refetch();
+  }, [refetch]);
+  // ────────────────────────────────────────────────────────────────────────
 
   const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      // Event type filter
-      if (filterEventType && log.eventType !== filterEventType) return false;
+    return logs;
+  }, [logs]);
 
-      // Date range filter (compare date portion only)
-      if (filterDateFrom) {
-        const from = new Date(`${filterDateFrom}T00:00:00`);
-        if (new Date(log.createdAt) < from) return false;
-      }
-      if (filterDateTo) {
-        const to = new Date(`${filterDateTo}T23:59:59`);
-        if (new Date(log.createdAt) > to) return false;
-      }
+  const handleSetSearchQuery = (value: string) => {
+    setSearchQuery(value);
+    setPage(1);
+  };
 
-      // Text search
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const named = log as AuditLogItem & { actorName?: string | null };
-        return (
-          log.eventType.toLowerCase().includes(q) ||
-          log.actorEmail?.toLowerCase().includes(q) ||
-          named.actorName?.toLowerCase().includes(q) ||
-          log.targetType?.toLowerCase().includes(q) ||
-          log.targetId?.toLowerCase().includes(q)
-        );
-      }
+  const handleSetFilterEventType = (value: string) => {
+    setFilterEventType(value);
+    setPage(1);
+  };
 
-      return true;
-    });
-  }, [logs, filterEventType, filterDateFrom, filterDateTo, searchQuery]);
+  const handleSetFilterDateFrom = (value: string) => {
+    setFilterDateFrom(value);
+    setPage(1);
+  };
+
+  const handleSetFilterDateTo = (value: string) => {
+    setFilterDateTo(value);
+    setPage(1);
+  };
+
+  const handleSetPageSize = (value: number) => {
+    setPageSize(value);
+    setPage(1);
+  };
 
   const handleExportCsv = () => {
     const rows = [
@@ -109,17 +129,33 @@ export function useAuditLogs(session: SessionState | null): AuditLogsActions {
 
   return {
     logs,
+    total,
+    page,
+    pageSize,
+    totalPages,
+    setPage,
+    setPageSize: handleSetPageSize,
     loading,
     errorText,
     refresh,
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: handleSetSearchQuery,
     filterEventType,
-    setFilterEventType,
+    setFilterEventType: handleSetFilterEventType,
     filterDateFrom,
-    setFilterDateFrom,
+    setFilterDateFrom: handleSetFilterDateFrom,
     filterDateTo,
-    setFilterDateTo,
+    setFilterDateTo: handleSetFilterDateTo,
+    filterActorSearch,
+    setFilterActorSearch: (v: string) => {
+      setFilterActorSearch(v);
+      setPage(1);
+    },
+    filterTargetType,
+    setFilterTargetType: (v: string) => {
+      setFilterTargetType(v);
+      setPage(1);
+    },
     filteredLogs,
     handleExportCsv,
   };

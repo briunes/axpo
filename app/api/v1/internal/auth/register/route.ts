@@ -5,7 +5,7 @@ import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { AuthService } from "@/application/services/authService";
 import { prisma } from "@/infrastructure/database/prisma";
 
@@ -106,7 +106,7 @@ const registerSchema = z.object({
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.AGENT]);
+  await assertPermission(auth, "users.create");
 
   const body = await request.json();
   const payload = registerSchema.parse(body);

@@ -12,8 +12,12 @@ export type PermissionKey =
   | "section.base-values"
   | "section.audit-logs"
   | "section.email-logs"
+  | "section.cron-logs"
+  | "section.ocr-logs"
+  | "section.app-error-logs"
   | "section.analytics"
   | "section.configurations"
+  | "section.ocr-usage"
   // ── Simulation actions ───────────────────────────────────────────────────
   | "simulations.create"
   | "simulations.share"
@@ -31,6 +35,7 @@ export type PermissionKey =
   | "users.create"
   | "users.edit"
   | "users.deactivate"
+  | "users.sessions.manage"
   // ── Agency management ─────────────────────────────────────────────────────
   | "agencies.view"
   | "agencies.create"
@@ -50,6 +55,14 @@ export interface PermissionGroup {
   label: string;
   permissions: PermissionDef[];
 }
+
+export const LOG_PERMISSION_KEYS: PermissionKey[] = [
+  "section.audit-logs",
+  "section.email-logs",
+  "section.cron-logs",
+  "section.ocr-logs",
+  "section.app-error-logs",
+];
 
 export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
@@ -72,17 +85,6 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         description: "Access price base value sets",
       },
       {
-        key: "section.audit-logs",
-        label: "Audit Logs",
-        description: "View system audit log entries",
-      },
-      {
-        key: "section.email-logs",
-        label: "Email Logs",
-        description: "View email delivery logs and status (admin only)",
-        adminOnly: true,
-      },
-      {
         key: "section.analytics",
         label: "Analytics & Reports",
         description: "Access analytics dashboard and reports",
@@ -103,6 +105,49 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: "section.configurations",
         label: "Configurations",
         description: "Access system configurations (admin only)",
+        adminOnly: true,
+      },
+      {
+        key: "section.ocr-usage",
+        label: "OCR Usage & Billing",
+        description:
+          "Access the OCR token usage / cost dashboard and invoice exports (admin only)",
+        adminOnly: true,
+      },
+    ],
+  },
+  {
+    id: "logs",
+    label: "Logs",
+    permissions: [
+      {
+        key: "section.audit-logs",
+        label: "Audit Logs",
+        description: "View system audit log entries (admin only)",
+        adminOnly: true,
+      },
+      {
+        key: "section.email-logs",
+        label: "Email Logs",
+        description: "View email delivery logs and status (admin only)",
+        adminOnly: true,
+      },
+      {
+        key: "section.cron-logs",
+        label: "Cron Logs",
+        description: "View cron job execution logs (admin only)",
+        adminOnly: true,
+      },
+      {
+        key: "section.ocr-logs",
+        label: "OCR Logs",
+        description: "View OCR extraction and prompt diagnostic logs (admin only)",
+        adminOnly: true,
+      },
+      {
+        key: "section.app-error-logs",
+        label: "App Errors",
+        description: "View application error logs (admin only)",
         adminOnly: true,
       },
     ],
@@ -198,6 +243,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         description: "Activate or deactivate user accounts (admin only)",
         adminOnly: true,
       },
+      {
+        key: "users.sessions.manage",
+        label: "Manage user sessions",
+        description:
+          "View user sessions and force logout by session, user or globally",
+      },
     ],
   },
   {
@@ -240,7 +291,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
   string,
   Record<PermissionKey, boolean>
 > = {
-  ADMIN: {
+  SYS_ADMIN: {
     "section.simulations": true,
     "section.users": true,
     "section.agencies": true,
@@ -248,8 +299,12 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.base-values": true,
     "section.audit-logs": true,
     "section.email-logs": true,
+    "section.cron-logs": true,
+    "section.ocr-logs": true,
+    "section.app-error-logs": true,
     "section.analytics": true,
     "section.configurations": true,
+    "section.ocr-usage": true,
     "simulations.create": true,
     "simulations.share": true,
     "simulations.duplicate": true,
@@ -264,6 +319,41 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "users.create": true,
     "users.edit": true,
     "users.deactivate": true,
+    "users.sessions.manage": true,
+    "agencies.view": true,
+    "agencies.create": true,
+    "agencies.edit": true,
+    "agencies.deactivate": true,
+  },
+  ADMIN: {
+    "section.simulations": true,
+    "section.users": true,
+    "section.agencies": true,
+    "section.clients": true,
+    "section.base-values": true,
+    "section.audit-logs": true,
+    "section.email-logs": true,
+    "section.cron-logs": true,
+    "section.ocr-logs": true,
+    "section.app-error-logs": true,
+    "section.analytics": true,
+    "section.configurations": true,
+    "section.ocr-usage": true,
+    "simulations.create": true,
+    "simulations.share": true,
+    "simulations.duplicate": true,
+    "simulations.archive": true,
+    "simulations.delete": true,
+    "simulations.edit_payload": true,
+    "clients.view": true,
+    "clients.create": true,
+    "clients.edit": true,
+    "clients.delete": true,
+    "users.view": true,
+    "users.create": true,
+    "users.edit": true,
+    "users.deactivate": true,
+    "users.sessions.manage": true,
     "agencies.view": true,
     "agencies.create": true,
     "agencies.edit": true,
@@ -275,10 +365,14 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.agencies": false,
     "section.clients": true,
     "section.base-values": true,
-    "section.audit-logs": true,
+    "section.audit-logs": false,
     "section.email-logs": false,
+    "section.cron-logs": false,
+    "section.ocr-logs": false,
+    "section.app-error-logs": false,
     "section.analytics": true,
     "section.configurations": false,
+    "section.ocr-usage": false,
     "simulations.create": true,
     "simulations.share": true,
     "simulations.duplicate": true,
@@ -293,6 +387,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "users.create": false,
     "users.edit": false,
     "users.deactivate": false,
+    "users.sessions.manage": false,
     "agencies.view": false,
     "agencies.create": false,
     "agencies.edit": false,
@@ -306,8 +401,12 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.base-values": false,
     "section.audit-logs": false,
     "section.email-logs": false,
+    "section.cron-logs": false,
+    "section.ocr-logs": false,
+    "section.app-error-logs": false,
     "section.analytics": false,
     "section.configurations": false,
+    "section.ocr-usage": false,
     "simulations.create": true,
     "simulations.share": true,
     "simulations.duplicate": true,
@@ -322,6 +421,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "users.create": false,
     "users.edit": false,
     "users.deactivate": false,
+    "users.sessions.manage": false,
     "agencies.view": false,
     "agencies.create": false,
     "agencies.edit": false,

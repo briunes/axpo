@@ -29,11 +29,18 @@ export interface SystemConfig {
   enableRealtimeReports: boolean;
   ivaRate?: number;
   electricityTaxRate?: number;
+  hydrocarbonTaxRate?: number;
+  ivaRateOptions?: number[];
+  electricityTaxRateOptions?: number[];
+  hydrocarbonTaxRateOptions?: number[];
+  electricityTaxConfig?: any;
+  gasTaxConfig?: any;
   defaultDateFormat?: string;
   defaultTimeFormat?: string;
   defaultTimezone?: string;
   defaultNumberFormat?: string;
   defaultItemsPerPage?: number;
+  defaultLanguage?: string;
   setupTokenValidityHours?: number;
   defaultPdfTemplateGasId?: string;
   defaultPdfTemplateElectricityId?: string;
@@ -44,8 +51,16 @@ export interface SystemConfig {
   smtpPassword?: string;
   smtpFromEmail?: string;
   smtpFromName?: string;
+  hasSmtpPassword?: boolean;
   userCreationEmailTemplateId?: string;
   passwordResetEmailTemplateId?: string;
+  magicLinkEnabled?: boolean;
+  magicLinkEmailTemplateId?: string;
+  magicLinkTokenValidityMinutes?: number;
+  otpEnabled?: boolean;
+  otpEmailTemplateId?: string;
+  otpCodeValidityMinutes?: number;
+  defaultMaxActiveDevices?: number;
   // LLM settings
   llmProvider?: string;
   llmApiKey?: string;
@@ -54,6 +69,44 @@ export interface SystemConfig {
   llmTemperature?: number;
   llmMaxTokens?: number;
   llmEnabled?: boolean;
+  hasLlmApiKey?: boolean;
+  aiProviderConfigs?: Array<{
+    id: string;
+    name: string;
+    enabled: boolean;
+    provider: string;
+    apiKey?: string;
+    hasApiKey?: boolean;
+    modelName: string;
+    baseUrl: string;
+    temperature?: number;
+    maxTokens?: number;
+  }>;
+  aiTaskConfigs?: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+  appVersion: String;
+  // Maintenance mode
+  maintenanceMode?: boolean;
+  maintenanceUntil?: string | null;
+  maintenanceMessage?: string | null;
+  // OCR billing settings
+  ocrBillingEnabled?: boolean;
+  ocrBillingCurrency?: string;
+  ocrBillingUnitTokens?: number;
+  ocrBillingMarkupPercent?: number;
+  ocrBillingFixedFeePerCall?: number;
+  ocrBillingIncludeFailedCalls?: boolean;
+}
+
+export interface PdfTemplateTranslationInput {
+  languageCode: string;
+  htmlContent: string;
+}
+
+export interface PdfTemplateTranslation extends PdfTemplateTranslationInput {
+  id: string;
+  pdfTemplateId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -77,6 +130,20 @@ export interface PdfTemplate {
       required?: boolean;
     }
   > | null;
+  translations?: PdfTemplateTranslation[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmailTemplateTranslationInput {
+  languageCode: string;
+  subject: string;
+  htmlContent: string;
+}
+
+export interface EmailTemplateTranslation extends EmailTemplateTranslationInput {
+  id: string;
+  emailTemplateId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -100,6 +167,7 @@ export interface EmailTemplate {
       required?: boolean;
     }
   > | null;
+  translations?: EmailTemplateTranslation[];
   createdAt: string;
   updatedAt: string;
 }
@@ -113,6 +181,10 @@ export interface TemplateVariable {
   example?: string;
   sortOrder: number;
   active: boolean;
+  /** Comma-separated template types this variable applies to (null = all types) */
+  templateTypes?: string | null;
+  /** Commodity this variable applies to: ELECTRICITY, GAS (null = all commodities) */
+  commodity?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -162,6 +234,7 @@ export async function testLlmConnection(config: {
   apiKey: string;
   baseUrl: string;
   modelName: string;
+  providerConfigId?: string;
 }): Promise<LlmTestResult> {
   const res = await fetch("/api/v1/internal/config/llm/test", {
     method: "POST",
@@ -181,8 +254,12 @@ export async function testLlmConnection(config: {
 }
 
 // System Config
-export async function getSystemConfig(): Promise<SystemConfig> {
-  const res = await fetch("/api/v1/internal/config/system", {
+export async function getSystemConfig(options?: {
+  view?: "runtime" | "admin";
+}): Promise<SystemConfig> {
+  const view = options?.view ?? "runtime";
+  const query = `?view=${view}`;
+  const res = await fetch(`/api/v1/internal/config/system${query}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch system config");
@@ -224,7 +301,9 @@ export async function getPdfTemplates(params?: {
 }
 
 export async function createPdfTemplate(
-  data: Omit<PdfTemplate, "id" | "createdAt" | "updatedAt">,
+  data: Omit<PdfTemplate, "id" | "createdAt" | "updatedAt" | "translations"> & {
+    translations?: PdfTemplateTranslationInput[];
+  },
 ): Promise<PdfTemplate> {
   const res = await fetch("/api/v1/internal/config/pdf-templates", {
     method: "POST",
@@ -237,7 +316,9 @@ export async function createPdfTemplate(
 
 export async function updatePdfTemplate(
   id: string,
-  data: Partial<PdfTemplate>,
+  data: Partial<Omit<PdfTemplate, "translations">> & {
+    translations?: PdfTemplateTranslationInput[];
+  },
 ): Promise<PdfTemplate> {
   const res = await fetch(`/api/v1/internal/config/pdf-templates/${id}`, {
     method: "PUT",
@@ -284,7 +365,10 @@ export async function getEmailTemplates(params?: {
 }
 
 export async function createEmailTemplate(
-  data: Omit<EmailTemplate, "id" | "createdAt" | "updatedAt">,
+  data: Omit<
+    EmailTemplate,
+    "id" | "createdAt" | "updatedAt" | "translations"
+  > & { translations?: EmailTemplateTranslationInput[] },
 ): Promise<EmailTemplate> {
   const res = await fetch("/api/v1/internal/config/email-templates", {
     method: "POST",
@@ -297,7 +381,9 @@ export async function createEmailTemplate(
 
 export async function updateEmailTemplate(
   id: string,
-  data: Partial<EmailTemplate>,
+  data: Partial<Omit<EmailTemplate, "translations">> & {
+    translations?: EmailTemplateTranslationInput[];
+  },
 ): Promise<EmailTemplate> {
   const res = await fetch(`/api/v1/internal/config/email-templates/${id}`, {
     method: "PUT",
@@ -340,8 +426,15 @@ export async function sendTestEmail(
 }
 
 // Template Variables
-export async function getTemplateVariables(): Promise<TemplateVariable[]> {
-  const res = await fetch("/api/v1/internal/config/template-variables", {
+export async function getTemplateVariables(filters?: {
+  commodity?: string;
+  types?: string;
+}): Promise<TemplateVariable[]> {
+  const params = new URLSearchParams();
+  if (filters?.commodity) params.set("commodity", filters.commodity);
+  if (filters?.types) params.set("types", filters.types);
+  const qs = params.toString() ? `?${params.toString()}` : "";
+  const res = await fetch(`/api/v1/internal/config/template-variables${qs}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error("Failed to fetch template variables");

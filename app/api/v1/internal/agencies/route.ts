@@ -5,7 +5,10 @@ import { AlreadyExistsError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 
 const createAgencySchema = z.object({
@@ -127,11 +130,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   );
   const search = searchParams.get("search") ?? undefined;
   const includeDeleted =
-    searchParams.get("includeDeleted") === "true" &&
-    auth.role === UserRole.ADMIN;
+    searchParams.get("includeDeleted") === "true" && isElevatedRole(auth.role);
   const orderBy = searchParams.get("orderBy") ?? "createdAt";
   const sortDir =
     (searchParams.get("sortDir") ?? "desc") === "asc" ? "asc" : "desc";
+  // minimal=true: skip all includes/joins. Used by dropdowns that only need id + name.
+  const minimal = searchParams.get("minimal") === "true";
 
   const allowedOrderBy: Record<string, true> = {
     createdAt: true,
@@ -140,17 +144,38 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   };
   const safeOrderBy = allowedOrderBy[orderBy] ? orderBy : "createdAt";
 
-  const baseWhere =
-    auth.role === UserRole.ADMIN
-      ? search
-        ? { name: { contains: search, mode: "insensitive" as const } }
-        : {}
-      : { id: auth.agencyId };
+  const baseWhere = isElevatedRole(auth.role)
+    ? search
+      ? { name: { contains: search, mode: "insensitive" as const } }
+      : {}
+    : { id: auth.agencyId };
 
   const where = {
     ...baseWhere,
-    ...(includeDeleted ? {} : { isDeleted: false }), // Only filter out deleted if not including them
+    ...(includeDeleted ? {} : { isDeleted: false }),
   };
+
+  if (minimal) {
+    // Lean query: no joins. Used for dropdown/select UI.
+    const [agencies, total] = await Promise.all([
+      prisma.agency.findMany({
+        where,
+        orderBy: { [safeOrderBy]: sortDir },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          isActive: true,
+          isDeleted: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.agency.count({ where }),
+    ]);
+    return ResponseHandler.ok({ items: agencies, total, page, pageSize }, 200);
+  }
 
   const [agencies, total] = await Promise.all([
     prisma.agency.findMany({
@@ -245,7 +270,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
  */
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN]);
+  await assertPermission(auth, "agencies.create");
 
   const body = await request.json();
   const payload = createAgencySchema.parse(body);

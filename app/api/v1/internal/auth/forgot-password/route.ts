@@ -2,6 +2,11 @@ import { z } from "zod";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { AuthService } from "@/application/services/authService";
+import {
+  applyRateLimit,
+  getClientRateLimitKey,
+} from "@/application/middleware/rateLimit";
+import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email(),
@@ -33,6 +38,12 @@ const forgotPasswordSchema = z.object({
  *         description: Invalid email format
  */
 export const POST = withErrorHandler(async (request) => {
+  const { ipAddress } = getRequestSessionContext(request);
+  applyRateLimit(getClientRateLimitKey(ipAddress, "forgot-password"), {
+    maxRequests: 5,
+    windowMs: 60 * 60 * 1000,
+  });
+
   const body = await request.json();
   const { email } = forgotPasswordSchema.parse(body);
 

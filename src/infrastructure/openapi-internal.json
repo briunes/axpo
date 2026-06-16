@@ -361,7 +361,7 @@
           },
           "password": {
             "type": "string",
-            "minLength": 12,
+            "minLength": 1,
             "maxLength": 128
           }
         }
@@ -1199,6 +1199,51 @@
         ]
       }
     },
+    "/api/v1/internal/app-error-logs": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "List application error logs",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 25
+            }
+          },
+          {
+            "in": "query",
+            "name": "errorType",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
     "/api/v1/internal/audit-logs": {
       "get": {
         "tags": [
@@ -1243,10 +1288,18 @@
           },
           {
             "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "schema": {
               "type": "integer",
-              "default": 500
+              "default": 25
             }
           }
         ]
@@ -1350,6 +1403,70 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/auth/magic-link/request": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Request a magic link login email",
+        "description": "Sends a magic link email with a one-time token. Always returns success to prevent email enumeration.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Magic link sent (or email not found — response is the same for security)"
+          },
+          "400": {
+            "description": "Invalid email format"
+          }
+        }
+      }
+    },
+    "/api/v1/internal/auth/magic-link/verify": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Verify a magic link token and return a session",
+        "security": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Login successful, returns JWT and user info"
+          },
+          "400": {
+            "description": "Invalid or expired token"
           }
         }
       }
@@ -2222,71 +2339,6 @@
         }
       }
     },
-    "/api/v1/internal/config/email-templates/{id}": {
-      "get": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Get an email template by ID",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Email template"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Update an email template",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated email template"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Delete an email template",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Template deleted"
-          }
-        }
-      }
-    },
     "/api/v1/internal/config/email-templates": {
       "get": {
         "tags": [
@@ -2447,48 +2499,6 @@
       }
     },
     "/api/v1/internal/config/pdf-templates/{id}": {
-      "get": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Get a PDF template by ID",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "PDF template"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Update a PDF template",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated PDF template"
-          }
-        }
-      },
       "delete": {
         "tags": [
           "Configuration"
@@ -2546,33 +2556,6 @@
         "responses": {
           "200": {
             "description": "List of PDF templates"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Configuration"
-        ],
-        "summary": "Create a new PDF template",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "name",
-                  "type",
-                  "description",
-                  "htmlContent"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created PDF template"
           }
         }
       }
@@ -2938,6 +2921,311 @@
         }
       }
     },
+    "/api/v1/internal/ocr-logs/{id}/improve-prompt": {
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Improve the OCR extraction prompt based on user corrections in the linked simulation",
+        "description": "Compares the OCR-extracted fields against the current simulation input values. Fields that the user changed are treated as corrections. The original prompt + correction context + stored invoice files are sent back to the LLM to generate an improved extraction prompt.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-logs/{id}/report": {
+      "patch": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Report an issue for an OCR log entry",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "description": "Issue message reported by the user"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/ocr-logs": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "List OCR invoice extraction logs",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 25
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-prices/{id}": {
+      "put": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Update an OCR model price row",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Hard-delete an OCR model price row",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-prices": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "List configured OCR model prices",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "activeOnly",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Create a new OCR model price row",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-usage/available-models": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "List distinct provider/model pairs seen in OCR logs",
+        "description": "Useful for the admin to see which models they should price",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-usage/invoices/{id}": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Get a single OCR usage invoice snapshot",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-usage/invoices": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "List saved OCR usage invoice snapshots",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Snapshot the current period's usage into a billable invoice line",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/ocr-usage/overview": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Aggregated OCR usage metrics (tokens, cost) for a date range",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateTo",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "model",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "userId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "groupBy",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "day",
+                "user",
+                "provider",
+                "model",
+                "type"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "granularity",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "hour",
+                "day",
+                "week",
+                "month"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "recentLimit",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "maximum": 50
+            }
+          }
+        ]
+      }
+    },
     "/api/v1/internal/openapi": {
       "get": {
         "tags": [
@@ -3114,7 +3402,7 @@
         ]
       }
     },
-    "/api/v1/internal/simulations/{id}/price-history": {
+    "/api/v1/internal/simulations/{id}/price-history:Menu 'Comunicações'": {
       "get": {
         "summary": "Get indexed price history data for a simulation",
         "tags": [
@@ -3245,6 +3533,30 @@
           "Simulations"
         ],
         "summary": "Share simulation (token + snapshot PIN)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/simulations/bulk": {
+      "delete": {
+        "tags": [
+          "Simulations"
+        ],
+        "summary": "Bulk soft-delete simulations",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Simulations"
+        ],
+        "summary": "Bulk archive (soft-delete) simulations",
         "security": [
           {
             "bearerAuth": []
@@ -3524,6 +3836,44 @@
         "responses": {
           "200": {
             "description": "Updated user preferences"
+          }
+        }
+      }
+    },
+    "/api/v1/internal/users/{id}/reset-password": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Trigger a password reset email for a user (Admin action)",
+        "description": "Generates a password reset token and sends an email to the user with a reset link. Admin/Agent only.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Password reset email sent successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "User not found"
           }
         }
       }

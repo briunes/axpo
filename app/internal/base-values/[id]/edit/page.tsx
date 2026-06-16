@@ -2,13 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
-import { Divider, Stack } from "@mui/material";
+import { Divider, Stack, Button, Tooltip } from "@mui/material";
+import DownloadIcon from "@mui/icons-material/Download";
 import { loadSession } from "../../../lib/authSession";
 import {
     getBaseValueSet,
     listBaseValueItems,
     replaceBaseValueItems,
     updateBaseValueSet,
+    downloadBaseValueFile,
     type BaseValueItem,
     type BaseValueSetItem,
 } from "../../../lib/internalApi";
@@ -126,7 +128,23 @@ export default function EditBaseValueSetPage({
                 version: set.version,
             })}
             backHref="/internal/base-values"
-            actions={formActions}
+            actions={
+                <>
+                    {set?.sourceFileName && (
+                        <Tooltip title={t("baseValuesModule", "download_tooltip")} placement="bottom">
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => downloadBaseValueFile(session!.token, id)}
+                                startIcon={<DownloadIcon fontSize="small" />}
+                            >
+                                {t("baseValuesModule", "downloadExcel")}
+                            </Button>
+                        </Tooltip>
+                    )}
+                    {formActions}
+                </>
+            }
         >
             <CrudFormContainer
                 onSubmit={handleSubmit}

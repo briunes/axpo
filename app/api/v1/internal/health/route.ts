@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { ResponseHandler } from "@/application/middleware/response";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { getDatabaseConnectionMode } from "@/infrastructure/database/databaseMode";
+import { prisma } from "@/infrastructure/database/prisma";
 
 /**
  * @swagger
@@ -13,12 +15,26 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
  *       200:
  *         description: Healthy response
  */
-export const GET = withErrorHandler(async (_request: NextRequest) => {
+export const GET = withErrorHandler(async (request: NextRequest) => {
+  const databaseMode = getDatabaseConnectionMode();
+  const shouldCheckDatabase =
+    request.nextUrl.searchParams.get("checkDatabase") === "true";
+
+  let databaseStatus: "not-checked" | "connected" = "not-checked";
+  if (shouldCheckDatabase) {
+    await prisma.$connect();
+    databaseStatus = "connected";
+  }
+
   const health = {
     status: "healthy" as const,
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || "0.2.0",
     environment: process.env.NODE_ENV || "development",
+    database: {
+      mode: databaseMode,
+      status: databaseStatus,
+    },
   };
 
   return ResponseHandler.ok(health, 200);

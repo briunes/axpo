@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { loadSession } from "../lib/authSession";
 import { useSimulations } from "../components/hooks/useSimulations";
 import { useClients } from "../components/hooks/useClients";
 import { useUsers } from "../components/hooks/useUsers";
 import { SimulationsModule } from "../components/modules";
 import { useAlerts } from "../components/shared";
-import { useActionButtons } from "../components/InternalWorkspace";
+import { useActionButtons, useRegisterRefresh } from "../components/InternalWorkspace";
 import { useUserPreferences } from "../components/providers/UserPreferencesProvider";
+import type { UserItem } from "../lib/internalApi";
 
 export default function SimulationsPage() {
   const [session] = useState(loadSession());
@@ -16,19 +17,36 @@ export default function SimulationsPage() {
   const onActionButtons = useActionButtons();
   const { preferences } = useUserPreferences();
   const simulationsActions = useSimulations(session, preferences.itemsPerPage);
-  const clientsActions = useClients(session);
-  const usersActions = useUsers(session);
-  const fetchedRef = useRef(false);
+  useRegisterRefresh(() => simulationsActions.refresh());
 
-  // Fetch all data on mount
-  useEffect(() => {
-    if (!fetchedRef.current && session) {
-      fetchedRef.current = true;
-      // Fetch all records for filter dropdowns with large page size
-      clientsActions.refresh({ pageSize: 1000 });
-      usersActions.refresh({ pageSize: 1000 });
+  const isCommercial = session?.user.role === "COMMERCIAL";
+
+  // TanStack Query auto-fetches on mount; initialPageSize=1000 for filter dropdowns
+  const clientsActions = useClients(session, 1000, { usePersistedState: false, minimal: true });
+  // Commercial users cannot access /users — skip the query entirely and derive from session
+  const usersActions = useUsers(session, 1000, {
+    queryEnabled: !isCommercial,
+    usePersistedState: false,
+    minimal: true,
+    contextual: true,
+  });
+
+  const sessionUser: UserItem | null = session
+    ? {
+      id: session.user.id,
+      agencyId: session.user.agencyId,
+      role: session.user.role,
+      fullName: session.user.fullName,
+      email: session.user.email,
+      isActive: true,
+      createdAt: "",
+      updatedAt: "",
     }
-  }, [session, clientsActions, usersActions]);
+    : null;
+
+  const users: UserItem[] = isCommercial
+    ? sessionUser ? [sessionUser] : []
+    : usersActions.users;
 
   const handleNotify = (text: string, tone: "success" | "error") => {
     tone === "success" ? showSuccess(text) : showError(text);
@@ -42,7 +60,7 @@ export default function SimulationsPage() {
       actions={simulationsActions}
       agencies={[]}
       clients={clientsActions.clients}
-      users={usersActions.users}
+      users={users}
       onNotify={handleNotify}
       onActionButtons={onActionButtons || undefined}
     />

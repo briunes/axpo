@@ -1,11 +1,10 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { UserRole } from "@/domain/types";
 import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 import { CalculationService } from "@/application/services/calculationService";
@@ -15,6 +14,15 @@ import type { SimulationPayload } from "@/domain/types";
 const calculateSchema = z.object({
   /** Override which BaseValueSet to use. Defaults to the version's baseValueSetId or the latest active global set. */
   baseValueSetId: z.string().min(1).optional(),
+  /**
+   * Optional billing month override (YYYY-MM).
+   * When provided, indexed electricity calculations use the prices and days for
+   * this specific month. Fixed calculations always use the billing period days.
+   */
+  selectedMonth: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(),
 });
 
 /**
@@ -53,7 +61,7 @@ export const POST = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+    await assertPermission(auth, "section.simulations");
 
     const id = context?.params?.id;
     if (!id) throw new ValidationError("Simulation id parameter is required");
@@ -63,10 +71,14 @@ export const POST = withErrorHandler(
 
     // Parse optional body
     let baseValueSetIdOverride: string | undefined;
+    let selectedMonthOverride: string | undefined;
     try {
       const body = await request.json().catch(() => ({}));
       const parsed = calculateSchema.safeParse(body);
-      if (parsed.success) baseValueSetIdOverride = parsed.data.baseValueSetId;
+      if (parsed.success) {
+        baseValueSetIdOverride = parsed.data.baseValueSetId;
+        selectedMonthOverride = parsed.data.selectedMonth;
+      }
     } catch {
       // body is optional — ignore parse errors
     }
@@ -138,9 +150,61 @@ export const POST = withErrorHandler(
     // Validate tariff availability for agency
     await validateTariffAvailability(simulation.agencyId, payload);
 
+    // Fetch system config to get the configured tax rates
+    const systemConfig = await prisma.systemConfig.findFirst({
+      select: {
+        ivaRate: true,
+        electricityTaxRate: true,
+        hydrocarbonTaxRate: true,
+      },
+    });
+
+    // Inject system-configured tax rates into the payload extras so they override
+    // the hardcoded constants in CalculationService. Per-simulation overrides
+    // (already present in extras) take precedence over system config.
+    const payloadWithTaxRates: SimulationPayload = {
+      ...payload,
+      electricity: payload.electricity
+        ? {
+            ...payload.electricity,
+            ...(selectedMonthOverride
+              ? { billingMonth: selectedMonthOverride }
+              : {}),
+            extras: {
+              ...payload.electricity.extras,
+              ivaTasa:
+                payload.electricity.extras?.ivaTasa ??
+                (systemConfig?.ivaRate != null
+                  ? Number(systemConfig.ivaRate) * 100
+                  : undefined),
+              impuestoElectricoTasa:
+                payload.electricity.extras?.impuestoElectricoTasa ??
+                (systemConfig?.electricityTaxRate != null
+                  ? Number(systemConfig.electricityTaxRate) * 100
+                  : undefined),
+            },
+          }
+        : undefined,
+      gas: payload.gas
+        ? {
+            ...payload.gas,
+            ivaTasa:
+              payload.gas.ivaTasa ??
+              (systemConfig?.ivaRate != null
+                ? Number(systemConfig.ivaRate) * 100
+                : undefined),
+            impuestoHidrocarburo:
+              payload.gas.impuestoHidrocarburo ??
+              (systemConfig?.hydrocarbonTaxRate != null
+                ? Number(systemConfig.hydrocarbonTaxRate)
+                : undefined),
+          }
+        : undefined,
+    };
+
     // Run calculation
     const results = CalculationService.calculate(
-      payload,
+      payloadWithTaxRates,
       priceMap,
       baseValueSetId,
     );

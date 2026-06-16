@@ -5,7 +5,7 @@ import { NotFoundError, ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import { assertRole, assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 
@@ -31,9 +31,12 @@ const updateSchema = z.object({
  *       - bearerAuth: []
  */
 export const GET = withErrorHandler(
-  async (request: NextRequest, context?: { params?: Record<string, string> }) => {
+  async (
+    request: NextRequest,
+    context?: { params?: Record<string, string> },
+  ) => {
     const auth = await requireAuth(request);
-    assertRole(auth, [UserRole.ADMIN, UserRole.AGENT]);
+    await assertPermission(auth, "section.base-values");
 
     const id = context?.params?.id;
     if (!id) {
@@ -49,16 +52,23 @@ export const GET = withErrorHandler(
       throw new NotFoundError("BaseValueSet", id);
     }
 
-    if (auth.role === UserRole.AGENT && set.agencyId !== auth.agencyId && set.scopeType !== "GLOBAL") {
+    if (
+      auth.role === UserRole.AGENT &&
+      set.agencyId !== auth.agencyId &&
+      set.scopeType !== "GLOBAL"
+    ) {
       throw new NotFoundError("BaseValueSet", id);
     }
 
     return ResponseHandler.ok(set, 200);
-  }
+  },
 );
 
 export const PATCH = withErrorHandler(
-  async (request: NextRequest, context?: { params?: Record<string, string> }) => {
+  async (
+    request: NextRequest,
+    context?: { params?: Record<string, string> },
+  ) => {
     const auth = await requireAuth(request);
     assertRole(auth, [UserRole.ADMIN]);
 
@@ -95,5 +105,5 @@ export const PATCH = withErrorHandler(
     });
 
     return ResponseHandler.ok(updated, 200);
-  }
+  },
 );

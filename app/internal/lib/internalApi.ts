@@ -1,15 +1,21 @@
+import { getBrowserFingerprint } from "./browserFingerprint";
+import { uploadPresigned } from "@vercel/blob/client";
+import { getBaseValueWorkbookContentType } from "@/infrastructure/excel/baseValueUpload";
+
 export interface LoginResult {
-  token: string;
+  token?: string;
+  requiresOtp?: boolean;
+  otpSessionToken?: string;
   user: {
     id: string;
     agencyId: string;
-    role: "ADMIN" | "AGENT" | "COMMERCIAL";
+    role: "SYS_ADMIN" | "ADMIN" | "AGENT" | "COMMERCIAL";
     fullName: string;
     email: string;
   };
 }
 
-export type UserRole = "ADMIN" | "AGENT" | "COMMERCIAL";
+export type UserRole = "SYS_ADMIN" | "ADMIN" | "AGENT" | "COMMERCIAL";
 
 interface ApiEnvelope<T> {
   success: boolean;
@@ -18,10 +24,13 @@ interface ApiEnvelope<T> {
     code?: string;
     message?: string;
   };
+  /** App version returned by the server on every response. */
+  appVersion?: string;
 }
 
 export interface SimulationItem {
   id: string;
+  referenceNumber?: string | null;
   agencyId?: string;
   ownerUserId?: string;
   clientId?: string | null;
@@ -30,6 +39,8 @@ export interface SimulationItem {
   isDeleted?: boolean;
   deletedAt?: string | null;
   sharedAt?: string | null;
+  clientOpenedAt?: string | null;
+  sharedVia?: string | null;
   publicToken?: string | null;
   pinSnapshot?: string | null;
   invoiceFilePath?: string | null;
@@ -94,6 +105,7 @@ export interface ListAgenciesParams {
   orderBy?: string;
   sortDir?: "asc" | "desc";
   includeDeleted?: boolean;
+  minimal?: boolean;
 }
 
 export interface ListAgenciesResponse {
@@ -106,12 +118,19 @@ export interface ListAgenciesResponse {
 export interface ClientItem {
   id: string;
   agencyId: string;
+  agency?: { id: string; name: string } | null;
   name: string;
   cif?: string | null;
   contactName?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
   otherDetails?: string | null;
+  street?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+  province?: string | null;
+  country?: string | null;
+  language?: string | null;
   isActive: boolean;
   isDeleted: boolean;
   deletedAt?: string | null;
@@ -139,6 +158,8 @@ export interface ListClientsParams {
   orderBy?: string;
   sortDir?: "asc" | "desc";
   includeDeleted?: boolean;
+  agencyId?: string;
+  minimal?: boolean;
 }
 
 export interface ListClientsResponse {
@@ -154,6 +175,7 @@ export interface UserItem {
   role: UserRole;
   fullName: string;
   email: string;
+  maxActiveDevices?: number;
   mobilePhone?: string | null;
   commercialPhone?: string | null;
   commercialEmail?: string | null;
@@ -169,6 +191,7 @@ export interface UserItem {
 interface UpdateUserInput {
   fullName?: string;
   email?: string;
+  maxActiveDevices?: number;
   mobilePhone?: string;
   commercialPhone?: string;
   commercialEmail?: string;
@@ -178,6 +201,14 @@ interface UpdateUserInput {
   agencyId?: string;
   password?: string;
   currentPassword?: string;
+  preferences?: {
+    language?: string | null;
+    dateFormat?: string | null;
+    timeFormat?: string | null;
+    timezone?: string | null;
+    numberFormat?: string | null;
+    itemsPerPage?: number | null;
+  };
 }
 
 interface ListUsersResult {
@@ -193,6 +224,7 @@ export interface AnalyticsAgencyStat {
   total: number;
   shared: number;
   expired: number;
+  opened: number;
 }
 
 export interface AnalyticsTrendPoint {
@@ -211,11 +243,14 @@ export interface AnalyticsUserStat {
   userName: string;
   total: number;
   shared: number;
+  opened: number;
 }
 
 export interface AnalyticsOverview {
   totalSimulations: number;
   sharedSimulations: number;
+  /** Simulations shared via email — only these can be opened by the client */
+  emailSharedSimulations: number;
   expiredSimulations: number;
   draftSimulations: number;
   accessAttempts: number;
@@ -225,6 +260,10 @@ export interface AnalyticsOverview {
   periodDays: number;
   byAgency?: AnalyticsAgencyStat[];
   byUser?: AnalyticsUserStat[];
+  // Simulation content metrics
+  energyTypeSplit?: Array<{ type: string; count: number }>;
+  tariffBreakdown?: Array<{ tariff: string; count: number }>;
+  avgConsumoAnual?: number | null;
 }
 
 export type BaseValueScopeType = "GLOBAL" | "AGENCY";
@@ -236,6 +275,7 @@ export interface BaseValueSetItem {
   name: string;
   sourceWorkbookRef?: string | null;
   sourceScope?: string | null;
+  sourceFileName?: string | null;
   version: number;
   isActive: boolean;
   isProduction: boolean;
@@ -300,12 +340,29 @@ export interface AuditLogItem {
   eventType: string;
   targetType: string;
   targetId: string;
+  targetName?: string | null;
   metadataJson?: Record<string, unknown> | null;
   createdAt: string;
 }
 
 interface ListAuditLogsResult {
   items: AuditLogItem[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface ListAuditLogsResponse {
+  items: AuditLogItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 interface CreateUserInput {
@@ -313,11 +370,12 @@ interface CreateUserInput {
   role: UserRole;
   fullName: string;
   email: string;
+  maxActiveDevices?: number;
   mobilePhone: string;
   commercialPhone: string;
   commercialEmail: string;
   otherDetails?: string;
-  password: string;
+  password?: string;
 }
 
 interface CreateAgencyInput {
@@ -337,6 +395,10 @@ interface UpdateAgencyInput {
   province?: string;
   country?: string;
   isActive?: boolean;
+  tariffs?: Array<{
+    tariffType: string;
+    isEnabled: boolean;
+  }>;
 }
 
 interface CreateClientInput {
@@ -347,6 +409,12 @@ interface CreateClientInput {
   contactEmail?: string;
   contactPhone?: string;
   otherDetails?: string;
+  street?: string;
+  city?: string;
+  postalCode?: string;
+  province?: string;
+  country?: string;
+  language?: string;
 }
 
 interface UpdateClientInput {
@@ -358,6 +426,12 @@ interface UpdateClientInput {
   contactPhone?: string;
   otherDetails?: string;
   isActive?: boolean;
+  street?: string;
+  city?: string;
+  postalCode?: string;
+  province?: string;
+  country?: string;
+  language?: string;
 }
 
 interface CreateBaseValueSetInput {
@@ -382,6 +456,7 @@ interface CreateSimulationInput {
   expiresAt?: string;
   payloadJson?: Record<string, unknown>;
   baseValueSetId?: string;
+  ocrLogIds?: string[];
 }
 
 interface UpdateSimulationInput {
@@ -404,6 +479,43 @@ export interface RotatePinResult {
   pinRotatedAt: string;
 }
 
+export interface UserSessionItem {
+  id: string;
+  userId: string;
+  sessionTokenId: string;
+  loginAt: string;
+  logoutAt?: string | null;
+  isActive: boolean;
+  authMethod: string;
+  browser?: string | null;
+  os?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  lastActivityAt: string;
+  terminationReason?: string | null;
+  metadataJson?: Record<string, unknown> | null;
+  user?: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: UserRole;
+    agencyId: string;
+    maxActiveDevices: number;
+  };
+  terminatedByUser?: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+}
+
+export interface ListSessionsResponse {
+  items: UserSessionItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface CupsValidationResult {
   cups: string;
   normalized: string;
@@ -417,20 +529,86 @@ const baseUrl =
     ? window.location.origin
     : "http://localhost:3000");
 
+export function maybePersistRefreshedToken(response: Response): void {
+  if (typeof window === "undefined") return;
+
+  const refreshedToken = response.headers.get("x-access-token");
+  if (!refreshedToken) return;
+
+  window.localStorage.setItem("axpo.internal.auth.token", refreshedToken);
+}
+
+async function reportAuthRedirectToLogin(
+  token: string | null,
+  response: Response,
+  body: ApiEnvelope<unknown>,
+  fallbackMessage: string,
+): Promise<void> {
+  if (typeof window === "undefined" || !token) return;
+
+  try {
+    const browserFingerprint = await getBrowserFingerprint();
+    await fetch(`${baseUrl}/api/v1/internal/auth/redirect-report`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        ...(browserFingerprint
+          ? { "x-browser-fingerprint": browserFingerprint }
+          : {}),
+      },
+      body: JSON.stringify({
+        reason: "AUTH_API_REJECTED",
+        statusCode: response.status,
+        path: new URL(response.url).pathname,
+        currentPath: window.location.pathname,
+        errorCode: body.error?.code,
+        errorMessage: body.error?.message ?? fallbackMessage,
+      }),
+      keepalive: true,
+    });
+  } catch {
+    // Best-effort diagnostics only; never block the redirect.
+  }
+}
+
 async function parseApiResponse<T>(
   response: Response,
   fallbackMessage: string,
   skipAuthRedirect = false,
 ): Promise<T> {
+  maybePersistRefreshedToken(response);
+
   const body = (await response.json()) as ApiEnvelope<T>;
+
   if (!response.ok || !body.success || !body.data) {
-    // Token expired / revoked → clear session and force login redirect
-    // Skip redirect for login/auth endpoints to avoid page reload
+    // Token expired / revoked → clear session and force login redirect once.
+    // Permission denials (403) should surface to the caller as normal errors.
+    // Skip redirect for login/auth endpoints to avoid page reload.
     if (response.status === 401 && !skipAuthRedirect) {
       if (typeof window !== "undefined") {
+        const w = window as Window & { __axpoAuthRedirecting?: boolean };
+        const token = window.localStorage.getItem("axpo.internal.auth.token");
+
+        await reportAuthRedirectToLogin(
+          token,
+          response,
+          body as ApiEnvelope<unknown>,
+          fallbackMessage,
+        );
+
         window.localStorage.removeItem("axpo.internal.auth.token");
         window.localStorage.removeItem("axpo.internal.auth.user");
-        window.location.href = "/internal/login";
+
+        if (!w.__axpoAuthRedirecting) {
+          w.__axpoAuthRedirecting = true;
+          window.location.replace("/internal/login");
+        }
+
+        // Avoid bubbling repeated auth errors while redirecting
+        return new Promise<T>(() => {
+          // intentionally unresolved
+        });
       }
     }
     throw new Error(
@@ -450,15 +628,24 @@ function authHeaders(token: string): HeadersInit {
   };
 }
 
+async function sessionHeaders(): Promise<HeadersInit> {
+  const browserFingerprint = await getBrowserFingerprint();
+
+  return {
+    "content-type": "application/json",
+    ...(browserFingerprint
+      ? { "x-browser-fingerprint": browserFingerprint }
+      : {}),
+  };
+}
+
 export async function login(
   email: string,
   password: string,
 ): Promise<LoginResult> {
   const response = await fetch(`${baseUrl}/api/v1/internal/auth/login`, {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
+    headers: await sessionHeaders(),
     body: JSON.stringify({ email, password }),
   });
 
@@ -473,7 +660,7 @@ export async function setupPassword(
     `${baseUrl}/api/v1/internal/auth/setup-password`,
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: await sessionHeaders(),
       body: JSON.stringify({ token, password }),
     },
   );
@@ -506,11 +693,41 @@ export async function resetPassword(
     `${baseUrl}/api/v1/internal/auth/reset-password`,
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: await sessionHeaders(),
       body: JSON.stringify({ token, password }),
     },
   );
   return parseApiResponse<LoginResult>(response, "Password reset failed", true);
+}
+
+export async function verifyOtp(
+  otpSessionToken: string,
+  code: string,
+): Promise<LoginResult> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/auth/otp/verify`, {
+    method: "POST",
+    headers: await sessionHeaders(),
+    body: JSON.stringify({ otpSessionToken, code }),
+  });
+  return parseApiResponse<LoginResult>(
+    response,
+    "OTP verification failed",
+    true,
+  );
+}
+
+export async function logout(token: string): Promise<{ success: boolean }> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/auth/logout`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({}),
+  });
+
+  return parseApiResponse<{ success: boolean }>(
+    response,
+    "Logout failed",
+    true,
+  );
 }
 
 export interface ListSimulationsParams {
@@ -630,13 +847,14 @@ export async function updateSimulation(
 export async function shareSimulation(
   token: string,
   simulationId: string,
+  sharedVia?: string,
 ): Promise<SimulationItem> {
   const response = await fetch(
     `${baseUrl}/api/v1/internal/simulations/${simulationId}/share`,
     {
       method: "POST",
       headers: authHeaders(token),
-      body: JSON.stringify({}),
+      body: JSON.stringify(sharedVia ? { sharedVia } : {}),
     },
   );
 
@@ -682,6 +900,72 @@ export async function applySimulationOcrPrefill(
     versionId: string;
     prefillApplied: boolean;
   }>(response, "OCR prefill failed");
+}
+
+export interface ImproveOcrPromptResult {
+  improvedPrompt: string;
+  corrections: Array<{
+    field: string;
+    ocrValue: unknown;
+    correctedValue: unknown;
+  }>;
+  unchanged: string[];
+  simulationId: string | null;
+  simulationReferenceNumber: string | null;
+  invoiceProviderId: string | null;
+  invoiceProviderName: string | null;
+  invoiceType: "ELECTRICITY" | "GAS";
+  noCorrections?: boolean;
+  message?: string;
+}
+
+export interface TestOcrPromptResult {
+  oldFields: Record<string, unknown>;
+  newFields: Record<string, unknown>;
+}
+
+export async function testOcrPrompt(
+  token: string,
+  ocrLogId: string,
+  prompt: string,
+): Promise<TestOcrPromptResult> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/ocr-logs/${ocrLogId}/test-prompt`,
+    {
+      method: "POST",
+      headers: { ...authHeaders(token), "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    },
+  );
+  return parseApiResponse<TestOcrPromptResult>(
+    response,
+    "Test OCR prompt failed",
+  );
+}
+
+export async function improveOcrPrompt(
+  token: string,
+  ocrLogId: string,
+  options?: {
+    invoiceProviderId?: string | null;
+    invoiceProviderName?: string | null;
+    invoiceType?: "ELECTRICITY" | "GAS";
+    previousPrompt?: string | null;
+    feedbackComment?: string | null;
+  },
+): Promise<ImproveOcrPromptResult> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/ocr-logs/${ocrLogId}/improve-prompt`,
+    {
+      method: "POST",
+      headers: { ...authHeaders(token), "Content-Type": "application/json" },
+      body: JSON.stringify(options ?? {}),
+    },
+  );
+  return parseApiResponse<ImproveOcrPromptResult>(
+    response,
+    "Improve OCR prompt failed",
+  );
 }
 
 export async function downloadSimulationPdf(
@@ -730,6 +1014,8 @@ export async function validateCups(
 
 export interface CalculateSimulationInput {
   baseValueSetId?: string;
+  /** Billing month override (YYYY-MM) for indexed offers. Fixed offers always use the billing period days. */
+  selectedMonth?: string;
 }
 
 export interface CalculateSimulationResult {
@@ -778,6 +1064,50 @@ export async function softDeleteSimulation(
   );
 }
 
+export interface BulkActionResult {
+  id: string;
+  success: boolean;
+  error?: string;
+}
+
+export interface BulkActionResponse {
+  results: BulkActionResult[];
+  total: number;
+  succeeded: number;
+}
+
+export async function bulkDeleteSimulations(
+  token: string,
+  ids: string[],
+): Promise<BulkActionResponse> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulations/bulk`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+    body: JSON.stringify({ ids }),
+  });
+
+  return parseApiResponse<BulkActionResponse>(
+    response,
+    "Bulk delete simulations failed",
+  );
+}
+
+export async function bulkArchiveSimulations(
+  token: string,
+  ids: string[],
+): Promise<BulkActionResponse> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulations/bulk`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ ids }),
+  });
+
+  return parseApiResponse<BulkActionResponse>(
+    response,
+    "Bulk archive simulations failed",
+  );
+}
+
 export interface CupsLookupEntry {
   cups: string;
   nombreTitular: string;
@@ -786,6 +1116,8 @@ export interface CupsLookupEntry {
   direccion: string;
   comercializadorActual: string;
   clientId: string | null;
+  lastUsed: string | null;
+  lastStatus: string | null;
 }
 
 export async function fetchCupsLookup(
@@ -816,6 +1148,17 @@ export interface ListUsersParams {
   orderBy?: string;
   sortDir?: "asc" | "desc";
   includeDeleted?: boolean;
+  minimal?: boolean;
+  contextual?: boolean;
+}
+
+export interface ListSessionsParams {
+  page?: number;
+  pageSize?: number;
+  userId?: string;
+  search?: string;
+  activeOnly?: boolean;
+  inactiveOnly?: boolean;
 }
 
 export interface ListUsersResponse {
@@ -838,6 +1181,8 @@ export async function listUsers(
   if (params?.orderBy) qs.set("orderBy", params.orderBy);
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
   if (params?.includeDeleted) qs.set("includeDeleted", "true");
+  if (params?.minimal) qs.set("minimal", "true");
+  if (params?.contextual) qs.set("contextual", "true");
   const url = `${baseUrl}/api/v1/internal/users${qs.toString() ? `?${qs}` : ""}`;
   const response = await fetch(url, {
     method: "GET",
@@ -860,6 +1205,86 @@ export async function getUser(token: string, id: string): Promise<UserItem> {
   });
 
   return parseApiResponse<UserItem>(response, "User not found");
+}
+
+export async function listSessions(
+  token: string,
+  params?: ListSessionsParams,
+): Promise<ListSessionsResponse> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
+  if (params?.userId) qs.set("userId", params.userId);
+  if (params?.search) qs.set("search", params.search);
+  if (params?.activeOnly) qs.set("activeOnly", "true");
+  if (params?.inactiveOnly) qs.set("inactiveOnly", "true");
+
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/sessions${qs.toString() ? `?${qs}` : ""}`,
+    {
+      method: "GET",
+      headers: authHeaders(token),
+      cache: "no-store",
+    },
+  );
+
+  return parseApiResponse<ListSessionsResponse>(
+    response,
+    "List sessions failed",
+  );
+}
+
+export async function forceLogoutSession(
+  token: string,
+  sessionId: string,
+): Promise<{ success: boolean }> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/sessions/${sessionId}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(token),
+      body: JSON.stringify({}),
+    },
+  );
+
+  return parseApiResponse<{ success: boolean }>(
+    response,
+    "Force logout session failed",
+  );
+}
+
+export async function forceLogoutAllUserSessions(
+  token: string,
+  userId: string,
+): Promise<{ success: boolean; revokedCount: number }> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/sessions/user/${userId}/logout-all`,
+    {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify({}),
+    },
+  );
+
+  return parseApiResponse<{ success: boolean; revokedCount: number }>(
+    response,
+    "Force logout all user sessions failed",
+  );
+}
+
+export async function forceLogoutAllSessions(
+  token: string,
+): Promise<{ success: boolean; revokedCount: number }> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/sessions`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({}),
+  });
+
+  return parseApiResponse<{ success: boolean; revokedCount: number }>(
+    response,
+    "Force logout all sessions failed",
+  );
 }
 
 export async function createUser(
@@ -956,6 +1381,7 @@ export async function listAgencies(
   if (params?.orderBy) qs.set("orderBy", params.orderBy);
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
   if (params?.includeDeleted) qs.set("includeDeleted", "true");
+  if (params?.minimal) qs.set("minimal", "true");
   const url = `${baseUrl}/api/v1/internal/agencies${qs.toString() ? `?${qs}` : ""}`;
   const response = await fetch(url, {
     method: "GET",
@@ -1049,6 +1475,8 @@ export async function listClients(
   if (params?.orderBy) qs.set("orderBy", params.orderBy);
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
   if (params?.includeDeleted) qs.set("includeDeleted", "true");
+  if (params?.agencyId) qs.set("agencyId", params.agencyId);
+  if (params?.minimal) qs.set("minimal", "true");
   const url = `${baseUrl}/api/v1/internal/clients${qs.toString() ? `?${qs}` : ""}`;
   const response = await fetch(url, {
     method: "GET",
@@ -1056,6 +1484,31 @@ export async function listClients(
     cache: "no-store",
   });
   return parseApiResponse<ListClientsResult>(response, "Client list failed");
+}
+
+export async function listAllClients(
+  token: string,
+  params?: Omit<ListClientsParams, "page" | "pageSize">,
+): Promise<ClientItem[]> {
+  const pageSize = 100;
+  const firstPage = await listClients(token, {
+    ...params,
+    page: 1,
+    pageSize,
+  });
+  const items = [...firstPage.items];
+  const totalPages = Math.ceil(firstPage.total / pageSize);
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const result = await listClients(token, {
+      ...params,
+      page,
+      pageSize,
+    });
+    items.push(...result.items);
+  }
+
+  return items;
 }
 
 export async function getClient(
@@ -1122,9 +1575,37 @@ export async function softDeleteClient(
 export async function fetchAnalyticsOverview(
   token: string,
   days = 30,
+  energyType?: string,
 ): Promise<AnalyticsOverview> {
+  const qs = new URLSearchParams({ days: String(days) });
+  if (energyType) qs.set("energyType", energyType);
   const response = await fetch(
-    `${baseUrl}/api/v1/internal/analytics/overview?days=${days}`,
+    `${baseUrl}/api/v1/internal/analytics/overview?${qs}`,
+    {
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    },
+  );
+
+  return parseApiResponse<AnalyticsOverview>(
+    response,
+    "Analytics request failed",
+  );
+}
+
+export async function fetchAnalyticsForAgency(
+  token: string,
+  agencyId: string,
+  days = 30,
+  energyType?: string,
+): Promise<AnalyticsOverview> {
+  const qs = new URLSearchParams({ days: String(days), agencyId });
+  if (energyType) qs.set("energyType", energyType);
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/analytics/overview?${qs}`,
     {
       method: "GET",
       headers: {
@@ -1313,18 +1794,31 @@ export async function uploadBaseValueFile(
     isActive: boolean;
   };
 }> {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("replace", replace.toString());
+  const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const blob = await uploadPresigned(
+    `base-values/${Date.now()}-${safeFileName}`,
+    file,
+    {
+      access: "private",
+      contentType: getBaseValueWorkbookContentType(file.name),
+      handleUploadUrl: `${baseUrl}/api/v1/internal/base-values/upload/blob`,
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      multipart: file.size > 20 * 1024 * 1024,
+    },
+  );
 
   const response = await fetch(
     `${baseUrl}/api/v1/internal/base-values/upload`,
     {
       method: "POST",
-      headers: {
-        authorization: `Bearer ${token}`,
-      },
-      body: formData,
+      headers: authHeaders(token),
+      body: JSON.stringify({
+        blobUrl: blob.url,
+        fileName: file.name,
+        replace,
+      }),
     },
   );
 
@@ -1340,24 +1834,63 @@ export async function uploadBaseValueFile(
   }>(response, "Upload base value file failed");
 }
 
+export async function downloadBaseValueFile(
+  token: string,
+  setId: string,
+): Promise<void> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/base-values/${setId}/download`,
+    {
+      method: "GET",
+      headers: authHeaders(token),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to download file");
+  }
+
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+  const filename = filenameMatch?.[1] ?? `base-values-${setId}.xlsm`;
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export interface ListAuditLogsParams {
+  page?: number;
+  limit?: number;
   eventType?: string;
+  excludeAuthEvents?: boolean;
   dateFrom?: string;
   dateTo?: string;
   search?: string;
-  limit?: number;
+  actorSearch?: string;
+  targetType?: string;
+  targetId?: string;
 }
 
 export async function listAuditLogs(
   token: string,
   params?: ListAuditLogsParams,
-): Promise<AuditLogItem[]> {
+): Promise<ListAuditLogsResponse> {
   const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.eventType) qs.set("eventType", params.eventType);
+  if (params?.excludeAuthEvents) qs.set("excludeAuthEvents", "true");
   if (params?.dateFrom) qs.set("dateFrom", params.dateFrom);
   if (params?.dateTo) qs.set("dateTo", params.dateTo);
   if (params?.search) qs.set("search", params.search);
-  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.actorSearch) qs.set("actorSearch", params.actorSearch);
+  if (params?.targetType) qs.set("targetType", params.targetType);
+  if (params?.targetId) qs.set("targetId", params.targetId);
   const queryString = qs.toString();
   const url = `${baseUrl}/api/v1/internal/audit-logs${queryString ? `?${queryString}` : ""}`;
 
@@ -1373,7 +1906,15 @@ export async function listAuditLogs(
     response,
     "Audit logs request failed",
   );
-  return body.items;
+  return {
+    items: body.items,
+    pagination: body.pagination ?? {
+      page: params?.page ?? 1,
+      limit: params?.limit ?? body.items.length,
+      total: body.items.length,
+      totalPages: 1,
+    },
+  };
 }
 
 export type AnalyticsSummary = AnalyticsOverview;
@@ -1381,12 +1922,13 @@ export type AnalyticsSummary = AnalyticsOverview;
 export async function getAnalyticsSummary(
   token: string,
   days = 30,
+  energyType?: string,
 ): Promise<AnalyticsSummary> {
-  return fetchAnalyticsOverview(token, days);
+  return fetchAnalyticsOverview(token, days, energyType);
 }
 
 export function isAdmin(role: UserRole): boolean {
-  return role === "ADMIN";
+  return role === "ADMIN" || role === "SYS_ADMIN";
 }
 
 export function isAgent(role: UserRole): boolean {
@@ -1448,4 +1990,426 @@ export async function updateRolePermissions(
   });
   const json = (await res.json()) as ApiEnvelope<unknown>;
   if (!json.success) throw new Error("Failed to update role permissions");
+}
+
+// ── OCR Usage Dashboard ─────────────────────────────────────────────────────
+
+export interface OcrUsageBilling {
+  enabled: boolean;
+  currency: string;
+  unitTokens: number;
+  markupPercent: number;
+  fixedFeePerCall: number;
+  includeFailedCalls: boolean;
+  pricedModels: number;
+  unpricedModels: string[];
+}
+
+export interface OcrUsageTotals {
+  totalCalls: number;
+  billableCalls: number;
+  successfulCalls: number;
+  failedCalls: number;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  totalTokens: number;
+  baseCost: number;
+  markupCost: number;
+  fixedFeeCost: number;
+  totalCost: number;
+  unmatchedCalls: number;
+  currency: string;
+  avgDurationMs: number | null;
+  successRate: number | null;
+  avgCostPerCall: number;
+  avgPromptTokensPerCall: number;
+  avgCompletionTokensPerCall: number;
+}
+
+export interface OcrUsageBucket {
+  key: string;
+  label: string;
+  calls: number;
+  successfulCalls: number;
+  failedCalls: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  totalCost: number;
+  userEmail?: string | null;
+}
+
+export interface OcrUsageRecentCall {
+  id: string;
+  requestedAt: string;
+  userId: string | null;
+  userName: string | null;
+  userEmail: string | null;
+  provider: string;
+  model: string;
+  status: string;
+  type: string;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+  durationMs: number | null;
+  cost: number;
+  currency: string;
+  matched: boolean;
+}
+
+export interface OcrUsageOverview {
+  totals: OcrUsageTotals;
+  billing: OcrUsageBilling;
+  series: { granularity: string; buckets: OcrUsageBucket[] };
+  groupBy: { key: string; buckets: OcrUsageBucket[] };
+  top: {
+    users: OcrUsageBucket[];
+    providers: OcrUsageBucket[];
+    models: OcrUsageBucket[];
+  };
+  recentCalls: OcrUsageRecentCall[];
+}
+
+export interface OcrUsageOverviewParams {
+  dateFrom?: string;
+  dateTo?: string;
+  provider?: string;
+  model?: string;
+  userId?: string;
+  status?: string;
+  type?: string;
+  groupBy?: "day" | "user" | "provider" | "model" | "type";
+  granularity?: "hour" | "day" | "week" | "month";
+  recentLimit?: number;
+}
+
+export async function fetchOcrUsageOverview(
+  token: string,
+  params: OcrUsageOverviewParams = {},
+): Promise<OcrUsageOverview> {
+  const qs = new URLSearchParams();
+  if (params.dateFrom) qs.set("dateFrom", params.dateFrom);
+  if (params.dateTo) qs.set("dateTo", params.dateTo);
+  if (params.provider) qs.set("provider", params.provider);
+  if (params.model) qs.set("model", params.model);
+  if (params.userId) qs.set("userId", params.userId);
+  if (params.status) qs.set("status", params.status);
+  if (params.type) qs.set("type", params.type);
+  if (params.groupBy) qs.set("groupBy", params.groupBy);
+  if (params.granularity) qs.set("granularity", params.granularity);
+  if (params.recentLimit !== undefined)
+    qs.set("recentLimit", String(params.recentLimit));
+
+  const url = `/api/v1/internal/ocr-usage/overview${
+    qs.toString() ? `?${qs.toString()}` : ""
+  }`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  return parseApiResponse<OcrUsageOverview>(res, "OCR usage request failed");
+}
+
+export interface OcrAvailableModel {
+  provider: string;
+  model: string;
+  calls: number;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  totalTokens: number;
+  firstUsedAt: string | null;
+  lastUsedAt: string | null;
+  priced: boolean;
+  activePrice: {
+    id: string;
+    currency: string;
+    inputPricePer1kTokens: number;
+    outputPricePer1kTokens: number;
+    unitTokens: number;
+  } | null;
+}
+
+export async function fetchOcrAvailableModels(
+  token: string,
+): Promise<OcrAvailableModel[]> {
+  const res = await fetch("/api/v1/internal/ocr-usage/available-models", {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  const body = await parseApiResponse<{ items: OcrAvailableModel[] }>(
+    res,
+    "OCR available-models request failed",
+  );
+  return body.items;
+}
+
+export interface OcrModelPriceItem {
+  id: string;
+  provider: string;
+  model: string;
+  inputPricePer1kTokens: number;
+  outputPricePer1kTokens: number;
+  currency: string;
+  unitTokens: number;
+  isActive: boolean;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  note: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface OcrModelPriceInput {
+  provider: string;
+  model: string;
+  inputPricePer1kTokens: number;
+  outputPricePer1kTokens: number;
+  currency?: string;
+  unitTokens?: number;
+  isActive?: boolean;
+  effectiveFrom?: string;
+  effectiveTo?: string | null;
+  note?: string | null;
+}
+
+export async function listOcrModelPrices(
+  token: string,
+  activeOnly = false,
+): Promise<OcrModelPriceItem[]> {
+  const qs = activeOnly ? "?activeOnly=true" : "";
+  const res = await fetch(`/api/v1/internal/ocr-prices${qs}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  const body = await parseApiResponse<{ items: OcrModelPriceItem[] }>(
+    res,
+    "OCR prices request failed",
+  );
+  return body.items;
+}
+
+export async function createOcrModelPrice(
+  token: string,
+  input: OcrModelPriceInput,
+): Promise<OcrModelPriceItem> {
+  const res = await fetch("/api/v1/internal/ocr-prices", {
+    method: "POST",
+    headers: {
+      ...authHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  return parseApiResponse<OcrModelPriceItem>(res, "Failed to create OCR price");
+}
+
+export async function updateOcrModelPrice(
+  token: string,
+  id: string,
+  input: Partial<OcrModelPriceInput>,
+): Promise<OcrModelPriceItem> {
+  const res = await fetch(`/api/v1/internal/ocr-prices/${id}`, {
+    method: "PUT",
+    headers: {
+      ...authHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  return parseApiResponse<OcrModelPriceItem>(res, "Failed to update OCR price");
+}
+
+export async function deleteOcrModelPrice(
+  token: string,
+  id: string,
+): Promise<void> {
+  const res = await fetch(`/api/v1/internal/ocr-prices/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  await parseApiResponse<{ id: string; deleted: boolean }>(
+    res,
+    "Failed to delete OCR price",
+  );
+}
+
+export interface OcrUsageInvoiceItem {
+  id: string;
+  label: string;
+  periodStart: string;
+  periodEnd: string;
+  clientId: string | null;
+  clientName: string | null;
+  agencyId: string | null;
+  agencyName: string | null;
+  userId: string | null;
+  userName: string | null;
+  currency: string;
+  totalCalls: number;
+  successfulCalls: number;
+  failedCalls: number;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  totalTokens: number;
+  baseCost: number;
+  markupCost: number;
+  fixedFeeCost: number;
+  totalCost: number;
+  status: string;
+  note: string | null;
+  createdAt: string;
+  createdBy: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+}
+
+export interface OcrUsageInvoiceDetail extends OcrUsageInvoiceItem {
+  userEmail: string | null;
+  breakdown: any;
+  updatedAt: string;
+}
+
+export interface ListOcrInvoicesResult {
+  items: OcrUsageInvoiceItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export async function listOcrUsageInvoices(
+  token: string,
+  params: { page?: number; limit?: number } = {},
+): Promise<ListOcrInvoicesResult> {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  const res = await fetch(
+    `/api/v1/internal/ocr-usage/invoices${
+      qs.toString() ? `?${qs.toString()}` : ""
+    }`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+  return parseApiResponse<ListOcrInvoicesResult>(
+    res,
+    "OCR invoices request failed",
+  );
+}
+
+export async function getOcrUsageInvoice(
+  token: string,
+  id: string,
+): Promise<OcrUsageInvoiceDetail> {
+  const res = await fetch(`/api/v1/internal/ocr-usage/invoices/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  return parseApiResponse<OcrUsageInvoiceDetail>(
+    res,
+    "Failed to load OCR invoice",
+  );
+}
+
+export interface CreateOcrInvoiceInput {
+  label: string;
+  dateFrom: string;
+  dateTo: string;
+  clientId?: string | null;
+  clientName?: string | null;
+  agencyId?: string | null;
+  userId?: string | null;
+  status?: "DRAFT" | "ISSUED" | "PAID" | "VOID";
+  note?: string | null;
+}
+
+export async function createOcrUsageInvoice(
+  token: string,
+  input: CreateOcrInvoiceInput,
+): Promise<{
+  id: string;
+  label: string;
+  periodStart: string;
+  periodEnd: string;
+  currency: string;
+  totalCalls: number;
+  totalTokens: string;
+  baseCost: number;
+  markupCost: number;
+  fixedFeeCost: number;
+  totalCost: number;
+  status: string;
+}> {
+  const res = await fetch("/api/v1/internal/ocr-usage/invoices", {
+    method: "POST",
+    headers: {
+      ...authHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  return parseApiResponse(res, "Failed to create OCR invoice");
+}
+
+// ── System config (for the OCR billing toggle) ───────────────────────────
+
+export interface OcrBillingConfig {
+  ocrBillingEnabled: boolean;
+  ocrBillingCurrency: string;
+  ocrBillingUnitTokens: number;
+  ocrBillingMarkupPercent: number;
+  ocrBillingFixedFeePerCall: number;
+  ocrBillingIncludeFailedCalls: boolean;
+}
+
+export async function fetchOcrBillingConfig(
+  token: string,
+): Promise<OcrBillingConfig> {
+  const res = await fetch("/api/v1/internal/config/system?view=admin", {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to load system config (${res.status})`);
+  }
+  // System config endpoint returns the raw object (not the {success, data}
+  // envelope used by other internal endpoints).
+  const data = (await res.json()) as Record<string, unknown>;
+  return {
+    ocrBillingEnabled: Boolean(data.ocrBillingEnabled),
+    ocrBillingCurrency: String(data.ocrBillingCurrency ?? "USD"),
+    ocrBillingUnitTokens: Number(data.ocrBillingUnitTokens ?? 1000),
+    ocrBillingMarkupPercent: Number(data.ocrBillingMarkupPercent ?? 0),
+    ocrBillingFixedFeePerCall: Number(data.ocrBillingFixedFeePerCall ?? 0),
+    ocrBillingIncludeFailedCalls: Boolean(data.ocrBillingIncludeFailedCalls),
+  };
+}
+
+export async function updateOcrBillingConfig(
+  token: string,
+  patch: Partial<OcrBillingConfig>,
+): Promise<OcrBillingConfig> {
+  const res = await fetch("/api/v1/internal/config/system", {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to update OCR billing config (${res.status})`);
+  }
+  const data = (await res.json()) as Record<string, unknown>;
+  return {
+    ocrBillingEnabled: Boolean(data.ocrBillingEnabled),
+    ocrBillingCurrency: String(data.ocrBillingCurrency ?? "USD"),
+    ocrBillingUnitTokens: Number(data.ocrBillingUnitTokens ?? 1000),
+    ocrBillingMarkupPercent: Number(data.ocrBillingMarkupPercent ?? 0),
+    ocrBillingFixedFeePerCall: Number(data.ocrBillingFixedFeePerCall ?? 0),
+    ocrBillingIncludeFailedCalls: Boolean(data.ocrBillingIncludeFailedCalls),
+  };
 }

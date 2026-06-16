@@ -13,10 +13,11 @@ import {
 } from "@mui/material";
 import SyncIcon from "@mui/icons-material/Sync";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import BlockIcon from "@mui/icons-material/Block";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { useEffect, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
@@ -44,29 +45,17 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     showArchived, setShowArchived,
     handleToggleAgencyStatus,
     handleDeleteAgency,
+    handleBulkDeleteAgencies,
   } = actions;
 
   const [confirmToggle, setConfirmToggle] = useState<AgencyItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AgencyItem | null>(null);
+  const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
   const [dropdownState, setDropdownState] = useState<{
     anchorEl: HTMLElement | null;
     items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
-
-  const fetchedRef = useRef(false);
-  useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-    refresh();
-  }, []);
-
-  // Re-fetch when pagination/sort/search change
-  const isFirstRender = useRef(true);
-  useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return; }
-    refresh();
-  }, [page, pageSize, sortColumn, sortDir, search, showArchived]);
 
   // Bubble success up
   useEffect(() => {
@@ -104,6 +93,8 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       key: "name",
       label: t("columns", "name"),
       sortable: true,
+      copyable: true,
+      copyText: (a) => [a.name, a.city, a.province].filter(Boolean).join(', '),
       renderCell: (a) => (
         <Box>
           <Typography variant="body1" sx={{ fontWeight: 500 }}>{a.name}</Typography>
@@ -118,6 +109,8 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     {
       key: "address",
       label: t("columns", "address"),
+      copyable: true,
+      copyText: (a) => [a.street, a.postalCode, a.city, a.country].filter(Boolean).join(', '),
       renderCell: (a) => {
         const hasAddress = a.street || a.city || a.postalCode;
         return (
@@ -236,7 +229,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
         return (
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
             <ButtonGroup variant="outlined" size="small">
-              <Button onClick={primaryOnClick}>
+              <Button onClick={primaryOnClick} sx={{ minWidth: '80px !important' }}>
                 {primaryLabel}
               </Button>
               {hasDropdown && (
@@ -299,13 +292,15 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
   }
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
       <DataTable<AgencyItem>
+        tableId="agencies"
         columns={columns}
         rows={agencies}
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
+        onClearFilters={() => { setSearch(""); setPage(1); }}
         searchPlaceholder={t("search", "agencies")}
         emptyMessage={t("search", "emptyAgencies")}
         sortState={{ column: sortColumn, direction: sortDir }}
@@ -322,7 +317,30 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
           onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
         }}
         t={t}
+        massActions={[
+          {
+            label: t("actions", "delete"),
+            color: "error",
+            icon: <DeleteOutlineIcon fontSize="small" />,
+            onClick: (ids) => setConfirmBulkDeleteIds(ids),
+          },
+        ]}
       />
+
+      {/* ── Confirm bulk delete ──────────────────────────────────── */}
+      {confirmBulkDeleteIds && (
+        <ConfirmDialog
+          title={t("agenciesModule", "bulkDeleteTitle")}
+          message={t("agenciesModule", "bulkDeleteConfirm", { count: confirmBulkDeleteIds.length })}
+          confirmLabel={t("actions", "delete")}
+          busy={busyAction === "bulk-delete-agencies"}
+          onConfirm={async () => {
+            await handleBulkDeleteAgencies(confirmBulkDeleteIds);
+            setConfirmBulkDeleteIds(null);
+          }}
+          onCancel={() => setConfirmBulkDeleteIds(null)}
+        />
+      )}
 
       {/* ── Confirm toggle ────────────────────────────────────────── */}
       {confirmToggle && (

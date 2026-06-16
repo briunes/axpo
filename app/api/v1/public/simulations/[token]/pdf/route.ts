@@ -9,6 +9,10 @@ import {
   replaceVariables,
 } from "@/infrastructure/pdf/variableReplacer";
 import type { SimulationPayload } from "@/domain/types/simulation";
+import {
+  buildSimulationPdfFilenameFromSimulation,
+  resolveSimulationProductName,
+} from "@/infrastructure/pdf/pdfFilename";
 
 interface PublicSessionPayload {
   typ?: string;
@@ -38,7 +42,9 @@ const verifyPublicSessionToken = (
     throw new InvalidTokenError("JWT secret not configured");
   }
 
-  const decoded = jwt.verify(sessionToken, secret);
+  const decoded = jwt.verify(sessionToken, secret, {
+    algorithms: ["HS256"],
+  });
   if (!decoded || typeof decoded !== "object") {
     throw new InvalidTokenError("Invalid public session token");
   }
@@ -155,9 +161,10 @@ export async function GET(
       recentVersions.find(
         (v) => (v.payloadJson as Record<string, unknown> | null)?.results,
       ) ?? recentVersions[0];
-    const latestOfferPayload = recentVersions.find(
-      (v) => (v.payloadJson as Record<string, unknown> | null)?.selectedOffer,
-    )?.payloadJson as Record<string, unknown> | null;
+    const latestOfferPayload = recentVersions.find((v) => {
+      const payload = v.payloadJson as Record<string, unknown> | null;
+      return payload !== null && Object.prototype.hasOwnProperty.call(payload, "selectedOffer");
+    })?.payloadJson as Record<string, unknown> | null;
     const mergedPayload: Record<string, unknown> | null =
       baseVersion?.payloadJson
         ? {
@@ -275,11 +282,17 @@ ${processedHtml}
 
     await browser.close();
 
-    // Generate filename
-    const clientName =
-      simulation.client?.name?.replace(/[^a-zA-Z0-9]/g, "_") || "simulacion";
-    const date = new Date().toISOString().split("T")[0];
-    const filename = `simulacion-axpo-${clientName}-${date}.pdf`;
+    const filename = buildSimulationPdfFilenameFromSimulation(
+      {
+        id: simulation.id,
+        referenceNumber: simulation.referenceNumber,
+        client: simulation.client,
+        payloadJson: mergedPayload as any,
+      },
+      {
+        productName: resolveSimulationProductName(mergedPayload as any),
+      },
+    );
 
     // Return PDF as response
     return new NextResponse(Buffer.from(pdfBuffer), {

@@ -4,9 +4,13 @@ import { UserRole, SimulationStatus } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
+import { decryptSensitiveValue } from "@/application/lib/sensitiveData";
 
 const createSimulationSchema = z.object({
   ownerUserId: z.string().min(1).optional(),
@@ -14,6 +18,7 @@ const createSimulationSchema = z.object({
   expiresAt: z.string().datetime().optional(),
   payloadJson: z.record(z.unknown()).optional(),
   baseValueSetId: z.string().min(1).optional(),
+  ocrLogIds: z.array(z.string().min(1)).max(10).optional(),
 });
 
 /**
@@ -115,25 +120,79 @@ const createSimulationSchema = z.object({
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+  await assertPermission(auth, "section.simulations");
 
   const sp = request.nextUrl.searchParams;
   const page = parseInt(sp.get("page") || "1", 10);
   const pageSize = parseInt(sp.get("pageSize") || "25", 10);
-  const orderBy = sp.get("orderBy") || "updatedAt";
+  const rawOrderBy = sp.get("orderBy") || "updatedAt";
   const sortDir = (sp.get("sortDir") || "desc") as "asc" | "desc";
   const includeDeleted =
-    sp.get("includeDeleted") === "true" && auth.role === UserRole.ADMIN;
+    sp.get("includeDeleted") === "true" && isElevatedRole(auth.role);
   const search = sp.get("search") || undefined;
   const ownerUserId = sp.get("ownerUserId") || undefined;
   const clientId = sp.get("clientId") || undefined;
   const cups = sp.get("cups") || undefined;
   const status = sp.get("status") as SimulationStatus | undefined;
+  const allowedOrderBy: Record<string, true> = {
+    updatedAt: true,
+    createdAt: true,
+    expiresAt: true,
+    status: true,
+    pinSnapshot: true,
+    referenceNumber: true,
+  };
+  const orderBy = allowedOrderBy[rawOrderBy] ? rawOrderBy : "updatedAt";
 
   const baseWhere = SimulationService.buildSimulationFilter(
     auth,
     includeDeleted,
   );
+
+  const [matchingClients, matchingOwners] = search
+    ? await Promise.all([
+        prisma.client.findMany({
+          where: {
+            name: { contains: search, mode: "insensitive" },
+          },
+          select: { id: true },
+        }),
+        prisma.user.findMany({
+          where: {
+            fullName: { contains: search, mode: "insensitive" },
+          },
+          select: { id: true },
+        }),
+      ])
+    : [[], []];
+  const searchFilters = search
+    ? [
+        {
+          referenceNumber: {
+            contains: search,
+            mode: "insensitive" as const,
+          },
+        },
+        ...(matchingClients.length
+          ? [
+              {
+                clientId: {
+                  in: matchingClients.map((client) => client.id),
+                },
+              },
+            ]
+          : []),
+        ...(matchingOwners.length
+          ? [
+              {
+                ownerUserId: {
+                  in: matchingOwners.map((owner) => owner.id),
+                },
+              },
+            ]
+          : []),
+      ]
+    : [];
 
   const where = {
     ...baseWhere,
@@ -142,18 +201,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ...(status ? { status } : {}),
     ...(search
       ? {
-          OR: [
-            {
-              client: {
-                name: { contains: search, mode: "insensitive" as const },
-              },
-            },
-            {
-              ownerUser: {
-                fullName: { contains: search, mode: "insensitive" as const },
-              },
-            },
-          ],
+          OR: searchFilters,
         }
       : {}),
     ...(cups
@@ -185,6 +233,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       where,
       select: {
         id: true,
+        referenceNumber: true,
         agencyId: true,
         ownerUserId: true,
         clientId: true,
@@ -192,6 +241,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         isDeleted: true,
         deletedAt: true,
         sharedAt: true,
+        clientOpenedAt: true,
+        sharedVia: true,
         publicToken: true,
         pinSnapshot: true,
         invoiceFilePath: true,
@@ -227,6 +278,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     const { versions, ...simWithoutVersions } = sim;
     return {
       ...simWithoutVersions,
+      pinSnapshot: decryptSensitiveValue(sim.pinSnapshot),
       payloadJson: payload ?? null,
       cupsNumber,
     };
@@ -237,7 +289,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL]);
+  await assertPermission(auth, "simulations.create");
 
   const body = await request.json();
   const payload = createSimulationSchema.parse(body);

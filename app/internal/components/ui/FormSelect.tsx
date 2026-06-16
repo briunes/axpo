@@ -8,9 +8,10 @@ export interface FormSelectOption {
     label: string;
     secondaryLabel?: string;
     icon?: ReactNode;
+    group?: string;
 }
 
-export interface FormSelectProps extends Omit<AutocompleteProps<FormSelectOption, false, false, false>, 'options' | 'renderInput' | 'onChange' | 'value'> {
+export interface FormSelectProps extends Omit<AutocompleteProps<FormSelectOption, false, false, false>, 'options' | 'renderInput' | 'onChange' | 'value' | 'groupBy'> {
     label: string;
     labelId?: string;
     required?: boolean;
@@ -42,7 +43,7 @@ export function FormSelect({
     disabled,
     ...autocompleteProps
 }: FormSelectProps) {
-    const generatedLabelId = labelId || `select-${label.toLowerCase().replace(/\s+/g, '-')}`;
+    const generatedLabelId = labelId || `select-${label?.toLowerCase().replace(/\s+/g, '-')}`;
 
     const selectedOption = options.find(opt => opt.value === value) || null;
 
@@ -51,6 +52,8 @@ export function FormSelect({
             onChange(newValue?.value ?? null);
         }
     };
+
+    const hasGroups = options.some((o) => o.group);
 
     return (
         <Box sx={{ width: '100%' }}>
@@ -62,19 +65,21 @@ export function FormSelect({
                         marginBottom: '8px',
                         fontSize: '14px',
                         fontWeight: 500,
-                        color: disabled ? '#999' : '#333',
+                        color: 'inherit',
+                        opacity: disabled ? 0.5 : 1,
                     }}
                 >
                     {label}
                     {required && <span style={{ color: '#d32f2f', marginLeft: '4px' }}>*</span>}
                 </label>
             )}
-            <Autocomplete
+            <Autocomplete<FormSelectOption, false, false, false>
                 id={generatedLabelId}
                 options={options}
                 value={selectedOption}
                 onChange={handleChange}
                 getOptionLabel={(option) => option.label}
+                {...(hasGroups ? { groupBy: (option) => option.group ?? '' } : {})}
                 isOptionEqualToValue={(option, value) => option.value === value.value}
                 filterOptions={(options, state) => {
                     const inputValue = state.inputValue.toLowerCase();
@@ -117,6 +122,27 @@ export function FormSelect({
                         )}
                     </li>
                 )}
+                renderGroup={(params) => (
+                    <li key={params.key}>
+                        <div
+                            style={{
+                                position: 'sticky',
+                                top: -8,
+                                padding: '4px 12px',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase',
+                                color: 'var(--scheme-neutral-500)',
+                                backgroundColor: 'var(--scheme-neutral-1045)',
+                                borderBottom: '1px solid var(--scheme-neutral-900)',
+                            }}
+                        >
+                            {params.group}
+                        </div>
+                        <ul style={{ padding: 0 }}>{params.children}</ul>
+                    </li>
+                )}
                 {...autocompleteProps}
                 renderInput={(params) => {
                     const { InputProps, ...restParams } = params;
@@ -139,19 +165,7 @@ export function FormSelect({
                             }}
                             sx={{
                                 '& .MuiOutlinedInput-root': {
-                                    backgroundColor: '#fafafa',
                                     borderRadius: '6px',
-                                    '& fieldset': {
-                                        borderWidth: '1px',
-                                        borderColor: error ? 'error.main' : 'rgba(0, 0, 0, 0.23)',
-                                    },
-                                    '&:hover fieldset': {
-                                        borderColor: error ? 'error.main' : 'rgba(0, 0, 0, 0.4)',
-                                    },
-                                    '&.Mui-focused fieldset': {
-                                        borderWidth: '1px',
-                                        borderColor: error ? 'error.main' : 'primary.main',
-                                    },
                                 },
                                 ...textFieldProps?.sx,
                             }}

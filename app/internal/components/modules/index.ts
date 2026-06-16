@@ -12,7 +12,10 @@ export { ConfigurationsModule } from "./ConfigurationsModule";
 export { EmailLogsModule } from "./EmailLogsModule";
 export { LLMSettings } from "./LLMSettings";
 export { InvoiceExtractor } from "./InvoiceExtractor";
-export type { ExtractedInvoiceData } from "./InvoiceExtractor";
+export type {
+  ExtractedInvoiceData,
+  InvoiceExtractionContext,
+} from "./InvoiceExtractor";
 export { TemplatesCommunications } from "./TemplatesCommunications";
 export { SystemBusinessSettings } from "./SystemBusinessSettings";
 export { UserExperienceSettings } from "./UserExperienceSettings";
@@ -20,3 +23,5 @@ export { IntegrationsSettings } from "./IntegrationsSettings";
 export { UserPreferencesSettings } from "./UserPreferencesSettings";
 export { SmtpSettings } from "./SmtpSettings";
 export { AutomatedEmailsSettings } from "./AutomatedEmailsSettings";
+export { AppErrorLogsPanel } from "./AppErrorLogsPanel";
+export { OcrUsageDashboard } from "./OcrUsageDashboard";

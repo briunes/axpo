@@ -4,7 +4,10 @@ import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
+import {
+  assertPermission,
+  isElevatedRole,
+} from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 
@@ -16,6 +19,12 @@ const createClientSchema = z.object({
   contactEmail: z.string().email().optional().or(z.literal("")),
   contactPhone: z.string().max(50).optional(),
   otherDetails: z.string().max(5000).optional(),
+  street: z.string().max(300).optional(),
+  city: z.string().max(200).optional(),
+  postalCode: z.string().max(20).optional(),
+  province: z.string().max(200).optional(),
+  country: z.string().max(10).optional(),
+  language: z.string().max(10).optional(),
 });
 
 /**
@@ -130,7 +139,7 @@ const createClientSchema = z.object({
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.AGENT]);
+  await assertPermission(auth, "clients.view");
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
@@ -140,11 +149,15 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   );
   const search = searchParams.get("search") ?? undefined;
   const includeDeleted =
-    searchParams.get("includeDeleted") === "true" &&
-    auth.role === UserRole.ADMIN;
+    searchParams.get("includeDeleted") === "true" && isElevatedRole(auth.role);
+  const agencyIdFilter = isElevatedRole(auth.role)
+    ? (searchParams.get("agencyId") ?? undefined)
+    : undefined;
   const orderBy = searchParams.get("orderBy") ?? "name";
   const sortDir =
     (searchParams.get("sortDir") ?? "asc") === "asc" ? "asc" : "desc";
+  // minimal=true: skip all includes/joins. Used by dropdowns that only need id + name.
+  const minimal = searchParams.get("minimal") === "true";
 
   const allowedOrderBy: Record<string, true> = {
     name: true,
@@ -153,12 +166,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   };
   const safeOrderBy = allowedOrderBy[orderBy] ? orderBy : "name";
 
-  const baseWhere =
-    auth.role === UserRole.ADMIN
-      ? includeDeleted
-        ? {}
-        : { isDeleted: false }
-      : { agencyId: auth.agencyId, isDeleted: false };
+  const baseWhere = isElevatedRole(auth.role)
+    ? {
+        ...(includeDeleted ? {} : { isDeleted: false }),
+        ...(agencyIdFilter ? { agencyId: agencyIdFilter } : {}),
+      }
+    : { agencyId: auth.agencyId, isDeleted: false };
 
   const where = search
     ? {
@@ -171,6 +184,32 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       }
     : { ...baseWhere };
 
+  if (minimal) {
+    // Lean query: no joins. Used for dropdown/select UI.
+    const [clients, total] = await Promise.all([
+      prisma.client.findMany({
+        where,
+        orderBy: { [safeOrderBy]: sortDir },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          cif: true,
+          contactName: true,
+          contactEmail: true,
+          agencyId: true,
+          isActive: true,
+          isDeleted: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.client.count({ where }),
+    ]);
+    return ResponseHandler.ok({ items: clients, total, page, pageSize }, 200);
+  }
+
   const [clients, total] = await Promise.all([
     prisma.client.findMany({
       where,
@@ -178,6 +217,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: {
+        agency: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         createdByUser: {
           select: {
             id: true,
@@ -202,15 +247,14 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.ADMIN, UserRole.AGENT]);
+  await assertPermission(auth, "clients.create");
 
   const body = await request.json();
   const payload = createClientSchema.parse(body);
 
-  const agencyId =
-    auth.role === UserRole.ADMIN
-      ? (payload.agencyId ?? auth.agencyId)
-      : auth.agencyId;
+  const agencyId = isElevatedRole(auth.role)
+    ? (payload.agencyId ?? auth.agencyId)
+    : auth.agencyId;
 
   const client = await prisma.client.create({
     data: {
@@ -221,6 +265,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       contactEmail: payload.contactEmail?.trim() || null,
       contactPhone: payload.contactPhone?.trim() || null,
       otherDetails: payload.otherDetails?.trim() || null,
+      street: payload.street?.trim() || null,
+      city: payload.city?.trim() || null,
+      postalCode: payload.postalCode?.trim() || null,
+      province: payload.province?.trim() || null,
+      country: payload.country?.trim() || null,
+      language: payload.language?.trim() || null,
       createdByUserId: auth.userId,
     },
     include: {

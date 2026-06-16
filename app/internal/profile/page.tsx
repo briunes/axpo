@@ -14,7 +14,7 @@ export default function ProfilePage() {
     const { t } = useI18n();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
-    const agenciesActions = useAgencies(session);
+    const agenciesActions = useAgencies(session, 1000, { minimal: true });
 
     const [user, setUser] = useState<UserItem | null>(null);
     const [loading, setLoading] = useState(true);
@@ -30,13 +30,10 @@ export default function ProfilePage() {
         commercialPhone: "",
         commercialEmail: "",
         otherDetails: "",
-        password: "",
-        currentPassword: "",
     });
 
     useEffect(() => {
         if (!session) return;
-        agenciesActions.refresh();
         getUser(session.token, session.user.id)
             .then((u) => {
                 setUser(u);
@@ -47,13 +44,11 @@ export default function ProfilePage() {
                     commercialPhone: u.commercialPhone || "",
                     commercialEmail: u.commercialEmail || "",
                     otherDetails: u.otherDetails || "",
-                    password: "",
-                    currentPassword: "",
                     role: u.role,
                     agencyId: u.agencyId || "",
                 });
             })
-            .catch(() => showError("Failed to load profile."))
+            .catch(() => showError(t("profilePage", "loadFailed")))
             .finally(() => setLoading(false));
     }, []);
 
@@ -75,15 +70,12 @@ export default function ProfilePage() {
                 ...(isAdmin(session.user.role) && formData.role ? { role: formData.role } : {}),
                 ...(isAdmin(session.user.role) && formData.agencyId ? { agencyId: formData.agencyId } : {}),
                 // Password change requires currentPassword
-                ...(formData.password ? {
-                    password: formData.password,
-                    currentPassword: formData.currentPassword,
-                } : {}),
+
             });
-            setSuccessText("Profile updated successfully.");
-            showSuccess("Profile updated successfully.");
+            setSuccessText(t("profilePage", "updated"));
+            showSuccess(t("profilePage", "updated"));
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Failed to update profile.";
+            const msg = err instanceof Error ? err.message : t("profilePage", "updateFailed");
             setErrorText(msg);
         } finally {
             setSubmitting(false);
@@ -97,6 +89,7 @@ export default function ProfilePage() {
         : null;
 
     const roleTone: Record<string, "default" | "primary" | "secondary"> = {
+        SYS_ADMIN: "primary",
         ADMIN: "primary",
         AGENT: "secondary",
         COMMERCIAL: "default",
@@ -104,11 +97,11 @@ export default function ProfilePage() {
 
     return (
         <CrudPageLayout
-            title="My Profile"
-            subtitle="View and edit your personal details and security settings"
+            title={t("profilePage", "title")}
+            subtitle={t("profilePage", "subtitle")}
         >
             {loading ? (
-                <LoadingState message="Loading profile..." size={100} />
+                <LoadingState message={t("profilePage", "loading")} size={100} />
             ) : (
                 <>
                     <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
@@ -124,10 +117,10 @@ export default function ProfilePage() {
                             <Stack direction="row" spacing={3} alignItems="flex-end" flexWrap="wrap">
                                 <Box sx={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                                     <span style={{ fontSize: 11, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
-                                        Role
+                                        {t("profilePage", "role")}
                                     </span>
                                     <Chip
-                                        label={user?.role}
+                                        label={user?.role === "SYS_ADMIN" ? t("userFormPage", "roleSysAdmin") : user?.role === "ADMIN" ? t("userFormPage", "roleAdmin") : user?.role === "AGENT" ? t("userFormPage", "roleAgent") : t("userFormPage", "roleCommercial")}
                                         size="small"
                                         color={roleTone[user?.role ?? "COMMERCIAL"]}
                                         sx={{ fontWeight: 600, fontSize: 12, width: "fit-content" }}
@@ -136,7 +129,7 @@ export default function ProfilePage() {
                                 {agencyName && (
                                     <Box sx={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                                         <span style={{ fontSize: 11, color: "var(--scheme-neutral-500)", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
-                                            Agency
+                                            {t("profilePage", "agency")}
                                         </span>
                                         <Chip
                                             label={agencyName}
@@ -159,9 +152,10 @@ export default function ProfilePage() {
                                 errorMessage={errorText}
                                 successMessage={successText}
                                 isSubmitting={submitting}
-                                submitLabel="Save Changes"
+                                submitLabel={t("profilePage", "saveChanges")}
                                 mode="edit"
                                 isEditingSelf
+                                originalRole={user?.role}
                             />
                         </Stack>
                     )}

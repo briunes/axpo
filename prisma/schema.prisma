@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,403 +8,442 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// ============================================================================
-// DOMAIN ENTITIES
-// ============================================================================
-
 model Agency {
-  id           String     @id @default(cuid())
-  name         String
-  street       String?    // Address line
-  city         String?
-  postalCode   String?
-  province     String?
-  country      String?
-  isActive     Boolean    @default(true)
-  isDeleted    Boolean    @default(false)
-  deletedAt    DateTime?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  createdByUserId String?
-  createdByUser   User?    @relation("AgencyCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedByUserId String?
-  updatedByUser   User?    @relation("AgencyUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
-  // Relations
-  users               User[]
-  simulations         Simulation[]
-  baseValueSets       BaseValueSet[]
-  clients             Client[]
-  agencyTariffs       AgencyTariff[]
+  id               String            @id @default(cuid())
+  name             String
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  street           String?
+  city             String?
+  postalCode       String?
+  province         String?
+  country          String?
+  deletedAt        DateTime?
+  isDeleted        Boolean           @default(false)
+  createdByUserId  String?
+  updatedByUserId  String?
+  createdByUser    User?             @relation("AgencyCreatedBy", fields: [createdByUserId], references: [id])
+  updatedByUser    User?             @relation("AgencyUpdatedBy", fields: [updatedByUserId], references: [id])
+  agencyTariffs    AgencyTariff[]
+  baseValueSets    BaseValueSet[]
+  clients          Client[]
+  simulations      Simulation[]
+  users            User[]
+  ocrUsageInvoices OcrUsageInvoice[]
 
+  @@index([isDeleted])
   @@map("agencies")
 }
 
 model AgencyTariff {
-  id           String   @id @default(cuid())
-  agencyId     String
-  agency       Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  
-  tariffType   String   // "ELEC:2.0TD", "ELEC:3.0TD", "ELEC:6.1TD", "GAS:RL01", etc.
-  isEnabled    Boolean  @default(true)
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String   @id @default(cuid())
+  agencyId   String
+  tariffType String
+  isEnabled  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  agency     Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
   @@unique([agencyId, tariffType])
   @@map("agency_tariffs")
 }
 
 model Client {
-  id           String    @id @default(cuid())
-  agencyId     String
-  agency       Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  name         String
-  cif          String?   // Company tax number / VAT ID
-  contactName  String?   // Main contact person
-  contactEmail String?
-  contactPhone String?
-  otherDetails String?
-  isActive     Boolean   @default(true)
-  isDeleted    Boolean      @default(false)
-  deletedAt    DateTime?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id               String            @id @default(cuid())
+  agencyId         String
+  name             String
+  isActive         Boolean           @default(true)
+  isDeleted        Boolean           @default(false)
+  deletedAt        DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  cif              String?
+  contactName      String?
+  contactEmail     String?
+  contactPhone     String?
+  otherDetails     String?
+  street           String?
+  city             String?
+  postalCode       String?
+  province         String?
+  country          String?
+  language         String?
+  createdByUserId  String?
+  updatedByUserId  String?
+  agency           Agency            @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  createdByUser    User?             @relation("ClientCreatedBy", fields: [createdByUserId], references: [id])
+  updatedByUser    User?             @relation("ClientUpdatedBy", fields: [updatedByUserId], references: [id])
+  simulations      Simulation[]
+  ocrUsageInvoices OcrUsageInvoice[]
 
-  createdByUserId String?
-  createdByUser   User?    @relation("ClientCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedByUserId String?
-  updatedByUser   User?    @relation("ClientUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
-
-  // Relations
-  simulations Simulation[]
-
+  @@index([agencyId, isDeleted])
   @@map("clients")
 }
 
 model User {
-  id             String   @id @default(cuid())
-  agencyId       String
-  agency         Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  
-  role           UserRole @default(COMMERCIAL)
-  fullName       String
-  email          String   @unique
-  mobilePhone    String?
-  commercialPhone String?
-  commercialEmail String?
-  otherDetails   String?
-  passwordHash                String?   // Internal authentication password hash
-  setupToken                  String?   @unique // One-time token for first-time password setup
-  setupTokenExpiresAt         DateTime? // Expiry for the setup token (72 hours from user creation)
-  passwordResetToken          String?   @unique // One-time token for password reset
-  passwordResetTokenExpiresAt DateTime? // Expiry for the password reset token
-  pinHash        String   // Global PIN (hashed only, visible in backoffice as masked PIN for client sharing)
-  pinCurrent     String?  // Plaintext PIN stored for display in backoffice (set at creation/rotation)
-  pinRotatedAt   DateTime @default(now())
-  isActive       Boolean  @default(true)
-  isDeleted      Boolean  @default(false)
-  deletedAt      DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                          String              @id @default(cuid())
+  agencyId                    String
+  role                        UserRole            @default(COMMERCIAL)
+  fullName                    String
+  email                       String              @unique
+  pinHash                     String
+  pinRotatedAt                DateTime            @default(now())
+  isActive                    Boolean             @default(true)
+  maxActiveDevices            Int                 @default(3)
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
+  passwordHash                String?
+  mobilePhone                 String?
+  commercialPhone             String?
+  commercialEmail             String?
+  otherDetails                String?
+  pinCurrent                  String?
+  createdByUserId             String?
+  updatedByUserId             String?
+  setupToken                  String?             @unique
+  setupTokenExpiresAt         DateTime?
+  passwordResetToken          String?             @unique
+  passwordResetTokenExpiresAt DateTime?
+  magicLinkToken              String?             @unique
+  magicLinkTokenExpiresAt     DateTime?
+  otpCode                     String?
+  otpCodeExpiresAt            DateTime?
+  otpSessionToken             String?             @unique
+  otpSessionTokenExpiresAt    DateTime?
+  otpSecret                   String?
+  deletedAt                   DateTime?
+  isDeleted                   Boolean             @default(false)
+  createdAgencies             Agency[]            @relation("AgencyCreatedBy")
+  updatedAgencies             Agency[]            @relation("AgencyUpdatedBy")
+  auditLogs                   AuditLog[]
+  baseValueSets               BaseValueSet[]
+  createdClients              Client[]            @relation("ClientCreatedBy")
+  updatedClients              Client[]            @relation("ClientUpdatedBy")
+  triggeredEmailLogs          EmailLog[]
+  ocrLogs                     OcrLog[]
+  sessions                    UserSession[]       @relation("UserSessions")
+  terminatedSessions          UserSession[]       @relation("SessionTerminatedBy")
+  simulationVersions          SimulationVersion[]
+  simulations                 Simulation[]
+  preferences                 UserPreferences?
+  appErrorLogs                AppErrorLog[]
+  ocrPricesCreated            OcrModelPrice[]     @relation("OcrPriceCreatedBy")
+  ocrPricesUpdated            OcrModelPrice[]     @relation("OcrPriceUpdatedBy")
+  ocrInvoicesCreated          OcrUsageInvoice[]   @relation("OcrInvoiceCreatedBy")
+  ocrInvoicesAsUser           OcrUsageInvoice[]   @relation("OcrInvoiceUser")
+  agency                      Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  createdByUser               User?               @relation("UserCreatedBy", fields: [createdByUserId], references: [id])
+  createdUsers                User[]              @relation("UserCreatedBy")
+  updatedByUser               User?               @relation("UserUpdatedBy", fields: [updatedByUserId], references: [id])
+  updatedUsers                User[]              @relation("UserUpdatedBy")
 
-  createdByUserId String?
-  createdByUser   User?    @relation("UserCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedByUserId String?
-  updatedByUser   User?    @relation("UserUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
-
-  // Relations
-  simulations         Simulation[]
-  simulationVersions  SimulationVersion[]
-  baseValueSets       BaseValueSet[]
-  auditLogs           AuditLog[]
-  triggeredEmailLogs  EmailLog[]   // Emails triggered by this user
-  createdUsers        User[]   @relation("UserCreatedBy")
-  updatedUsers        User[]   @relation("UserUpdatedBy")
-  createdAgencies     Agency[] @relation("AgencyCreatedBy")
-  updatedAgencies     Agency[] @relation("AgencyUpdatedBy")
-  createdClients      Client[] @relation("ClientCreatedBy")
-  updatedClients      Client[] @relation("ClientUpdatedBy")
-  preferences         UserPreferences?
-
+  @@index([agencyId, isDeleted])
+  @@index([email, isDeleted])
   @@map("users")
 }
 
+model UserSession {
+  id                 String    @id @default(cuid())
+  userId             String
+  sessionTokenId     String    @unique
+  deviceFingerprint  String
+  ipAddress          String?
+  userAgent          String?
+  browser            String?
+  os                 String?
+  authMethod         String
+  loginAt            DateTime  @default(now())
+  lastActivityAt     DateTime  @default(now())
+  logoutAt           DateTime?
+  isActive           Boolean   @default(true)
+  terminationReason  String?
+  terminatedByUserId String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  metadataJson       Json?
+  user               User      @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+  terminatedByUser   User?     @relation("SessionTerminatedBy", fields: [terminatedByUserId], references: [id])
+
+  @@index([userId, isActive, loginAt])
+  @@index([isActive, lastActivityAt])
+  @@index([deviceFingerprint])
+  @@map("user_sessions")
+}
+
 model UserPreferences {
-  id               String   @id @default(cuid())
-  userId           String   @unique
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  // Display preferences (null = use system default)
-  dateFormat       String?  // DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD
-  timeFormat       String?  // 12h, 24h
-  timezone         String?  // Europe/Madrid, America/New_York, etc.
-  numberFormat     String?  // eu (1.234,56), us (1,234.56)
-  itemsPerPage     Int?     // Pagination preference
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  language     String?
+  dateFormat   String?
+  timeFormat   String?
+  timezone     String?
+  numberFormat String?
+  itemsPerPage Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
 }
 
-enum UserRole {
-  ADMIN
-  AGENT
-  COMMERCIAL
-}
-
 model Simulation {
-  id               String   @id @default(cuid())
-  agencyId         String
-  agency           Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  
-  ownerUserId      String
-  ownerUser        User     @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  id                  String              @id @default(cuid())
+  referenceNumber     String?             @unique
+  agencyId            String
+  ownerUserId         String
+  status              SimulationStatus    @default(DRAFT)
+  expiresAt           DateTime?
+  publicToken         String?             @unique
+  pinHashSnapshot     String?
+  isDeleted           Boolean             @default(false)
+  deletedAt           DateTime?
+  sharedAt            DateTime?
+  clientOpenedAt      DateTime?
+  sharedVia           String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  clientId            String?
+  pinSnapshot         String?
+  invoiceFilePath     String?
+  invoiceFileData     Bytes?
+  invoiceFileMimeType String?
+  invoiceFileName     String?
+  invoiceFileSize     Int?
+  accessAttempts      AccessAttempt[]
+  ocrLogs             OcrLog[]
+  versions            SimulationVersion[]
+  agency              Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  client              Client?             @relation(fields: [clientId], references: [id])
+  ownerUser           User                @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
 
-  clientId         String?
-  client           Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
-
-  status           SimulationStatus @default(DRAFT)
-  expiresAt        DateTime?
-  publicToken      String?  @unique // Random long token for public access
-  pinHashSnapshot  String?  // PIN snapshot at share time (allows clients to access even after user PIN rotation)
-  pinSnapshot      String?  // Plaintext PIN at snapshot time (for backoffice display)
-  invoiceFilePath  String?  // Path to uploaded invoice file (deprecated - use invoiceFileData)
-  invoiceFileData  Bytes?   // Invoice file binary data
-  invoiceFileName  String?  // Original invoice filename
-  invoiceFileMimeType String? // Invoice file MIME type (application/pdf, image/jpeg, etc.)
-  invoiceFileSize  Int?     // Invoice file size in bytes
-  isDeleted        Boolean  @default(false) // Soft delete
-  deletedAt        DateTime?
-  sharedAt         DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  // Relations
-  versions         SimulationVersion[]
-  accessAttempts   AccessAttempt[]
-
+  @@index([agencyId, isDeleted, updatedAt(sort: Desc)])
+  @@index([ownerUserId, isDeleted, updatedAt(sort: Desc)])
+  @@index([status, isDeleted])
   @@map("simulations")
 }
 
-enum SimulationStatus {
-  DRAFT
-  SHARED
-  EXPIRED
-}
-
 model SimulationVersion {
-  id               String   @id @default(cuid())
-  simulationId     String
-  simulation       Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
-  
-  payloadJson      Json     // Simulation data snapshot (immutable)
-  baseValueSetId   String?  // Reference to base values used in calculation (optional, nullable)
-  baseValueSet     BaseValueSet? @relation(fields: [baseValueSetId], references: [id], onDelete: SetNull)
-  
-  createdBy        String
-  createdByUser    User     @relation(fields: [createdBy], references: [id], onDelete: Restrict)
-  createdAt        DateTime @default(now())
+  id             String        @id @default(cuid())
+  simulationId   String
+  payloadJson    Json
+  baseValueSetId String?
+  createdBy      String
+  createdAt      DateTime      @default(now())
+  baseValueSet   BaseValueSet? @relation(fields: [baseValueSetId], references: [id])
+  createdByUser  User          @relation(fields: [createdBy], references: [id])
+  simulation     Simulation    @relation(fields: [simulationId], references: [id], onDelete: Cascade)
 
+  @@index([simulationId, createdAt(sort: Desc)])
   @@map("simulation_versions")
 }
 
 model BaseValueSet {
-  id               String   @id @default(cuid())
-  scopeType        BaseValueScope @default(GLOBAL)
-  agencyId         String?  // Nullable when GLOBAL scope
-  agency           Agency?  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  
-  name             String
-  sourceWorkbookRef String? // XLSX source snapshot reference/version
-  sourceScope      String?  // Sheet group or domain family (e.g., "GAS_TARIFFS", "OMIE")
-  version          Int      @default(1)
-  
-  isActive         Boolean  @default(true)
-  isProduction     Boolean  @default(false) // Production vs testing version control
-  isDeleted        Boolean  @default(false) // Soft delete
-  deletedAt        DateTime?
-  
-  createdBy        String
-  createdByUser    User     @relation(fields: [createdBy], references: [id], onDelete: Restrict)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  // Relations
-  items            BaseValueItem[]
+  id                 String              @id @default(cuid())
+  scopeType          BaseValueScope      @default(GLOBAL)
+  agencyId           String?
+  name               String
+  sourceWorkbookRef  String?
+  sourceScope        String?
+  version            Int                 @default(1)
+  isActive           Boolean             @default(true)
+  isDeleted          Boolean             @default(false)
+  deletedAt          DateTime?
+  createdBy          String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  isProduction       Boolean             @default(false)
+  sourceFileName     String?
+  sourceFileData     Bytes?
+  items              BaseValueItem[]
+  agency             Agency?             @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  createdByUser      User                @relation(fields: [createdBy], references: [id])
   simulationVersions SimulationVersion[]
 
   @@map("base_value_sets")
 }
 
-enum BaseValueScope {
-  GLOBAL
-  AGENCY
-}
-
 model BaseValueItem {
-  id               String   @id @default(cuid())
-  baseValueSetId   String
-  baseValueSet     BaseValueSet @relation(fields: [baseValueSetId], references: [id], onDelete: Cascade)
-  
-  key              String   // e.g., "TARIFF_GAS_JAN", "OMIE_DYN_FEB"
-  valueNumeric     Decimal? // Numeric values
-  valueText        String?  // Text/categorical values
-  unit             String?  // Unit (e.g., "EUR/MWh", "%")
-  effectiveFrom    DateTime?
-  effectiveTo      DateTime?
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id             String       @id @default(cuid())
+  baseValueSetId String
+  key            String
+  valueNumeric   Decimal?
+  valueText      String?
+  unit           String?
+  effectiveFrom  DateTime?
+  effectiveTo    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  baseValueSet   BaseValueSet @relation(fields: [baseValueSetId], references: [id], onDelete: Cascade)
 
   @@unique([baseValueSetId, key])
   @@map("base_value_items")
 }
 
 model AccessAttempt {
-  id               String   @id @default(cuid())
-  simulationId     String
-  simulation       Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
-  
-  tokenFragment    String?  // First 8 chars of token for logging (hash not token itself)
-  ipHashOrMask     String?  // IP hash or masked IP for logging
-  success          Boolean
-  reason           String?  // "INVALID_PIN", "RATE_LIMIT", "EXPIRED", "SUCCESS", etc.
-  
-  createdAt        DateTime @default(now())
+  id            String     @id @default(cuid())
+  simulationId  String
+  tokenFragment String?
+  ipHashOrMask  String?
+  success       Boolean
+  reason        String?
+  createdAt     DateTime   @default(now())
+  simulation    Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
 
   @@map("access_attempts")
 }
 
 model AuditLog {
-  id               String   @id @default(cuid())
-  actorUserId      String?  // Nullable for public access events
-  actor            User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
-  
-  eventType        String   // e.g., "SIMULATION_CREATED", "PIN_ROTATED", "PUBLIC_ACCESS", "SOFT_DELETE"
-  targetType       String   // e.g., "SIMULATION", "USER", "BASE_VALUE_SET"
-  targetId         String   // ID of the affected entity
-  
-  metadataJson     Json?    // Additional context (changes, values, etc.)
-  
-  createdAt        DateTime @default(now())
+  id           String   @id @default(cuid())
+  actorUserId  String?
+  eventType    String
+  targetType   String
+  targetId     String
+  metadataJson Json?
+  createdAt    DateTime @default(now())
+  actor        User?    @relation(fields: [actorUserId], references: [id])
 
+  @@index([actorUserId, createdAt(sort: Desc)])
+  @@index([targetType, targetId])
+  @@index([createdAt(sort: Desc)])
   @@map("audit_logs")
 }
 
-// ============================================================================
-// CONFIGURATION ENTITIES
-// ============================================================================
-
 model SystemConfig {
-  id                        String   @id @default(cuid())
-  
-  // Simulation settings
-  simulationExpirationDays  Int      @default(30)
-  simulationShareText       String   @default("Your simulation is ready. Access it with PIN: {PIN}")
-  enablePixelTracking       Boolean  @default(true)
-  
-  // Cron job settings
-  cronExpirationEnabled     Boolean  @default(true)         // Enable/disable automatic expiration cron job
-  cronExpirationSchedule    String   @default("0 2 * * *")  // Cron schedule expression (default: daily at 2 AM)
-  cronExpirationTimezone    String   @default("UTC")        // Timezone for cron execution
-  
-  // User & Auth settings
-  requirePinForAccess       Boolean  @default(true)
-  pinLength                 Int      @default(4)
-  
-  // Client settings
-  autoCreateClientOnSim     Boolean  @default(false)
-  
-  // Module settings
-  enableAnalyticsModule     Boolean  @default(true)
-  enableAuditLogsModule     Boolean  @default(true)
-  
-  // Dashboard settings
-  defaultDashboardView      String   @default("COMMERCIAL") // ADMIN, MASTER, COMMERCIAL
-  enableRealtimeReports     Boolean  @default(false)
-  
-  // SMTP Email settings
-  smtpHost                  String?
-  smtpPort                  Int?     @default(587)
-  smtpSecure                Boolean  @default(false)
-  smtpUser                  String?
-  smtpPassword              String?
-  smtpFromEmail             String?
-  smtpFromName              String?  @default("Axpo Simulator")
-  
-  // Email template settings for automated emails
-  userCreationEmailTemplateId  String?  // Template to use when creating new users
-  passwordResetEmailTemplateId String?  // Template to use when resetting password
-  
-  // PDF template settings for simulations
-  defaultPdfTemplateGasId      String?  // Default PDF template for gas simulations
-  defaultPdfTemplateElectricityId String? // Default PDF template for electricity simulations
-  
-  // Password setup token settings
-  setupTokenValidityHours   Int      @default(72)          // Hours before setup password token expires (default 72h = 3 days)
-  passwordResetTokenValidityHours Int @default(24)         // Hours before password reset token expires (default 24h = 1 day)
-  
-  // Calculation formula parameters
-  ivaRate                   Decimal  @default(0.21)        // IVA (VAT) rate (21%)
-  electricityTaxRate        Decimal  @default(0.051127)    // Electricity tax rate (5.1127%)
-  
-  // System-wide user preference defaults
-  defaultDateFormat         String   @default("DD/MM/YYYY")  // DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD
-  defaultTimeFormat         String   @default("24h")         // 12h, 24h
-  defaultTimezone           String   @default("Europe/Madrid")
-  defaultNumberFormat       String   @default("eu")          // eu (1.234,56), us (1,234.56)
-  defaultItemsPerPage       Int      @default(10)            // Default pagination
-  
-  // LLM settings for simulation data extraction
-  llmProvider               String?  @default("ollama")      // ollama, openai, anthropic, azure-openai, google, custom
-  llmApiKey                 String?                          // API key for LLM service (not needed for Ollama)
-  llmModelName              String?  @default("llama3.2")    // Model to use (e.g., llama3.2, gpt-4, claude-3-opus)
-  llmBaseUrl                String?                          // Base URL for LLM API (for Ollama or custom endpoints)
-  llmTemperature            Decimal? @default(0.1)           // Temperature for LLM responses (0.0-2.0)
-  llmMaxTokens              Int?     @default(2000)          // Maximum tokens for LLM responses
-  llmEnabled                Boolean  @default(false)         // Enable/disable LLM features
-  
-  updatedAt                 DateTime @updatedAt
-  createdAt                 DateTime @default(now())
+  id                              String    @id @default(cuid())
+  simulationExpirationDays        Int       @default(30)
+  simulationShareText             String    @default("Your simulation is ready. Access it with PIN: {PIN}")
+  enablePixelTracking             Boolean   @default(true)
+  requirePinForAccess             Boolean   @default(true)
+  pinLength                       Int       @default(4)
+  autoCreateClientOnSim           Boolean   @default(false)
+  enableAnalyticsModule           Boolean   @default(true)
+  enableAuditLogsModule           Boolean   @default(true)
+  defaultDashboardView            String    @default("COMMERCIAL")
+  enableRealtimeReports           Boolean   @default(false)
+  updatedAt                       DateTime  @updatedAt
+  createdAt                       DateTime  @default(now())
+  smtpFromEmail                   String?
+  smtpFromName                    String?   @default("Axpo Simulator")
+  smtpHost                        String?
+  smtpPassword                    String?
+  smtpPort                        Int?      @default(587)
+  smtpSecure                      Boolean   @default(false)
+  smtpUser                        String?
+  userCreationEmailTemplateId     String?
+  electricityTaxRate              Decimal   @default(0.051127)
+  ivaRate                         Decimal   @default(0.21)
+  defaultDateFormat               String    @default("DD/MM/YYYY")
+  defaultItemsPerPage             Int       @default(10)
+  defaultLanguage                 String    @default("en")
+  defaultNumberFormat             String    @default("eu")
+  defaultTimeFormat               String    @default("24h")
+  defaultTimezone                 String    @default("Europe/Madrid")
+  llmApiKey                       String?
+  llmBaseUrl                      String?
+  llmEnabled                      Boolean   @default(false)
+  llmMaxTokens                    Int?      @default(2000)
+  llmModelName                    String?   @default("llama3.2")
+  llmProvider                     String?   @default("ollama")
+  llmTemperature                  Decimal?  @default(0.1)
+  aiProviderConfigs               Json?
+  aiTaskConfigs                   Json?
+  setupTokenValidityHours         Int       @default(72)
+  passwordResetEmailTemplateId    String?
+  passwordResetTokenValidityHours Int       @default(24)
+  magicLinkEnabled                Boolean   @default(false)
+  magicLinkEmailTemplateId        String?
+  magicLinkTokenValidityMinutes   Int       @default(15)
+  otpEnabled                      Boolean   @default(false)
+  otpEmailTemplateId              String?
+  otpCodeValidityMinutes          Int       @default(10)
+  defaultMaxActiveDevices         Int       @default(3)
+  defaultPdfTemplateElectricityId String?
+  defaultPdfTemplateGasId         String?
+  cronExpirationEnabled           Boolean   @default(true)
+  cronExpirationSchedule          String    @default("0 2 * * *")
+  cronExpirationTimezone          String    @default("UTC")
+  hydrocarbonTaxRate              Decimal   @default(0.00234)
+  ivaRateOptions                  Json?
+  electricityTaxRateOptions       Json?
+  hydrocarbonTaxRateOptions       Json?
+  electricityTaxConfig            Json?
+  gasTaxConfig                    Json?
+  appVersion                      String    @default("1.0.0")
+  maintenanceMode                 Boolean   @default(false)
+  maintenanceUntil                DateTime?
+  maintenanceMessage              String?
+  ocrBillingEnabled               Boolean   @default(false)
+  ocrBillingCurrency              String    @default("USD")
+  ocrBillingUnitTokens            Int       @default(1000)
+  ocrBillingMarkupPercent         Decimal   @default(0)
+  ocrBillingFixedFeePerCall       Decimal   @default(0)
+  ocrBillingIncludeFailedCalls    Boolean   @default(false)
 
   @@map("system_config")
 }
 
 model PdfTemplate {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  type        String   // simulation-output, simulation-detailed, contract, price-history, invoice, report
-  commodity   String?  // ELECTRICITY, GAS - filters which simulations can use this template
-  active      Boolean  @default(true)
-  htmlContent String   @db.Text
-  editableSections Json? // Defines editable sections with defaults: {"INTRO_TEXT": {"label": "Intro", "default": "Default text", "multiline": true}}
-  isDeleted   Boolean  @default(false)
-  deletedAt   DateTime?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String                   @id @default(cuid())
+  name             String
+  description      String
+  type             String
+  active           Boolean                  @default(true)
+  htmlContent      String
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  editableSections Json?
+  deletedAt        DateTime?
+  isDeleted        Boolean                  @default(false)
+  commodity        String?
+  translations     PdfTemplateTranslation[]
 
   @@map("pdf_templates")
 }
 
+model PdfTemplateTranslation {
+  id            String      @id @default(cuid())
+  pdfTemplateId String
+  languageCode  String
+  htmlContent   String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  pdfTemplate   PdfTemplate @relation(fields: [pdfTemplateId], references: [id], onDelete: Cascade)
+
+  @@unique([pdfTemplateId, languageCode])
+  @@map("pdf_template_translations")
+}
+
 model EmailTemplate {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  type        String   // simulation-share, magic-link, welcome, password-reset, expiring-soon, converted, notification
-  active      Boolean  @default(true)
-  subject     String
-  htmlContent String   @db.Text
-  editableSections Json? // Defines editable sections with defaults: {"INTRO_TEXT": {"label": "Intro", "default": "Default text", "multiline": true}}
-  isDeleted   Boolean  @default(false)
-  deletedAt   DateTime?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String                     @id @default(cuid())
+  name             String
+  description      String
+  type             String
+  active           Boolean                    @default(true)
+  subject          String
+  htmlContent      String
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  editableSections Json?
+  deletedAt        DateTime?
+  isDeleted        Boolean                    @default(false)
+  translations     EmailTemplateTranslation[]
 
   @@map("email_templates")
+}
+
+model EmailTemplateTranslation {
+  id              String        @id @default(cuid())
+  emailTemplateId String
+  languageCode    String
+  subject         String
+  htmlContent     String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  emailTemplate   EmailTemplate @relation(fields: [emailTemplateId], references: [id], onDelete: Cascade)
+
+  @@unique([emailTemplateId, languageCode])
+  @@map("email_template_translations")
 }
 
 model RolePermission {
@@ -415,7 +451,6 @@ model RolePermission {
   role          UserRole
   permissionKey String
   allowed       Boolean  @default(true)
-
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -424,86 +459,284 @@ model RolePermission {
 }
 
 model TemplateVariable {
-  id          String   @id @default(cuid())
-  key         String   @unique // e.g., "CLIENT_NAME", "SIMULATION_ID"
-  label       String   // Display name for UI
-  description String?  // Description for users
-  category    String   // "client", "simulation", "user", "calculation", "period"
-  example     String?  // Example value
-  sortOrder   Int      @default(0)
-  active      Boolean  @default(true)
-  isDeleted   Boolean  @default(false)
-  deletedAt   DateTime?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String    @id @default(cuid())
+  key           String    @unique
+  label         String
+  description   String?
+  category      String
+  example       String?
+  sortOrder     Int       @default(0)
+  active        Boolean   @default(true)
+  /// Comma-separated template types this variable applies to (null = all types)
+  templateTypes String?
+  /// Commodity this variable applies to: ELECTRICITY, GAS (null = all commodities)
+  commodity     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  isDeleted     Boolean   @default(false)
 
   @@map("template_variables")
 }
 
 model EmailLog {
-  id                String   @id @default(cuid())
-  sentAt            DateTime @default(now())
-  
-  // Recipient info
-  recipientEmail    String
-  
-  // Email content
-  templateId        String?
-  templateName      String?
-  subject           String
-  htmlBody          String   @db.Text
-  
-  // Metadata - what triggered this email
-  triggeredBy       String?  // e.g., "user-creation", "simulation-share", "test-email"
-  triggeredByUserId String?
-  triggeredByUser   User?    @relation(fields: [triggeredByUserId], references: [id])
-  
-  // Variables/payload used
-  variables         Json?    // Store the template variables as JSON
-  
-  // Status
-  status            String   @default("sent") // sent, failed
-  errorMessage      String?  @db.Text
-  
-  // Associated records (for linking back to entities)
-  relatedUserId     String?  // If related to a user (e.g., welcome email)
-  relatedSimulationId String? // If related to a simulation (e.g., share email)
-  
-  @@map("email_logs")
+  id                  String   @id @default(cuid())
+  sentAt              DateTime @default(now())
+  recipientEmail      String
+  templateId          String?
+  templateName        String?
+  subject             String
+  htmlBody            String
+  triggeredBy         String?
+  triggeredByUserId   String?
+  variables           Json?
+  status              String   @default("sent")
+  errorMessage        String?
+  errorStack          String?
+  relatedUserId       String?
+  relatedSimulationId String?
+  // SMTP delivery details
+  smtpHost            String?
+  smtpPort            Int?
+  fromEmail           String?
+  fromName            String?
+  messageId           String?
+  smtpResponse        String?
+  durationMs          Int?
+  hasAttachments      Boolean  @default(false)
+  attachmentsCount    Int      @default(0)
+  triggeredByUser     User?    @relation(fields: [triggeredByUserId], references: [id])
+
   @@index([sentAt])
   @@index([recipientEmail])
   @@index([triggeredBy])
   @@index([status])
   @@index([triggeredByUserId])
+  @@map("email_logs")
 }
 
 model CronLog {
-  id              String   @id @default(cuid())
-  executedAt      DateTime @default(now())
-  
-  // Job identification
-  jobName         String   // e.g., "simulation-expiration"
-  jobType         String   // e.g., "EXPIRATION", "CLEANUP", "SYNC"
-  
-  // Execution status
-  status          String   // "SUCCESS", "FAILED"
-  
-  // Execution details
-  duration        Int?     // Duration in milliseconds
-  totalProcessed  Int      @default(0) // Number of items processed
-  totalAffected   Int      @default(0) // Number of items affected/expired/etc
-  
-  // Additional metadata
-  metadata        Json?    // Store job-specific data (e.g., expired IDs, schedule, timezone)
-  
-  // Error information
-  errorMessage    String?  @db.Text
-  errorStack      String?  @db.Text
-  
-  @@map("cron_logs")
+  id             String   @id @default(cuid())
+  executedAt     DateTime @default(now())
+  jobName        String
+  jobType        String
+  status         String
+  duration       Int?
+  totalProcessed Int      @default(0)
+  totalAffected  Int      @default(0)
+  metadata       Json?
+  errorMessage   String?
+  errorStack     String?
+
   @@index([executedAt])
   @@index([jobName])
   @@index([jobType])
   @@index([status])
+  @@map("cron_logs")
+}
+
+model InvoiceProviderPrompt {
+  id                String   @id @default(cuid())
+  name              String // e.g. "Repsol", "NEON", "Iberdrola"
+  slug              String   @unique // e.g. "repsol", "neon", "iberdrola"
+  prompt            String   @db.Text // Legacy generic prompt (kept for backward compatibility)
+  promptElectricity String   @default("") @db.Text // Custom prompt for electricity invoices
+  promptGas         String   @default("") @db.Text // Custom prompt for gas invoices
+  isActive          Boolean  @default(true)
+  needsPromptConfig Boolean  @default(false) // true when auto-created from simulation (prompt not yet configured)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("invoice_provider_prompts")
+}
+
+model OcrLog {
+  id                 String       @id @default(cuid())
+  requestedAt        DateTime     @default(now())
+  userId             String?
+  userEmail          String?
+  simulationId       String?
+  type               OcrLogType   @default(INVOICE_EXTRACTION)
+  provider           String
+  model              String
+  baseUrl            String?
+  fileName           String?
+  fileType           String?
+  fileSizeBytes      Int?
+  pageCount          Int?
+  status             String // SUCCESS | FAILED | ERROR | PARSE_ERROR
+  durationMs         Int?
+  promptTokens       Int?
+  completionTokens   Int?
+  totalTokens        Int?
+  extractedFields    Json? // the extracted JSON data (sanitized, no PII beyond what was extracted)
+  fieldsExtracted    Int? // count of non-null fields
+  userCorrections    Json? // corrections applied by the user: { fieldName: { ocr: value, corrected: value } }
+  errorMessage       String?
+  errorType          String?
+  httpStatusCode     Int?
+  rawResponseSnippet String? // first 500 chars of response for debugging
+  promptText         String?      @db.Text // the full prompt sent to the LLM
+  metadata           Json? // any extra provider-specific info
+  reportedIssue      String? // user-reported issue message when extraction is mostly empty
+  issueStatus        String? // OPEN | IN_PROGRESS | RESOLVED | DISMISSED
+  issueResolution    String?
+  issueNotes         String?      @db.Text
+  issueSubmittedAt   DateTime?
+  issueHandledAt     DateTime?
+  issueHandledByUserId String?
+  user               User?        @relation(fields: [userId], references: [id])
+  simulation         Simulation?  @relation(fields: [simulationId], references: [id], onDelete: SetNull)
+  ocrFiles           OcrLogFile[]
+
+  @@index([requestedAt])
+  @@index([userId])
+  @@index([simulationId])
+  @@index([provider])
+  @@index([status])
+  @@index([type])
+  @@index([issueStatus])
+  @@map("ocr_logs")
+}
+
+model OcrLogFile {
+  id            String   @id @default(cuid())
+  ocrLogId      String
+  fileName      String
+  fileType      String?
+  fileSizeBytes Int
+  fileData      Bytes
+  createdAt     DateTime @default(now())
+  ocrLog        OcrLog   @relation(fields: [ocrLogId], references: [id], onDelete: Cascade)
+
+  @@index([ocrLogId])
+  @@map("ocr_log_files")
+}
+
+enum OcrLogType {
+  INVOICE_EXTRACTION
+  PROVIDER_DETECTION
+  PROMPT_IMPROVEMENT
+  PROMPT_TEST
+  TEMPLATE_BUILDER
+}
+
+enum UserRole {
+  SYS_ADMIN
+  ADMIN
+  AGENT
+  COMMERCIAL
+}
+
+enum SimulationStatus {
+  DRAFT
+  SHARED
+  EXPIRED
+}
+
+enum BaseValueScope {
+  GLOBAL
+  AGENCY
+}
+
+model AppErrorLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  isDeleted Boolean  @default(false)
+  deletedAt DateTime?
+
+  // Error details
+  errorType String // e.g. "Error", "ZodError", "DomainError"
+  errorCode String? // domain error code, e.g. "NOT_FOUND"
+  message   String
+  stack     String?
+
+  // HTTP context
+  method     String? // GET, POST, etc.
+  path       String? // /api/v1/internal/...
+  pagePath   String? // Browser route where the API request originated
+  statusCode Int?
+
+  // Who triggered it (optional — may be unauthenticated)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Sentry event ID for cross-referencing
+  sentryEventId String?
+
+  // Extra metadata (JSON)
+  metadata Json?
+
+  @@index([createdAt])
+  @@index([errorType])
+  @@index([path])
+  @@index([pagePath])
+  @@index([userId])
+  @@index([isDeleted, createdAt(sort: Desc)])
+  @@map("app_error_logs")
+}
+
+model OcrModelPrice {
+  id                     String    @id @default(cuid())
+  provider               String
+  model                  String
+  inputPricePer1kTokens  Decimal   @db.Decimal(18, 8)
+  outputPricePer1kTokens Decimal   @db.Decimal(18, 8)
+  currency               String    @default("USD")
+  unitTokens             Int       @default(1000)
+  isActive               Boolean   @default(true)
+  effectiveFrom          DateTime  @default(now())
+  effectiveTo            DateTime?
+  note                   String?
+  createdByUserId        String?
+  updatedByUserId        String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  createdByUser User? @relation("OcrPriceCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser User? @relation("OcrPriceUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([provider])
+  @@index([model])
+  @@index([isActive])
+  @@map("ocr_model_prices")
+}
+
+model OcrUsageInvoice {
+  id                    String   @id @default(cuid())
+  label                 String
+  periodStart           DateTime
+  periodEnd             DateTime
+  clientId              String?
+  clientName            String?
+  agencyId              String?
+  userId                String?
+  currency              String   @default("USD")
+  totalCalls            Int      @default(0)
+  successfulCalls       Int      @default(0)
+  failedCalls           Int      @default(0)
+  totalPromptTokens     BigInt   @default(0)
+  totalCompletionTokens BigInt   @default(0)
+  totalTokens           BigInt   @default(0)
+  baseCost              Decimal  @default(0) @db.Decimal(18, 6)
+  markupCost            Decimal  @default(0) @db.Decimal(18, 6)
+  fixedFeeCost          Decimal  @default(0) @db.Decimal(18, 6)
+  totalCost             Decimal  @default(0) @db.Decimal(18, 6)
+  breakdown             Json?
+  status                String   @default("DRAFT") // DRAFT | ISSUED | PAID | VOID
+  note                  String?
+  createdByUserId       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  createdByUser User?   @relation("OcrInvoiceCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  client        Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  agency        Agency? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  user          User?   @relation("OcrInvoiceUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([periodStart])
+  @@index([periodEnd])
+  @@index([clientId])
+  @@index([status])
+  @@map("ocr_usage_invoices")
 }

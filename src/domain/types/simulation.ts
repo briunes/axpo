@@ -49,6 +49,7 @@ export type ElecFijoProduct =
   | "ESTABLE_PLUS"
   | "1P_PLUS"
   | "1P_PLUS_XL"
+  | "1P_PLUS_SSCC_LIBRES"
   | "ESTABLE_TALLERES"
   | "ESTABLE_PLUS_TALLERES";
 
@@ -110,6 +111,14 @@ export interface ElectricityInputs {
     dias: number; // calendar days in the period
   };
 
+  /**
+   * Optional billing month override (YYYY-MM).
+   * When set, indexed calculations use the prices and days for this specific
+   * month instead of deriving them from the billing period dates.
+   * Fixed calculations always use periodo.dias regardless of this field.
+   */
+  billingMonth?: string;
+
   /** Client's current total invoice amount in €, used to compute savings */
   facturaActual: number;
 
@@ -121,6 +130,56 @@ export interface ElectricityInputs {
   omieEstimado?: Partial<
     Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>
   >;
+
+  /**
+   * Personalizada Index: user-supplied energy margins (€/MWh) and power margins
+   * (€/kW/year) per period.  When present and at least one energy margin is > 0,
+   * the calculation emits a single "PERSONALIZADA_INDEX" result row using
+   * formula: energyCost = (omieEstimado[p] + margenEnergia[p]/1000) × consumo[p].
+   */
+  personalizadaIndex?: {
+    /** Energy margin in €/MWh per period (filled by user in the form) */
+    margenEnergia: Partial<
+      Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>
+    >;
+    /** Power margin in €/kW/year per period (filled by user in the form) */
+    margenPotencia: Partial<
+      Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>
+    >;
+  };
+
+  /**
+   * Personalizada Fijo: user-supplied all-in energy prices (€/kWh) and power
+   * prices (€/kWdia) per period.  When present and at least one energy price
+   * is > 0, the calculation emits a single "PERSONALIZADA_FIJO" result row.
+   * Default values can be imported from the COMPARATIVA LIBRE LUZ Excel sheet.
+   */
+  personalizadaFijo?: {
+    /** All-in energy price in €/kWh per period */
+    preciosEnergia: Partial<
+      Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>
+    >;
+    /** All-in power price in €/kWdia per period */
+    preciosPotencia: Partial<
+      Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>
+    >;
+  };
+
+  /**
+   * Personalizada OMIE + B: user-supplied "B" term (€/MWh) per period plus
+   * power margins (€/kW/year).  When present and at least one B value is > 0,
+   * the calculation emits a single "PERSONALIZADA_OMIE_B" result row using the
+   * Excel-derived Precio TE for the billing month plus B adjusted by the
+   * workbook multiplier.
+   */
+  personalizadaOmieB?: {
+    /** B term in €/MWh per period (Término Bi Oferta Personalizada) */
+    terminoB: Partial<Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>>;
+    /** Power margin in €/kW/year per period */
+    margenPotencia: Partial<
+      Record<"P1" | "P2" | "P3" | "P4" | "P5" | "P6", number>
+    >;
+  };
 
   /** Extra line items on the current bill */
   extras: {
@@ -180,6 +239,32 @@ export interface GasInputs {
   /** Client's current total invoice amount in €, used to compute savings */
   facturaActual: number;
 
+  /**
+   * Personalizada Fijo: user-supplied all-in variable term (€/kWh) and fixed
+   * term (€/día).  When present and terminoVariable > 0, the calculation
+   * emits a single "GAS_PERSONALIZADA_FIJO" result row.
+   * Default values can be imported from the COMPARATIVA LIBRE GAS Excel sheet.
+   */
+  personalizadaFijo?: {
+    /** All-in variable energy term in €/kWh */
+    terminoVariable: number;
+    /** All-in fixed daily term in €/día */
+    terminoDia: number;
+  };
+
+  /**
+   * Personalizada Indexada: user-supplied Precio término de energia (€/kWh).
+   * When present and margenEnergia > 0, the calculation emits a single
+   * "GAS_PERSONALIZADA_INDEX" result row using:
+   *   precioEnergia = MIBGAS + margenEnergia
+   *   terminoEnergia = precioEnergia × consumo
+   * Leave undefined or margenEnergia = 0 to omit this row.
+   */
+  personalizadaIndex?: {
+    /** Energy margin added on top of MIBGAS in €/kWh */
+    margenEnergia: number;
+  };
+
   /** Extra line items */
   extras: {
     alquilerEquipoMedida?: number; // €
@@ -227,7 +312,8 @@ export interface ProductResult {
     terminoPotencia?: number;
     excesoPotencia?: number;
     terminoFijo?: number;
-    extras?: number;
+    otrosCargos?: number;
+    alquiler?: number;
     impuestoElectrico?: number;
     impuestoHidrocarburo?: number;
     iva?: number;
@@ -278,10 +364,12 @@ export interface SimulationPayload {
   results?: SimulationResults;
 
   /** Selected offer to present to client */
-  selectedOffer?: {
-    productKey: string;
-    commodity: "ELECTRICITY" | "GAS";
-    pricingType: "FIXED" | "INDEXED";
-    selectedAt: string;
-  };
+  selectedOffer?:
+    | {
+        productKey: string;
+        commodity: "ELECTRICITY" | "GAS";
+        pricingType: "FIXED" | "INDEXED";
+        selectedAt: string;
+      }
+    | null;
 }

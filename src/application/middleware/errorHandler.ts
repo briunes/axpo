@@ -4,8 +4,15 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { DomainError, isDomainError } from "@/domain/errors/errors";
+import { isDomainError } from "@/domain/errors/errors";
 import { ResponseHandler } from "./response";
+import { getRefreshedAccessToken, withRequestContext } from "./requestContext";
+import { ErrorLoggerService } from "@/application/services/errorLoggerService";
+import {
+  getLoadedAppVersion,
+  warmAppVersionCache,
+} from "@/application/lib/appVersionCache";
+import { JwtService } from "@/application/services/jwtService";
 
 export interface ErrorHandlerOptions {
   logErrors?: boolean;
@@ -15,6 +22,79 @@ export interface ErrorHandlerOptions {
 const defaultOptions: ErrorHandlerOptions = {
   logErrors: true,
   exposeDetails: process.env.NODE_ENV === "development",
+};
+
+const ERROR_LOG_EXCLUDED_PATHS = new Set([
+  "/api/v1/internal/app-error-logs/client",
+  "/api/v1/internal/auth/redirect-report",
+]);
+
+class ApiResponseError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+  ) {
+    super(message);
+    this.name = "ApiResponseError";
+  }
+}
+
+const getRequestUserId = (req: NextRequest): string | undefined => {
+  const authorization = req.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) return undefined;
+
+  try {
+    return JwtService.verifyAccessTokenIgnoringExpiration(
+      authorization.slice(7),
+    ).sub;
+  } catch {
+    return undefined;
+  }
+};
+
+const captureApiErrorResponse = async (
+  req: NextRequest,
+  response: NextResponse,
+  originalError?: unknown,
+): Promise<void> => {
+  if (response.status < 400) return;
+
+  const path = new URL(req.url).pathname;
+  if (ERROR_LOG_EXCLUDED_PATHS.has(path)) return;
+
+  const body = (await response
+    .clone()
+    .json()
+    .catch(() => null)) as
+    | {
+        error?: {
+          code?: string;
+          message?: string;
+          details?: Record<string, unknown>;
+        };
+      }
+    | null;
+
+  const error =
+    originalError instanceof Error
+      ? originalError
+      : new ApiResponseError(
+          body?.error?.message ??
+            `API request failed with status ${response.status}`,
+          body?.error?.code,
+        );
+
+  await ErrorLoggerService.capture(error, {
+    method: req.method,
+    path,
+    pagePath: req.headers.get("x-axpo-page-path") ?? undefined,
+    statusCode: response.status,
+    userId: getRequestUserId(req),
+    metadata: body?.error?.details
+      ? { responseDetails: body.error.details }
+      : undefined,
+    sendToSentry: response.status >= 500,
+  }).catch(() => undefined);
 };
 
 /**
@@ -89,13 +169,47 @@ export const withErrorHandler = (
     },
   ) => {
     try {
-      const resolvedParams = context?.params ? await context.params : undefined;
-      return await handler(
-        req,
-        resolvedParams ? { params: resolvedParams } : undefined,
-      );
+      return await withRequestContext(async () => {
+        const frontendVersion = req.headers.get("x-axpo-app-version");
+        if (frontendVersion) {
+          await warmAppVersionCache();
+          const currentVersion = getLoadedAppVersion();
+
+          if (currentVersion && frontendVersion !== currentVersion) {
+            const response = ResponseHandler.error(
+              "APP_VERSION_OUTDATED",
+              "A newer application version is available",
+              409,
+              {
+                frontendVersion,
+                currentVersion,
+              },
+            );
+            await captureApiErrorResponse(req, response);
+            return response;
+          }
+        }
+
+        const resolvedParams = context?.params
+          ? await context.params
+          : undefined;
+        const response = await handler(
+          req,
+          resolvedParams ? { params: resolvedParams } : undefined,
+        );
+
+        const refreshedAccessToken = getRefreshedAccessToken();
+        if (refreshedAccessToken) {
+          response.headers.set("x-access-token", refreshedAccessToken);
+        }
+
+        await captureApiErrorResponse(req, response);
+        return response;
+      });
     } catch (error) {
-      return errorHandler(error);
+      const response = errorHandler(error);
+      await captureApiErrorResponse(req, response, error);
+      return response;
     }
   };
 };

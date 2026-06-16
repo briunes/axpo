@@ -32,6 +32,8 @@ build/
 .env.vercel.preview
 .env.vercel.production
 .env.vercel.*.local
+vars
+vars prod
 
 # Logs
 *.log

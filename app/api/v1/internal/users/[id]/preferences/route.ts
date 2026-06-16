@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
+import { withErrorHandler } from "@/application/middleware/errorHandler";
+import { requireAuth } from "@/application/middleware/auth";
+import { isElevatedRole } from "@/application/middleware/rbac";
+import { ForbiddenError, ValidationError } from "@/domain/errors/errors";
+
+const assertPreferenceAccess = (
+  auth: Awaited<ReturnType<typeof requireAuth>>,
+  userId: string,
+) => {
+  if (auth.userId !== userId && !isElevatedRole(auth.role)) {
+    throw new ForbiddenError("You can only access your own preferences");
+  }
+};
 
 /**
  * @swagger
@@ -17,11 +30,11 @@ import { prisma } from "@/infrastructure/database/prisma";
  *       200:
  *         description: User preferences (merged with system defaults)
  */
-async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id: userId } = await params;
+const GET = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  const userId = context?.params?.id;
+  if (!userId) throw new ValidationError("User id parameter is required");
+  assertPreferenceAccess(auth, userId);
 
   // Get system defaults
   const systemConfig = await prisma.systemConfig.findFirst();
@@ -33,6 +46,7 @@ async function GET(
 
   // Merge with system defaults (user preferences override system defaults)
   const effectivePreferences = {
+    language: userPrefs?.language ?? systemConfig?.defaultLanguage ?? null,
     dateFormat:
       userPrefs?.dateFormat ?? systemConfig?.defaultDateFormat ?? "DD/MM/YYYY",
     timeFormat:
@@ -45,6 +59,8 @@ async function GET(
       userPrefs?.itemsPerPage ?? systemConfig?.defaultItemsPerPage ?? 10,
     // Include info about which values are overridden
     _overrides: {
+      language:
+        userPrefs?.language !== null && userPrefs?.language !== undefined,
       dateFormat:
         userPrefs?.dateFormat !== null && userPrefs?.dateFormat !== undefined,
       timeFormat:
@@ -61,7 +77,7 @@ async function GET(
   };
 
   return NextResponse.json(effectivePreferences);
-}
+});
 
 /**
  * @swagger
@@ -101,11 +117,11 @@ async function GET(
  *       200:
  *         description: Updated user preferences
  */
-async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id: userId } = await params;
+const PUT = withErrorHandler(async (req: NextRequest, context) => {
+  const auth = await requireAuth(req);
+  const userId = context?.params?.id;
+  if (!userId) throw new ValidationError("User id parameter is required");
+  assertPreferenceAccess(auth, userId);
   const body = await req.json();
 
   // Verify user exists
@@ -122,6 +138,7 @@ async function PUT(
     where: { userId },
     create: {
       userId,
+      language: body.language,
       dateFormat: body.dateFormat,
       timeFormat: body.timeFormat,
       timezone: body.timezone,
@@ -129,6 +146,7 @@ async function PUT(
       itemsPerPage: body.itemsPerPage,
     },
     update: {
+      language: body.language,
       dateFormat: body.dateFormat,
       timeFormat: body.timeFormat,
       timezone: body.timezone,
@@ -138,6 +156,6 @@ async function PUT(
   });
 
   return NextResponse.json(preferences);
-}
+});
 
 export { GET, PUT };

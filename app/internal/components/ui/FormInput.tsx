@@ -21,7 +21,7 @@ export function FormInput({ label, required, helperText, type, ...props }: TextF
                     marginBottom: '8px',
                     fontSize: '14px',
                     fontWeight: 500,
-                    color: '#333',
+                    color: 'inherit',
                 }}>
                     {label}
                     {required && <Box component={'span'} sx={{ color: 'error.main', marginLeft: '4px' }}>*</Box>}
@@ -34,6 +34,12 @@ export function FormInput({ label, required, helperText, type, ...props }: TextF
                 helperText={helperText}
                 size="small"
                 fullWidth
+                onChange={props.onChange ? (e) => {
+                    if (type === "number") {
+                        e.target.value = String(parseFloat(e.target.value));
+                    }
+                    props.onChange!(e);
+                } : undefined}
                 slotProps={{
                     input: isPassword ? {
                         endAdornment: (
@@ -56,23 +62,10 @@ export function FormInput({ label, required, helperText, type, ...props }: TextF
                 }}
                 sx={{
                     '& .MuiOutlinedInput-root': {
-                        backgroundColor: '#fafafa',
                         borderRadius: '6px',
                         fontSize: '14px',
-                        '& fieldset': {
-                            borderWidth: '1px',
-                            borderColor: props.error ? '#d32f2f' : 'rgba(0, 0, 0, 0.23)',
-                        },
-                        '&:hover fieldset': {
-                            borderColor: props.error ? '#d32f2f' : 'rgba(0, 0, 0, 0.4)',
-                        },
-                        '&.Mui-focused fieldset': {
-                            borderWidth: '1px',
-                            borderColor: props.error ? '#d32f2f' : 'primary.main',
-                        },
                     },
                     '& .MuiFormHelperText-root': {
-                        color: props.error ? '#d32f2f' : '#666',
                         marginLeft: 0,
                         marginTop: '4px',
                         fontSize: '12px',

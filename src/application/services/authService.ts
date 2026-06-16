@@ -8,9 +8,14 @@ import {
 } from "@/domain/errors/errors";
 import { prisma } from "@/infrastructure/database/prisma";
 import { PinService } from "./pinService";
-import { JwtService } from "./jwtService";
 import { PasswordService } from "./passwordService";
 import { EmailService } from "./emailService";
+import { SessionRequestContext, SessionService } from "./sessionService";
+import {
+  constantTimeEqual,
+  encryptSensitiveValue,
+  keyedDigest,
+} from "@/application/lib/sensitiveData";
 
 interface CreateUserInput {
   agencyId: string;
@@ -23,11 +28,16 @@ interface CreateUserInput {
   otherDetails?: string;
   password?: string;
   pin?: string;
+  maxActiveDevices?: number;
   createdByUserId?: string;
 }
 
 export class AuthService {
-  static async loginWithEmailAndPassword(email: string, password: string) {
+  static async loginWithEmailAndPassword(
+    email: string,
+    password: string,
+    context?: SessionRequestContext,
+  ) {
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user || !user.isActive || !user.passwordHash) {
@@ -42,15 +52,156 @@ export class AuthService {
       throw new UnauthorizedError("Invalid credentials");
     }
 
-    const token = JwtService.signAccessToken({
-      sub: user.id,
-      role: user.role as UserRole,
-      agencyId: user.agencyId,
-      email: user.email,
-    });
+    // Check if OTP is enabled system-wide
+    const systemConfig = await prisma.systemConfig.findFirst();
+    if (systemConfig?.otpEnabled) {
+      // Generate 6-digit OTP
+      const otpCode = String(crypto.randomInt(100000, 1000000));
+      const validityMinutes = systemConfig.otpCodeValidityMinutes ?? 10;
+      const otpCodeExpiresAt = new Date(
+        Date.now() + validityMinutes * 60 * 1000,
+      );
+      const otpSessionToken = crypto.randomBytes(32).toString("hex");
+      const otpSessionTokenExpiresAt = new Date(
+        Date.now() + validityMinutes * 60 * 1000,
+      );
+      const otpCodeHash = keyedDigest(
+        `${otpSessionToken}:${otpCode}`,
+        "auth-otp",
+      );
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          otpCode: otpCodeHash,
+          otpCodeExpiresAt,
+          otpSessionToken,
+          otpSessionTokenExpiresAt,
+        },
+      });
+
+      try {
+        await EmailService.sendOtpEmail({
+          userEmail: user.email,
+          userName: user.fullName,
+          otpCode,
+          userId: user.id,
+        });
+      } catch (error) {
+        console.error("Failed to send OTP email:", error);
+      }
+
+      return {
+        requiresOtp: true,
+        otpSessionToken,
+        user: {
+          id: user.id,
+          agencyId: user.agencyId,
+          role: user.role,
+          fullName: user.fullName,
+          email: user.email,
+        },
+      };
+    }
+
+    const session = await SessionService.createSessionForUser(
+      {
+        id: user.id,
+        role: user.role as UserRole,
+        agencyId: user.agencyId,
+        email: user.email,
+        maxActiveDevices: user.maxActiveDevices,
+      },
+      "PASSWORD",
+      context ?? {
+        ipAddress: "unknown",
+        userAgent: "unknown",
+        browser: "Unknown",
+        os: "Unknown",
+      },
+    );
 
     return {
-      token,
+      requiresOtp: false,
+      token: session.token,
+      user: {
+        id: user.id,
+        agencyId: user.agencyId,
+        role: user.role,
+        fullName: user.fullName,
+        email: user.email,
+      },
+    };
+  }
+
+  /**
+   * Verify a one-time OTP code using the session token issued at login.
+   * Single-use: clears the OTP after successful verification.
+   */
+  static async verifyOtp(
+    otpSessionToken: string,
+    code: string,
+    context?: SessionRequestContext,
+  ) {
+    const user = await prisma.user.findUnique({ where: { otpSessionToken } });
+
+    if (!user) {
+      throw new ValidationError("Invalid or expired OTP session");
+    }
+
+    if (
+      !user.otpSessionTokenExpiresAt ||
+      user.otpSessionTokenExpiresAt < new Date()
+    ) {
+      throw new ValidationError("OTP session has expired, please log in again");
+    }
+
+    const submittedCodeHash = keyedDigest(
+      `${otpSessionToken}:${code}`,
+      "auth-otp",
+    );
+    if (!user.otpCode || !constantTimeEqual(user.otpCode, submittedCodeHash)) {
+      throw new ValidationError("Invalid OTP code");
+    }
+
+    if (!user.otpCodeExpiresAt || user.otpCodeExpiresAt < new Date()) {
+      throw new ValidationError("OTP code has expired, please log in again");
+    }
+
+    if (!user.isActive) {
+      throw new ForbiddenError("User account is inactive");
+    }
+
+    // Consume the OTP (single-use)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        otpCode: null,
+        otpCodeExpiresAt: null,
+        otpSessionToken: null,
+        otpSessionTokenExpiresAt: null,
+      },
+    });
+
+    const session = await SessionService.createSessionForUser(
+      {
+        id: user.id,
+        role: user.role as UserRole,
+        agencyId: user.agencyId,
+        email: user.email,
+        maxActiveDevices: user.maxActiveDevices,
+      },
+      "OTP",
+      context ?? {
+        ipAddress: "unknown",
+        userAgent: "unknown",
+        browser: "Unknown",
+        os: "Unknown",
+      },
+    );
+
+    return {
+      token: session.token,
       user: {
         id: user.id,
         agencyId: user.agencyId,
@@ -78,6 +229,7 @@ export class AuthService {
     // Get system configuration for token validity
     const systemConfig = await prisma.systemConfig.findFirst();
     const tokenValidityHours = systemConfig?.setupTokenValidityHours ?? 72;
+    const defaultMaxActiveDevices = systemConfig?.defaultMaxActiveDevices ?? 3;
 
     // Always generate a setup token so the user can set/reset their password
     // via the first-time setup link (configurable validity from system config).
@@ -99,11 +251,12 @@ export class AuthService {
         commercialPhone: input.commercialPhone,
         commercialEmail: input.commercialEmail,
         otherDetails: input.otherDetails,
+        maxActiveDevices: input.maxActiveDevices ?? defaultMaxActiveDevices,
         passwordHash: passwordHash ?? null,
         setupToken,
         setupTokenExpiresAt,
         pinHash,
-        pinCurrent: generated,
+        pinCurrent: encryptSensitiveValue(generated),
         createdByUserId: input.createdByUserId,
         updatedByUserId: input.createdByUserId,
       },
@@ -136,6 +289,7 @@ export class AuthService {
         commercialPhone: user.commercialPhone,
         commercialEmail: user.commercialEmail,
         otherDetails: user.otherDetails,
+        maxActiveDevices: user.maxActiveDevices,
         isActive: user.isActive,
       },
       generatedPin: generated,
@@ -148,7 +302,11 @@ export class AuthService {
    * Validate a first-time setup token and set the user's password.
    * The token is consumed (cleared) after successful use.
    */
-  static async setupPassword(token: string, newPassword: string) {
+  static async setupPassword(
+    token: string,
+    newPassword: string,
+    context?: SessionRequestContext,
+  ) {
     const user = await prisma.user.findUnique({
       where: { setupToken: token },
     });
@@ -178,15 +336,25 @@ export class AuthService {
       },
     });
 
-    const authToken = JwtService.signAccessToken({
-      sub: user.id,
-      role: user.role as UserRole,
-      agencyId: user.agencyId,
-      email: user.email,
-    });
+    const session = await SessionService.createSessionForUser(
+      {
+        id: user.id,
+        role: user.role as UserRole,
+        agencyId: user.agencyId,
+        email: user.email,
+        maxActiveDevices: user.maxActiveDevices,
+      },
+      "SETUP_PASSWORD",
+      context ?? {
+        ipAddress: "unknown",
+        userAgent: "unknown",
+        browser: "Unknown",
+        os: "Unknown",
+      },
+    );
 
     return {
-      token: authToken,
+      token: session.token,
       user: {
         id: user.id,
         agencyId: user.agencyId,
@@ -257,7 +425,11 @@ export class AuthService {
    * Reset password using a valid reset token.
    * The token is consumed (cleared) after successful use.
    */
-  static async resetPassword(token: string, newPassword: string) {
+  static async resetPassword(
+    token: string,
+    newPassword: string,
+    context?: SessionRequestContext,
+  ) {
     const user = await prisma.user.findUnique({
       where: { passwordResetToken: token },
     });
@@ -290,15 +462,25 @@ export class AuthService {
       },
     });
 
-    const authToken = JwtService.signAccessToken({
-      sub: user.id,
-      role: user.role as UserRole,
-      agencyId: user.agencyId,
-      email: user.email,
-    });
+    const session = await SessionService.createSessionForUser(
+      {
+        id: user.id,
+        role: user.role as UserRole,
+        agencyId: user.agencyId,
+        email: user.email,
+        maxActiveDevices: user.maxActiveDevices,
+      },
+      "RESET_PASSWORD",
+      context ?? {
+        ipAddress: "unknown",
+        userAgent: "unknown",
+        browser: "Unknown",
+        os: "Unknown",
+      },
+    );
 
     return {
-      token: authToken,
+      token: session.token,
       user: {
         id: user.id,
         agencyId: user.agencyId,
@@ -338,7 +520,7 @@ export class AuthService {
       where: { id: userId },
       data: {
         pinHash,
-        pinCurrent: pin,
+        pinCurrent: encryptSensitiveValue(pin),
         pinRotatedAt: rotatedAt,
       },
     });
@@ -351,11 +533,116 @@ export class AuthService {
     };
   }
 
+  /**
+   * Request a magic link login email.
+   * Always returns success to prevent email enumeration.
+   */
+  static async requestMagicLink(email: string) {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (!user || !user.isActive) {
+      return { success: true };
+    }
+
+    const systemConfig = await prisma.systemConfig.findFirst();
+
+    // Check if magic link is enabled
+    if (!systemConfig?.magicLinkEnabled) {
+      return { success: true };
+    }
+
+    const validityMinutes = systemConfig?.magicLinkTokenValidityMinutes ?? 15;
+
+    const magicLinkToken = crypto.randomBytes(32).toString("hex");
+    const magicLinkTokenExpiresAt = new Date(
+      Date.now() + validityMinutes * 60 * 1000,
+    );
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { magicLinkToken, magicLinkTokenExpiresAt },
+    });
+
+    try {
+      await EmailService.sendMagicLinkEmail({
+        userEmail: user.email,
+        userName: user.fullName,
+        magicLinkToken,
+        userId: user.id,
+      });
+    } catch (error) {
+      console.error("Failed to send magic link email:", error);
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * Verify a magic link token and return a session token.
+   * The token is consumed (single-use) after successful verification.
+   */
+  static async verifyMagicLink(token: string, context?: SessionRequestContext) {
+    const user = await prisma.user.findUnique({
+      where: { magicLinkToken: token },
+    });
+
+    if (!user) {
+      throw new ValidationError("Invalid or already used magic link");
+    }
+
+    if (
+      !user.magicLinkTokenExpiresAt ||
+      user.magicLinkTokenExpiresAt < new Date()
+    ) {
+      throw new ValidationError("This magic link has expired");
+    }
+
+    if (!user.isActive) {
+      throw new ForbiddenError("User account is inactive");
+    }
+
+    // Consume the token (single-use)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { magicLinkToken: null, magicLinkTokenExpiresAt: null },
+    });
+
+    const session = await SessionService.createSessionForUser(
+      {
+        id: user.id,
+        role: user.role as UserRole,
+        agencyId: user.agencyId,
+        email: user.email,
+        maxActiveDevices: user.maxActiveDevices,
+      },
+      "MAGIC_LINK",
+      context ?? {
+        ipAddress: "unknown",
+        userAgent: "unknown",
+        browser: "Unknown",
+        os: "Unknown",
+      },
+    );
+
+    return {
+      token: session.token,
+      user: {
+        id: user.id,
+        agencyId: user.agencyId,
+        role: user.role,
+        fullName: user.fullName,
+        email: user.email,
+      },
+    };
+  }
+
   static enforceCreatePermissions(
     actor: { role: UserRole; agencyId: string },
     payload: CreateUserInput,
   ) {
-    if (actor.role === UserRole.ADMIN) {
+    if (actor.role === UserRole.ADMIN || actor.role === UserRole.SYS_ADMIN) {
       return;
     }
 
