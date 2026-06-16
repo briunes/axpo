@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // ---------------------------------------------------------------------------
+// Legacy QLD Domain Redirect
+// ---------------------------------------------------------------------------
+// Keep the old Vercel preview domain alive for existing client links, but move
+// all traffic to the current pre-production QLD domain.
+const LEGACY_QLD_HOST = "axpo-qld.vercel.app";
+const CURRENT_QLD_ORIGIN = "https://misimulador-pre.axpoiberia.es";
+
+function getRequestHost(request: NextRequest): string {
+  return (
+    request.headers.get("x-forwarded-host") ??
+    request.headers.get("host") ??
+    request.nextUrl.host
+  )
+    .split(",")[0]
+    .trim()
+    .toLowerCase()
+    .replace(/:\d+$/, "");
+}
+
+// ---------------------------------------------------------------------------
 // CORS
 // ---------------------------------------------------------------------------
 // Allowed origins: comma-separated list in CORS_ORIGIN env var.
@@ -167,6 +187,12 @@ async function getMaintenanceStatus(
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const origin = request.headers.get("origin");
+
+  if (getRequestHost(request) === LEGACY_QLD_HOST) {
+    const url = new URL(request.nextUrl.pathname, CURRENT_QLD_ORIGIN);
+    url.search = request.nextUrl.search;
+    return NextResponse.redirect(url, 308);
+  }
 
   // Maintenance mode gate — check before everything else
   if (!isMaintenanceBypass(pathname)) {
