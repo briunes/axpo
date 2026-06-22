@@ -20,6 +20,12 @@ const debugOcrLog = (...args: unknown[]) => {
 const ocrDebugSnippet = (value: string, length = 500): string | undefined =>
   OCR_DEBUG_LOGS ? value.substring(0, length) : undefined;
 
+const isAnthropicBedrockRuntime = (provider: string, baseUrl?: string | null): boolean =>
+  provider === "aws-bedrock-anthropic" ||
+  (provider === "anthropic" &&
+    typeof baseUrl === "string" &&
+    /bedrock-runtime\.[^.]+\.amazonaws\.com/.test(baseUrl));
+
 /**
  * LLM Prompts for Invoice Data Extraction
  *
@@ -1068,8 +1074,12 @@ If invoice text uses a different format, map it to the closest allowed value abo
     let imagesToProcess: Array<{ base64: string; mimeType: string }> = [];
 
     if (file.type === "application/pdf") {
-      // For Ollama (local and cloud), convert PDF to images first
-      if (llmProvider === "ollama" || llmProvider === "ollama-cloud") {
+      // Providers that need image input receive rendered invoice pages.
+      if (
+        llmProvider === "ollama" ||
+        llmProvider === "ollama-cloud" ||
+        isAnthropicBedrockRuntime(llmProvider, llmBaseUrl)
+      ) {
         const pdfImages = await convertPdfToImages(
           buffer,
           OCR_MAX_PDF_PAGES,
@@ -1245,7 +1255,52 @@ If invoice text uses a different format, map it to the closest allowed value abo
         }),
         signal: AbortSignal.timeout(30000), // 30 second timeout
       });
-    } else if (llmProvider === "anthropic") {
+    } else if (isAnthropicBedrockRuntime(llmProvider, llmBaseUrl)) {
+      const content: any[] = [{ type: "text", text: activePrompt }];
+      const bedrockImages =
+        imagesToProcess.length > 0
+          ? imagesToProcess
+          : [{ base64: base64File, mimeType: file.type }];
+
+      for (const img of bedrockImages) {
+        content.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: img.mimeType,
+            data: img.base64,
+          },
+        });
+      }
+
+      const bedrockBaseUrl = llmBaseUrl.replace(/\/+$/, "");
+      llmResponse = await fetch(
+        `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/invoke`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            anthropic_version: "bedrock-2023-05-31",
+            max_tokens: llmMaxTokens,
+            temperature: llmTemperature,
+            messages: [
+              {
+                role: "user",
+                content,
+              },
+            ],
+          }),
+          signal: AbortSignal.timeout(300000),
+        },
+      );
+    } else if (
+      llmProvider === "anthropic" ||
+      llmProvider === "aws-bedrock-anthropic"
+    ) {
       // Anthropic Claude Vision API supports PDFs and images
       llmResponse = await fetch(`${llmBaseUrl}/messages`, {
         method: "POST",
@@ -1374,7 +1429,10 @@ If invoice text uses a different format, map it to the closest allowed value abo
       const msg = llmData.choices?.[0]?.message;
       // qwen3 thinking models put the answer in `reasoning` when `content` is empty
       extractedText = msg?.content || msg?.reasoning || "";
-    } else if (llmProvider === "anthropic") {
+    } else if (
+      llmProvider === "anthropic" ||
+      llmProvider === "aws-bedrock-anthropic"
+    ) {
       extractedText = llmData.content?.[0]?.text || "";
     } else if (llmProvider === "google") {
       extractedText = llmData.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -1740,7 +1798,10 @@ If invoice text uses a different format, map it to the closest allowed value abo
       promptTokens = llmData.usage?.prompt_tokens;
       completionTokens = llmData.usage?.completion_tokens;
       totalTokens = llmData.usage?.total_tokens;
-    } else if (llmProvider === "anthropic") {
+    } else if (
+      llmProvider === "anthropic" ||
+      llmProvider === "aws-bedrock-anthropic"
+    ) {
       promptTokens = llmData.usage?.input_tokens;
       completionTokens = llmData.usage?.output_tokens;
       totalTokens =

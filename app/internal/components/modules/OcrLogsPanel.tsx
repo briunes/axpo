@@ -182,6 +182,7 @@ function formatProvider(provider: string): string {
         "openai": "OpenAI",
         "azure-openai": "Azure OpenAI",
         "anthropic": "Anthropic",
+        "aws-bedrock-anthropic": "AWS Bedrock (Claude)",
         "google": "Google AI",
     };
     return map[provider] ?? provider;

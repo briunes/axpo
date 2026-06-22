@@ -11,6 +11,10 @@ import {
 } from "@/lib/pdfToImage";
 import { getConfiguredAiProviders } from "@/application/lib/aiConfig";
 
+const isAnthropicBedrockRuntime = (provider: string, baseUrl: string): boolean =>
+  provider === "aws-bedrock-anthropic" ||
+  (provider === "anthropic" && /bedrock-runtime\.[^.]+\.amazonaws\.com/.test(baseUrl));
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Expected results for the benchmark invoice (Serigrafia arrigorriaga.pdf)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -309,6 +313,43 @@ async function callLlmForBenchmark(
       }),
       signal: AbortSignal.timeout(300000),
     });
+  } else if (isAnthropicBedrockRuntime(provider, baseUrl)) {
+    const content: any[] = [{ type: "text", text: prompt }];
+    const bedrockImages =
+      images.length > 0
+        ? images
+        : [{ base64: base64File, mimeType: fileMimeType }];
+
+    for (const img of bedrockImages) {
+      content.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: img.mimeType as any,
+          data: img.base64,
+        },
+      });
+    }
+
+    const bedrockBaseUrl = baseUrl.replace(/\/+$/, "");
+    llmResponse = await fetch(
+      `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/invoke`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          anthropic_version: "bedrock-2023-05-31",
+          max_tokens: maxTokens,
+          temperature,
+          messages: [{ role: "user", content }],
+        }),
+        signal: AbortSignal.timeout(300000),
+      },
+    );
   } else if (provider === "anthropic") {
     const content: any[] = [
       { type: "text", text: prompt },
@@ -366,7 +407,7 @@ async function callLlmForBenchmark(
   let completionTokens: number | undefined;
   let totalTokens: number | undefined;
 
-  if (provider === "anthropic") {
+  if (provider === "anthropic" || provider === "aws-bedrock-anthropic") {
     text = llmData.content?.[0]?.text || "";
     promptTokens = llmData.usage?.input_tokens;
     completionTokens = llmData.usage?.output_tokens;
@@ -631,9 +672,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
             .join("\n")
         : "(no providers configured yet)";
 
-    // For Ollama Cloud, convert PDF to images first; others handle PDF natively
+    // Providers that need image input receive rendered invoice pages.
     let detectionImages: Array<{ base64: string; mimeType: string }> = [];
-    if (llmProvider === "ollama-cloud") {
+    if (
+      llmProvider === "ollama-cloud" ||
+      isAnthropicBedrockRuntime(llmProvider, llmBaseUrl)
+    ) {
       const pdfImages = await convertAllPdfPagesToImages(
         pdfBuffer,
         OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
@@ -702,9 +746,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   };
 
   try {
-    // For Ollama Cloud, convert PDF to images first; others handle PDF natively
+    // Providers that need image input receive rendered invoice pages.
     let extractionImages: Array<{ base64: string; mimeType: string }> = [];
-    if (llmProvider === "ollama-cloud") {
+    if (
+      llmProvider === "ollama-cloud" ||
+      isAnthropicBedrockRuntime(llmProvider, llmBaseUrl)
+    ) {
       const pdfImages = await convertPdfToImages(
         pdfBuffer,
         OCR_MAX_PDF_PAGES,

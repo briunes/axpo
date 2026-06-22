@@ -128,6 +128,19 @@ const LLM_PROVIDERS: Record<string, {
         description: "Anthropic Claude models",
         commonModels: ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
     },
+    "aws-bedrock-anthropic": {
+        name: "AWS Bedrock (Claude)",
+        requiresApiKey: true,
+        defaultBaseUrl: "https://bedrock-runtime.eu-west-1.amazonaws.com",
+        defaultModel: "anthropic.claude-3-haiku-20240307-v1:0",
+        description: "Claude through AWS Bedrock Runtime. Use a Bedrock API key and Bedrock model ID.",
+        commonModels: [
+            "anthropic.claude-3-haiku-20240307-v1:0",
+            "anthropic.claude-3-5-sonnet-20240620-v1:0",
+            "anthropic.claude-3-5-sonnet-20241022-v2:0",
+            "anthropic.claude-3-7-sonnet-20250219-v1:0",
+        ],
+    },
     "azure-openai": {
         name: "Azure OpenAI",
         requiresApiKey: true,

@@ -5,6 +5,10 @@ import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getConfiguredAiProviders } from "@/application/lib/aiConfig";
 
+const isAnthropicBedrockRuntime = (provider: string, baseUrl: string): boolean =>
+  provider === "aws-bedrock-anthropic" ||
+  (provider === "anthropic" && /bedrock-runtime\.[^.]+\.amazonaws\.com/.test(baseUrl));
+
 /**
  * @swagger
  * /api/v1/internal/config/llm/test:
@@ -131,6 +135,24 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           model: modelName,
           messages: [{ role: "user", content: testPrompt }],
           max_tokens: 50,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+    } else if (isAnthropicBedrockRuntime(provider, baseUrl)) {
+      // AWS Bedrock Runtime InvokeModel format for Anthropic Claude models.
+      const bedrockBaseUrl = baseUrl.replace(/\/+$/, "");
+      url = `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/invoke`;
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          anthropic_version: "bedrock-2023-05-31",
+          max_tokens: 50,
+          messages: [{ role: "user", content: testPrompt }],
         }),
         signal: AbortSignal.timeout(10000),
       });
