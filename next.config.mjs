@@ -13,6 +13,7 @@ const nextConfig = {
     "@sparticuz/chromium",
     "puppeteer-core",
     "@napi-rs/canvas",
+    "@opendataloader/pdf",
   ],
 
   
@@ -26,6 +27,10 @@ const nextConfig = {
     ],
     "/api/v1/internal/invoices/extract": [
       "./node_modules/pdfjs-dist/legacy/build/**/*",
+      "./node_modules/@opendataloader/pdf/dist/**/*",
+      "./node_modules/@opendataloader/pdf/lib/**/*",
+      "./node_modules/.pnpm/@opendataloader+pdf@2.4.7/node_modules/@opendataloader/pdf/dist/**/*",
+      "./node_modules/.pnpm/@opendataloader+pdf@2.4.7/node_modules/@opendataloader/pdf/lib/**/*",
     ],
   },
   images: {

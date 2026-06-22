@@ -141,6 +141,19 @@ const LLM_PROVIDERS: Record<string, {
             "anthropic.claude-3-7-sonnet-20250219-v1:0",
         ],
     },
+    "aws-bedrock-nvidia": {
+        name: "AWS Bedrock (NVIDIA)",
+        requiresApiKey: true,
+        defaultBaseUrl: "https://bedrock-runtime.eu-west-1.amazonaws.com",
+        defaultModel: "nvidia.nemotron-nano-12b-v2",
+        description: "NVIDIA Nemotron models through AWS Bedrock Runtime. Use a Bedrock API key and Bedrock model ID.",
+        commonModels: [
+            "nvidia.nemotron-nano-12b-v2",
+            "nvidia.nemotron-nano-9b-v2",
+            "nvidia.nemotron-nano-3-30b",
+            "nvidia.nemotron-super-3-120b",
+        ],
+    },
     "azure-openai": {
         name: "Azure OpenAI",
         requiresApiKey: true,

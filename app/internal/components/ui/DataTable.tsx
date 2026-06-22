@@ -366,14 +366,15 @@ export function DataTable<T extends { id: string }>({
 
     columns.filter((col) => !hiddenCols.has(col.key)).forEach((col) => {
       const isActionsColumn = col.key === "actions";
+      const explicitWidth = col.width ? parseInt(col.width) : undefined;
 
       cols.push({
         field: col.key,
         headerName: col.label.toUpperCase(),
         sortable: col.sortable ?? false,
-        width: col.width ? parseInt(col.width) : isActionsColumn ? 148 : undefined,
-        minWidth: isActionsColumn ? 120 : undefined,
-        maxWidth: isActionsColumn ? 168 : undefined,
+        width: explicitWidth ?? (isActionsColumn ? 180 : undefined),
+        minWidth: isActionsColumn ? 164 : undefined,
+        maxWidth: isActionsColumn && !explicitWidth ? 220 : undefined,
         flex: !col.width && !isActionsColumn ? 1 : undefined,
         align: isActionsColumn ? "right" : undefined,
         headerAlign: isActionsColumn ? "right" : undefined,
@@ -707,9 +708,12 @@ export function DataTable<T extends { id: string }>({
               '& .MuiDataGrid-cell': {
                 display: 'flex',
                 alignItems: 'center',
+                minWidth: 0,
                 minHeight: '52px !important',
                 maxHeight: '52px !important',
                 py: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
                 borderBottom: '1px solid var(--scheme-neutral-900)',
                 borderRight: 'none',
                 outline: 'none !important',
@@ -758,6 +762,8 @@ export function DataTable<T extends { id: string }>({
                 overflow: 'visible',
                 justifyContent: 'flex-end',
                 px: '8px',
+                zIndex: 1,
+                backgroundColor: 'inherit',
               },
               '& .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller': {
                 backgroundColor: 'var(--scheme-neutral-1200)',

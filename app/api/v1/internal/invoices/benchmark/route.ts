@@ -15,6 +15,16 @@ const isAnthropicBedrockRuntime = (provider: string, baseUrl: string): boolean =
   provider === "aws-bedrock-anthropic" ||
   (provider === "anthropic" && /bedrock-runtime\.[^.]+\.amazonaws\.com/.test(baseUrl));
 
+const isNvidiaBedrockRuntime = (provider: string): boolean =>
+  provider === "aws-bedrock-nvidia";
+
+const getBedrockImageFormat = (mimeType: string): "png" | "jpeg" | "gif" | "webp" => {
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("gif")) return "gif";
+  if (mimeType.includes("webp")) return "webp";
+  return "jpeg";
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Expected results for the benchmark invoice (Serigrafia arrigorriaga.pdf)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -350,6 +360,42 @@ async function callLlmForBenchmark(
         signal: AbortSignal.timeout(300000),
       },
     );
+  } else if (isNvidiaBedrockRuntime(provider)) {
+    const content: any[] = [{ text: prompt }];
+    const bedrockImages =
+      images.length > 0
+        ? images
+        : [{ base64: base64File, mimeType: fileMimeType }];
+
+    for (const img of bedrockImages) {
+      content.push({
+        image: {
+          format: getBedrockImageFormat(img.mimeType),
+          source: { bytes: img.base64 },
+        },
+      });
+    }
+
+    const bedrockBaseUrl = baseUrl.replace(/\/+$/, "");
+    llmResponse = await fetch(
+      `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/converse`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content }],
+          inferenceConfig: {
+            maxTokens,
+            temperature,
+          },
+        }),
+        signal: AbortSignal.timeout(300000),
+      },
+    );
   } else if (provider === "anthropic") {
     const content: any[] = [
       { type: "text", text: prompt },
@@ -413,6 +459,11 @@ async function callLlmForBenchmark(
     completionTokens = llmData.usage?.output_tokens;
     totalTokens =
       (llmData.usage?.input_tokens ?? 0) + (llmData.usage?.output_tokens ?? 0);
+  } else if (isNvidiaBedrockRuntime(provider)) {
+    text = llmData.output?.message?.content?.[0]?.text || "";
+    promptTokens = llmData.usage?.inputTokens;
+    completionTokens = llmData.usage?.outputTokens;
+    totalTokens = llmData.usage?.totalTokens;
   } else if (provider === "google") {
     text = llmData.candidates?.[0]?.content?.parts?.[0]?.text || "";
     promptTokens = llmData.usageMetadata?.promptTokenCount;
@@ -676,7 +727,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     let detectionImages: Array<{ base64: string; mimeType: string }> = [];
     if (
       llmProvider === "ollama-cloud" ||
-      isAnthropicBedrockRuntime(llmProvider, llmBaseUrl)
+      isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
+      isNvidiaBedrockRuntime(llmProvider)
     ) {
       const pdfImages = await convertAllPdfPagesToImages(
         pdfBuffer,
@@ -750,7 +802,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     let extractionImages: Array<{ base64: string; mimeType: string }> = [];
     if (
       llmProvider === "ollama-cloud" ||
-      isAnthropicBedrockRuntime(llmProvider, llmBaseUrl)
+      isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
+      isNvidiaBedrockRuntime(llmProvider)
     ) {
       const pdfImages = await convertPdfToImages(
         pdfBuffer,

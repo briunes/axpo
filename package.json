@@ -38,6 +38,7 @@
     "@mui/x-data-grid": "^8.28.2",
     "@napi-rs/canvas": "^0.1.99",
     "@once-ui-system/core": "^1.6.4",
+    "@opendataloader/pdf": "2.4.7",
     "@prisma/client": "5.22.0",
     "@sentry/nextjs": "^10.59.0",
     "@sparticuz/chromium": "147.0.0",

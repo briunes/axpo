@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     Alert,
     Box,
@@ -260,13 +260,22 @@ function ResultRow({ result, idx }: { result: BenchmarkResult; idx: number }) {
 }
 
 export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps) {
-    const allIds = providers.map((p) => p.id);
+    const activeProviders = providers.filter((p) => p.enabled);
+    const allIds = activeProviders.map((p) => p.id);
     const [selected, setSelected] = useState<Set<string>>(new Set(allIds));
     const [running, setRunning] = useState(false);
     const [currentlyTesting, setCurrentlyTesting] = useState<string | null>(null);
     const [progress, setProgress] = useState(0);
     const [results, setResults] = useState<BenchmarkResult[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        setSelected((prev) => {
+            const activeIds = new Set(allIds);
+            const next = new Set(Array.from(prev).filter((id) => activeIds.has(id)));
+            return next.size === prev.size ? prev : next;
+        });
+    }, [allIds.join("|")]);
 
     const toggleProvider = (id: string) => {
         setSelected((prev) => {
@@ -278,7 +287,7 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
     };
 
     const toggleAll = () => {
-        if (selected.size === providers.length) {
+        if (selected.size === activeProviders.length) {
             setSelected(new Set());
         } else {
             setSelected(new Set(allIds));
@@ -286,7 +295,7 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
     };
 
     const runBenchmark = async () => {
-        const toTest = providers.filter((p) => selected.has(p.id));
+        const toTest = activeProviders.filter((p) => selected.has(p.id));
         if (!toTest.length) return;
 
         setRunning(true);
@@ -340,13 +349,13 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
     };
 
     const selectedCount = selected.size;
-    const allSelected = selectedCount === providers.length;
+    const allSelected = selectedCount === activeProviders.length;
     const someSelected = selectedCount > 0 && !allSelected;
 
-    if (providers.length === 0) {
+    if (activeProviders.length === 0) {
         return (
             <Box sx={{ color: "var(--axpo-text-secondary)", py: 4, textAlign: "center" }}>
-                No LLM providers configured. Add providers in the <strong>Available LLMs</strong> tab first.
+                No active LLM providers configured. Enable providers in the <strong>Available LLMs</strong> tab first.
             </Box>
         );
     }
@@ -391,7 +400,7 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
                             disabled={running}
                         />
                         <span style={{ fontWeight: 700, fontSize: 13 }}>
-                            Select LLMs to benchmark ({selectedCount}/{providers.length})
+                            Select LLMs to benchmark ({selectedCount}/{activeProviders.length})
                         </span>
                     </label>
                     <Button
@@ -407,7 +416,7 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
 
                 {/* LLM list */}
                 <Stack divider={<Box sx={{ borderBottom: "1px solid var(--scheme-neutral-900)" }} />}>
-                    {providers.map((p) => {
+                    {activeProviders.map((p) => {
                         const isCurrent = currentlyTesting === p.id;
                         const isDone = results.some((r) => r.providerConfigId === p.id);
                         const hasError = Boolean(errors[p.id]);

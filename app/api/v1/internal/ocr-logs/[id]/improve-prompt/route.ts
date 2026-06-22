@@ -11,6 +11,16 @@ import {
 } from "@/lib/pdfToImage";
 import { getAiUsage, resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
+const isNvidiaBedrockRuntime = (provider: string): boolean =>
+  provider === "aws-bedrock-nvidia";
+
+const getBedrockImageFormat = (mimeType: string): "png" | "jpeg" | "gif" | "webp" => {
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("gif")) return "gif";
+  if (mimeType.includes("webp")) return "webp";
+  return "jpeg";
+};
+
 const COMMON_CORRECTION_FIELDS = new Set([
   "cups",
   "nombreTitular",
@@ -682,6 +692,60 @@ Return ONLY the complete new prompt text — no commentary, no markdown fences, 
           }),
           signal: AbortSignal.timeout(300000),
         });
+      } else if (isNvidiaBedrockRuntime(llmProvider)) {
+        const resolvedFiles: Array<{
+          base64: string;
+          mimeType: string;
+          fileName: string;
+        }> = [];
+        for (const f of encodedFiles) {
+          if (isPdf(f.mimeType)) {
+            const pdfImages = await convertPdfToImages(
+              Buffer.from(f.base64, "base64"),
+              OCR_MAX_PDF_PAGES,
+              OCR_PDF_RENDER_SCALE,
+            );
+            for (const img of pdfImages) {
+              resolvedFiles.push({
+                base64: img.base64,
+                mimeType: img.mimeType,
+                fileName: f.fileName,
+              });
+            }
+          } else if (isImage(f.mimeType)) {
+            resolvedFiles.push(f);
+          }
+        }
+
+        const content: any[] = [{ text: metaPrompt }];
+        for (const f of resolvedFiles) {
+          content.push({
+            image: {
+              format: getBedrockImageFormat(f.mimeType),
+              source: { bytes: f.base64 },
+            },
+          });
+        }
+        const bedrockBaseUrl = llmBaseUrl.replace(/\/+$/, "");
+        llmResponse = await fetch(
+          `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/converse`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+            },
+            body: JSON.stringify({
+              messages: [{ role: "user", content }],
+              inferenceConfig: {
+                maxTokens: llmMaxTokens,
+                temperature: llmTemperature,
+              },
+            }),
+            signal: AbortSignal.timeout(300000),
+          },
+        );
       } else if (llmProvider === "openai" || llmProvider === "azure-openai") {
         const content: any[] = [{ type: "text", text: metaPrompt }];
         for (const f of encodedFiles) {
@@ -802,6 +866,8 @@ Return ONLY the complete new prompt text — no commentary, no markdown fences, 
       improvedPrompt = msg?.content || msg?.reasoning || "";
     } else if (llmProvider === "anthropic") {
       improvedPrompt = llmData.content?.[0]?.text || "";
+    } else if (isNvidiaBedrockRuntime(llmProvider)) {
+      improvedPrompt = llmData.output?.message?.content?.[0]?.text || "";
     } else if (llmProvider === "google") {
       improvedPrompt = llmData.candidates?.[0]?.content?.parts?.[0]?.text || "";
     }

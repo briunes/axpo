@@ -7,6 +7,7 @@ import {
   OCR_MAX_PDF_PAGES,
   OCR_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
+import { extractPdfWithOpenDataLoader } from "@/lib/opendataloaderPdfExtraction";
 import { resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
 const OCR_DEBUG_LOGS =
@@ -25,6 +26,16 @@ const isAnthropicBedrockRuntime = (provider: string, baseUrl?: string | null): b
   (provider === "anthropic" &&
     typeof baseUrl === "string" &&
     /bedrock-runtime\.[^.]+\.amazonaws\.com/.test(baseUrl));
+
+const isNvidiaBedrockRuntime = (provider: string): boolean =>
+  provider === "aws-bedrock-nvidia";
+
+const getBedrockImageFormat = (mimeType: string): "png" | "jpeg" | "gif" | "webp" => {
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("gif")) return "gif";
+  if (mimeType.includes("webp")) return "webp";
+  return "jpeg";
+};
 
 /**
  * LLM Prompts for Invoice Data Extraction
@@ -1068,6 +1079,37 @@ If invoice text uses a different format, map it to the closest allowed value abo
         // Non-fatal – proceed without the text layer
         console.warn("[PDF text extraction] Failed to extract text:", textErr);
       }
+
+      try {
+        const openDataLoaderExtraction = await extractPdfWithOpenDataLoader(
+          buffer,
+          file.name,
+          OCR_MAX_PDF_PAGES,
+        );
+
+        if (openDataLoaderExtraction?.skippedReason) {
+          debugOcrLog(
+            `[OpenDataLoader PDF extraction] Skipped: ${openDataLoaderExtraction.skippedReason}`,
+          );
+        } else if (openDataLoaderExtraction?.content) {
+          activePrompt =
+            activePrompt +
+            `\n\n---\nSTRUCTURED PDF EXTRACTION (OpenDataLoader helper):\nUse this parser output as supporting evidence for text, tables, periods, totals, and reading order. If it conflicts with the visible invoice/PDF evidence, prefer the visible invoice/PDF evidence.\n\n${openDataLoaderExtraction.content}\n---`;
+          debugOcrLog(
+            `[OpenDataLoader PDF extraction] Appended ${openDataLoaderExtraction.content.length} chars to prompt` +
+              (openDataLoaderExtraction.truncated
+                ? ` (truncated from ${openDataLoaderExtraction.originalLength})`
+                : ""),
+          );
+        }
+      } catch (openDataLoaderErr) {
+        // Non-fatal – OpenDataLoader depends on Java and may be unavailable in
+        // some deploy targets. Keep the existing OCR flow working.
+        console.warn(
+          "[OpenDataLoader PDF extraction] Failed to extract structured PDF text:",
+          openDataLoaderErr,
+        );
+      }
     }
 
     // Handle PDF conversion for Ollama providers
@@ -1078,7 +1120,8 @@ If invoice text uses a different format, map it to the closest allowed value abo
       if (
         llmProvider === "ollama" ||
         llmProvider === "ollama-cloud" ||
-        isAnthropicBedrockRuntime(llmProvider, llmBaseUrl)
+        isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
+        isNvidiaBedrockRuntime(llmProvider)
       ) {
         const pdfImages = await convertPdfToImages(
           buffer,
@@ -1297,6 +1340,47 @@ If invoice text uses a different format, map it to the closest allowed value abo
           signal: AbortSignal.timeout(300000),
         },
       );
+    } else if (isNvidiaBedrockRuntime(llmProvider)) {
+      const content: any[] = [{ text: activePrompt }];
+      const bedrockImages =
+        imagesToProcess.length > 0
+          ? imagesToProcess
+          : [{ base64: base64File, mimeType: file.type }];
+
+      for (const img of bedrockImages) {
+        content.push({
+          image: {
+            format: getBedrockImageFormat(img.mimeType),
+            source: { bytes: img.base64 },
+          },
+        });
+      }
+
+      const bedrockBaseUrl = llmBaseUrl.replace(/\/+$/, "");
+      llmResponse = await fetch(
+        `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/converse`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            messages: [
+              {
+                role: "user",
+                content,
+              },
+            ],
+            inferenceConfig: {
+              maxTokens: llmMaxTokens,
+              temperature: llmTemperature,
+            },
+          }),
+          signal: AbortSignal.timeout(300000),
+        },
+      );
     } else if (
       llmProvider === "anthropic" ||
       llmProvider === "aws-bedrock-anthropic"
@@ -1434,6 +1518,8 @@ If invoice text uses a different format, map it to the closest allowed value abo
       llmProvider === "aws-bedrock-anthropic"
     ) {
       extractedText = llmData.content?.[0]?.text || "";
+    } else if (isNvidiaBedrockRuntime(llmProvider)) {
+      extractedText = llmData.output?.message?.content?.[0]?.text || "";
     } else if (llmProvider === "google") {
       extractedText = llmData.candidates?.[0]?.content?.parts?.[0]?.text || "";
     }
@@ -1807,6 +1893,10 @@ If invoice text uses a different format, map it to the closest allowed value abo
       totalTokens =
         (llmData.usage?.input_tokens ?? 0) +
         (llmData.usage?.output_tokens ?? 0);
+    } else if (isNvidiaBedrockRuntime(llmProvider)) {
+      promptTokens = llmData.usage?.inputTokens;
+      completionTokens = llmData.usage?.outputTokens;
+      totalTokens = llmData.usage?.totalTokens;
     } else if (llmProvider === "google") {
       promptTokens = llmData.usageMetadata?.promptTokenCount;
       completionTokens = llmData.usageMetadata?.candidatesTokenCount;
