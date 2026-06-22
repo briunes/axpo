@@ -28,9 +28,6 @@ const clientErrorSchema = z.object({
  * No auth required — errors can happen before login.
  */
 
-
-
-
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const { ipAddress } = getRequestSessionContext(request);
   await applyRateLimitShared(getClientRateLimitKey(ipAddress, "client-error"), {
