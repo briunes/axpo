@@ -6,6 +6,18 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { FormSelect } from "../ui/FormSelect";
 import { CurrencyInput } from "../ui/CurrencyInput";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { alpha, useTheme } from "@mui/material/styles";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Radio, Stack, Tab, Tabs, Typography } from "@mui/material";
+import BarChartIcon from "@mui/icons-material/BarChart";
+import BoltIcon from "@mui/icons-material/Bolt";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import SavingsIcon from "@mui/icons-material/Savings";
+import TuneIcon from "@mui/icons-material/Tune";
 
 const MESES_ES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
 
@@ -72,6 +84,31 @@ const uiColors = {
 type SortCol = "productLabel" | "totalFactura" | "ahorro" | "pctAhorro" | "ahorroAnual";
 type SortDir = "asc" | "desc";
 
+const offerTabIcon = (key: "all" | "fixed" | "indexed" | "personalizadas") => {
+    if (key === "fixed") return <TuneIcon fontSize="small" />;
+    if (key === "indexed") return <BarChartIcon fontSize="small" />;
+    if (key === "personalizadas") return <SavingsIcon fontSize="small" />;
+    return undefined;
+};
+
+const isPersonalizedProduct = (product: ProductResult): boolean =>
+    product.productKey === "PERSONALIZADA_INDEX" ||
+    product.productKey === "PERSONALIZADA_OMIE_B" ||
+    product.productKey === "GAS_PERSONALIZADA_INDEX" ||
+    product.productKey === "PERSONALIZADA_FIJO" ||
+    product.productKey === "GAS_PERSONALIZADA_FIJO";
+
+const offerKind = (product: ProductResult): "personalized" | "fixed" | "indexed" => {
+    if (isPersonalizedProduct(product)) return "personalized";
+    return product.pricingType === "FIXED" ? "fixed" : "indexed";
+};
+
+const offerKindIcon = (kind: "personalized" | "fixed" | "indexed") => {
+    if (kind === "personalized") return <SavingsIcon />;
+    if (kind === "fixed") return <TuneIcon />;
+    return <BarChartIcon />;
+};
+
 function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, commodity, bestProductKey }: {
     products: ProductResult[];
     facturaActual?: number;
@@ -80,6 +117,7 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
     commodity: "ELECTRICITY" | "GAS";
     bestProductKey?: string;
 }) {
+    const theme = useTheme();
     const { t } = useI18n();
     const [sortCol, setSortCol] = useState<SortCol>("ahorro");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -113,13 +151,13 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
             gap: 1,
             opacity: sortCol === col ? 1 : 0.3,
         }}>
-            <span style={{ fontSize: 8, lineHeight: 1, color: sortCol === col && sortDir === "asc" ? uiColors.text : uiColors.textMuted }}>▲</span>
-            <span style={{ fontSize: 8, lineHeight: 1, color: sortCol === col && sortDir === "desc" ? uiColors.text : uiColors.textMuted }}>▼</span>
+            <KeyboardArrowUpIcon sx={{ fontSize: 12, lineHeight: 1, color: sortCol === col && sortDir === "asc" ? uiColors.text : uiColors.textMuted }} />
+            <KeyboardArrowDownIcon sx={{ fontSize: 12, mt: "-6px", color: sortCol === col && sortDir === "desc" ? uiColors.text : uiColors.textMuted }} />
         </span>
     );
 
     const thSortStyle = (col: SortCol, align: "left" | "right" | "center" = "right"): React.CSSProperties => ({
-        padding: "14px 16px",
+        padding: "9px 12px",
         textAlign: align,
         fontSize: 11,
         fontWeight: 700,
@@ -185,65 +223,49 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                         const isTop = product.productKey === bestProductKey && product.ahorro > 0;
                         const isSelected = selectedOffer?.productKey === product.productKey && selectedOffer?.commodity === commodity;
                         const savingsColor = product.ahorro > 0 ? "#10b981" : product.ahorro < 0 ? "#ef4444" : "#6b7280";
+                        const kind = offerKind(product);
                         const bgColor = isSelected
-                            ? "linear-gradient(90deg, var(--scheme-brand-600-15) 0%, var(--scheme-accent-600-15) 100%)"
+                            ? alpha(theme.palette.primary.main, 0.12)
                             : isTop
-                                ? "linear-gradient(90deg, rgba(16, 185, 129, 0.14) 0%, rgba(16, 185, 129, 0.08) 100%)"
+                                ? alpha(theme.palette.success.main, 0.08)
                                 : idx % 2 === 0 ? uiColors.surface : uiColors.surfaceRaised;
 
                         return (
                             <tr key={product.productKey + product.pricingType} style={{
                                 background: bgColor,
-                                borderLeft: isSelected ? "4px solid #6366f1" : isTop ? "4px solid #10b981" : "none",
+                                borderLeft: isSelected ? `4px solid ${theme.palette.primary.main}` : isTop ? `4px solid ${theme.palette.success.main}` : "none",
                             }}>
                                 {onOfferClick && (
                                     <td style={{
-                                        padding: "14px 16px",
+                                        padding: "7px 12px",
                                         textAlign: "center",
                                         borderBottom: `1px solid ${uiColors.border}`,
+                                        width: 64,
                                     }}>
-                                        <div
+                                        <Radio
+                                            checked={isSelected}
                                             onClick={() => onOfferClick(product, commodity)}
-                                            style={{
-                                                width: 18,
-                                                height: 18,
-                                                borderRadius: "50%",
-                                                border: `2px solid ${isSelected ? "#6366f1" : "var(--scheme-neutral-600, #9ca3af)"}`,
-                                                background: isSelected ? "#6366f1" : "transparent",
-                                                cursor: "pointer",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                flexShrink: 0,
-                                                transition: "all 0.15s",
-                                            }}
-                                        >
-                                            {isSelected && (
-                                                <div style={{
-                                                    width: 7,
-                                                    height: 7,
-                                                    borderRadius: "50%",
-                                                    background: "#fff",
-                                                }} />
-                                            )}
-                                        </div>
+                                            size="small"
+                                            sx={{ p: 0.5 }}
+                                            inputProps={{ "aria-label": product.productLabel }}
+                                        />
                                     </td>
                                 )}
                                 <td style={{
-                                    padding: "14px 16px",
+                                    padding: "7px 12px",
                                     borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
                                     <div style={{
                                         display: "flex",
                                         alignItems: "center",
-                                        gap: 10,
+                                        gap: 8,
                                     }}>
                                         <div>
                                             <div style={{
-                                                fontSize: 14,
+                                                fontSize: 13,
                                                 fontWeight: 600,
                                                 color: uiColors.text,
-                                                marginBottom: 3,
+                                                marginBottom: 2,
                                             }}>
                                                 {product.productKey === "PERSONALIZADA_INDEX"
                                                     ? t("simulationOffersCards", "productLabelPersonalizadaIndex")
@@ -253,59 +275,31 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                                             ? t("simulationOffersCards", "productLabelGasPersonalizadaIndex")
                                                             : product.productLabel}
                                             </div>
-                                            <div style={{
-                                                display: "inline-block",
-                                                fontSize: 10,
-                                                fontWeight: 600,
-                                                color: uiColors.textMuted,
-                                                background: uiColors.surfaceMuted,
-                                                padding: "2px 8px",
-                                                borderRadius: 10,
-                                                textTransform: "uppercase",
-                                                letterSpacing: "0.03em",
-                                            }}>
-                                                {(product.productKey === "PERSONALIZADA_INDEX" || product.productKey === "PERSONALIZADA_OMIE_B" || product.productKey === "GAS_PERSONALIZADA_INDEX" || product.productKey === "PERSONALIZADA_FIJO" || product.productKey === "GAS_PERSONALIZADA_FIJO")
+                                            <Chip
+                                                size="small"
+                                                variant="filled"
+                                                icon={offerKindIcon(kind)}
+                                                label={kind === "personalized"
                                                     ? t("simulationOffersCards", "pricingPersonalizada")
-                                                    : product.pricingType === "FIXED"
+                                                    : kind === "fixed"
                                                         ? t("simulationOffersCards", "pricingFixed")
                                                         : t("simulationOffersCards", "pricingIndexed")}
-                                            </div>
+                                                sx={{ height: 18, fontSize: 10, fontWeight: 600, color: "text.secondary", bgcolor: "action.hover" }}
+                                            />
                                         </div>
                                         {isTop && (
-                                            <div style={{
-                                                fontSize: 10,
-                                                fontWeight: 700,
-                                                color: "#fff",
-                                                background: "#10b981",
-                                                padding: "4px 10px",
-                                                borderRadius: 12,
-                                                textTransform: "uppercase",
-                                                letterSpacing: "0.05em",
-                                            }}>
-                                                {t("simulationOffersCards", "badgeBestOffer")}
-                                            </div>
+                                            <Chip size="small" color="success" label={t("simulationOffersCards", "badgeBestOffer")} sx={{ height: 22, fontSize: 10, fontWeight: 700 }} />
                                         )}
                                         {isSelected && (
-                                            <div style={{
-                                                fontSize: 10,
-                                                fontWeight: 700,
-                                                color: "#fff",
-                                                background: "#6366f1",
-                                                padding: "4px 10px",
-                                                borderRadius: 12,
-                                                textTransform: "uppercase",
-                                                letterSpacing: "0.05em",
-                                            }}>
-                                                {t("simulationOffersCards", "badgeSelected")}
-                                            </div>
+                                            <Chip size="small" color="primary" label={t("simulationOffersCards", "badgeSelected")} sx={{ height: 22, fontSize: 10, fontWeight: 700 }} />
                                         )}
                                     </div>
                                 </td>
                                 <td style={{
-                                    padding: "14px 16px",
+                                    padding: "7px 12px",
                                     textAlign: "right",
                                     fontVariantNumeric: "tabular-nums",
-                                    fontSize: 15,
+                                    fontSize: 14,
                                     fontWeight: 700,
                                     color: uiColors.text,
                                     borderBottom: `1px solid ${uiColors.border}`,
@@ -313,18 +307,18 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                     {fmt(product.totalFactura)} €
                                 </td>
                                 <td style={{
-                                    padding: "14px 16px",
+                                    padding: "7px 12px",
                                     textAlign: "right",
                                     fontVariantNumeric: "tabular-nums",
-                                    fontSize: 15,
+                                    fontSize: 14,
                                     fontWeight: 700,
                                     color: savingsColor,
                                     borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
-                                    {product.ahorro > 0 ? "+" : ""}{fmt(product.ahorro)} €
+                                    {product.ahorro > 0 ? "" : ""}{fmt(product.ahorro)} €
                                 </td>
                                 <td style={{
-                                    padding: "14px 16px",
+                                    padding: "7px 12px",
                                     textAlign: "center",
                                     borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
@@ -332,31 +326,31 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                         display: "inline-flex",
                                         alignItems: "center",
                                         gap: 6,
-                                        padding: "6px 12px",
+                                        padding: "4px 10px",
                                         background: product.ahorro > 0
                                             ? "rgba(16, 185, 129, 0.1)"
                                             : product.ahorro < 0
                                                 ? "rgba(239, 68, 68, 0.1)"
                                                 : "rgba(107, 114, 128, 0.1)",
                                         borderRadius: 16,
-                                        fontSize: 13,
+                                        fontSize: 12,
                                         fontWeight: 700,
                                         color: savingsColor,
                                     }}>
                                         {product.ahorro > 0 ? "↓" : product.ahorro < 0 ? "↑" : "—"}
-                                        {product.pctAhorro > 0 ? "+" : ""}{fmt(product.pctAhorro, 1)}%
+                                        {product.pctAhorro > 0 ? "" : ""}{fmt(product.pctAhorro, 1)}%
                                     </div>
                                 </td>
                                 <td style={{
-                                    padding: "14px 16px",
+                                    padding: "7px 12px",
                                     textAlign: "right",
                                     fontVariantNumeric: "tabular-nums",
-                                    fontSize: 14,
+                                    fontSize: 13,
                                     fontWeight: 600,
                                     color: uiColors.textSoft,
                                     borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
-                                    {product.ahorro > 0 ? "+" : ""}{fmt(product.ahorroAnual)} €
+                                    {product.ahorro > 0 ? "" : ""}{fmt(product.ahorroAnual)} €
                                 </td>
                             </tr>
                         );
@@ -420,7 +414,6 @@ function EditableInputPanel({
 }) {
     const { t } = useI18n();
     const { preferences: { numberFormat } } = useUserPreferences();
-    const [expandedSection, setExpandedSection] = useState<"energy" | "power" | "omie" | "personalizadaIndex" | "personalizadaOmieB" | "personalizadaFijo" | "gasPersonalizadaFijo" | null>(null);
 
     const handleInputChange = (type: "energy" | "power" | "omie", period: string, value: string) => {
         const numValue = parseFloat(value);
@@ -429,10 +422,52 @@ function EditableInputPanel({
         }
     };
 
+    const AccordionSection = ({
+        title,
+        children,
+    }: {
+        title: React.ReactNode;
+        children: React.ReactNode;
+    }) => (
+        <Accordion
+            disableGutters
+            elevation={0}
+            sx={{
+                mt: 1,
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: "6px !important",
+                bgcolor: "transparent",
+                "&::before": { display: "none" },
+            }}
+        >
+            <AccordionSummary
+                expandIcon={<ExpandMoreIcon fontSize="small" />}
+                sx={{
+                    minHeight: 36,
+                    px: 1.25,
+                    "&.Mui-expanded": { minHeight: 36 },
+                    "& .MuiAccordionSummary-content": {
+                        my: 0.75,
+                        fontSize: 12,
+                        fontWeight: 700,
+                    },
+                }}
+            >
+                {title}
+            </AccordionSummary>
+            <AccordionDetails sx={{ px: 1.25, pt: 0, pb: 1.25 }}>
+                {children}
+            </AccordionDetails>
+        </Accordion>
+    );
+
     return (
         <div style={{
-            position: "sticky",
-            top: 20,
+            position: "relative",
+            height: "100%",
+            overflowY: "auto",
+            boxSizing: "border-box",
             background: uiColors.surface,
             borderRadius: 12,
             padding: 16,
@@ -526,30 +561,8 @@ function EditableInputPanel({
             {!readOnly && (<>
                 {/* Editable periods */}
                 {energyPeriods && Object.keys(energyPeriods).length > 0 && (
-                    <div style={{ marginTop: 12 }}>
-                        <button
-                            onClick={() => setExpandedSection(expandedSection === "energy" ? null : "energy")}
-                            style={{
-                                width: "100%",
-                                padding: "8px 10px",
-                                background: expandedSection === "energy" ? uiColors.surfaceMuted : uiColors.surface,
-                                border: `1px solid ${uiColors.borderStrong}`,
-                                borderRadius: 6,
-                                color: uiColors.text,
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                transition: "all 0.2s",
-                            }}
-                        >
-                            <span>{t("simulationOffersCards", "btnConsumption")}</span>
-                            <span>{expandedSection === "energy" ? "▲" : "▼"}</span>
-                        </button>
-                        {expandedSection === "energy" && (
-                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
+                    <AccordionSection title={t("simulationOffersCards", "btnConsumption")}>
+                            <div>
                                 {Object.entries(energyPeriods).map(([period, value]) => (
                                     <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                                         <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>
@@ -564,35 +577,12 @@ function EditableInputPanel({
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </div>
+                    </AccordionSection>
                 )}
 
                 {powerPeriods && Object.keys(powerPeriods).length > 0 && (
-                    <div style={{ marginTop: 8 }}>
-                        <button
-                            onClick={() => setExpandedSection(expandedSection === "power" ? null : "power")}
-                            style={{
-                                width: "100%",
-                                padding: "8px 10px",
-                                background: expandedSection === "power" ? uiColors.surfaceMuted : uiColors.surface,
-                                border: `1px solid ${uiColors.borderStrong}`,
-                                borderRadius: 6,
-                                color: uiColors.text,
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                transition: "all 0.2s",
-                            }}
-                        >
-                            <span>{t("simulationOffersCards", "btnPower")}</span>
-                            <span>{expandedSection === "power" ? "▲" : "▼"}</span>
-                        </button>
-                        {expandedSection === "power" && (
-                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
+                    <AccordionSection title={t("simulationOffersCards", "btnPower")}>
+                            <div>
                                 {Object.entries(powerPeriods).map(([period, value]) => (
                                     <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                                         <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>
@@ -607,35 +597,12 @@ function EditableInputPanel({
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </div>
+                    </AccordionSection>
                 )}
 
                 {personalizadaIndexPeriods && (Object.keys(personalizadaIndexPeriods.margenEnergia).length > 0 || Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0) && (
-                    <div style={{ marginTop: 8 }}>
-                        <button
-                            onClick={() => setExpandedSection(expandedSection === "personalizadaIndex" ? null : "personalizadaIndex")}
-                            style={{
-                                width: "100%",
-                                padding: "8px 10px",
-                                background: expandedSection === "personalizadaIndex" ? uiColors.surfaceMuted : uiColors.surface,
-                                border: `1px solid ${uiColors.borderStrong}`,
-                                borderRadius: 6,
-                                color: uiColors.text,
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                transition: "all 0.2s",
-                            }}
-                        >
-                            <span>{t("simulationForm", "sectionPersonalizadaIndex")}</span>
-                            <span>{expandedSection === "personalizadaIndex" ? "▲" : "▼"}</span>
-                        </button>
-                        {expandedSection === "personalizadaIndex" && (
-                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
+                    <AccordionSection title={t("simulationForm", "sectionPersonalizadaIndex")}>
+                            <div>
                                 {Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0 && (
                                     <>
                                         <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaIndexMargenPotenciaLabel")}</div>
@@ -669,35 +636,12 @@ function EditableInputPanel({
                                     </>
                                 )}
                             </div>
-                        )}
-                    </div>
+                    </AccordionSection>
                 )}
 
                 {personalizadaOmieBPeriods && (Object.keys(personalizadaOmieBPeriods.terminoB).length > 0 || Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0) && (
-                    <div style={{ marginTop: 8 }}>
-                        <button
-                            onClick={() => setExpandedSection(expandedSection === "personalizadaOmieB" ? null : "personalizadaOmieB")}
-                            style={{
-                                width: "100%",
-                                padding: "8px 10px",
-                                background: expandedSection === "personalizadaOmieB" ? uiColors.surfaceMuted : uiColors.surface,
-                                border: `1px solid ${uiColors.borderStrong}`,
-                                borderRadius: 6,
-                                color: uiColors.text,
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                transition: "all 0.2s",
-                            }}
-                        >
-                            <span>{t("simulationForm", "sectionPersonalizadaOmieB")}</span>
-                            <span>{expandedSection === "personalizadaOmieB" ? "▲" : "▼"}</span>
-                        </button>
-                        {expandedSection === "personalizadaOmieB" && (
-                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
+                    <AccordionSection title={t("simulationForm", "sectionPersonalizadaOmieB")}>
+                            <div>
                                 {Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0 && (
                                     <>
                                         <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaOmieBMargenPotenciaLabel")}</div>
@@ -731,35 +675,12 @@ function EditableInputPanel({
                                     </>
                                 )}
                             </div>
-                        )}
-                    </div>
+                    </AccordionSection>
                 )}
 
                 {gasPersonalizadaIndexMargen !== undefined && (
-                    <div style={{ marginTop: 8 }}>
-                        <button
-                            onClick={() => setExpandedSection(expandedSection === "personalizadaIndex" ? null : "personalizadaIndex")}
-                            style={{
-                                width: "100%",
-                                padding: "8px 10px",
-                                background: expandedSection === "personalizadaIndex" ? uiColors.surfaceMuted : uiColors.surface,
-                                border: `1px solid ${uiColors.borderStrong}`,
-                                borderRadius: 6,
-                                color: uiColors.text,
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                transition: "all 0.2s",
-                            }}
-                        >
-                            <span>{t("simulationForm", "sectionGasPersonalizadaIndex")}</span>
-                            <span>{expandedSection === "personalizadaIndex" ? "▲" : "▼"}</span>
-                        </button>
-                        {expandedSection === "personalizadaIndex" && (
-                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
+                    <AccordionSection title={t("simulationForm", "sectionGasPersonalizadaIndex")}>
+                            <div>
                                 <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "gasPersonalizadaIndexMargenLabel")}</div>
                                 <CurrencyInput
                                     key={`gas-personalizada-index-${numberFormat}`}
@@ -770,35 +691,12 @@ function EditableInputPanel({
                                     numberFormat={numberFormat}
                                 />
                             </div>
-                        )}
-                    </div>
+                    </AccordionSection>
                 )}
 
                 {elecPersonalizadaFijoPeriods && (
-                    <div style={{ marginTop: 8 }}>
-                        <button
-                            onClick={() => setExpandedSection(expandedSection === "personalizadaFijo" ? null : "personalizadaFijo")}
-                            style={{
-                                width: "100%",
-                                padding: "8px 10px",
-                                background: expandedSection === "personalizadaFijo" ? uiColors.surfaceMuted : uiColors.surface,
-                                border: `1px solid ${uiColors.borderStrong}`,
-                                borderRadius: 6,
-                                color: uiColors.text,
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                transition: "all 0.2s",
-                            }}
-                        >
-                            <span>Personalized Fixed (custom)</span>
-                            <span>{expandedSection === "personalizadaFijo" ? "▲" : "▼"}</span>
-                        </button>
-                        {expandedSection === "personalizadaFijo" && (
-                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
+                    <AccordionSection title="Personalized Fixed (custom)">
+                            <div>
                                 <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>Término Potencia (€/kWdia)</div>
                                 {Object.entries(elecPersonalizadaFijoPeriods.preciosPotencia).map(([period, value]) => (
                                     <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -824,35 +722,12 @@ function EditableInputPanel({
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </div>
+                    </AccordionSection>
                 )}
 
                 {gasPersonalizadaFijo !== undefined && (
-                    <div style={{ marginTop: 8 }}>
-                        <button
-                            onClick={() => setExpandedSection(expandedSection === "gasPersonalizadaFijo" ? null : "gasPersonalizadaFijo")}
-                            style={{
-                                width: "100%",
-                                padding: "8px 10px",
-                                background: expandedSection === "gasPersonalizadaFijo" ? uiColors.surfaceMuted : uiColors.surface,
-                                border: `1px solid ${uiColors.borderStrong}`,
-                                borderRadius: 6,
-                                color: uiColors.text,
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                transition: "all 0.2s",
-                            }}
-                        >
-                            <span>Personalized Fixed (custom)</span>
-                            <span>{expandedSection === "gasPersonalizadaFijo" ? "▲" : "▼"}</span>
-                        </button>
-                        {expandedSection === "gasPersonalizadaFijo" && (
-                            <div style={{ marginTop: 8, padding: 12, background: uiColors.surfaceRaised, borderRadius: 8, border: `1px solid ${uiColors.border}` }}>
+                    <AccordionSection title="Personalized Fixed (custom)">
+                            <div>
                                 <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>Término Fijo (€/día)</div>
                                 <CurrencyInput
                                     key={`gas-personalizada-fixed-day-${numberFormat}`}
@@ -872,8 +747,7 @@ function EditableInputPanel({
                                     numberFormat={numberFormat}
                                 />
                             </div>
-                        )}
-                    </div>
+                    </AccordionSection>
                 )}
 
                 <div style={{
@@ -881,38 +755,17 @@ function EditableInputPanel({
                     paddingTop: 12,
                     borderTop: `2px solid ${uiColors.border}`,
                 }}>
-                    <button
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        fullWidth
                         onClick={onRecalculate}
                         disabled={calculating}
-                        style={{
-                            width: "100%",
-                            padding: "10px 16px",
-                            background: calculating
-                                ? "linear-gradient(135deg, #d1d5db, #9ca3af)"
-                                : "linear-gradient(135deg, #6366f1, #8b5cf6)",
-                            border: "none",
-                            borderRadius: 8,
-                            color: "#fff",
-                            fontSize: 13,
-                            fontWeight: 700,
-                            cursor: calculating ? "not-allowed" : "pointer",
-                            transition: "all 0.2s",
-                            opacity: calculating ? 0.7 : 1,
-                            boxShadow: calculating ? "none" : "0 4px 6px -1px rgba(99, 102, 241, 0.3)",
-                        }}
-                        onMouseEnter={(e) => {
-                            if (!calculating) {
-                                e.currentTarget.style.transform = "translateY(-2px)";
-                                e.currentTarget.style.boxShadow = "0 8px 12px -1px rgba(99, 102, 241, 0.4)";
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = "translateY(0)";
-                            e.currentTarget.style.boxShadow = calculating ? "none" : "0 4px 6px -1px rgba(99, 102, 241, 0.3)";
-                        }}
+                        startIcon={<RefreshIcon />}
+                        sx={{ fontWeight: 700, textTransform: "none" }}
                     >
                         {calculating ? t("simulationOffersCards", "btnCalculating") : t("simulationOffersCards", "btnRecalculate")}
-                    </button>
+                    </Button>
                 </div>
 
                 <div style={{
@@ -1001,7 +854,7 @@ export function SimulationResultsCards({
     if (!hasElec && !hasGas) {
         return (
             <div style={{ padding: 60, textAlign: "center", background: uiColors.surfaceRaised, borderRadius: 12, border: `1px solid ${uiColors.border}` }}>
-                <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }}>📊</div>
+                <BarChartIcon sx={{ fontSize: 48, mb: 2, color: "text.disabled" }} />
                 <div style={{ fontSize: 16, color: uiColors.textMuted, marginBottom: 8, fontWeight: 600 }}>
                     {t("simulationOffersCards", "noResults")}
                 </div>
@@ -1016,9 +869,12 @@ export function SimulationResultsCards({
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{
                 display: "grid",
-                gridTemplateColumns: "300px 1fr",
+                gridTemplateColumns: "minmax(280px, 320px) minmax(0, 1fr)",
                 gap: 16,
-                alignItems: "start",
+                alignItems: "stretch",
+                height: "calc(100vh - 180px)",
+                minHeight: 520,
+                overflow: "hidden",
             }}>
                 {/* Left sidebar - Editable input panel */}
                 <EditableInputPanel
@@ -1049,12 +905,12 @@ export function SimulationResultsCards({
                 />
 
                 {/* Right side - Product tables */}
-                <div>
+                <div style={{ minHeight: 0, minWidth: 0, height: "100%", overflowY: "auto", paddingRight: 4 }}>
                     {/* Electricity section */}
                     {hasElec && (() => {
                         const elecProducts = [...results.electricity!].sort((a, b) => b.ahorro - a.ahorro);
                         const fixedProducts = elecProducts.filter(p => p.pricingType === "FIXED" && p.productKey !== "PERSONALIZADA_FIJO");
-                        const indexedProducts = elecProducts.filter(p => p.pricingType === "INDEXED");
+                        const indexedProducts = elecProducts.filter(p => p.pricingType === "INDEXED" && p.productKey !== "PERSONALIZADA_INDEX");
                         const personalizadaProducts = elecProducts.filter(p => p.productKey === "PERSONALIZADA_INDEX" || p.productKey === "PERSONALIZADA_OMIE_B" || p.productKey === "PERSONALIZADA_FIJO");
                         const hasPersonalizadas = personalizadaProducts.length > 0;
 
@@ -1081,7 +937,7 @@ export function SimulationResultsCards({
                                     alignItems: "center",
                                     gap: 10,
                                 }}>
-                                    <span>⚡</span>
+                                    <BoltIcon sx={{ color: "warning.main" }} />
                                     <span>{t("simulationOffersCards", "electricityOffers")}</span>
                                     <span style={{
                                         fontSize: 13,
@@ -1095,50 +951,47 @@ export function SimulationResultsCards({
                                     </span>
                                 </h2>
 
-                                {/* Tabs */}
-                                <div style={{ display: "flex", gap: 0, borderBottom: `2px solid ${uiColors.border}`, marginBottom: 16 }}>
+                                <Tabs
+                                    value={elecTab}
+                                    onChange={(_, value: "all" | "fixed" | "indexed" | "personalizadas") => setElecTab(value)}
+                                    textColor="primary"
+                                    indicatorColor="primary"
+                                    sx={{
+                                        mb: 2,
+                                        borderBottom: 1,
+                                        borderColor: "divider",
+                                        minHeight: 40,
+                                        "& .MuiTab-root": {
+                                            minHeight: 40,
+                                            px: 2,
+                                            py: 1,
+                                            textTransform: "none",
+                                            fontSize: 13,
+                                            fontWeight: 600,
+                                        },
+                                    }}
+                                >
                                     {([
                                         { key: "all" as const, label: t("simulationOffersCards", "tabAll"), count: elecProducts.length },
                                         { key: "fixed" as const, label: t("simulationOffersCards", "tabFixed"), count: fixedProducts.length },
                                         { key: "indexed" as const, label: t("simulationOffersCards", "tabIndexed"), count: indexedProducts.length },
                                         ...(hasPersonalizadas ? [{ key: "personalizadas" as const, label: t("simulationOffersCards", "tabPersonalizadas"), count: personalizadaProducts.length }] : []),
                                     ] as { key: "all" | "fixed" | "indexed" | "personalizadas"; label: string; count: number }[]).map((tab) => (
-                                        <button
+                                        <Tab
                                             key={tab.key}
-                                            type="button"
-                                            onClick={() => setElecTab(tab.key)}
+                                            value={tab.key}
                                             disabled={tab.count === 0}
-                                            style={{
-                                                padding: "10px 20px",
-                                                fontSize: 13,
-                                                fontWeight: elecTab === tab.key ? 600 : 400,
-                                                background: "none",
-                                                border: "none",
-                                                cursor: tab.count === 0 ? "not-allowed" : "pointer",
-                                                color: tab.count === 0
-                                                    ? "#d1d5db"
-                                                    : elecTab === tab.key
-                                                        ? uiColors.text
-                                                        : uiColors.textMuted,
-                                                borderBottom: elecTab === tab.key ? "3px solid var(--scheme-brand-600)" : "3px solid transparent",
-                                                marginBottom: -2,
-                                                opacity: tab.count === 0 ? 0.4 : 1,
-                                            }}
-                                        >
-                                            {tab.label} <span style={{
-                                                fontSize: 11,
-                                                fontWeight: 600,
-                                                background: elecTab === tab.key ? "var(--scheme-brand-600-15)" : uiColors.surfaceMuted,
-                                                color: elecTab === tab.key ? "var(--scheme-brand-300)" : uiColors.textMuted,
-                                                padding: "2px 6px",
-                                                borderRadius: 8,
-                                                marginLeft: 6,
-                                            }}>
-                                                {tab.count}
-                                            </span>
-                                        </button>
+                                            icon={offerTabIcon(tab.key)}
+                                            iconPosition="start"
+                                            label={
+                                                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                                    {tab.label}
+                                                    <Chip size="small" label={tab.count} sx={{ height: 18, minWidth: 18, fontSize: 10, fontWeight: 700 }} />
+                                                </span>
+                                            }
+                                        />
                                     ))}
-                                </div>
+                                </Tabs>
 
                                 {displayProducts.length > 0 ? (
                                     <ProductTable
@@ -1192,7 +1045,7 @@ export function SimulationResultsCards({
                                     alignItems: "center",
                                     gap: 10,
                                 }}>
-                                    <span>🔥</span>
+                                    <LocalFireDepartmentIcon sx={{ color: "error.main" }} />
                                     <span>{t("simulationOffersCards", "gasOffers")}</span>
                                     <span style={{
                                         fontSize: 13,
@@ -1206,50 +1059,47 @@ export function SimulationResultsCards({
                                     </span>
                                 </h2>
 
-                                {/* Tabs */}
-                                <div style={{ display: "flex", gap: 0, borderBottom: `2px solid ${uiColors.border}`, marginBottom: 16 }}>
+                                <Tabs
+                                    value={gasTab}
+                                    onChange={(_, value: "all" | "fixed" | "indexed" | "personalizadas") => setGasTab(value)}
+                                    textColor="primary"
+                                    indicatorColor="primary"
+                                    sx={{
+                                        mb: 2,
+                                        borderBottom: 1,
+                                        borderColor: "divider",
+                                        minHeight: 40,
+                                        "& .MuiTab-root": {
+                                            minHeight: 40,
+                                            px: 2,
+                                            py: 1,
+                                            textTransform: "none",
+                                            fontSize: 13,
+                                            fontWeight: 600,
+                                        },
+                                    }}
+                                >
                                     {([
                                         { key: "all" as const, label: t("simulationOffersCards", "tabAll"), count: gasProducts.length },
                                         { key: "fixed" as const, label: t("simulationOffersCards", "tabFixed"), count: fixedProducts.length },
                                         { key: "indexed" as const, label: t("simulationOffersCards", "tabIndexed"), count: indexedProducts.length },
                                         ...(hasPersonalizadas ? [{ key: "personalizadas" as const, label: t("simulationOffersCards", "tabPersonalizadas"), count: personalizadaProducts.length }] : []),
                                     ] as { key: "all" | "fixed" | "indexed" | "personalizadas"; label: string; count: number }[]).map((tab) => (
-                                        <button
+                                        <Tab
                                             key={tab.key}
-                                            type="button"
-                                            onClick={() => setGasTab(tab.key)}
+                                            value={tab.key}
                                             disabled={tab.count === 0}
-                                            style={{
-                                                padding: "10px 20px",
-                                                fontSize: 13,
-                                                fontWeight: gasTab === tab.key ? 600 : 400,
-                                                background: "none",
-                                                border: "none",
-                                                cursor: tab.count === 0 ? "not-allowed" : "pointer",
-                                                color: tab.count === 0
-                                                    ? "#d1d5db"
-                                                    : gasTab === tab.key
-                                                        ? uiColors.text
-                                                        : uiColors.textMuted,
-                                                borderBottom: gasTab === tab.key ? "3px solid var(--scheme-brand-600)" : "3px solid transparent",
-                                                marginBottom: -2,
-                                                opacity: tab.count === 0 ? 0.4 : 1,
-                                            }}
-                                        >
-                                            {tab.label} <span style={{
-                                                fontSize: 11,
-                                                fontWeight: 600,
-                                                background: gasTab === tab.key ? "var(--scheme-brand-600-15)" : uiColors.surfaceMuted,
-                                                color: gasTab === tab.key ? "var(--scheme-brand-300)" : uiColors.textMuted,
-                                                padding: "2px 6px",
-                                                borderRadius: 8,
-                                                marginLeft: 6,
-                                            }}>
-                                                {tab.count}
-                                            </span>
-                                        </button>
+                                            icon={offerTabIcon(tab.key)}
+                                            iconPosition="start"
+                                            label={
+                                                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                                    {tab.label}
+                                                    <Chip size="small" label={tab.count} sx={{ height: 18, minWidth: 18, fontSize: 10, fontWeight: 700 }} />
+                                                </span>
+                                            }
+                                        />
                                     ))}
-                                </div>
+                                </Tabs>
 
                                 {displayProducts.length > 0 ? (
                                     <ProductTable
@@ -1300,163 +1150,102 @@ export function SimulationResultsCards({
 
             {/* Confirmation Modal */}
             {pendingOffer && (
-                <div style={{
-                    position: "fixed",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: "rgba(0, 0, 0, 0.6)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 9999,
-                }} onClick={handleCancelSelection}>
-                    <div style={{
-                        background: uiColors.surface,
-                        borderRadius: 16,
-                        padding: 32,
-                        maxWidth: 500,
-                        width: "90%",
-                        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.28), 0 10px 10px -5px rgba(0, 0, 0, 0.16)",
-                        border: `1px solid ${uiColors.border}`,
-                    }} onClick={(e) => e.stopPropagation()}>
-                        <h3 style={{
-                            margin: "0 0 16px 0",
-                            fontSize: 20,
-                            fontWeight: 700,
-                            color: uiColors.text,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 10,
-                        }}>
-                            <span style={{ fontSize: 24 }}>✓</span>
-                            <span>{t("simulationOffersCards", "confirmTitle")}</span>
-                        </h3>
-
-                        <div style={{
-                            padding: 20,
-                            background: "linear-gradient(135deg, var(--scheme-brand-600-15) 0%, var(--scheme-accent-600-15) 100%)",
-                            borderRadius: 12,
-                            border: "2px solid var(--scheme-brand-600)",
-                            marginBottom: 24,
-                        }}>
-                            <div style={{
-                                fontSize: 16,
-                                fontWeight: 700,
-                                color: uiColors.text,
-                                marginBottom: 8,
-                            }}>
+                <Dialog
+                    open
+                    onClose={saving ? undefined : handleCancelSelection}
+                    maxWidth="xs"
+                    fullWidth
+                    PaperProps={{
+                        sx: {
+                            borderRadius: 2,
+                            border: 1,
+                            borderColor: "divider",
+                        },
+                    }}
+                >
+                    <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1, pb: 1 }}>
+                        <CheckCircleIcon color="primary" />
+                        <Typography component="span" variant="h6" sx={{ fontWeight: 700 }}>
+                            {t("simulationOffersCards", "confirmTitle")}
+                        </Typography>
+                    </DialogTitle>
+                    <DialogContent sx={{ pt: 1 }}>
+                        <Box
+                            sx={{
+                                p: 2.5,
+                                mb: 3,
+                                borderRadius: 2,
+                                border: 1,
+                                borderColor: "primary.main",
+                                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+                            }}
+                        >
+                            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
                                 {pendingOffer.product.productLabel}
-                            </div>
-                            <div style={{
-                                display: "flex",
-                                gap: 8,
-                                marginBottom: 12,
-                            }}>
-                                <span style={{
-                                    fontSize: 11,
-                                    fontWeight: 600,
-                                    color: uiColors.textMuted,
-                                    background: uiColors.surface,
-                                    padding: "4px 10px",
-                                    borderRadius: 12,
-                                    textTransform: "uppercase",
-                                }}>
-                                    {pendingOffer.commodity === "ELECTRICITY" ? t("simulationOffersCards", "confirmElectricity") : t("simulationOffersCards", "confirmGas")}
-                                </span>
-                                <span style={{
-                                    fontSize: 11,
-                                    fontWeight: 600,
-                                    color: uiColors.textMuted,
-                                    background: uiColors.surface,
-                                    padding: "4px 10px",
-                                    borderRadius: 12,
-                                    textTransform: "uppercase",
-                                }}>
-                                    {pendingOffer.product.pricingType === "FIXED" ? t("simulationOffersCards", "confirmFixed") : t("simulationOffersCards", "confirmIndexed")}
-                                </span>
-                            </div>
-                            <div style={{
-                                display: "grid",
-                                gridTemplateColumns: "1fr 1fr",
-                                gap: 12,
-                                fontSize: 13,
-                            }}>
-                                <div>
-                                    <div style={{ color: uiColors.textMuted, marginBottom: 4 }}>{t("simulationOffersCards", "colTotalInvoice")}</div>
-                                    <div style={{ fontSize: 18, fontWeight: 700, color: uiColors.text }}>
+                            </Typography>
+                            <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap", rowGap: 1 }}>
+                                <Chip
+                                    size="small"
+                                    icon={pendingOffer.commodity === "ELECTRICITY" ? <BoltIcon /> : <LocalFireDepartmentIcon />}
+                                    label={pendingOffer.commodity === "ELECTRICITY" ? t("simulationOffersCards", "confirmElectricity") : t("simulationOffersCards", "confirmGas")}
+                                />
+                                <Chip
+                                    size="small"
+                                    icon={offerKindIcon(offerKind(pendingOffer.product))}
+                                    label={offerKind(pendingOffer.product) === "personalized"
+                                        ? t("simulationOffersCards", "pricingPersonalizada")
+                                        : offerKind(pendingOffer.product) === "fixed"
+                                            ? t("simulationOffersCards", "confirmFixed")
+                                            : t("simulationOffersCards", "confirmIndexed")}
+                                />
+                            </Stack>
+                            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {t("simulationOffersCards", "colTotalInvoice")}
+                                    </Typography>
+                                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                         {fmt(pendingOffer.product.totalFactura)} €
-                                    </div>
-                                </div>
-                                <div>
-                                    <div style={{ color: uiColors.textMuted, marginBottom: 4 }}>{t("simulationOffersCards", "colMonthlySavings")}</div>
-                                    <div style={{
-                                        fontSize: 18,
-                                        fontWeight: 700,
-                                        color: pendingOffer.product.ahorro > 0 ? "#10b981" : "#ef4444",
-                                    }}>
-                                        {pendingOffer.product.ahorro > 0 ? "+" : ""}{fmt(pendingOffer.product.ahorro)} €
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <p style={{
-                            margin: "0 0 24px 0",
-                            fontSize: 14,
-                            color: uiColors.textMuted,
-                            lineHeight: 1.6,
-                        }}>
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {t("simulationOffersCards", "colMonthlySavings")}
+                                    </Typography>
+                                    <Typography
+                                        variant="h6"
+                                        sx={{
+                                            fontWeight: 700,
+                                            color: pendingOffer.product.ahorro > 0 ? "success.main" : "error.main",
+                                        }}
+                                    >
+                                        {fmt(pendingOffer.product.ahorro)} €
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
                             {t("simulationOffersCards", "confirmDescription")}
-                        </p>
-
-                        <div style={{
-                            display: "flex",
-                            gap: 12,
-                            justifyContent: "flex-end",
-                        }}>
-                            <button
-                                type="button"
-                                onClick={handleCancelSelection}
-                                disabled={saving}
-                                style={{
-                                    padding: "12px 24px",
-                                    fontSize: 14,
-                                    fontWeight: 600,
-                                    background: uiColors.surface,
-                                    border: `2px solid ${uiColors.borderStrong}`,
-                                    borderRadius: 8,
-                                    color: uiColors.textMuted,
-                                    cursor: saving ? "not-allowed" : "pointer",
-                                    opacity: saving ? 0.5 : 1,
-                                }}
-                            >
-                                {t("simulationOffersCards", "confirmCancel")}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleConfirmSelection}
-                                disabled={saving}
-                                style={{
-                                    padding: "12px 24px",
-                                    fontSize: 14,
-                                    fontWeight: 700,
-                                    background: saving
-                                        ? "linear-gradient(135deg, #9ca3af, #6b7280)"
-                                        : "linear-gradient(135deg, #6366f1, #8b5cf6)",
-                                    border: "none",
-                                    borderRadius: 8,
-                                    color: "#fff",
-                                    cursor: saving ? "not-allowed" : "pointer",
-                                    boxShadow: saving ? "none" : "0 4px 6px -1px rgba(99, 102, 241, 0.3)",
-                                }}
-                            >
-                                {saving ? t("simulationOffersCards", "confirmSaving") : t("simulationOffersCards", "confirmButton")}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+                        <Button
+                            variant="outlined"
+                            onClick={handleCancelSelection}
+                            disabled={saving}
+                        >
+                            {t("simulationOffersCards", "confirmCancel")}
+                        </Button>
+                        <Button
+                            variant="contained"
+                            onClick={handleConfirmSelection}
+                            disabled={saving}
+                            startIcon={<CheckCircleIcon />}
+                        >
+                            {saving ? t("simulationOffersCards", "confirmSaving") : t("simulationOffersCards", "confirmButton")}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             )}
         </div>
     );

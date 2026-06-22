@@ -13,6 +13,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import { FormSelect } from "../ui/FormSelect";
 import { DateRangePicker } from "../ui/DateRangePicker";
+import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -41,6 +42,7 @@ export interface CronLogsPanelProps {
 }
 
 export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
+    const cachePolicy = useRequestCachePolicy("logs");
     const theme = useTheme();
     const { locale, t } = useI18n();
     const { preferences } = useUserPreferences();
@@ -114,7 +116,7 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
             };
         },
         placeholderData: keepPreviousData,
-        staleTime: 60_000,
+        ...cachePolicy,
     });
 
     useEffect(() => {

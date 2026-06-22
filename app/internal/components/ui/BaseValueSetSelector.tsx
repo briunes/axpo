@@ -9,7 +9,9 @@ interface BaseValueSetSelectorProps {
     token: string;
     isAdmin: boolean;
     usedBaseValueSetId?: string | null;
-    onChange?: (id: string) => void;
+    scopeType?: BaseValueSetItem["scopeType"];
+    forAgencyId?: string;
+    onChange?: (id: string, meta?: { userInitiated: boolean }) => void;
     onChangeItem?: (item: BaseValueSetItem) => void;
 }
 
@@ -23,13 +25,13 @@ function formatUploadDate(dateStr: string): string {
     });
 }
 
-export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, onChange, onChangeItem }: BaseValueSetSelectorProps) {
+export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scopeType, forAgencyId, onChange, onChangeItem }: BaseValueSetSelectorProps) {
     const [sets, setSets] = useState<BaseValueSetItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<string>("");
 
     useEffect(() => {
-        listBaseValueSets(token, { pageSize: 100, showArchived: false })
+        listBaseValueSets(token, { pageSize: 100, showArchived: false, scopeType, forAgencyId })
             .then((res) => {
                 setSets(res.items);
                 let resolved: BaseValueSetItem | undefined;
@@ -43,11 +45,14 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, onCha
                         res.items[0];
                     if (def) { setSelected(def.id); resolved = def; }
                 }
-                if (resolved) onChangeItem?.(resolved);
+                if (resolved) {
+                    onChange?.(resolved.id, { userInitiated: false });
+                    onChangeItem?.(resolved);
+                }
             })
             .catch(() => { /* non-critical */ })
             .finally(() => setLoading(false));
-    }, [token]);
+    }, [token, scopeType, forAgencyId]);
 
     useEffect(() => {
         if (usedBaseValueSetId && sets.find((s) => s.id === usedBaseValueSetId)) {
@@ -75,7 +80,7 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, onCha
                     if (!id) return;
                     const idStr = String(id);
                     setSelected(idStr);
-                    onChange?.(idStr);
+                    onChange?.(idStr, { userInitiated: true });
                     const item = sets.find((s) => s.id === idStr);
                     if (item) onChangeItem?.(item);
                 }}

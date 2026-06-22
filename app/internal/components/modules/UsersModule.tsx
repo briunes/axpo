@@ -245,8 +245,23 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
             {canEdit ? (
               <ButtonGroup variant="outlined" size="small">
-                <Button onClick={primaryOnClick} sx={{ minWidth: '80px !important' }}>
-                  {primaryLabel}
+                <Button
+                  onClick={primaryOnClick}
+                  startIcon={<EditIcon fontSize="small" />}
+                  title={primaryLabel}
+                  aria-label={primaryLabel}
+                  sx={{
+                    minWidth: "88px !important",
+                    "@media (max-width: 1400px)": {
+                      minWidth: "36px !important",
+                      px: 0.75,
+                      "& .MuiButton-startIcon": { mr: 0, ml: 0 },
+                    },
+                  }}
+                >
+                  <Box component="span" sx={{ "@media (max-width: 1400px)": { display: "none" } }}>
+                    {primaryLabel}
+                  </Box>
                 </Button>
                 {hasDropdown && (
                   <Button

@@ -3,7 +3,7 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { AuthService } from "@/application/services/authService";
 import {
-  applyRateLimit,
+  applyRateLimitShared,
   getClientRateLimitKey,
 } from "@/application/middleware/rateLimit";
 import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
@@ -39,7 +39,7 @@ const schema = z.object({
  */
 export const POST = withErrorHandler(async (request) => {
   const { ipAddress } = getRequestSessionContext(request);
-  applyRateLimit(getClientRateLimitKey(ipAddress, "magic-link-request"), {
+  await applyRateLimitShared(getClientRateLimitKey(ipAddress, "magic-link-request"), {
     maxRequests: 5,
     windowMs: 60 * 60 * 1000,
   });

@@ -45,7 +45,7 @@ export type EmailTemplateType =
 const BUTTON_SNIPPETS: Array<{ name: string; label: string; description: string; dragContent: string; isButton: true }> = [
     {
         name: "BTN_SETUP_PASSWORD",
-        label: "🔴 Button — Set Up Password",
+        label: "Button - Set Up Password",
         description: "Drops a styled CTA button linked to {{SETUP_PASSWORD_URL}}",
         isButton: true,
         dragContent: `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:25px 0;">
@@ -60,7 +60,7 @@ const BUTTON_SNIPPETS: Array<{ name: string; label: string; description: string;
     },
     {
         name: "BTN_RESET_PASSWORD",
-        label: "🔴 Button — Reset Password",
+        label: "Button - Reset Password",
         description: "Drops a styled CTA button linked to {{RESET_PASSWORD_URL}}",
         isButton: true,
         dragContent: `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:25px 0;">
@@ -75,7 +75,7 @@ const BUTTON_SNIPPETS: Array<{ name: string; label: string; description: string;
     },
     {
         name: "BTN_VIEW_SIMULATION",
-        label: "🔴 Button — View Simulation",
+        label: "Button - View Simulation",
         description: "Drops a styled CTA button linked to {{SIMULATION_LINK}}",
         isButton: true,
         dragContent: `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:25px 0;">
@@ -652,34 +652,28 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                     {/* Language Tabs */}
                                     <div style={{ marginBottom: "16px" }}>
                                         <div style={{ display: "flex", gap: "4px", borderBottom: "1px solid var(--scheme-neutral-900)", marginBottom: "16px" }}>
-                                            {SUPPORTED_LANGUAGES.map((lang) => {
-                                                const hasContent = !!(translationsMap[lang.code]?.subject || translationsMap[lang.code]?.htmlContent);
-                                                return (
-                                                    <button
-                                                        key={lang.code}
-                                                        onClick={() => setActiveLanguage(lang.code)}
-                                                        style={{
-                                                            padding: "8px 16px",
-                                                            border: "none",
-                                                            borderBottom: activeLanguage === lang.code ? "2px solid var(--scheme-brand-600)" : "2px solid transparent",
-                                                            background: "none",
-                                                            cursor: "pointer",
-                                                            fontWeight: activeLanguage === lang.code ? 700 : 400,
-                                                            color: activeLanguage === lang.code ? "var(--scheme-brand-600)" : "var(--scheme-neutral-500)",
-                                                            fontSize: "14px",
-                                                            marginBottom: "-2px",
-                                                            display: "flex",
-                                                            alignItems: "center",
-                                                            gap: "6px",
-                                                        }}
-                                                    >
-                                                        {lang.flag} {lang.label}
-                                                        {hasContent && (
-                                                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
-                                                        )}
-                                                    </button>
-                                                );
-                                            })}
+                                            {SUPPORTED_LANGUAGES.map((lang) => (
+                                                <button
+                                                    key={lang.code}
+                                                    onClick={() => setActiveLanguage(lang.code)}
+                                                    style={{
+                                                        padding: "8px 16px",
+                                                        border: "none",
+                                                        borderBottom: activeLanguage === lang.code ? "2px solid var(--scheme-brand-600)" : "2px solid transparent",
+                                                        background: "none",
+                                                        cursor: "pointer",
+                                                        fontWeight: activeLanguage === lang.code ? 700 : 400,
+                                                        color: activeLanguage === lang.code ? "var(--scheme-brand-600)" : "var(--scheme-neutral-500)",
+                                                        fontSize: "14px",
+                                                        marginBottom: "-2px",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "6px",
+                                                    }}
+                                                >
+                                                    {lang.flag} {lang.label}
+                                                </button>
+                                            ))}
                                         </div>
 
                                         {/* Subject for active language */}
@@ -722,7 +716,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                                     // Editable sections as variables
                                                     ...Object.entries((formData.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
                                                         name: key,
-                                                        label: `📝 ${section.label || key}`,
+                                                        label: section.label || key,
                                                         description: section.description || "Editable section",
                                                     }))
                                                 ]} />

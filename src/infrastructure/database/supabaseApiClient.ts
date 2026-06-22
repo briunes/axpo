@@ -32,6 +32,10 @@ const models: Record<string, ModelMeta> = {
       clients: { table: "clients", many: true },
       simulations: { table: "simulations", many: true },
       agencyTariffs: { table: "agency_tariffs", many: true },
+      agencyProductConfigs: {
+        table: "agency_product_configs",
+        many: true,
+      },
       createdByUser: {
         table: "users",
         constraint: "agencies_createdByUserId_fkey",
@@ -50,6 +54,22 @@ const models: Record<string, ModelMeta> = {
     },
     compoundUniques: {
       agencyId_tariffType: ["agencyId", "tariffType"],
+    },
+  },
+  agencyProductConfig: {
+    table: "agency_product_configs",
+    timestamps: true,
+    relations: {
+      agency: { table: "agencies", localField: "agencyId" },
+    },
+    compoundUniques: {
+      agencyId_productKey: ["agencyId", "productKey"],
+      agencyId_commodity_pricingType_productKey: [
+        "agencyId",
+        "commodity",
+        "pricingType",
+        "productKey",
+      ],
     },
   },
   client: {
@@ -155,6 +175,13 @@ const models: Record<string, ModelMeta> = {
     relations: { baseValueSet: { table: "base_value_sets" } },
     compoundUniques: {
       baseValueSetId_key: ["baseValueSetId", "key"],
+    },
+  },
+  excelParserProductConfig: {
+    table: "excel_parser_product_configs",
+    timestamps: true,
+    compoundUniques: {
+      scopeType_sourceLabel: ["scopeType", "sourceLabel"],
     },
   },
   accessAttempt: {

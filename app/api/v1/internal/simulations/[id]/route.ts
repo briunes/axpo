@@ -8,7 +8,7 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
-import { decryptSensitiveValue } from "@/application/lib/sensitiveData";
+import { tryDecryptSensitiveValue } from "@/application/lib/sensitiveData";
 
 const updateSimulationSchema = z.object({
   status: z.nativeEnum(SimulationStatus).optional(),
@@ -64,7 +64,7 @@ export const GET = withErrorHandler(
     });
 
     // Enrich with client and full ownerUser for PDF/email template variable replacement
-    const [client, ownerUser] = await Promise.all([
+    const [client, ownerUser, agency] = await Promise.all([
       simulation.clientId
         ? prisma.client.findUnique({ where: { id: simulation.clientId } })
         : null,
@@ -80,6 +80,10 @@ export const GET = withErrorHandler(
           agencyId: true,
           pinCurrent: true,
         },
+      }),
+      prisma.agency.findUnique({
+        where: { id: simulation.agencyId },
+        select: { id: true, name: true, isTlv: true },
       }),
     ]);
 
@@ -111,15 +115,20 @@ export const GET = withErrorHandler(
         }
       : null;
 
+    const displayPin =
+      tryDecryptSensitiveValue(simulation.pinSnapshot) ??
+      tryDecryptSensitiveValue(ownerUser?.pinCurrent);
+    const { pinHashSnapshot: _pinHashSnapshot, ...simulationPublicFields } =
+      simulation;
+
     // Attach payloadJson from latest version to simulation
     const simulationWithPayload = {
-      ...simulation,
-      pinSnapshot: decryptSensitiveValue(
-        simulation.pinSnapshot ?? ownerUser?.pinCurrent,
-      ),
+      ...simulationPublicFields,
+      pinSnapshot: displayPin,
       payloadJson: mergedPayload,
       client: client ?? null,
       ownerUser: ownerUser ?? simulation.ownerUser,
+      agency: agency ?? null,
     };
 
     return ResponseHandler.ok(

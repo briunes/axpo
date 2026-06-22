@@ -17,13 +17,15 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import BlockIcon from "@mui/icons-material/Block";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import SearchIcon from "@mui/icons-material/Search";
+import CloseIcon from "@mui/icons-material/Close";
 import { useEffect, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
 import type { AgenciesActions } from "../hooks/useAgencies";
 import { ConfirmDialog } from "../shared";
-import { DataTable, StatusBadge } from "../ui";
+import { DataTable, FormInput, FormSelect, StatusBadge } from "../ui";
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -42,6 +44,8 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     page, pageSize, total, setPage, setPageSize,
     sortColumn, sortDir, setSort,
     search, setSearch,
+    tlvFilter, setTlvFilter,
+    statusFilter, setStatusFilter,
     showArchived, setShowArchived,
     handleToggleAgencyStatus,
     handleDeleteAgency,
@@ -107,6 +111,17 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       ),
     },
     {
+      key: "isTlv",
+      label: "Type",
+      width: "110",
+      renderCell: (a) => (
+        <StatusBadge
+          label={a.isTlv ? "TLV" : "Standard"}
+          tone={a.isTlv ? "accent" : "neutral"}
+        />
+      ),
+    },
+    {
       key: "address",
       label: t("columns", "address"),
       copyable: true,
@@ -135,6 +150,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     {
       key: "commercialUsers",
       label: t("columns", "commercialUsers"),
+      width: "150",
       renderCell: (a) => {
         const commercialUsers = a.users?.filter(u => u.role === "COMMERCIAL") || [];
         return (
@@ -168,6 +184,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     {
       key: "status",
       label: t("columns", "status"),
+      width: "120",
       renderCell: (a) => (
         <StatusBadge
           label={a.isActive ? t("status", "active") : t("status", "inactive")}
@@ -208,6 +225,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     {
       key: "actions",
       label: t("columns", "actions"),
+      width: "140",
       renderCell: (a) => {
         const primaryLabel = t("actions", "edit");
         const primaryOnClick = () => window.location.href = `/internal/agencies/${a.id}/edit`;
@@ -300,7 +318,13 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
-        onClearFilters={() => { setSearch(""); setPage(1); }}
+        onClearFilters={() => {
+          setSearch("");
+          setTlvFilter("");
+          setStatusFilter("");
+          setPage(1);
+        }}
+        hasActiveFilters={Boolean(search || tlvFilter || statusFilter)}
         searchPlaceholder={t("search", "agencies")}
         emptyMessage={t("search", "emptyAgencies")}
         sortState={{ column: sortColumn, direction: sortDir }}
@@ -325,6 +349,78 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
             onClick: (ids) => setConfirmBulkDeleteIds(ids),
           },
         ]}
+        renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
+          <>
+            <Box sx={{ width: 280 }}>
+              <FormInput
+                label=""
+                placeholder={searchPlaceholder}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
+                size="small"
+                slotProps={{
+                  input: {
+                    endAdornment: draft ? (
+                      <IconButton
+                        size="small"
+                        onClick={() => { setDraft(""); setSearch(""); setPage(1); }}
+                        aria-label="Clear"
+                        edge="end"
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    ) : null,
+                  },
+                }}
+              />
+            </Box>
+            <Box sx={{ width: 280 }}>
+              <FormSelect
+                label=""
+                options={[
+                  { value: "", label: "All agency types" },
+                  { value: "tlv", label: "TLV" },
+                  { value: "standard", label: "Standard" },
+                ]}
+                value={tlvFilter}
+                onChange={(val) => {
+                  setTlvFilter(val as string);
+                  setPage(1);
+                }}
+                placeholder="Type"
+                textFieldProps={{ size: "small" }}
+              />
+            </Box>
+            <Box sx={{ width: 280 }}>
+              <FormSelect
+                label=""
+                options={[
+                  { value: "", label: t("search", "allStatuses") },
+                  { value: "active", label: t("status", "active") },
+                  { value: "inactive", label: t("status", "inactive") },
+                ]}
+                value={statusFilter}
+                onChange={(val) => {
+                  setStatusFilter(val as string);
+                  setPage(1);
+                }}
+                placeholder={t("columns", "status")}
+                textFieldProps={{ size: "small" }}
+              />
+            </Box>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={commitSearch}
+              aria-label="Search"
+              sx={{ minWidth: "auto" }}
+            >
+              <SearchIcon />
+              {t("common", "search")}
+            </Button>
+          </>
+        )}
       />
 
       {/* ── Confirm bulk delete ──────────────────────────────────── */}

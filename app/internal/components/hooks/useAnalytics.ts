@@ -7,6 +7,7 @@ import {
   type AnalyticsSummary,
 } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
+import { useRequestCachePolicy } from "./useRequestCachePolicy";
 
 export interface AnalyticsActions {
   analytics: AnalyticsSummary | null;
@@ -21,6 +22,7 @@ export interface AnalyticsActions {
 
 export function useAnalytics(session: SessionState | null): AnalyticsActions {
   const queryClient = useQueryClient();
+  const cachePolicy = useRequestCachePolicy("analytics");
   const [days, setDays] = useState(30);
   const [energyType, setEnergyType] = useState<string>("");
 
@@ -29,6 +31,7 @@ export function useAnalytics(session: SessionState | null): AnalyticsActions {
     queryFn: () =>
       getAnalyticsSummary(session!.token, days, energyType || undefined),
     enabled: !!session,
+    ...cachePolicy,
   });
 
   const analytics = data ?? null;

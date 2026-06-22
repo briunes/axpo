@@ -22,6 +22,7 @@ export enum SimulationStatus {
 export enum BaseValueScope {
   GLOBAL = "GLOBAL",
   AGENCY = "AGENCY",
+  TLV = "TLV",
 }
 
 /**

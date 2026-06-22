@@ -8,6 +8,7 @@ import { getPdfTemplates, getSystemConfig, updateSystemConfig } from "../../lib/
 import { LoadingState } from "../shared/LoadingState";
 import { CronSettings } from "./CronSettings";
 import { FormInput, FormSelect } from "../ui";
+import { RequestCacheSettings } from "./RequestCacheSettings";
 
 export interface SystemBusinessSettingsProps {
     session: SessionState;
@@ -15,7 +16,7 @@ export interface SystemBusinessSettingsProps {
     role?: string;
 }
 
-type BusinessTab = "general" | "simulation" | "clients" | "sessions" | "calculation" | "pdf-defaults" | "cron";
+type BusinessTab = "general" | "simulation" | "clients" | "sessions" | "calculation" | "pdf-defaults" | "cache" | "cron";
 
 interface ElecZoneConfig {
     ivaRates: number[];
@@ -119,6 +120,7 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
         sessions: "Sessions",
         calculation: t("systemSettings", "tabCalculation"),
         "pdf-defaults": t("systemSettings", "tabPdfDefaults"),
+        cache: "Cache",
         cron: "Cron Jobs",
     };
 
@@ -535,6 +537,10 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                                     </span>
                                 </Box>
                             </div>
+                        )}
+
+                        {resolvedBusinessTab === "cache" && (
+                            <RequestCacheSettings session={session} onNotify={onNotify} />
                         )}
 
                         {resolvedBusinessTab === "sessions" && (

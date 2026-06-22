@@ -9,28 +9,30 @@ datasource db {
 }
 
 model Agency {
-  id               String            @id @default(cuid())
-  name             String
-  isActive         Boolean           @default(true)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  street           String?
-  city             String?
-  postalCode       String?
-  province         String?
-  country          String?
-  deletedAt        DateTime?
-  isDeleted        Boolean           @default(false)
-  createdByUserId  String?
-  updatedByUserId  String?
-  createdByUser    User?             @relation("AgencyCreatedBy", fields: [createdByUserId], references: [id])
-  updatedByUser    User?             @relation("AgencyUpdatedBy", fields: [updatedByUserId], references: [id])
-  agencyTariffs    AgencyTariff[]
-  baseValueSets    BaseValueSet[]
-  clients          Client[]
-  simulations      Simulation[]
-  users            User[]
-  ocrUsageInvoices OcrUsageInvoice[]
+  id                   String                @id @default(cuid())
+  name                 String
+  isActive             Boolean               @default(true)
+  isTlv                Boolean               @default(false)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  street               String?
+  city                 String?
+  postalCode           String?
+  province             String?
+  country              String?
+  deletedAt            DateTime?
+  isDeleted            Boolean               @default(false)
+  createdByUserId      String?
+  updatedByUserId      String?
+  createdByUser        User?                 @relation("AgencyCreatedBy", fields: [createdByUserId], references: [id])
+  updatedByUser        User?                 @relation("AgencyUpdatedBy", fields: [updatedByUserId], references: [id])
+  agencyProductConfigs AgencyProductConfig[]
+  agencyTariffs        AgencyTariff[]
+  baseValueSets        BaseValueSet[]
+  clients              Client[]
+  simulations          Simulation[]
+  users                User[]
+  ocrUsageInvoices     OcrUsageInvoice[]
 
   @@index([isDeleted])
   @@map("agencies")
@@ -47,6 +49,21 @@ model AgencyTariff {
 
   @@unique([agencyId, tariffType])
   @@map("agency_tariffs")
+}
+
+model AgencyProductConfig {
+  id          String   @id @default(cuid())
+  agencyId    String
+  productKey  String
+  commodity   String   @default("ELECTRICITY")
+  pricingType String   @default("FIXED")
+  isEnabled   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  agency      Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, commodity, pricingType, productKey])
+  @@map("agency_product_configs")
 }
 
 model Client {
@@ -280,6 +297,27 @@ model BaseValueItem {
   @@map("base_value_items")
 }
 
+model ExcelParserProductConfig {
+  id             String         @id @default(cuid())
+  scopeType      BaseValueScope
+  sourceLabel    String
+  productKey     String
+  displayName    String
+  commodity      String
+  pricingType    String
+  enabled        Boolean        @default(true)
+  singlePeriod   Boolean        @default(false)
+  eligibilityMin Decimal?
+  eligibilityMax Decimal?
+  sortOrder      Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([scopeType, sourceLabel])
+  @@index([scopeType, commodity, pricingType, enabled, sortOrder])
+  @@map("excel_parser_product_configs")
+}
+
 model AccessAttempt {
   id            String     @id @default(cuid())
   simulationId  String
@@ -379,6 +417,7 @@ model SystemConfig {
   ocrBillingMarkupPercent         Decimal   @default(0)
   ocrBillingFixedFeePerCall       Decimal   @default(0)
   ocrBillingIncludeFailedCalls    Boolean   @default(false)
+  requestCacheConfig              Json?
 
   @@map("system_config")
 }
@@ -551,43 +590,43 @@ model InvoiceProviderPrompt {
 }
 
 model OcrLog {
-  id                 String       @id @default(cuid())
-  requestedAt        DateTime     @default(now())
-  userId             String?
-  userEmail          String?
-  simulationId       String?
-  type               OcrLogType   @default(INVOICE_EXTRACTION)
-  provider           String
-  model              String
-  baseUrl            String?
-  fileName           String?
-  fileType           String?
-  fileSizeBytes      Int?
-  pageCount          Int?
-  status             String // SUCCESS | FAILED | ERROR | PARSE_ERROR
-  durationMs         Int?
-  promptTokens       Int?
-  completionTokens   Int?
-  totalTokens        Int?
-  extractedFields    Json? // the extracted JSON data (sanitized, no PII beyond what was extracted)
-  fieldsExtracted    Int? // count of non-null fields
-  userCorrections    Json? // corrections applied by the user: { fieldName: { ocr: value, corrected: value } }
-  errorMessage       String?
-  errorType          String?
-  httpStatusCode     Int?
-  rawResponseSnippet String? // first 500 chars of response for debugging
-  promptText         String?      @db.Text // the full prompt sent to the LLM
-  metadata           Json? // any extra provider-specific info
-  reportedIssue      String? // user-reported issue message when extraction is mostly empty
-  issueStatus        String? // OPEN | IN_PROGRESS | RESOLVED | DISMISSED
-  issueResolution    String?
-  issueNotes         String?      @db.Text
-  issueSubmittedAt   DateTime?
-  issueHandledAt     DateTime?
+  id                   String       @id @default(cuid())
+  requestedAt          DateTime     @default(now())
+  userId               String?
+  userEmail            String?
+  simulationId         String?
+  type                 OcrLogType   @default(INVOICE_EXTRACTION)
+  provider             String
+  model                String
+  baseUrl              String?
+  fileName             String?
+  fileType             String?
+  fileSizeBytes        Int?
+  pageCount            Int?
+  status               String // SUCCESS | FAILED | ERROR | PARSE_ERROR
+  durationMs           Int?
+  promptTokens         Int?
+  completionTokens     Int?
+  totalTokens          Int?
+  extractedFields      Json? // the extracted JSON data (sanitized, no PII beyond what was extracted)
+  fieldsExtracted      Int? // count of non-null fields
+  userCorrections      Json? // corrections applied by the user: { fieldName: { ocr: value, corrected: value } }
+  errorMessage         String?
+  errorType            String?
+  httpStatusCode       Int?
+  rawResponseSnippet   String? // first 500 chars of response for debugging
+  promptText           String?      @db.Text // the full prompt sent to the LLM
+  metadata             Json? // any extra provider-specific info
+  reportedIssue        String? // user-reported issue message when extraction is mostly empty
+  issueStatus          String? // OPEN | IN_PROGRESS | RESOLVED | DISMISSED
+  issueResolution      String?
+  issueNotes           String?      @db.Text
+  issueSubmittedAt     DateTime?
+  issueHandledAt       DateTime?
   issueHandledByUserId String?
-  user               User?        @relation(fields: [userId], references: [id])
-  simulation         Simulation?  @relation(fields: [simulationId], references: [id], onDelete: SetNull)
-  ocrFiles           OcrLogFile[]
+  user                 User?        @relation(fields: [userId], references: [id])
+  simulation           Simulation?  @relation(fields: [simulationId], references: [id], onDelete: SetNull)
+  ocrFiles             OcrLogFile[]
 
   @@index([requestedAt])
   @@index([userId])
@@ -637,12 +676,13 @@ enum SimulationStatus {
 enum BaseValueScope {
   GLOBAL
   AGENCY
+  TLV
 }
 
 model AppErrorLog {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  isDeleted Boolean  @default(false)
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  isDeleted Boolean   @default(false)
   deletedAt DateTime?
 
   // Error details

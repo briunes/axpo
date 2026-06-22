@@ -33,6 +33,13 @@ export type PdfTemplateType =
     | "invoice"
     | "report";
 
+const SIMULATION_REFERENCE_VARIABLE = {
+    name: "SIMULATION_REFERENCE",
+    label: "Simulation Reference",
+    description: "Human-readable simulation reference number",
+    example: "00123/2026",
+};
+
 /** Common metadata variables shared across all price-history templates (injected by DownloadHistoryDialog — NOT in the DB). */
 const PRICE_HISTORY_COMMON_VARIABLES = [
     {
@@ -47,8 +54,8 @@ const PRICE_HISTORY_COMMON_VARIABLES = [
     },
     {
         name: "SIMULATION_REFERENCE",
-        label: "Simulation Reference",
-        description: "Human-readable simulation reference number",
+        label: SIMULATION_REFERENCE_VARIABLE.label,
+        description: SIMULATION_REFERENCE_VARIABLE.description,
     },
     {
         name: "CREATED_AT",
@@ -158,6 +165,22 @@ function getVariablesForTemplate(
     t: ReturnType<typeof useI18n>["t"],
 ): Array<{ name: string; label: string; description: string }> {
     const c = commodity || "ELECTRICITY";
+    const ensureSimulationReference = (
+        templateVariables: Array<{ name: string; label: string; description: string }>,
+    ) => {
+        if (templateVariables.some((variable) => variable.name === SIMULATION_REFERENCE_VARIABLE.name)) {
+            return templateVariables;
+        }
+
+        return [
+            {
+                name: SIMULATION_REFERENCE_VARIABLE.name,
+                label: SIMULATION_REFERENCE_VARIABLE.label,
+                description: SIMULATION_REFERENCE_VARIABLE.description,
+            },
+            ...templateVariables,
+        ];
+    };
     const translateBuiltInVariable = (variable: { name: string; label: string; description: string }) => {
         const label = t("pdfTemplateVariables", `${variable.name}_label`);
         const description = t("pdfTemplateVariables", `${variable.name}_description`);
@@ -184,24 +207,24 @@ function getVariablesForTemplate(
             }));
 
         // Prepend the Comparativa chart variable
-        return [
+        return ensureSimulationReference([
             {
                 name: "CHART_COMPARATIVA",
-                label: `📊 ${t("pdfTemplateVariables", "CHART_COMPARATIVA_label")}`,
+                label: t("pdfTemplateVariables", "CHART_COMPARATIVA_label"),
                 description: t("pdfTemplateVariables", "CHART_COMPARATIVA_description"),
             },
             ...dbVars,
-        ];
+        ]);
     }
 
     // For contract, invoice, report, etc. — show only generic (client/user/simulation) vars
-    return dbVariables
+    return ensureSimulationReference(dbVariables
         .filter((v) => !v.templateTypes && !v.commodity)
         .map((v) => ({
             name: v.key,
             label: v.label,
             description: v.description || "",
-        }));
+        })));
 }
 
 export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
@@ -419,6 +442,10 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
             const regex = new RegExp(`\\{\\{${variable.key}\\}\\}`, "g");
             sampleData = sampleData.replace(regex, variable.example || variable.label);
         });
+        sampleData = sampleData.replace(
+            /\{\{SIMULATION_REFERENCE\}\}/g,
+            SIMULATION_REFERENCE_VARIABLE.example,
+        );
 
         return sampleData;
     };
@@ -609,34 +636,28 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
 
                                         {/* Language Tabs */}
                                         <div style={{ display: "flex", gap: "4px", borderBottom: "1px solid var(--scheme-neutral-900)", marginBottom: "12px" }}>
-                                            {SUPPORTED_LANGUAGES.map((lang) => {
-                                                const hasContent = !!(translationsMap[lang.code]?.htmlContent);
-                                                return (
-                                                    <button
-                                                        key={lang.code}
-                                                        onClick={() => setActiveLanguage(lang.code)}
-                                                        style={{
-                                                            padding: "8px 16px",
-                                                            border: "none",
-                                                            borderBottom: activeLanguage === lang.code ? "2px solid var(--scheme-brand-600)" : "2px solid transparent",
-                                                            background: "none",
-                                                            cursor: "pointer",
-                                                            fontWeight: activeLanguage === lang.code ? 700 : 400,
-                                                            color: activeLanguage === lang.code ? "var(--scheme-brand-600)" : "var(--scheme-neutral-500)",
-                                                            fontSize: "14px",
-                                                            marginBottom: "-2px",
-                                                            display: "flex",
-                                                            alignItems: "center",
-                                                            gap: "6px",
-                                                        }}
-                                                    >
-                                                        {lang.flag} {lang.label}
-                                                        {hasContent && (
-                                                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
-                                                        )}
-                                                    </button>
-                                                );
-                                            })}
+                                            {SUPPORTED_LANGUAGES.map((lang) => (
+                                                <button
+                                                    key={lang.code}
+                                                    onClick={() => setActiveLanguage(lang.code)}
+                                                    style={{
+                                                        padding: "8px 16px",
+                                                        border: "none",
+                                                        borderBottom: activeLanguage === lang.code ? "2px solid var(--scheme-brand-600)" : "2px solid transparent",
+                                                        background: "none",
+                                                        cursor: "pointer",
+                                                        fontWeight: activeLanguage === lang.code ? 700 : 400,
+                                                        color: activeLanguage === lang.code ? "var(--scheme-brand-600)" : "var(--scheme-neutral-500)",
+                                                        fontSize: "14px",
+                                                        marginBottom: "-2px",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "6px",
+                                                    }}
+                                                >
+                                                    {lang.flag} {lang.label}
+                                                </button>
+                                            ))}
                                         </div>
 
                                         <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "16px" }}>
@@ -655,7 +676,7 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                                 // Editable sections as variables
                                                 ...Object.entries((formData.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
                                                     name: key,
-                                                    label: `📝 ${section.label || key}`,
+                                                    label: section.label || key,
                                                     description: section.description || t("pdfTemplateVariables", "editableSection"),
                                                 }))
                                             ]} />

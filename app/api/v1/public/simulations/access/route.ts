@@ -5,7 +5,7 @@ import { InvalidPINError, InvalidTokenError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import {
-  applyRateLimit,
+  applyRateLimitShared,
   getClientRateLimitKey,
 } from "@/application/middleware/rateLimit";
 import { PinService } from "@/application/services/pinService";
@@ -70,7 +70,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const body = await request.json();
   const payload = accessSchema.parse(body);
 
-  applyRateLimit(
+  await applyRateLimitShared(
     getClientRateLimitKey(ip, `public:${payload.token.slice(0, 8)}`),
     { maxRequests: 8, windowMs: 15 * 60 * 1000 },
   );

@@ -40,7 +40,6 @@ export async function GET(request: NextRequest) {
       duration: `${duration}ms`,
       result: {
         totalExpired: result.totalExpired,
-        expiredIds: result.expiredIds,
       },
       stats: {
         before: statsBefore,
@@ -98,7 +97,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "Simulation expiration job failed",
         timestamp: new Date().toISOString(),
       },
       { status: 500 },

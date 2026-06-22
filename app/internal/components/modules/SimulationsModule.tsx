@@ -28,6 +28,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArchiveIcon from "@mui/icons-material/Archive";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useEffect, useState, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -376,11 +377,28 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
 
         const hasDropdown = secondaryItems.length > 0;
 
+        const primaryIcon = isShared ? <VisibilityIcon fontSize="small" /> : <BoltIcon fontSize="small" />;
+
         return (
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
             <ButtonGroup variant={primaryVariant} size="small">
-              <Button onClick={primaryOnClick} sx={{ minWidth: '80px !important' }}>
-                {primaryLabel}
+              <Button
+                onClick={primaryOnClick}
+                startIcon={primaryIcon}
+                title={primaryLabel}
+                aria-label={primaryLabel}
+                sx={{
+                  minWidth: "108px !important",
+                  "@media (max-width: 1400px)": {
+                    minWidth: "36px !important",
+                    px: 0.75,
+                    "& .MuiButton-startIcon": { mr: 0, ml: 0 },
+                  },
+                }}
+              >
+                <Box component="span" sx={{ "@media (max-width: 1400px)": { display: "none" } }}>
+                  {primaryLabel}
+                </Box>
               </Button>
               {hasDropdown && (
                 <Button

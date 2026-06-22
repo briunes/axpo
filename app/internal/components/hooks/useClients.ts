@@ -14,6 +14,8 @@ import {
   type ListClientsParams,
 } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
+import { useRequestCachePolicy } from "./useRequestCachePolicy";
+import { normalizeQueryKeyParams } from "./queryKeys";
 
 export interface ClientsActions {
   clients: ClientItem[];
@@ -61,6 +63,7 @@ export function useClients(
   options?: UseClientsOptions,
 ): ClientsActions {
   const queryClient = useQueryClient();
+  const cachePolicy = useRequestCachePolicy("clients");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
@@ -152,22 +155,23 @@ export function useClients(
     minimal: minimal || undefined,
   };
 
-  // Create a stable cache key by serializing query params
-  const queryKeyString = JSON.stringify({
+  const queryKeyParams = normalizeQueryKeyParams({
     page,
     pageSize,
-    search: search || null,
+    search,
     orderBy: sortColumn,
     sortDir,
-    includeDeleted: showArchived || null,
-    agencyId: agencyId || null,
+    includeDeleted: showArchived,
+    agencyId,
+    minimal,
   });
 
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["clients", session?.token ?? "", queryKeyString],
+    queryKey: ["clients", session?.token ?? "", queryKeyParams],
     queryFn: () => listClients(session!.token, queryParams),
     enabled: !!session,
     placeholderData: keepPreviousData,
+    ...cachePolicy,
   });
 
   const clients = data?.items ?? [];

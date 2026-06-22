@@ -10,7 +10,6 @@ import {
 } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
-import { decryptSensitiveValue } from "@/application/lib/sensitiveData";
 
 const createSimulationSchema = z.object({
   ownerUserId: z.string().min(1).optional(),
@@ -123,10 +122,13 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   await assertPermission(auth, "section.simulations");
 
   const sp = request.nextUrl.searchParams;
-  const page = parseInt(sp.get("page") || "1", 10);
-  const pageSize = parseInt(sp.get("pageSize") || "25", 10);
+  const page = Math.max(1, parseInt(sp.get("page") || "1", 10));
+  const pageSize = Math.min(
+    100,
+    Math.max(1, parseInt(sp.get("pageSize") || "25", 10)),
+  );
   const rawOrderBy = sp.get("orderBy") || "updatedAt";
-  const sortDir = (sp.get("sortDir") || "desc") as "asc" | "desc";
+  const sortDir = sp.get("sortDir") === "asc" ? "asc" : "desc";
   const includeDeleted =
     sp.get("includeDeleted") === "true" && isElevatedRole(auth.role);
   const search = sp.get("search") || undefined;
@@ -244,7 +246,6 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         clientOpenedAt: true,
         sharedVia: true,
         publicToken: true,
-        pinSnapshot: true,
         invoiceFilePath: true,
         invoiceFileName: true,
         invoiceFileSize: true,
@@ -275,10 +276,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       payload?.gas?.clientData?.cups ||
       null;
 
-    const { versions, ...simWithoutVersions } = sim;
+    const { versions, publicToken, ...simWithoutVersions } = sim;
     return {
       ...simWithoutVersions,
-      pinSnapshot: decryptSensitiveValue(sim.pinSnapshot),
+      hasPublicToken: Boolean(publicToken),
       payloadJson: payload ?? null,
       cupsNumber,
     };

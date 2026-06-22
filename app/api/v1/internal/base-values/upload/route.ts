@@ -3,6 +3,13 @@ import { del, get } from "@vercel/blob";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { UserRole } from "@/domain/types";
+import {
+  buildAxpoImportProfileFromConfigs,
+  defaultExcelParserProductConfigs,
+  withMissingDefaultExcelParserProductConfigs,
+  type ExcelParserConfigScope,
+  type ExcelParserProductConfigItem,
+} from "@/domain/excelParserProductConfig";
 import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
@@ -11,7 +18,10 @@ import { assertRole } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { isSupabaseApiMode } from "@/infrastructure/database/databaseMode";
 import { AuditService } from "@/application/services/auditService";
-import { parseAxpoExcel } from "@/infrastructure/excel/axpo-parser";
+import {
+  inferAxpoImportScope,
+  parseAxpoExcel,
+} from "@/infrastructure/excel/axpo-parser";
 import {
   isBaseValueWorkbookFileName,
   isVercelBlobUrl,
@@ -22,6 +32,7 @@ const blobUploadSchema = z.object({
   blobUrl: z.string().url().refine(isVercelBlobUrl),
   fileName: z.string().min(1),
   replace: z.boolean().optional().default(false),
+  scopeType: z.enum(["GLOBAL", "TLV"]).optional(),
 });
 
 export const maxDuration = 60;
@@ -62,7 +73,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   assertRole(auth, [UserRole.ADMIN]);
 
   let fileName: string;
-  let replace: boolean;
+  const replace = false;
+  let scopeType: ExcelParserConfigScope | undefined;
   let buffer: Buffer;
   let temporaryBlobUrl: string | null = null;
 
@@ -74,7 +86,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       }
 
       fileName = payload.data.fileName;
-      replace = payload.data.replace;
+      scopeType = payload.data.scopeType;
       temporaryBlobUrl = payload.data.blobUrl;
 
       const blob = await get(temporaryBlobUrl, {
@@ -98,7 +110,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       }
 
       fileName = file.name;
-      replace = formData.get("replace") === "true";
+      const formScopeType = formData.get("scopeType");
+      scopeType =
+        formScopeType === "GLOBAL" || formScopeType === "TLV"
+          ? formScopeType
+          : undefined;
       if (file.size > MAX_BASE_VALUE_WORKBOOK_SIZE) {
         throw new ValidationError("Excel file exceeds the 50 MB upload limit");
       }
@@ -109,10 +125,19 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       throw new ValidationError("File must be an Excel file (.xlsm or .xlsx)");
     }
 
+    const resolvedScopeType = scopeType ?? inferAxpoImportScope(fileName);
+    const profile = buildAxpoImportProfileFromConfigs(
+      resolvedScopeType,
+      await loadParserConfig(resolvedScopeType),
+    );
+
     // Parse the Excel file
     let parsed;
     try {
-      parsed = parseAxpoExcel(buffer, fileName);
+      parsed = await parseAxpoExcel(buffer, fileName, {
+        scopeType: resolvedScopeType,
+        profile,
+      });
     } catch (err) {
       throw new ValidationError(
         `Failed to parse Excel file: ${err instanceof Error ? err.message : "Unknown error"}`,
@@ -257,3 +282,34 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     }
   }
 });
+
+async function loadParserConfig(
+  scopeType: ExcelParserConfigScope,
+): Promise<ExcelParserProductConfigItem[]> {
+  const rows = await prisma.excelParserProductConfig.findMany({
+    where: { scopeType },
+    orderBy: [{ sortOrder: "asc" }, { sourceLabel: "asc" }],
+  });
+
+  if (rows.length === 0) {
+    return defaultExcelParserProductConfigs(scopeType);
+  }
+
+  return withMissingDefaultExcelParserProductConfigs(
+    scopeType,
+    rows.map((row) => ({
+      id: row.id,
+      scopeType: row.scopeType as ExcelParserProductConfigItem["scopeType"],
+      sourceLabel: row.sourceLabel,
+      productKey: row.productKey,
+      displayName: row.displayName,
+      commodity: row.commodity as ExcelParserProductConfigItem["commodity"],
+      pricingType: row.pricingType as ExcelParserProductConfigItem["pricingType"],
+      enabled: row.enabled,
+      singlePeriod: row.singlePeriod,
+      eligibilityMin: row.eligibilityMin?.toNumber() ?? null,
+      eligibilityMax: row.eligibilityMax?.toNumber() ?? null,
+      sortOrder: row.sortOrder,
+    })),
+  );
+}

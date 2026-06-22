@@ -2,7 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
-import { Box, Stack, Tabs, Tab, Button } from "@mui/material";
+import {
+  Box,
+  FormControlLabel,
+  Stack,
+  Switch,
+  Tabs,
+  Tab,
+  Button,
+} from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
@@ -28,6 +36,7 @@ import {
   AuditLogsModal,
 } from "../../../components/ui";
 import { AgencyTariffConfig } from "../../../components/ui/AgencyTariffConfig";
+import { AgencyTlvProductConfig } from "../../../components/ui/AgencyTlvProductConfig";
 
 interface ValidationErrors {
   name?: string;
@@ -46,6 +55,7 @@ export default function EditAgencyPage({
 
   const [agency, setAgency] = useState<AgencyItem | null>(null);
   const [name, setName] = useState("");
+  const [isTlv, setIsTlv] = useState(false);
   const [address, setAddress] = useState<AddressData>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -60,6 +70,20 @@ export default function EditAgencyPage({
   const [tariffsDraft, setTariffsDraft] = useState<
     Array<{ tariffType: string; isEnabled: boolean }>
   >([]);
+  const [productsDraft, setProductsDraft] = useState<
+    Array<{
+      productKey: string;
+      commodity: "ELECTRICITY" | "GAS";
+      pricingType: "FIXED" | "INDEXED";
+      isEnabled: boolean;
+    }>
+  >([]);
+
+  useEffect(() => {
+    if (!isTlv && activeTab === 3) {
+      setActiveTab(0);
+    }
+  }, [activeTab, isTlv]);
 
   useEffect(() => {
     if (!session) return;
@@ -67,6 +91,7 @@ export default function EditAgencyPage({
       .then((a) => {
         setAgency(a);
         setName(a.name);
+        setIsTlv(Boolean(a.isTlv));
         setAddress({
           street: a.street || "",
           city: a.city || "",
@@ -117,12 +142,14 @@ export default function EditAgencyPage({
     try {
       await updateAgency(session.token, agency.id, {
         name: name.trim(),
+        isTlv,
         street: address.street?.trim() || undefined,
         city: address.city?.trim() || undefined,
         postalCode: address.postalCode?.trim() || undefined,
         province: address.province?.trim() || undefined,
         country: address.country?.trim() || undefined,
         tariffs: tariffsDraft.length > 0 ? tariffsDraft : undefined,
+        products: isTlv && productsDraft.length > 0 ? productsDraft : undefined,
       });
 
       showSuccess(t("agencyFormPage", "updated"));
@@ -219,7 +246,8 @@ export default function EditAgencyPage({
         >
           <Tab label={t("agencyFormPage", "tabDetails")} />
           <Tab label={t("agencyFormPage", "tabUsers")} />
-          <Tab label={t("agencyFormPage", "tabTariffs")} />
+          {isTlv && <Tab label={t("agencyFormPage", "tabTlvProducts")} />}
+          {false && <Tab label={t("agencyFormPage", "tabTariffs")} />}
         </Tabs>
       </Box>
       <Box sx={{ display: activeTab === 0 ? "block" : "none" }}>
@@ -233,20 +261,46 @@ export default function EditAgencyPage({
           onRenderActions={setFormActions}
         >
           <Stack spacing={2}>
-            <FormInput
-              label={t("agencyFormPage", "nameLabel")}
-              type="text"
-              value={name}
-              onChange={(e) => {
-                setName((e.target as HTMLInputElement).value);
-                clearError("name");
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) auto" },
+                alignItems: "flex-end",
+                columnGap: 3,
+                rowGap: 1.5,
               }}
-              autoFocus
-              required
-              disabled={isSubmitting}
-              error={!!validationErrors.name}
-              helperText={validationErrors.name}
-            />
+            >
+              <FormInput
+                label={t("agencyFormPage", "nameLabel")}
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setName((e.target as HTMLInputElement).value);
+                  clearError("name");
+                }}
+                autoFocus
+                required
+                disabled={isSubmitting}
+                error={!!validationErrors.name}
+                helperText={validationErrors.name}
+              />
+              <FormControlLabel
+                sx={{
+                  mb: validationErrors.name ? "24px" : 0,
+                  mr: 0,
+                  minHeight: "37px",
+                  whiteSpace: "nowrap",
+                }}
+                control={
+                  <Switch
+                    checked={isTlv}
+                    onChange={(event) => setIsTlv(event.target.checked)}
+                    disabled={isSubmitting}
+                  />
+                }
+                label={t("agencyFormPage", "tlvAgencyLabel")}
+              />
+            </Box>
             <AddressForm
               value={address}
               onChange={setAddress}
@@ -276,7 +330,7 @@ export default function EditAgencyPage({
           />
         </Box>
       )}
-      <Box sx={{ display: activeTab === 2 ? "block" : "none" }}>
+      <Box sx={{ display: activeTab === 3 ? "block" : "none" }}>
         <AgencyTariffConfig
           agencyId={agency.id}
           token={session.token}
@@ -287,6 +341,19 @@ export default function EditAgencyPage({
           }
         />
       </Box>
+      {isTlv && (
+        <Box sx={{ display: activeTab === 2 ? "block" : "none" }}>
+          <AgencyTlvProductConfig
+            agencyId={agency.id}
+            token={session.token}
+            hideSaveButton
+            onProductsChange={setProductsDraft}
+            onNotify={(msg, type) =>
+              type === "error" ? showError(msg) : showSuccess(msg)
+            }
+          />
+        </Box>
+      )}
       {session && (
         <AuditLogsModal
           open={showAuditLogsModal}

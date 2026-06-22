@@ -9,6 +9,17 @@ import {
 } from "@/lib/pdfToImage";
 import { resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
+const OCR_DEBUG_LOGS =
+  process.env.NODE_ENV !== "production" ||
+  process.env.OCR_DEBUG_LOGS === "true";
+
+const debugOcrLog = (...args: unknown[]) => {
+  if (OCR_DEBUG_LOGS) console.log(...args);
+};
+
+const ocrDebugSnippet = (value: string, length = 500): string | undefined =>
+  OCR_DEBUG_LOGS ? value.substring(0, length) : undefined;
+
 /**
  * LLM Prompts for Invoice Data Extraction
  *
@@ -716,13 +727,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const llmTemperature = aiConfig?.temperature ?? 0.1;
   const llmMaxTokens = aiConfig?.maxTokens ?? 2000;
 
-  console.log("=== INVOICE EXTRACTION REQUEST ===");
-  console.log("Provider:", llmProvider);
-  console.log("Model:", llmModelName);
-  console.log("Base URL:", llmBaseUrl);
-  console.log("Temperature:", llmTemperature);
-  console.log("Max Tokens:", llmMaxTokens);
-  console.log("===================================");
+  debugOcrLog("=== INVOICE EXTRACTION REQUEST ===");
+  debugOcrLog("Provider:", llmProvider);
+  debugOcrLog("Model:", llmModelName);
+  debugOcrLog("Temperature:", llmTemperature);
+  debugOcrLog("Max Tokens:", llmMaxTokens);
+  debugOcrLog("===================================");
 
   if (!llmBaseUrl || !llmModelName) {
     await saveOcrLog({
@@ -790,7 +800,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
               : null;
         if (chosenPrompt) {
           activePrompt = chosenPrompt;
-          console.log(
+          debugOcrLog(
             `Using provider-specific ${invoiceType ?? "generic"} prompt for: ${providerRecord.name}`,
           );
         }
@@ -938,8 +948,8 @@ ${
 If invoice text uses a different format, map it to the closest allowed value above.
 ---`;
 
-  console.log("File type:", file?.type);
-  console.log("File size:", file?.size, "bytes");
+  debugOcrLog("File type:", file?.type);
+  debugOcrLog("File size:", file?.size, "bytes");
 
   if (!file) {
     await saveOcrLog({
@@ -1044,7 +1054,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
           activePrompt =
             activePrompt +
             `\n\n---\nEXTRACTED PDF TEXT (use this if the images are unreadable):\n${rawText}\n---`;
-          console.log(
+          debugOcrLog(
             `[PDF text extraction] Appended ${rawText.length} chars of raw text to prompt`,
           );
         }
@@ -1140,16 +1150,16 @@ If invoice text uses a different format, map it to the closest allowed value abo
       // Build content with all images (PDFs are converted to images)
       const content: any[] = [{ type: "text", text: activePrompt }];
 
-      console.log(
+      debugOcrLog(
         `Processing ${imagesToProcess.length} image(s) for Ollama Cloud`,
       );
 
       for (const img of imagesToProcess) {
         const imageDataUrl = `data:${img.mimeType};base64,${img.base64}`;
-        console.log(
+        debugOcrLog(
           `Adding image: ${img.mimeType}, base64 length: ${img.base64.length} chars`,
         );
-        console.log(
+        debugOcrLog(
           `Image data URL preview: ${imageDataUrl.substring(0, 100)}...`,
         );
 
@@ -1168,7 +1178,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
         },
       ];
 
-      console.log(
+      debugOcrLog(
         "Request payload structure:",
         JSON.stringify(
           {
@@ -1320,13 +1330,11 @@ If invoice text uses a different format, map it to the closest allowed value abo
 
     if (!llmResponse.ok) {
       const errorText = await llmResponse.text();
-      console.error("=== LLM API ERROR ===");
-      console.error("Status:", llmResponse.status, llmResponse.statusText);
-      console.error("Provider:", llmProvider);
-      console.error("Model:", llmModelName);
-      console.error("Base URL:", llmBaseUrl);
-      console.error("Response:", errorText);
-      console.error("====================");
+      console.error("LLM API error", {
+        status: llmResponse.status,
+        provider: llmProvider,
+        model: llmModelName,
+      });
       await saveOcrLog({
         status: "ERROR",
         durationMs: Date.now() - requestStartTime,
@@ -1341,13 +1349,12 @@ If invoice text uses a different format, map it to the closest allowed value abo
         errorMessage: `LLM API error: ${llmResponse.status} ${llmResponse.statusText}`,
         errorType: "LLM_API_ERROR",
         httpStatusCode: llmResponse.status,
-        rawResponseSnippet: errorText.substring(0, 500),
+        rawResponseSnippet: ocrDebugSnippet(errorText),
       });
       return NextResponse.json(
         {
           success: false,
           message: `LLM API error: ${llmResponse.status} ${llmResponse.statusText}`,
-          details: errorText.substring(0, 500), // Include first 500 chars of error
           provider: llmProvider,
           model: llmModelName,
         },
@@ -1400,14 +1407,14 @@ If invoice text uses a different format, map it to the closest allowed value abo
           errorMessage: "Failed to parse extracted data from LLM response",
           errorType: "JSON_PARSE_ERROR",
           httpStatusCode: 500,
-          rawResponseSnippet: extractedText,
+          rawResponseSnippet: ocrDebugSnippet(extractedText, 1000),
           metadata: { usage: llmData.usage ?? llmData.usageMetadata },
         });
         return NextResponse.json(
           {
             success: false,
             message: "Failed to parse extracted data from LLM response",
-            debug: extractedText,
+            ...(OCR_DEBUG_LOGS ? { debug: extractedText } : {}),
             ocrLogId: createdParseLog?.id ?? null,
           },
           { status: 500 },
@@ -1428,14 +1435,14 @@ If invoice text uses a different format, map it to the closest allowed value abo
         errorMessage: "No valid JSON data found in LLM response",
         errorType: "NO_JSON_FOUND",
         httpStatusCode: 500,
-        rawResponseSnippet: extractedText,
+        rawResponseSnippet: ocrDebugSnippet(extractedText, 1000),
         metadata: { usage: llmData.usage ?? llmData.usageMetadata },
       });
       return NextResponse.json(
         {
           success: false,
           message: "No valid JSON data found in LLM response",
-          debug: extractedText,
+          ...(OCR_DEBUG_LOGS ? { debug: extractedText } : {}),
           ocrLogId: createdParseLog?.id ?? null,
         },
         { status: 500 },
@@ -1469,7 +1476,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
         const annual = extractedData.consumoAnual;
         // If scaled sum is within 5% of annual, the LLM misread thousands separators as decimals
         if (Math.abs(sumScaled - annual) / annual < 0.05) {
-          console.log(
+          debugOcrLog(
             `[OCR Fix] Detected European thousand-separator misparse. Scaling consumo values ×1000 (sum=${sumRaw} → ${sumScaled}, consumoAnual=${annual})`,
           );
           for (const k of consumoPeriods) {
@@ -1555,7 +1562,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
         (opt) => Math.abs(opt - normalizedValue) < 0.000001,
       );
       if (exactMatch !== undefined) {
-        console.log(
+        debugOcrLog(
           `[Tax Validation] Field "${fieldName}": OCR value ${ocrValue} matches configured option ${(exactMatch * 100).toFixed(5)}% exactly`,
         );
         return exactMatch;
@@ -1576,7 +1583,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       }
 
       if (closestMatch !== undefined && closestDistance <= toleranceThreshold) {
-        console.log(
+        debugOcrLog(
           `[Tax Validation] Field "${fieldName}": OCR value ${ocrValue} (${(normalizedValue * 100).toFixed(5)}%) corrected to closest configured option ${(closestMatch * 100).toFixed(5)}% (distance: ${(closestDistance * 100).toFixed(5)}%)`,
         );
         return closestMatch;
@@ -1611,7 +1618,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
         (opt) => Math.abs(opt - numericValue) < 0.000001,
       );
       if (exactMatch !== undefined) {
-        console.log(
+        debugOcrLog(
           `[Tax Validation] Field "${fieldName}": OCR value ${ocrValue} matches configured unit rate ${exactMatch.toFixed(5)} exactly`,
         );
         return exactMatch;
@@ -1632,7 +1639,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       }
 
       if (closestMatch !== undefined && closestDistance <= toleranceThreshold) {
-        console.log(
+        debugOcrLog(
           `[Tax Validation] Field "${fieldName}": OCR value ${ocrValue} corrected to closest configured unit rate ${closestMatch.toFixed(5)} (distance: ${closestDistance.toFixed(5)})`,
         );
         return closestMatch;
@@ -1768,7 +1775,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       extractedFields: extractedData,
       fieldsExtracted,
       httpStatusCode: 200,
-      rawResponseSnippet: extractedText,
+      rawResponseSnippet: ocrDebugSnippet(extractedText, 1000),
       promptText: activePrompt,
       metadata: {
         temperature: llmTemperature,
@@ -1787,14 +1794,11 @@ If invoice text uses a different format, map it to the closest allowed value abo
       ocrLogId: createdLog?.id ?? null,
     });
   } catch (error: any) {
-    console.error("=== INVOICE EXTRACTION ERROR ===");
-    console.error("Error type:", error.constructor.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
-    console.error("Provider:", llmProvider);
-    console.error("Model:", llmModelName);
-    console.error("Base URL:", llmBaseUrl);
-    console.error("================================");
+    console.error("Invoice extraction error", {
+      errorType: error.constructor?.name,
+      provider: llmProvider,
+      model: llmModelName,
+    });
     const createdErrorLog = await saveOcrLog({
       status: "ERROR",
       durationMs: Date.now() - requestStartTime,
@@ -1810,7 +1814,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
     return NextResponse.json(
       {
         success: false,
-        message: error.message || "Failed to extract invoice data",
+        message: "Failed to extract invoice data",
         errorType: error.constructor.name,
         provider: llmProvider,
         model: llmModelName,

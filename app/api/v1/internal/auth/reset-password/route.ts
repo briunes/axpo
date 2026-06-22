@@ -4,7 +4,7 @@ import { ResponseHandler } from "@/application/middleware/response";
 import { AuthService } from "@/application/services/authService";
 import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
 import {
-  applyRateLimit,
+  applyRateLimitShared,
   getClientRateLimitKey,
 } from "@/application/middleware/rateLimit";
 
@@ -43,7 +43,7 @@ const resetPasswordSchema = z.object({
  */
 export const POST = withErrorHandler(async (request) => {
   const sessionContext = getRequestSessionContext(request);
-  applyRateLimit(
+  await applyRateLimitShared(
     getClientRateLimitKey(sessionContext.ipAddress, "reset-password"),
     { maxRequests: 10, windowMs: 60 * 60 * 1000 },
   );

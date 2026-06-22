@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Stack } from "@mui/material";
+import { Checkbox, FormControlLabel, Stack } from "@mui/material";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { createAgency } from "../../lib/internalApi";
@@ -20,6 +20,7 @@ export default function NewAgencyPage() {
     const { t } = useI18n();
 
     const [name, setName] = useState("");
+    const [isTlv, setIsTlv] = useState(false);
     const [address, setAddress] = useState<AddressData>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -55,6 +56,7 @@ export default function NewAgencyPage() {
         try {
             await createAgency(session.token, {
                 name: name.trim(),
+                isTlv,
                 street: address.street?.trim() || undefined,
                 city: address.city?.trim() || undefined,
                 postalCode: address.postalCode?.trim() || undefined,
@@ -103,6 +105,16 @@ export default function NewAgencyPage() {
                         disabled={isSubmitting}
                         error={!!validationErrors.name}
                         helperText={validationErrors.name}
+                    />
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={isTlv}
+                                onChange={(event) => setIsTlv(event.target.checked)}
+                                disabled={isSubmitting}
+                            />
+                        }
+                        label={t("agencyFormPage", "tlvAgencyLabel")}
                     />
                     <AddressForm value={address} onChange={setAddress} disabled={isSubmitting} />
                 </Stack>

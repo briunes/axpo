@@ -1,7 +1,7 @@
 "use client";
 
 import { DataGrid, useGridApiRef, type GridColDef, type GridSortModel } from "@mui/x-data-grid";
-import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl, Checkbox, Button, Tooltip, useTheme, Popover, FormControlLabel, Divider, Typography } from "@mui/material";
+import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl, Checkbox, Button, Tooltip, useTheme, Popover, FormControlLabel, Divider, Typography, Grow } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
@@ -364,33 +364,42 @@ export function DataTable<T extends { id: string }>({
       } as GridColDef<T>);
     }
 
-    cols.push(...columns.filter((col) => !hiddenCols.has(col.key)).map((col): GridColDef<T> => ({
-      field: col.key,
-      headerName: col.label.toUpperCase(),
-      sortable: col.sortable ?? false,
-      width: col.width ? parseInt(col.width) : undefined,
-      flex: !col.width ? 1 : undefined,
-      renderCell: (params) => {
-        // Show skeleton when loading
-        if (loading && (params.row as any).__skeleton) {
-          return <Skeleton variant="rounded" width="100%" height={'50%'} />;
-        }
-        const content = col.renderCell(params.row);
-        if (col.copyable) {
-          // Use explicit copyText extractor when provided, otherwise try params.value
-          // (params.value reflects row[col.key] which may be an object or undefined)
-          let cellValue: string;
-          if (col.copyText) {
-            cellValue = col.copyText(params.row);
-          } else {
-            const raw = params.value;
-            cellValue = (raw != null && typeof raw !== 'object') ? String(raw) : '';
+    columns.filter((col) => !hiddenCols.has(col.key)).forEach((col) => {
+      const isActionsColumn = col.key === "actions";
+
+      cols.push({
+        field: col.key,
+        headerName: col.label.toUpperCase(),
+        sortable: col.sortable ?? false,
+        width: col.width ? parseInt(col.width) : isActionsColumn ? 148 : undefined,
+        minWidth: isActionsColumn ? 120 : undefined,
+        maxWidth: isActionsColumn ? 168 : undefined,
+        flex: !col.width && !isActionsColumn ? 1 : undefined,
+        align: isActionsColumn ? "right" : undefined,
+        headerAlign: isActionsColumn ? "right" : undefined,
+        cellClassName: isActionsColumn ? "dt-grid-cell-actions" : undefined,
+        renderCell: (params) => {
+          // Show skeleton when loading
+          if (loading && (params.row as any).__skeleton) {
+            return <Skeleton variant="rounded" width="100%" height={'50%'} />;
           }
-          return <CopyableCell text={cellValue}>{content}</CopyableCell>;
-        }
-        return content;
-      },
-    })));
+          const content = col.renderCell(params.row);
+          if (col.copyable) {
+            // Use explicit copyText extractor when provided, otherwise try params.value
+            // (params.value reflects row[col.key] which may be an object or undefined)
+            let cellValue: string;
+            if (col.copyText) {
+              cellValue = col.copyText(params.row);
+            } else {
+              const raw = params.value;
+              cellValue = (raw != null && typeof raw !== 'object') ? String(raw) : '';
+            }
+            return <CopyableCell text={cellValue}>{content}</CopyableCell>;
+          }
+          return content;
+        },
+      } as GridColDef<T>);
+    });
 
     // Add actions column if rowActions provided
     if (rowActions) {
@@ -666,103 +675,110 @@ export function DataTable<T extends { id: string }>({
         </Button>
       </Box>
       {/* MUI DataGrid */}
-      <Box sx={{ flex: 1, minHeight: 0, width: '100%', backgroundColor: 'transparent', display: 'flex' }}>
-        <DataGrid
-          apiRef={apiRef}
-          rows={displayRows}
-          columns={muiColumns}
-          loading={false}
-          pageSizeOptions={PAGE_SIZE_OPTIONS}
-          paginationMode="server"
-          paginationModel={paginationModel}
-          rowCount={pagination?.total || 0}
-          sortModel={sortModel}
-          onSortModelChange={handleSortModelChange}
-          disableRowSelectionOnClick
-          disableColumnMenu
-          hideFooter
-          getRowClassName={getRowClassName}
-          sx={{
-            height: '100%',
-            border: '0px solid rgba(0, 0, 0, 0.12)',
-            borderRadius: '8px',
-            backgroundColor: 'var(--scheme-neutral-1200)',
-            color: 'var(--scheme-neutral-100)',
-            '& .MuiDataGrid-main': {
-              border: 'none',
-            },
-            '& .MuiDataGrid-virtualScroller': {
+      <Grow in={true}>
+        <Box sx={{ flex: 1, minHeight: 0, width: '100%', backgroundColor: 'transparent', display: 'flex' }}>
+          <DataGrid
+            apiRef={apiRef}
+            rows={displayRows}
+            columns={muiColumns}
+            loading={false}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            paginationMode="server"
+            paginationModel={paginationModel}
+            rowCount={pagination?.total || 0}
+            sortModel={sortModel}
+            onSortModelChange={handleSortModelChange}
+            disableRowSelectionOnClick
+            disableColumnMenu
+            hideFooter
+            getRowClassName={getRowClassName}
+            sx={{
+              height: '100%',
+              border: '0px solid rgba(0, 0, 0, 0.12)',
+              borderRadius: '8px',
               backgroundColor: 'var(--scheme-neutral-1200)',
-            },
-            '& .MuiDataGrid-cell': {
-              display: 'flex',
-              alignItems: 'center',
-              minHeight: '52px !important',
-              maxHeight: '52px !important',
-              py: 0,
-              borderBottom: '1px solid var(--scheme-neutral-900)',
-              borderRight: 'none',
-              outline: 'none !important',
-              '&:focus, &:focus-within': {
+              color: 'var(--scheme-neutral-100)',
+              '& .MuiDataGrid-main': {
+                border: 'none',
+              },
+              '& .MuiDataGrid-virtualScroller': {
+                backgroundColor: 'var(--scheme-neutral-1200)',
+              },
+              '& .MuiDataGrid-cell': {
+                display: 'flex',
+                alignItems: 'center',
+                minHeight: '52px !important',
+                maxHeight: '52px !important',
+                py: 0,
+                borderBottom: '1px solid var(--scheme-neutral-900)',
+                borderRight: 'none',
                 outline: 'none !important',
+                '&:focus, &:focus-within': {
+                  outline: 'none !important',
+                },
+                '&.MuiDataGrid-cell--selected': {
+                  outline: 'none !important',
+                },
               },
-              '&.MuiDataGrid-cell--selected': {
-                outline: 'none !important',
+              '& .MuiDataGrid-cell:hover': {
+                backgroundColor: 'rgba(255, 50, 84, 0.08)',
+                borderRadius: '4px',
+                cursor: 'default',
               },
-            },
-            '& .MuiDataGrid-cell:hover': {
-              backgroundColor: 'rgba(255, 50, 84, 0.08)',
-              borderRadius: '4px',
-              cursor: 'default',
-            },
-            '& .MuiDataGrid-row': {
-              backgroundColor: 'var(--scheme-neutral-1200)',
-              borderBottom: '0px solid rgba(0, 0, 0, 0.08)',
-              '&:last-child': {
-                borderBottom: 'none',
+              '& .MuiDataGrid-row': {
+                backgroundColor: 'var(--scheme-neutral-1200)',
+                borderBottom: '0px solid rgba(0, 0, 0, 0.08)',
+                '&:last-child': {
+                  borderBottom: 'none',
+                },
+                '&:hover': {
+                  backgroundColor: tableHoverBackground,
+                },
+                '&.dt-row-selected': {
+                  backgroundColor: tableSelectedBackground,
+                },
+                '&.dt-row-selected:hover': {
+                  backgroundColor: tableSelectedHoverBackground,
+                },
               },
-              '&:hover': {
-                backgroundColor: tableHoverBackground,
+              '& .MuiDataGrid-columnHeaders': {
+                borderBottom: '0px solid',
+                backgroundColor: tableHeaderBackground,
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: 'var(--scheme-neutral-500)',
               },
-              '&.dt-row-selected': {
-                backgroundColor: tableSelectedBackground,
+              '& .MuiDataGrid-columnHeader': {
+                borderRight: 'none',
               },
-              '&.dt-row-selected:hover': {
-                backgroundColor: tableSelectedHoverBackground,
+              '& .MuiDataGrid-columnHeaderTitle': {
+                fontWeight: 600,
               },
-            },
-            '& .MuiDataGrid-columnHeaders': {
-              borderBottom: '0px solid',
-              backgroundColor: tableHeaderBackground,
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: 'var(--scheme-neutral-500)',
-            },
-            '& .MuiDataGrid-columnHeader': {
-              borderRight: 'none',
-            },
-            '& .MuiDataGrid-columnHeaderTitle': {
-              fontWeight: 600,
-            },
-            '& .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller': {
-              backgroundColor: 'var(--scheme-neutral-1200)',
-            },
-            '& .MuiDataGrid-columnSeparator': {
-              display: 'flex',
-              opacity: 0,
-              transition: 'opacity 0.15s',
-              color: 'var(--scheme-neutral-700)',
-            },
-            '& .MuiDataGrid-columnHeader:hover .MuiDataGrid-columnSeparator': {
-              opacity: 1,
-            },
-            '& .MuiDataGrid-columnSeparator--resizing': {
-              opacity: 1,
-              color: 'var(--scheme-primary, #1976d2)',
-            },
-          }}
-        />
-      </Box>
+              '& .dt-grid-cell-actions': {
+                overflow: 'visible',
+                justifyContent: 'flex-end',
+                px: '8px',
+              },
+              '& .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller': {
+                backgroundColor: 'var(--scheme-neutral-1200)',
+              },
+              '& .MuiDataGrid-columnSeparator': {
+                display: 'flex',
+                opacity: 0,
+                transition: 'opacity 0.15s',
+                color: 'var(--scheme-neutral-700)',
+              },
+              '& .MuiDataGrid-columnHeader:hover .MuiDataGrid-columnSeparator': {
+                opacity: 1,
+              },
+              '& .MuiDataGrid-columnSeparator--resizing': {
+                opacity: 1,
+                color: 'var(--scheme-primary, #1976d2)',
+              },
+            }}
+          />
+        </Box>
+      </Grow>
 
       {/* Custom pagination footer */}
       {pagination && (

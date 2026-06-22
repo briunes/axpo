@@ -23,6 +23,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import { FormSelect } from "../ui/FormSelect";
 import { DateRangePicker } from "../ui/DateRangePicker";
+import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
 
@@ -77,6 +78,7 @@ function TriggerBadge({ trigger }: { trigger?: string }) {
 }
 
 export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
+    const cachePolicy = useRequestCachePolicy("logs");
     const { t } = useI18n();
     const { preferences } = useUserPreferences();
     const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
@@ -174,7 +176,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             };
         },
         placeholderData: keepPreviousData,
-        staleTime: 60_000,
+        ...cachePolicy,
     });
 
     const {
@@ -193,7 +195,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             return (result.data || result) as EmailLog;
         },
         enabled: !!selectedLogId,
-        staleTime: 300_000,
+        ...cachePolicy,
     });
 
     useEffect(() => {

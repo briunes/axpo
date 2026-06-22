@@ -113,6 +113,7 @@ function latestDataMonth(items: { key: string }[]): Date | undefined {
 async function loadCommodityBaseValueItems(
   commodity: "ELEC" | "GAS",
   agencyId?: string | null,
+  isTlvAgency = false,
 ): Promise<{ key: string; valueNumeric: any }[]> {
   const matchingItems = await prisma.baseValueItem.findMany({
     where: { key: { startsWith: `${commodity}:` } },
@@ -129,7 +130,7 @@ async function loadCommodityBaseValueItems(
       id: { in: setIds },
       isDeleted: false,
       OR: [
-        { scopeType: "GLOBAL" },
+        { scopeType: isTlvAgency ? "TLV" : "GLOBAL" },
         ...(agencyId ? [{ agencyId }] : []),
       ],
     },
@@ -186,6 +187,11 @@ export async function GET(
     const { id } = await params;
 
     const simulation = await SimulationService.assertSimulationAccess(auth, id);
+    const agency = await prisma.agency.findUnique({
+      where: { id: simulation.agencyId },
+      select: { isTlv: true },
+    });
+    const defaultScopeType = agency?.isTlv ? "TLV" : "GLOBAL";
 
     // Get latest simulation version to find base value set and payload
     const latestVersion = await prisma.simulationVersion.findFirst({
@@ -220,14 +226,14 @@ export async function GET(
       baseValueItems = bvSet?.items ?? [];
     }
 
-    // Fall back to active global base value set if nothing was found
+    // Fall back to active base value set for the simulation agency scope.
     if (baseValueItems.length === 0) {
-      const globalSet = await prisma.baseValueSet.findFirst({
-        where: { isActive: true, isDeleted: false, scopeType: "GLOBAL" },
+      const defaultSet = await prisma.baseValueSet.findFirst({
+        where: { isActive: true, isDeleted: false, scopeType: defaultScopeType },
         include: { items: { select: { key: true, valueNumeric: true } } },
         orderBy: { updatedAt: "desc" },
       });
-      baseValueItems = globalSet?.items ?? [];
+      baseValueItems = defaultSet?.items ?? [];
     }
 
     // Older simulation versions can point to a base-value set containing only
@@ -249,7 +255,8 @@ export async function GET(
     if (!hasCommodityHistory(baseValueItems)) {
       const commodityItems = await loadCommodityBaseValueItems(
         isGas ? "GAS" : "ELEC",
-        auth.agencyId,
+        simulation.agencyId,
+        Boolean(agency?.isTlv),
       );
       if (hasCommodityHistory(commodityItems)) {
         baseValueItems = commodityItems;

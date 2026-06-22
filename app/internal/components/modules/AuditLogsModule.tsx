@@ -232,8 +232,7 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
     useLayoutEffect(() => {
         onActionButtons?.(
             <>
-                <OnceButton variant="secondary" size="s" onClick={handleExportCsv} label={t("auditLogsModule", "exportCsv")} disabled={filteredLogs.length === 0} />
-                <OnceButton variant="secondary" size="s" onClick={() => refresh()} label={t("actions", "refresh")} loading={loading} />
+              
             </>
         );
         return () => onActionButtons?.(null);

@@ -26,6 +26,7 @@ import { es } from "date-fns/locale";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import SearchIcon from "@mui/icons-material/Search";
+import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
 import ClearIcon from "@mui/icons-material/Clear";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import type { SessionState } from "../../lib/authSession";
@@ -67,6 +68,7 @@ export interface AppErrorLogsPanelProps {
 }
 
 export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps) {
+    const cachePolicy = useRequestCachePolicy("logs");
     const theme = useTheme();
     const { locale, t } = useI18n();
     const { preferences } = useUserPreferences();
@@ -142,7 +144,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
             };
         },
         placeholderData: keepPreviousData,
-        staleTime: 30_000,
+        ...cachePolicy,
     });
 
     useEffect(() => {
@@ -303,7 +305,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         </Typography>
                     </Box>
                 ) : (
-                    <Typography variant="caption" sx={{ color: "text.disabled" }}>—</Typography>
+                    <Typography variant="caption" sx={{ color: "text.disabled" }}>-</Typography>
                 ),
         },
         {
@@ -319,7 +321,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         {log.pagePath.length > 40 ? `...${log.pagePath.slice(-40)}` : log.pagePath}
                     </Typography>
                 ) : (
-                    <Typography variant="caption" sx={{ color: "text.disabled" }}>—</Typography>
+                    <Typography variant="caption" sx={{ color: "text.disabled" }}>-</Typography>
                 ),
         },
         {
@@ -331,7 +333,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         {log.user.fullName}
                     </Typography>
                 ) : (
-                    <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 11 }}>—</Typography>
+                    <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 11 }}>-</Typography>
                 ),
         },
     ];
@@ -368,7 +370,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                                 </IconButton>
                             </Tooltip>
                         ) : (
-                            <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 11 }}>—</Typography>
+                            <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 11 }}>-</Typography>
                         )}
 
                         <Tooltip title={t("logs", "deleteAppError")}>

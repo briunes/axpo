@@ -47,8 +47,12 @@ describe("convertPdfToImages", () => {
       OCR_MAX_PDF_PAGES,
     );
 
-    expect(images).toHaveLength(3);
-    expect(images.map((image) => image.pageNumber)).toEqual([1, 2, 3]);
+    const expectedPageCount = Math.min(4, OCR_MAX_PDF_PAGES);
+
+    expect(images).toHaveLength(expectedPageCount);
+    expect(images.map((image) => image.pageNumber)).toEqual(
+      Array.from({ length: expectedPageCount }, (_, index) => index + 1),
+    );
     expect(images).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -57,12 +61,12 @@ describe("convertPdfToImages", () => {
         }),
       ]),
     );
-    expect(encodeMock).toHaveBeenCalledTimes(3);
+    expect(encodeMock).toHaveBeenCalledTimes(expectedPageCount);
     expect(encodeMock).toHaveBeenCalledWith(
       "webp",
       OCR_PDF_IMAGE_QUALITY,
     );
-    expect(fillRectMock).toHaveBeenCalledTimes(3);
+    expect(fillRectMock).toHaveBeenCalledTimes(expectedPageCount);
   });
 
   it("can render every page without applying the invoice page cap", async () => {

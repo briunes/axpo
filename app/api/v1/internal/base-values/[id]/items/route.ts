@@ -56,12 +56,19 @@ export const GET = withErrorHandler(
       throw new NotFoundError("BaseValueSet", id);
     }
 
-    if (
-      auth.role === UserRole.AGENT &&
-      set.agencyId !== auth.agencyId &&
-      set.scopeType !== "GLOBAL"
-    ) {
-      throw new NotFoundError("BaseValueSet", id);
+    if (auth.role === UserRole.AGENT && set.agencyId !== auth.agencyId) {
+      const authAgency =
+        set.scopeType === "TLV"
+          ? await prisma.agency.findUnique({
+              where: { id: auth.agencyId },
+              select: { isTlv: true },
+            })
+          : null;
+      const canAccessSharedScope =
+        set.scopeType === "GLOBAL" || (set.scopeType === "TLV" && authAgency?.isTlv);
+      if (!canAccessSharedScope) {
+        throw new NotFoundError("BaseValueSet", id);
+      }
     }
 
     const items = await prisma.baseValueItem.findMany({

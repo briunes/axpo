@@ -15,7 +15,7 @@ import { DateInput } from "../ui/DateInput";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { FormInput } from "../ui/FormInput";
 import { CurrencyInput } from "../ui/CurrencyInput";
-import { Autocomplete, TextField, Collapse, Divider, Box, Button } from "@mui/material";
+import { Autocomplete, TextField, Collapse, Divider, Box, Button, Tabs, Tab } from "@mui/material";
 import { Country } from "country-state-city";
 import type {
     SimulationPayload,
@@ -250,7 +250,7 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
     return {
         clientData: {
             cups: s.cups || undefined,
-            consumoAnual: s.consumoAnual || undefined,
+            consumoAnual: s.consumoAnual,
             nombreTitular: s.nombreTitular || undefined,
             personaContacto: s.personaContacto || undefined,
             comercial: s.comercial || undefined,
@@ -1646,45 +1646,48 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     })();
 
     const resultCount = (results?.electricity?.length ?? 0) + (results?.gas?.length ?? 0);
-    const isOfferLocked = !!selectedOffer;
 
-    useEffect(() => {
-        if (isOfferLocked && activeTab !== "results") {
-            setActiveTab("results");
+    const handleTabClick = useCallback(async (tab: "inputs" | "results") => {
+        if (tab === "inputs" && selectedOffer && !readOnly) {
+            try {
+                await handleClearOffer();
+            } catch {
+                return;
+            }
         }
-    }, [isOfferLocked, activeTab]);
+        setActiveTab(tab);
+    }, [selectedOffer, readOnly, handleClearOffer]);
 
     return (
         <div>
-            {/* Tabs */}
-            <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--scheme-neutral-900)", marginBottom: 28 }}>
-                {[
-                    ...(!isOfferLocked ? [{ key: "inputs" as const, label: t("simulationForm", "tabInputs") }] : []),
-                    { key: "results" as const, label: results ? t("simulationForm", "tabResultsWithCount", { count: resultCount }) : t("simulationForm", "tabResults") },
-                ].map((tab) => (
-                    <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setActiveTab(tab.key)}
-                        style={{
-                            padding: "10px 20px",
+            <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3.5 }}>
+                <Tabs
+                    value={activeTab}
+                    onChange={(_, value: "inputs" | "results") => void handleTabClick(value)}
+                    textColor="primary"
+                    indicatorColor="primary"
+                    sx={{
+                        minHeight: 40,
+                        "& .MuiTab-root": {
+                            minHeight: 40,
+                            px: 2.5,
+                            py: 1,
+                            textTransform: "none",
                             fontSize: 14,
-                            fontWeight: activeTab === tab.key ? 600 : 400,
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            color: activeTab === tab.key ? "var(--scheme-neutral-100)" : "var(--scheme-neutral-400)",
-                            borderBottom: activeTab === tab.key ? "2px solid var(--scheme-brand-600, #4ade80)" : "2px solid transparent",
-                            marginBottom: -1,
-                        }}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+                            fontWeight: 600,
+                        },
+                    }}
+                >
+                    <Tab value="inputs" label={t("simulationForm", "tabInputs")} />
+                    <Tab
+                        value="results"
+                        label={results ? t("simulationForm", "tabResultsWithCount", { count: resultCount }) : t("simulationForm", "tabResults")}
+                    />
+                </Tabs>
+            </Box>
 
             {/* Inputs tab */}
-            {!isOfferLocked && activeTab === "inputs" && (
+            {activeTab === "inputs" && (
                 <div>
                     {/* OCR disclaimer */}
                     {isOcrFilled && (
@@ -1925,11 +1928,9 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                             <div style={{ marginBottom: 12 }}><BoltIcon sx={{ fontSize: 48, color: "#f59e0b" }} /></div>
                             <div style={{ fontSize: 15, marginBottom: 8 }}>{t("simulationForm", "noResultsYet")}</div>
                             <div style={{ fontSize: 13 }}>{t("simulationForm", "noResultsInstructions")}</div>
-                            {!isOfferLocked && (
-                                <button type="button" className="sp-btn-primary" onClick={() => setActiveTab("inputs")} style={{ marginTop: 20 }}>
-                                    {t("simulationForm", "goToInputs")}
-                                </button>
-                            )}
+                            <Button variant="contained" onClick={() => void handleTabClick("inputs")} sx={{ mt: 2.5 }}>
+                                {t("simulationForm", "goToInputs")}
+                            </Button>
                         </div>
                     )}
                 </div>

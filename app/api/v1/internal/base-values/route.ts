@@ -61,8 +61,21 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const orderBy = searchParams.get("orderBy") ?? "updatedAt";
   const sortDir =
     (searchParams.get("sortDir") ?? "desc") === "asc" ? "asc" : "desc";
+  const requestedScopeType = z
+    .nativeEnum(BaseValueScope)
+    .safeParse(searchParams.get("scopeType")).data;
+  const requestedStatus = z
+    .enum(["ACTIVE", "DRAFT", "ARCHIVED"])
+    .safeParse(searchParams.get("status")).data;
+  const requestedProduction = z
+    .enum(["production", "standard"])
+    .safeParse(searchParams.get("production")).data;
+  const forAgencyId = searchParams.get("forAgencyId") ?? undefined;
+  const canViewArchived = isElevatedRole(auth.role);
   const showArchived =
-    searchParams.get("showArchived") === "true" && isElevatedRole(auth.role);
+    (searchParams.get("showArchived") === "true" ||
+      requestedStatus === "ARCHIVED") &&
+    canViewArchived;
 
   const allowedOrderBy: Record<string, true> = {
     name: true,
@@ -76,12 +89,61 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ? { name: { contains: search, mode: "insensitive" as const } }
     : {};
 
-  const where = isElevatedRole(auth.role)
-    ? { ...(showArchived ? {} : { isDeleted: false }), ...searchFilter }
+  const agencyIdForScope = isElevatedRole(auth.role)
+    ? forAgencyId
+    : auth.agencyId;
+
+  const scopedAgency = agencyIdForScope
+    ? await prisma.agency.findUnique({
+        where: { id: agencyIdForScope },
+        select: { isTlv: true },
+      })
+    : null;
+
+  const statusFilter =
+    requestedStatus === "ACTIVE"
+      ? { isDeleted: false, isActive: true }
+      : requestedStatus === "DRAFT"
+        ? { isDeleted: false, isActive: false }
+        : requestedStatus === "ARCHIVED" && canViewArchived
+          ? { isDeleted: true }
+          : showArchived
+            ? {}
+            : { isDeleted: false };
+
+  const productionFilter =
+    requestedProduction === "production"
+      ? { isProduction: true }
+      : requestedProduction === "standard"
+        ? { isProduction: false }
+        : {};
+
+  const commonFilters = {
+    ...statusFilter,
+    ...productionFilter,
+    ...searchFilter,
+  };
+
+  const where = agencyIdForScope
+    ? scopedAgency?.isTlv
+      ? {
+          scopeType: BaseValueScope.TLV,
+          ...commonFilters,
+        }
+      : {
+          OR: [
+            { scopeType: BaseValueScope.GLOBAL },
+            { agencyId: agencyIdForScope },
+          ],
+          ...commonFilters,
+        }
+    : isElevatedRole(auth.role)
+    ? {
+        ...(requestedScopeType ? { scopeType: requestedScopeType } : {}),
+        ...commonFilters,
+      }
     : {
-        isDeleted: false,
-        OR: [{ scopeType: BaseValueScope.GLOBAL }, { agencyId: auth.agencyId }],
-        ...searchFilter,
+        ...commonFilters,
       };
 
   const [sets, total] = await Promise.all([
@@ -143,7 +205,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     data: {
       scopeType: payload.scopeType,
       agencyId:
-        payload.scopeType === BaseValueScope.GLOBAL ? null : payload.agencyId,
+        payload.scopeType === BaseValueScope.AGENCY ? payload.agencyId : null,
       name: payload.name,
       sourceWorkbookRef: payload.sourceWorkbookRef,
       sourceScope: payload.sourceScope,

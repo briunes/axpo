@@ -4,6 +4,8 @@ import { useCallback, useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { listAuditLogs, type AuditLogItem } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
+import { useRequestCachePolicy } from "./useRequestCachePolicy";
+import { normalizeQueryKeyParams } from "./queryKeys";
 
 export interface AuditLogsActions {
   logs: AuditLogItem[];
@@ -34,6 +36,7 @@ export interface AuditLogsActions {
 }
 
 export function useAuditLogs(session: SessionState | null): AuditLogsActions {
+  const cachePolicy = useRequestCachePolicy("logs");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [searchQuery, setSearchQuery] = useState("");
@@ -54,13 +57,23 @@ export function useAuditLogs(session: SessionState | null): AuditLogsActions {
     actorSearch: filterActorSearch || undefined,
     targetType: filterTargetType || undefined,
   };
+  const queryKeyParams = normalizeQueryKeyParams({
+    page,
+    limit: pageSize,
+    eventType: filterEventType,
+    dateFrom: filterDateFrom,
+    dateTo: filterDateTo,
+    search: searchQuery,
+    actorSearch: filterActorSearch,
+    targetType: filterTargetType,
+  });
 
   const { data, isFetching, error, refetch } = useQuery({
-    queryKey: ["audit-logs", session?.token ?? "", queryParams],
+    queryKey: ["audit-logs", session?.token ?? "", queryKeyParams],
     queryFn: () => listAuditLogs(session!.token, queryParams),
     enabled: !!session,
     placeholderData: keepPreviousData,
-    staleTime: 60_000, // audit logs change less frequently
+    ...cachePolicy,
   });
 
   const logs = data?.items ?? [];

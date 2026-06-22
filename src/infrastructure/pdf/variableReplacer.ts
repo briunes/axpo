@@ -19,7 +19,7 @@ import {
  * Formats a number as currency (euros)
  */
 function formatCurrency(value: number | undefined): string {
-  if (value === undefined || value === null) return "—";
+  if (value === undefined || value === null) return "-";
   return value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
@@ -27,7 +27,7 @@ function formatCurrency(value: number | undefined): string {
  * Formats a number with comma decimal separator
  */
 function formatNumber(value: number | undefined, decimals: number = 4): string {
-  if (value === undefined || value === null) return "—";
+  if (value === undefined || value === null) return "-";
   return value.toFixed(decimals).replace(".", ",");
 }
 
@@ -39,9 +39,9 @@ function getPeriodValue(
   period: keyof ElecPeriodMap,
   decimals: number = 4,
 ): string {
-  if (!periodMap) return "—";
+  if (!periodMap) return "-";
   const value = periodMap[period];
-  return value !== undefined ? formatNumber(value, decimals) : "—";
+  return value !== undefined ? formatNumber(value, decimals) : "-";
 }
 
 /**
@@ -85,6 +85,7 @@ export function extractVariableValues(
   );
 
   const electricity = payload?.electricity as any; // Cast to any to access clientData
+  const gas = payload?.gas as any;
   const results = payload?.results;
 
   // Get selected offer index or default to first result
@@ -114,7 +115,7 @@ export function extractVariableValues(
   // Calculate period dates
   const periodStart = electricity?.periodo?.fechaInicio || "N/A";
   const periodEnd = electricity?.periodo?.fechaFin || "N/A";
-  const simulationPeriod = `${periodStart} — ${periodEnd}`;
+  const simulationPeriod = `${periodStart} - ${periodEnd}`;
 
   // Calculate annual consumption (approximate from monthly)
   const totalConsumption = electricity?.consumo
@@ -124,22 +125,35 @@ export function extractVariableValues(
       )
     : 0;
   const annualConsumption = (totalConsumption as number) * 12;
+  const electricityBillingDays = electricity?.periodo?.dias || 0;
 
-  // Extract client info - check both simulation.client and electricity.clientData
+  // Extract client info - check simulation, electricity and gas payload shapes.
   const clientData = electricity?.clientData || {};
+  const gasClientData = gas?.clientData || {};
   const clientName =
-    simulation.client?.name || clientData.nombreTitular || "N/A";
+    simulation.client?.name ||
+    clientData.nombreTitular ||
+    gas?.nombreTitular ||
+    gasClientData.nombreTitular ||
+    "N/A";
   const contactPerson =
     simulation.client?.contactPerson ||
     simulation.client?.contactName ||
     clientData.personaContacto ||
+    gas?.personaContacto ||
+    gasClientData.personaContacto ||
     clientName;
   const clientAddress = simulation.client?.address
     ? `${simulation.client.address}, ${simulation.client.postalCode || ""} ${simulation.client.city || ""}`.trim()
-    : clientData.direccion || "N/A";
+    : clientData.direccion || gas?.direccion || gasClientData.direccion || "N/A";
 
-  // CUPS - check both simulation and electricity.clientData
-  const cupsNumber = simulation.cupsNumber || clientData.cups || "N/A";
+  // CUPS - check simulation-level, electricity payload and gas payload fields.
+  const cupsNumber =
+    simulation.cupsNumber ||
+    clientData.cups ||
+    gas?.cups ||
+    gasClientData.cups ||
+    "N/A";
 
   // Product name
   const productName = selectedResult?.productLabel || "N/A";
@@ -203,7 +217,7 @@ export function extractVariableValues(
     ?.terminoPotenciaActual;
   const explicitCurrentEnergy = (electricity?.extras as any)
     ?.terminoEnergiaActual;
-  // Otherwise, mirror the Axpo plan's power/energy ratio — a much
+  // Otherwise, mirror the Axpo plan's power/energy ratio - a much
   // better estimate than fixed 35%/40% because it adapts to the
   // access tariff, period mix and consumption profile of THIS simulation.
   const axpoPeSum = axpoPowerCost + axpoEnergyCost || 1;
@@ -224,7 +238,6 @@ export function extractVariableValues(
   const savingsAmount = selectedResult?.ahorro || 0;
 
   // ─── Gas variables ────────────────────────────────────────────────────────
-  const gas = payload?.gas as any;
   const gasResults = payload?.results?.gas;
   const selectedGasOfferKey =
     payload?.selectedOffer?.commodity === "GAS"
@@ -234,13 +247,15 @@ export function extractVariableValues(
     ? gasResults?.find((r: any) => r.productKey === selectedGasOfferKey)
     : gasResults?.[0];
 
-  // Gas consumption — prefer consumoAnual, fall back to consumo (monthly * 12)
+  // Gas consumption - prefer consumoAnual, fall back to consumo (monthly * 12)
   const gasAnnualConsumptionKwh =
     gas?.consumoAnual || (gas?.consumo ? (gas.consumo as number) * 12 : 0);
 
   // Current gas costs
   const gasCurrentTotal: number = gas?.facturaActual || 0;
   const gasIvaTasa: number = gas?.ivaTasa ?? 21;
+  const gasCurrentRentalCost: number = gas?.extras?.alquilerEquipoMedida || 0;
+  const gasCurrentOtherCost: number = gas?.extras?.otrosCargos || 0;
   // Back-calculate VAT and tax from current total using input rates
   const gasCurrentVat = gasCurrentTotal * (gasIvaTasa / (100 + gasIvaTasa));
   const gasCurrentPreVat = gasCurrentTotal - gasCurrentVat;
@@ -248,7 +263,13 @@ export function extractVariableValues(
   // IEH = impuestoHidrocarburo (€/kWh) * consumption in billing period
   const gasBillingConsumption: number = gas?.consumo || 0;
   const gasCurrentTax = gasImpHidro * gasBillingConsumption;
-  const gasCurrentBase = gasCurrentPreVat - gasCurrentTax;
+  const gasCurrentBase = Math.max(
+    0,
+    gasCurrentPreVat -
+      gasCurrentTax -
+      gasCurrentRentalCost -
+      gasCurrentOtherCost,
+  );
   // Rough 70/30 split of base into variable/fixed
   const gasCurrentVariableCost = gasCurrentBase * 0.7;
   const gasCurrentFixedCost = gasCurrentBase * 0.3;
@@ -258,6 +279,8 @@ export function extractVariableValues(
   const gasAxpoFixedCost: number = gasAxpoDesglose.terminoFijo || 0;
   const gasAxpoVariableCost: number = gasAxpoDesglose.terminoEnergia || 0;
   const gasAxpoTax: number = gasAxpoDesglose.impuestoHidrocarburo || 0;
+  const gasAxpoRentalCost: number = gasAxpoDesglose.alquiler || 0;
+  const gasAxpoOtherCost: number = gasAxpoDesglose.otrosCargos || 0;
   const gasAxpoVat: number = gasAxpoDesglose.iva || 0;
   const gasAxpoTotal: number = selectedGasResult?.totalFactura || 0;
 
@@ -268,7 +291,7 @@ export function extractVariableValues(
   // Gas period dates
   const gasPeriodStart = gas?.periodo?.fechaInicio || "N/A";
   const gasPeriodEnd = gas?.periodo?.fechaFin || "N/A";
-  const gasSimulationPeriod = `${gasPeriodStart} — ${gasPeriodEnd}`;
+  const gasSimulationPeriod = `${gasPeriodStart} - ${gasPeriodEnd}`;
 
   // Determine if this is a gas simulation
   const isGas = payload?.type === "GAS" || !!gas;
@@ -397,18 +420,43 @@ export function extractVariableValues(
     ),
 
     // ─── Gas-specific variables ──────────────────────────────────────────────
+    // ─── Electricity-specific variables ──────────────────────────────────────
+    ELECTRICITY_TARIFF: electricity?.tarifaAcceso || "N/A",
+    ELECTRICITY_ZONE: electricity?.zonaGeografica || "N/A",
+    ELECTRICITY_PROFILE: electricity?.perfilCarga || "N/A",
+    ELECTRICITY_BILLING_DAYS: electricityBillingDays
+      ? String(electricityBillingDays)
+      : "N/A",
+    ELECTRICITY_CONSUMPTION_KWH: formatNumber(totalConsumption as number, 0),
+    ELECTRICITY_IVA_RATE: formatNumber(currentIvaTasa, 2),
+    ELECTRICITY_TAX_RATE: formatNumber(currentIeTasa, 5),
+    CURRENT_REACTIVE_COST: formatCurrency(currentReactiveCost),
+    CURRENT_OTHER_CHARGES: formatCurrency(currentOtherChargeCost),
+
+    // ─── Gas-specific variables ──────────────────────────────────────────────
+    GAS_TARIFF: gas?.tarifaAcceso || "N/A",
+    GAS_ZONE: gas?.zonaGeografica || "N/A",
+    GAS_TELEMEASURED: gas?.telemedida || "N/A",
+    GAS_BILLING_DAYS: gas?.periodo?.dias ? String(gas.periodo.dias) : "N/A",
+    GAS_CONSUMPTION_KWH: formatNumber(gasBillingConsumption, 0),
     GAS_ANNUAL_CONSUMPTION_KWH: formatNumber(gasAnnualConsumptionKwh, 0),
     GAS_ANNUAL_CONSUMPTION_M3: formatNumber(gasAnnualConsumptionKwh / 11.63, 0), // approx kWh → m³
+    GAS_IVA_RATE: formatNumber(gasIvaTasa, 2),
+    GAS_HYDROCARBON_TAX_RATE: formatNumber(gasImpHidro, 5),
 
     CURRENT_GAS_FIXED_COST: formatCurrency(gasCurrentFixedCost),
     CURRENT_GAS_VARIABLE_COST: formatCurrency(gasCurrentVariableCost),
     CURRENT_GAS_TAX: formatCurrency(gasCurrentTax),
+    CURRENT_GAS_RENTAL_COST: formatCurrency(gasCurrentRentalCost),
+    CURRENT_GAS_OTHER_COST: formatCurrency(gasCurrentOtherCost),
     CURRENT_GAS_VAT: formatCurrency(gasCurrentVat),
     CURRENT_GAS_TOTAL: formatCurrency(gasCurrentTotal),
 
     AXPO_GAS_FIXED_COST: formatCurrency(gasAxpoFixedCost),
     AXPO_GAS_VARIABLE_COST: formatCurrency(gasAxpoVariableCost),
     AXPO_GAS_TAX: formatCurrency(gasAxpoTax),
+    AXPO_GAS_RENTAL_COST: formatCurrency(gasAxpoRentalCost),
+    AXPO_GAS_OTHER_COST: formatCurrency(gasAxpoOtherCost),
     AXPO_GAS_VAT: formatCurrency(gasAxpoVat),
     AXPO_GAS_TOTAL: formatCurrency(gasAxpoTotal),
   };
@@ -427,7 +475,7 @@ export function extractVariableValues(
 
 /**
  * Builds a self-contained HTML snippet for the Comparativa bar chart.
- * Uses pure SVG + inline CSS — no JavaScript — so it renders in Puppeteer PDFs.
+ * Uses pure SVG + inline CSS - no JavaScript - so it renders in Puppeteer PDFs.
  *
  * Both currentTotal and axpoTotal are period figures (€).
  * The chart displays annual totals using (value / dias) × 365 extrapolation.
@@ -499,7 +547,7 @@ function buildComparativaChart(
   <!-- Two-column row: chart left, stats right -->
   <div style="display:flex;width:100%;gap:24px;align-items:flex-start">
 
-    <!-- Bar chart — 50% width -->
+    <!-- Bar chart - 50% width -->
     <div style="flex:0 0 50%;min-width:0">
       <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block">
         <defs>
@@ -531,7 +579,7 @@ function buildComparativaChart(
       </svg>
     </div>
 
-    <!-- Stats boxes — 50% width, stacked vertically -->
+    <!-- Stats boxes - 50% width, stacked vertically -->
     <div style="flex:0 0 50%;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;padding-left:12px">
       <div style="background:#3b3bd4;border-radius:8px;padding:12px 16px;color:white">
         <div style="font-size:10px;font-weight:600;margin-bottom:6px">Ahorro Anual</div>

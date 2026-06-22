@@ -118,7 +118,7 @@ function checkBasicAuth(request: NextRequest): boolean {
 // Bypass paths that must always be accessible during maintenance:
 //   - /maintenance (the page itself)
 //   - /api/maintenance (the status endpoint)
-//   - /api/ (so the admin can toggle maintenance off via the API)
+//   - selected API endpoints needed to show or disable maintenance mode
 //   - /internal/configurations (so the admin can reach the toggle)
 //   - /_next/ static files & favicon
 // Static asset extensions served from /public that must remain reachable
@@ -130,7 +130,10 @@ function isMaintenanceBypass(pathname: string): boolean {
   return (
     pathname === "/maintenance" ||
     pathname.startsWith("/maintenance/") ||
-    pathname.startsWith("/api/") ||
+    pathname === "/api/maintenance" ||
+    pathname === "/api/v1/internal/config/system" ||
+    pathname === "/api/v1/internal/health" ||
+    pathname === "/api/v1/public/version" ||
     pathname.startsWith("/internal/configurations") ||
     pathname.startsWith("/_next/") ||
     pathname === "/favicon.ico" ||

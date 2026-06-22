@@ -1,31 +1,41 @@
 "use client";
 
 import {
+  Alert,
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
+  ToggleButton,
+  ToggleButtonGroup,
   Stack,
   Tooltip,
   Typography,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import CloseIcon from "@mui/icons-material/Close";
 import SyncIcon from "@mui/icons-material/Sync";
 import EditIcon from "@mui/icons-material/Edit";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import UnarchiveIcon from "@mui/icons-material/Unarchive";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import DownloadIcon from "@mui/icons-material/Download";
 import StarIcon from "@mui/icons-material/Star";
 import StarOutlineIcon from "@mui/icons-material/StarOutline";
 import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
-import type { BaseValueSetItem } from "../../lib/internalApi";
+import type { BaseValueScopeType, BaseValueSetItem } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
 import { downloadBaseValueFile } from "../../lib/internalApi";
 import type { BaseValuesActions } from "../hooks/useBaseValues";
 import { ConfirmDialog } from "../shared";
-import { DataTable, StatusBadge } from "../ui";
+import { DataTable, FormInput, FormSelect, StatusBadge } from "../ui";
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -47,10 +57,16 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
     sortColumn, sortDir, setSort,
     search, setSearch,
     showArchived, setShowArchived,
+    scopeFilter, setScopeFilter,
+    statusFilter, setStatusFilter,
+    productionFilter, setProductionFilter,
     handleActivateBaseValueSet, handleArchiveBaseValueSet, handleToggleProduction, handleUploadFile,
   } = actions;
 
   const [confirmAction, setConfirmAction] = useState<{ id: string; type: "activate" | "archive" | "restore" } | null>(null);
+  const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
+  const [uploadScopeType, setUploadScopeType] =
+    useState<Extract<BaseValueScopeType, "GLOBAL" | "TLV">>("GLOBAL");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -72,34 +88,48 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
       return;
     }
 
-    await handleUploadFile(file, false);
+    setPendingUploadFile(file);
+    setUploadScopeType("GLOBAL");
 
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
+
+  const handleConfirmUpload = async () => {
+    if (!pendingUploadFile) return;
+    await handleUploadFile(pendingUploadFile, false, uploadScopeType);
+    setPendingUploadFile(null);
+  };
+
+  const hasActiveFilters = Boolean(
+    search || scopeFilter || statusFilter || productionFilter,
+  );
 
   const columns: ColumnDef<BaseValueSetItem>[] = [
     {
       key: "name",
       label: t("baseValuesModule", "colName"),
       sortable: true,
+      width: "360",
       renderCell: (s) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, opacity: s.isDeleted ? 0.5 : 1 }}>
-          <Typography variant="body1">{s.name}</Typography>
-          {s.isActive && (
-            <Chip label="ACTIVE" size="small" color="success" sx={{ height: 18, fontSize: 10 }} />
-          )}
+          <Typography variant="body1" noWrap title={s.name}>{s.name}</Typography>
+          
         </Box>
       ),
     },
     {
       key: "scope",
       label: t("baseValuesModule", "colScope"),
+      width: "110",
       renderCell: (s) => (
         <Typography variant="body2" color="text.secondary">
-          {s.scopeType === "AGENCY" ? t("baseValuesModule", "scopeAgency") : t("baseValuesModule", "scopeGlobal")}
+          {s.scopeType === "AGENCY"
+            ? t("baseValuesModule", "scopeAgency")
+            : s.scopeType === "TLV"
+              ? "TLV"
+              : t("baseValuesModule", "scopeGlobal")}
         </Typography>
       ),
     },
@@ -107,18 +137,21 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
       key: "version",
       label: t("baseValuesModule", "colVersion"),
       sortable: true,
+      width: "100",
       renderCell: (s) => <Typography variant="body2" color="text.secondary">v{s.version}</Typography>,
     },
     {
       key: "items",
       label: t("baseValuesModule", "colItems"),
+      width: "110",
       renderCell: (s) => <Typography variant="body2">{s._count?.items ?? "—"}</Typography>,
     },
     {
       key: "createdBy",
       label: "Created By",
+      width: "230",
       renderCell: (s) => (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" noWrap title={s.createdByUser?.fullName || "—"}>
           {s.createdByUser?.fullName || "—"}
         </Typography>
       ),
@@ -127,8 +160,9 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
       key: "createdAt",
       label: "Created",
       sortable: true,
+      width: "190",
       renderCell: (s) => (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" noWrap>
           {new Date(s.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
         </Typography>
       ),
@@ -136,6 +170,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
     {
       key: "status",
       label: t("baseValuesModule", "colStatus"),
+      width: "130",
       renderCell: (s) => (
         <StatusBadge
           label={s.isDeleted ? t("baseValuesModule", "statusArchived") : s.isActive ? t("baseValuesModule", "statusActive") : t("baseValuesModule", "statusDraft")}
@@ -146,7 +181,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
     {
       key: "production",
       label: t("baseValuesModule", "colProduction"),
-      width: "100",
+      width: "130",
       renderCell: (s) => (
         <Tooltip
           title={s.isProduction ? t("baseValuesModule", "production_tooltip_on") : t("baseValuesModule", "production_tooltip_off")}
@@ -170,7 +205,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
     {
       key: "actions",
       label: t("baseValuesModule", "colActions"),
-      width: "160",
+      width: "150",
       renderCell: (s) => (
         <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
           <Tooltip title={t("baseValuesModule", "editSet_tooltip")} placement="top">
@@ -284,12 +319,20 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
   return (
     <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
       <DataTable<BaseValueSetItem>
+        tableId="base-values"
         columns={columns}
         rows={baseValueSets}
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
-        onClearFilters={() => { setSearch(""); setPage(1); }}
+        onClearFilters={() => {
+          setSearch("");
+          setScopeFilter("");
+          setStatusFilter("");
+          setProductionFilter("");
+          setPage(1);
+        }}
+        hasActiveFilters={hasActiveFilters}
         searchPlaceholder={t("search", "baseValues")}
         emptyMessage={t("search", "emptyBaseValues")}
         sortState={{ column: sortColumn, direction: sortDir }}
@@ -306,6 +349,96 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
           onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
         }}
         t={t}
+        renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
+          <>
+            <Box sx={{ flex:1 }}>
+              <FormInput
+                label=""
+                placeholder={searchPlaceholder}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
+                size="small"
+                slotProps={{
+                  input: {
+                    endAdornment: draft ? (
+                      <IconButton
+                        size="small"
+                        onClick={() => { setDraft(""); setSearch(""); setPage(1); }}
+                        aria-label="Clear"
+                        edge="end"
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    ) : null,
+                  },
+                }}
+              />
+            </Box>
+            <Box sx={{ flex:1 }}>
+              <FormSelect
+                label=""
+                options={[
+                  { value: "", label: t("baseValuesModule", "allScopes") },
+                  { value: "GLOBAL", label: t("baseValuesModule", "scopeGlobal") },
+                  { value: "TLV", label: "TLV" },
+                ]}
+                value={scopeFilter}
+                onChange={(val) => {
+                  setScopeFilter(val as "" | Extract<BaseValueScopeType, "GLOBAL" | "TLV">);
+                  setPage(1);
+                }}
+                placeholder={t("baseValuesModule", "colScope")}
+                textFieldProps={{ size: "small" }}
+              />
+            </Box>
+            <Box sx={{ flex:1 }}>
+              <FormSelect
+                label=""
+                options={[
+                  { value: "", label: t("search", "allStatuses") },
+                  { value: "ACTIVE", label: t("baseValuesModule", "statusActive") },
+                  { value: "DRAFT", label: t("baseValuesModule", "statusDraft") },
+                  { value: "ARCHIVED", label: t("baseValuesModule", "statusArchived") },
+                ]}
+                value={statusFilter}
+                onChange={(val) => {
+                  setStatusFilter(val as "" | "ACTIVE" | "DRAFT" | "ARCHIVED");
+                  setPage(1);
+                }}
+                placeholder={t("baseValuesModule", "colStatus")}
+                textFieldProps={{ size: "small" }}
+              />
+            </Box>
+            <Box sx={{ flex:1 }}>
+              <FormSelect
+                label=""
+                options={[
+                  { value: "", label: t("baseValuesModule", "allProductionStates") },
+                  { value: "production", label: t("baseValuesModule", "productionFilterOn") },
+                  { value: "standard", label: t("baseValuesModule", "productionFilterOff") },
+                ]}
+                value={productionFilter}
+                onChange={(val) => {
+                  setProductionFilter(val as "" | "production" | "standard");
+                  setPage(1);
+                }}
+                placeholder={t("baseValuesModule", "colProduction")}
+                textFieldProps={{ size: "small" }}
+              />
+            </Box>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={commitSearch}
+              aria-label="Search"
+              sx={{ minWidth: "auto" }}
+            >
+              <SearchIcon />
+              {t("common", "search")}
+            </Button>
+          </>
+        )}
       />
 
       {confirmAction && confirmTarget && (
@@ -339,6 +472,118 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
           onCancel={() => setConfirmAction(null)}
         />
       )}
+
+      <Dialog
+        open={Boolean(pendingUploadFile)}
+        onClose={() => {
+          if (busyAction !== "upload-base-value-file") setPendingUploadFile(null);
+        }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            overflow: "hidden",
+          },
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Box
+              sx={{
+                display: "grid",
+                placeItems: "center",
+                width: 40,
+                height: 40,
+                borderRadius: 1.5,
+                bgcolor: "primary.main",
+                color: "primary.contrastText",
+              }}
+            >
+              <UploadFileIcon fontSize="small" />
+            </Box>
+            <Box>
+              <Typography variant="h6">{t("baseValuesModule", "uploadTitle")}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t("baseValuesModule", "uploadSubtitle")}
+              </Typography>
+            </Box>
+          </Stack>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Stack spacing={2.5}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                p: 1.5,
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1.5,
+                bgcolor: "action.hover",
+              }}
+            >
+              <InsertDriveFileOutlinedIcon color="primary" />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="body2" fontWeight={600} noWrap>
+                  {pendingUploadFile?.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {pendingUploadFile
+                    ? `${(pendingUploadFile.size / 1024 / 1024).toFixed(2)} MB`
+                    : ""}
+                </Typography>
+              </Box>
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                {t("baseValuesModule", "uploadVersionScope")}
+              </Typography>
+              <ToggleButtonGroup
+                value={uploadScopeType}
+                exclusive
+                fullWidth
+                onChange={(_, value: Extract<BaseValueScopeType, "GLOBAL" | "TLV"> | null) => {
+                  if (value) setUploadScopeType(value);
+                }}
+                size="small"
+                sx={{
+                  "& .MuiToggleButton-root": {
+                    py: 1,
+                    fontWeight: 600,
+                  },
+                }}
+              >
+                <ToggleButton value="GLOBAL">Global</ToggleButton>
+                <ToggleButton value="TLV">TLV</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+            <Alert severity="info" variant="outlined">
+              {t("baseValuesModule", "uploadNeverReplace")}
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
+          <Button
+            onClick={() => setPendingUploadFile(null)}
+            disabled={busyAction === "upload-base-value-file"}
+            sx={{ mr: 1 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<UploadFileIcon fontSize="small" />}
+            onClick={handleConfirmUpload}
+            disabled={busyAction === "upload-base-value-file"}
+          >
+            {busyAction === "upload-base-value-file"
+              ? "Uploading..."
+              : t("baseValuesModule", "uploadAs", { scope: uploadScopeType })}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

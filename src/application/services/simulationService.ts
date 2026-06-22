@@ -9,8 +9,8 @@ import {
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "./auditService";
 import {
-  decryptSensitiveValue,
   encryptSensitiveValue,
+  tryDecryptSensitiveValue,
 } from "@/application/lib/sensitiveData";
 
 /** True for roles that have unrestricted access (ADMIN and SYS_ADMIN). */
@@ -48,6 +48,13 @@ const generatePublicToken = (): string => {
 
 const toInputJson = (value: unknown): Prisma.InputJsonValue => {
   return (value ?? {}) as Prisma.InputJsonValue;
+};
+
+const encryptedPinSnapshotFromCurrent = (
+  pinCurrent: string | null | undefined,
+): string | null => {
+  const pin = tryDecryptSensitiveValue(pinCurrent);
+  return pin ? encryptSensitiveValue(pin) : null;
 };
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -353,11 +360,7 @@ export class SimulationService {
             clientId: input.clientId ?? null,
             expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
             pinHashSnapshot: ownerUser.pinHash,
-            pinSnapshot: ownerUser.pinCurrent
-              ? encryptSensitiveValue(
-                  decryptSensitiveValue(ownerUser.pinCurrent) ?? "",
-                )
-              : null,
+            pinSnapshot: encryptedPinSnapshotFromCurrent(ownerUser.pinCurrent),
             referenceNumber,
           },
         });
@@ -483,7 +486,7 @@ export class SimulationService {
 
     return {
       ...created,
-      pinSnapshot: decryptSensitiveValue(created.pinSnapshot),
+      pinSnapshot: tryDecryptSensitiveValue(created.pinSnapshot),
     };
   }
 
@@ -545,7 +548,10 @@ export class SimulationService {
             input.payloadJson !== undefined
               ? toInputJson(payloadAfterNormalized)
               : toInputJson(latestVersion?.payloadJson ?? {}),
-          baseValueSetId: input.baseValueSetId ?? null,
+          baseValueSetId:
+            input.baseValueSetId !== undefined
+              ? input.baseValueSetId
+              : (latestVersion?.baseValueSetId ?? null),
           createdBy: actor.userId,
         },
       });
@@ -611,7 +617,7 @@ export class SimulationService {
 
     return {
       ...updated,
-      pinSnapshot: decryptSensitiveValue(updated.pinSnapshot),
+      pinSnapshot: tryDecryptSensitiveValue(updated.pinSnapshot),
     };
   }
 
@@ -688,11 +694,7 @@ export class SimulationService {
             expiresAt: cloneExpiresAt,
             referenceNumber,
             pinHashSnapshot: newOwner?.pinHash ?? null,
-            pinSnapshot: newOwner?.pinCurrent
-              ? encryptSensitiveValue(
-                  decryptSensitiveValue(newOwner.pinCurrent) ?? "",
-                )
-              : null,
+            pinSnapshot: encryptedPinSnapshotFromCurrent(newOwner?.pinCurrent),
           },
         });
         break;
@@ -737,7 +739,7 @@ export class SimulationService {
 
     return {
       ...cloned,
-      pinSnapshot: decryptSensitiveValue(cloned.pinSnapshot),
+      pinSnapshot: tryDecryptSensitiveValue(cloned.pinSnapshot),
     };
   }
 
@@ -762,11 +764,7 @@ export class SimulationService {
       data: {
         publicToken,
         pinHashSnapshot: owner.pinHash,
-        pinSnapshot: owner.pinCurrent
-          ? encryptSensitiveValue(
-              decryptSensitiveValue(owner.pinCurrent) ?? "",
-            )
-          : null,
+        pinSnapshot: encryptedPinSnapshotFromCurrent(owner.pinCurrent),
         status: SimulationStatus.SHARED,
         sharedAt: new Date(),
         ...(sharedVia ? { sharedVia } : {}),

@@ -45,6 +45,7 @@ const toRuntimeConfig = (config: Record<string, any>) => ({
   maintenanceMode: config.maintenanceMode,
   maintenanceUntil: config.maintenanceUntil,
   maintenanceMessage: config.maintenanceMessage,
+  requestCacheConfig: config.requestCacheConfig,
 });
 
 const toAdminConfig = (config: Record<string, any>) => ({
@@ -97,6 +98,7 @@ const toAdminConfig = (config: Record<string, any>) => ({
   ocrBillingMarkupPercent: config.ocrBillingMarkupPercent,
   ocrBillingFixedFeePerCall: config.ocrBillingFixedFeePerCall,
   ocrBillingIncludeFailedCalls: config.ocrBillingIncludeFailedCalls,
+  requestCacheConfig: config.requestCacheConfig,
 });
 
 async function getOrCreateSystemConfig() {

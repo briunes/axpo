@@ -92,12 +92,12 @@ const POST = withErrorHandler(async (req: NextRequest, context) => {
       if (!baseValueSet) return null;
 
       const whereClause =
-        baseValueSet.scopeType === "GLOBAL"
-          ? { scopeType: "GLOBAL" as const }
-          : {
+        baseValueSet.scopeType === "AGENCY"
+          ? {
               scopeType: "AGENCY" as const,
               agencyId: baseValueSet.agencyId,
-            };
+            }
+          : { scopeType: baseValueSet.scopeType };
 
       await tx.baseValueSet.updateMany({
         where: {

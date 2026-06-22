@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Collapse } from "@mui/material";
+import { useI18n } from "../../../../src/lib/i18n-context";
+import { FormInput } from "../ui/FormInput";
 
 export interface DraggableVariablesProps {
     variables: Array<{
@@ -24,6 +27,7 @@ const GROUP_ORDER = [
     "Simulation",
     "Owner / Commercial",
     "Supply Point",
+    "Electricity Supply",
     "Summary",
     "Current Plan — Periods",
     "Current Plan — Costs",
@@ -36,28 +40,13 @@ const GROUP_ORDER = [
     "Other",
 ];
 
-const GROUP_ICONS: Record<string, string> = {
-    "Buttons": "🔲",
-    "Charts": "📊",
-    "Client": "🏢",
-    "User / Auth": "🔒",
-    "Simulation": "📊",
-    "Owner / Commercial": "👤",
-    "Supply Point": "🔌",
-    "Summary": "📋",
-    "Current Plan — Periods": "📅",
-    "Current Plan — Costs": "💶",
-    "Current Gas Plan": "🔥",
-    "AXPO Plan — Periods": "📅",
-    "AXPO Plan — Costs": "💶",
-    "AXPO Gas Plan": "🔥",
-    "Price History": "📈",
-    "Editable Sections": "✏️",
-    "Other": "🔹",
-};
+const EMOJI_PATTERN = /[\p{Emoji_Presentation}\p{Extended_Pictographic}]\uFE0F?/gu;
+
+function stripEmoji(value: string): string {
+    return value.replace(EMOJI_PATTERN, "").replace(/\s{2,}/g, " ").trim();
+}
 
 function deriveGroup(name: string): string {
-    if (name.startsWith("📝")) return "Editable Sections";
     if (name.startsWith("BTN_")) return "Buttons";
     if (name.startsWith("CHART_")) return "Charts";
     if (name.startsWith("CLIENT_")) return "Client";
@@ -71,6 +60,7 @@ function deriveGroup(name: string): string {
     ) return "User / Auth";
     if (name.startsWith("OWNER_")) return "Owner / Commercial";
     if (name.startsWith("CUPS_")) return "Supply Point";
+    if (name.startsWith("ELECTRICITY_")) return "Electricity Supply";
     if (
         name.startsWith("SIMULATION_") ||
         name === "CREATED_AT" ||
@@ -106,7 +96,7 @@ function deriveGroup(name: string): string {
 
 function groupVariables(
     variables: DraggableVariablesProps["variables"],
-): Array<{ group: string; icon: string; items: DraggableVariablesProps["variables"] }> {
+): Array<{ group: string; items: DraggableVariablesProps["variables"] }> {
     const map = new Map<string, DraggableVariablesProps["variables"]>();
     for (const v of variables) {
         const g = deriveGroup(v.name);
@@ -115,12 +105,13 @@ function groupVariables(
     }
     return GROUP_ORDER
         .filter((g) => map.has(g))
-        .map((g) => ({ group: g, icon: GROUP_ICONS[g] ?? "🔹", items: map.get(g)! }));
+        .map((g) => ({ group: g, items: map.get(g)! }));
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function DraggableVariables({ variables }: DraggableVariablesProps) {
+    const { t } = useI18n();
     const [isDragging, setIsDragging] = useState<string | null>(null);
     const [search, setSearch] = useState("");
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -157,12 +148,13 @@ export function DraggableVariables({ variables }: DraggableVariablesProps) {
     return (
         <div className="draggable-variables-panel">
             <div className="variables-header">
-                <h3>Available Variables</h3>
-                <p>Drag variables into the editor</p>
-                <input
+                <h3>{t("draggableVariables", "title")}</h3>
+                <p>{t("draggableVariables", "subtitle")}</p>
+                <FormInput
                     type="search"
                     className="variables-search"
-                    placeholder="Search variables…"
+                    label=""
+                    placeholder={t("draggableVariables", "searchPlaceholder")}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                 />
@@ -171,25 +163,24 @@ export function DraggableVariables({ variables }: DraggableVariablesProps) {
             <div className="variables-tree">
                 {groups.length === 0 && (
                     <p style={{ fontSize: "12px", color: "var(--scheme-neutral-600)", textAlign: "center", margin: "8px 0" }}>
-                        No variables match "{search}"
+                        {t("draggableVariables", "noMatches", { search })}
                     </p>
                 )}
-                {groups.map(({ group, icon, items }) => {
+                {groups.map(({ group, items }) => {
                     const isOpen = !collapsed[group];
                     return (
                         <div key={group} className="variable-group">
                             <button
                                 className="variable-group-header"
                                 onClick={() => toggleGroup(group)}
-                                title={isOpen ? "Collapse" : "Expand"}
+                                title={isOpen ? t("common", "collapse") : t("common", "expand")}
                             >
                                 <span className="group-chevron">{isOpen ? "▾" : "▸"}</span>
-                                <span className="group-icon">{icon}</span>
                                 <span className="group-label">{group}</span>
                                 <span className="group-count">{items.length}</span>
                             </button>
 
-                            {isOpen && (
+                            <Collapse in={isOpen} timeout="auto" unmountOnExit>
                                 <div className="variable-group-items">
                                     {items.map((variable) => (
                                         <div
@@ -203,15 +194,15 @@ export function DraggableVariables({ variables }: DraggableVariablesProps) {
                                                 <code>{`{{${variable.name}}}`}</code>
                                             </div>
                                             <div className="variable-info">
-                                                <span className="variable-label">{variable.label}</span>
+                                                <span className="variable-label">{stripEmoji(variable.label)}</span>
                                                 {variable.description && (
-                                                    <span className="variable-description">{variable.description}</span>
+                                                    <span className="variable-description">{stripEmoji(variable.description)}</span>
                                                 )}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            )}
+                            </Collapse>
                         </div>
                     );
                 })}
@@ -296,11 +287,6 @@ export function DraggableVariables({ variables }: DraggableVariablesProps) {
                     font-size: 11px;
                     color: var(--scheme-neutral-500);
                     width: 10px;
-                    flex-shrink: 0;
-                }
-
-                .group-icon {
-                    font-size: 13px;
                     flex-shrink: 0;
                 }
 
