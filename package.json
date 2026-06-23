@@ -21,6 +21,7 @@
     "db:import-prices": "set -a && . ./.env.local && set +a && node ./scripts/import-base-values.mjs",
     "db:import-prices:replace": "set -a && . ./.env.local && set +a && node ./scripts/import-base-values.mjs --replace",
     "db:studio": "prisma studio",
+    "release:qld": "bash scripts/migrate-dev-to-qld.sh",
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:security": "jest --testPathPattern=security"

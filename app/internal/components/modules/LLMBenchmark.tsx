@@ -24,11 +24,13 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import type { SessionState } from "../../lib/authSession";
 
 export interface LLMBenchmarkProps {
     session: SessionState;
     onNotify: (message: string, tone: "success" | "error") => void;
+    onHistoryChanged?: () => void;
     providers: Array<{
         id: string;
         name: string;
@@ -54,16 +56,40 @@ interface BenchmarkStepResult {
 }
 
 interface BenchmarkResult {
+    id?: string;
+    benchmarkRunId?: string;
+    createdAt?: string;
+    status?: string;
     providerConfigId: string;
     providerName: string;
     provider: string;
     modelName: string;
+    benchmarkFileName?: string;
     detection: BenchmarkStepResult;
     extraction: BenchmarkStepResult;
     overallScore: number;
     totalDurationMs: number;
+    totalTokens?: number;
     expectedDetection: Record<string, any>;
     expectedExtraction: Record<string, any>;
+    createdBy?: {
+        id: string;
+        name: string;
+        email: string;
+    } | null;
+}
+
+interface BenchmarkRunGroup {
+    id: string;
+    createdAt: string;
+    createdBy?: {
+        id: string;
+        name: string;
+        email: string;
+    } | null;
+    benchmarkFileName?: string;
+    resultCount: number;
+    results: BenchmarkResult[];
 }
 
 function getAuthToken(): string | null {
@@ -99,6 +125,14 @@ function DurationCell({ ms }: { ms: number }) {
 function TokenCell({ total }: { total?: number }) {
     if (!total) return <span style={{ color: "var(--axpo-text-secondary)" }}>—</span>;
     return <span style={{ fontVariantNumeric: "tabular-nums" }}>{total.toLocaleString()}</span>;
+}
+
+function formatDateTime(value?: string | null) {
+    if (!value) return "—";
+    return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "short",
+        timeStyle: "short",
+    }).format(new Date(value));
 }
 
 interface FieldCompareTableProps {
@@ -259,15 +293,97 @@ function ResultRow({ result, idx }: { result: BenchmarkResult; idx: number }) {
     );
 }
 
-export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps) {
+function ResultsTable({
+    title,
+    results,
+    footer,
+}: {
+    title: string;
+    results: BenchmarkResult[];
+    footer?: string;
+}) {
+    if (results.length === 0) return null;
+
+    return (
+        <Box>
+            {title && (
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                    {title}
+                </Typography>
+            )}
+            <Box sx={{ overflowX: "auto", border: "1px solid var(--scheme-neutral-900)", borderRadius: "8px" }}>
+                <Table size="small" sx={{ minWidth: 900 }}>
+                    <TableHead>
+                        <TableRow sx={{ backgroundColor: "var(--scheme-neutral-1200)" }}>
+                            <TableCell sx={{ width: 32 }} />
+                            <TableCell sx={{ fontWeight: 700 }}>LLM</TableCell>
+                            <TableCell
+                                colSpan={3}
+                                align="center"
+                                sx={{ fontWeight: 700, borderLeft: "1px solid var(--scheme-neutral-900)", fontSize: 11, color: "var(--axpo-text-secondary)" }}
+                            >
+                                Provider Detection
+                            </TableCell>
+                            <TableCell
+                                colSpan={3}
+                                align="center"
+                                sx={{ fontWeight: 700, borderLeft: "1px solid var(--scheme-neutral-900)", fontSize: 11, color: "var(--axpo-text-secondary)" }}
+                            >
+                                Invoice Extraction
+                            </TableCell>
+                            <TableCell
+                                colSpan={3}
+                                align="center"
+                                sx={{ fontWeight: 700, borderLeft: "1px solid var(--scheme-neutral-900)", fontSize: 11, color: "var(--axpo-text-secondary)" }}
+                            >
+                                Overall
+                            </TableCell>
+                        </TableRow>
+                        <TableRow sx={{ backgroundColor: "var(--scheme-neutral-1200)" }}>
+                            <TableCell />
+                            <TableCell />
+                            <TableCell align="center" sx={{ fontWeight: 600, fontSize: 11, borderLeft: "1px solid var(--scheme-neutral-900)" }}>Score</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Time</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Tokens</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 600, fontSize: 11, borderLeft: "1px solid var(--scheme-neutral-900)" }}>Score</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Time</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Tokens</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 600, fontSize: 11, borderLeft: "1px solid var(--scheme-neutral-900)" }}>Score</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Time</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Tokens</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {results
+                            .map((r, originalIdx) => ({ r, originalIdx }))
+                            .sort((a, b) => b.r.overallScore - a.r.overallScore)
+                            .map(({ r, originalIdx }) => (
+                                <ResultRow key={r.id ?? `${r.providerConfigId}-${originalIdx}`} result={r} idx={originalIdx} />
+                            ))}
+                    </TableBody>
+                </Table>
+            </Box>
+            {footer && (
+                <Box sx={{ mt: 1, fontSize: 12, color: "var(--axpo-text-secondary)" }}>
+                    {footer}
+                </Box>
+            )}
+        </Box>
+    );
+}
+
+export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }: LLMBenchmarkProps) {
     const activeProviders = providers.filter((p) => p.enabled);
     const allIds = activeProviders.map((p) => p.id);
     const [selected, setSelected] = useState<Set<string>>(new Set(allIds));
     const [running, setRunning] = useState(false);
+    const [historyLoading, setHistoryLoading] = useState(false);
     const [currentlyTesting, setCurrentlyTesting] = useState<string | null>(null);
     const [progress, setProgress] = useState(0);
     const [results, setResults] = useState<BenchmarkResult[]>([]);
+    const [benchmarkRuns, setBenchmarkRuns] = useState<BenchmarkRunGroup[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [historyWarning, setHistoryWarning] = useState<string | null>(null);
 
     useEffect(() => {
         setSelected((prev) => {
@@ -276,6 +392,33 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
             return next.size === prev.size ? prev : next;
         });
     }, [allIds.join("|")]);
+
+    const loadHistory = async () => {
+        setHistoryLoading(true);
+        try {
+            const res = await fetch("/api/v1/internal/invoices/benchmark?limit=50", {
+                headers: authHeaders(),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || "Failed to load benchmark history");
+            }
+            setBenchmarkRuns(data.benchmarkRuns ?? []);
+            setHistoryWarning(
+                data.historyAvailable === false
+                    ? "Benchmark history storage is not ready yet. Apply the pending database migration to enable averages and saved history."
+                    : null,
+            );
+        } catch (err: any) {
+            onNotify(err.message || "Failed to load benchmark history", "error");
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadHistory();
+    }, []);
 
     const toggleProvider = (id: string) => {
         setSelected((prev) => {
@@ -301,7 +444,12 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
         setRunning(true);
         setResults([]);
         setErrors({});
+        setHistoryWarning(null);
         setProgress(0);
+        const benchmarkRunId =
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+                ? crypto.randomUUID()
+                : `benchmark-${Date.now()}`;
 
         // Fetch the benchmark PDF from the public folder once
         let pdfBlob: Blob | null = null;
@@ -323,6 +471,7 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
             try {
                 const fd = new FormData();
                 fd.append("providerConfigId", p.id);
+                fd.append("benchmarkRunId", benchmarkRunId);
                 fd.append("file", pdfBlob, "serigrafia-arrigorriaga.pdf");
 
                 const token = getAuthToken();
@@ -334,6 +483,9 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
                 const data = await res.json();
                 if (data.success) {
                     setResults((prev) => [...prev, data as BenchmarkResult]);
+                    if (data.historySaved === false) {
+                        setHistoryWarning(data.historyMessage || "Benchmark result was not saved to history.");
+                    }
                 } else {
                     setErrors((prev) => ({ ...prev, [p.id]: data.message || "Unknown error" }));
                 }
@@ -345,20 +497,28 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
         setProgress(100);
         setCurrentlyTesting(null);
         setRunning(false);
+        await loadHistory();
+        onHistoryChanged?.();
         onNotify("Benchmark complete", "success");
     };
 
     const selectedCount = selected.size;
     const allSelected = selectedCount === activeProviders.length;
     const someSelected = selectedCount > 0 && !allSelected;
-
-    if (activeProviders.length === 0) {
-        return (
-            <Box sx={{ color: "var(--axpo-text-secondary)", py: 4, textAlign: "center" }}>
-                No active LLM providers configured. Enable providers in the <strong>Available LLMs</strong> tab first.
-            </Box>
-        );
-    }
+    const latestSavedRun = benchmarkRuns[0];
+    const displayedRun: BenchmarkRunGroup | null = results.length
+        ? {
+            id: results[0]?.benchmarkRunId ?? "current",
+            createdAt: new Date().toISOString(),
+            createdBy: null,
+            benchmarkFileName: "serigrafia-arrigorriaga.pdf",
+            resultCount: results.length,
+            results,
+        }
+        : latestSavedRun ?? null;
+    const historyRuns = results.length
+        ? benchmarkRuns
+        : benchmarkRuns.filter((run) => run.id !== latestSavedRun?.id);
 
     return (
         <Stack spacing={3}>
@@ -372,100 +532,106 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
             </Box>
 
             {/* Provider selection */}
-            <Box
-                sx={{
-                    border: "1px solid var(--scheme-neutral-900)",
-                    borderRadius: "8px",
-                    overflow: "hidden",
-                }}
-            >
+            {activeProviders.length === 0 ? (
+                <Box sx={{ color: "var(--axpo-text-secondary)", py: 2, textAlign: "center" }}>
+                    No active LLM providers configured. Enable providers in the <strong>Available LLMs</strong> tab first.
+                </Box>
+            ) : (
                 <Box
                     sx={{
-                        px: 2,
-                        py: 1.5,
-                        borderBottom: "1px solid var(--scheme-neutral-900)",
-                        backgroundColor: "var(--scheme-neutral-1200)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 2,
+                        border: "1px solid var(--scheme-neutral-900)",
+                        borderRadius: "8px",
+                        overflow: "hidden",
                     }}
                 >
-                    <label className="config-field-inline" style={{ margin: 0 }}>
-                        <input
-                            type="checkbox"
-                            checked={allSelected}
-                            ref={(el) => { if (el) el.indeterminate = someSelected; }}
-                            onChange={toggleAll}
-                            disabled={running}
-                        />
-                        <span style={{ fontWeight: 700, fontSize: 13 }}>
-                            Select LLMs to benchmark ({selectedCount}/{activeProviders.length})
-                        </span>
-                    </label>
-                    <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={running ? <CircularProgress size={14} color="inherit" /> : <PlayArrowIcon />}
-                        onClick={runBenchmark}
-                        disabled={running || selectedCount === 0}
+                    <Box
+                        sx={{
+                            px: 2,
+                            py: 1.5,
+                            borderBottom: "1px solid var(--scheme-neutral-900)",
+                            backgroundColor: "var(--scheme-neutral-1200)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 2,
+                        }}
                     >
-                        {running ? "Running…" : "Run Benchmark"}
-                    </Button>
-                </Box>
+                        <label className="config-field-inline" style={{ margin: 0 }}>
+                            <input
+                                type="checkbox"
+                                checked={allSelected}
+                                ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                                onChange={toggleAll}
+                                disabled={running}
+                            />
+                            <span style={{ fontWeight: 700, fontSize: 13 }}>
+                                Select LLMs to benchmark ({selectedCount}/{activeProviders.length})
+                            </span>
+                        </label>
+                        <Button
+                            variant="contained"
+                            size="small"
+                            startIcon={running ? <CircularProgress size={14} color="inherit" /> : <PlayArrowIcon />}
+                            onClick={runBenchmark}
+                            disabled={running || selectedCount === 0}
+                        >
+                            {running ? "Running…" : "Run Benchmark"}
+                        </Button>
+                    </Box>
 
-                {/* LLM list */}
-                <Stack divider={<Box sx={{ borderBottom: "1px solid var(--scheme-neutral-900)" }} />}>
-                    {activeProviders.map((p) => {
-                        const isCurrent = currentlyTesting === p.id;
-                        const isDone = results.some((r) => r.providerConfigId === p.id);
-                        const hasError = Boolean(errors[p.id]);
-                        return (
-                            <Box
-                                key={p.id}
-                                sx={{
-                                    px: 2,
-                                    py: 1.2,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 2,
-                                    backgroundColor: isCurrent ? "var(--scheme-brand-1100)" : "transparent",
-                                    transition: "background-color 0.2s",
-                                }}
-                            >
-                                <label className="config-field-inline" style={{ margin: 0, flex: 1 }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={selected.has(p.id)}
-                                        onChange={() => toggleProvider(p.id)}
-                                        disabled={running}
-                                    />
-                                    <Box component="span">
-                                        <Box component="span" sx={{ fontWeight: 600 }}>{p.name}</Box>
-                                        <Box component="span" sx={{ ml: 1, fontSize: 11, color: "var(--axpo-text-secondary)" }}>
-                                            {p.provider} / {p.modelName}
+                    {/* LLM list */}
+                    <Stack divider={<Box sx={{ borderBottom: "1px solid var(--scheme-neutral-900)" }} />}>
+                        {activeProviders.map((p) => {
+                            const isCurrent = currentlyTesting === p.id;
+                            const isDone = results.some((r) => r.providerConfigId === p.id);
+                            const hasError = Boolean(errors[p.id]);
+                            return (
+                                <Box
+                                    key={p.id}
+                                    sx={{
+                                        px: 2,
+                                        py: 1.2,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 2,
+                                        backgroundColor: isCurrent ? "var(--scheme-brand-1100)" : "transparent",
+                                        transition: "background-color 0.2s",
+                                    }}
+                                >
+                                    <label className="config-field-inline" style={{ margin: 0, flex: 1 }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selected.has(p.id)}
+                                            onChange={() => toggleProvider(p.id)}
+                                            disabled={running}
+                                        />
+                                        <Box component="span">
+                                            <Box component="span" sx={{ fontWeight: 600 }}>{p.name}</Box>
+                                            <Box component="span" sx={{ ml: 1, fontSize: 11, color: "var(--axpo-text-secondary)" }}>
+                                                {p.provider} / {p.modelName}
+                                            </Box>
                                         </Box>
-                                    </Box>
-                                </label>
-                                {isCurrent && (
-                                    <Stack direction="row" alignItems="center" gap={1} sx={{ fontSize: 12, color: "var(--scheme-brand-600)" }}>
-                                        <CircularProgress size={12} color="inherit" />
-                                        <span>Testing…</span>
-                                    </Stack>
-                                )}
-                                {isDone && !isCurrent && (
-                                    <CheckCircleIcon sx={{ fontSize: 16, color: "success.main" }} />
-                                )}
-                                {hasError && !isCurrent && (
-                                    <Tooltip title={errors[p.id]}>
-                                        <CancelIcon sx={{ fontSize: 16, color: "error.main" }} />
-                                    </Tooltip>
-                                )}
-                            </Box>
-                        );
-                    })}
-                </Stack>
-            </Box>
+                                    </label>
+                                    {isCurrent && (
+                                        <Stack direction="row" alignItems="center" gap={1} sx={{ fontSize: 12, color: "var(--scheme-brand-600)" }}>
+                                            <CircularProgress size={12} color="inherit" />
+                                            <span>Testing…</span>
+                                        </Stack>
+                                    )}
+                                    {isDone && !isCurrent && (
+                                        <CheckCircleIcon sx={{ fontSize: 16, color: "success.main" }} />
+                                    )}
+                                    {hasError && !isCurrent && (
+                                        <Tooltip title={errors[p.id]}>
+                                            <CancelIcon sx={{ fontSize: 16, color: "error.main" }} />
+                                        </Tooltip>
+                                    )}
+                                </Box>
+                            );
+                        })}
+                    </Stack>
+                </Box>
+            )}
 
             {/* Progress bar */}
             {running && (
@@ -483,6 +649,12 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
                 </Box>
             )}
 
+            {historyWarning && (
+                <Alert severity="warning" sx={{ fontSize: 13 }}>
+                    {historyWarning}
+                </Alert>
+            )}
+
             {/* Error summary */}
             {Object.keys(errors).length > 0 && (
                 <Stack spacing={1}>
@@ -497,74 +669,70 @@ export function LLMBenchmark({ session, onNotify, providers }: LLMBenchmarkProps
                 </Stack>
             )}
 
-            {/* Results table */}
-            {results.length > 0 && (
-                <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-                        Results — click a row to see field-by-field comparison
+            <Box>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, mb: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        {results.length ? "Current benchmark results" : "Previous benchmark results"}
                     </Typography>
-                    <Box sx={{ overflowX: "auto", border: "1px solid var(--scheme-neutral-900)", borderRadius: "8px" }}>
-                        <Table size="small" sx={{ minWidth: 900 }}>
-                            <TableHead>
-                                <TableRow sx={{ backgroundColor: "var(--scheme-neutral-1200)" }}>
-                                    <TableCell sx={{ width: 32 }} />
-                                    <TableCell sx={{ fontWeight: 700 }}>LLM</TableCell>
-                                    {/* Detection group */}
-                                    <TableCell
-                                        colSpan={3}
-                                        align="center"
-                                        sx={{ fontWeight: 700, borderLeft: "1px solid var(--scheme-neutral-900)", fontSize: 11, color: "var(--axpo-text-secondary)" }}
-                                    >
-                                        Provider Detection
-                                    </TableCell>
-                                    {/* Extraction group */}
-                                    <TableCell
-                                        colSpan={3}
-                                        align="center"
-                                        sx={{ fontWeight: 700, borderLeft: "1px solid var(--scheme-neutral-900)", fontSize: 11, color: "var(--axpo-text-secondary)" }}
-                                    >
-                                        Invoice Extraction
-                                    </TableCell>
-                                    {/* Overall group */}
-                                    <TableCell
-                                        colSpan={3}
-                                        align="center"
-                                        sx={{ fontWeight: 700, borderLeft: "1px solid var(--scheme-neutral-900)", fontSize: 11, color: "var(--axpo-text-secondary)" }}
-                                    >
-                                        Overall
-                                    </TableCell>
-                                </TableRow>
-                                <TableRow sx={{ backgroundColor: "var(--scheme-neutral-1200)" }}>
-                                    <TableCell />
-                                    <TableCell />
-                                    {/* Detection sub-headers */}
-                                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: 11, borderLeft: "1px solid var(--scheme-neutral-900)" }}>Score</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Time</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Tokens</TableCell>
-                                    {/* Extraction sub-headers */}
-                                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: 11, borderLeft: "1px solid var(--scheme-neutral-900)" }}>Score</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Time</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Tokens</TableCell>
-                                    {/* Overall sub-headers */}
-                                    <TableCell align="center" sx={{ fontWeight: 600, fontSize: 11, borderLeft: "1px solid var(--scheme-neutral-900)" }}>Score</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Time</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Tokens</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {results
-                                    .sort((a, b) => b.overallScore - a.overallScore)
-                                    .map((r, idx) => (
-                                        <ResultRow key={r.providerConfigId} result={r} idx={idx} />
-                                    ))}
-                            </TableBody>
-                        </Table>
-                    </Box>
-                    <Box sx={{ mt: 1, fontSize: 12, color: "var(--axpo-text-secondary)" }}>
-                        Sorted by overall score. Scores compare output against the known correct answer for <em>Serigrafia arrigorriaga.pdf</em>.
-                    </Box>
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={historyLoading ? <CircularProgress size={14} color="inherit" /> : <RefreshIcon />}
+                        onClick={loadHistory}
+                        disabled={historyLoading || running}
+                    >
+                        Refresh
+                    </Button>
                 </Box>
-            )}
+                {displayedRun ? (
+                    <Stack spacing={1.5}>
+                        <Box sx={{ fontSize: 12, color: "var(--axpo-text-secondary)" }}>
+                            {results.length
+                                ? `${displayedRun.resultCount} LLM${displayedRun.resultCount === 1 ? "" : "s"} tested in this run`
+                                : `${formatDateTime(displayedRun.createdAt)} · ${displayedRun.resultCount} LLM${displayedRun.resultCount === 1 ? "" : "s"} tested`}
+                        </Box>
+                        <ResultsTable
+                            title=""
+                            results={displayedRun.results}
+                            footer="Sorted by overall score. Scores compare output against the known correct answer for Serigrafia arrigorriaga.pdf."
+                        />
+                    </Stack>
+                ) : (
+                    <Box sx={{ color: "var(--axpo-text-secondary)", py: 2 }}>
+                        No benchmark runs have been saved yet.
+                    </Box>
+                )}
+            </Box>
+
+            <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                    Benchmark history
+                </Typography>
+                {historyRuns.length > 0 ? (
+                    <Stack spacing={2.5}>
+                        {historyRuns.map((run) => (
+                            <Box key={run.id}>
+                                <Box sx={{ mb: 1, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 2 }}>
+                                    <Box sx={{ fontWeight: 700 }}>
+                                        {formatDateTime(run.createdAt)}
+                                    </Box>
+                                    <Box sx={{ fontSize: 12, color: "var(--axpo-text-secondary)" }}>
+                                        {run.resultCount} LLM{run.resultCount === 1 ? "" : "s"} tested
+                                    </Box>
+                                </Box>
+                                <ResultsTable
+                                    title=""
+                                    results={run.results}
+                                />
+                            </Box>
+                        ))}
+                    </Stack>
+                ) : (
+                    <Box sx={{ color: "var(--axpo-text-secondary)", py: 2 }}>
+                        No older benchmark runs to show.
+                    </Box>
+                )}
+            </Box>
         </Stack>
     );
 }

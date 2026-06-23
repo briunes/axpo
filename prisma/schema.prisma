@@ -139,6 +139,7 @@ model User {
   updatedClients              Client[]            @relation("ClientUpdatedBy")
   triggeredEmailLogs          EmailLog[]
   ocrLogs                     OcrLog[]
+  llmBenchmarkRuns            LlmBenchmarkRun[]
   sessions                    UserSession[]       @relation("UserSessions")
   terminatedSessions          UserSession[]       @relation("SessionTerminatedBy")
   simulationVersions          SimulationVersion[]
@@ -650,6 +651,51 @@ model OcrLogFile {
 
   @@index([ocrLogId])
   @@map("ocr_log_files")
+}
+
+model LlmBenchmarkRun {
+  id                         String   @id @default(cuid())
+  benchmarkRunId             String?
+  providerConfigId           String
+  providerName               String
+  provider                   String
+  modelName                  String
+  benchmarkFileName          String
+  status                     String
+  detectionSuccess           Boolean
+  detectionScore             Int
+  detectionDurationMs        Int
+  detectionPromptTokens      Int?
+  detectionCompletionTokens  Int?
+  detectionTotalTokens       Int?
+  detectionCorrectFields     Int
+  detectionTotalFields       Int
+  detectionResult            Json?
+  detectionFieldScores       Json?
+  detectionError             String?
+  extractionSuccess          Boolean
+  extractionScore            Int
+  extractionDurationMs       Int
+  extractionPromptTokens     Int?
+  extractionCompletionTokens Int?
+  extractionTotalTokens      Int?
+  extractionCorrectFields    Int
+  extractionTotalFields      Int
+  extractionResult           Json?
+  extractionFieldScores      Json?
+  extractionError            String?
+  overallScore               Int
+  totalDurationMs            Int
+  totalTokens                Int?
+  createdByUserId            String?
+  createdAt                  DateTime @default(now())
+  createdByUser              User?    @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([benchmarkRunId, createdAt(sort: Desc)])
+  @@index([providerConfigId, createdAt(sort: Desc)])
+  @@index([provider, modelName])
+  @@index([createdAt(sort: Desc)])
+  @@map("llm_benchmark_runs")
 }
 
 enum OcrLogType {

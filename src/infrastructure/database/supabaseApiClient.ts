@@ -272,6 +272,15 @@ const models: Record<string, ModelMeta> = {
     table: "ocr_log_files",
     relations: { ocrLog: { table: "ocr_logs" } },
   },
+  llmBenchmarkRun: {
+    table: "llm_benchmark_runs",
+    relations: {
+      createdByUser: {
+        table: "users",
+        constraint: "llm_benchmark_runs_createdByUserId_fkey",
+      },
+    },
+  },
   appErrorLog: {
     table: "app_error_logs",
     relations: { user: { table: "users" } },

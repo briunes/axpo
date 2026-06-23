@@ -62,6 +62,40 @@ interface AIProviderConfig {
     maxTokens: number;
 }
 
+interface BenchmarkSummary {
+    providerConfigId: string;
+    runCount: number;
+    averageDurationMs: number;
+    averageCertainty: number;
+    lastRunAt: string | null;
+}
+
+function getAuthToken(): string | null {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem("axpo.internal.auth.token");
+}
+
+function benchmarkAuthHeaders(): HeadersInit {
+    const token = getAuthToken();
+    return {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+}
+
+function formatDuration(ms?: number) {
+    if (!ms) return "—";
+    return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatDateTime(value?: string | null) {
+    if (!value) return "—";
+    return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "short",
+        timeStyle: "short",
+    }).format(new Date(value));
+}
+
 const DEFAULT_LLM_CONFIG: LLMConfig = {
     llmEnabled: false,
     llmProvider: "ollama-cloud",
@@ -189,12 +223,32 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
     const [isSaving, setIsSaving] = useState(false);
     const [testingProviderId, setTestingProviderId] = useState<string | null>(null);
     const [testResults, setTestResults] = useState<Record<string, LlmTestResult>>({});
+    const [benchmarkSummaries, setBenchmarkSummaries] = useState<Record<string, BenchmarkSummary>>({});
     const [providerDialogMode, setProviderDialogMode] = useState<"add" | "edit" | null>(null);
     const [draftProvider, setDraftProvider] = useState<AIProviderConfig | null>(null);
 
     useEffect(() => {
         loadConfig();
+        void loadBenchmarkSummaries();
     }, []);
+
+    const loadBenchmarkSummaries = async () => {
+        try {
+            const res = await fetch("/api/v1/internal/invoices/benchmark?limit=1", {
+                headers: benchmarkAuthHeaders(),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || "Failed to load benchmark averages");
+            }
+            const summaries = (data.summaries ?? []) as BenchmarkSummary[];
+            setBenchmarkSummaries(
+                Object.fromEntries(summaries.map((summary) => [summary.providerConfigId, summary])),
+            );
+        } catch (error) {
+            console.warn("Benchmark averages are not available yet:", error);
+        }
+    };
 
     const loadConfig = async () => {
         try {
@@ -524,13 +578,16 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                         </Stack>
 
                         <Box sx={{ overflowX: "auto", border: "1px solid var(--scheme-neutral-900)", borderRadius: "8px" }}>
-                            <Table size="small" sx={{ minWidth: 920 }}>
+                            <Table size="small" sx={{ minWidth: 1120 }}>
                                 <TableHead>
                                     <TableRow>
                                         <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "enabled")}</TableCell>
                                         <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "name")}</TableCell>
                                         <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "provider")}</TableCell>
                                         <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "modelName")}</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 700 }}>Avg certainty</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 700 }}>Avg response</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>Benchmarks</TableCell>
                                         <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "baseUrl")}</TableCell>
                                         <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "apiKey")}</TableCell>
                                         <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "temperature")}</TableCell>
@@ -542,6 +599,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                     {config.aiProviderConfigs.map((providerConfig) => {
                                         const providerMeta = LLM_PROVIDERS[providerConfig.provider] ?? LLM_PROVIDERS.custom;
                                         const testResult = testResults[providerConfig.id];
+                                        const benchmarkSummary = benchmarkSummaries[providerConfig.id];
                                         return (
                                             <TableRow key={providerConfig.id} hover>
                                                 <TableCell>
@@ -555,6 +613,35 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                                 <TableCell>{providerConfig.name}</TableCell>
                                                 <TableCell>{providerMeta.name}</TableCell>
                                                 <TableCell>{providerConfig.modelName || "—"}</TableCell>
+                                                <TableCell align="center">
+                                                    {benchmarkSummary ? (
+                                                        <Chip
+                                                            label={`${benchmarkSummary.averageCertainty}%`}
+                                                            color={benchmarkSummary.averageCertainty >= 80 ? "success" : benchmarkSummary.averageCertainty >= 50 ? "warning" : "error"}
+                                                            size="small"
+                                                            sx={{ fontWeight: 700, minWidth: 52 }}
+                                                        />
+                                                    ) : (
+                                                        <span style={{ color: "var(--axpo-text-secondary)" }}>—</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontVariantNumeric: "tabular-nums" }}>
+                                                    {formatDuration(benchmarkSummary?.averageDurationMs)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {benchmarkSummary ? (
+                                                        <Box>
+                                                            <Box sx={{ fontVariantNumeric: "tabular-nums" }}>
+                                                                {benchmarkSummary.runCount} run{benchmarkSummary.runCount === 1 ? "" : "s"}
+                                                            </Box>
+                                                            <Box sx={{ fontSize: 11, color: "var(--axpo-text-secondary)" }}>
+                                                                {formatDateTime(benchmarkSummary.lastRunAt)}
+                                                            </Box>
+                                                        </Box>
+                                                    ) : (
+                                                        <span style={{ color: "var(--axpo-text-secondary)" }}>No runs</span>
+                                                    )}
+                                                </TableCell>
                                                 <TableCell sx={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                     {providerConfig.baseUrl || "—"}
                                                 </TableCell>
@@ -617,7 +704,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                     })}
                                     {config.aiProviderConfigs.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={9} sx={{ color: "var(--axpo-text-secondary)", py: 3 }}>
+                                            <TableCell colSpan={12} sx={{ color: "var(--axpo-text-secondary)", py: 3 }}>
                                                 {t("llmSettings", "noConfiguredLlms")}
                                             </TableCell>
                                         </TableRow>
@@ -632,6 +719,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                     <LLMBenchmark
                         session={session}
                         onNotify={onNotify}
+                        onHistoryChanged={loadBenchmarkSummaries}
                         providers={config.aiProviderConfigs.map((p) => ({
                             id: p.id,
                             name: p.name,
