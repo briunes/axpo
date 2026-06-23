@@ -10,6 +10,10 @@ import {
 } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
+import {
+  calculateAndPersistSimulation,
+} from "@/application/services/simulationCalculationRunner";
+import type { SimulationPayload } from "@/domain/types";
 
 const createSimulationSchema = z.object({
   ownerUserId: z.string().min(1).optional(),
@@ -19,6 +23,57 @@ const createSimulationSchema = z.object({
   baseValueSetId: z.string().min(1).optional(),
   ocrLogIds: z.array(z.string().min(1)).max(10).optional(),
 });
+
+const hasPayloadBase = (payload: unknown): payload is Record<string, unknown> =>
+  typeof payload === "object" &&
+  payload !== null &&
+  !Array.isArray(payload) &&
+  ("type" in payload ||
+    "electricity" in payload ||
+    "gas" in payload ||
+    "invoiceData" in payload ||
+    "results" in payload ||
+    "schemaVersion" in payload);
+
+const latestSelectedOfferFromVersions = (
+  versions: Array<{ payloadJson: unknown }>,
+) => {
+  for (const version of versions) {
+    const payload = version.payloadJson;
+    if (
+      typeof payload === "object" &&
+      payload !== null &&
+      !Array.isArray(payload) &&
+      Object.prototype.hasOwnProperty.call(payload, "selectedOffer")
+    ) {
+      return (payload as Record<string, unknown>).selectedOffer;
+    }
+  }
+  return undefined;
+};
+
+const mergeVersionPayloads = (
+  versions: Array<{ payloadJson: unknown }>,
+): Record<string, unknown> | null => {
+  const basePayload = versions.find((version) =>
+    hasPayloadBase(version.payloadJson),
+  )?.payloadJson as Record<string, unknown> | undefined;
+  const fallbackPayload = versions[0]?.payloadJson;
+  const payload =
+    basePayload ??
+    (typeof fallbackPayload === "object" &&
+    fallbackPayload !== null &&
+    !Array.isArray(fallbackPayload)
+      ? (fallbackPayload as Record<string, unknown>)
+      : undefined);
+  if (!payload) return null;
+
+  const selectedOffer = latestSelectedOfferFromVersions(versions);
+  return {
+    ...payload,
+    ...(selectedOffer !== undefined ? { selectedOffer } : {}),
+  };
+};
 
 /**
  * @swagger
@@ -256,7 +311,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         client: { select: { id: true, name: true } },
         versions: {
           orderBy: { createdAt: "desc" },
-          take: 1,
+          take: 20,
           select: { payloadJson: true },
         },
       },
@@ -269,8 +324,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   // Attach payloadJson and extract CUPS from latest version
   const items = simulations.map((sim) => {
-    const latestVersion = sim.versions[0];
-    const payload = latestVersion?.payloadJson as any;
+    const payload = mergeVersionPayloads(sim.versions) as any;
     const cupsNumber =
       payload?.electricity?.clientData?.cups ||
       payload?.gas?.clientData?.cups ||
@@ -296,5 +350,19 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const payload = createSimulationSchema.parse(body);
 
   const created = await SimulationService.createSimulation(auth, payload);
+  const initialPayload = payload.payloadJson as SimulationPayload | undefined;
+  if (initialPayload?.electricity || initialPayload?.gas) {
+    try {
+      await calculateAndPersistSimulation({
+        actor: auth,
+        simulationId: created.id,
+        baseValueSetId: payload.baseValueSetId,
+        payloadJson: initialPayload,
+      });
+    } catch (error) {
+      console.error("Auto-calculate during simulation creation failed:", error);
+    }
+  }
+
   return ResponseHandler.ok(created, 201);
 });

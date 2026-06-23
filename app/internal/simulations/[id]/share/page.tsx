@@ -4,11 +4,8 @@ import { use, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
-import { getSimulation, getClient, maybePersistRefreshedToken, shareSimulation } from "../../../lib/internalApi";
+import { getSimulation, getSimulationShareInit, maybePersistRefreshedToken, shareSimulation } from "../../../lib/internalApi";
 import {
-    getPdfTemplates,
-    getEmailTemplates,
-    getTemplateVariables,
     type PdfTemplate,
     type EmailTemplate,
     type TemplateVariable,
@@ -84,11 +81,9 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
 
         Promise.all([
             getSimulation(session.token, id),
-            getPdfTemplates({ active: true, excludeType: "price-history" }),
-            getEmailTemplates({ active: true, excludeType: "price-history" }),
-            getTemplateVariables(),
+            getSimulationShareInit(session.token, id),
         ])
-            .then(async ([simData, pdfTpl, emailTpl, variables]) => {
+            .then(([simData, init]) => {
                 setSimulation(simData.simulation);
                 const payload = simData.simulation.payloadJson as {
                     type?: "ELECTRICITY" | "GAS";
@@ -99,50 +94,25 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                 if (payload?.results) setHasResults(true);
                 setSelectedOfferProductKey(payload?.selectedOffer?.productKey ?? "");
 
-                // Get simulation type from payload (defaults to ELECTRICITY if not specified)
-                const simulationType =
-                    payload?.type === "GAS" || (payload as any)?.gas
-                        ? "GAS"
-                        : "ELECTRICITY";
-
-                // Filter PDF templates by commodity and type
-                const filteredPdfTemplates = pdfTpl.filter((t) => {
-                    // Must be active
-                    if (!t.active) return false;
-
-                    // Must be simulation template type
-                    if (t.type !== "simulation-output" && t.type !== "simulation-detailed") return false;
-
-                    // Filter by commodity - treat null/undefined as ELECTRICITY
-                    const templateCommodity = t.commodity || "ELECTRICITY";
-                    return templateCommodity === simulationType;
-                });
-
-                setPdfTemplates(filteredPdfTemplates);
-                setEmailTemplates(emailTpl.filter((t) => t.active && t.type === "simulation-share"));
-                setTemplateVariables(variables);
+                setPdfTemplates(init.pdfTemplates);
+                setEmailTemplates(init.emailTemplates);
+                setTemplateVariables(init.templateVariables);
 
                 // Pre-fill recipient email if client exists and detect the client
                 // language so we can pick the matching template translation.
                 let detectedLanguage = "en";
-                if (simData.simulation.clientId) {
-                    try {
-                        const clientData = await getClient(session.token, simData.simulation.clientId);
-                        if (clientData.contactEmail) {
-                            setRecipientEmail(clientData.contactEmail);
-                        }
-                        detectedLanguage = clientData.language
-                            ? clientData.language
-                            : getLanguageFromCountry(clientData.country);
-                        setClientLanguage(detectedLanguage);
-                    } catch (err) {
-                        // Client data not available, that's okay
-                    }
+                const clientDefaults = init.clientDefaults ?? simData.simulation.client;
+                if (clientDefaults?.contactEmail) {
+                    setRecipientEmail(clientDefaults.contactEmail);
                 }
+                detectedLanguage = clientDefaults?.language
+                    ? clientDefaults.language
+                    : getLanguageFromCountry(clientDefaults?.country);
+                setClientLanguage(detectedLanguage);
 
                 // Set default selections
-                const defaultPdf = filteredPdfTemplates.find((t) => t.active);
-                const defaultEmail = emailTpl.find((t) => t.active);
+                const defaultPdf = init.pdfTemplates.find((t) => t.active);
+                const defaultEmail = init.emailTemplates.find((t) => t.active);
                 if (defaultPdf) {
                     const pdfTranslation = resolveTranslation(defaultPdf.translations ?? [], detectedLanguage);
                     setSelectedPdfTemplate(defaultPdf.id);
@@ -296,6 +266,8 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
     const currentTemplate = shareMode === "pdf"
         ? pdfTemplates.find((t) => t.id === selectedPdfTemplate)
         : emailTemplates.find((t) => t.id === selectedEmailTemplate);
+    const currentTemplateOptions = shareMode === "pdf" ? pdfTemplates : emailTemplates;
+    const onlyTemplate = currentTemplateOptions.length === 1 ? currentTemplateOptions[0] : null;
 
     return (
         <CrudPageLayout
@@ -350,25 +322,34 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                                     <Typography variant="h6" gutterBottom>
                                         {t("shareSimulation", "selectTemplate")}
                                     </Typography>
-                                    <FormControl fullWidth>
-                                        <InputLabel>{t("shareSimulation", "selectTemplate")}</InputLabel>
-                                        <Select
-                                            value={shareMode === "pdf" ? selectedPdfTemplate : selectedEmailTemplate}
-                                            onChange={(e) => handleTemplateChange(e.target.value)}
-                                            label={t("shareSimulation", "selectTemplate")}
-                                        >
-                                            {(shareMode === "pdf" ? pdfTemplates : emailTemplates).map((template) => (
-                                                <MenuItem key={template.id} value={template.id}>
-                                                    <Box>
-                                                        <Typography variant="body2">{template.name}</Typography>
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            {template.description}
-                                                        </Typography>
-                                                    </Box>
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
+                                    {onlyTemplate ? (
+                                        <Paper variant="outlined" sx={{ px: 1.5, py: 1.25 }}>
+                                            <Typography variant="body2">{onlyTemplate.name}</Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                {onlyTemplate.description}
+                                            </Typography>
+                                        </Paper>
+                                    ) : (
+                                        <FormControl fullWidth>
+                                            <InputLabel>{t("shareSimulation", "selectTemplate")}</InputLabel>
+                                            <Select
+                                                value={shareMode === "pdf" ? selectedPdfTemplate : selectedEmailTemplate}
+                                                onChange={(e) => handleTemplateChange(e.target.value)}
+                                                label={t("shareSimulation", "selectTemplate")}
+                                            >
+                                                {currentTemplateOptions.map((template) => (
+                                                    <MenuItem key={template.id} value={template.id}>
+                                                        <Box>
+                                                            <Typography variant="body2">{template.name}</Typography>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {template.description}
+                                                            </Typography>
+                                                        </Box>
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    )}
                                 </Box>
                             </Box>
                         </CardContent>

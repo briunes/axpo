@@ -21,14 +21,14 @@ import {
   Stack,
 } from "@mui/material";
 import SyncIcon from "@mui/icons-material/Sync";
-import BoltIcon from "@mui/icons-material/Bolt";
-import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import BoltIcon from "@mui/icons-material/Bolt";
+import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import { useEffect, useState, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -173,21 +173,61 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     {
       key: "type",
       label: t("columns", "type"),
-      width: '55px',
+      width: "55px",
       renderCell: (s) => {
-        const payload = s.payloadJson as { type?: string; schemaVersion?: string } | null;
-        let commodityIcon: React.ReactNode;
-
-        if (payload?.type === "ELECTRICITY") {
-          commodityIcon = <BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} />;
-        } else if (payload?.type === "GAS") {
-          commodityIcon = <LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444" }} />;
-        }
+        const payload = s.payloadJson as { type?: string } | null;
+        const type = payload?.type;
+        const electricityLabel = t("simulationForm", "electricityLabel").trim() || "Electricity";
+        const gasLabel = t("simulationForm", "gasLabel").trim() || "Gas";
+        const electricityIconStyle = {
+          fontSize: 20,
+          color: "#f59e0b",
+          opacity: s.isDeleted ? 0.5 : 1,
+        };
+        const gasIconStyle = {
+          fontSize: 20,
+          color: "#ef4444",
+          opacity: s.isDeleted ? 0.5 : 1,
+        };
 
         return (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: s.isDeleted ? 0.5 : 1 }}>
-            {commodityIcon}
-          </div>
+          <Box
+            component="span"
+            title={
+              type === "ELECTRICITY"
+                ? electricityLabel
+                : type === "GAS"
+                  ? gasLabel
+                  : type === "BOTH"
+                    ? `${electricityLabel} + ${gasLabel}`
+                    : undefined
+            }
+            aria-label={
+              type === "ELECTRICITY"
+                ? electricityLabel
+                : type === "GAS"
+                  ? gasLabel
+                  : type === "BOTH"
+                    ? `${electricityLabel} + ${gasLabel}`
+                    : undefined
+            }
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "flex-start",
+              minWidth: 44,
+            }}
+          >
+            {type === "ELECTRICITY" && <BoltIcon sx={electricityIconStyle} />}
+            {type === "GAS" && <LocalFireDepartmentIcon sx={gasIconStyle} />}
+            {type === "BOTH" && (
+              <>
+                <BoltIcon sx={electricityIconStyle} />
+                <LocalFireDepartmentIcon sx={{ ...gasIconStyle, ml: "-4px" }} />
+              </>
+            )}
+            {!type && <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
+          </Box>
         );
       },
     },
@@ -377,7 +417,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
 
         const hasDropdown = secondaryItems.length > 0;
 
-        const primaryIcon = isShared ? <VisibilityIcon fontSize="small" /> : <BoltIcon fontSize="small" />;
+        const primaryIcon = isShared ? <VisibilityIcon fontSize="small" /> : undefined;
 
         return (
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
@@ -389,16 +429,10 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 aria-label={primaryLabel}
                 sx={{
                   minWidth: "108px !important",
-                  "@media (max-width: 1400px)": {
-                    minWidth: "36px !important",
-                    px: 0.75,
-                    "& .MuiButton-startIcon": { mr: 0, ml: 0 },
-                  },
+                  whiteSpace: "nowrap",
                 }}
               >
-                <Box component="span" sx={{ "@media (max-width: 1400px)": { display: "none" } }}>
-                  {primaryLabel}
-                </Box>
+                {primaryLabel}
               </Button>
               {hasDropdown && (
                 <Button

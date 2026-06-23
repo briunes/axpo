@@ -2,12 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "../../../../../src/lib/i18n-context";
-import { getClient, maybePersistRefreshedToken, shareSimulation } from "../../../lib/internalApi";
+import { getSimulationShareInit, maybePersistRefreshedToken, shareSimulation } from "../../../lib/internalApi";
 import { loadSession } from "../../../lib/authSession";
 import {
-    getPdfTemplates,
-    getEmailTemplates,
-    getTemplateVariables,
     type PdfTemplate,
     type EmailTemplate,
     type TemplateVariable,
@@ -92,59 +89,34 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
     const [clientLanguage, setClientLanguage] = useState<string>("en");
 
     useEffect(() => {
-        Promise.all([
-            getPdfTemplates({ active: true, excludeType: "price-history" }),
-            getEmailTemplates({ active: true, excludeType: "price-history" }),
-            getTemplateVariables(),
-        ])
-            .then(async ([pdfTpl, emailTpl, variables]) => {
-                // Get simulation type from payload (defaults to ELECTRICITY if not specified)
-                const payload = simulation.payloadJson as { type?: "ELECTRICITY" | "GAS" } | null;
-                const simulationType =
-                    payload?.type === "GAS" || (payload as any)?.gas
-                        ? "GAS"
-                        : "ELECTRICITY";
+        let isCurrent = true;
+        setIsLoading(true);
+        getSimulationShareInit(token, simulation.id)
+            .then((init) => {
+                if (!isCurrent) return;
 
-                // Filter PDF templates by commodity and type
-                const simulationPdfTemplates = pdfTpl.filter((t) => {
-                    // Must be simulation template type
-                    if (t.type !== "simulation-output" && t.type !== "simulation-detailed") return false;
-
-                    // Filter by commodity - treat null/undefined as ELECTRICITY
-                    const templateCommodity = t.commodity || "ELECTRICITY";
-                    return templateCommodity === simulationType;
-                });
-
-                const simulationEmailTemplates = emailTpl.filter(
-                    (t) => t.type === "simulation-share"
-                );
-
-                setPdfTemplates(simulationPdfTemplates);
-                setEmailTemplates(simulationEmailTemplates);
-                setTemplateVariables(variables);
+                setPdfTemplates(init.pdfTemplates);
+                setEmailTemplates(init.emailTemplates);
+                setTemplateVariables(init.templateVariables);
 
                 // Determine client language from language preference (falls back to country detection)
                 let detectedLanguage = "en";
-                if (!isTestingMode && simulation.clientId) {
-                    try {
-                        const clientData = await getClient(token, simulation.clientId);
-                        if (clientData.contactEmail) {
-                            setRecipientEmail(clientData.contactEmail);
-                        }
-                        detectedLanguage = clientData.language
-                            ? clientData.language
-                            : getLanguageFromCountry(clientData.country);
-                    } catch (err) {
-                        // Client data not available, that's okay
+                if (!isTestingMode) {
+                    const clientDefaults = init.clientDefaults ?? simulation.client;
+                    if (clientDefaults?.contactEmail) {
+                        setRecipientEmail(clientDefaults.contactEmail);
                     }
+                    detectedLanguage = clientDefaults?.language
+                        ? clientDefaults.language
+                        : getLanguageFromCountry(clientDefaults?.country);
                 } else if (isTestingMode && loggedUserEmail) {
                     setRecipientEmail(loggedUserEmail);
                 }
                 setClientLanguage(detectedLanguage);
 
                 // Set default selections
-                const defaultPdf = simulationPdfTemplates.find((t) => t.active);
-                const defaultEmail = simulationEmailTemplates.find((t) => t.active);
+                const defaultPdf = init.pdfTemplates.find((t) => t.active);
+                const defaultEmail = init.emailTemplates.find((t) => t.active);
                 if (defaultPdf) {
                     const pdfTranslation = resolveTranslation(defaultPdf.translations ?? [], detectedLanguage);
                     const pdfContent = pdfTranslation?.htmlContent ?? defaultPdf.htmlContent;
@@ -176,12 +148,17 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 }
             })
             .catch((err) => {
+                if (!isCurrent) return;
                 onError?.(err.message || t("shareSimulation", "loadTemplatesFailed"));
             })
             .finally(() => {
+                if (!isCurrent) return;
                 setIsLoading(false);
             });
-    }, [simulation, token, locale]);
+        return () => {
+            isCurrent = false;
+        };
+    }, [simulation, token, locale, isTestingMode, loggedUserEmail]);
 
     const handleTemplateChange = (templateId: string) => {
         if (shareMode === "pdf") {
@@ -310,7 +287,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             if (markAsShared) {
                 try {
                     const shared = await shareSimulation(token, simulation.id, "PDF");
-                    const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
+                    const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://simuladorpublicoaxpo.b-cdn.net";
                     if (shared.publicToken) {
                         simulationLink = `${baseUrl}/?token=${shared.publicToken}`;
                     }
@@ -379,7 +356,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             let didShare = false;
             try {
                 const shared = await shareSimulation(token, simulation.id, "EMAIL");
-                const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
+                const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://simuladorpublicoaxpo.b-cdn.net";
                 if (shared.publicToken) {
                     simulationLink = `${baseUrl}/?token=${shared.publicToken}`;
                 }
@@ -434,6 +411,9 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
     const currentTemplate = shareMode === "pdf"
         ? pdfTemplates.find((t) => t.id === selectedPdfTemplate)
         : emailTemplates.find((t) => t.id === selectedEmailTemplate);
+    const currentTemplateOptions = shareMode === "pdf" ? pdfTemplates : emailTemplates;
+    const onlyTemplate = currentTemplateOptions.length === 1 ? currentTemplateOptions[0] : null;
+    const onlyEmailPdfTemplate = pdfTemplates.length === 1 ? pdfTemplates[0] : null;
 
     if (isLoading) {
         return (
@@ -489,25 +469,34 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                 <Typography variant="h6" gutterBottom>
                                     {t("shareSimulation", "selectTemplate")}
                                 </Typography>
-                                <FormControl fullWidth>
-                                    <InputLabel>{t("shareSimulation", "selectTemplate")}</InputLabel>
-                                    <Select
-                                        value={shareMode === "pdf" ? selectedPdfTemplate : selectedEmailTemplate}
-                                        onChange={(e) => handleTemplateChange(e.target.value)}
-                                        label={t("shareSimulation", "selectTemplate")}
-                                    >
-                                        {(shareMode === "pdf" ? pdfTemplates : emailTemplates).map((template) => (
-                                            <MenuItem key={template.id} value={template.id}>
-                                                <Box>
-                                                    <Typography variant="body2">{template.name}</Typography>
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        {template.description}
-                                                    </Typography>
-                                                </Box>
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
+                                {onlyTemplate ? (
+                                    <Paper variant="outlined" sx={{ px: 1.5, py: 1.25 }}>
+                                        <Typography variant="body2">{onlyTemplate.name}</Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {onlyTemplate.description}
+                                        </Typography>
+                                    </Paper>
+                                ) : (
+                                    <FormControl fullWidth>
+                                        <InputLabel>{t("shareSimulation", "selectTemplate")}</InputLabel>
+                                        <Select
+                                            value={shareMode === "pdf" ? selectedPdfTemplate : selectedEmailTemplate}
+                                            onChange={(e) => handleTemplateChange(e.target.value)}
+                                            label={t("shareSimulation", "selectTemplate")}
+                                        >
+                                            {currentTemplateOptions.map((template) => (
+                                                <MenuItem key={template.id} value={template.id}>
+                                                    <Box>
+                                                        <Typography variant="body2">{template.name}</Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {template.description}
+                                                        </Typography>
+                                                    </Box>
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                )}
                             </Box>
                         </Box>
                     </CardContent>
@@ -552,30 +541,39 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                     label={t("shareSimulation", "attachPdfLabel")}
                                 />
                                 <Collapse in={attachPdfToEmail} timeout="auto" unmountOnExit sx={{ flex: 1 }}>
-                                    <FormControl sx={{ flex: 1 }}>
-                                        <InputLabel>{t("shareSimulation", "selectPdfTemplate")}</InputLabel>
-                                        <Select
-                                            value={selectedEmailPdfTemplate}
-                                            onChange={(e) => {
-                                                const templateId = e.target.value;
-                                                setSelectedEmailPdfTemplate(templateId);
-                                                const template = pdfTemplates.find((t) => t.id === templateId);
-                                                if (template) setEditedEmailPdfContent(template.htmlContent);
-                                            }}
-                                            label={t("shareSimulation", "selectPdfTemplate")}
-                                        >
-                                            {pdfTemplates.map((template) => (
-                                                <MenuItem key={template.id} value={template.id}>
-                                                    <Box>
-                                                        <Typography variant="body2">{template.name}</Typography>
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            {template.description}
-                                                        </Typography>
-                                                    </Box>
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
+                                    {onlyEmailPdfTemplate ? (
+                                        <Paper variant="outlined" sx={{ px: 1.5, py: 1.25 }}>
+                                            <Typography variant="body2">{onlyEmailPdfTemplate.name}</Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                {onlyEmailPdfTemplate.description}
+                                            </Typography>
+                                        </Paper>
+                                    ) : (
+                                        <FormControl sx={{ flex: 1 }}>
+                                            <InputLabel>{t("shareSimulation", "selectPdfTemplate")}</InputLabel>
+                                            <Select
+                                                value={selectedEmailPdfTemplate}
+                                                onChange={(e) => {
+                                                    const templateId = e.target.value;
+                                                    setSelectedEmailPdfTemplate(templateId);
+                                                    const template = pdfTemplates.find((t) => t.id === templateId);
+                                                    if (template) setEditedEmailPdfContent(template.htmlContent);
+                                                }}
+                                                label={t("shareSimulation", "selectPdfTemplate")}
+                                            >
+                                                {pdfTemplates.map((template) => (
+                                                    <MenuItem key={template.id} value={template.id}>
+                                                        <Box>
+                                                            <Typography variant="body2">{template.name}</Typography>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {template.description}
+                                                            </Typography>
+                                                        </Box>
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    )}
                                 </Collapse>
                             </Box>
                         </CardContent>

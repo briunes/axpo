@@ -8,6 +8,19 @@ import { ValidationError } from "@/domain/errors/errors";
 
 export const dynamic = "force-dynamic";
 
+const pickOriginalInvoiceFile = <
+  T extends { fileName: string; fileType: string | null },
+>(
+  files: T[],
+): T | null => {
+  return (
+    files.find((file) => file.fileType === "application/pdf") ??
+    files.find((file) => !/_page_\d+\.[^.]+$/i.test(file.fileName)) ??
+    files[0] ??
+    null
+  );
+};
+
 /**
  * GET /api/v1/internal/simulations/[id]/invoice
  * Downloads the invoice file associated with a simulation
@@ -51,6 +64,68 @@ export const GET = withErrorHandler(
       const contentType =
         simulation.invoiceFileMimeType || "application/octet-stream";
       const fileName = simulation.invoiceFileName.replace(/[\r\n"]/g, "_");
+
+      return new NextResponse(fileBuffer, {
+        headers: {
+          "Content-Type": contentType,
+          "Content-Disposition": `inline; filename="${fileName}"`,
+          "Cache-Control": "private, no-store",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    }
+
+    const successfulExtractionLogs = await prisma.ocrLog.findMany({
+      where: {
+        simulationId,
+        type: "INVOICE_EXTRACTION",
+        status: "SUCCESS",
+      },
+      orderBy: { requestedAt: "asc" },
+      select: { id: true },
+    });
+    const successfulExtractionLogIds = successfulExtractionLogs.map(
+      (log) => log.id,
+    );
+    const successfulExtractionFiles =
+      successfulExtractionLogIds.length > 0
+        ? await prisma.ocrLogFile.findMany({
+            where: { ocrLogId: { in: successfulExtractionLogIds } },
+            orderBy: { createdAt: "asc" },
+            select: {
+              fileData: true,
+              fileName: true,
+              fileType: true,
+            },
+          })
+        : [];
+    const ocrInvoiceFiles =
+      successfulExtractionFiles.length > 0
+        ? successfulExtractionFiles
+        : await (async () => {
+            const fallbackLogs = await prisma.ocrLog.findMany({
+              where: { simulationId },
+              orderBy: { requestedAt: "asc" },
+              select: { id: true },
+            });
+            const fallbackLogIds = fallbackLogs.map((log) => log.id);
+            if (fallbackLogIds.length === 0) return [];
+            return prisma.ocrLogFile.findMany({
+              where: { ocrLogId: { in: fallbackLogIds } },
+              orderBy: { createdAt: "asc" },
+              select: {
+                fileData: true,
+                fileName: true,
+                fileType: true,
+              },
+            });
+          })();
+    const ocrInvoiceFile = pickOriginalInvoiceFile(ocrInvoiceFiles);
+
+    if (ocrInvoiceFile) {
+      const fileBuffer = Buffer.from(ocrInvoiceFile.fileData);
+      const contentType = ocrInvoiceFile.fileType || "application/octet-stream";
+      const fileName = ocrInvoiceFile.fileName.replace(/[\r\n"]/g, "_");
 
       return new NextResponse(fileBuffer, {
         headers: {

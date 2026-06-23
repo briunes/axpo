@@ -39,6 +39,17 @@ interface UpdateSimulationInput {
   baseValueSetId?: string | null;
 }
 
+interface UpdateSelectedOfferInput {
+  selectedOffer:
+    | {
+        productKey: string;
+        commodity: "ELECTRICITY" | "GAS";
+        pricingType: "FIXED" | "INDEXED";
+        selectedAt: string;
+      }
+    | null;
+}
+
 const tokenLength = Number(process.env.PUBLIC_TOKEN_LENGTH ?? 64);
 
 const generatePublicToken = (): string => {
@@ -118,6 +129,19 @@ const OCR_CORRECTION_GAS_FIELDS = [
   "impuestoHidrocarburo",
   "telemedida",
 ] as const;
+
+const pickOriginalInvoiceFile = <
+  T extends { fileName: string; fileType: string | null },
+>(
+  files: T[],
+): T | null => {
+  return (
+    files.find((file) => file.fileType === "application/pdf") ??
+    files.find((file) => !/_page_\d+\.[^.]+$/i.test(file.fileName)) ??
+    files[0] ??
+    null
+  );
+};
 
 const parseJsonLikeString = (value: unknown): unknown => {
   if (typeof value !== "string") return value;
@@ -210,6 +234,17 @@ const mergePayloadPatch = (base: unknown, patch: unknown): unknown => {
   return patch;
 };
 
+const hasSimulationPayloadBase = (
+  payload: unknown,
+): payload is Record<string, unknown> =>
+  isPlainObject(payload) &&
+  ("type" in payload ||
+    "electricity" in payload ||
+    "gas" in payload ||
+    "invoiceData" in payload ||
+    "results" in payload ||
+    "schemaVersion" in payload);
+
 const applySalesAgentDefaults = (
   payload: Record<string, unknown>,
   ownerName: string,
@@ -275,9 +310,33 @@ export class SimulationService {
   ) {
     const simulation = await prisma.simulation.findUnique({
       where: { id: simulationId },
-      include: {
+      select: {
+        id: true,
+        referenceNumber: true,
+        agencyId: true,
+        ownerUserId: true,
+        status: true,
+        expiresAt: true,
+        publicToken: true,
+        pinHashSnapshot: true,
+        isDeleted: true,
+        deletedAt: true,
+        sharedAt: true,
+        clientOpenedAt: true,
+        sharedVia: true,
+        createdAt: true,
+        updatedAt: true,
+        clientId: true,
+        pinSnapshot: true,
+        invoiceFilePath: true,
+        invoiceFileMimeType: true,
+        invoiceFileName: true,
+        invoiceFileSize: true,
         ownerUser: {
           select: { id: true, agencyId: true, pinHash: true, fullName: true },
+        },
+        agency: {
+          select: { isTlv: true },
         },
       },
     });
@@ -392,8 +451,47 @@ export class SimulationService {
       // Fetch existing OCR logs so we can compute per-field user corrections
       const existingLogs = await prisma.ocrLog.findMany({
         where: { id: { in: ocrLogIds }, userId: actor.userId },
-        select: { id: true, extractedFields: true },
+        select: {
+          id: true,
+          type: true,
+          status: true,
+          extractedFields: true,
+          ocrFiles: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              fileName: true,
+              fileType: true,
+              fileSizeBytes: true,
+            },
+          },
+        },
       });
+
+      const invoiceSourceLog =
+        existingLogs.find(
+          (log) =>
+            log.type === "INVOICE_EXTRACTION" &&
+            log.status === "SUCCESS" &&
+            log.ocrFiles.length > 0,
+        ) ?? existingLogs.find((log) => log.ocrFiles.length > 0);
+      const invoiceSourceFile = pickOriginalInvoiceFile(
+        invoiceSourceLog?.ocrFiles ?? [],
+      );
+
+      if (invoiceSourceFile) {
+        const fileName = invoiceSourceFile.fileName
+          .replace(/[\r\n"]/g, "_")
+          .slice(0, 255);
+
+        created = await prisma.simulation.update({
+          where: { id: created.id },
+          data: {
+            invoiceFileName: fileName,
+            invoiceFileMimeType: invoiceSourceFile.fileType,
+            invoiceFileSize: invoiceSourceFile.fileSizeBytes,
+          },
+        });
+      }
 
       // invoiceData in the payload holds exactly the flat OCR field names after
       // the user may have edited them in the extracted-data form
@@ -618,6 +716,87 @@ export class SimulationService {
     return {
       ...updated,
       pinSnapshot: tryDecryptSensitiveValue(updated.pinSnapshot),
+    };
+  }
+
+  static async updateSelectedOffer(
+    actor: ActorContext,
+    simulationId: string,
+    input: UpdateSelectedOfferInput,
+  ) {
+    const simulation = await prisma.simulation.findUnique({
+      where: { id: simulationId },
+      select: {
+        id: true,
+        agencyId: true,
+        ownerUserId: true,
+        isDeleted: true,
+      },
+    });
+
+    if (!simulation || simulation.isDeleted) {
+      throw new NotFoundError("Simulation", simulationId);
+    }
+
+    const canAccess =
+      isElevatedRole(actor.role) ||
+      (actor.role === UserRole.AGENT && simulation.agencyId === actor.agencyId) ||
+      (actor.role === UserRole.COMMERCIAL &&
+        simulation.ownerUserId === actor.userId);
+
+    if (!canAccess) {
+      throw new ForbiddenError("You do not have access to this simulation");
+    }
+
+    const recentVersions = await prisma.simulationVersion.findMany({
+      where: { simulationId: simulation.id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { payloadJson: true, baseValueSetId: true },
+    });
+    const baseVersion =
+      recentVersions.find((version) =>
+        hasSimulationPayloadBase(version.payloadJson),
+      ) ?? recentVersions[0];
+    const basePayload = isPlainObject(baseVersion?.payloadJson)
+      ? (baseVersion.payloadJson as Record<string, unknown>)
+      : {};
+
+    const version = await prisma.simulationVersion.create({
+      data: {
+        simulationId: simulation.id,
+        payloadJson: toInputJson({
+          ...basePayload,
+          selectedOffer: input.selectedOffer,
+        }),
+        baseValueSetId: baseVersion?.baseValueSetId ?? null,
+        createdBy: actor.userId,
+      },
+      select: { id: true, createdAt: true },
+    });
+
+    const updated = await prisma.simulation.update({
+      where: { id: simulation.id },
+      data: { updatedAt: new Date() },
+      select: { id: true, updatedAt: true },
+    });
+
+    await AuditService.logEvent({
+      actorUserId: actor.userId,
+      eventType: "SIMULATION_OFFER_SELECTION_UPDATED",
+      targetType: "SIMULATION",
+      targetId: simulation.id,
+      metadataJson: {
+        versionId: version.id,
+        selectedOffer: input.selectedOffer,
+      },
+    });
+
+    return {
+      simulationId: updated.id,
+      selectedOffer: input.selectedOffer,
+      versionId: version.id,
+      updatedAt: updated.updatedAt,
     };
   }
 

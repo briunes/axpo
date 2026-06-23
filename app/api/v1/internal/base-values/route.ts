@@ -71,6 +71,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     .enum(["production", "standard"])
     .safeParse(searchParams.get("production")).data;
   const forAgencyId = searchParams.get("forAgencyId") ?? undefined;
+  const minimal = searchParams.get("minimal") === "true";
   const canViewArchived = isElevatedRole(auth.role);
   const showArchived =
     (searchParams.get("showArchived") === "true" ||
@@ -161,12 +162,18 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         isActive: true,
         isProduction: true,
         isDeleted: true,
-        deletedAt: true,
-        createdBy: true,
         createdAt: true,
         updatedAt: true,
         _count: { select: { items: true } },
-        createdByUser: { select: { id: true, fullName: true, email: true } },
+        ...(minimal
+          ? {}
+          : {
+              deletedAt: true,
+              createdBy: true,
+              createdByUser: {
+                select: { id: true, fullName: true, email: true },
+              },
+            }),
       },
       orderBy: [{ isActive: "desc" }, { [safeOrderBy]: sortDir }],
       skip: (page - 1) * pageSize,

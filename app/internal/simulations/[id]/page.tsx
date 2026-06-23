@@ -7,7 +7,6 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import {
   getSimulation,
   openSimulationInvoice,
-  getClient,
   updateClient,
   simulationStatusTone,
   type SimulationItem,
@@ -28,7 +27,7 @@ import { StatusBadge } from "../../components/ui/StatusBadge";
 import { AuditLogsModal } from "../../components/ui/AuditLogsModal";
 import { useUserPreferences } from "../../components/providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
-import type { SimulationResults } from "@/domain/types";
+import type { SimulationPayload, SimulationResults } from "@/domain/types";
 import {
   Dialog,
   DialogTitle,
@@ -392,7 +391,7 @@ export default function SimulationDetailPage({
     if (!session || fetchedRef.current) return;
     fetchedRef.current = true;
     getSimulation(session.token, id)
-      .then(async ({ simulation: sim, versions }) => {
+      .then(({ simulation: sim }) => {
         setSimulation(sim);
         const payload = sim.payloadJson as {
           results?: SimulationResults;
@@ -406,12 +405,8 @@ export default function SimulationDetailPage({
 
         setSelectedOfferProductKey(payload?.selectedOffer?.productKey ?? "");
 
-        if (sim.clientId) {
-          getClient(session.token, sim.clientId)
-            .then((client) => setClients([client]))
-            .catch(() => {
-              /* non-critical */
-            });
+        if (sim.client) {
+          setClients([sim.client as ClientItem]);
         }
       })
       .catch((err) => {
@@ -426,18 +421,6 @@ export default function SimulationDetailPage({
 
   const handleShare = async () => {
     if (!session || !simulation) return;
-    // Re-fetch the simulation so ShareSimulationView always receives a fresh
-    // payloadJson (containing the latest results + selectedOffer) without
-    // requiring a full page refresh after a calculation or offer selection.
-    try {
-      const { simulation: freshSim } = await getSimulation(
-        session.token,
-        simulation.id,
-      );
-      setSimulation(freshSim);
-    } catch {
-      // Non-critical — fall back to the existing (possibly stale) data.
-    }
     setShowShareDialog(true);
   };
 
@@ -448,18 +431,7 @@ export default function SimulationDetailPage({
 
     didAutoOpenShareRef.current = true;
 
-    (async () => {
-      try {
-        const { simulation: freshSim } = await getSimulation(
-          session.token,
-          simulation.id,
-        );
-        setSimulation(freshSim);
-      } catch {
-        // Non-critical — fall back to existing simulation state.
-      }
-      setShowShareDialog(true);
-    })();
+    setShowShareDialog(true);
   }, [searchParams, session, simulation]);
 
   const handleClientFieldsChanged = async (
@@ -560,10 +532,7 @@ export default function SimulationDetailPage({
           }}
         >
           <LockIcon sx={{ fontSize: 16 }} />
-          <span>
-            This simulation has been shared and is now read-only. No changes can
-            be made.
-          </span>
+          <span>{t("simulationDetail", "readOnlySharedMessage")}</span>
         </div>
       )}
 
@@ -573,16 +542,34 @@ export default function SimulationDetailPage({
         token={session.token}
         clients={clients}
         onClientFieldsChanged={handleClientFieldsChanged}
-        onSuccess={(results, bvsId) => {
+        onSuccess={(results, bvsId, payload) => {
           setLastResults(results);
           if (bvsId) setUsedBaseValueSetId(bvsId);
+          if (payload) {
+            setSimulation((current) =>
+              current
+                ? { ...current, payloadJson: payload as unknown as Record<string, unknown> }
+                : current,
+            );
+          }
         }}
         onNotify={(text, tone) =>
           tone === "success" ? showSuccess(text) : showError(text)
         }
-        onOfferSelected={(productKey) =>
-          setSelectedOfferProductKey(productKey ?? "")
-        }
+        onOfferSelected={(productKey, selectedOffer) => {
+          setSelectedOfferProductKey(productKey ?? "");
+          setSimulation((current) => {
+            if (!current) return current;
+            const payload = (current.payloadJson ?? {}) as SimulationPayload;
+            return {
+              ...current,
+              payloadJson: {
+                ...payload,
+                selectedOffer,
+              } as unknown as Record<string, unknown>,
+            };
+          });
+        }}
         readOnly={simulation.status === "SHARED"}
         baseValueSetId={selectedBaseValueSetId}
       />

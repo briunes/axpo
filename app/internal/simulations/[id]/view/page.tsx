@@ -33,7 +33,7 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
     const handleCopyShareLink = async () => {
         if (!sim.publicToken) return;
 
-        const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
+        const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://simuladorpublicoaxpo.b-cdn.net";
         const shareUrl = `${baseUrl}/?token=${sim.publicToken}`;
 
         try {
@@ -106,21 +106,21 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
         key: "pin",
         label: "PIN",
         value: sim.pinSnapshot ? (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ fontFamily: "monospace" }}>
-                        {isPinVisible ? sim.pinSnapshot : "••••"}
-                    </span>
-                    <Tooltip title={isPinVisible ? "Hide PIN" : "Show PIN"}>
-                        <IconButton
-                            size="small"
-                            onClick={() => setIsPinVisible((current) => !current)}
-                            aria-label={isPinVisible ? "Hide PIN" : "Show PIN"}
-                            sx={{ color: "var(--scheme-neutral-300)", p: 0.25 }}
-                        >
-                            {isPinVisible ? <VisibilityOffIcon sx={{ fontSize: 15 }} /> : <VisibilityIcon sx={{ fontSize: 15 }} />}
-                        </IconButton>
-                    </Tooltip>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <span style={{ fontFamily: "monospace" }}>
+                    {isPinVisible ? sim.pinSnapshot : "••••"}
                 </span>
+                <Tooltip title={isPinVisible ? "Hide PIN" : "Show PIN"}>
+                    <IconButton
+                        size="small"
+                        onClick={() => setIsPinVisible((current) => !current)}
+                        aria-label={isPinVisible ? "Hide PIN" : "Show PIN"}
+                        sx={{ color: "var(--scheme-neutral-300)", p: 0.25 }}
+                    >
+                        {isPinVisible ? <VisibilityOffIcon sx={{ fontSize: 15 }} /> : <VisibilityIcon sx={{ fontSize: 15 }} />}
+                    </IconButton>
+                </Tooltip>
+            </span>
         ) : (
             <Tooltip title="No decryptable display PIN is available for this simulation. The stored PIN hash cannot be shown.">
                 <span style={{ color: "var(--scheme-neutral-500)" }}>Unavailable</span>

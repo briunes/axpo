@@ -8,7 +8,7 @@ import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import AddIcon from "@mui/icons-material/Add";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { createSimulation, createClient, listAllClients, getAgency, calculateSimulation, type ClientItem, type AgencyItem } from "../../lib/internalApi";
+import { createSimulation, createClient, listAllClients, getAgency, type ClientItem, type AgencyItem } from "../../lib/internalApi";
 import { CrudPageLayout, LoadingState, useAlerts } from "../../components/shared";
 import { CrudFormContainer } from "../../components/shared/CrudFormContainer";
 import { getSystemConfig } from "../../lib/configApi";
@@ -185,7 +185,6 @@ export default function NewSimulationPage() {
     const [errorMessage,] = useState<string | null>(null);
     const [extractedData, setExtractedData] = useState<ExtractedInvoiceData | null>(null);
     const [isValidatedExtractedData, setIsValidatedExtractedData] = useState(false);
-    const [uploadedInvoiceFile, setUploadedInvoiceFile] = useState<File | null>(null);
     const [ocrLogIds, setOcrLogIds] = useState<string[]>([]);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isMostlyEmpty, setIsMostlyEmpty] = useState(false);
@@ -245,9 +244,6 @@ export default function NewSimulationPage() {
                 : defaultElecTax;
 
         setExtractedData({ ...data, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax });
-        if (context?.file) {
-            setUploadedInvoiceFile(context.file);
-        }
         setOcrLogIds([
             context?.providerDetectionLogId,
             context?.extractionLogId,
@@ -507,36 +503,6 @@ export default function NewSimulationPage() {
                 ocrLogIds: ocrLogIds.length > 0 ? ocrLogIds : undefined,
             });
 
-            // Upload invoice file if one was extracted
-            if (uploadedInvoiceFile) {
-                try {
-                    const formData = new FormData();
-                    formData.append("file", uploadedInvoiceFile);
-                    formData.append("simulationId", created.id);
-
-                    await fetch("/api/v1/internal/simulations/upload-invoice", {
-                        method: "POST",
-                        headers: {
-                            Authorization: `Bearer ${session.token}`,
-                        },
-                        body: formData,
-                    });
-                } catch (uploadErr) {
-                    console.error("Failed to upload invoice file:", uploadErr);
-                    // Don't fail the simulation creation if file upload fails
-                }
-            }
-
-            // If created via OCR, trigger calculation immediately so results are ready
-            if (extractedData) {
-                try {
-                    await calculateSimulation(session.token, created.id);
-                } catch (calcErr) {
-                    console.error("Auto-calculate after OCR creation failed:", calcErr);
-                    // Don't block redirect if calculation fails
-                }
-            }
-
             showSuccess(t("newSimulationPage", "created"));
             router.push(`/internal/simulations/${created.id}`);
         } catch (err) {
@@ -602,7 +568,6 @@ export default function NewSimulationPage() {
                                 onBeforeExtract={() => {
                                     setExtractedData(null);
                                     setIsValidatedExtractedData(false);
-                                    setUploadedInvoiceFile(null);
                                     setOcrLogIds([]);
                                     setIsMostlyEmpty(false);
                                     setExtractionLogId(null);
@@ -713,7 +678,7 @@ export default function NewSimulationPage() {
                                             onClick={() => setShowReportIssue(v => !v)}
                                             sx={{ fontSize: 11, py: 0.3, px: 1.2, minWidth: 0, textTransform: "none", fontWeight: 600, opacity: 0.75, '&:hover': { opacity: 1 } }}
                                         >
-                                            {showReportIssue ? t("invoiceExtractor", "reportIssueCancel") : "⚑ Report issue"}
+                                            {showReportIssue ? t("invoiceExtractor", "reportIssueCancel") : t("invoiceExtractor", "reportIssueFlagButton")}
                                         </Button>
                                     )}
                                     <Button
@@ -725,7 +690,7 @@ export default function NewSimulationPage() {
                                         startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
                                         sx={{ fontSize: 11, py: 0.3, px: 1.2, minWidth: 0, textTransform: "none", fontWeight: 700 }}
                                     >
-                                        {isValidatedExtractedData ? "Validated" : "Validate"}
+                                        {isValidatedExtractedData ? t("invoiceExtractor", "validated") : t("invoiceExtractor", "validate")}
                                     </Button>
                                 </div>
                             </div>

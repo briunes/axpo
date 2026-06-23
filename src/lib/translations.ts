@@ -901,14 +901,16 @@ export const translations = {
       metaCreated: "Created",
       invoiceFile: "Invoice",
       shareTitle: "Share Simulation",
+      readOnlySharedMessage:
+        "This simulation has been shared and is now read-only. No changes can be made.",
     },
     simulationView: {
       typeElectricity: "Electricity Simulation",
-      typeGas: " Gas Simulation",
+      typeGas: "Gas Simulation",
       typeBoth: "Electricity & Gas Simulation",
       sectionClientInfo: "Client Information",
       sectionElecConfig: "Electricity Configuration",
-      sectionGasConfig: " Gas Configuration",
+      sectionGasConfig: "Gas Configuration",
       fieldCups: "CUPS",
       fieldAnnualConsumption: "Annual Consumption",
       fieldAccountHolder: "Account Holder",
@@ -930,10 +932,9 @@ export const translations = {
       periodValues_consumption: "Consumption (kWh)",
       periodValues_power: "Contracted Power (kW)",
       periodValues_excessPower: "Excess Power (kW)",
-      periodValues_omie: "OMIE Estimated (€/MWh)",
       selectedOfferTitle: "Selected Offer",
       badgeElectricity: "Electricity",
-      badgeGas: " Gas",
+      badgeGas: "Gas",
       badgeFixed: "Fixed",
       badgeIndexed: "Indexed",
       labelTotalInvoice: "Total Invoice",
@@ -941,12 +942,18 @@ export const translations = {
       labelPctDifference: "% Difference",
       labelAnnualSavings: "Annual Savings",
       selectedAt: "Selected on {date}",
-      allOffersTitle: "📋 All Calculated Offers",
+      allOffersTitle: "All Calculated Offers",
       readOnlyHint:
-        '💡 This is a read-only view. To recalculate or select another offer, use the "Open & Edit" button above.',
+        'This is a read-only view. To recalculate or select another offer, use the "Open & Edit" button above.',
       noDataTitle: "No Simulation Data",
       noDataMessage:
         "This simulation hasn't been configured yet. Use the 'Open & Edit' button above to add inputs and calculate offers.",
+      sectionPersonalizadaFijo: "Personalized Fixed (custom)",
+      personalizadaFijoPotenciaLabel: "Power term (€/kWday)",
+      personalizadaFijoEnergiaLabel: "Energy term (€/kWh)",
+      sectionGasPersonalizadaFijo: "Personalized Fixed (custom)",
+      gasPersonalizadaFijoTerminoDiaLabel: "Fixed term (€/day)",
+      gasPersonalizadaFijoTerminoVariableLabel: "Variable term (€/kWh)",
     },
     newSimulationPage: {
       title: "New simulation",
@@ -1508,7 +1515,7 @@ export const translations = {
       title: "Available Variables",
       subtitle: "Drag variables into the editor",
       searchPlaceholder: "Search variables…",
-      noMatches: "No variables match \"{search}\"",
+      noMatches: 'No variables match "{search}"',
     },
     excelParserConfig: {
       title: "Excel Parser",
@@ -1570,13 +1577,16 @@ export const translations = {
       saveSuccess: "Cron configuration updated successfully",
       loading: "Loading cron configuration...",
       title: "Cron Jobs Configuration",
-      description: "Configure automatic scheduled tasks for the system, such as expiring simulations.",
+      description:
+        "Configure automatic scheduled tasks for the system, such as expiring simulations.",
       enableExpiration: "Enable automatic simulation expiration",
-      enableExpirationDesc: "When enabled, simulations will be automatically expired based on the schedule below.",
+      enableExpirationDesc:
+        "When enabled, simulations will be automatically expired based on the schedule below.",
       schedule: "Schedule",
       scheduleDesc: "Choose when the expiration job should run",
       customExpression: "Custom Cron Expression",
-      customExpressionDesc: "Format: minute hour day month weekday (e.g., \"0 2 * * *\" for daily at 2 AM)",
+      customExpressionDesc:
+        'Format: minute hour day month weekday (e.g., "0 2 * * *" for daily at 2 AM)',
       crontabGuru: "Use crontab.guru to build your expression",
       timezone: "Timezone",
       timezoneDesc: "Timezone in which the schedule should run",
@@ -1892,10 +1902,12 @@ export const translations = {
       taskRoutingTitle: "Configured LLM for each task",
       taskRoutingDesc: "Select which configured LLM powers each AI feature.",
       enableRoutingHint: "Enable LLM features to activate task routing.",
-      noLlmsConfiguredHint: "No LLMs are configured yet. Add one in Available LLMs.",
+      noLlmsConfiguredHint:
+        "No LLMs are configured yet. Add one in Available LLMs.",
       noLlmSelected: "No LLM selected",
       providersTitle: "Available configured LLMs",
-      providersDesc: "Add and manage the provider/model combinations that tasks can use.",
+      providersDesc:
+        "Add and manage the provider/model combinations that tasks can use.",
       addLlm: "Add LLM",
       enabled: "Enabled",
       disabled: "Disabled",
@@ -1907,7 +1919,8 @@ export const translations = {
       editLlm: "Edit LLM",
       removeLlm: "Remove LLM",
       connected: "Connected",
-      noConfiguredLlms: "No configured LLMs yet. Add one to make it available for task routing.",
+      noConfiguredLlms:
+        "No configured LLMs yet. Add one to make it available for task routing.",
       addLlmTitle: "Add LLM",
       editLlmTitle: "Edit LLM",
       configurationName: "Configuration name",
@@ -1930,9 +1943,11 @@ export const translations = {
       edit: "Edit",
       delete: "Delete",
       selectProvider: "Select a provider",
-      selectProviderDesc: "Select a provider from the list to view or edit its custom extraction prompt, or click Add to create a new one.",
+      selectProviderDesc:
+        "Select a provider from the list to view or edit its custom extraction prompt, or click Add to create a new one.",
       promptNotConfiguredTitle: "Prompt not yet configured.",
-      promptNotConfiguredDesc: "This provider was added automatically from a simulation page. Please edit this provider and add a custom extraction prompt so the AI knows how to read invoices from {name}.",
+      promptNotConfiguredDesc:
+        "This provider was added automatically from a simulation page. Please edit this provider and add a custom extraction prompt so the AI knows how to read invoices from {name}.",
       configureNow: "Configure now",
       newProvider: "New Provider",
       editingProvider: "Editing: {name}",
@@ -1941,23 +1956,31 @@ export const translations = {
       disabled: "Disabled",
       providerName: "Provider Name *",
       providerNamePlaceholder: "e.g. Repsol, NEON, Iberdrola...",
-      providerNameHint: "The slug will be auto-generated from this name and is used by the AI to match invoices.",
+      providerNameHint:
+        "The slug will be auto-generated from this name and is used by the AI to match invoices.",
       status: "Status",
-      statusHint: "Disabled providers won't appear in the detection list sent to the AI.",
+      statusHint:
+        "Disabled providers won't appear in the detection list sent to the AI.",
       electricity: "Electricity",
       gas: "Gas",
-      electricityPromptHint: "Sent to the AI when an electricity invoice from this provider is detected. Leave empty to use the system default electricity prompt.",
-      gasPromptHint: "Sent to the AI when a gas invoice from this provider is detected. Leave empty to use the system default gas prompt.",
-      electricityPromptPlaceholder: "Enter a custom electricity extraction prompt for this provider...",
-      gasPromptPlaceholder: "Enter a custom gas extraction prompt for this provider...",
+      electricityPromptHint:
+        "Sent to the AI when an electricity invoice from this provider is detected. Leave empty to use the system default electricity prompt.",
+      gasPromptHint:
+        "Sent to the AI when a gas invoice from this provider is detected. Leave empty to use the system default gas prompt.",
+      electricityPromptPlaceholder:
+        "Enter a custom electricity extraction prompt for this provider...",
+      gasPromptPlaceholder:
+        "Enter a custom gas extraction prompt for this provider...",
       saveProvider: "Save Provider",
       saving: "Saving...",
       cancel: "Cancel",
-      noElectricityPrompt: "No custom electricity prompt — the system default will be used.",
+      noElectricityPrompt:
+        "No custom electricity prompt — the system default will be used.",
       noGasPrompt: "No custom gas prompt — the system default will be used.",
       configurePrompts: "Configure Prompts",
       deleteTitle: "Delete Provider",
-      deleteConfirm: "Are you sure you want to delete {name}? This action cannot be undone.",
+      deleteConfirm:
+        "Are you sure you want to delete {name}? This action cannot be undone.",
       deleting: "Deleting...",
       loadError: "Failed to load invoice providers",
       nameRequired: "Provider name is required",
@@ -1966,20 +1989,25 @@ export const translations = {
       saveError: "Failed to save provider",
       toggleError: "Failed to toggle provider status",
       deleteError: "Failed to delete provider",
-      createdSuccess: "Provider \"{name}\" created successfully",
-      updatedSuccess: "Provider \"{name}\" updated successfully",
-      deletedSuccess: "Provider \"{name}\" deleted",
+      createdSuccess: 'Provider "{name}" created successfully',
+      updatedSuccess: 'Provider "{name}" updated successfully',
+      deletedSuccess: 'Provider "{name}" deleted',
     },
     aiTemplateBuilder: {
       title: "AI Template Builder",
       beta: "Beta",
-      promptRequired: "Please describe what you want the template to look like.",
+      promptRequired:
+        "Please describe what you want the template to look like.",
       generateError: "Failed to generate template",
-      appliedSuccess: "AI template applied! Review the content and save when ready.",
+      appliedSuccess:
+        "AI template applied! Review the content and save when ready.",
       describeLabel: "Describe what you want",
-      pdfPlaceholder: "e.g. Create a professional electricity simulation PDF with a two-column layout, savings comparison table, AXPO branding and a dark header section…",
-      emailPlaceholder: "e.g. Create a welcome email for new users — friendly tone, AXPO branding, a red 'Set Up Password' button, step-by-step instructions…",
-      useExistingBase: "Use current template as base — AI will modify it instead of starting from scratch",
+      pdfPlaceholder:
+        "e.g. Create a professional electricity simulation PDF with a two-column layout, savings comparison table, AXPO branding and a dark header section…",
+      emailPlaceholder:
+        "e.g. Create a welcome email for new users — friendly tone, AXPO branding, a red 'Set Up Password' button, step-by-step instructions…",
+      useExistingBase:
+        "Use current template as base — AI will modify it instead of starting from scratch",
       generating: "Generating…",
       generateTemplate: "Generate Template",
       generatingHint: "This can take a few minutes...",
@@ -1993,45 +2021,59 @@ export const translations = {
     },
     pdfTemplateVariables: {
       CLIENT_NAME_label: "Client Name",
-      CLIENT_NAME_description: "Company or client name linked to the simulation",
+      CLIENT_NAME_description:
+        "Company or client name linked to the simulation",
       SIMULATION_ID_label: "Simulation ID",
       SIMULATION_ID_description: "Unique simulation identifier",
       SIMULATION_REFERENCE_label: "Simulation Reference",
-      SIMULATION_REFERENCE_description: "Human-readable simulation reference number",
+      SIMULATION_REFERENCE_description:
+        "Human-readable simulation reference number",
       CREATED_AT_label: "Creation Date",
       CREATED_AT_description: "Date the simulation was created",
       OWNER_NAME_label: "Owner Name",
-      OWNER_NAME_description: "Name of the commercial user who owns the simulation",
+      OWNER_NAME_description:
+        "Name of the commercial user who owns the simulation",
       OWNER_EMAIL_label: "Owner Email",
       OWNER_EMAIL_description: "Commercial email of the simulation owner",
       CHART_COMPARATIVA_label: "Comparativa Chart",
-      CHART_COMPARATIVA_description: "Bar chart comparing annual Competencia vs Axpo totals + savings stats",
+      CHART_COMPARATIVA_description:
+        "Bar chart comparing annual Competencia vs Axpo totals + savings stats",
       HISTORY_TABLES_label: "History Tables (all electricity tariffs)",
-      HISTORY_TABLES_description: "All generated price-history tables (2.0TD + 3.0TD + 6.1TD). Place this where the tables should appear.",
+      HISTORY_TABLES_description:
+        "All generated price-history tables (2.0TD + 3.0TD + 6.1TD). Place this where the tables should appear.",
       HISTORY_TABLE_2TD_label: "History Table — 2.0 TD",
-      HISTORY_TABLE_2TD_description: "Price-history table for electricity tariff 2.0TD only (P1-P3).",
+      HISTORY_TABLE_2TD_description:
+        "Price-history table for electricity tariff 2.0TD only (P1-P3).",
       HISTORY_TABLE_3TD_label: "History Table — 3.0 TD",
-      HISTORY_TABLE_3TD_description: "Price-history table for electricity tariff 3.0TD only (P1-P6).",
+      HISTORY_TABLE_3TD_description:
+        "Price-history table for electricity tariff 3.0TD only (P1-P6).",
       HISTORY_TABLE_6TD_label: "History Table — 6.1 TD",
-      HISTORY_TABLE_6TD_description: "Price-history table for electricity tariff 6.1TD only (P1-P6).",
+      HISTORY_TABLE_6TD_description:
+        "Price-history table for electricity tariff 6.1TD only (P1-P6).",
       PRODUCT_LABEL_label: "Product Label",
-      PRODUCT_LABEL_description: "Product name, e.g. \"Dinámica N1 - Perfil Normal\"",
+      PRODUCT_LABEL_description:
+        'Product name, e.g. "Dinámica N1 - Perfil Normal"',
       PERFIL_label: "Load Profile",
       PERFIL_description: "Perfil Normal or Perfil Diurno",
       TARIFA_label: "Access Tariff",
       TARIFA_description: "Electricity access tariff code, e.g. 2.0TD",
       HISTORY_TABLES_GAS_label: "Gas History Tables (all tariffs)",
-      HISTORY_TABLES_GAS_description: "All generated gas price-history tables. Place this where the tables should appear.",
+      HISTORY_TABLES_GAS_description:
+        "All generated gas price-history tables. Place this where the tables should appear.",
       HISTORY_TABLE_GAS_label: "Gas History Table",
-      HISTORY_TABLE_GAS_description: "Gas price-history table (all consumption bands).",
+      HISTORY_TABLE_GAS_description:
+        "Gas price-history table (all consumption bands).",
       HISTORY_TABLE_GAS_R1_label: "Gas History Table — R1 (low consumption)",
-      HISTORY_TABLE_GAS_R1_description: "Gas price-history for TUR band R1 — residential low consumption.",
+      HISTORY_TABLE_GAS_R1_description:
+        "Gas price-history for TUR band R1 — residential low consumption.",
       HISTORY_TABLE_GAS_R2_label: "Gas History Table — R2 (medium consumption)",
-      HISTORY_TABLE_GAS_R2_description: "Gas price-history for TUR band R2 — residential medium consumption.",
+      HISTORY_TABLE_GAS_R2_description:
+        "Gas price-history for TUR band R2 — residential medium consumption.",
       HISTORY_TABLE_GAS_R3_label: "Gas History Table — R3 (high consumption)",
-      HISTORY_TABLE_GAS_R3_description: "Gas price-history for TUR band R3 — residential high consumption.",
+      HISTORY_TABLE_GAS_R3_description:
+        "Gas price-history for TUR band R3 — residential high consumption.",
       GAS_PRODUCT_LABEL_label: "Gas Product Label",
-      GAS_PRODUCT_LABEL_description: "Gas product name, e.g. \"Gas Estable N1\"",
+      GAS_PRODUCT_LABEL_description: 'Gas product name, e.g. "Gas Estable N1"',
       GAS_TARIFA_label: "Gas Access Tariff",
       GAS_TARIFA_description: "Gas tariff code, e.g. TUR or RL3",
       editableSection: "Editable section",
@@ -2101,6 +2143,9 @@ export const translations = {
       reportIssueSubmit: "Submit report",
       reportIssueSubmitting: "Sending…",
       reportIssueConfirm: "Issue reported. Thank you for your feedback.",
+      validate: "Validate",
+      validated: "Validated",
+      reportIssueFlagButton: "⚑ Report issue",
     },
     pdfTemplatesModule: {
       loading: "Loading templates...",
@@ -2820,7 +2865,8 @@ export const translations = {
       feedbackPlaceholder:
         "p. ej. alquiler no se devuelve, precioEnergiaP1 siempre sale 0...",
       rawTextReturned: "Texto bruto devuelto por el modelo",
-      noResponseText: "No hay texto de respuesta registrado para esta solicitud.",
+      noResponseText:
+        "No hay texto de respuesta registrado para esta solicitud.",
       fullPrompt: "Prompt completo enviado al LLM",
       persistedFiles: "Archivos guardados para esta solicitud OCR",
       extractedJson: "Campos extraídos y postprocesados (JSON)",
@@ -2855,7 +2901,8 @@ export const translations = {
       deleteAppErrorsConfirm:
         "¿Eliminar {count} errores de aplicación? Se ocultarán de los registros, pero permanecerán en la base de datos.",
       appErrorsDeleted: "{count} errores de aplicación eliminados",
-      deleteAppErrorsFailed: "No se pudieron eliminar los errores de aplicación",
+      deleteAppErrorsFailed:
+        "No se pudieron eliminar los errores de aplicación",
       success: "Correcto",
       failed: "Fallido",
       sent: "Enviado",
@@ -3249,14 +3296,16 @@ export const translations = {
       metaCreated: "Creado",
       invoiceFile: "Factura",
       shareTitle: "Compartir Simulación",
+      readOnlySharedMessage:
+        "Esta simulación ha sido compartida y ahora es de solo lectura. No se pueden realizar cambios.",
     },
     simulationView: {
       typeElectricity: "Simulación Eléctrica",
-      typeGas: " Simulación de Gas",
+      typeGas: "Simulación de Gas",
       typeBoth: "Simulación Electricidad & Gas",
       sectionClientInfo: "Información del Cliente",
       sectionElecConfig: "Configuración Eléctrica",
-      sectionGasConfig: " Configuración de Gas",
+      sectionGasConfig: "Configuración de Gas",
       fieldCups: "CUPS",
       fieldAnnualConsumption: "Consumo Anual",
       fieldAccountHolder: "Titular de la cuenta",
@@ -3278,10 +3327,9 @@ export const translations = {
       periodValues_consumption: "Consumo (kWh)",
       periodValues_power: "Potencia contratada (kW)",
       periodValues_excessPower: "Exceso de potencia (kW)",
-      periodValues_omie: "OMIE estimado (€/MWh)",
       selectedOfferTitle: "Oferta Seleccionada",
       badgeElectricity: "Electricidad",
-      badgeGas: " Gas",
+      badgeGas: "Gas",
       badgeFixed: "Precio Fijo",
       badgeIndexed: "Precio Indexado",
       labelTotalInvoice: "Factura Total",
@@ -3289,12 +3337,18 @@ export const translations = {
       labelPctDifference: "% Diferencia",
       labelAnnualSavings: "Ahorro Anual",
       selectedAt: "Seleccionado el {date}",
-      allOffersTitle: "📋 Todas las Ofertas Calculadas",
+      allOffersTitle: "Todas las Ofertas Calculadas",
       readOnlyHint:
-        '💡 Esta es una vista de solo lectura. Para recalcular o seleccionar otra oferta, usa el botón "Abrir y Editar" arriba.',
+        'Esta es una vista de solo lectura.',
       noDataTitle: "Sin Datos de Simulación",
       noDataMessage:
         "Esta simulación aún no ha sido configurada. Usa el botón 'Abrir y Editar' arriba para añadir datos y calcular ofertas.",
+      sectionPersonalizadaFijo: "Personalizada Fijo (personalizada)",
+      personalizadaFijoPotenciaLabel: "Término potencia (€/kWdía)",
+      personalizadaFijoEnergiaLabel: "Término energía (€/kWh)",
+      sectionGasPersonalizadaFijo: "Personalizada Fijo (personalizada)",
+      gasPersonalizadaFijoTerminoDiaLabel: "Término fijo (€/día)",
+      gasPersonalizadaFijoTerminoVariableLabel: "Término variable (€/kWh)",
     },
     newSimulationPage: {
       title: "Nueva simulación",
@@ -3376,8 +3430,7 @@ export const translations = {
       loadTemplatesFailed: "No se pudieron cargar las plantillas",
       generatePdfFailed: "No se pudo generar el PDF",
       sendEmailFailed: "No se pudo enviar el email",
-      testingModeEmailHint:
-        "Modo prueba: el email se enviará solo a tu cuenta",
+      testingModeEmailHint: "Modo prueba: el email se enviará solo a tu cuenta",
       editableSection: "Sección editable",
       clickHighlightedSections:
         "Haz clic en las secciones resaltadas para editarlas",
@@ -3863,13 +3916,14 @@ export const translations = {
       downloading: "Generando…",
       loading: "Cargando datos históricos…",
       success: "PDF de histórico descargado correctamente.",
-      noData: "No hay productos con histórico de precios disponibles para esta simulación.",
+      noData:
+        "No hay productos con histórico de precios disponibles para esta simulación.",
     },
     draggableVariables: {
       title: "Variables disponibles",
       subtitle: "Arrastra variables al editor",
       searchPlaceholder: "Buscar variables…",
-      noMatches: "No hay variables que coincidan con \"{search}\"",
+      noMatches: 'No hay variables que coincidan con "{search}"',
     },
     excelParserConfig: {
       title: "Parser de Excel",
@@ -3931,13 +3985,16 @@ export const translations = {
       saveSuccess: "Configuración cron actualizada correctamente",
       loading: "Cargando configuración cron...",
       title: "Configuración de Tareas Cron",
-      description: "Configura tareas automáticas programadas del sistema, como caducar simulaciones.",
+      description:
+        "Configura tareas automáticas programadas del sistema, como caducar simulaciones.",
       enableExpiration: "Activar caducidad automática de simulaciones",
-      enableExpirationDesc: "Cuando está activado, las simulaciones caducarán automáticamente según el horario siguiente.",
+      enableExpirationDesc:
+        "Cuando está activado, las simulaciones caducarán automáticamente según el horario siguiente.",
       schedule: "Horario",
       scheduleDesc: "Elige cuándo debe ejecutarse la tarea de caducidad",
       customExpression: "Expresión Cron Personalizada",
-      customExpressionDesc: "Formato: minuto hora día mes día-semana (p. ej., \"0 2 * * *\" para diario a las 2)",
+      customExpressionDesc:
+        'Formato: minuto hora día mes día-semana (p. ej., "0 2 * * *" para diario a las 2)',
       crontabGuru: "Usar crontab.guru para crear la expresión",
       timezone: "Zona horaria",
       timezoneDesc: "Zona horaria en la que se ejecutará el horario",
@@ -4266,11 +4323,14 @@ export const translations = {
       tabAvailableLlms: "LLM disponibles",
       taskRoutingTitle: "LLM configurado para cada tarea",
       taskRoutingDesc: "Selecciona qué LLM configurado usa cada función de IA.",
-      enableRoutingHint: "Activa las funciones LLM para habilitar el enrutamiento de tareas.",
-      noLlmsConfiguredHint: "Aún no hay LLM configurados. Añade uno en LLM disponibles.",
+      enableRoutingHint:
+        "Activa las funciones LLM para habilitar el enrutamiento de tareas.",
+      noLlmsConfiguredHint:
+        "Aún no hay LLM configurados. Añade uno en LLM disponibles.",
       noLlmSelected: "Ningún LLM seleccionado",
       providersTitle: "LLM configurados disponibles",
-      providersDesc: "Añade y gestiona las combinaciones proveedor/modelo que pueden usar las tareas.",
+      providersDesc:
+        "Añade y gestiona las combinaciones proveedor/modelo que pueden usar las tareas.",
       addLlm: "Añadir LLM",
       enabled: "Activado",
       disabled: "Desactivado",
@@ -4282,11 +4342,13 @@ export const translations = {
       editLlm: "Editar LLM",
       removeLlm: "Eliminar LLM",
       connected: "Conectado",
-      noConfiguredLlms: "Aún no hay LLM configurados. Añade uno para usarlo en el enrutamiento de tareas.",
+      noConfiguredLlms:
+        "Aún no hay LLM configurados. Añade uno para usarlo en el enrutamiento de tareas.",
       addLlmTitle: "Añadir LLM",
       editLlmTitle: "Editar LLM",
       configurationName: "Nombre de configuración",
-      apiKeySavedHint: "Hay una clave guardada. Deja el campo vacío para conservarla.",
+      apiKeySavedHint:
+        "Hay una clave guardada. Deja el campo vacío para conservarla.",
       apiKeyRequiredHint: "Obligatoria para este proveedor.",
       savedApiKeyPlaceholder: "Clave API guardada",
       saveLlm: "Guardar LLM",
@@ -4305,9 +4367,11 @@ export const translations = {
       edit: "Editar",
       delete: "Eliminar",
       selectProvider: "Selecciona un proveedor",
-      selectProviderDesc: "Selecciona un proveedor de la lista para ver o editar su prompt de extracción personalizado, o haz clic en Añadir para crear uno nuevo.",
+      selectProviderDesc:
+        "Selecciona un proveedor de la lista para ver o editar su prompt de extracción personalizado, o haz clic en Añadir para crear uno nuevo.",
       promptNotConfiguredTitle: "El prompt aún no está configurado.",
-      promptNotConfiguredDesc: "Este proveedor se añadió automáticamente desde una simulación. Edita este proveedor y añade un prompt de extracción personalizado para que la IA sepa leer facturas de {name}.",
+      promptNotConfiguredDesc:
+        "Este proveedor se añadió automáticamente desde una simulación. Edita este proveedor y añade un prompt de extracción personalizado para que la IA sepa leer facturas de {name}.",
       configureNow: "Configurar ahora",
       newProvider: "Nuevo Proveedor",
       editingProvider: "Editando: {name}",
@@ -4316,23 +4380,32 @@ export const translations = {
       disabled: "Desactivado",
       providerName: "Nombre del Proveedor *",
       providerNamePlaceholder: "p. ej. Repsol, NEON, Iberdrola...",
-      providerNameHint: "El slug se generará automáticamente desde este nombre y la IA lo usará para identificar facturas.",
+      providerNameHint:
+        "El slug se generará automáticamente desde este nombre y la IA lo usará para identificar facturas.",
       status: "Estado",
-      statusHint: "Los proveedores desactivados no aparecerán en la lista de detección enviada a la IA.",
+      statusHint:
+        "Los proveedores desactivados no aparecerán en la lista de detección enviada a la IA.",
       electricity: "Electricidad",
       gas: "Gas",
-      electricityPromptHint: "Se envía a la IA cuando se detecta una factura de electricidad de este proveedor. Déjalo vacío para usar el prompt predeterminado de electricidad.",
-      gasPromptHint: "Se envía a la IA cuando se detecta una factura de gas de este proveedor. Déjalo vacío para usar el prompt predeterminado de gas.",
-      electricityPromptPlaceholder: "Introduce un prompt personalizado de extracción de electricidad para este proveedor...",
-      gasPromptPlaceholder: "Introduce un prompt personalizado de extracción de gas para este proveedor...",
+      electricityPromptHint:
+        "Se envía a la IA cuando se detecta una factura de electricidad de este proveedor. Déjalo vacío para usar el prompt predeterminado de electricidad.",
+      gasPromptHint:
+        "Se envía a la IA cuando se detecta una factura de gas de este proveedor. Déjalo vacío para usar el prompt predeterminado de gas.",
+      electricityPromptPlaceholder:
+        "Introduce un prompt personalizado de extracción de electricidad para este proveedor...",
+      gasPromptPlaceholder:
+        "Introduce un prompt personalizado de extracción de gas para este proveedor...",
       saveProvider: "Guardar Proveedor",
       saving: "Guardando...",
       cancel: "Cancelar",
-      noElectricityPrompt: "Sin prompt personalizado de electricidad — se usará el predeterminado del sistema.",
-      noGasPrompt: "Sin prompt personalizado de gas — se usará el predeterminado del sistema.",
+      noElectricityPrompt:
+        "Sin prompt personalizado de electricidad — se usará el predeterminado del sistema.",
+      noGasPrompt:
+        "Sin prompt personalizado de gas — se usará el predeterminado del sistema.",
       configurePrompts: "Configurar Prompts",
       deleteTitle: "Eliminar Proveedor",
-      deleteConfirm: "¿Seguro que quieres eliminar {name}? Esta acción no se puede deshacer.",
+      deleteConfirm:
+        "¿Seguro que quieres eliminar {name}? Esta acción no se puede deshacer.",
       deleting: "Eliminando...",
       loadError: "No se pudieron cargar los proveedores de facturas",
       nameRequired: "El nombre del proveedor es obligatorio",
@@ -4341,20 +4414,24 @@ export const translations = {
       saveError: "No se pudo guardar el proveedor",
       toggleError: "No se pudo cambiar el estado del proveedor",
       deleteError: "No se pudo eliminar el proveedor",
-      createdSuccess: "Proveedor \"{name}\" creado correctamente",
-      updatedSuccess: "Proveedor \"{name}\" actualizado correctamente",
-      deletedSuccess: "Proveedor \"{name}\" eliminado",
+      createdSuccess: 'Proveedor "{name}" creado correctamente',
+      updatedSuccess: 'Proveedor "{name}" actualizado correctamente',
+      deletedSuccess: 'Proveedor "{name}" eliminado',
     },
     aiTemplateBuilder: {
       title: "Constructor de Plantillas con IA",
       beta: "Beta",
       promptRequired: "Describe cómo quieres que sea la plantilla.",
       generateError: "No se pudo generar la plantilla",
-      appliedSuccess: "Plantilla IA aplicada. Revisa el contenido y guarda cuando esté lista.",
+      appliedSuccess:
+        "Plantilla IA aplicada. Revisa el contenido y guarda cuando esté lista.",
       describeLabel: "Describe lo que quieres",
-      pdfPlaceholder: "p. ej. Crea un PDF profesional de simulación eléctrica con diseño a dos columnas, tabla comparativa de ahorro, marca AXPO y cabecera oscura…",
-      emailPlaceholder: "p. ej. Crea un correo de bienvenida para nuevos usuarios, con tono amable, marca AXPO, botón rojo de configuración de contraseña e instrucciones paso a paso…",
-      useExistingBase: "Usar la plantilla actual como base — la IA la modificará en lugar de empezar desde cero",
+      pdfPlaceholder:
+        "p. ej. Crea un PDF profesional de simulación eléctrica con diseño a dos columnas, tabla comparativa de ahorro, marca AXPO y cabecera oscura…",
+      emailPlaceholder:
+        "p. ej. Crea un correo de bienvenida para nuevos usuarios, con tono amable, marca AXPO, botón rojo de configuración de contraseña e instrucciones paso a paso…",
+      useExistingBase:
+        "Usar la plantilla actual como base — la IA la modificará en lugar de empezar desde cero",
       generating: "Generando…",
       generateTemplate: "Generar Plantilla",
       generatingHint: "Esto puede tardar unos minutos...",
@@ -4372,41 +4449,57 @@ export const translations = {
       SIMULATION_ID_label: "ID de Simulación",
       SIMULATION_ID_description: "Identificador único de la simulación",
       SIMULATION_REFERENCE_label: "Referencia de Simulación",
-      SIMULATION_REFERENCE_description: "Número de referencia legible de la simulación",
+      SIMULATION_REFERENCE_description:
+        "Número de referencia legible de la simulación",
       CREATED_AT_label: "Fecha de Creación",
       CREATED_AT_description: "Fecha en la que se creó la simulación",
       OWNER_NAME_label: "Nombre del Propietario",
-      OWNER_NAME_description: "Nombre del usuario comercial propietario de la simulación",
+      OWNER_NAME_description:
+        "Nombre del usuario comercial propietario de la simulación",
       OWNER_EMAIL_label: "Email del Propietario",
-      OWNER_EMAIL_description: "Email comercial del propietario de la simulación",
+      OWNER_EMAIL_description:
+        "Email comercial del propietario de la simulación",
       CHART_COMPARATIVA_label: "Gráfico Comparativa",
-      CHART_COMPARATIVA_description: "Gráfico de barras comparando totales anuales Competencia vs Axpo y estadísticas de ahorro",
-      HISTORY_TABLES_label: "Tablas de Histórico (todas las tarifas eléctricas)",
-      HISTORY_TABLES_description: "Todas las tablas de histórico de precios generadas (2.0TD + 3.0TD + 6.1TD). Colócalo donde deban aparecer las tablas.",
+      CHART_COMPARATIVA_description:
+        "Gráfico de barras comparando totales anuales Competencia vs Axpo y estadísticas de ahorro",
+      HISTORY_TABLES_label:
+        "Tablas de Histórico (todas las tarifas eléctricas)",
+      HISTORY_TABLES_description:
+        "Todas las tablas de histórico de precios generadas (2.0TD + 3.0TD + 6.1TD). Colócalo donde deban aparecer las tablas.",
       HISTORY_TABLE_2TD_label: "Tabla de Histórico — 2.0 TD",
-      HISTORY_TABLE_2TD_description: "Tabla de histórico de precios solo para tarifa eléctrica 2.0TD (P1-P3).",
+      HISTORY_TABLE_2TD_description:
+        "Tabla de histórico de precios solo para tarifa eléctrica 2.0TD (P1-P3).",
       HISTORY_TABLE_3TD_label: "Tabla de Histórico — 3.0 TD",
-      HISTORY_TABLE_3TD_description: "Tabla de histórico de precios solo para tarifa eléctrica 3.0TD (P1-P6).",
+      HISTORY_TABLE_3TD_description:
+        "Tabla de histórico de precios solo para tarifa eléctrica 3.0TD (P1-P6).",
       HISTORY_TABLE_6TD_label: "Tabla de Histórico — 6.1 TD",
-      HISTORY_TABLE_6TD_description: "Tabla de histórico de precios solo para tarifa eléctrica 6.1TD (P1-P6).",
+      HISTORY_TABLE_6TD_description:
+        "Tabla de histórico de precios solo para tarifa eléctrica 6.1TD (P1-P6).",
       PRODUCT_LABEL_label: "Etiqueta del Producto",
-      PRODUCT_LABEL_description: "Nombre del producto, p. ej. \"Dinámica N1 - Perfil Normal\"",
+      PRODUCT_LABEL_description:
+        'Nombre del producto, p. ej. "Dinámica N1 - Perfil Normal"',
       PERFIL_label: "Perfil de Carga",
       PERFIL_description: "Perfil Normal o Perfil Diurno",
       TARIFA_label: "Tarifa de Acceso",
       TARIFA_description: "Código de tarifa de acceso eléctrica, p. ej. 2.0TD",
       HISTORY_TABLES_GAS_label: "Tablas de Histórico Gas (todas las tarifas)",
-      HISTORY_TABLES_GAS_description: "Todas las tablas de histórico de precios de gas generadas. Colócalo donde deban aparecer las tablas.",
+      HISTORY_TABLES_GAS_description:
+        "Todas las tablas de histórico de precios de gas generadas. Colócalo donde deban aparecer las tablas.",
       HISTORY_TABLE_GAS_label: "Tabla de Histórico Gas",
-      HISTORY_TABLE_GAS_description: "Tabla de histórico de precios de gas (todas las bandas de consumo).",
+      HISTORY_TABLE_GAS_description:
+        "Tabla de histórico de precios de gas (todas las bandas de consumo).",
       HISTORY_TABLE_GAS_R1_label: "Tabla de Histórico Gas — R1 (consumo bajo)",
-      HISTORY_TABLE_GAS_R1_description: "Histórico de precios de gas para banda TUR R1 — consumo residencial bajo.",
+      HISTORY_TABLE_GAS_R1_description:
+        "Histórico de precios de gas para banda TUR R1 — consumo residencial bajo.",
       HISTORY_TABLE_GAS_R2_label: "Tabla de Histórico Gas — R2 (consumo medio)",
-      HISTORY_TABLE_GAS_R2_description: "Histórico de precios de gas para banda TUR R2 — consumo residencial medio.",
+      HISTORY_TABLE_GAS_R2_description:
+        "Histórico de precios de gas para banda TUR R2 — consumo residencial medio.",
       HISTORY_TABLE_GAS_R3_label: "Tabla de Histórico Gas — R3 (consumo alto)",
-      HISTORY_TABLE_GAS_R3_description: "Histórico de precios de gas para banda TUR R3 — consumo residencial alto.",
+      HISTORY_TABLE_GAS_R3_description:
+        "Histórico de precios de gas para banda TUR R3 — consumo residencial alto.",
       GAS_PRODUCT_LABEL_label: "Etiqueta del Producto Gas",
-      GAS_PRODUCT_LABEL_description: "Nombre del producto de gas, p. ej. \"Gas Estable N1\"",
+      GAS_PRODUCT_LABEL_description:
+        'Nombre del producto de gas, p. ej. "Gas Estable N1"',
       GAS_TARIFA_label: "Tarifa de Acceso Gas",
       GAS_TARIFA_description: "Código de tarifa de gas, p. ej. TUR o RL3",
       editableSection: "Sección editable",
@@ -4476,6 +4569,9 @@ export const translations = {
       reportIssueSubmit: "Enviar reporte",
       reportIssueSubmitting: "Enviando…",
       reportIssueConfirm: "Problema reportado. Gracias por tu comentario.",
+      validate: "Validar",
+      validated: "Validado",
+      reportIssueFlagButton: "⚑ Reportar problema",
     },
     pdfTemplatesModule: {
       title: "Plantillas PDF",

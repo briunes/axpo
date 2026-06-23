@@ -145,7 +145,10 @@ export function extractVariableValues(
     clientName;
   const clientAddress = simulation.client?.address
     ? `${simulation.client.address}, ${simulation.client.postalCode || ""} ${simulation.client.city || ""}`.trim()
-    : clientData.direccion || gas?.direccion || gasClientData.direccion || "N/A";
+    : clientData.direccion ||
+      gas?.direccion ||
+      gasClientData.direccion ||
+      "N/A";
 
   // CUPS - check simulation-level, electricity payload and gas payload fields.
   const cupsNumber =
@@ -306,8 +309,7 @@ export function extractVariableValues(
 
     // Simulation metadata
     SIMULATION_ID: simulation.id,
-    SIMULATION_REFERENCE:
-      simulation.referenceNumber || simulation.id || "N/A",
+    SIMULATION_REFERENCE: simulation.referenceNumber || simulation.id || "N/A",
     SIMULATION_PERIOD: isGas ? gasSimulationPeriod : simulationPeriod,
     ANNUAL_CONSUMPTION: formatNumber(annualConsumption, 0),
     PRODUCT_NAME: isGas ? gasProductName : productName,
@@ -323,7 +325,7 @@ export function extractVariableValues(
     SIMULATION_LINK:
       shareContext?.simulationLink ||
       (simulation.publicToken
-        ? `${process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || process.env.FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es"}/?token=${simulation.publicToken}`
+        ? `${process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || process.env.FRONTEND_SIMULADOR_URL || "https://simuladorpublicoaxpo.b-cdn.net"}/?token=${simulation.publicToken}`
         : "N/A"),
     PIN: shareContext?.pin || "N/A",
     EXPIRES_IN_DAYS:

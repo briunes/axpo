@@ -5,7 +5,7 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import { SimulationResultsCards } from "./SimulationResultsCards";
 import type { SimulationItem, ClientItem, CupsLookupEntry } from "../../lib/internalApi";
-import { calculateSimulation, updateSimulation, fetchCupsLookup, listBaseValueSets, listBaseValueItems } from "../../lib/internalApi";
+import { calculateSimulation, updateSimulationSelectedOffer, fetchCupsLookup, listBaseValueSets, listBaseValueItems } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
@@ -1278,9 +1278,9 @@ export interface SimulationFormProps {
     token: string;
     clients?: ClientItem[];
     onClientFieldsChanged?: (clientId: string, data: { name?: string; contactName?: string }) => void;
-    onSuccess?: (results: SimulationResults, baseValueSetId?: string) => void;
+    onSuccess?: (results: SimulationResults, baseValueSetId?: string, payload?: SimulationPayload) => void;
     onNotify?: (text: string, tone: "success" | "error") => void;
-    onOfferSelected?: (productKey?: string) => void;
+    onOfferSelected?: (productKey?: string, selectedOffer?: SimulationPayload["selectedOffer"]) => void;
     readOnly?: boolean;
     /** ID of the base value set to use for calculation (Admin override) */
     baseValueSetId?: string;
@@ -1522,11 +1522,17 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
                 ...(selectedOffer ? { selectedOffer } : {}),
             };
-            await updateSimulation(token, simulation.id, { payloadJson: payload as Record<string, unknown> });
-            const calcResult = await calculateSimulation(token, simulation.id, baseValueSetId ? { baseValueSetId } : undefined);
+            const calcResult = await calculateSimulation(token, simulation.id, {
+                ...(baseValueSetId ? { baseValueSetId } : {}),
+                payloadJson: payload,
+            });
+            const updatedPayload: SimulationPayload = {
+                ...payload,
+                results: calcResult.results,
+            };
             setResults(calcResult.results);
             setActiveTab("results");
-            onSuccess?.(calcResult.results, calcResult.baseValueSetId);
+            onSuccess?.(calcResult.results, calcResult.baseValueSetId, updatedPayload);
             onNotify?.(t("simulationForm", "calculationComplete", { count: (calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0) }), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "calculationFailed");
@@ -1553,14 +1559,18 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
                 ...(selectedOffer ? { selectedOffer } : {}),
             };
-            await updateSimulation(token, simulation.id, { payloadJson: payload as Record<string, unknown> });
             const calcResult = await calculateSimulation(token, simulation.id, {
                 ...(baseValueSetId ? { baseValueSetId } : {}),
+                payloadJson: payload,
                 selectedMonth: month,
             });
+            const updatedPayload: SimulationPayload = {
+                ...payload,
+                results: calcResult.results,
+            };
             setResults(calcResult.results);
             setActiveTab("results");
-            onSuccess?.(calcResult.results, calcResult.baseValueSetId);
+            onSuccess?.(calcResult.results, calcResult.baseValueSetId, updatedPayload);
             onNotify?.(t("simulationForm", "calculationComplete", { count: (calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0) }), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "calculationFailed");
@@ -1578,20 +1588,8 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         const previousOffer = selectedOffer;
         setSelectedOffer(offerData);
         try {
-            // Build the full payload from current state so we never lose inputs or
-            // results when only the selectedOffer changes.  Using simulation.payloadJson
-            // (the mount-time prop) would spread stale data that is missing the inputs
-            // and/or results saved by the most recent calculation.
-            const updatedPayload: SimulationPayload = {
-                schemaVersion: "1",
-                type: simType,
-                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
-                gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
-                ...(results ? { results } : {}),
-                selectedOffer: offerData,
-            };
-            await updateSimulation(token, simulation.id, { payloadJson: updatedPayload as Record<string, unknown> });
-            onOfferSelected?.(productKey);
+            await updateSimulationSelectedOffer(token, simulation.id, offerData);
+            onOfferSelected?.(productKey, offerData);
             onNotify?.(t("simulationForm", "offerSaved"), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "failedToSaveSelection");
@@ -1599,22 +1597,14 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             setSelectedOffer(previousOffer);
         } finally {
         }
-    }, [simulation.id, token, simType, elecState, gasState, results, selectedOffer, onOfferSelected, onNotify]);
+    }, [simulation.id, token, selectedOffer, onOfferSelected, onNotify]);
 
     const handleClearOffer = useCallback(async () => {
         const previousOffer = selectedOffer;
         setSelectedOffer(undefined);
         try {
-            const updatedPayload: SimulationPayload = {
-                schemaVersion: "1",
-                type: simType,
-                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
-                gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
-                ...(results ? { results } : {}),
-                selectedOffer: null,
-            };
-            await updateSimulation(token, simulation.id, { payloadJson: updatedPayload as Record<string, unknown> });
-            onOfferSelected?.(undefined);
+            await updateSimulationSelectedOffer(token, simulation.id, null);
+            onOfferSelected?.(undefined, null);
             onNotify?.(t("simulationForm", "offerCleared"), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "failedToClearSelection");
@@ -1622,7 +1612,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             onNotify?.(msg, "error");
             throw err;
         }
-    }, [simulation.id, token, simType, elecState, gasState, results, selectedOffer, onOfferSelected, onNotify]);
+    }, [simulation.id, token, selectedOffer, onOfferSelected, onNotify]);
 
     const facturaActual = simType === "ELECTRICITY" ? elecState.facturaActual
         : simType === "GAS" ? gasState.facturaActual : undefined;

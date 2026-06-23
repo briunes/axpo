@@ -175,7 +175,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const recentVersions = await prisma.simulationVersion.findMany({
     where: { simulationId: simulation.id },
     orderBy: { createdAt: "desc" },
-    take: 20,
+    take: 200,
   });
 
   // Build a merged payload: use the most recent version that has calculation

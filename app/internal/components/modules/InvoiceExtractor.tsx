@@ -97,6 +97,37 @@ interface InvoiceExtractorProps {
     onFileChange?: (hasFile: boolean) => void;
 }
 
+type InvoiceProviderOption = {
+    id: string;
+    name: string;
+    slug: string;
+    needsPromptConfig: boolean;
+};
+
+let invoiceProvidersCache: InvoiceProviderOption[] | null = null;
+let invoiceProvidersPromise: Promise<InvoiceProviderOption[]> | null = null;
+
+async function loadInvoiceProviders(token: string | null): Promise<InvoiceProviderOption[]> {
+    if (invoiceProvidersCache) return invoiceProvidersCache;
+    if (invoiceProvidersPromise) return invoiceProvidersPromise;
+
+    invoiceProvidersPromise = fetch("/api/v1/internal/invoice-providers", {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => {
+            const providers = Array.isArray(data) ? data : [];
+            invoiceProvidersCache = providers;
+            return providers;
+        })
+        .catch(() => [])
+        .finally(() => {
+            invoiceProvidersPromise = null;
+        });
+
+    return invoiceProvidersPromise;
+}
+
 export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, onFileChange }: InvoiceExtractorProps) {
     const { t } = useI18n();
     const [files, setFiles] = useState<File[]>([]);
@@ -111,7 +142,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
     const [progress, setProgress] = useState(0);
 
     // All providers (for the select dropdown)
-    const [allProviders, setAllProviders] = useState<{ id: string; name: string; slug: string; needsPromptConfig: boolean }[]>([]);
+    const [allProviders, setAllProviders] = useState<InvoiceProviderOption[]>([]);
     const [isAddingProvider, setIsAddingProvider] = useState(false);
 
     // Provider detection state
@@ -131,12 +162,13 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
     // Load all providers for the select
     useEffect(() => {
         const token = typeof window !== "undefined" ? localStorage.getItem("axpo.internal.auth.token") : null;
-        fetch("/api/v1/internal/invoice-providers", {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then(r => r.ok ? r.json() : [])
-            .then(data => setAllProviders(Array.isArray(data) ? data : []))
-            .catch(() => { });
+        let cancelled = false;
+        loadInvoiceProviders(token).then((providers) => {
+            if (!cancelled) setAllProviders(providers);
+        });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const isPdf = (f: File) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
@@ -388,7 +420,8 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             });
             if (res.ok) {
                 const created = await res.json();
-                setAllProviders(prev => [...prev, created]);
+                invoiceProvidersCache = [...(invoiceProvidersCache ?? allProviders), created];
+                setAllProviders(invoiceProvidersCache);
                 setSelectedProviderId(created.id);
                 setDetectedProvider(prev => prev ? { ...prev, providerId: created.id, isKnown: true } : prev);
             }

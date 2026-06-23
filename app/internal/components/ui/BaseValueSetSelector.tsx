@@ -31,7 +31,7 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
     const [selected, setSelected] = useState<string>("");
 
     useEffect(() => {
-        listBaseValueSets(token, { pageSize: 100, showArchived: false, scopeType, forAgencyId })
+        listBaseValueSets(token, { pageSize: 100, showArchived: false, scopeType, forAgencyId, minimal: true })
             .then((res) => {
                 setSets(res.items);
                 let resolved: BaseValueSetItem | undefined;

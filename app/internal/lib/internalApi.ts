@@ -1,6 +1,11 @@
 import { getBrowserFingerprint } from "./browserFingerprint";
 import { uploadPresigned } from "@vercel/blob/client";
 import { getBaseValueWorkbookContentType } from "@/infrastructure/excel/baseValueUpload";
+import type {
+  EmailTemplate,
+  PdfTemplate,
+  TemplateVariable,
+} from "./configApi";
 
 export interface LoginResult {
   token?: string;
@@ -35,7 +40,18 @@ export interface SimulationItem {
   agency?: { id: string; name: string; isTlv?: boolean } | null;
   ownerUserId?: string;
   clientId?: string | null;
-  client?: { id: string; name: string } | null;
+  client?: {
+    id: string;
+    name: string;
+    contactName?: string | null;
+    contactEmail?: string | null;
+    street?: string | null;
+    city?: string | null;
+    postalCode?: string | null;
+    province?: string | null;
+    country?: string | null;
+    language?: string | null;
+  } | null;
   status: string;
   isDeleted?: boolean;
   deletedAt?: string | null;
@@ -285,7 +301,7 @@ export interface BaseValueSetItem {
   isActive: boolean;
   isProduction: boolean;
   isDeleted: boolean;
-  createdBy: string;
+  createdBy?: string;
   createdByUser?: {
     id: string;
     fullName: string;
@@ -343,6 +359,7 @@ export interface ListBaseValueSetsParams {
   status?: "ACTIVE" | "DRAFT" | "ARCHIVED";
   production?: "production" | "standard";
   forAgencyId?: string;
+  minimal?: boolean;
 }
 
 export interface ListBaseValueSetsResponse {
@@ -497,6 +514,15 @@ interface UpdateSimulationInput {
   payloadJson?: Record<string, unknown>;
   baseValueSetId?: string | null;
 }
+
+type SelectedOfferInput =
+  | {
+      productKey: string;
+      commodity: "ELECTRICITY" | "GAS";
+      pricingType: "FIXED" | "INDEXED";
+      selectedAt: string;
+    }
+  | null;
 
 export interface CreateUserResult {
   user: UserItem;
@@ -866,6 +892,36 @@ export async function getSimulation(
   );
 }
 
+export interface SimulationShareInit {
+  commodity: "ELECTRICITY" | "GAS";
+  pdfTemplates: PdfTemplate[];
+  emailTemplates: EmailTemplate[];
+  templateVariables: TemplateVariable[];
+  clientDefaults: {
+    contactEmail?: string | null;
+    country?: string | null;
+    language?: string | null;
+  } | null;
+}
+
+export async function getSimulationShareInit(
+  token: string,
+  simulationId: string,
+): Promise<SimulationShareInit> {
+  const url = `${baseUrl}/api/v1/internal/simulations/${simulationId}/share-init`;
+  return cachedInternalRead(tokenScopedCacheKey(token, url), async () => {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    return parseApiResponse<SimulationShareInit>(
+      response,
+      "Get simulation share data failed",
+    );
+  });
+}
+
 export async function createSimulation(
   token: string,
   input: CreateSimulationInput,
@@ -910,6 +966,28 @@ export async function updateSimulation(
   );
 
   return parseApiResponse<SimulationItem>(response, "Update simulation failed");
+}
+
+export async function updateSimulationSelectedOffer(
+  token: string,
+  simulationId: string,
+  selectedOffer: SelectedOfferInput,
+): Promise<{
+  simulationId: string;
+  selectedOffer: SelectedOfferInput;
+  versionId: string;
+  updatedAt: string;
+}> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/simulations/${simulationId}/selected-offer`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify({ selectedOffer }),
+    },
+  );
+
+  return parseApiResponse(response, "Update selected offer failed");
 }
 
 export async function shareSimulation(
@@ -1133,6 +1211,8 @@ export async function validateCups(
 
 export interface CalculateSimulationInput {
   baseValueSetId?: string;
+  /** Optional current form payload to save and calculate in a single request. */
+  payloadJson?: import("@/domain/types").SimulationPayload;
   /** Billing month override (YYYY-MM) for indexed offers. Fixed offers always use the billing period days. */
   selectedMonth?: string;
 }
@@ -1760,6 +1840,7 @@ export async function listBaseValueSets(
   if (params?.status) qs.set("status", params.status);
   if (params?.production) qs.set("production", params.production);
   if (params?.forAgencyId) qs.set("forAgencyId", params.forAgencyId);
+  if (params?.minimal) qs.set("minimal", "true");
   const url = `${baseUrl}/api/v1/internal/base-values${qs.toString() ? `?${qs}` : ""}`;
   return cachedInternalRead(tokenScopedCacheKey(token, url), async () => {
     const response = await fetch(url, {

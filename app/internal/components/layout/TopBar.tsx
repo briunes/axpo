@@ -30,8 +30,6 @@ export function TopBar({
   const { t } = useI18n();
   const Icon = sectionIcon[section];
 
-  console.log('TopBar rendering, actionButtons:', actionButtons);
-
   return (
     <div className="app-topbar">
       <div className="topbar-left">
