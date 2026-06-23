@@ -71,7 +71,7 @@ export function GradientBarChart({
     const mergedSx = { ...DEFAULT_CHART_SX };
 
     return (
-        <div style={{ position: "relative" }}>
+        <div style={{ position: "relative", width: "100%", minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
             {/* Hidden SVG carrying gradient definitions for each series */}
             <svg width="0" height="0" style={{ position: "absolute", overflow: "hidden" }}>
                 <defs>

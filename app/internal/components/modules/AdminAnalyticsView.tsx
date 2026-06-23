@@ -1,8 +1,7 @@
 "use client";
 
-import { PieChart } from "@mui/x-charts/PieChart";
-import { GradientLineChart, GradientBarChart } from "../ui";
-import type { AnalyticsOverview, AnalyticsAgencyStat, AnalyticsUserStat } from "../../lib/internalApi";
+import { GradientLineChart, GradientBarChart, ResponsivePieChart } from "../ui";
+import type { AnalyticsOverview, AnalyticsAgencyStat } from "../../lib/internalApi";
 import { DataTable } from "../ui";
 import type { ColumnDef } from "../ui";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -26,6 +25,7 @@ function KpiCard({ title, value, sub, accent, percentage, trend }: KpiCardProps)
             padding: "18px 20px",
             position: "relative",
             overflow: "hidden",
+            minWidth: 0,
         }}>
             {accent && (
                 <div style={{
@@ -86,6 +86,9 @@ function ChartPanel({ title, subtitle, children, style }: {
         <div className="panel-card" style={{
             borderRadius: 10,
             padding: "18px 20px",
+            width: "100%",
+            minWidth: 0,
+            overflow: "hidden",
             ...style,
         }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--scheme-neutral-500)", marginBottom: subtitle ? 2 : 14 }}>{title}</div>
@@ -248,13 +251,13 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
 
             {/* ── Core Funnel (MOST IMPORTANT) ──────────────────────────────── */}
             <ChartPanel title={t("analyticsModule", "chartEngagementFunnel")} subtitle={t("analyticsModule", "chartEngagementFunnelSub")}>
-                <div style={{ display: "flex", gap: 12, alignItems: "stretch", padding: "12px 0", position: "relative" }}>
+                <div className="analytics-funnel" style={{ display: "flex", gap: 12, alignItems: "stretch", padding: "12px 0", position: "relative" }}>
                     {[
                         { label: t("analyticsModule", "funnelCreated"), value: analytics.totalSimulations, color: "#3b82f6", percent: 100 },
                         { label: t("analyticsModule", "funnelSentEmail") || "Sent (Email)", value: emailSent, color: "#10b981", percent: analytics.totalSimulations > 0 ? Math.round((emailSent / analytics.totalSimulations) * 100) : 0 },
                         { label: t("analyticsModule", "funnelOpened"), value: analytics.successfulAccess || 0, color: "#06b6d4", percent: openRate },
                     ].map((stage, idx) => (
-                        <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, position: "relative" }}>
+                        <div className="analytics-funnel-stage" key={stage.label} style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", gap: 8, position: "relative", minWidth: 0 }}>
                             <div style={{
                                 background: `${stage.color}20`,
                                 border: `2px solid ${stage.color}60`,
@@ -267,7 +270,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                                 <div style={{ fontSize: 20, fontWeight: 600, color: `${stage.color}CC`, marginTop: 6 }}>{stage.percent}%</div>
                             </div>
                             {idx < 2 && (
-                                <div style={{
+                                <div className="analytics-funnel-arrow" style={{
                                     position: "absolute",
                                     right: "-24px",
                                     top: "50%",
@@ -283,7 +286,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
             </ChartPanel>
 
             {/* ── Activity Trends ──────────────────────────────────────────── */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 14 }}>
                 <ChartPanel
                     title={t("analyticsModule", "chartSimsCreated")}
                     subtitle={t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))}
@@ -347,11 +350,11 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                             {t("analyticsModule", "sectionSimContentSub")}
                         </p>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 14 }}>
                         {/* Energy type split */}
                         <ChartPanel title={t("analyticsModule", "chartEnergyType")} subtitle={t("analyticsModule", "chartEnergyTypeSub")}>
                             {(analytics.energyTypeSplit?.length ?? 0) > 0 ? (
-                                <PieChart
+                                <ResponsivePieChart
                                     series={[{
                                         data: (analytics.energyTypeSplit ?? []).map((e, i) => ({
                                             id: i,
@@ -416,7 +419,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
             )}
 
             {/* ── Alerts / Insights ──────────────────────────────────────────── */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, paddingBottom: '2rem' }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: 14, paddingBottom: "2rem" }}>
                 <div className="panel-card" style={{
                     padding: "16px",
                     background: "linear-gradient(135deg, #f59e0b15 0%, #f59e0b05 100%)",
