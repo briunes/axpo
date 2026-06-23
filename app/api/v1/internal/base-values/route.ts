@@ -109,7 +109,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         : requestedStatus === "ARCHIVED" && canViewArchived
           ? { isDeleted: true }
           : showArchived
-            ? {}
+            ? { isDeleted: true }
             : { isDeleted: false };
 
   const productionFilter =

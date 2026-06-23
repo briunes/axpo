@@ -109,6 +109,13 @@ const offerKindIcon = (kind: "personalized" | "fixed" | "indexed") => {
     return <BarChartIcon />;
 };
 
+const productDisplayLabel = (product: ProductResult, t: ReturnType<typeof useI18n>["t"]): string => {
+    if (product.productKey === "PERSONALIZADA_INDEX") return t("simulationOffersCards", "productLabelPersonalizadaIndex");
+    if (product.productKey === "PERSONALIZADA_OMIE_B") return t("simulationOffersCards", "productLabelPersonalizadaOmieB");
+    if (product.productKey === "GAS_PERSONALIZADA_INDEX") return t("simulationOffersCards", "productLabelGasPersonalizadaIndex");
+    return product.productLabel;
+};
+
 function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, commodity, bestProductKey }: {
     products: ProductResult[];
     facturaActual?: number;
@@ -171,14 +178,14 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
     });
 
     return (
-        <div style={{
+        <div className="simulation-offers-table-card" style={{
             background: uiColors.surface,
             borderRadius: 12,
             overflow: "hidden",
             boxShadow: "0 1px 3px rgba(0,0,0,0.14)",
             border: `1px solid ${uiColors.border}`,
         }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table className="simulation-offers-table" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                     <tr style={{ background: `linear-gradient(180deg, ${uiColors.surfaceRaised} 0%, ${uiColors.surfaceMuted} 100%)` }}>
                         {onOfferClick && (
@@ -267,13 +274,7 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                                 color: uiColors.text,
                                                 marginBottom: 2,
                                             }}>
-                                                {product.productKey === "PERSONALIZADA_INDEX"
-                                                    ? t("simulationOffersCards", "productLabelPersonalizadaIndex")
-                                                    : product.productKey === "PERSONALIZADA_OMIE_B"
-                                                        ? t("simulationOffersCards", "productLabelPersonalizadaOmieB")
-                                                        : product.productKey === "GAS_PERSONALIZADA_INDEX"
-                                                            ? t("simulationOffersCards", "productLabelGasPersonalizadaIndex")
-                                                            : product.productLabel}
+                                                {productDisplayLabel(product, t)}
                                             </div>
                                             <Chip
                                                 size="small"
@@ -357,6 +358,105 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                     })}
                 </tbody>
             </table>
+            <div className="simulation-offer-card-list">
+                {sortedProducts.map((product) => {
+                    const isTop = product.productKey === bestProductKey && product.ahorro > 0;
+                    const isSelected = selectedOffer?.productKey === product.productKey && selectedOffer?.commodity === commodity;
+                    const savingsColor = product.ahorro > 0 ? "#10b981" : product.ahorro < 0 ? "#ef4444" : uiColors.textMuted;
+                    const kind = offerKind(product);
+                    const label = productDisplayLabel(product, t);
+                    const borderColor = isSelected
+                        ? theme.palette.primary.main
+                        : isTop
+                            ? theme.palette.success.main
+                            : uiColors.border;
+
+                    return (
+                        <div
+                            key={product.productKey + product.pricingType}
+                            className="simulation-offer-card"
+                            role={onOfferClick ? "button" : undefined}
+                            tabIndex={onOfferClick ? 0 : undefined}
+                            onClick={() => onOfferClick?.(product, commodity)}
+                            onKeyDown={(event) => {
+                                if (!onOfferClick) return;
+                                if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    onOfferClick(product, commodity);
+                                }
+                            }}
+                            style={{
+                                borderColor,
+                                background: isSelected
+                                    ? alpha(theme.palette.primary.main, 0.12)
+                                    : isTop
+                                        ? alpha(theme.palette.success.main, 0.08)
+                                        : uiColors.surface,
+                                cursor: onOfferClick ? "pointer" : "default",
+                            }}
+                        >
+                            <div className="simulation-offer-card__top">
+                                {onOfferClick && (
+                                    <Radio
+                                        checked={isSelected}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            onOfferClick(product, commodity);
+                                        }}
+                                        size="small"
+                                        sx={{ p: 0.25, mt: "-2px" }}
+                                        inputProps={{ "aria-label": label }}
+                                    />
+                                )}
+                                <div className="simulation-offer-card__identity">
+                                    <div className="simulation-offer-card__title">{label}</div>
+                                    <div className="simulation-offer-card__chips">
+                                        <Chip
+                                            size="small"
+                                            variant="filled"
+                                            icon={offerKindIcon(kind)}
+                                            label={kind === "personalized"
+                                                ? t("simulationOffersCards", "pricingPersonalizada")
+                                                : kind === "fixed"
+                                                    ? t("simulationOffersCards", "pricingFixed")
+                                                    : t("simulationOffersCards", "pricingIndexed")}
+                                            sx={{ height: 20, fontSize: 10, fontWeight: 600, color: "text.secondary", bgcolor: "action.hover" }}
+                                        />
+                                        {isTop && (
+                                            <Chip size="small" color="success" label={t("simulationOffersCards", "badgeBestOffer")} sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+                                        )}
+                                        {isSelected && (
+                                            <Chip size="small" color="primary" label={t("simulationOffersCards", "badgeSelected")} sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="simulation-offer-card__metrics">
+                                <div>
+                                    <span>{t("simulationOffersCards", "colTotalInvoice")}</span>
+                                    <strong>{fmt(product.totalFactura)} €</strong>
+                                </div>
+                                <div>
+                                    <span>{t("simulationOffersCards", "colMonthlySavings")}</span>
+                                    <strong style={{ color: savingsColor }}>{fmt(product.ahorro)} €</strong>
+                                </div>
+                                <div>
+                                    <span>{t("simulationOffersCards", "colPctDifference")}</span>
+                                    <strong style={{ color: savingsColor }}>
+                                        {product.ahorro > 0 ? "↓ " : product.ahorro < 0 ? "↑ " : ""}
+                                        {fmt(product.pctAhorro, 1)}%
+                                    </strong>
+                                </div>
+                                <div>
+                                    <span>{t("simulationOffersCards", "colAnnualSavings")}</span>
+                                    <strong>{fmt(product.ahorroAnual)} €</strong>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -463,7 +563,7 @@ function EditableInputPanel({
     );
 
     return (
-        <div style={{
+        <div className="simulation-results-input-panel" style={{
             position: "relative",
             height: "100%",
             overflowY: "auto",
@@ -866,8 +966,8 @@ export function SimulationResultsCards({
     }
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{
+        <div className="simulation-results-shell" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div className="simulation-results-grid" style={{
                 display: "grid",
                 gridTemplateColumns: "minmax(280px, 320px) minmax(0, 1fr)",
                 gap: 16,
@@ -905,7 +1005,7 @@ export function SimulationResultsCards({
                 />
 
                 {/* Right side - Product tables */}
-                <div style={{ minHeight: 0, minWidth: 0, height: "100%", overflowY: "auto", paddingRight: 4 }}>
+                <div className="simulation-results-offers-pane" style={{ minHeight: 0, minWidth: 0, height: "100%", overflowY: "auto", paddingRight: 4 }}>
                     {/* Electricity section */}
                     {hasElec && (() => {
                         const elecProducts = [...results.electricity!].sort((a, b) => b.ahorro - a.ahorro);
@@ -927,8 +1027,8 @@ export function SimulationResultsCards({
                                     : indexedProducts;
 
                         return (
-                            <div style={{ marginBottom: 40 }}>
-                                <h2 style={{
+                            <div className="simulation-results-offer-section" style={{ marginBottom: 40 }}>
+                                <h2 className="simulation-results-offer-heading" style={{
                                     margin: "0 0 16px 0",
                                     fontSize: 20,
                                     fontWeight: 700,
@@ -952,10 +1052,13 @@ export function SimulationResultsCards({
                                 </h2>
 
                                 <Tabs
+                                    className="simulation-results-offer-tabs"
                                     value={elecTab}
                                     onChange={(_, value: "all" | "fixed" | "indexed" | "personalizadas") => setElecTab(value)}
                                     textColor="primary"
                                     indicatorColor="primary"
+                                    variant="scrollable"
+                                    scrollButtons="auto"
                                     sx={{
                                         mb: 2,
                                         borderBottom: 1,
@@ -1035,8 +1138,8 @@ export function SimulationResultsCards({
                                     : indexedProducts;
 
                         return (
-                            <div>
-                                <h2 style={{
+                            <div className="simulation-results-offer-section">
+                                <h2 className="simulation-results-offer-heading" style={{
                                     margin: "0 0 16px 0",
                                     fontSize: 20,
                                     fontWeight: 700,
@@ -1060,10 +1163,13 @@ export function SimulationResultsCards({
                                 </h2>
 
                                 <Tabs
+                                    className="simulation-results-offer-tabs"
                                     value={gasTab}
                                     onChange={(_, value: "all" | "fixed" | "indexed" | "personalizadas") => setGasTab(value)}
                                     textColor="primary"
                                     indicatorColor="primary"
+                                    variant="scrollable"
+                                    scrollButtons="auto"
                                     sx={{
                                         mb: 2,
                                         borderBottom: 1,
@@ -1122,7 +1228,7 @@ export function SimulationResultsCards({
                     })()}
 
                     {/* Footer info */}
-                    <div style={{
+                    <div className="simulation-results-footer" style={{
                         marginTop: 32,
                         padding: 16,
                         background: uiColors.surfaceRaised,

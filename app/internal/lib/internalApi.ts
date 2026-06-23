@@ -90,6 +90,8 @@ export interface AgencyItem {
   province?: string | null;
   country?: string | null;
   isActive: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   updatedByUser: {
@@ -201,6 +203,8 @@ export interface UserItem {
   commercialEmail?: string | null;
   otherDetails?: string | null;
   isActive: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   pinRotatedAt?: string;

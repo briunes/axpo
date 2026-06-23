@@ -564,13 +564,13 @@ function Sec({ title, children, block, collapsible, defaultOpen = true, optional
     const { t } = useI18n();
     const [isOpen, setIsOpen] = useState(defaultOpen);
     return (
-        <div style={{
+        <div className={block ? "simulation-form-section simulation-form-section--block" : "simulation-form-section"} style={{
             marginBottom: 24,
             ...(block ? {
                 background: "var(--scheme-neutral-1200)",
                 border: `1px solid var(--scheme-neutral-${complete ? '700' : '900'}, rgba(255,255,255,0.08))`,
                 borderRadius: 12,
-                padding: "24px",
+                padding: "clamp(14px, 4vw, 24px)",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.03)",
             } : {})
         }}>
@@ -609,7 +609,7 @@ function Sec({ title, children, block, collapsible, defaultOpen = true, optional
 }
 
 function Row({ children }: { children: React.ReactNode }) {
-    return <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>{children}</div>;
+    return <div className="simulation-form-row" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>{children}</div>;
 }
 
 function Field({ label, hint, flex, error, required, help, children }: {
@@ -622,7 +622,7 @@ function Field({ label, hint, flex, error, required, help, children }: {
     children: React.ReactNode;
 }) {
     return (
-        <div className="sp-form-group" style={{ flex: flex ?? "1 1 150px", minWidth: 110, ...(error ? { borderLeft: "2px solid var(--scheme-error-400, #f87171)", paddingLeft: 8 } : {}) }}>
+        <div className="sp-form-group simulation-form-field" style={{ flex: flex ?? "1 1 150px", minWidth: 0, maxWidth: "100%", ...(error ? { borderLeft: "2px solid var(--scheme-error-400, #f87171)", paddingLeft: 8 } : {}) }}>
             <label className="sp-form-label" style={error ? { color: "var(--scheme-error-400, #f87171)" } : undefined}>
                 {label}
                 {required && <span style={{ color: "var(--scheme-error-400, #f87171)", marginLeft: 2 }}>*</span>}
@@ -675,11 +675,11 @@ function PeriodGrid({ label, periods, values, onChange, step, hint, errorPeriods
     return (
         <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 11, opacity: 0.55, marginBottom: 6 }}>{label}</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div className="simulation-period-grid" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {periods.map((p) => {
                     const isInvalid = errorPeriods?.includes(p);
                     return (
-                        <div key={p} style={{ flex: "1 1 90px", minWidth: 75 }}>
+                        <div className="simulation-period-field" key={p} style={{ flex: "1 1 90px", minWidth: 0 }}>
                             <div style={{ fontSize: 10, textAlign: "center", marginBottom: 3, ...(isInvalid ? { color: "var(--scheme-error-400, #f87171)", fontWeight: 600 } : { opacity: 0.5 }) }}>{p}</div>
                             <FormInput
                                 label=""
@@ -916,9 +916,9 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
             </Sec>
 
             <Sec title={t("simulationForm", "sectionInvoiceBreakdown")} block collapsible complete={powerComplete && consumptionComplete && invoiceComplete}>
-                <Box style={{
+                <Box className="simulation-form-responsive-grid" style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
                     gap: 16,
                 }}>
                     <Sec>
@@ -1140,9 +1140,9 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
 
             {/* Invoice breakdown section */}
             <Sec title={t("simulationForm", "sectionInvoiceBreakdown")} block collapsible complete={invoiceComplete && consumptionComplete}>
-                <Box style={{
+                <Box className="simulation-form-responsive-grid" style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
                     gap: 16,
                 }}>
                     <Sec>

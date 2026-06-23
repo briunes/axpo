@@ -16,7 +16,6 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import SyncIcon from "@mui/icons-material/Sync";
 import EditIcon from "@mui/icons-material/Edit";
@@ -273,21 +272,37 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
   useLayoutEffect(() => {
     onActionButtons?.(
       <>
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={() => { setShowArchived(!showArchived); setPage(1); }}
-        >
-          {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
-        </Button>
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={() => refresh()}
-          disabled={loading}
-        >
-          <SyncIcon fontSize="small" />&nbsp;{t("actions", "refresh")}
-        </Button>
+        <Tooltip title={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")} arrow>
+          <span className="topbar-action-wrap">
+            <Button
+              className="topbar-action topbar-action--compact"
+              variant="outlined"
+              size="small"
+              onClick={() => { setShowArchived(!showArchived); setPage(1); }}
+              startIcon={<ArchiveIcon fontSize="small" />}
+              aria-label={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+            >
+              <span className="topbar-action-label">
+                {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+              </span>
+            </Button>
+          </span>
+        </Tooltip>
+        <Tooltip title={t("actions", "refresh")} arrow>
+          <span className="topbar-action-wrap">
+            <Button
+              className="topbar-action topbar-action--compact"
+              variant="outlined"
+              size="small"
+              onClick={() => refresh()}
+              disabled={loading}
+              startIcon={<SyncIcon fontSize="small" />}
+              aria-label={t("actions", "refresh")}
+            >
+              <span className="topbar-action-label">{t("actions", "refresh")}</span>
+            </Button>
+          </span>
+        </Tooltip>
         {canManage && (
           <>
             <input
@@ -297,15 +312,23 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
               style={{ display: "none" }}
               onChange={handleFileSelect}
             />
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={busyAction === "upload-base-value-file"}
-            >
-              <UploadFileIcon fontSize="small" />&nbsp;
-              {busyAction === "upload-base-value-file" ? "Uploading..." : "Upload Excel"}
-            </Button>
+            <Tooltip title={busyAction === "upload-base-value-file" ? "Uploading..." : "Upload Excel"} arrow>
+              <span className="topbar-action-wrap">
+                <Button
+                  className="topbar-action topbar-action--compact"
+                  variant="outlined"
+                  size="small"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={busyAction === "upload-base-value-file"}
+                  startIcon={<UploadFileIcon fontSize="small" />}
+                  aria-label={busyAction === "upload-base-value-file" ? "Uploading..." : "Upload Excel"}
+                >
+                  <span className="topbar-action-label">
+                    {busyAction === "upload-base-value-file" ? "Uploading..." : "Upload Excel"}
+                  </span>
+                </Button>
+              </span>
+            </Tooltip>
             {/* <Link href="/internal/base-values/new" style={{ textDecoration: "none" }}>
               <Button variant="contained" size="small">{t("baseValuesModule", "newSet")}</Button>
             </Link> */}
@@ -325,6 +348,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
+        onApplyFilters={(draft) => { setSearch(draft); setPage(1); }}
         onClearFilters={() => {
           setSearch("");
           setScopeFilter("");
@@ -427,18 +451,85 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
                 textFieldProps={{ size: "small" }}
               />
             </Box>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={commitSearch}
-              aria-label="Search"
-              sx={{ minWidth: "auto" }}
-            >
-              <SearchIcon />
-              {t("common", "search")}
-            </Button>
           </>
         )}
+        mobileCard={{
+          title: "name",
+          status: "status",
+          fields: ["scope", "agency", "createdBy", "createdAt", "production"],
+          actions: (s) => {
+            const actions = [
+              <Button
+                key="edit"
+                variant="outlined"
+                size="small"
+                component={Link}
+                href={`/internal/base-values/${s.id}/edit`}
+                startIcon={<EditIcon fontSize="small" />}
+                sx={{ minWidth: 0 }}
+              >
+                {t("actions", "edit")}
+              </Button>,
+              s.sourceFileName ? (
+                <Button
+                  key="download"
+                  variant="outlined"
+                  size="small"
+                  onClick={() => downloadBaseValueFile(session.token, s.id)}
+                  startIcon={<DownloadIcon fontSize="small" />}
+                  sx={{ minWidth: 0 }}
+                >
+                  {t("baseValuesModule", "downloadExcel")}
+                </Button>
+              ) : null,
+              !s.isActive && !s.isDeleted ? (
+                <Button
+                  key="activate"
+                  variant="outlined"
+                  color="success"
+                  size="small"
+                  onClick={() => setConfirmAction({ id: s.id, type: "activate" })}
+                  startIcon={<CheckCircleOutlineIcon fontSize="small" />}
+                  sx={{ minWidth: 0 }}
+                >
+                  {t("actions", "activate")}
+                </Button>
+              ) : null,
+              !s.isDeleted ? (
+                <Button
+                  key="archive"
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                  onClick={() => setConfirmAction({ id: s.id, type: "archive" })}
+                  startIcon={<ArchiveIcon fontSize="small" />}
+                  sx={{ minWidth: 0 }}
+                >
+                  {t("actions", "archive")}
+                </Button>
+              ) : null,
+              s.isDeleted ? (
+                <Button
+                  key="restore"
+                  variant="outlined"
+                  color="success"
+                  size="small"
+                  onClick={() => setConfirmAction({ id: s.id, type: "restore" })}
+                  startIcon={<UnarchiveIcon fontSize="small" />}
+                  sx={{ minWidth: 0 }}
+                >
+                  {t("actions", "restore")}
+                </Button>
+              ) : null,
+            ].filter(Boolean);
+
+            return (
+              <Box sx={{ display: "grid", gridTemplateColumns: actions.length > 2 ? "repeat(2, 1fr)" : `repeat(${actions.length}, 1fr)`, gap: 0.75 }}>
+                {actions}
+              </Box>
+            );
+          },
+        }}
       />
 
       {confirmAction && confirmTarget && (

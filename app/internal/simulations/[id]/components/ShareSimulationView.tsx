@@ -582,7 +582,29 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
 
                 {/* Template Editor / Preview */}
                 {currentTemplate && (
-                    <Card>
+                    <>
+                    <Card sx={{ display: { xs: "block", md: "none" } }}>
+                        <CardContent>
+                            <Box
+                                sx={{
+                                    p: 2,
+                                    borderRadius: 1,
+                                    border: "1px dashed",
+                                    borderColor: "divider",
+                                    bgcolor: "action.hover",
+                                }}
+                            >
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                                    {t("shareSimulation", "previewUnavailableMobileTitle") || "Preview not available on mobile"}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    {t("shareSimulation", "previewUnavailableMobile") || "Template previews and editing are available on medium screens and above."}
+                                </Typography>
+                            </Box>
+                        </CardContent>
+                    </Card>
+
+                    <Card sx={{ display: { xs: "none", md: "block" } }}>
                         <CardContent>
                             {/* Tabs for Email mode - always show tabs */}
                             {shareMode === "email" ? (
@@ -808,6 +830,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                             )}
                         </CardContent>
                     </Card>
+                    </>
                 )}
 
                 {/* Actions */}

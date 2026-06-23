@@ -1,10 +1,11 @@
 "use client";
 
 import { DataGrid, useGridApiRef, type GridColDef, type GridSortModel } from "@mui/x-data-grid";
-import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl, Checkbox, Button, Tooltip, useTheme, Popover, FormControlLabel, Divider, Typography, Grow } from "@mui/material";
+import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl, Checkbox, Button, Tooltip, useTheme, Popover, FormControlLabel, Divider, Typography, Drawer, useMediaQuery, Grow } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
+import FilterListIcon from "@mui/icons-material/FilterList";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -46,6 +47,20 @@ export interface MassAction {
   color?: "inherit" | "primary" | "secondary" | "error" | "info" | "success" | "warning";
 }
 
+type MobileCardField<T> = string | {
+  key: string;
+  label?: string;
+  render?: (row: T) => React.ReactNode;
+};
+
+export interface MobileCardConfig<T> {
+  title?: string | ((row: T) => React.ReactNode);
+  status?: string | ((row: T) => React.ReactNode);
+  icon?: (row: T) => React.ReactNode;
+  fields?: MobileCardField<T>[];
+  actions?: string | ((row: T) => React.ReactNode);
+}
+
 export interface DataTableProps<T extends { id: string }> {
   /** Used to persist column visibility in localStorage. Should be unique per table. */
   tableId?: string;
@@ -55,6 +70,7 @@ export interface DataTableProps<T extends { id: string }> {
   error?: string;
   searchValue?: string;
   onSearch?: (value: string) => void;
+  onApplyFilters?: (draft: string) => void;
   onClearFilters?: () => void;
   /** When false the Clear button is hidden even if onClearFilters is provided. Defaults to true. */
   hasActiveFilters?: boolean;
@@ -67,6 +83,7 @@ export interface DataTableProps<T extends { id: string }> {
     setDraft: (value: string) => void;
     commitSearch: () => void;
     searchPlaceholder: string;
+    mode: "desktop" | "mobile";
   }) => React.ReactNode;
   filterBar?: React.ReactNode;
   pagination?: PaginationState;
@@ -76,6 +93,11 @@ export interface DataTableProps<T extends { id: string }> {
   emptyMessage?: string;
   t?: (namespace: any, key: string) => string;
   massActions?: MassAction[];
+  /** Mobile cards are enabled by default so every table gets a readable phone layout. */
+  enableMobileCards?: boolean;
+  mobileCard?: MobileCardConfig<T>;
+  /** Escape hatch for screens that need a fully custom card. Prefer mobileCard when possible. */
+  renderMobileCard?: (row: T) => React.ReactNode;
 }
 
 const BASE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -202,6 +224,7 @@ export function DataTable<T extends { id: string }>({
   error,
   searchValue = "",
   onSearch,
+  onApplyFilters,
   onClearFilters,
   hasActiveFilters = true,
   searchPlaceholder = "Search…",
@@ -217,9 +240,13 @@ export function DataTable<T extends { id: string }>({
   emptyMessage = "No records found.",
   t,
   massActions,
+  enableMobileCards = true,
+  mobileCard,
+  renderMobileCard,
 }: DataTableProps<T>) {
   const { preferences } = useUserPreferences();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true });
   const apiRef = useGridApiRef();
   const { t: tI18n } = useI18n();
 
@@ -228,6 +255,8 @@ export function DataTable<T extends { id: string }>({
     tableId ? loadHiddenCols(tableId) : new Set()
   );
   const [colMenuAnchor, setColMenuAnchor] = useState<HTMLElement | null>(null);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileColumnsOpen, setMobileColumnsOpen] = useState(false);
 
   const toggleColVisibility = (key: string) => {
     setHiddenCols((prev) => {
@@ -453,6 +482,13 @@ export function DataTable<T extends { id: string }>({
   const commitSearch = () => {
     if (onSearch) onSearch(draft);
   };
+  const applyFilterControls = () => {
+    if (onApplyFilters) {
+      onApplyFilters(draft);
+      return;
+    }
+    commitSearch();
+  };
 
   // ── Persist state to localStorage whenever search or sort changes ────────────
   useEffect(() => {
@@ -484,6 +520,140 @@ export function DataTable<T extends { id: string }>({
     pageSize: pagination?.pageSize || preferences.itemsPerPage,
     page: pagination ? pagination.page - 1 : 0,
   }), [pagination?.pageSize, pagination?.page, preferences.itemsPerPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.pageSize)) : 1;
+  const canLoadMore = Boolean(pagination && pagination.pageSize < pagination.total);
+  const visibleCount = pagination ? Math.min(pagination.pageSize, pagination.total) : rows.length;
+  const useMobileCards = enableMobileCards;
+  const shouldRenderGrid = !(useMobileCards && isMobile);
+  const visibleColumns = useMemo(
+    () => columns.filter((col) => !hiddenCols.has(col.key)),
+    [columns, hiddenCols]
+  );
+  const columnByKey = useMemo(
+    () => new Map(columns.map((col) => [col.key, col])),
+    [columns]
+  );
+  const mobileTitleKey = useMemo(() => {
+    if (typeof mobileCard?.title === 'string' && !hiddenCols.has(mobileCard.title)) return mobileCard.title;
+    return (
+      visibleColumns.find((col) => ['referenceNumber', 'reference', 'name', 'fullName', 'email', 'title'].includes(col.key))?.key ||
+      visibleColumns.find((col) => !['status', 'actions', 'type'].includes(col.key))?.key ||
+      visibleColumns[0]?.key
+    );
+  }, [hiddenCols, mobileCard?.title, visibleColumns]);
+  const mobileStatusKey = useMemo(() => {
+    if (typeof mobileCard?.status === 'string') {
+      return hiddenCols.has(mobileCard.status) ? undefined : mobileCard.status;
+    }
+    return visibleColumns.find((col) => col.key === 'status')?.key;
+  }, [hiddenCols, mobileCard?.status, visibleColumns]);
+  const mobileActionsKey = useMemo(() => {
+    if (typeof mobileCard?.actions === 'string') {
+      return hiddenCols.has(mobileCard.actions) ? undefined : mobileCard.actions;
+    }
+    return visibleColumns.find((col) => col.key === 'actions')?.key;
+  }, [hiddenCols, mobileCard?.actions, visibleColumns]);
+  const mobileFields = useMemo<MobileCardField<T>[]>(() => {
+    const reservedKeys = new Set([mobileTitleKey, mobileStatusKey, mobileActionsKey, 'type'].filter(Boolean));
+    if (mobileCard?.fields) {
+      const fieldKeys = new Set(mobileCard.fields.map((field) => typeof field === 'string' ? field : field.key));
+      const customVisibleFields = mobileCard.fields.filter((field) => {
+        const key = typeof field === 'string' ? field : field.key;
+        return visibleColumns.some((col) => col.key === key) && !reservedKeys.has(key);
+      });
+      const remainingVisibleFields = visibleColumns
+        .filter((col) => !reservedKeys.has(col.key) && !fieldKeys.has(col.key))
+        .map((col) => col.key);
+      return [...customVisibleFields, ...remainingVisibleFields];
+    }
+    return visibleColumns
+      .filter((col) => !reservedKeys.has(col.key))
+      .map((col) => col.key);
+  }, [mobileCard?.fields, mobileActionsKey, mobileStatusKey, mobileTitleKey, visibleColumns]);
+  const renderMobileCell = useCallback((key: string, row: T) => {
+    const col = columnByKey.get(key);
+    return col ? col.renderCell(row) : null;
+  }, [columnByKey]);
+  const renderDefaultMobileCard = useCallback((row: T) => {
+    const title = typeof mobileCard?.title === 'function'
+      ? mobileCard.title(row)
+      : mobileTitleKey
+        ? renderMobileCell(mobileTitleKey, row)
+        : row.id;
+    const status = typeof mobileCard?.status === 'function'
+      ? mobileCard.status(row)
+      : mobileStatusKey
+        ? renderMobileCell(mobileStatusKey, row)
+        : null;
+    const actions = typeof mobileCard?.actions === 'function'
+      ? visibleColumns.some((col) => col.key === 'actions')
+        ? mobileCard.actions(row)
+        : null
+      : mobileActionsKey
+        ? renderMobileCell(mobileActionsKey, row)
+        : rowActions?.(row);
+
+    return (
+      <Box
+        data-mobile-datatable-card="true"
+        sx={{
+          border: '1px solid var(--scheme-neutral-900)',
+          borderRadius: '8px',
+          backgroundColor: 'var(--scheme-neutral-1100)',
+          p: 1.5,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1, mb: 1.25 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
+            {mobileCard?.icon && (
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
+                {mobileCard.icon(row)}
+              </Box>
+            )}
+            <Box sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--scheme-neutral-100)', fontWeight: 600 }}>
+              {title}
+            </Box>
+          </Box>
+          {status && (
+            <Box sx={{ flexShrink: 0, display: 'inline-flex', justifyContent: 'flex-end' }}>
+              {status}
+            </Box>
+          )}
+        </Box>
+
+        {mobileFields.length > 0 && (
+          <Box sx={{ display: 'grid', gap: 0.65, fontSize: 13.5, color: 'var(--scheme-neutral-300)' }}>
+            {mobileFields.map((field) => {
+              const fieldKey = typeof field === 'string' ? field : field.key;
+              const col = columnByKey.get(fieldKey);
+              if (!col) return null;
+              const content = typeof field === 'string'
+                ? col.renderCell(row)
+                : field.render
+                  ? field.render(row)
+                  : col.renderCell(row);
+              return (
+                <Box key={fieldKey} sx={{ display: 'flex', gap: 0.5, minWidth: 0 }}>
+                  <Box component="span" sx={{ color: 'var(--scheme-neutral-500)', flexShrink: 0 }}>
+                    {typeof field === 'string' ? col.label : (field.label ?? col.label)}:
+                  </Box>
+                  <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', overflowWrap: 'anywhere' }}>
+                    {content}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+
+        {actions && (
+          <Box sx={{ mt: 1.5 }}>
+            {actions}
+          </Box>
+        )}
+      </Box>
+    );
+  }, [columnByKey, mobileActionsKey, mobileCard, mobileFields, mobileStatusKey, mobileTitleKey, renderMobileCell, rowActions]);
 
   const tableHeaderBackground = 'var(--scheme-neutral-1200)';
   const tableHoverBackground = 'var(--scheme-neutral-1100)';
@@ -496,8 +666,81 @@ export function DataTable<T extends { id: string }>({
 
   return (
     <div className="dt-root" style={{ height: '100%', minHeight: 0 }}>
+      {useMobileCards && (
+        <Box
+          sx={{
+            display: { xs: 'flex', md: 'none' },
+            flexDirection: 'column',
+            gap: 1,
+            p: 1,
+            backgroundColor: tableHeaderBackground,
+            borderBottom: '1px solid var(--scheme-neutral-900)',
+          }}
+        >
+          {onSearch && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <div className="dt-search-wrap" style={{ flex: 1, minWidth: 0 }}>
+                <input
+                  className="dt-search"
+                  type="text"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
+                  placeholder={searchPlaceholder}
+                  aria-label={searchPlaceholder}
+                />
+              </div>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={commitSearch}
+                aria-label="Search"
+                startIcon={<SearchIcon fontSize="small" />}
+                sx={{ height: 38, textTransform: 'none', whiteSpace: 'nowrap' }}
+              >
+                {tI18n('common', 'search')}
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => { setDraft(""); if (onClearFilters) onClearFilters(); else if (onSearch) onSearch(""); }}
+                aria-label={tI18n('dataTable', 'clearFilters')}
+                startIcon={<ClearIcon fontSize="small" />}
+                sx={{ height: 38, textTransform: 'none', whiteSpace: 'nowrap' }}
+              >
+                {tI18n('dataTable', 'clearFilters')}
+              </Button>
+            </Box>
+          )}
+          <Box sx={{ display: 'grid', gridTemplateColumns: renderCustomSearch ? '1fr 1fr' : '1fr', gap: 1 }}>
+            {renderCustomSearch && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setMobileFiltersOpen(true)}
+                sx={{ justifyContent: 'center' }}
+              >
+                <FilterListIcon fontSize="small" />
+                {tI18n('dataTable', 'filters')}{hasActiveFilters ? ' *' : ''}
+              </Button>
+            )}
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setMobileColumnsOpen(true)}
+              sx={{ justifyContent: 'center' }}
+            >
+              <ViewColumnIcon fontSize="small" />
+              {tI18n('dataTable', 'columnsTitle')}
+            </Button>
+          </Box>
+          {!onSearch && toolbarLeft}
+          {headerRight && <Box>{headerRight}</Box>}
+        </Box>
+      )}
+
       {/* Toolbar */}
-      <div className="dt-toolbar" style={{ backgroundColor: tableHeaderBackground }}>
+      <Box className="dt-toolbar" sx={{ backgroundColor: tableHeaderBackground, display: { xs: useMobileCards ? 'none' : 'flex', md: 'flex' } }}>
 
         <div
           className="dt-toolbar-left"
@@ -505,14 +748,24 @@ export function DataTable<T extends { id: string }>({
         >
           {renderCustomSearch ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', width: '100%', minWidth: 0 }}>
-              {renderCustomSearch({ draft, setDraft, commitSearch, searchPlaceholder })}
-              {onClearFilters && hasActiveFilters && (
+              {renderCustomSearch({ draft, setDraft, commitSearch, searchPlaceholder, mode: "desktop" })}
+              <Button
+                size="small"
+                variant="contained"
+                onClick={applyFilterControls}
+                startIcon={<SearchIcon fontSize="small" />}
+                sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap', display: { xs: useMobileCards ? 'none' : 'inline-flex', md: 'inline-flex' } }}
+              >
+                {tI18n('common', 'search')}
+              </Button>
+              {onClearFilters && (
                 <Button
                   size="small"
                   variant="outlined"
                   onClick={onClearFilters}
+                  startIcon={<ClearIcon fontSize="small" />}
+                  sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap', display: { xs: useMobileCards ? 'none' : 'inline-flex', md: 'inline-flex' } }}
                 >
-                  <ClearIcon />
                   {tI18n('dataTable', 'clearFilters')}
                 </Button>
               )}
@@ -536,28 +789,26 @@ export function DataTable<T extends { id: string }>({
                     placeholder={searchPlaceholder}
                     aria-label={searchPlaceholder}
                   />
-                  <IconButton
-                    size="small"
-                    onClick={() => { setDraft(""); if (onSearch) onSearch(""); }}
-                    aria-label="Clear"
-                    sx={{ visibility: draft ? "visible" : "hidden" }}
-                  >
-                    <CloseIcon fontSize="inherit" />
-                  </IconButton>
-                  <IconButton
-                    className="dt-search-btn"
-                    size="small"
-                    onClick={commitSearch}
-                    aria-label="Search"
-                  >
-                    <SearchIcon fontSize="inherit" color="primary" />
-                  </IconButton>
                 </div>
-                {onClearFilters && hasActiveFilters && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={commitSearch}
+                  aria-label="Search"
+                  startIcon={<SearchIcon fontSize="small" />}
+                  sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap' }}
+                >
+                  {tI18n('common', 'search')}
+                </Button>
+                {onClearFilters && (
                   <Button
                     size="small"
                     variant="outlined"
-                    onClick={onClearFilters}
+                    onClick={() => {
+                      setDraft("");
+                      onClearFilters();
+                    }}
+                    startIcon={<ClearIcon fontSize="small" />}
                     sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap' }}
                   >
                     {tI18n('dataTable', 'clearFilters')}
@@ -568,11 +819,12 @@ export function DataTable<T extends { id: string }>({
           </div>
         )}
         <div className="dt-toolbar-right">
-          {onClearFilters && hasActiveFilters && !onSearch && !renderCustomSearch && (
+          {onClearFilters && !onSearch && !renderCustomSearch && (
             <Button
               size="small"
               variant="outlined"
               onClick={onClearFilters}
+              startIcon={<ClearIcon fontSize="small" />}
               sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap' }}
             >
               {tI18n('dataTable', 'clearFilters')}
@@ -580,13 +832,17 @@ export function DataTable<T extends { id: string }>({
           )}
           {/* Column visibility toggle */}
           <Tooltip title={tI18n('dataTable', 'showHideColumns')}>
-            <IconButton size="small" onClick={(e) => setColMenuAnchor(e.currentTarget)}>
+            <IconButton
+              size="small"
+              onClick={(e) => setColMenuAnchor(e.currentTarget)}
+              sx={{ display: { xs: useMobileCards ? 'none' : 'inline-flex', md: 'inline-flex' } }}
+            >
               <ViewColumnIcon fontSize="small" color="primary" />
             </IconButton>
           </Tooltip>
           {headerRight}
         </div>
-      </div>
+      </Box>
 
       {/* Column visibility popover */}
       <Popover
@@ -625,6 +881,141 @@ export function DataTable<T extends { id: string }>({
           ))}
         </Box>
       </Popover>
+      <Drawer
+        anchor="bottom"
+        open={mobileColumnsOpen}
+        onClose={() => setMobileColumnsOpen(false)}
+        PaperProps={{
+          sx: {
+            borderTopLeftRadius: '8px',
+            borderTopRightRadius: '8px',
+            backgroundColor: 'var(--scheme-neutral-1100)',
+            color: 'var(--scheme-neutral-100)',
+            maxHeight: '80vh',
+          },
+        }}
+      >
+        <Box sx={{ p: 2, overflowY: 'auto' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="subtitle1" fontWeight={700}>
+              {tI18n('dataTable', 'visibleColumns')}
+            </Typography>
+            <IconButton size="small" onClick={() => setMobileColumnsOpen(false)} aria-label="Close">
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+          <Divider sx={{ mb: 1.25 }} />
+          {columns.map((col) => (
+            <Box key={col.key} sx={{ display: 'flex', alignItems: 'center', py: 0.25 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={!hiddenCols.has(col.key)}
+                    onChange={() => toggleColVisibility(col.key)}
+                  />
+                }
+                label={<Typography variant="body2">{col.label}</Typography>}
+                sx={{ m: 0, width: '100%' }}
+              />
+            </Box>
+          ))}
+          <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+            {hiddenCols.size > 0 && (
+              <Button variant="outlined" size="small" onClick={showAllCols} sx={{ flex: 1 }}>
+                {tI18n('dataTable', 'showAll')}
+              </Button>
+            )}
+            <Button variant="contained" size="small" onClick={() => setMobileColumnsOpen(false)} sx={{ flex: 1 }}>
+              {tI18n('dataTable', 'apply')}
+            </Button>
+          </Box>
+        </Box>
+      </Drawer>
+      {renderCustomSearch && (
+        <Drawer
+          anchor="bottom"
+          open={mobileFiltersOpen}
+          onClose={() => setMobileFiltersOpen(false)}
+          PaperProps={{
+            sx: {
+              borderTopLeftRadius: '8px',
+              borderTopRightRadius: '8px',
+              backgroundColor: 'var(--scheme-neutral-1100)',
+              color: 'var(--scheme-neutral-100)',
+              maxHeight: '85vh',
+            },
+          }}
+        >
+          <Box sx={{ p: 2, overflowY: 'auto' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="subtitle1" fontWeight={700}>
+                {tI18n('dataTable', 'filters')}
+              </Typography>
+              <IconButton size="small" onClick={() => setMobileFiltersOpen(false)} aria-label="Close">
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <Divider sx={{ mb: 1.5 }} />
+            <Box
+              className="dt-mobile-filter-fields"
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1.25,
+                '& > *': {
+                  width: '100% !important',
+                  maxWidth: 'none !important',
+                  minWidth: '0 !important',
+                  flex: '0 0 auto !important',
+                },
+                '& > .MuiBox-root': {
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                  gap: 1.25,
+                },
+                '& > .MuiBox-root > *': {
+                  width: '100% !important',
+                  maxWidth: 'none !important',
+                  minWidth: '0 !important',
+                  flex: '0 0 auto !important',
+                },
+              }}
+            >
+              {renderCustomSearch({ draft, setDraft, commitSearch, searchPlaceholder, mode: "mobile" })}
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+              {onClearFilters && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    onClearFilters();
+                    setMobileFiltersOpen(false);
+                  }}
+                  startIcon={<ClearIcon fontSize="small" />}
+                  sx={{ flex: 1 }}
+                >
+                  {tI18n('dataTable', 'clearFilters')}
+                </Button>
+              )}
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => {
+                  applyFilterControls();
+                  setMobileFiltersOpen(false);
+                }}
+                startIcon={<SearchIcon fontSize="small" />}
+                sx={{ flex: 1 }}
+              >
+                {tI18n('common', 'search')}
+              </Button>
+            </Box>
+          </Box>
+        </Drawer>
+      )}
       {filterBar && (
         <div className="dt-filter-bar" style={{ backgroundColor: tableHeaderBackground }}>
           {filterBar}
@@ -676,115 +1067,157 @@ export function DataTable<T extends { id: string }>({
         </Button>
       </Box>
       {/* MUI DataGrid */}
-      <Grow in={true}>
-        <Box sx={{ flex: 1, minHeight: 0, width: '100%', backgroundColor: 'transparent', display: 'flex' }}>
-          <DataGrid
-            apiRef={apiRef}
-            rows={displayRows}
-            columns={muiColumns}
-            loading={false}
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
-            paginationMode="server"
-            paginationModel={paginationModel}
-            rowCount={pagination?.total || 0}
-            sortModel={sortModel}
-            onSortModelChange={handleSortModelChange}
-            disableRowSelectionOnClick
-            disableColumnMenu
-            hideFooter
-            getRowClassName={getRowClassName}
+      {shouldRenderGrid && (
+        <Grow in={true}>
+          <Box
             sx={{
+              flex: '1 1 auto',
               height: '100%',
-              border: '0px solid rgba(0, 0, 0, 0.12)',
-              borderRadius: '8px',
-              backgroundColor: 'var(--scheme-neutral-1200)',
-              color: 'var(--scheme-neutral-100)',
-              '& .MuiDataGrid-main': {
-                border: 'none',
-              },
-              '& .MuiDataGrid-virtualScroller': {
-                backgroundColor: 'var(--scheme-neutral-1200)',
-              },
-              '& .MuiDataGrid-cell': {
-                display: 'flex',
-                alignItems: 'center',
-                minWidth: 0,
-                minHeight: '52px !important',
-                maxHeight: '52px !important',
-                py: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                borderBottom: '1px solid var(--scheme-neutral-900)',
-                borderRight: 'none',
-                outline: 'none !important',
-                '&:focus, &:focus-within': {
-                  outline: 'none !important',
-                },
-                '&.MuiDataGrid-cell--selected': {
-                  outline: 'none !important',
-                },
-              },
-              '& .MuiDataGrid-cell:hover': {
-                backgroundColor: 'rgba(255, 50, 84, 0.08)',
-                borderRadius: '4px',
-                cursor: 'default',
-              },
-              '& .MuiDataGrid-row': {
-                backgroundColor: 'var(--scheme-neutral-1200)',
-                borderBottom: '0px solid rgba(0, 0, 0, 0.08)',
-                '&:last-child': {
-                  borderBottom: 'none',
-                },
-                '&:hover': {
-                  backgroundColor: tableHoverBackground,
-                },
-                '&.dt-row-selected': {
-                  backgroundColor: tableSelectedBackground,
-                },
-                '&.dt-row-selected:hover': {
-                  backgroundColor: tableSelectedHoverBackground,
-                },
-              },
-              '& .MuiDataGrid-columnHeaders': {
-                borderBottom: '0px solid',
-                backgroundColor: tableHeaderBackground,
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: 'var(--scheme-neutral-500)',
-              },
-              '& .MuiDataGrid-columnHeader': {
-                borderRight: 'none',
-              },
-              '& .MuiDataGrid-columnHeaderTitle': {
-                fontWeight: 600,
-              },
-              '& .dt-grid-cell-actions': {
-                overflow: 'visible',
-                justifyContent: 'flex-end',
-                px: '8px',
-                zIndex: 1,
-                backgroundColor: 'inherit',
-              },
-              '& .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller': {
-                backgroundColor: 'var(--scheme-neutral-1200)',
-              },
-              '& .MuiDataGrid-columnSeparator': {
-                display: 'flex',
-                opacity: 0,
-                transition: 'opacity 0.15s',
-                color: 'var(--scheme-neutral-700)',
-              },
-              '& .MuiDataGrid-columnHeader:hover .MuiDataGrid-columnSeparator': {
-                opacity: 1,
-              },
-              '& .MuiDataGrid-columnSeparator--resizing': {
-                opacity: 1,
-                color: 'var(--scheme-primary, #1976d2)',
-              },
+              minHeight: 320,
+              width: '100%',
+              backgroundColor: 'transparent',
+              display: 'flex',
             }}
-          />
+          >
+            <DataGrid
+              apiRef={apiRef}
+              rows={displayRows}
+              columns={muiColumns}
+              loading={false}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              paginationMode="server"
+              paginationModel={paginationModel}
+              rowCount={pagination?.total || 0}
+              sortModel={sortModel}
+              onSortModelChange={handleSortModelChange}
+              disableRowSelectionOnClick
+              disableColumnMenu
+              hideFooter
+              getRowClassName={getRowClassName}
+              sx={{
+                height: '100%',
+                border: '0px solid rgba(0, 0, 0, 0.12)',
+                borderRadius: '8px',
+                backgroundColor: 'var(--scheme-neutral-1200)',
+                color: 'var(--scheme-neutral-100)',
+                '& .MuiDataGrid-main': {
+                  border: 'none',
+                },
+                '& .MuiDataGrid-virtualScroller': {
+                  backgroundColor: 'var(--scheme-neutral-1200)',
+                },
+                '& .MuiDataGrid-cell': {
+                  display: 'flex',
+                  alignItems: 'center',
+                  minWidth: 0,
+                  minHeight: '52px !important',
+                  maxHeight: '52px !important',
+                  py: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  borderBottom: '1px solid var(--scheme-neutral-900)',
+                  borderRight: 'none',
+                  outline: 'none !important',
+                  '&:focus, &:focus-within': {
+                    outline: 'none !important',
+                  },
+                  '&.MuiDataGrid-cell--selected': {
+                    outline: 'none !important',
+                  },
+                },
+                '& .MuiDataGrid-cell:hover': {
+                  backgroundColor: 'rgba(255, 50, 84, 0.08)',
+                  borderRadius: '4px',
+                  cursor: 'default',
+                },
+                '& .MuiDataGrid-row': {
+                  backgroundColor: 'var(--scheme-neutral-1200)',
+                  borderBottom: '0px solid rgba(0, 0, 0, 0.08)',
+                  '&:last-child': {
+                    borderBottom: 'none',
+                  },
+                  '&:hover': {
+                    backgroundColor: tableHoverBackground,
+                  },
+                  '&.dt-row-selected': {
+                    backgroundColor: tableSelectedBackground,
+                  },
+                  '&.dt-row-selected:hover': {
+                    backgroundColor: tableSelectedHoverBackground,
+                  },
+                },
+                '& .MuiDataGrid-columnHeaders': {
+                  borderBottom: '0px solid',
+                  backgroundColor: tableHeaderBackground,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: 'var(--scheme-neutral-500)',
+                },
+                '& .MuiDataGrid-columnHeader': {
+                  borderRight: 'none',
+                },
+                '& .MuiDataGrid-columnHeaderTitle': {
+                  fontWeight: 600,
+                },
+                '& .dt-grid-cell-actions': {
+                  overflow: 'visible',
+                  justifyContent: 'flex-end',
+                  px: '8px',
+                  zIndex: 1,
+                  backgroundColor: 'inherit',
+                },
+                '& .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller': {
+                  backgroundColor: 'var(--scheme-neutral-1200)',
+                },
+                '& .MuiDataGrid-columnSeparator': {
+                  display: 'flex',
+                  opacity: 0,
+                  transition: 'opacity 0.15s',
+                  color: 'var(--scheme-neutral-700)',
+                },
+                '& .MuiDataGrid-columnHeader:hover .MuiDataGrid-columnSeparator': {
+                  opacity: 1,
+                },
+                '& .MuiDataGrid-columnSeparator--resizing': {
+                  opacity: 1,
+                  color: 'var(--scheme-primary, #1976d2)',
+                },
+              }}
+            />
+          </Box>
+        </Grow>
+      )}
+
+      {useMobileCards && (
+        <Box
+          sx={{
+            display: { xs: 'flex', md: 'none' },
+            flexDirection: 'column',
+            gap: 1.25,
+            p: 1,
+            flex: '1 1 auto',
+            minHeight: 320,
+            overflowY: 'auto',
+            backgroundColor: 'var(--scheme-neutral-1200)',
+          }}
+        >
+          {loading
+            ? skeletonRows.slice(0, 4).map((row) => (
+              <Skeleton key={row.id} variant="rounded" height={190} sx={{ borderRadius: '8px' }} />
+            ))
+            : rows.length > 0
+              ? rows.map((row) => (
+                <Box key={row.id}>
+                  {renderMobileCard ? renderMobileCard(row) : renderDefaultMobileCard(row)}
+                </Box>
+              ))
+              : (
+                <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary', fontSize: 14 }}>
+                  {emptyMessage}
+                </Box>
+              )}
         </Box>
-      </Grow>
+      )}
 
       {/* Custom pagination footer */}
       {pagination && (
@@ -801,7 +1234,7 @@ export function DataTable<T extends { id: string }>({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {footerLeft}
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '14px' }}>
               <span>{tI18n('pagination', 'rowsPerPage')}</span>
               <FormControl size="small" sx={{ minWidth: 70 }}>
@@ -825,7 +1258,7 @@ export function DataTable<T extends { id: string }>({
               )} ${tI18n('pagination', 'of')} ${pagination.total}`}
             </Box>
             <Pagination
-              count={Math.ceil(pagination.total / pagination.pageSize)}
+              count={totalPages}
               page={pagination.page}
               onChange={(_, page) => pagination.onPageChange(page)}
               color="primary"
@@ -833,6 +1266,23 @@ export function DataTable<T extends { id: string }>({
               showFirstButton
               showLastButton
             />
+          </Box>
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1, width: '100%' }}>
+            <Box sx={{ fontSize: '13px', color: 'text.secondary', flex: 1 }}>
+              {`${visibleCount} ${tI18n('pagination', 'of')} ${pagination.total}`}
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={!canLoadMore || loading}
+              onClick={() => {
+                pagination.onPageChange(1);
+                pagination.onPageSizeChange(Math.min(pagination.pageSize + preferences.itemsPerPage, pagination.total));
+              }}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              {tI18n('dataTable', 'loadMore')}
+            </Button>
           </Box>
         </Box>
       )}

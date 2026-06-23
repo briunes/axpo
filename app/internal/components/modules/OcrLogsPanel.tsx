@@ -36,8 +36,6 @@ import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import AutoFixHighRoundedIcon from "@mui/icons-material/AutoFixHighRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
-import SearchIcon from "@mui/icons-material/Search";
-import ClearIcon from "@mui/icons-material/Clear";
 import AssignmentTurnedInRoundedIcon from "@mui/icons-material/AssignmentTurnedInRounded";
 import DoDisturbAltRoundedIcon from "@mui/icons-material/DoDisturbAltRounded";
 import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
@@ -1801,6 +1799,8 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                 columns={columns}
                 rows={logs}
                 loading={isFetching}
+                onApplyFilters={handleSearch}
+                onClearFilters={handleClear}
                 renderCustomSearch={() => (
                     <Box sx={{ display: "flex", gap: 1, width: '100%' }}>
                         <Box sx={{ flex: 1 }}>
@@ -1874,12 +1874,6 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                                 onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
                             />
                         </Box>
-                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
-                            <SearchIcon />
-                        </Button>
-                        <Button variant="outlined" size="small" onClick={handleClear}>
-                            <ClearIcon />
-                        </Button>
                     </Box>
                 )}
                 pagination={{

@@ -19,8 +19,6 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { DataTable, StatusBadge } from "../ui";
 import type { ColumnDef } from "../ui";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import SearchIcon from "@mui/icons-material/Search";
-import ClearIcon from "@mui/icons-material/Clear";
 import { FormSelect } from "../ui/FormSelect";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
@@ -284,6 +282,8 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                 loading={loading}
                 sortState={{ column: sortColumn, direction: sortDir }}
                 onSort={handleSort}
+                onApplyFilters={handleSearch}
+                onClearFilters={resetFilters}
                 renderCustomSearch={() => (
                     <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
                         <Box sx={{ flex: 1, }}>
@@ -335,12 +335,6 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
                             />
                         </Box>
-                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
-                            <SearchIcon />
-                        </Button>
-                        <Button variant="outlined" size="small" onClick={resetFilters}>
-                            <ClearIcon />
-                        </Button>
                     </Box>
                 )}
                 pagination={{

@@ -77,11 +77,11 @@ function Field({ label, value, mono }: { label: string; value: React.ReactNode; 
 
 function FormLikeSection({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
     return (
-        <div style={{
+        <div className="simulation-view-section simulation-form-section simulation-form-section--block" style={{
             background: "var(--scheme-neutral-1200)",
             border: "1px solid var(--scheme-neutral-850, var(--scheme-neutral-900))",
             borderRadius: 8,
-            padding: 24,
+            padding: "clamp(14px, 4vw, 24px)",
             marginBottom: 24,
             boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
         }}>
@@ -114,7 +114,7 @@ function FormLikeSection({ title, children }: { title: React.ReactNode; children
 
 function FormRow({ children }: { children: React.ReactNode }) {
     return (
-        <div style={{
+        <div className="simulation-form-row simulation-view-row" style={{
             display: "flex",
             flexWrap: "wrap",
             gap: 12,
@@ -149,7 +149,7 @@ function ReadOnlyInputField({
     const isEmpty = value === undefined || value === null || value === "";
 
     return (
-        <div style={{ flex, minWidth: 0 }}>
+        <div className="simulation-form-field simulation-view-field" style={{ flex, minWidth: 0, maxWidth: "100%" }}>
             <div style={{
                 fontSize: 12,
                 fontWeight: 600,
@@ -158,7 +158,7 @@ function ReadOnlyInputField({
             }}>
                 {label}
             </div>
-            <div style={{
+            <div className="simulation-view-readonly-value" style={{
                 minHeight: 36,
                 display: "flex",
                 alignItems: "center",
@@ -194,7 +194,7 @@ function FormPeriodValues({ label, values }: { label: string; values: Record<str
             </div>
             <div style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))",
                 gap: 8,
             }}>
                 {entries.map(([period, value]) => (
@@ -308,7 +308,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
         : [];
 
     return (
-        <div>
+        <div className="simulation-view-display">
             <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3.5 }}>
                 <Tabs
                     value={activeTab}
@@ -412,7 +412,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                     {/* Electricity values */}
                     {(simType === "ELECTRICITY" || simType === "BOTH") && elec && (
                         <FormLikeSection title={t("simulationForm", "sectionInvoiceBreakdown")}>
-                            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16 }}>
+                            <div className="simulation-form-responsive-grid simulation-view-responsive-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: 16 }}>
                                 <div>
                                     <ReadOnlyInputField
                                         label={t("simulationForm", "fieldTariff")}
@@ -535,7 +535,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                     {/* Gas values */}
                     {(simType === "GAS" || simType === "BOTH") && gas && (
                         <FormLikeSection title={t("simulationForm", "sectionInvoiceBreakdown")}>
-                            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16 }}>
+                            <div className="simulation-form-responsive-grid simulation-view-responsive-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: 16 }}>
                                 <div>
                                     <ReadOnlyInputField
                                         label={t("simulationForm", "fieldTariff")}

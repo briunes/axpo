@@ -288,18 +288,20 @@ const applySalesAgentDefaults = (
 export class SimulationService {
   static buildSimulationFilter(actor: ActorContext, includeDeleted = false) {
     if (isElevatedRole(actor.role)) {
-      return includeDeleted ? {} : { isDeleted: false };
+      return includeDeleted
+        ? { isDeleted: true, deletedAt: null }
+        : { isDeleted: false };
     }
 
     if (actor.role === UserRole.AGENT) {
       return {
-        ...(includeDeleted ? {} : { isDeleted: false }),
+        isDeleted: false,
         agencyId: actor.agencyId,
       };
     }
 
     return {
-      ...(includeDeleted ? {} : { isDeleted: false }),
+      isDeleted: false,
       ownerUserId: actor.userId,
     };
   }
@@ -801,13 +803,59 @@ export class SimulationService {
   }
 
   static async softDeleteSimulation(actor: ActorContext, simulationId: string) {
-    const simulation = await this.assertSimulationAccess(actor, simulationId);
+    const simulation = await prisma.simulation.findUnique({
+      where: { id: simulationId },
+      select: {
+        id: true,
+        agencyId: true,
+        ownerUserId: true,
+        isDeleted: true,
+        deletedAt: true,
+      },
+    });
+
+    if (!simulation || simulation.deletedAt) {
+      throw new NotFoundError("Simulation", simulationId);
+    }
+
+    if (simulation.isDeleted) {
+      if (!isElevatedRole(actor.role)) {
+        throw new ForbiddenError("Only administrators can delete archived simulations");
+      }
+
+      await prisma.simulation.update({
+        where: { id: simulation.id },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
+      });
+
+      await AuditService.logEvent({
+        actorUserId: actor.userId,
+        eventType: "SIMULATION_DELETED",
+        targetType: "SIMULATION",
+        targetId: simulation.id,
+      });
+
+      return;
+    }
+
+    const canArchive =
+      isElevatedRole(actor.role) ||
+      (actor.role === UserRole.AGENT && simulation.agencyId === actor.agencyId) ||
+      (actor.role === UserRole.COMMERCIAL &&
+        simulation.ownerUserId === actor.userId);
+
+    if (!canArchive) {
+      throw new ForbiddenError("You do not have access to this simulation");
+    }
 
     await prisma.simulation.update({
       where: { id: simulation.id },
       data: {
         isDeleted: true,
-        deletedAt: new Date(),
+        deletedAt: null,
       },
     });
 

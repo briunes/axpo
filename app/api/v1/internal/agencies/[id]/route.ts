@@ -414,23 +414,24 @@ export const DELETE = withErrorHandler(
     }
 
     const existing = await prisma.agency.findUnique({ where: { id } });
-    if (!existing || existing.isDeleted) {
+    if (!existing || existing.deletedAt) {
       throw new NotFoundError("Agency", id);
     }
 
-    // Admin sets isDeleted = true (soft delete)
+    const isPermanentDelete = existing.isDeleted;
+
     await prisma.agency.update({
       where: { id },
       data: {
         isDeleted: true,
-        deletedAt: new Date(),
+        deletedAt: isPermanentDelete ? new Date() : null,
         isActive: false,
       },
     });
 
     await AuditService.logEvent({
       actorUserId: auth.userId,
-      eventType: "AGENCY_DELETED",
+      eventType: isPermanentDelete ? "AGENCY_DELETED" : "AGENCY_ARCHIVED",
       targetType: "AGENCY",
       targetId: id,
     });

@@ -269,6 +269,7 @@ function SimulationMeta({
       }}
     >
       <div
+        className="simulation-meta-grid"
         style={{
           display: "flex",
           flexWrap: "wrap",
@@ -280,6 +281,7 @@ function SimulationMeta({
       >
         {metaItems.map((item) => (
           <span
+            className="simulation-meta-item"
             key={item.key}
             style={{
               display: "inline-flex",
@@ -323,6 +325,7 @@ function SimulationMeta({
       </div>
       {actions && (
         <div
+          className="simulation-meta-actions"
           style={{
             display: "flex",
             gap: 8,

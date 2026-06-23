@@ -19,14 +19,19 @@ import {
   ButtonGroup,
   IconButton,
   Stack,
+  Tooltip,
 } from "@mui/material";
 import SyncIcon from "@mui/icons-material/Sync";
+import AddIcon from "@mui/icons-material/Add";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import EditIcon from "@mui/icons-material/Edit";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import ShareIcon from "@mui/icons-material/Share";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import { useEffect, useState, useLayoutEffect } from "react";
@@ -72,18 +77,19 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     selectedSimulationId, editPayloadJson, setEditPayloadJson,
     openSimulationEditor, closeSimulationEditor, handleUpdateSimulation,
     handleShare, handleClone, handleRotatePin, handleOcrPrefill, handlePdfDownload, handleArchive,
-    handleBulkDelete, handleBulkArchive,
+    handleBulkDelete,
   } = actions;
 
   const [shareSim, setShareSim] = useState<SimulationItem | null>(null);
   const [shareModalLoading, setShareModalLoading] = useState(false);
-  const [confirmArchiveSim, setConfirmArchiveSim] = useState<SimulationItem | null>(null);
   const [confirmDeleteSim, setConfirmDeleteSim] = useState<SimulationItem | null>(null);
   const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
-  const [confirmBulkArchiveIds, setConfirmBulkArchiveIds] = useState<string[] | null>(null);
+  const bulkDeleteIncludesArchived = Boolean(
+    confirmBulkDeleteIds?.some((id) => simulations.find((simulation) => simulation.id === id)?.isDeleted),
+  );
   const [dropdownState, setDropdownState] = useState<{
     anchorEl: HTMLElement | null;
-    items: Array<{ label: string; onClick: () => void; warning?: boolean; danger?: boolean; disabled?: boolean }>;
+    items: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; warning?: boolean; danger?: boolean; disabled?: boolean }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
 
@@ -98,30 +104,64 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
   useLayoutEffect(() => {
     onActionButtons?.(
       <>
-        <Button variant="outlined" size="small" onClick={() => refresh()} disabled={loading}>
-          <SyncIcon fontSize="small" /> {t("actions", "refresh")}
-        </Button>
+        <Tooltip title={t("actions", "refresh")} arrow>
+          <span className="topbar-action-wrap">
+            <Button
+              className="topbar-action topbar-action--compact"
+              variant="outlined"
+              size="small"
+              onClick={() => refresh()}
+              disabled={loading}
+              startIcon={<SyncIcon fontSize="small" />}
+              aria-label={t("actions", "refresh")}
+            >
+              <span className="topbar-action-label">{t("actions", "refresh")}</span>
+            </Button>
+          </span>
+        </Tooltip>
         {isAdmin(session.user.role) && (
-          <Button
-            variant={showArchived ? "contained" : "outlined"}
-            size="small"
-            onClick={() => setShowArchived(!showArchived)}
-          >
-            {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
-          </Button>
+          <Tooltip title={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")} arrow>
+            <span className="topbar-action-wrap">
+              <Button
+                className="topbar-action topbar-action--compact"
+                variant={showArchived ? "contained" : "outlined"}
+                size="small"
+                onClick={() => setShowArchived(!showArchived)}
+                startIcon={<ArchiveIcon fontSize="small" />}
+                aria-label={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+              >
+                <span className="topbar-action-label">
+                  {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+                </span>
+              </Button>
+            </span>
+          </Tooltip>
         )}
         {canDo(session.user.role, "simulations.create") && (
-          <Button variant="contained" size="small" onClick={() => router.push("/internal/simulations/new")}>
-            {t("actions", "newSimulation")}
-          </Button>
+          <Tooltip title={t("actions", "newSimulation")} arrow>
+            <span className="topbar-action-wrap">
+              <Button
+                className="topbar-action topbar-action--compact"
+                variant="contained"
+                size="small"
+                onClick={() => router.push("/internal/simulations/new")}
+                startIcon={<AddIcon fontSize="small" />}
+                aria-label={t("actions", "newSimulation")}
+              >
+                <span className="topbar-action-label">{t("actions", "newSimulation")}</span>
+              </Button>
+            </span>
+          </Tooltip>
         )}
       </>
     );
     return () => onActionButtons?.(null);
   }, [onActionButtons, showArchived, loading, session.user.role, t, refresh, router, setShowArchived]);
 
-  // Filter out archived unless showArchived is true (only client-side filter for isDeleted)
-  const displayData = showArchived ? simulations : simulations.filter(s => !s.isDeleted);
+  // Keep the archived toggle as an exclusive view even if a stale response is mixed.
+  const displayData = showArchived
+    ? simulations.filter((s) => s.isDeleted)
+    : simulations.filter((s) => !s.isDeleted);
 
   const handleShareAction = async (sim: SimulationItem) => {
     setShareModalLoading(true);
@@ -167,6 +207,14 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
   const hasSelectedProduct = (sim: SimulationItem) => {
     const payload = sim.payloadJson as { selectedOffer?: { productKey?: string } } | null;
     return Boolean(payload?.selectedOffer?.productKey);
+  };
+
+  const getSimulationReference = (sim: SimulationItem) =>
+    sim.referenceNumber || sim.id.slice(0, 8) + "…";
+
+  const getSimulationType = (sim: SimulationItem) => {
+    const payload = sim.payloadJson as { type?: string } | null;
+    return payload?.type;
   };
 
   const columns: ColumnDef<SimulationItem>[] = [
@@ -385,8 +433,9 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       label: t("columns", "actions"),
       renderCell: (s) => {
         const isShared = s.status === "SHARED";
-        const canArchive = !s.isDeleted && canDo(session.user.role, "simulations.archive");
-        const canDelete = !s.isDeleted && canDo(session.user.role, "simulations.delete");
+        const canDelete =
+          (!s.isDeleted && canDo(session.user.role, "simulations.archive")) ||
+          (Boolean(s.isDeleted) && isAdmin(session.user.role));
         const canShare = canDo(session.user.role, "simulations.share");
         const canDuplicate = canDo(session.user.role, "simulations.duplicate");
         const canDraftShare = !s.isDeleted && s.status === "DRAFT" && canShare && hasSelectedProduct(s);
@@ -397,27 +446,25 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
           isShared ? `/internal/simulations/${s.id}/view` : `/internal/simulations/${s.id}`
         );
 
-        const secondaryItems: Array<{ label: string; onClick: () => void; warning?: boolean; danger?: boolean; disabled?: boolean }> = [];
+        const secondaryItems: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; warning?: boolean; danger?: boolean; disabled?: boolean }> = [];
         if (canDraftShare) {
           secondaryItems.push({
             label: t("actions", "share"),
             warning: true,
+            icon: <ShareIcon fontSize="small" />,
             onClick: () => handleShareAction(s),
           });
         }
         if (canDuplicate) {
-          secondaryItems.push({ label: t("actions", "duplicate"), onClick: () => handleClone(s), disabled: busyAction === `clone-${s.id}` });
-        }
-        if (canArchive) {
-          secondaryItems.push({ label: t("actions", "archive"), onClick: () => setConfirmArchiveSim(s), danger: true });
+          secondaryItems.push({ label: t("actions", "duplicate"), icon: <ContentCopyIcon fontSize="small" />, onClick: () => handleClone(s), disabled: busyAction === `clone-${s.id}` });
         }
         if (canDelete) {
-          secondaryItems.push({ label: t("actions", "delete"), onClick: () => setConfirmDeleteSim(s), danger: true });
+          secondaryItems.push({ label: t("actions", "delete"), icon: <DeleteIcon fontSize="small" />, onClick: () => setConfirmDeleteSim(s), danger: true });
         }
 
         const hasDropdown = secondaryItems.length > 0;
 
-        const primaryIcon = isShared ? <VisibilityIcon fontSize="small" /> : undefined;
+        const primaryIcon = isShared ? <VisibilityIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />;
 
         return (
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
@@ -460,6 +507,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         loading={loading}
         searchValue={filterSearch}
         onSearch={(v) => { setFilterSearch(v); }}
+        onApplyFilters={(draft) => applyFilters(draft)}
         onClearFilters={clearFilters}
         searchPlaceholder={t("search", "simulations")}
         emptyMessage={t("search", "emptySimulations")}
@@ -477,7 +525,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
           onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
         }}
         t={t}
-        renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
+        renderCustomSearch={({ draft, setDraft, searchPlaceholder }) => (
           <>
             <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
               <FormInput
@@ -485,14 +533,14 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 placeholder={searchPlaceholder}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { setFilterSearch(draft); applyFilters(); } }}
+                onKeyDown={(e) => { if (e.key === "Enter") applyFilters(draft); }}
                 size="small"
                 slotProps={{
                   input: {
                     endAdornment: draft ? (
                       <IconButton
                         size="small"
-                        onClick={() => { setDraft(""); setFilterSearch(""); applyFilters(); }}
+                        onClick={() => { setDraft(""); applyFilters(""); }}
                         aria-label="Clear"
                         edge="end"
                       >
@@ -596,30 +644,77 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 textFieldProps={{ size: "small" }}
               />
             </Box>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => { setFilterSearch(draft); applyFilters(); }}
-              aria-label="Search"
-              sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-            >
-              <SearchIcon />
-              {t('common', 'search')}
-            </Button>
           </>
         )}
+        mobileCard={{
+          title: "referenceNumber",
+          status: "status",
+          icon: (sim) => {
+            const type = getSimulationType(sim);
+            return type === "GAS"
+              ? <LocalFireDepartmentIcon sx={{ fontSize: 20, color: "#ef4444" }} />
+              : <BoltIcon sx={{ fontSize: 20, color: "#f59e0b" }} />;
+          },
+          fields: [
+            {
+              key: "owner",
+              label: t("columns", "owner"),
+              render: (sim) => `${sim.ownerUser?.fullName ?? "—"}${sim.agency?.name ? ` - ${sim.agency.name}` : ""}`,
+            },
+            "client",
+            "cups",
+            {
+              key: "updatedAt",
+              label: "Date",
+              render: (sim) => formatDateTime(sim.updatedAt ?? sim.createdAt),
+            },
+          ],
+          actions: (sim) => {
+            const canDelete =
+              (!sim.isDeleted && canDo(session.user.role, "simulations.archive")) ||
+              (Boolean(sim.isDeleted) && isAdmin(session.user.role));
+            return (
+              <Box sx={{ display: 'grid', gridTemplateColumns: canDelete ? '1fr 1fr 1fr' : '1fr 1fr', gap: 0.75 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => router.push(`/internal/simulations/${sim.id}/view`)}
+                  startIcon={<VisibilityIcon fontSize="small" />}
+                  sx={{ minWidth: 0 }}
+                >
+                  {t("actions", "view")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => router.push(`/internal/simulations/${sim.id}`)}
+                  startIcon={<EditIcon fontSize="small" />}
+                  sx={{ minWidth: 0 }}
+                >
+                  {t("actions", "edit")}
+                </Button>
+                {canDelete && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    onClick={() => setConfirmDeleteSim(sim)}
+                    startIcon={<DeleteIcon fontSize="small" />}
+                    sx={{ minWidth: 0 }}
+                  >
+                    {t("actions", "delete")}
+                  </Button>
+                )}
+              </Box>
+            );
+          },
+        }}
         massActions={[
           {
             label: t("actions", "delete"),
             color: "error",
             icon: <DeleteIcon />,
             onClick: (ids) => setConfirmBulkDeleteIds(ids),
-          },
-          {
-            label: t("actions", "archive"),
-            color: "warning",
-            icon: <ArchiveIcon />,
-            onClick: (ids) => setConfirmBulkArchiveIds(ids),
           },
         ]}
       />
@@ -701,25 +796,16 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         </DialogContent>
       </Dialog>
 
-      {confirmArchiveSim && (
-        <ConfirmDialog
-          title={t("simulationsModule", "archiveTitle")}
-          message={t("simulationsModule", "archiveConfirm", { id: confirmArchiveSim.id.slice(0, 8) + "…" })}
-          confirmLabel={t("actions", "archive")}
-          busy={busyAction === `delete-\${confirmArchiveSim.id}`}
-          onConfirm={async () => {
-            await handleArchive(confirmArchiveSim);
-            setConfirmArchiveSim(null);
-          }}
-          onCancel={() => setConfirmArchiveSim(null)}
-        />
-      )}
-
       {confirmDeleteSim && (
         <ConfirmDialog
           title={t("simulationsModule", "deleteTitle")}
-          message={t("simulationsModule", "deleteConfirm", { id: confirmDeleteSim.id.slice(0, 8) + "…" })}
+          message={t(
+            "simulationsModule",
+            confirmDeleteSim.isDeleted ? "deletePermanentConfirm" : "deleteConfirm",
+            { id: getSimulationReference(confirmDeleteSim) },
+          )}
           confirmLabel={t("actions", "delete")}
+          countdownSeconds={confirmDeleteSim.isDeleted ? 5 : undefined}
           busy={busyAction === `delete-${confirmDeleteSim.id}`}
           onConfirm={async () => {
             await handleArchive(confirmDeleteSim);
@@ -732,28 +818,19 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       {confirmBulkDeleteIds && (
         <ConfirmDialog
           title={t("simulationsModule", "bulkDeleteTitle")}
-          message={t("simulationsModule", "bulkDeleteConfirm", { count: confirmBulkDeleteIds.length })}
+          message={t(
+            "simulationsModule",
+            bulkDeleteIncludesArchived ? "bulkDeletePermanentConfirm" : "bulkDeleteConfirm",
+            { count: confirmBulkDeleteIds.length },
+          )}
           confirmLabel={t("simulationsModule", "bulkDeleteConfirmLabel")}
+          countdownSeconds={bulkDeleteIncludesArchived ? 5 : undefined}
           busy={busyAction === "bulk-delete"}
           onConfirm={async () => {
             await handleBulkDelete(confirmBulkDeleteIds);
             setConfirmBulkDeleteIds(null);
           }}
           onCancel={() => setConfirmBulkDeleteIds(null)}
-        />
-      )}
-
-      {confirmBulkArchiveIds && (
-        <ConfirmDialog
-          title={t("simulationsModule", "bulkArchiveTitle")}
-          message={t("simulationsModule", "bulkArchiveConfirm", { count: confirmBulkArchiveIds.length })}
-          confirmLabel={t("simulationsModule", "bulkArchiveConfirmLabel")}
-          busy={busyAction === "bulk-archive"}
-          onConfirm={async () => {
-            await handleBulkArchive(confirmBulkArchiveIds);
-            setConfirmBulkArchiveIds(null);
-          }}
-          onCancel={() => setConfirmBulkArchiveIds(null)}
         />
       )}
 
@@ -784,8 +861,14 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
               fontSize: 13,
               color: item.danger ? "error.main" : item.warning ? "warning.main" : "text.primary",
               py: 0.75,
+              gap: 1,
             }}
           >
+            {item.icon && (
+              <Box component="span" sx={{ display: "inline-flex", width: 18, color: "inherit" }}>
+                {item.icon}
+              </Box>
+            )}
             {item.label}
           </MenuItem>
         ))}

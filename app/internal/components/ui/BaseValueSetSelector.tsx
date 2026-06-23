@@ -66,7 +66,7 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
 
 
     return isAdmin ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, width: "100%" }}>
             <FormSelect
                 label=""
                 options={sets.map((s) => ({
@@ -86,7 +86,7 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
                 }}
                 fullWidth
                 textFieldProps={{ size: "small", placeholder: "Select base values set…" }}
-                sx={{ minWidth: 360 }}
+                sx={{ width: "100%", minWidth: { xs: 0, sm: 360 }, maxWidth: "100%" }}
             />
         </div>
     ) : null;

@@ -155,7 +155,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const where = {
     ...baseWhere,
-    ...(includeDeleted ? {} : { isDeleted: false }),
+    ...(includeDeleted
+      ? { isDeleted: true, deletedAt: null }
+      : { isDeleted: false }),
     ...(isTlvParam === "true"
       ? { isTlv: true }
       : isTlvParam === "false"
@@ -182,6 +184,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
           isTlv: true,
           isActive: true,
           isDeleted: true,
+          deletedAt: true,
           createdAt: true,
           updatedAt: true,
         },

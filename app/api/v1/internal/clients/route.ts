@@ -168,7 +168,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const baseWhere = isElevatedRole(auth.role)
     ? {
-        ...(includeDeleted ? {} : { isDeleted: false }),
+        ...(includeDeleted
+          ? { isDeleted: true, deletedAt: null }
+          : { isDeleted: false }),
         ...(agencyIdFilter ? { agencyId: agencyIdFilter } : {}),
       }
     : { agencyId: auth.agencyId, isDeleted: false };

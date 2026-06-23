@@ -12,12 +12,13 @@ import {
   ButtonGroup,
 } from "@mui/material";
 import SyncIcon from "@mui/icons-material/Sync";
+import AddIcon from "@mui/icons-material/Add";
+import ArchiveIcon from "@mui/icons-material/Archive";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import BlockIcon from "@mui/icons-material/Block";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import { useEffect, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
@@ -55,9 +56,12 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
   const [confirmToggle, setConfirmToggle] = useState<AgencyItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AgencyItem | null>(null);
   const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
+  const bulkDeleteIncludesArchived = Boolean(
+    confirmBulkDeleteIds?.some((id) => agencies.find((agency) => agency.id === id)?.isDeleted),
+  );
   const [dropdownState, setDropdownState] = useState<{
     anchorEl: HTMLElement | null;
-    items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }>;
+    items: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
 
@@ -230,15 +234,17 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
         const primaryLabel = t("actions", "edit");
         const primaryOnClick = () => window.location.href = `/internal/agencies/${a.id}/edit`;
 
-        const secondaryItems: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
+        const secondaryItems: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }> = [];
         secondaryItems.push({
           label: a.isActive ? t("actions", "deactivate") : t("actions", "activate"),
           onClick: () => setConfirmToggle(a),
+          icon: a.isActive ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />,
           danger: a.isActive,
         });
         secondaryItems.push({
           label: t("actions", "delete"),
           onClick: () => setConfirmDelete(a),
+          icon: <DeleteOutlineIcon fontSize="small" />,
           danger: true,
         });
 
@@ -247,7 +253,13 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
         return (
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
             <ButtonGroup variant="outlined" size="small">
-              <Button onClick={primaryOnClick} sx={{ minWidth: '80px !important' }}>
+              <Button
+                onClick={primaryOnClick}
+                startIcon={<EditIcon fontSize="small" />}
+                title={primaryLabel}
+                aria-label={primaryLabel}
+                sx={{ minWidth: '80px !important' }}
+              >
                 {primaryLabel}
               </Button>
               {hasDropdown && (
@@ -274,27 +286,55 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     if (canManage) {
       onActionButtons?.(
         <>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => refresh()}
-            disabled={loading}
-            loading={loading}
-          >
-            <SyncIcon fontSize="small" />&nbsp;{t("actions", "refresh")}
-          </Button>
+          <Tooltip title={t("actions", "refresh")} arrow>
+            <span className="topbar-action-wrap">
+              <Button
+                className="topbar-action topbar-action--compact"
+                variant="outlined"
+                size="small"
+                onClick={() => refresh()}
+                disabled={loading}
+                loading={loading}
+                startIcon={<SyncIcon fontSize="small" />}
+                aria-label={t("actions", "refresh")}
+              >
+                <span className="topbar-action-label">{t("actions", "refresh")}</span>
+              </Button>
+            </span>
+          </Tooltip>
           {isAdmin(session.user.role) && (
-            <Button
-              variant={showArchived ? "contained" : "outlined"}
-              size="small"
-              onClick={() => setShowArchived(!showArchived)}
-            >
-              {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
-            </Button>
+            <Tooltip title={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")} arrow>
+              <span className="topbar-action-wrap">
+                <Button
+                  className="topbar-action topbar-action--compact"
+                  variant={showArchived ? "contained" : "outlined"}
+                  size="small"
+                  onClick={() => setShowArchived(!showArchived)}
+                  startIcon={<ArchiveIcon fontSize="small" />}
+                  aria-label={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+                >
+                  <span className="topbar-action-label">
+                    {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+                  </span>
+                </Button>
+              </span>
+            </Tooltip>
           )}
-          <Link href="/internal/agencies/new" style={{ textDecoration: "none" }}>
-            <Button variant="contained" size="small">{t("actions", "newAgency")}</Button>
-          </Link>
+          <Tooltip title={t("actions", "newAgency")} arrow>
+            <span className="topbar-action-wrap">
+              <Link href="/internal/agencies/new" style={{ textDecoration: "none" }}>
+                <Button
+                  className="topbar-action topbar-action--compact"
+                  variant="contained"
+                  size="small"
+                  startIcon={<AddIcon fontSize="small" />}
+                  aria-label={t("actions", "newAgency")}
+                >
+                  <span className="topbar-action-label">{t("actions", "newAgency")}</span>
+                </Button>
+              </Link>
+            </span>
+          </Tooltip>
         </>
       );
     }
@@ -318,6 +358,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
+        onApplyFilters={(draft) => { setSearch(draft); setPage(1); }}
         onClearFilters={() => {
           setSearch("");
           setTlvFilter("");
@@ -409,26 +450,59 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
                 textFieldProps={{ size: "small" }}
               />
             </Box>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={commitSearch}
-              aria-label="Search"
-              sx={{ minWidth: "auto" }}
-            >
-              <SearchIcon />
-              {t("common", "search")}
-            </Button>
           </>
         )}
+        mobileCard={{
+          title: "name",
+          status: "status",
+          actions: (a) => (
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 0.75 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                component={Link}
+                href={`/internal/agencies/${a.id}/edit`}
+                startIcon={<EditIcon fontSize="small" />}
+                sx={{ minWidth: 0 }}
+              >
+                {t("actions", "edit")}
+              </Button>
+              <Button
+                variant="outlined"
+                color={a.isActive ? "error" : "success"}
+                size="small"
+                onClick={() => setConfirmToggle(a)}
+                startIcon={a.isActive ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
+                sx={{ minWidth: 0 }}
+              >
+                {a.isActive ? t("actions", "deactivate") : t("actions", "activate")}
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                onClick={() => setConfirmDelete(a)}
+                startIcon={<DeleteOutlineIcon fontSize="small" />}
+                sx={{ minWidth: 0 }}
+              >
+                {t("actions", "delete")}
+              </Button>
+            </Box>
+          ),
+        }}
       />
 
       {/* ── Confirm bulk delete ──────────────────────────────────── */}
       {confirmBulkDeleteIds && (
         <ConfirmDialog
           title={t("agenciesModule", "bulkDeleteTitle")}
-          message={t("agenciesModule", "bulkDeleteConfirm", { count: confirmBulkDeleteIds.length })}
+          message={t(
+            "agenciesModule",
+            bulkDeleteIncludesArchived ? "bulkDeletePermanentConfirm" : "bulkDeleteConfirm",
+            { count: confirmBulkDeleteIds.length },
+          )}
           confirmLabel={t("actions", "delete")}
+          countdownSeconds={bulkDeleteIncludesArchived ? 5 : undefined}
           busy={busyAction === "bulk-delete-agencies"}
           onConfirm={async () => {
             await handleBulkDeleteAgencies(confirmBulkDeleteIds);
@@ -456,8 +530,13 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       {confirmDelete && (
         <ConfirmDialog
           title={t("agenciesModule", "deleteTitle")}
-          message={t("agenciesModule", "deleteConfirm", { name: confirmDelete.name })}
+          message={t(
+            "agenciesModule",
+            confirmDelete.isDeleted ? "deletePermanentConfirm" : "deleteConfirm",
+            { name: confirmDelete.name },
+          )}
           confirmLabel={t("actions", "delete")}
+          countdownSeconds={confirmDelete.isDeleted ? 5 : undefined}
           busy={busyAction === `delete-agency-${confirmDelete.id}`}
           onConfirm={async () => {
             await handleDeleteAgency(confirmDelete);
@@ -494,8 +573,14 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
               fontSize: 13,
               color: item.danger ? "error.main" : "text.primary",
               py: 0.75,
+              gap: 1,
             }}
           >
+            {item.icon && (
+              <Box component="span" sx={{ display: "inline-flex", width: 18, color: "inherit" }}>
+                {item.icon}
+              </Box>
+            )}
             {item.label}
           </MenuItem>
         ))}

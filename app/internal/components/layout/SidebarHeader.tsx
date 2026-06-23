@@ -5,9 +5,20 @@ import { ChevronLeftIcon, ChevronRightIcon } from "../ui/icons";
 interface SidebarHeaderProps {
   collapsed: boolean;
   onToggle: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function SidebarHeader({ collapsed, onToggle }: SidebarHeaderProps) {
+export function SidebarHeader({ collapsed, onToggle, mobileOpen = false, onMobileClose }: SidebarHeaderProps) {
+  const handleToggle = () => {
+    if (mobileOpen && onMobileClose) {
+      onMobileClose();
+      return;
+    }
+
+    onToggle();
+  };
+
   return (
     <div className="app-sidebar-header">
       <button
@@ -32,8 +43,8 @@ export function SidebarHeader({ collapsed, onToggle }: SidebarHeaderProps) {
       </button>
       <button
         className="app-toggle-btn"
-        onClick={onToggle}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        onClick={handleToggle}
+        aria-label={mobileOpen ? "Close menu" : collapsed ? "Expand sidebar" : "Collapse sidebar"}
         type="button"
       >
         {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}

@@ -217,6 +217,10 @@ export const translations = {
       selected: "{count} selected",
       clearSelection: "Clear selection",
       clearFilters: "Clear",
+      filters: "Filters",
+      loadMore: "Load more",
+      visibleColumns: "Visible columns",
+      apply: "Apply",
       copy: "Copy",
       copied: "Copied!",
     },
@@ -243,10 +247,14 @@ export const translations = {
         "Archive simulation {id}? It will be hidden but not deleted.",
       deleteTitle: "Delete simulation",
       deleteConfirm:
-        "Are you sure you want to delete simulation {id}? This action cannot be undone.",
+        "Are you sure you want to delete simulation {id}? This action will delete the simulation.",
+      deletePermanentConfirm:
+        "Are you sure you want to DELETE permanently simulation {id}? This action will delete the simulation.",
       bulkDeleteTitle: "Delete simulations",
       bulkDeleteConfirm:
-        "Are you sure you want to permanently delete {count} simulation(s)? This action cannot be undone.",
+        "Are you sure you want to delete {count} simulation(s)? This action will delete the simulations.",
+      bulkDeletePermanentConfirm:
+        "Are you sure you want to DELETE permanently {count} simulation(s)? Archived simulations will never show in responses again.",
       bulkDeleteConfirmLabel: "Delete all",
       bulkArchiveTitle: "Archive simulations",
       bulkArchiveConfirm:
@@ -279,9 +287,13 @@ export const translations = {
       deleteTitle: "Delete user",
       deleteConfirm:
         "Are you sure you want to delete {name}? This action will delete the user.",
+      deletePermanentConfirm:
+        "Are you sure you want to DELETE permanently {name}? This action will delete the user permanently.",
       bulkDeleteTitle: "Delete users",
       bulkDeleteConfirm:
-        "Delete {count} selected user{count, plural, one {} other {s}}? This action cannot be undone.",
+        "Delete {count} selected user{count, plural, one {} other {s}}? This action will deactivate the users.",
+      bulkDeletePermanentConfirm:
+        "DELETE permanently {count} selected user{count, plural, one {} other {s}}? Archived users will never show in responses again.",
     },
     userSessions: {
       title: "Sessions",
@@ -339,9 +351,13 @@ export const translations = {
       deleteTitle: "Delete agency",
       deleteConfirm:
         "Are you sure you want to delete {name}? This action will deactivate the agency.",
+      deletePermanentConfirm:
+        "Are you sure you want to DELETE permanently {name}? This action will delete the agency permanently.",
       bulkDeleteTitle: "Delete agencies",
       bulkDeleteConfirm:
-        "Delete {count} selected agenc{count, plural, one {y} other {ies}}? This action cannot be undone.",
+        "Delete {count} selected agenc{count, plural, one {y} other {ies}}? This action will deactivate the agencies.",
+      bulkDeletePermanentConfirm:
+        "DELETE permanently {count} selected agenc{count, plural, one {y} other {ies}}? Archived agencies will never show in responses again.",
     },
     clientsModule: {
       subtitle: "Manage company clients linked to simulations.",
@@ -353,10 +369,14 @@ export const translations = {
       toggleConfirm: "Are you sure you want to {action} {name}?",
       deleteTitle: "Delete client",
       deleteConfirm:
-        "Are you sure you want to delete {name}? This action cannot be undone.",
+        "Are you sure you want to delete {name}? This action will delete the client.",
+      deletePermanentConfirm:
+        "Are you sure you want to DELETE permanently {name}? This action will delete the client.",
       bulkDeleteTitle: "Delete clients",
       bulkDeleteConfirm:
-        "Delete {count} selected client(s)? This cannot be undone.",
+        "Delete {count} selected client(s)? This action will delete the clients.",
+      bulkDeletePermanentConfirm:
+        "DELETE permanently {count} selected client(s)? Archived clients will never show in responses again.",
     },
     auditLogsModule: {
       subtitle: "Track all system events and user actions.",
@@ -1031,6 +1051,9 @@ export const translations = {
       btnPreviewEmailTemplate: "Preview",
       btnEditPdfTemplate: "Edit",
       btnPreviewPdfTemplate: "Preview",
+      previewUnavailableMobileTitle: "Preview not available on mobile",
+      previewUnavailableMobile:
+        "Template previews and editing are available on medium screens and above.",
       loading: "Loading...",
       loadTemplatesFailed: "Failed to load templates",
       generatePdfFailed: "Failed to generate PDF",
@@ -1510,6 +1533,9 @@ export const translations = {
       loading: "Loading history data…",
       success: "History PDF downloaded successfully.",
       noData: "No price history products are available for this simulation.",
+      previewUnavailableMobileTitle: "Preview not available on mobile",
+      previewUnavailableMobile:
+        "The PDF preview is available on medium screens and above.",
     },
     draggableVariables: {
       title: "Available Variables",
@@ -2601,6 +2627,10 @@ export const translations = {
       selected: "{count} seleccionados",
       clearSelection: "Limpiar selección",
       clearFilters: "Limpiar",
+      filters: "Filtros",
+      loadMore: "Cargar más",
+      visibleColumns: "Columnas visibles",
+      apply: "Aplicar",
       copy: "Copiar",
       copied: "¡Copiado!",
     },
@@ -2628,10 +2658,14 @@ export const translations = {
         "¿Archivar la simulación {id}? Se ocultará pero no se eliminará.",
       deleteTitle: "Eliminar simulación",
       deleteConfirm:
-        "¿Está seguro de que desea eliminar la simulación {id}? Esta acción no se puede deshacer.",
+        "¿Está seguro de que desea eliminar la simulación {id}? Esta acción eliminará la simulación.",
+      deletePermanentConfirm:
+        "¿Está seguro de que desea ELIMINAR permanentemente la simulación {id}? Esta acción eliminará la simulación.",
       bulkDeleteTitle: "Eliminar simulaciones",
       bulkDeleteConfirm:
-        "¿Está seguro de que desea eliminar permanentemente {count} simulación(es)? Esta acción no se puede deshacer.",
+        "¿Está seguro de que desea eliminar {count} simulación(es)? Esta acción eliminará las simulaciones.",
+      bulkDeletePermanentConfirm:
+        "¿Está seguro de que desea ELIMINAR permanentemente {count} simulación(es)? Las simulaciones archivadas no volverán a aparecer en las respuestas.",
       bulkDeleteConfirmLabel: "Eliminar todas",
       bulkArchiveTitle: "Archivar simulaciones",
       bulkArchiveConfirm:
@@ -2664,9 +2698,13 @@ export const translations = {
       deleteTitle: "Eliminar usuario",
       deleteConfirm:
         "¿Está seguro de que desea eliminar a {name}? Esta acción desactivará al usuario.",
+      deletePermanentConfirm:
+        "¿Está seguro de que desea ELIMINAR permanentemente a {name}? Esta acción eliminará al usuario permanentemente.",
       bulkDeleteTitle: "Eliminar usuarios",
       bulkDeleteConfirm:
-        "¿Eliminar {count} usuario(s) seleccionado(s)? Esta acción no se puede deshacer.",
+        "¿Eliminar {count} usuario(s) seleccionado(s)? Esta acción desactivará los usuarios.",
+      bulkDeletePermanentConfirm:
+        "¿ELIMINAR permanentemente {count} usuario(s) seleccionado(s)? Los usuarios archivados no volverán a aparecer en las respuestas.",
     },
     userSessions: {
       title: "Sesiones",
@@ -2728,9 +2766,13 @@ export const translations = {
       deleteTitle: "Eliminar agencia",
       deleteConfirm:
         "¿Está seguro de que desea eliminar {name}? Esta acción desactivará la agencia.",
+      deletePermanentConfirm:
+        "¿Está seguro de que desea ELIMINAR permanentemente {name}? Esta acción eliminará la agencia permanentemente.",
       bulkDeleteTitle: "Eliminar agencias",
       bulkDeleteConfirm:
-        "¿Eliminar {count} agencia(s) seleccionada(s)? Esta acción no se puede deshacer.",
+        "¿Eliminar {count} agencia(s) seleccionada(s)? Esta acción desactivará las agencias.",
+      bulkDeletePermanentConfirm:
+        "¿ELIMINAR permanentemente {count} agencia(s) seleccionada(s)? Las agencias archivadas no volverán a aparecer en las respuestas.",
     },
     clientsModule: {
       subtitle: "Gestiona clientes vinculados a simulaciones.",
@@ -2742,10 +2784,14 @@ export const translations = {
       toggleConfirm: "¿Estás seguro de que quieres {action} a {name}?",
       deleteTitle: "Eliminar cliente",
       deleteConfirm:
-        "¿Estás seguro de que quieres eliminar {name}? Esta acción no se puede deshacer.",
+        "¿Estás seguro de que quieres eliminar {name}? Esta acción eliminará el cliente.",
+      deletePermanentConfirm:
+        "¿Estás seguro de que quieres ELIMINAR permanentemente {name}? Esta acción eliminará el cliente.",
       bulkDeleteTitle: "Eliminar clientes",
       bulkDeleteConfirm:
-        "¿Eliminar {count} cliente(s) seleccionado(s)? Esta acción no se puede deshacer.",
+        "¿Eliminar {count} cliente(s) seleccionado(s)? Esta acción eliminará los clientes.",
+      bulkDeletePermanentConfirm:
+        "¿ELIMINAR permanentemente {count} cliente(s) seleccionado(s)? Los clientes archivados no volverán a aparecer en las respuestas.",
     },
     auditLogsModule: {
       subtitle: "Registra todos los eventos del sistema y acciones de usuario.",
@@ -3426,6 +3472,9 @@ export const translations = {
       btnPreviewEmailTemplate: "Vista Previa",
       btnEditPdfTemplate: "Editar",
       btnPreviewPdfTemplate: "Vista Previa",
+      previewUnavailableMobileTitle: "Vista previa no disponible en móvil",
+      previewUnavailableMobile:
+        "Las vistas previas y la edición de plantillas están disponibles en pantallas medianas y superiores.",
       loading: "Cargando...",
       loadTemplatesFailed: "No se pudieron cargar las plantillas",
       generatePdfFailed: "No se pudo generar el PDF",
@@ -3918,6 +3967,9 @@ export const translations = {
       success: "PDF de histórico descargado correctamente.",
       noData:
         "No hay productos con histórico de precios disponibles para esta simulación.",
+      previewUnavailableMobileTitle: "Vista previa no disponible en móvil",
+      previewUnavailableMobile:
+        "La vista previa del PDF está disponible en pantallas medianas y superiores.",
     },
     draggableVariables: {
       title: "Variables disponibles",

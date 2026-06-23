@@ -9,8 +9,6 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
-import SearchIcon from "@mui/icons-material/Search";
-import ClearIcon from "@mui/icons-material/Clear";
 import { FormSelect } from "../ui/FormSelect";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
@@ -268,6 +266,8 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                 columns={columns}
                 rows={logs}
                 loading={loading}
+                onApplyFilters={handleSearch}
+                onClearFilters={handleClear}
                 renderCustomSearch={() => (
                     <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
                         <Box sx={{ flex: 1, }}>
@@ -307,12 +307,6 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                                 onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
                             />
                         </Box>
-                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
-                            <SearchIcon />
-                        </Button>
-                        <Button variant="outlined" size="small" onClick={handleClear}>
-                            <ClearIcon />
-                        </Button>
                     </Box>
                 )}
                 pagination={{

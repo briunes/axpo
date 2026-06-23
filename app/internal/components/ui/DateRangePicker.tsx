@@ -624,7 +624,7 @@ export function DateRangePicker({
     );
 
     const inlineTextFieldsContent = (
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.5 }}>
             <Box sx={{ flex: 1, minWidth: 0 }}>
                 <DateInput
                     value={startDate ? formatIsoDate(startDate) : ''}

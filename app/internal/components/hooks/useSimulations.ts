@@ -66,7 +66,7 @@ export interface SimulationsActions {
   setFilterCups: (v: string) => void;
   filterStatus: string;
   setFilterStatus: (v: string) => void;
-  applyFilters: () => void;
+  applyFilters: (searchOverride?: string) => void;
   clearFilters: () => void;
   filtersAppliedAt: number;
   // create form state
@@ -327,8 +327,10 @@ export function useSimulations(
     }
   };
 
-  const applyFilters = useCallback(() => {
-    setAppliedSearch(filterSearch);
+  const applyFilters = useCallback((searchOverride?: string) => {
+    const nextSearch = searchOverride ?? filterSearch;
+    setFilterSearch(nextSearch);
+    setAppliedSearch(nextSearch);
     setAppliedOwnerUserId(filterOwnerUserId);
     setAppliedClientId(filterClientId);
     setAppliedCups(filterCups);

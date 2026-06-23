@@ -58,7 +58,6 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
   const [actionButtons, setActionButtons] = useState<React.ReactNode>(null);
 
   const handleActionButtons = useCallback((buttons: React.ReactNode) => {
-    console.log('Setting action buttons:', buttons);
     setActionButtons(buttons);
   }, []);
 
@@ -124,6 +123,8 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
   };
 
   const handleNavigate = (target: AppSection) => {
+    setMobileMenuOpen(false);
+
     const routes: Record<AppSection, string> = {
       simulations: "/internal/simulations",
       users: "/internal/users",
@@ -176,8 +177,21 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
   if (!sectionAllowed[section]) {
     return (
       <div className="app-shell">
-        <aside className={`app-sidebar${collapsed ? " collapsed" : ""}`}>
-          <SidebarHeader collapsed={collapsed} onToggle={handleToggle} />
+        {mobileMenuOpen && (
+          <div
+            className="app-sidebar-overlay visible"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        <aside className={`app-sidebar${collapsed ? " collapsed" : ""}${mobileMenuOpen ? " mobile-open" : ""}`}>
+          <SidebarHeader
+            collapsed={collapsed}
+            onToggle={handleToggle}
+            mobileOpen={mobileMenuOpen}
+            onMobileClose={() => setMobileMenuOpen(false)}
+          />
           <SectionMenu
             section={section}
             canSeeUsersSection={canDo(role, "section.users")}
@@ -229,7 +243,12 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
             )}
 
             <aside className={`app-sidebar${collapsed ? " collapsed" : ""}${mobileMenuOpen ? " mobile-open" : ""}`}>
-              <SidebarHeader collapsed={collapsed} onToggle={handleToggle} />
+              <SidebarHeader
+                collapsed={collapsed}
+                onToggle={handleToggle}
+                mobileOpen={mobileMenuOpen}
+                onMobileClose={() => setMobileMenuOpen(false)}
+              />
               <SectionMenu
                 section={section}
                 canSeeUsersSection={canDo(role, "section.users")}

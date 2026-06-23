@@ -225,7 +225,7 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
             border: "1px solid var(--scheme-neutral-900)",
             borderRadius: 10,
         }}>
-            <div style={{
+            <div className="simulation-meta-grid" style={{
                 display: "flex",
                 flexWrap: "wrap",
                 columnGap: 22,
@@ -235,6 +235,7 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
             }}>
                 {metaItems.map((item) => (
                     <span
+                        className="simulation-meta-item"
                         key={item.key}
                         style={{
                             display: "inline-flex",

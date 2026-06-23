@@ -25,9 +25,7 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import SearchIcon from "@mui/icons-material/Search";
 import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
-import ClearIcon from "@mui/icons-material/Clear";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import type { SessionState } from "../../lib/authSession";
 import { DataTable, type ColumnDef } from "../ui";
@@ -388,7 +386,9 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                     </>
 
                 )}
-                renderCustomSearch={({ }) => (
+                onApplyFilters={handleSearch}
+                onClearFilters={handleClear}
+                renderCustomSearch={() => (
                     <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
                         <Box sx={{ flex: 1, }}>
                             <FormSelect
@@ -427,12 +427,6 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
 
                             />
                         </Box>
-                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
-                            <SearchIcon />
-                        </Button>
-                        <Button variant="outlined" size="small" onClick={handleClear}>
-                            <ClearIcon />
-                        </Button>
                     </Box>
                 )}
                 headerRight={
