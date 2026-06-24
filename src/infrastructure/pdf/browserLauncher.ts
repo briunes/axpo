@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import type { Browser } from "puppeteer-core";
 
 // Remote Chromium binary used as fallback when the bundled binary is missing
@@ -44,8 +45,20 @@ export async function launchBrowser(): Promise<Browser> {
   }
 
   // Local development — full puppeteer with its bundled Chrome
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const puppeteer = require("puppeteer");
+  const nativeRequire = createRequire(`${process.cwd()}/package.json`);
+  const puppeteerModule = nativeRequire("puppeteer");
+  const puppeteer = [
+    puppeteerModule,
+    puppeteerModule.default,
+    puppeteerModule.default?.default,
+    puppeteerModule.puppeteer,
+    puppeteerModule.default?.puppeteer,
+  ].find((candidate) => typeof candidate?.launch === "function");
+
+  if (!puppeteer) {
+    throw new Error("Unable to resolve Puppeteer launch function");
+  }
+
   return puppeteer.launch({
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],

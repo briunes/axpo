@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState, useRef } from "react";
+import { use, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
@@ -40,6 +40,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import HistoryIcon from "@mui/icons-material/History";
 import { DownloadHistoryDialog } from "../components/DownloadHistoryDialog";
+import { useTopBarBreadcrumbs } from "../../../components/InternalWorkspace";
 
 type ShareMode = "pdf" | "email";
 
@@ -72,6 +73,16 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const [templateViewMode, setTemplateViewMode] = useState<"preview" | "edit">("preview");
+    const simulationBreadcrumbLabel =
+        simulation?.referenceNumber || simulation?.client?.name || simulation?.id || id;
+    const breadcrumbs = useMemo(
+        () => simulation ? [
+            { label: simulationBreadcrumbLabel, href: `/internal/simulations/${simulation.id}` },
+            { label: t("shareSimulation", "title") },
+        ] : null,
+        [simulation, simulationBreadcrumbLabel, t],
+    );
+    useTopBarBreadcrumbs(breadcrumbs);
 
     const fetchedRef = useRef(false);
 

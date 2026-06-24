@@ -1,5 +1,6 @@
 "use client";
 
+import { Box, Typography } from "@mui/material";
 import { GradientLineChart, GradientBarChart, ResponsivePieChart } from "../ui";
 import type { AnalyticsOverview, AnalyticsAgencyStat } from "../../lib/internalApi";
 import { DataTable } from "../ui";
@@ -138,21 +139,21 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
             key: "agencyName",
             label: t("analyticsModule", "colAgencyName"),
             sortable: true,
-            renderCell: (r) => <span className="dt-cell-primary">{r.agencyName}</span>,
+            renderCell: (r) => <Typography component="span" variant="body2" className="dt-cell-primary">{r.agencyName}</Typography>,
         },
         {
             key: "total",
             label: t("analyticsModule", "colCreated"),
             sortable: true,
-            renderCell: (r) => <span style={{ fontWeight: 600 }}>{r.total}</span>
+            renderCell: (r) => <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>{r.total}</Typography>
         },
         {
             key: "shared",
             label: t("analyticsModule", "colSent"),
             sortable: true,
             renderCell: (r) => (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontWeight: 600, color: "#10b981" }}>{r.shared}</span>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography component="span" variant="body2" sx={{ fontWeight: 600, color: "#10b981" }}>{r.shared}</Typography>
                     <div style={{
                         flex: 1,
                         height: 6,
@@ -167,7 +168,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                             background: "linear-gradient(90deg, #10b981 0%, #10b981CC 100%)",
                         }} />
                     </div>
-                </div>
+                </Box>
             ),
         },
         {
@@ -176,7 +177,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
             renderCell: (r) => {
                 const rate = r.shared > 0 ? Math.round((r.opened / r.shared) * 100) : 0;
                 return (
-                    <div style={{
+                    <Box sx={{
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 6,
@@ -185,13 +186,13 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                         border: "1px solid #8b5cf640",
                         borderRadius: 6,
                     }}>
-                        <span style={{
+                        <Typography component="span" variant="body2" sx={{
                             fontWeight: 600,
                             color: "#8b5cf6",
                         }}>
                             {rate}%
-                        </span>
-                    </div>
+                        </Typography>
+                    </Box>
                 );
             },
         },
@@ -199,7 +200,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
             key: "expired",
             label: t("analyticsModule", "colExpired"),
             sortable: true,
-            renderCell: (r) => <span style={{ color: r.expired > 0 ? "#f59e0b" : "inherit" }}>{r.expired}</span>,
+            renderCell: (r) => <Typography component="span" variant="body2" sx={{ color: r.expired > 0 ? "#f59e0b" : "inherit" }}>{r.expired}</Typography>,
         },
     ];
 
@@ -323,7 +324,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                         <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--scheme-neutral-100)", marginBottom: 4 }}>
                             {t("analyticsModule", "tableAgencyPerformance")}
                         </h3>
-                        <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
+                        <p style={{color: "var(--scheme-neutral-500)" }}>
                             {t("analyticsModule", "tableAgencyPerformanceSub")}
                         </p>
                     </div>
@@ -346,7 +347,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                         <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--scheme-neutral-100)", marginBottom: 4 }}>
                             {t("analyticsModule", "sectionSimContent")}
                         </h3>
-                        <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
+                        <p style={{color: "var(--scheme-neutral-500)" }}>
                             {t("analyticsModule", "sectionSimContentSub")}
                         </p>
                     </div>
@@ -376,7 +377,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                                     margin={{ left: 0, right: 120, top: 10, bottom: 10 }}
                                 />
                             ) : (
-                                <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
+                                <div style={{ height: 180, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, }}>
                                     {t("analyticsModule", "noDataAvailable")}
                                 </div>
                             )}
@@ -410,7 +411,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                                         </div>
                                     </>
                                 ) : (
-                                    <div style={{ opacity: 0.4, fontSize: 13 }}>{t("analyticsModule", "noDataAvailable")}</div>
+                                    <div style={{ opacity: 0.4, }}>{t("analyticsModule", "noDataAvailable")}</div>
                                 )}
                             </div>
                         </ChartPanel>

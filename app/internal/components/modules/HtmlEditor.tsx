@@ -225,7 +225,6 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
                     background: rgba(56, 189, 248, 0.12);
                     border-bottom: 1px solid rgba(56, 189, 248, 0.22);
                     padding: 12px 16px;
-                    font-size: 13px;
                     color: #7dd3fc;
                 }
                 .editor-toolbar {
@@ -244,7 +243,6 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
                     color: var(--scheme-neutral-300);
                     border-radius: 4px;
                     cursor: pointer;
-                    font-size: 13px;
                     transition: all 0.2s;
                 }
                 .editor-toolbar button:hover {
@@ -266,7 +264,6 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
                     padding: 6px 8px;
                     border: 1px solid var(--scheme-neutral-900);
                     border-radius: 4px;
-                    font-size: 13px;
                     background: var(--scheme-neutral-1200);
                     color: var(--scheme-neutral-300);
                     cursor: pointer;
@@ -309,7 +306,6 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
                     color: var(--scheme-neutral-100);
                     background: var(--scheme-neutral-1200);
                     font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-                    font-size: 13px;
                     line-height: 1.6;
                     resize: vertical;
                     outline: none;

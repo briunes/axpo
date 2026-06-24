@@ -568,7 +568,7 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
                                 onChange={toggleAll}
                                 disabled={running}
                             />
-                            <span style={{ fontWeight: 700, fontSize: 13 }}>
+                            <span style={{ fontWeight: 700, }}>
                                 {t("llmBenchmark", "selectLlms", { selected: selectedCount, total: activeProviders.length })}
                             </span>
                         </label>
@@ -654,7 +654,7 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
             )}
 
             {historyWarning && (
-                <Alert severity="warning" sx={{ fontSize: 13 }}>
+                <Alert severity="warning">
                     {historyWarning}
                 </Alert>
             )}
@@ -665,7 +665,7 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
                     {Object.entries(errors).map(([id, msg]) => {
                         const p = providers.find((pr) => pr.id === id);
                         return (
-                            <Alert key={id} severity="error" sx={{ fontSize: 13 }}>
+                            <Alert key={id} severity="error">
                                 <strong>{p?.name ?? id}:</strong> {msg}
                             </Alert>
                         );

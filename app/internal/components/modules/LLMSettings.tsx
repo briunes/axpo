@@ -552,7 +552,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                                     secondaryLabel: getProviderSummary(provider),
                                                 }))}
                                             />
-                                            <Box sx={{ color: "var(--axpo-text-secondary)", fontSize: 13 }}>
+                                            <Box sx={{ color: "var(--axpo-text-secondary)", }}>
                                                 {selected ? getProviderSummary(selected) : t("llmSettings", "noLlmSelected")}
                                             </Box>
                                         </Box>

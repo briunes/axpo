@@ -137,6 +137,14 @@
   padding: 0;
 }
 
+.crud-form-panel--plain {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
 .crud-page-shell > .crud-form-panel,
 .crud-page-shell > .crud-tab-panel {
   background: transparent;

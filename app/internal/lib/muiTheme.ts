@@ -71,9 +71,6 @@ export function createMuiTheme(mode: PaletteMode = "light") {
       body1: {
         fontSize: "0.875rem",
       },
-      body2: {
-        fontSize: "0.8125rem",
-      },
     },
     components: {
       MuiTab: {

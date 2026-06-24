@@ -227,10 +227,10 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
             label: t("logs", "timestamp"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
-                    <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>
                         {formatDate(log.createdAt)}
                     </Typography>
-                    <Typography variant="caption" sx={{ fontSize: 11, color: "text.secondary" }}>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
                         {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true, locale: locale === "es" ? es : undefined })}
                     </Typography>
                 </Box>
@@ -245,7 +245,6 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                     size="small"
                     sx={{
                         fontFamily: "monospace",
-                        fontSize: 11,
                         fontWeight: 700,
                         height: 22,
                         backgroundColor: alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.18 : 0.1),
@@ -261,7 +260,6 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                 <Typography
                     variant="body2"
                     sx={{
-                        fontSize: 12,
                         color: "text.primary",
                         maxWidth: 340,
                         overflow: "hidden",
@@ -285,7 +283,6 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                                 label={log.method}
                                 size="small"
                                 sx={{
-                                    fontSize: 10,
                                     fontWeight: 700,
                                     height: 18,
                                     fontFamily: "monospace",
@@ -296,7 +293,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         )}
                         <Typography
                             variant="caption"
-                            sx={{ fontFamily: "monospace", fontSize: 11, color: "text.secondary" }}
+                            sx={{ fontFamily: "monospace", color: "text.secondary" }}
                             title={log.path}
                         >
                             {log.path.length > 40 ? `...${log.path.slice(-40)}` : log.path}
@@ -313,7 +310,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                 log.pagePath ? (
                     <Typography
                         variant="caption"
-                        sx={{ fontFamily: "monospace", fontSize: 11, color: "text.secondary" }}
+                        sx={{ fontFamily: "monospace", color: "text.secondary" }}
                         title={log.pagePath}
                     >
                         {log.pagePath.length > 40 ? `...${log.pagePath.slice(-40)}` : log.pagePath}
@@ -327,11 +324,11 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
             label: t("logs", "user"),
             renderCell: (log) =>
                 log.user ? (
-                    <Typography variant="caption" sx={{ fontSize: 11 }}>
+                    <Typography variant="caption">
                         {log.user.fullName}
                     </Typography>
                 ) : (
-                    <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 11 }}>-</Typography>
+                    <Typography variant="caption" sx={{ color: "text.disabled" }}>-</Typography>
                 ),
         },
     ];
@@ -414,7 +411,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                                 value={localSearch}
                                 onChange={(e) => setLocalSearch(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                                sx={{ "& .MuiInputBase-root": { fontSize: 13 } }}
+                                sx={{ "& .MuiInputBase-root": { } }}
                             />
                         </Box>
                         <Box sx={{ flex: 2 }}>
@@ -525,7 +522,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                             {/* Timestamp */}
                             <Box>
                                 <Typography variant="caption" color="text.secondary">{t("logs", "timestamp")}</Typography>
-                                <Typography variant="body2" sx={{ mt: 0.5, fontSize: 13 }}>
+                                <Typography variant="body2" sx={{ mt: 0.5, }}>
                                     {formatDate(selected.createdAt)}
                                     {" · "}{formatDistanceToNow(new Date(selected.createdAt), { addSuffix: true, locale: locale === "es" ? es : undefined })}
                                 </Typography>
@@ -580,7 +577,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                             {selected.user && (
                                 <Box>
                                     <Typography variant="caption" color="text.secondary">{t("logs", "user")}</Typography>
-                                    <Typography variant="body2" sx={{ mt: 0.5, fontSize: 13 }}>
+                                    <Typography variant="body2" sx={{ mt: 0.5, }}>
                                         {selected.user.fullName}
                                         <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
                                             {selected.user.email}

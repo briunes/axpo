@@ -18,6 +18,7 @@ import { AuditLogsModal } from "../../../components/ui/AuditLogsModal";
 import { useUserPreferences } from "../../../components/providers/UserPreferencesProvider";
 import { getUser, type ListUsersResponse, type UserItem } from "../../../lib/internalApi";
 import { getSystemConfig } from "../../../lib/configApi";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../../components/InternalWorkspace";
 
 export default function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -28,6 +29,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const { canDo } = usePermissions();
     const { preferences } = useUserPreferences();
     const queryClient = useQueryClient();
+    const onActionButtons = useActionButtons();
 
     const usersActions = useUsers(session, 25, { queryEnabled: false });
     const agenciesActions = useAgencies(session, 1000, { minimal: true });
@@ -52,6 +54,11 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
         otherDetails: "",
     });
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
+    const breadcrumbs = useMemo(
+        () => user ? [{ label: user.fullName, href: `/internal/users/${user.id}/edit` }] : null,
+        [user],
+    );
+    useTopBarBreadcrumbs(breadcrumbs);
 
     const isEditingSelf = user?.id === session?.user.id;
     const canManageUserSessions = session ? canDo(session.user.role, "users.sessions.manage") : false;
@@ -194,6 +201,67 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
         await usersActions.handleRequestPasswordReset(user);
     };
 
+    useEffect(() => {
+        if (!session || !user) {
+            onActionButtons?.(null);
+            return;
+        }
+
+        onActionButtons?.(
+            <>
+                <span className="topbar-action-wrap">
+                    <Button
+                        className="topbar-action topbar-action--compact"
+                        variant="outlined"
+                        size="small"
+                        startIcon={<HistoryIcon />}
+                        onClick={() => setShowAuditLogsModal(true)}
+                    >
+                        <span className="topbar-action-label">{t("auditLogsModal", "title")}</span>
+                    </Button>
+                </span>
+                <span className="topbar-action-wrap">
+                    <Button
+                        className="topbar-action topbar-action--compact"
+                        variant="outlined"
+                        size="small"
+                        onClick={handleSendPasswordReset}
+                        disabled={usersActions.busyAction !== null || isSendingPasswordReset}
+                    >
+                        <span className="topbar-action-label">
+                            {isSendingPasswordReset ? t("common", "loading") : t("userFormPage", "sendPasswordReset")}
+                        </span>
+                    </Button>
+                </span>
+                <span className="topbar-action-wrap">
+                    <Button
+                        className="topbar-action topbar-action--compact"
+                        variant="outlined"
+                        size="small"
+                        onClick={handleRegeneratePin}
+                        disabled={usersActions.busyAction !== null || isRegeneratingPin}
+                    >
+                        <span className="topbar-action-label">
+                            {isRegeneratingPin ? t("common", "loading") : t("userFormPage", "regeneratePin")}
+                        </span>
+                    </Button>
+                </span>
+                {formActions}
+            </>,
+        );
+
+        return () => onActionButtons?.(null);
+    }, [
+        formActions,
+        isRegeneratingPin,
+        isSendingPasswordReset,
+        onActionButtons,
+        session,
+        t,
+        user,
+        usersActions.busyAction,
+    ]);
+
     if (!session || !user) {
         return (
             <CrudPageLayout
@@ -213,36 +281,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                 subtitle={t("userFormPage", "editSubtitle", { name: user.fullName })}
                 backHref="/internal/users"
                 maxWidth={undefined}
-                actions={
-                    <>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<HistoryIcon />}
-                            onClick={() => setShowAuditLogsModal(true)}
-                        >
-                            {t("auditLogsModal", "title")}
-                        </Button>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            onClick={handleSendPasswordReset}
-                            disabled={usersActions.busyAction !== null || isSendingPasswordReset}
-                        >
-                            {isSendingPasswordReset ? t("common", "loading") : t("userFormPage", "sendPasswordReset")}
-                        </Button>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            onClick={handleRegeneratePin}
-                            disabled={usersActions.busyAction !== null || isRegeneratingPin}
-                        >
-                            {isRegeneratingPin ? t("common", "loading") : t("userFormPage", "regeneratePin")}
-                        </Button>
-                        {formActions}
-
-                    </>
-                }
+                hideHeader
             >
                 <Box className="crud-tab-panel">
                     <Box className="crud-tab-panel__tabs">

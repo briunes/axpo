@@ -8,7 +8,6 @@ import {
   ListItem,
   ListItemButton,
   ListItemIcon,
-  ListItemText,
   Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
@@ -160,31 +159,14 @@ export function SectionMenu({
         aria-label="Internal app sections"
         sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}
       >
-        <Typography
-          variant="caption"
-          sx={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            color: "var(--scheme-neutral-600)",
-            px: 2,
-            py: 0.75,
-            opacity: collapsed ? 0 : 1,
-            height: collapsed ? 0 : "auto",
-            overflow: "hidden",
-            transition: "opacity 180ms ease, height 220ms ease",
-          }}
-        >
-          Menu
-        </Typography>
-        <List sx={{ flex: 1, px: 1, py: 0, overflowY: "auto", overflowX: "hidden" }}>
+
+        <List sx={{ flex: 1, px: collapsed ? 1.25 : 1, py: 0, pt: 2, overflowY: "auto", overflowX: "hidden" }}>
           {items.map((item) => {
             const Icon = sectionIcon[item];
             const isActive = section === item;
             const label = t("nav", sectionNavKey[item]);
             return (
-              <ListItem key={item} disablePadding sx={{ mb: 0.25 }}>
+              <ListItem key={item} disablePadding sx={{ mb: 0.25, justifyContent: collapsed ? "center" : "stretch" }}>
                 <Tooltip
                   title={label}
                   placement="right"
@@ -196,17 +178,22 @@ export function SectionMenu({
                     onClick={() => onNavigate(item)}
                     selected={isActive}
                     sx={{
-                      borderRadius: 1.5,
-                      gap: 1.25,
-                      py: 1.125,
-                      px: 1,
-                      borderLeft: "3px solid transparent",
-                      borderLeftColor: isActive ? "primary.main" : "transparent",
+                      borderRadius: collapsed ? "50%" : 1.5,
+                      gap: collapsed ? 0 : 1.25,
+                      py: collapsed ? 0 : 1.125,
+                      px: collapsed ? 0 : 1,
+                      width: collapsed ? 36 : "100%",
+                      minWidth: collapsed ? 36 : "auto",
+                      height: collapsed ? 36 : 36,
+                      minHeight: collapsed ? 36 : 36,
+                      flex: collapsed ? "0 0 36px" : "1 1 auto",
+                      boxSizing: "border-box",
                       justifyContent: collapsed ? "center" : "flex-start",
                       "&.Mui-selected": {
                         bgcolor: "rgba(255, 50, 84, 0.08)",
                         color: "var(--scheme-brand-600)",
                         fontWeight: 600,
+                        boxShadow: "inset 2px 0 0 var(--scheme-brand-600)",
                         "&:hover": {
                           bgcolor: "rgba(255, 50, 84, 0.12)",
                         },
@@ -219,6 +206,8 @@ export function SectionMenu({
                     <ListItemIcon
                       sx={{
                         minWidth: "auto",
+                        width: collapsed ? 18 : "auto",
+                        justifyContent: "center",
                         opacity: isActive ? 1 : 0.65,
                         color: isActive ? "var(--scheme-brand-600)" : "var(--scheme-neutral-400)",
                         transition: "opacity 150ms",
@@ -226,24 +215,22 @@ export function SectionMenu({
                     >
                       <Icon />
                     </ListItemIcon>
-                    <ListItemText
-                      primary={label}
+                    <Typography
+                      variant="body2"
+                      component="span"
                       sx={{
-                        m: 0,
                         opacity: collapsed ? 0 : 1,
                         maxWidth: collapsed ? 0 : 180,
                         overflow: "hidden",
+                        fontWeight: isActive ? 600 : 'inherit',
+                        color: isActive ? "var(--scheme-brand-600)" : "var(--scheme-neutral-400)",
+                        whiteSpace: "nowrap",
+                        textOverflow: "ellipsis",
                         transition: "opacity 180ms ease, max-width 220ms ease",
-                        "& .MuiListItemText-primary": {
-                          fontSize: 14,
-                          fontWeight: isActive ? 600 : 500,
-                          color: isActive ? "var(--scheme-brand-600)" : "var(--scheme-neutral-400)",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        },
                       }}
-                    />
+                    >
+                      {label}
+                    </Typography>
                   </ListItemButton>
                 </Tooltip>
               </ListItem>
@@ -255,8 +242,8 @@ export function SectionMenu({
       <div className="app-user-card">
         {/* Configurations menu item — ADMIN only */}
         {canSeeConfigurationsSection && (
-          <List sx={{ px: 1, py: 0, mb: 0.25 }}>
-            <ListItem disablePadding>
+          <List sx={{ px: collapsed ? 1.25 : 1, py: 0, mb: 0.25 }}>
+            <ListItem disablePadding sx={{ justifyContent: collapsed ? "center" : "stretch" }}>
               <Tooltip
                 title={t("nav", "configurations")}
                 placement="right"
@@ -268,17 +255,22 @@ export function SectionMenu({
                   onClick={() => onNavigate("configurations")}
                   selected={isConfigurationsActive}
                   sx={{
-                    borderRadius: 1.5,
-                    gap: 1.25,
-                    py: 1.125,
-                    px: 1,
-                    borderLeft: "3px solid transparent",
-                    borderLeftColor: isConfigurationsActive ? "primary.main" : "transparent",
+                    borderRadius: collapsed ? "50%" : 1.5,
+                    gap: collapsed ? 0 : 1.25,
+                    py: collapsed ? 0 : 1.125,
+                    px: collapsed ? 0 : 1,
+                    width: collapsed ? 36 : "100%",
+                    minWidth: collapsed ? 36 : "auto",
+                    height: collapsed ? 36 : "auto",
+                    minHeight: collapsed ? 36 : "auto",
+                    flex: collapsed ? "0 0 36px" : "1 1 auto",
+                    boxSizing: "border-box",
                     justifyContent: collapsed ? "center" : "flex-start",
                     "&.Mui-selected": {
                       bgcolor: "rgba(255, 50, 84, 0.08)",
                       color: "var(--scheme-brand-600)",
                       fontWeight: 600,
+                      boxShadow: "inset 2px 0 0 var(--scheme-brand-600)",
                       "&:hover": {
                         bgcolor: "rgba(255, 50, 84, 0.12)",
                       },
@@ -291,6 +283,8 @@ export function SectionMenu({
                   <ListItemIcon
                     sx={{
                       minWidth: "auto",
+                      width: collapsed ? 18 : "auto",
+                      justifyContent: "center",
                       opacity: isConfigurationsActive ? 1 : 0.65,
                       color: isConfigurationsActive
                         ? "var(--scheme-brand-600)"
@@ -300,26 +294,24 @@ export function SectionMenu({
                   >
                     <ConfigIcon />
                   </ListItemIcon>
-                  <ListItemText
-                    primary={t("nav", "configurations")}
+                  <Typography
+                    variant="body2"
+                    component="span"
                     sx={{
-                      m: 0,
                       opacity: collapsed ? 0 : 1,
                       maxWidth: collapsed ? 0 : 180,
                       overflow: "hidden",
+                      fontWeight: isConfigurationsActive ? 600 : 500,
+                      color: isConfigurationsActive
+                        ? "var(--scheme-brand-600)"
+                        : "var(--scheme-neutral-400)",
+                      whiteSpace: "nowrap",
+                      textOverflow: "ellipsis",
                       transition: "opacity 180ms ease, max-width 220ms ease",
-                      "& .MuiListItemText-primary": {
-                        fontSize: 14,
-                        fontWeight: isConfigurationsActive ? 600 : 500,
-                        color: isConfigurationsActive
-                          ? "var(--scheme-brand-600)"
-                          : "var(--scheme-neutral-400)",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      },
                     }}
-                  />
+                  >
+                    {t("nav", "configurations")}
+                  </Typography>
                 </ListItemButton>
               </Tooltip>
             </ListItem>
@@ -340,9 +332,9 @@ export function SectionMenu({
           }}
         >
           {!collapsed && (
-            <Box component="span" sx={{ fontSize: 11, color: "var(--scheme-neutral-500)", mr: 0.25 }}>
+            <Typography component="span" variant="caption" sx={{ color: "var(--scheme-neutral-500)", mr: 0.25 }}>
               Lang
-            </Box>
+            </Typography>
           )}
           <Tooltip title="English" placement="right">
             <Button
@@ -357,7 +349,7 @@ export function SectionMenu({
                 p: 0.5,
                 fontSize: collapsed ? 16 : 18,
                 lineHeight: 1,
-                borderRadius: 1.5,
+                borderRadius: collapsed ? "50%" : 1.5,
                 borderWidth: 2,
                 borderColor: locale === "en" ? "primary.main" : "transparent",
                 bgcolor: locale === "en" ? "rgba(255, 50, 84, 0.08)" : "var(--scheme-neutral-1100)",
@@ -389,7 +381,7 @@ export function SectionMenu({
                 p: 0.5,
                 fontSize: collapsed ? 16 : 18,
                 lineHeight: 1,
-                borderRadius: 1.5,
+                borderRadius: collapsed ? "50%" : 1.5,
                 borderWidth: 2,
                 borderColor: locale === "es" ? "primary.main" : "transparent",
                 bgcolor: locale === "es" ? "rgba(255, 50, 84, 0.08)" : "var(--scheme-neutral-1100)",
@@ -421,7 +413,7 @@ export function SectionMenu({
                 p: 0.5,
                 fontSize: collapsed ? 16 : 18,
                 lineHeight: 1,
-                borderRadius: 1.5,
+                borderRadius: collapsed ? "50%" : 1.5,
                 borderWidth: 2,
                 borderColor: "transparent",
                 bgcolor: "var(--scheme-neutral-1100)",
@@ -454,14 +446,17 @@ export function SectionMenu({
               sx={{
                 background: "none",
                 border: "none",
-                padding: collapsed ? 0.5 : "6px 4px",
+                padding: collapsed ? 0 : "6px 4px",
                 cursor: "pointer",
                 flex: collapsed ? "0" : 1,
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
                 textAlign: "left",
-                borderRadius: 1.5,
+                width: collapsed ? 36 : "auto",
+                height: collapsed ? 36 : "auto",
+                justifyContent: "center",
+                borderRadius: collapsed ? "50%" : 1.5,
                 color: "var(--scheme-neutral-300)",
                 "&:hover": {
                   bgcolor: "var(--scheme-neutral-1100)",
@@ -482,8 +477,8 @@ export function SectionMenu({
               </Box>
               {!collapsed && (
                 <Box className="app-user-detail" sx={{ flex: 1, overflow: "hidden" }}>
-                  <Box className="app-user-name" sx={{ color: "var(--scheme-neutral-100)" }}>{session.user.fullName}</Box>
-                  <Box className="app-user-role">{session.user.role === "SYS_ADMIN" ? t("userFormPage", "roleSysAdmin") : session.user.role === "ADMIN" ? t("userFormPage", "roleAdmin") : session.user.role === "AGENT" ? t("userFormPage", "roleAgent") : t("userFormPage", "roleCommercial")}</Box>
+                  <Typography component="div" variant="body2" className="app-user-name" sx={{ color: "var(--scheme-neutral-100)", fontWeight: 600 }}>{session.user.fullName}</Typography>
+                  <Typography component="div" variant="caption" className="app-user-role">{session.user.role === "SYS_ADMIN" ? t("userFormPage", "roleSysAdmin") : session.user.role === "ADMIN" ? t("userFormPage", "roleAdmin") : session.user.role === "AGENT" ? t("userFormPage", "roleAgent") : t("userFormPage", "roleCommercial")}</Typography>
                 </Box>
               )}
             </Box>
@@ -500,16 +495,18 @@ export function SectionMenu({
               sx={{
                 background: "none",
                 border: "none",
-                p: collapsed ? 1 : 0.75,
+                p: collapsed ? 0 : 0.75,
                 cursor: "pointer",
                 color: "var(--scheme-neutral-500)",
-                borderRadius: 1.5,
+                borderRadius: collapsed ? "50%" : 1.5,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 transition: "background 0.15s, color 0.15s",
-                minWidth: collapsed ? 32 : "auto",
-                minHeight: collapsed ? 32 : "auto",
+                width: collapsed ? 36 : "auto",
+                height: collapsed ? 36 : "auto",
+                minWidth: collapsed ? 36 : "auto",
+                minHeight: collapsed ? 36 : "auto",
                 "&:hover": {
                   bgcolor: "var(--scheme-neutral-1100)",
                   color: "var(--scheme-neutral-200)",

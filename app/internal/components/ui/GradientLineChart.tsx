@@ -78,9 +78,7 @@ export function GradientLineChart({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                opacity: 0.4,
-                fontSize: 13,
-            }}>
+                opacity: 0.4, }}>
                 {emptyMessage}
             </div>
         );

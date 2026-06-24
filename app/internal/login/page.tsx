@@ -194,9 +194,7 @@ export default function LoginPage() {
                   {t("otp", "description")}
                 </p>
                 {otpAttempts < 3 ? (
-                  <p style={{
-                    fontSize: 13,
-                    textAlign: "center",
+                  <p style={{textAlign: "center",
                     margin: 0,
                     color: otpAttempts >= 2 ? "var(--color-error, #d32f2f)" : "var(--text-secondary, #888)",
                     fontWeight: otpAttempts >= 2 ? 600 : 400,
@@ -204,7 +202,7 @@ export default function LoginPage() {
                     {t("otp", "attemptsRemaining").replace("{{n}}", String(3 - otpAttempts))}
                   </p>
                 ) : (
-                  <p style={{ fontSize: 13, textAlign: "center", margin: 0, color: "var(--color-error, #d32f2f)", fontWeight: 600 }}>
+                  <p style={{textAlign: "center", margin: 0, color: "var(--color-error, #d32f2f)", fontWeight: 600 }}>
                     {t("otp", "noAttemptsLeft")}
                   </p>
                 )}

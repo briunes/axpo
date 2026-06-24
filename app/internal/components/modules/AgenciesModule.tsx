@@ -109,7 +109,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
         <Box>
           <Typography variant="body1" sx={{ fontWeight: 500 }}>{a.name}</Typography>
           {(a.city || a.province) && (
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12 }}>
+            <Typography variant="body2" color="text.secondary">
               {[a.city, a.province].filter(Boolean).join(", ")}
             </Typography>
           )}
@@ -138,8 +138,8 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
           <Box>
             {hasAddress ? (
               <>
-                {a.street && <Typography variant="body2" sx={{ fontSize: 13 }}>{a.street}</Typography>}
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12 }}>
+                {a.street && <Typography variant="body2">{a.street}</Typography>}
+                <Typography variant="body2" color="text.secondary">
                   {[a.postalCode, a.city].filter(Boolean).join(" ")}
                   {a.country && `, ${a.country}`}
                 </Typography>
@@ -166,7 +166,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
                 title={
                   <Box>
                     {commercialUsers.map(u => (
-                      <Typography key={u.id} variant="body2" sx={{ fontSize: 12 }}>
+                      <Typography key={u.id} variant="body2">
                         {u.fullName} ({u.email})
                       </Typography>
                     ))}
@@ -204,12 +204,12 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       width: "220",
       sortable: true,
       renderCell: (a) => (
-        <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {new Date(a.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
-          <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
+          <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {a.createdByUser ? `${a.createdByUser.fullName}` : "System"}
-          </span>
+          </Typography>
         </Typography>
       ),
     },
@@ -219,12 +219,12 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       width: "220",
       sortable: true,
       renderCell: (a) => (
-        <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {new Date(a.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
-          <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
+          <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {a.updatedByUser ? `${a.updatedByUser.fullName}` : "System"}
-          </span>
+          </Typography>
         </Typography>
       ),
     },
@@ -571,9 +571,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
             key={i}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
-            sx={{
-              fontSize: 13,
-              color: item.danger ? "error.main" : "text.primary",
+            sx={{color: item.danger ? "error.main" : "text.primary",
               py: 0.75,
               gap: 1,
             }}

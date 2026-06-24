@@ -7,7 +7,7 @@ import { FormSelect } from "../ui/FormSelect";
 import { CurrencyInput } from "../ui/CurrencyInput";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { alpha, useTheme } from "@mui/material/styles";
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Radio, Stack, Tab, Tabs, Typography, useMediaQuery } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Radio, Stack, Tab, Tabs, Tooltip, Typography, useMediaQuery } from "@mui/material";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import BoltIcon from "@mui/icons-material/Bolt";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -167,7 +167,7 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
         padding: "9px 12px",
         textAlign: align,
         fontSize: 11,
-        fontWeight: 700,
+        fontWeight: 600,
         color: sortCol === col ? uiColors.text : uiColors.textMuted,
         textTransform: "uppercase",
         letterSpacing: "0.05em",
@@ -194,7 +194,7 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                 padding: "14px 16px",
                                 textAlign: "center",
                                 fontSize: 11,
-                                fontWeight: 700,
+                                fontWeight: 600,
                                 color: uiColors.textMuted,
                                 textTransform: "uppercase",
                                 letterSpacing: "0.05em",
@@ -202,27 +202,39 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                 width: "80px",
                                 background: "color-mix(in srgb, var(--scheme-surface-raised) 82%, var(--scheme-surface-raised-subtle))",
                             }}>
-                                {t("simulationOffersCards", "colSelect")}
+                                <Typography component="span" variant="caption" sx={{ fontWeight: 600, textTransform: "uppercase" }}>
+                                    {t("simulationOffersCards", "colSelect")}
+                                </Typography>
                             </th>
                         )}
                         <th style={thSortStyle("productLabel", "left")} onClick={() => handleSort("productLabel")}>
-                            {t("simulationOffersCards", "colProduct")}
+                            <Typography component="span" variant="caption" sx={{ fontWeight: 600, textTransform: "uppercase" }}>
+                                {t("simulationOffersCards", "colProduct")}
+                            </Typography>
                             <SortIndicator col="productLabel" align="left" />
                         </th>
                         <th style={thSortStyle("totalFactura", "right")} onClick={() => handleSort("totalFactura")}>
-                            {t("simulationOffersCards", "colTotalInvoice")}
+                            <Typography component="span" variant="caption" sx={{ fontWeight: 600, textTransform: "uppercase" }}>
+                                {t("simulationOffersCards", "colTotalInvoice")}
+                            </Typography>
                             {" "}<SortIndicator col="totalFactura" />
                         </th>
                         <th style={thSortStyle("ahorro", "right")} onClick={() => handleSort("ahorro")}>
-                            {t("simulationOffersCards", "colMonthlySavings")}
+                            <Typography component="span" variant="caption" sx={{ fontWeight: 600, textTransform: "uppercase" }}>
+                                {t("simulationOffersCards", "colMonthlySavings")}
+                            </Typography>
                             {" "}<SortIndicator col="ahorro" />
                         </th>
                         <th style={thSortStyle("pctAhorro", "center")} onClick={() => handleSort("pctAhorro")}>
-                            {t("simulationOffersCards", "colPctDifference")}
+                            <Typography component="span" variant="caption" sx={{ fontWeight: 600, textTransform: "uppercase" }}>
+                                {t("simulationOffersCards", "colPctDifference")}
+                            </Typography>
                             {" "}<SortIndicator col="pctAhorro" align="center" />
                         </th>
                         <th style={thSortStyle("ahorroAnual", "right")} onClick={() => handleSort("ahorroAnual")}>
-                            {t("simulationOffersCards", "colAnnualSavings")}
+                            <Typography component="span" variant="caption" sx={{ fontWeight: 600, textTransform: "uppercase" }}>
+                                {t("simulationOffersCards", "colAnnualSavings")}
+                            </Typography>
                             {" "}<SortIndicator col="ahorroAnual" />
                         </th>
                     </tr>
@@ -270,14 +282,13 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                         gap: 8,
                                     }}>
                                         <div>
-                                            <div style={{
-                                                fontSize: 13,
-                                                fontWeight: 600,
+                                            <Typography component="div" variant="body2" sx={{
+                                                fontWeight: 500,
                                                 color: uiColors.text,
-                                                marginBottom: 2,
+                                                mb: 0.25,
                                             }}>
                                                 {productDisplayLabel(product, t)}
-                                            </div>
+                                            </Typography>
                                             <Chip
                                                 size="small"
                                                 variant="filled"
@@ -291,10 +302,10 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                             />
                                         </div>
                                         {isTop && (
-                                            <Chip size="small" color="success" label={t("simulationOffersCards", "badgeBestOffer")} sx={{ height: 22, fontSize: 10, fontWeight: 700 }} />
+                                            <Chip size="small" color="success" label={t("simulationOffersCards", "badgeBestOffer")} sx={{ height: 22, fontSize: 10, fontWeight: 600 }} />
                                         )}
                                         {isSelected && (
-                                            <Chip size="small" color="primary" label={t("simulationOffersCards", "badgeSelected")} sx={{ height: 22, fontSize: 10, fontWeight: 700 }} />
+                                            <Chip size="small" color="primary" label={t("simulationOffersCards", "badgeSelected")} sx={{ height: 22, fontSize: 10, fontWeight: 600 }} />
                                         )}
                                     </div>
                                 </td>
@@ -302,30 +313,32 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                     padding: "7px 12px",
                                     textAlign: "right",
                                     fontVariantNumeric: "tabular-nums",
-                                    fontSize: 14,
-                                    fontWeight: 700,
+                                    fontWeight: 600,
                                     color: uiColors.text,
                                     borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
-                                    {fmt(product.totalFactura)} €
+                                    <Typography component="span" variant="body2" sx={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                                        {fmt(product.totalFactura)} €
+                                    </Typography>
                                 </td>
                                 <td style={{
                                     padding: "7px 12px",
                                     textAlign: "right",
                                     fontVariantNumeric: "tabular-nums",
-                                    fontSize: 14,
-                                    fontWeight: 700,
+                                    fontWeight: 600,
                                     color: savingsColor,
                                     borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
-                                    {product.ahorro > 0 ? "" : ""}{fmt(product.ahorro)} €
+                                    <Typography component="span" variant="body2" sx={{ fontWeight: 600, color: savingsColor, fontVariantNumeric: "tabular-nums" }}>
+                                        {product.ahorro > 0 ? "" : ""}{fmt(product.ahorro)} €
+                                    </Typography>
                                 </td>
                                 <td style={{
                                     padding: "7px 12px",
                                     textAlign: "center",
                                     borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
-                                    <div style={{
+                                    <Typography component="span" variant="body2" style={{
                                         display: "inline-flex",
                                         alignItems: "center",
                                         gap: 6,
@@ -336,24 +349,24 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                                 ? "rgba(239, 68, 68, 0.1)"
                                                 : "rgba(107, 114, 128, 0.1)",
                                         borderRadius: 16,
-                                        fontSize: 12,
-                                        fontWeight: 700,
+                                        fontWeight: 600,
                                         color: savingsColor,
                                     }}>
                                         {product.ahorro > 0 ? "↓" : product.ahorro < 0 ? "↑" : "—"}
                                         {product.pctAhorro > 0 ? "" : ""}{fmt(product.pctAhorro, 1)}%
-                                    </div>
+                                    </Typography>
                                 </td>
                                 <td style={{
                                     padding: "7px 12px",
                                     textAlign: "right",
                                     fontVariantNumeric: "tabular-nums",
-                                    fontSize: 13,
                                     fontWeight: 600,
                                     color: uiColors.textSoft,
                                     borderBottom: `1px solid ${uiColors.border}`,
                                 }}>
-                                    {product.ahorro > 0 ? "" : ""}{fmt(product.ahorroAnual)} €
+                                    <Typography component="span" variant="body2" sx={{ fontWeight: 600, color: uiColors.textSoft, fontVariantNumeric: "tabular-nums" }}>
+                                        {product.ahorro > 0 ? "" : ""}{fmt(product.ahorroAnual)} €
+                                    </Typography>
                                 </td>
                             </tr>
                         );
@@ -411,7 +424,9 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                     />
                                 )}
                                 <div className="simulation-offer-card__identity">
-                                    <div className="simulation-offer-card__title">{label}</div>
+                                    <Typography className="simulation-offer-card__title" component="div" variant="body2" sx={{ fontWeight: 600 }}>
+                                        {label}
+                                    </Typography>
                                     <div className="simulation-offer-card__chips">
                                         <Chip
                                             size="small"
@@ -425,10 +440,10 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                             sx={{ height: 20, fontSize: 10, fontWeight: 600, color: "text.secondary", bgcolor: "action.hover" }}
                                         />
                                         {isTop && (
-                                            <Chip size="small" color="success" label={t("simulationOffersCards", "badgeBestOffer")} sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+                                            <Chip size="small" color="success" label={t("simulationOffersCards", "badgeBestOffer")} sx={{ height: 20, fontSize: 10, fontWeight: 600 }} />
                                         )}
                                         {isSelected && (
-                                            <Chip size="small" color="primary" label={t("simulationOffersCards", "badgeSelected")} sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+                                            <Chip size="small" color="primary" label={t("simulationOffersCards", "badgeSelected")} sx={{ height: 20, fontSize: 10, fontWeight: 600 }} />
                                         )}
                                     </div>
                                 </div>
@@ -436,23 +451,23 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
 
                             <div className="simulation-offer-card__metrics">
                                 <div>
-                                    <span>{t("simulationOffersCards", "colTotalInvoice")}</span>
-                                    <strong>{fmt(product.totalFactura)} €</strong>
+                                    <Typography component="span" variant="caption">{t("simulationOffersCards", "colTotalInvoice")}</Typography>
+                                    <Typography component="strong" variant="body2" sx={{ fontWeight: 600 }}>{fmt(product.totalFactura)} €</Typography>
                                 </div>
                                 <div>
-                                    <span>{t("simulationOffersCards", "colMonthlySavings")}</span>
-                                    <strong style={{ color: savingsColor }}>{fmt(product.ahorro)} €</strong>
+                                    <Typography component="span" variant="caption">{t("simulationOffersCards", "colMonthlySavings")}</Typography>
+                                    <Typography component="strong" variant="body2" sx={{ fontWeight: 600, color: savingsColor }}>{fmt(product.ahorro)} €</Typography>
                                 </div>
                                 <div>
-                                    <span>{t("simulationOffersCards", "colPctDifference")}</span>
-                                    <strong style={{ color: savingsColor }}>
+                                    <Typography component="span" variant="caption">{t("simulationOffersCards", "colPctDifference")}</Typography>
+                                    <Typography component="strong" variant="body2" sx={{ fontWeight: 600, color: savingsColor }}>
                                         {product.ahorro > 0 ? "↓ " : product.ahorro < 0 ? "↑ " : ""}
                                         {fmt(product.pctAhorro, 1)}%
-                                    </strong>
+                                    </Typography>
                                 </div>
                                 <div>
-                                    <span>{t("simulationOffersCards", "colAnnualSavings")}</span>
-                                    <strong>{fmt(product.ahorroAnual)} €</strong>
+                                    <Typography component="span" variant="caption">{t("simulationOffersCards", "colAnnualSavings")}</Typography>
+                                    <Typography component="strong" variant="body2" sx={{ fontWeight: 600 }}>{fmt(product.ahorroAnual)} €</Typography>
                                 </div>
                             </div>
                         </div>
@@ -577,286 +592,280 @@ function EditableInputPanel({
             boxShadow: "var(--scheme-shadow-soft)",
             border: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800))",
         }}>
-            <h3 style={{
-                margin: "0 0 12px 0",
-                fontSize: 14,
-                fontWeight: 700,
+            <Typography variant="subtitle1" component="h3" sx={{
+                m: "0 0 12px 0",
+                fontWeight: 600,
                 color: uiColors.text,
             }}>
                 {t("simulationOffersCards", "sectionTitle")}
-            </h3>
+            </Typography>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {tarifaAcceso && (
-                    <div>
-                        <div style={{ fontSize: 10, color: uiColors.textMuted, marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
-                            {t("simulationOffersCards", "labelAccessTariff")}
-                        </div>
-                        <div style={{
-                            padding: "6px 10px",
-                            background: "linear-gradient(135deg, #dbeafe, #e0e7ff)",
-                            border: "1px solid #93c5fd",
-                            borderRadius: 6,
-                            color: "#1e40af",
-                            fontSize: 13,
-                            fontWeight: 700,
-                        }}>
+            <div
+                style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 4,
+                    alignItems: "center",
+                    width: '100%',
+                }}
+            >
+                {tarifaAcceso ? (
+                    <Tooltip title={t("simulationOffersCards", "labelAccessTariff")} arrow>
+                        <Typography
+                            variant="body2"
+                            component="div"
+                            sx={{
+                                px: 1.5,
+                                py: 0.5,
+                                background: "linear-gradient(135deg, #dbeafe, #e0e7ff)",
+                                border: "1px solid #93c5fd",
+                                borderRadius: 999,
+                                color: "#1e40af",
+                                fontWeight: 600,
+                                whiteSpace: "nowrap",
+                            }}
+                        >
                             {tarifaAcceso}
-                        </div>
-                    </div>
-                )}
-
-                {consumoAnual ? (
-                    <div>
-                        <div style={{ fontSize: 10, color: uiColors.textMuted, marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
-                            {t("simulationOffersCards", "labelAnnualConsumption")}
-                        </div>
-                        <div style={{
-                            padding: "6px 10px",
-                            background: "linear-gradient(135deg, #d1fae5, #dbeafe)",
-                            border: "1px solid #6ee7b7",
-                            borderRadius: 6,
-                            color: "#065f46",
-                            fontSize: 13,
-                            fontWeight: 700,
-                        }}>
-                            {consumoAnual.toLocaleString()} kWh
-                        </div>
-                    </div>
+                        </Typography>
+                    </Tooltip>
                 ) : ''}
 
-                {facturaActual && (
-                    <div>
-                        <div style={{ fontSize: 10, color: uiColors.textMuted, marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
-                            {t("simulationOffersCards", "labelCurrentInvoice")}
-                        </div>
-                        <div style={{
-                            padding: "8px 10px",
-                            background: "linear-gradient(135deg, #fed7aa, #fde68a)",
-                            border: "1px solid #fb923c",
-                            borderRadius: 6,
-                            color: "#9a3412",
-                            fontSize: 16,
-                            fontWeight: 700,
-                        }}>
-                            {fmt(facturaActual)} €
-                        </div>
-                    </div>
-                )}
+                {consumoAnual ? (
+                    <Tooltip title={t("simulationOffersCards", "labelAnnualConsumption")} arrow>
+                        <Typography
+                            variant="body2"
+                            component="div"
+                            sx={{
+                                px: 1.5,
+                                py: 0.5,
+                                background: "linear-gradient(135deg, #d1fae5, #dbeafe)",
+                                border: "1px solid #6ee7b7",
+                                borderRadius: 999,
+                                color: "#065f46",
+                                whiteSpace: "nowrap",
+                            }}
+                        >
+                            {consumoAnual.toLocaleString()} kWh
+                        </Typography>
+                    </Tooltip>
+                ) : ''}
 
-                {availableMonths && availableMonths.length > 0 && onMonthChange && (
-                    <div>
-                        <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>
-                            {t("simulationOffersCards", "monthSelectorLabel")}
-                        </div>
-                        <FormSelect
-                            label=""
-                            value={selectedMonth ?? ""}
-                            options={availableMonths.map((m) => ({ value: m, label: fmtMonth(m, locale) }))}
-                            onChange={(v) => v && onMonthChange(String(v))}
-                            disabled={calculating}
-                            fullWidth={true}
-                        />
-                    </div>
-                )}
+                {facturaActual ? (
+                    <Tooltip title={t("simulationOffersCards", "labelCurrentInvoice")} arrow>
+                        <Typography
+                            variant="body2"
+                            component="div"
+                            sx={{
+                                px: 1.5,
+                                py: 0.5,
+                                background: "linear-gradient(135deg, #fed7aa, #fde68a)",
+                                border: "1px solid #fb923c",
+                                borderRadius: 999,
+                                color: "#9a3412",
+                                fontWeight: 600,
+                                whiteSpace: "nowrap",
+                            }}
+                        >
+                            {fmt(facturaActual)} €
+                        </Typography>
+                    </Tooltip>
+                ) : ''}
             </div>
 
             {!readOnly && (<>
                 {/* Editable periods */}
                 {energyPeriods && Object.keys(energyPeriods).length > 0 && (
                     <AccordionSection title={t("simulationOffersCards", "btnConsumption")}>
-                            <div>
-                                {Object.entries(energyPeriods).map(([period, value]) => (
-                                    <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                        <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>
-                                            {period}:
-                                        </label>
-                                        <CurrencyInput
-                                            value={value}
-                                            onChange={(v) => { if (!isNaN(v)) onUpdatePeriod?.("energy", period, v); }}
-                                            currencySymbol=""
-                                            decimals={0}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
+                        <div>
+                            {Object.entries(energyPeriods).map(([period, value]) => (
+                                <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                    <Typography component="label" variant="body2" sx={{ fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>
+                                        {period}:
+                                    </Typography>
+                                    <CurrencyInput
+                                        value={value}
+                                        onChange={(v) => { if (!isNaN(v)) onUpdatePeriod?.("energy", period, v); }}
+                                        currencySymbol=""
+                                        decimals={0}
+                                    />
+                                </div>
+                            ))}
+                        </div>
                     </AccordionSection>
                 )}
 
                 {powerPeriods && Object.keys(powerPeriods).length > 0 && (
                     <AccordionSection title={t("simulationOffersCards", "btnPower")}>
-                            <div>
-                                {Object.entries(powerPeriods).map(([period, value]) => (
-                                    <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                        <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>
-                                            {period}:
-                                        </label>
-                                        <CurrencyInput
-                                            value={value}
-                                            onChange={(v) => { if (!isNaN(v)) onUpdatePeriod?.("power", period, v); }}
-                                            currencySymbol=""
-                                            decimals={2}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
+                        <div>
+                            {Object.entries(powerPeriods).map(([period, value]) => (
+                                <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                    <Typography component="label" variant="body2" sx={{ fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>
+                                        {period}:
+                                    </Typography>
+                                    <CurrencyInput
+                                        value={value}
+                                        onChange={(v) => { if (!isNaN(v)) onUpdatePeriod?.("power", period, v); }}
+                                        currencySymbol=""
+                                        decimals={2}
+                                    />
+                                </div>
+                            ))}
+                        </div>
                     </AccordionSection>
                 )}
 
                 {personalizadaIndexPeriods && (Object.keys(personalizadaIndexPeriods.margenEnergia).length > 0 || Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0) && (
                     <AccordionSection title={t("simulationForm", "sectionPersonalizadaIndex")}>
-                            <div>
-                                {Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0 && (
-                                    <>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaIndexMargenPotenciaLabel")}</div>
-                                        {Object.entries(personalizadaIndexPeriods.margenPotencia).map(([period, value]) => (
-                                            <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                                <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
-                                                <CurrencyInput
-                                                    value={value}
-                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenPotencia", period, v); }}
-                                                    currencySymbol=""
-                                                    decimals={2}
-                                                />
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-                                {Object.keys(personalizadaIndexPeriods.margenEnergia).length > 0 && (
-                                    <>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaIndexMargenEnergiaLabel")}</div>
-                                        {Object.entries(personalizadaIndexPeriods.margenEnergia).map(([period, value]) => (
-                                            <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                                <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
-                                                <CurrencyInput
-                                                    value={value}
-                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenEnergia", period, v); }}
-                                                    currencySymbol=""
-                                                    decimals={2}
-                                                />
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-                            </div>
+                        <div>
+                            {Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0 && (
+                                <>
+                                    <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaIndexMargenPotenciaLabel")}</Typography>
+                                    {Object.entries(personalizadaIndexPeriods.margenPotencia).map(([period, value]) => (
+                                        <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                            <Typography component="label" variant="body2" sx={{ fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</Typography>
+                                            <CurrencyInput
+                                                value={value}
+                                                onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenPotencia", period, v); }}
+                                                currencySymbol=""
+                                                decimals={2}
+                                            />
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                            {Object.keys(personalizadaIndexPeriods.margenEnergia).length > 0 && (
+                                <>
+                                    <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, mt: 1.25, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaIndexMargenEnergiaLabel")}</Typography>
+                                    {Object.entries(personalizadaIndexPeriods.margenEnergia).map(([period, value]) => (
+                                        <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                            <Typography component="label" variant="body2" sx={{ fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</Typography>
+                                            <CurrencyInput
+                                                value={value}
+                                                onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenEnergia", period, v); }}
+                                                currencySymbol=""
+                                                decimals={2}
+                                            />
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                        </div>
                     </AccordionSection>
                 )}
 
                 {personalizadaOmieBPeriods && (Object.keys(personalizadaOmieBPeriods.terminoB).length > 0 || Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0) && (
                     <AccordionSection title={t("simulationForm", "sectionPersonalizadaOmieB")}>
-                            <div>
-                                {Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0 && (
-                                    <>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaOmieBMargenPotenciaLabel")}</div>
-                                        {Object.entries(personalizadaOmieBPeriods.margenPotencia).map(([period, value]) => (
-                                            <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                                <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
-                                                <CurrencyInput
-                                                    value={value}
-                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("margenPotencia", period, v); }}
-                                                    currencySymbol=""
-                                                    decimals={2}
-                                                />
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-                                {Object.keys(personalizadaOmieBPeriods.terminoB).length > 0 && (
-                                    <>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaOmieBTerminoBLabel")}</div>
-                                        {Object.entries(personalizadaOmieBPeriods.terminoB).map(([period, value]) => (
-                                            <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                                <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
-                                                <CurrencyInput
-                                                    value={value}
-                                                    onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("terminoB", period, v); }}
-                                                    currencySymbol=""
-                                                    decimals={2}
-                                                />
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-                            </div>
+                        <div>
+                            {Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0 && (
+                                <>
+                                    <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaOmieBMargenPotenciaLabel")}</Typography>
+                                    {Object.entries(personalizadaOmieBPeriods.margenPotencia).map(([period, value]) => (
+                                        <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                            <Typography component="label" variant="body2" sx={{ fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</Typography>
+                                            <CurrencyInput
+                                                value={value}
+                                                onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("margenPotencia", period, v); }}
+                                                currencySymbol=""
+                                                decimals={2}
+                                            />
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                            {Object.keys(personalizadaOmieBPeriods.terminoB).length > 0 && (
+                                <>
+                                    <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, mt: 1.25, textTransform: "uppercase" }}>{t("simulationForm", "personalizadaOmieBTerminoBLabel")}</Typography>
+                                    {Object.entries(personalizadaOmieBPeriods.terminoB).map(([period, value]) => (
+                                        <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                            <Typography component="label" variant="body2" sx={{ fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</Typography>
+                                            <CurrencyInput
+                                                value={value}
+                                                onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("terminoB", period, v); }}
+                                                currencySymbol=""
+                                                decimals={2}
+                                            />
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                        </div>
                     </AccordionSection>
                 )}
 
                 {gasPersonalizadaIndexMargen !== undefined && (
                     <AccordionSection title={t("simulationForm", "sectionGasPersonalizadaIndex")}>
-                            <div>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>{t("simulationForm", "gasPersonalizadaIndexMargenLabel")}</div>
-                                <CurrencyInput
-                                    key={`gas-personalizada-index-${numberFormat}`}
-                                    value={gasPersonalizadaIndexMargen}
-                                    onChange={(v) => { if (!isNaN(v)) onUpdateGasPersonalizadaIndex?.(v); }}
-                                    currencySymbol=""
-                                    decimals={5}
-                                    numberFormat={numberFormat}
-                                />
-                            </div>
+                        <div>
+                            <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, textTransform: "uppercase" }}>{t("simulationForm", "gasPersonalizadaIndexMargenLabel")}</Typography>
+                            <CurrencyInput
+                                key={`gas-personalizada-index-${numberFormat}`}
+                                value={gasPersonalizadaIndexMargen}
+                                onChange={(v) => { if (!isNaN(v)) onUpdateGasPersonalizadaIndex?.(v); }}
+                                currencySymbol=""
+                                decimals={5}
+                                numberFormat={numberFormat}
+                            />
+                        </div>
                     </AccordionSection>
                 )}
 
                 {elecPersonalizadaFijoPeriods && (
                     <AccordionSection title="Personalized Fixed (custom)">
-                            <div>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>Término Potencia (€/kWdia)</div>
-                                {Object.entries(elecPersonalizadaFijoPeriods.preciosPotencia).map(([period, value]) => (
-                                    <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                        <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
-                                        <CurrencyInput
-                                            value={value}
-                                            onChange={(v) => { if (!isNaN(v)) onUpdateElecPersonalizadaFijo?.("preciosPotencia", period, v); }}
-                                            currencySymbol=""
-                                            decimals={4}
-                                        />
-                                    </div>
-                                ))}
-                                <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>Término Energía (€/kWh)</div>
-                                {Object.entries(elecPersonalizadaFijoPeriods.preciosEnergia).map(([period, value]) => (
-                                    <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                        <label style={{ fontSize: 12, fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</label>
-                                        <CurrencyInput
-                                            value={value}
-                                            onChange={(v) => { if (!isNaN(v)) onUpdateElecPersonalizadaFijo?.("preciosEnergia", period, v); }}
-                                            currencySymbol=""
-                                            decimals={4}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
+                        <div>
+                            <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, textTransform: "uppercase" }}>Término Potencia (€/kWdia)</Typography>
+                            {Object.entries(elecPersonalizadaFijoPeriods.preciosPotencia).map(([period, value]) => (
+                                <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                    <Typography component="label" variant="body2" sx={{ fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</Typography>
+                                    <CurrencyInput
+                                        value={value}
+                                        onChange={(v) => { if (!isNaN(v)) onUpdateElecPersonalizadaFijo?.("preciosPotencia", period, v); }}
+                                        currencySymbol=""
+                                        decimals={4}
+                                    />
+                                </div>
+                            ))}
+                            <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, mt: 1.25, textTransform: "uppercase" }}>Término Energía (€/kWh)</Typography>
+                            {Object.entries(elecPersonalizadaFijoPeriods.preciosEnergia).map(([period, value]) => (
+                                <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                    <Typography component="label" variant="body2" sx={{ fontWeight: 600, color: uiColors.textMuted, minWidth: 30 }}>{period}:</Typography>
+                                    <CurrencyInput
+                                        value={value}
+                                        onChange={(v) => { if (!isNaN(v)) onUpdateElecPersonalizadaFijo?.("preciosEnergia", period, v); }}
+                                        currencySymbol=""
+                                        decimals={4}
+                                    />
+                                </div>
+                            ))}
+                        </div>
                     </AccordionSection>
                 )}
 
                 {gasPersonalizadaFijo !== undefined && (
                     <AccordionSection title="Personalized Fixed (custom)">
-                            <div>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, textTransform: "uppercase" }}>Término Fijo (€/día)</div>
-                                <CurrencyInput
-                                    key={`gas-personalizada-fixed-day-${numberFormat}`}
-                                    value={gasPersonalizadaFijo.terminoDia}
-                                    onChange={(v) => { if (!isNaN(v)) onUpdateGasPersonalizadaFijo?.("terminoDia", v); }}
-                                    currencySymbol=""
-                                    decimals={4}
-                                    numberFormat={numberFormat}
-                                />
-                                <div style={{ fontSize: 11, fontWeight: 700, color: uiColors.textMuted, marginBottom: 6, marginTop: 10, textTransform: "uppercase" }}>Término Variable (€/kWh)</div>
-                                <CurrencyInput
-                                    key={`gas-personalizada-fixed-variable-${numberFormat}`}
-                                    value={gasPersonalizadaFijo.terminoVariable}
-                                    onChange={(v) => { if (!isNaN(v)) onUpdateGasPersonalizadaFijo?.("terminoVariable", v); }}
-                                    currencySymbol=""
-                                    decimals={5}
-                                    numberFormat={numberFormat}
-                                />
-                            </div>
+                        <div>
+                            <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, textTransform: "uppercase" }}>Término Fijo (€/día)</Typography>
+                            <CurrencyInput
+                                key={`gas-personalizada-fixed-day-${numberFormat}`}
+                                value={gasPersonalizadaFijo.terminoDia}
+                                onChange={(v) => { if (!isNaN(v)) onUpdateGasPersonalizadaFijo?.("terminoDia", v); }}
+                                currencySymbol=""
+                                decimals={4}
+                                numberFormat={numberFormat}
+                            />
+                            <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, mt: 1.25, textTransform: "uppercase" }}>Término Variable (€/kWh)</Typography>
+                            <CurrencyInput
+                                key={`gas-personalizada-fixed-variable-${numberFormat}`}
+                                value={gasPersonalizadaFijo.terminoVariable}
+                                onChange={(v) => { if (!isNaN(v)) onUpdateGasPersonalizadaFijo?.("terminoVariable", v); }}
+                                currencySymbol=""
+                                decimals={5}
+                                numberFormat={numberFormat}
+                            />
+                        </div>
                     </AccordionSection>
                 )}
 
                 <div style={{
-                    marginTop: 16,
                     paddingTop: 12,
-                    borderTop: `2px solid ${uiColors.border}`,
                 }}>
                     <Button
                         variant="contained"
@@ -865,21 +874,20 @@ function EditableInputPanel({
                         onClick={onRecalculate}
                         disabled={calculating}
                         startIcon={<RefreshIcon />}
-                        sx={{ fontWeight: 700, textTransform: "none" }}
+                        sx={{ fontWeight: 600, textTransform: "none" }}
                     >
                         {calculating ? t("simulationOffersCards", "btnCalculating") : t("simulationOffersCards", "btnRecalculate")}
                     </Button>
                 </div>
 
-                <div style={{
-                    marginTop: 8,
-                    fontSize: 10,
+                <Typography variant="caption" component="div" sx={{
+                    marginTop: 1,
                     color: uiColors.textSoft,
                     textAlign: "center",
                     fontWeight: 500,
                 }}>
                     {t("simulationOffersCards", "recalculateHint")}
-                </div>
+                </Typography>
             </>)}
         </div>
     );
@@ -960,12 +968,12 @@ export function SimulationResultsCards({
         return (
             <div style={{ padding: 60, textAlign: "center", background: uiColors.surfaceRaised, borderRadius: 12, border: `1px solid ${uiColors.border}` }}>
                 <BarChartIcon sx={{ fontSize: 48, mb: 2, color: "text.disabled" }} />
-                <div style={{ fontSize: 16, color: uiColors.textMuted, marginBottom: 8, fontWeight: 600 }}>
+                <Typography variant="body2" component="div" sx={{ color: uiColors.textMuted, mb: 1, fontWeight: 600 }}>
                     {t("simulationOffersCards", "noResults")}
-                </div>
-                <div style={{ fontSize: 14, color: uiColors.textSoft }}>
+                </Typography>
+                <Typography variant="body2" component="div" sx={{ color: uiColors.textSoft }}>
                     {t("simulationOffersCards", "noResultsHint")}
-                </div>
+                </Typography>
             </div>
         );
     }
@@ -977,7 +985,7 @@ export function SimulationResultsCards({
                 gridTemplateColumns: "minmax(280px, 320px) minmax(0, 1fr)",
                 gap: 18,
                 alignItems: "stretch",
-                height: "min(760px, calc(100vh - 220px))",
+                height: "min(760px, calc(100vh - 230px))",
                 minHeight: 520,
                 overflow: "hidden",
             }}>
@@ -1010,7 +1018,7 @@ export function SimulationResultsCards({
                 />
 
                 {/* Right side - Product tables */}
-                <div className="simulation-results-offers-pane" style={{ minHeight: 0, minWidth: 0, height: "100%", paddingRight: 6 }}>
+                <div className="simulation-results-offers-pane" style={{ minHeight: 0, minWidth: 0, height: "100%", paddingRight: 0 }}>
                     {/* Electricity section */}
                     {hasElec && (() => {
                         const elecProducts = [...results.electricity!].sort((a, b) => b.ahorro - a.ahorro);
@@ -1033,28 +1041,28 @@ export function SimulationResultsCards({
 
                         return (
                             <div className="simulation-results-offer-section">
-                                <h2 className="simulation-results-offer-heading" style={{
-                                    margin: "0 0 16px 0",
-                                    fontSize: 20,
-                                    fontWeight: 700,
+                                <Typography variant="subtitle1" component="h2" className="simulation-results-offer-heading" sx={{
+                                    m: "0 0 0px 0",
+                                    fontWeight: 600,
                                     color: uiColors.text,
                                     display: "flex",
                                     alignItems: "center",
-                                    gap: 10,
+                                    gap: 1.25,
                                 }}>
                                     <BoltIcon sx={{ color: "warning.main" }} />
-                                    <span>{t("simulationOffersCards", "electricityOffers")}</span>
-                                    <span style={{
-                                        fontSize: 13,
+                                    <Typography component="span" variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                        {t("simulationOffersCards", "electricityOffers")}
+                                    </Typography>
+                                    <Typography component="span" variant="caption" sx={{
                                         fontWeight: 600,
                                         color: uiColors.textMuted,
                                         background: uiColors.surfaceMuted,
-                                        padding: "4px 12px",
+                                        padding: "3px 10px",
                                         borderRadius: 12,
                                     }}>
                                         {t("simulationOffersCards", "productsCount", { count: elecProducts.length })}
-                                    </span>
-                                </h2>
+                                    </Typography>
+                                </Typography>
 
                                 <Tabs
                                     className="simulation-results-offer-tabs"
@@ -1068,14 +1076,13 @@ export function SimulationResultsCards({
                                     sx={{
                                         mb: 2,
                                         borderBottom: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent)",
-                                        minHeight: 40,
+                                        minHeight: 36,
                                         "& .MuiTab-root": {
-                                            minHeight: 40,
+                                            minHeight: 36,
                                             px: 2,
-                                            py: 1,
+                                            py: 0.75,
                                             textTransform: "none",
-                                            fontSize: 13,
-                                            fontWeight: 600,
+                                            fontWeight: 500,
                                         },
                                     }}
                                 >
@@ -1092,10 +1099,10 @@ export function SimulationResultsCards({
                                             icon={offerTabIcon(tab.key)}
                                             iconPosition="start"
                                             label={
-                                                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                                <Typography component="span" variant="body2" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, fontWeight: 500 }}>
                                                     {tab.label}
-                                                    <Chip size="small" label={tab.count} sx={{ height: 18, minWidth: 18, fontSize: 10, fontWeight: 700 }} />
-                                                </span>
+                                                    <Chip size="small" label={tab.count} sx={{ height: 18, minWidth: 18, fontSize: 10, fontWeight: 600 }} />
+                                                </Typography>
                                             }
                                         />
                                     ))}
@@ -1112,9 +1119,9 @@ export function SimulationResultsCards({
                                     />
                                 ) : (
                                     <div style={{ padding: 40, textAlign: "center", background: uiColors.surfaceRaised, borderRadius: 12, border: `1px solid ${uiColors.border}` }}>
-                                        <div style={{ fontSize: 14, color: uiColors.textMuted }}>
+                                        <Typography variant="body2" component="div" sx={{ color: uiColors.textMuted }}>
                                             {t("simulationOffersCards", "noProductsAvailable")}
-                                        </div>
+                                        </Typography>
                                     </div>
                                 )}
                             </div>
@@ -1144,28 +1151,28 @@ export function SimulationResultsCards({
 
                         return (
                             <div className="simulation-results-offer-section">
-                                <h2 className="simulation-results-offer-heading" style={{
-                                    margin: "0 0 16px 0",
-                                    fontSize: 20,
-                                    fontWeight: 700,
+                                <Typography variant="subtitle1" component="h2" className="simulation-results-offer-heading" sx={{
+                                    m: "0 0 0px 0",
+                                    fontWeight: 600,
                                     color: uiColors.text,
                                     display: "flex",
                                     alignItems: "center",
-                                    gap: 10,
+                                    gap: 1.25,
                                 }}>
                                     <LocalFireDepartmentIcon sx={{ color: "error.main" }} />
-                                    <span>{t("simulationOffersCards", "gasOffers")}</span>
-                                    <span style={{
-                                        fontSize: 13,
+                                    <Typography component="span" variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                        {t("simulationOffersCards", "gasOffers")}
+                                    </Typography>
+                                    <Typography component="span" variant="caption" sx={{
                                         fontWeight: 600,
                                         color: uiColors.textMuted,
                                         background: uiColors.surfaceMuted,
-                                        padding: "4px 12px",
+                                        padding: "3px 10px",
                                         borderRadius: 12,
                                     }}>
                                         {t("simulationOffersCards", "productsCount", { count: gasProducts.length })}
-                                    </span>
-                                </h2>
+                                    </Typography>
+                                </Typography>
 
                                 <Tabs
                                     className="simulation-results-offer-tabs"
@@ -1179,14 +1186,13 @@ export function SimulationResultsCards({
                                     sx={{
                                         mb: 2,
                                         borderBottom: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent)",
-                                        minHeight: 40,
+                                        minHeight: 36,
                                         "& .MuiTab-root": {
-                                            minHeight: 40,
+                                            minHeight: 36,
                                             px: 2,
-                                            py: 1,
+                                            py: 0.75,
                                             textTransform: "none",
-                                            fontSize: 13,
-                                            fontWeight: 600,
+                                            fontWeight: 500,
                                         },
                                     }}
                                 >
@@ -1203,10 +1209,10 @@ export function SimulationResultsCards({
                                             icon={offerTabIcon(tab.key)}
                                             iconPosition="start"
                                             label={
-                                                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                                <Typography component="span" variant="body2" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75, fontWeight: 500 }}>
                                                     {tab.label}
-                                                    <Chip size="small" label={tab.count} sx={{ height: 18, minWidth: 18, fontSize: 10, fontWeight: 700 }} />
-                                                </span>
+                                                    <Chip size="small" label={tab.count} sx={{ height: 18, minWidth: 18, fontSize: 10, fontWeight: 600 }} />
+                                                </Typography>
                                             }
                                         />
                                     ))}
@@ -1223,9 +1229,9 @@ export function SimulationResultsCards({
                                     />
                                 ) : (
                                     <div style={{ padding: 40, textAlign: "center", background: uiColors.surfaceRaised, borderRadius: 12, border: `1px solid ${uiColors.border}` }}>
-                                        <div style={{ fontSize: 14, color: uiColors.textMuted }}>
+                                        <Typography variant="body2" component="div" sx={{ color: uiColors.textMuted }}>
                                             {t("simulationOffersCards", "noProductsAvailable")}
-                                        </div>
+                                        </Typography>
                                     </div>
                                 )}
                             </div>

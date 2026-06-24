@@ -217,9 +217,9 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       copyable: true,
       copyText: (u) => agencies.find((a) => a.id === u.agencyId)?.name ?? '',
       renderCell: (u) => (
-        <span className="dt-cell-secondary">
+        <Typography component="span" variant="body2" className="dt-cell-secondary">
           {agencies.find((a) => a.id === u.agencyId)?.name ?? u.agencyId.slice(0, 8)}
-        </span>
+        </Typography>
       ),
     },
     {
@@ -235,12 +235,12 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       width: "220",
       sortable: true,
       renderCell: (u) => (
-        <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {new Date(u.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
-          <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
+          <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {u.createdByUser?.fullName ?? "—"}
-          </span>
+          </Typography>
         </Typography>
       ),
     },
@@ -250,12 +250,12 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       width: "220",
       sortable: true,
       renderCell: (u) => (
-        <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {new Date(u.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
-          <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
+          <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {u.updatedByUser?.fullName ?? "—"}
-          </span>
+          </Typography>
         </Typography>
       ),
     },
@@ -660,9 +660,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             key={i}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
-            sx={{
-              fontSize: 13,
-              color: item.danger ? "error.main" : "text.primary",
+            sx={{color: item.danger ? "error.main" : "text.primary",
               py: 0.75,
               gap: 1,
             }}

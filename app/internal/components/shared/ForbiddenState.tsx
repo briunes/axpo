@@ -65,9 +65,7 @@ export function ForbiddenState({ section }: ForbiddenStateProps) {
                     borderRadius: 6,
                     border: "1px solid var(--scheme-neutral-800)",
                     background: "transparent",
-                    color: "var(--scheme-neutral-400)",
-                    fontSize: 13,
-                    cursor: "pointer",
+                    color: "var(--scheme-neutral-400)", cursor: "pointer",
                     fontWeight: 500,
                 }}
             >

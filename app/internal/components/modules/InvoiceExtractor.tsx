@@ -486,7 +486,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                             disabled={isExtracting}
                                             title="Remove"
                                         >
-                                            <DeleteIcon sx={{ fontSize: 13 }} />
+                                            <DeleteIcon fontSize="small" />
                                         </button>
                                         <div className="image-card-icon">🖼️</div>
                                         <div className="image-card-name">{f.name}</div>
@@ -544,7 +544,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                                                 size="small"
                                                                 variant="outlined"
                                                                 color="warning"
-                                                                startIcon={isAddingProvider ? <CircularProgress size={12} /> : <AddCircleOutlineIcon sx={{ fontSize: 13 }} />}
+                                                                startIcon={isAddingProvider ? <CircularProgress size={12} /> : <AddCircleOutlineIcon fontSize="small" />}
                                                                 onClick={handleAddToProviderList}
                                                                 disabled={isAddingProvider}
                                                                 sx={{ fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}
@@ -629,7 +629,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                             size="small"
                                             variant="outlined"
                                             color="warning"
-                                            startIcon={isAddingProvider ? <CircularProgress size={12} /> : <AddCircleOutlineIcon sx={{ fontSize: 13 }} />}
+                                            startIcon={isAddingProvider ? <CircularProgress size={12} /> : <AddCircleOutlineIcon fontSize="small" />}
                                             onClick={handleAddToProviderList}
                                             disabled={isAddingProvider}
                                             sx={{ fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}
@@ -702,7 +702,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                 },
                             }}
                         />
-                        <span style={{ fontSize: 13, color: "var(--scheme-neutral-400, #9ca3af)" }}>
+                        <span style={{color: "var(--scheme-neutral-400, #9ca3af)" }}>
                             {t("invoiceExtractor", "extracting")}
                         </span>
                     </div>
@@ -854,7 +854,6 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
                 .file-name {
                     font-weight: 600;
-                    font-size: 13px;
                     color: var(--scheme-neutral-100);
                     white-space: nowrap;
                     overflow: hidden;
@@ -892,7 +891,6 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     gap: 6px;
                     padding: 6px 10px;
                     border-radius: 6px;
-                    font-size: 13px;
                     border: 1px solid transparent;
                 }
 
@@ -1121,7 +1119,6 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     padding: 7px 12px;
                     border-radius: 6px;
                     margin-top: 0;
-                    font-size: 13px;
                     margin-bottom: 10px;
                     margin-top: 10px;
 

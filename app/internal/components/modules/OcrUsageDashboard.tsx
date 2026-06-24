@@ -508,11 +508,13 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
                 key: "tokens",
                 label: t("ocrUsage", "colTokens"),
                 renderCell: (r) => (
-                    <span
+                    <Typography
+                        component="span"
+                        variant="body2"
                         title={`prompt ${r.promptTokens ?? 0} · completion ${r.completionTokens ?? 0}`}
                     >
                         {formatTokens(toNumber(r.totalTokens))}
-                    </span>
+                    </Typography>
                 ),
                 sortable: true,
             },
@@ -527,9 +529,9 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
                 label: t("ocrUsage", "colCost"),
                 renderCell: (r) =>
                     r.matched ? (
-                        <strong>{formatCurrency(r.cost, r.currency, intlLocale)}</strong>
+                        <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>{formatCurrency(r.cost, r.currency, intlLocale)}</Typography>
                     ) : (
-                        <span className="ocr-muted">{t("ocrUsage", "unpriced")}</span>
+                        <Typography component="span" variant="body2" className="ocr-muted">{t("ocrUsage", "unpriced")}</Typography>
                     ),
                 sortable: true,
             },
@@ -571,7 +573,9 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
                 key: "status",
                 label: t("ocrUsage", "colStatus"),
                 renderCell: (i) => (
-                    <span
+                    <Typography
+                        component="span"
+                        variant="body2"
                         className={`status-badge ${i.status === "PAID"
                             ? "status-badge--success"
                             : i.status === "ISSUED"
@@ -582,7 +586,7 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
                             }`}
                     >
                         {i.status}
-                    </span>
+                    </Typography>
                 ),
             },
             {
@@ -1210,12 +1214,14 @@ function OcrPricingConfigDialog({
                 key: "active",
                 label: t("ocrUsage", "colActive"),
                 renderCell: (p) => (
-                    <span
+                    <Typography
+                        component="span"
+                        variant="body2"
                         className={`status-badge ${p.isActive ? "status-badge--success" : "status-badge--neutral"
                             }`}
                     >
                         {p.isActive ? t("common", "yes") : t("common", "no")}
-                    </span>
+                    </Typography>
                 ),
             },
             {

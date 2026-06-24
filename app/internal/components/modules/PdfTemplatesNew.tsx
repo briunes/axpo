@@ -490,13 +490,13 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                             </span>
                                         </td>
                                         <td>
-                                            <span style={{ fontSize: "13px", color: "var(--scheme-neutral-500)" }}>
+                                            <span style={{color: "var(--scheme-neutral-500)" }}>
                                                 {template.commodity === "ELECTRICITY" ? "⚡ Electricity"
                                                     : template.commodity === "GAS" ? "🔥 Gas"
                                                         : "⚡ Electricity"}
                                             </span>
                                         </td>
-                                        <td style={{ color: "var(--scheme-neutral-500)", fontSize: "13px" }}>
+                                        <td style={{ color: "var(--scheme-neutral-500)", }}>
                                             {template.description}
                                         </td>
                                         <td>
@@ -504,7 +504,7 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                                 {template.active ? t("pdfTemplatesModule", "statusActive") : t("pdfTemplatesModule", "statusInactive")}
                                             </span>
                                         </td>
-                                        <td style={{ fontSize: "13px", color: "var(--scheme-neutral-500)" }}>
+                                        <td style={{color: "var(--scheme-neutral-500)" }}>
                                             {(() => { const d = new Date(template.updatedAt); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; })()}
                                         </td>
                                         <td>

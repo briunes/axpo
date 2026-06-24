@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState, createContext, useContext, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Text } from "@once-ui-system/core";
 import { clearSession, loadSession, type SessionState } from "../lib/authSession";
 import { listRolePermissions, logout } from "../lib/internalApi";
 import {
@@ -31,6 +30,23 @@ export function useActionButtons() {
   return useContext(ActionButtonsContext);
 }
 
+export interface TopBarBreadcrumb {
+  label: React.ReactNode;
+  href?: string;
+}
+
+const BreadcrumbsContext = createContext<((breadcrumbs: TopBarBreadcrumb[] | null) => void) | null>(null);
+
+export function useTopBarBreadcrumbs(breadcrumbs: TopBarBreadcrumb[] | null) {
+  const setBreadcrumbs = useContext(BreadcrumbsContext);
+
+  useEffect(() => {
+    if (!setBreadcrumbs) return;
+    setBreadcrumbs(breadcrumbs);
+    return () => setBreadcrumbs(null);
+  }, [breadcrumbs, setBreadcrumbs]);
+}
+
 // Context for the TopBar Refresh button — pages register their own refresh fn
 const RefreshContext = createContext<((handler: () => void) => void) | null>(null);
 
@@ -56,6 +72,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
   const [permItems, setPermItems] = useState<RolePermissionItem[]>([]);
   const [permLoaded, setPermLoaded] = useState(false);
   const [actionButtons, setActionButtons] = useState<React.ReactNode>(null);
+  const [breadcrumbs, setBreadcrumbs] = useState<TopBarBreadcrumb[] | null>(null);
 
   const handleActionButtons = useCallback((buttons: React.ReactNode) => {
     setActionButtons(buttons);
@@ -232,15 +249,16 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
     <PermissionsContext.Provider value={permissionsContextValue}>
       <RefreshContext.Provider value={handleRegisterRefresh}>
         <ActionButtonsContext.Provider value={handleActionButtons}>
-          <div className="app-shell">
-            <Toast messages={toastMessages} onDismiss={dismissToast} />
-            {mobileMenuOpen && (
-              <div
-                className="app-sidebar-overlay visible"
-                onClick={() => setMobileMenuOpen(false)}
-                aria-hidden="true"
-              />
-            )}
+          <BreadcrumbsContext.Provider value={setBreadcrumbs}>
+            <div className="app-shell">
+              <Toast messages={toastMessages} onDismiss={dismissToast} />
+              {mobileMenuOpen && (
+                <div
+                  className="app-sidebar-overlay visible"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-hidden="true"
+                />
+              )}
 
             <aside className={`app-sidebar${collapsed ? " collapsed" : ""}${mobileMenuOpen ? " mobile-open" : ""}`}>
               <SidebarHeader
@@ -271,12 +289,14 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
                 onRefresh={() => refreshHandler?.()}
                 onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
                 actionButtons={actionButtons}
+                breadcrumbs={breadcrumbs}
               />
               <main className="app-content" style={{ marginBottom: '2.4rem' }}>
                 {children}
               </main>
             </div>
           </div>
+        </BreadcrumbsContext.Provider>
         </ActionButtonsContext.Provider>
       </RefreshContext.Provider>
     </PermissionsContext.Provider>

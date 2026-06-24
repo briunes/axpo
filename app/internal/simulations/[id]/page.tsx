@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -26,6 +26,7 @@ import { BaseValueSetSelector } from "../../components/ui/BaseValueSetSelector";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { AuditLogsModal } from "../../components/ui/AuditLogsModal";
 import { useUserPreferences } from "../../components/providers/UserPreferencesProvider";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 import { formatDisplayDate } from "../../lib/formatPreferences";
 import type { SimulationPayload, SimulationResults } from "@/domain/types";
 import {
@@ -37,6 +38,7 @@ import {
   Divider,
   IconButton,
   Tooltip,
+  Typography,
 } from "@mui/material";
 import ShareIcon from "@mui/icons-material/Share";
 import CloseIcon from "@mui/icons-material/Close";
@@ -51,12 +53,10 @@ import LaunchIcon from "@mui/icons-material/Launch";
 
 function SimulationMeta({
   sim,
-  actions,
   canViewClients,
   token,
 }: {
   sim: SimulationItem;
-  actions?: React.ReactNode;
   canViewClients?: boolean;
   token: string;
 }) {
@@ -150,29 +150,29 @@ function SimulationMeta({
     key: "pin",
     label: "PIN",
     value: sim.pinSnapshot ? (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-          <span
-            style={{
-              fontFamily: "monospace",
-            }}
-          >
-            {isPinVisible ? sim.pinSnapshot : "••••"}
-          </span>
-          <Tooltip title={isPinVisible ? "Hide PIN" : "Show PIN"}>
-            <IconButton
-              size="small"
-              onClick={() => setIsPinVisible((current) => !current)}
-              aria-label={isPinVisible ? "Hide PIN" : "Show PIN"}
-              sx={{ color: "var(--scheme-neutral-300)", p: 0.25 }}
-            >
-              {isPinVisible ? (
-                <VisibilityOffIcon sx={{ fontSize: 15 }} />
-              ) : (
-                <VisibilityIcon sx={{ fontSize: 15 }} />
-              )}
-            </IconButton>
-          </Tooltip>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+        <span
+          style={{
+            fontFamily: "monospace",
+          }}
+        >
+          {isPinVisible ? sim.pinSnapshot : "••••"}
         </span>
+        <Tooltip title={isPinVisible ? "Hide PIN" : "Show PIN"}>
+          <IconButton
+            size="small"
+            onClick={() => setIsPinVisible((current) => !current)}
+            aria-label={isPinVisible ? "Hide PIN" : "Show PIN"}
+            sx={{ color: "var(--scheme-neutral-300)", p: 0.25 }}
+          >
+            {isPinVisible ? (
+              <VisibilityOffIcon sx={{ fontSize: 15 }} />
+            ) : (
+              <VisibilityIcon sx={{ fontSize: 15 }} />
+            )}
+          </IconButton>
+        </Tooltip>
+      </span>
     ) : (
       <Tooltip title="No decryptable display PIN is available for this simulation. The stored PIN hash cannot be shown.">
         <span style={{ color: "var(--scheme-neutral-500)" }}>Unavailable</span>
@@ -202,10 +202,10 @@ function SimulationMeta({
     metaItems.push({
       key: "invoice",
       label: (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-          <PictureAsPdfOutlinedIcon sx={{ fontSize: 14 }} />
+        <Box component={'span'} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: '100%' }}>
           {t("simulationDetail", "invoiceFile")}
-        </span>
+          <PictureAsPdfOutlinedIcon fontSize="small" />
+        </Box>
       ),
       value: (
         <button
@@ -261,83 +261,65 @@ function SimulationMeta({
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 14,
-        marginBottom: 24,
-        padding: "16px",
+        gap: 6,
+        marginBottom: 12,
+        padding: "6px 14px",
       }}
     >
       <div
         className="simulation-meta-grid"
         style={{
           display: "flex",
-            flexWrap: "wrap",
-            columnGap: 24,
-            rowGap: 10,
-            alignItems: "center",
-            minWidth: 0,
+          flexWrap: "wrap",
+          columnGap: 20,
+          rowGap: 4,
+          alignItems: "center",
         }}
       >
         {metaItems.map((item) => (
-          <span
+          <Typography
+            component="span"
+            variant="caption"
             className="simulation-meta-item"
             key={item.key}
             style={{
-              display: "inline-flex",
+              display: "flex",
               alignItems: "center",
               gap: 6,
               minWidth: 0,
-              maxWidth: item.key === "client" || item.key === "invoice" ? 260 : undefined,
             }}
           >
-            <span
-              style={{
-                fontSize: 10,
-                color: "var(--scheme-neutral-500)",
-                textTransform: "uppercase",
-                lineHeight: 1,
-                flexShrink: 0,
+            <Typography
+              component="span"
+              variant="caption"
+              sx={{
+                fontWeight: 500
               }}
             >
               {item.label}
-            </span>
-            <span
+            </Typography>
+            <Typography
+              component="span"
+              variant="caption"
               style={{
                 minWidth: 0,
                 maxWidth: "100%",
                 overflow: item.key === "status" ? "visible" : "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: item.key === "status" ? "normal" : "nowrap",
-                fontSize: item.prominent ? 12 : 11,
-                fontWeight: item.prominent ? 700 : 600,
                 color: "var(--scheme-neutral-100)",
                 fontFamily: item.mono ? "monospace" : undefined,
                 background: item.prominent ? "var(--scheme-neutral-1000)" : "transparent",
                 borderRadius: item.prominent ? 6 : undefined,
-                padding: item.prominent ? "4px 8px" : undefined,
+                padding: item.prominent ? "2px 7px" : undefined,
               }}
+
             >
               {item.value}
-            </span>
-          </span>
+            </Typography>
+          </Typography>
         ))}
       </div>
-      {actions && (
-        <div
-          className="simulation-meta-actions"
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            justifyContent: "flex-end",
-            flexWrap: "wrap",
-            borderTop: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 72%, transparent)",
-            paddingTop: 12,
-            minWidth: 0,
-          }}
-        >
-          {actions}
-        </div>
-      )}
     </div>
   );
 }
@@ -354,6 +336,7 @@ export default function SimulationDetailPage({
   const { showSuccess, showError } = useAlerts();
   const { t } = useI18n();
   const { canDo } = usePermissions();
+  const onActionButtons = useActionButtons();
 
   const [simulation, setSimulation] = useState<SimulationItem | null>(null);
   const [clients, setClients] = useState<ClientItem[]>([]);
@@ -374,10 +357,17 @@ export default function SimulationDetailPage({
   const [selectedBvsIsProduction, setSelectedBvsIsProduction] = useState<
     boolean | null
   >(null);
+  const simulationBreadcrumbLabel =
+    simulation?.referenceNumber || simulation?.client?.name || simulation?.id || id;
+  const breadcrumbs = useMemo(
+    () => simulation ? [{ label: simulationBreadcrumbLabel, href: `/internal/simulations/${simulation.id}` }] : null,
+    [simulation, simulationBreadcrumbLabel],
+  );
+  useTopBarBreadcrumbs(breadcrumbs);
   const didAutoOpenShareRef = useRef(false);
   const formRef = useRef<SimulationFormHandle>(null);
 
-  const handleBaseValueSetChange = (
+  const handleBaseValueSetChange = useCallback((
     id: string,
     meta?: { userInitiated: boolean },
   ) => {
@@ -385,7 +375,7 @@ export default function SimulationDetailPage({
     if (meta?.userInitiated) {
       formRef.current?.calculate();
     }
-  };
+  }, []);
 
   const fetchedRef = useRef(false);
   useEffect(() => {
@@ -420,10 +410,111 @@ export default function SimulationDetailPage({
       });
   }, [session, id]);
 
-  const handleShare = async () => {
+  const handleShare = useCallback(() => {
     if (!session || !simulation) return;
     setShowShareDialog(true);
-  };
+  }, [session, simulation]);
+
+  const showDraftResultActions = !!lastResults && simulation?.status === "DRAFT";
+  const canChooseBaseValues =
+    !!session &&
+    (session.user.role === "ADMIN" || session.user.role === "SYS_ADMIN");
+  const canOpenAuditLogs =
+    !!session &&
+    (session.user.role === "AGENT" ||
+      canDo(session.user.role, "section.audit-logs"));
+
+  useLayoutEffect(() => {
+    if (!showDraftResultActions || !session) {
+      onActionButtons?.(null);
+      return;
+    }
+
+    onActionButtons?.(
+      <>
+        {canChooseBaseValues && (
+          <span className="topbar-action-wrap simulation-topbar-base-values">
+            <BaseValueSetSelector
+              token={session.token}
+              isAdmin
+              usedBaseValueSetId={usedBaseValueSetId}
+              forAgencyId={session.user.agencyId}
+              compact
+              onChange={handleBaseValueSetChange}
+              onChangeItem={(item) =>
+                setSelectedBvsIsProduction(item.isProduction)
+              }
+            />
+          </span>
+        )}
+        <Tooltip title={t("downloadHistory", "buttonLabel") || "Download History"} arrow>
+          <span className="topbar-action-wrap">
+            <Button
+              className="topbar-action topbar-action--compact"
+              variant="outlined"
+              size="small"
+              startIcon={<HistoryIcon fontSize="small" />}
+              onClick={() => setShowHistoryDialog(true)}
+              aria-label={t("downloadHistory", "buttonLabel") || "Download History"}
+            >
+              <span className="topbar-action-label">
+                {t("downloadHistory", "buttonLabel") || "Download History"}
+              </span>
+            </Button>
+          </span>
+        </Tooltip>
+        {selectedOfferProductKey && (
+          <Tooltip title={t("actions", "share") || "Share"} arrow>
+            <span className="topbar-action-wrap">
+              <Button
+                className="topbar-action topbar-action--compact"
+                variant="outlined"
+                size="small"
+                startIcon={<ShareIcon fontSize="small" />}
+                onClick={handleShare}
+                aria-label={t("actions", "share") || "Share"}
+              >
+                <span className="topbar-action-label">
+                  {t("actions", "share") || "Share"}
+                </span>
+              </Button>
+            </span>
+          </Tooltip>
+        )}
+        {canOpenAuditLogs && (
+          <Tooltip title={t("auditLogsModal", "title")} arrow>
+            <span className="topbar-action-wrap">
+              <Button
+                className="topbar-action topbar-action--compact"
+                variant="outlined"
+                size="small"
+                startIcon={<HistoryIcon fontSize="small" />}
+                onClick={() => setShowAuditLogsModal(true)}
+                aria-label={t("auditLogsModal", "title")}
+              >
+                <span className="topbar-action-label">
+                  {t("auditLogsModal", "title")}
+                </span>
+              </Button>
+            </span>
+          </Tooltip>
+        )}
+      </>,
+    );
+
+    return () => onActionButtons?.(null);
+  }, [
+    canChooseBaseValues,
+    canOpenAuditLogs,
+    handleBaseValueSetChange,
+    handleShare,
+    onActionButtons,
+    selectedOfferProductKey,
+    session,
+    showDraftResultActions,
+    t,
+    usedBaseValueSetId,
+  ]);
 
   useEffect(() => {
     if (!session || !simulation || didAutoOpenShareRef.current) return;
@@ -471,53 +562,6 @@ export default function SimulationDetailPage({
         canViewClients={
           session ? canDo(session.user.role, "section.clients") : false
         }
-        actions={
-          !!lastResults && simulation.status === "DRAFT" ? (
-            <>
-              {session &&
-                (session.user.role === "ADMIN" ||
-                  session.user.role === "SYS_ADMIN") && (
-                <BaseValueSetSelector
-                  token={session.token}
-                  isAdmin
-                  usedBaseValueSetId={usedBaseValueSetId}
-                  forAgencyId={session.user.agencyId}
-                  compact
-                  onChange={handleBaseValueSetChange}
-                  onChangeItem={(item) =>
-                    setSelectedBvsIsProduction(item.isProduction)
-                  }
-                />
-              )}
-              <Button
-                variant="outlined"
-                startIcon={<HistoryIcon />}
-                onClick={() => setShowHistoryDialog(true)}
-              >
-                {t("downloadHistory", "buttonLabel") || "Download History"}
-              </Button>
-              {selectedOfferProductKey && (
-                <Button
-                  variant="outlined"
-                  startIcon={<ShareIcon />}
-                  onClick={handleShare}
-                >
-                  {t("actions", "share") || "Share"}
-                </Button>
-              )}
-              {(session.user.role === "AGENT" ||
-                canDo(session.user.role, "section.audit-logs")) && (
-                <Button
-                  variant="outlined"
-                  startIcon={<HistoryIcon />}
-                  onClick={() => setShowAuditLogsModal(true)}
-                >
-                  {t("auditLogsModal", "title")}
-                </Button>
-              )}
-            </>
-          ) : undefined
-        }
       />
 
       {simulation.status === "SHARED" && (
@@ -526,17 +570,18 @@ export default function SimulationDetailPage({
             display: "flex",
             alignItems: "center",
             gap: 8,
-            padding: "10px 16px",
-            marginBottom: 16,
+            padding: "8px 16px",
+            marginBottom: 12,
             background: "rgba(74, 222, 128, 0.07)",
             border: "1px solid rgba(74, 222, 128, 0.3)",
             borderRadius: 8,
-            fontSize: 13,
             color: "#4ade80",
           }}
         >
           <LockIcon sx={{ fontSize: 16 }} />
-          <span>{t("simulationDetail", "readOnlySharedMessage")}</span>
+          <Typography component="span" variant="body2">
+            {t("simulationDetail", "readOnlySharedMessage")}
+          </Typography>
         </div>
       )}
 
@@ -573,6 +618,9 @@ export default function SimulationDetailPage({
               } as unknown as Record<string, unknown>,
             };
           });
+          if (productKey && selectedOffer && simulation.status === "DRAFT") {
+            setShowShareDialog(true);
+          }
         }}
         readOnly={simulation.status === "SHARED"}
         baseValueSetId={selectedBaseValueSetId}
@@ -643,15 +691,15 @@ export default function SimulationDetailPage({
       {session &&
         (session.user.role === "AGENT" ||
           canDo(session.user.role, "section.audit-logs")) && (
-        <AuditLogsModal
-          open={showAuditLogsModal}
-          onClose={() => setShowAuditLogsModal(false)}
-          targetType="SIMULATION"
-          targetId={simulation.id}
-          token={session.token}
-          title={`${t("auditLogsModal", "title")} - ${simulation.referenceNumber || simulation.id}`}
-        />
-      )}
+          <AuditLogsModal
+            open={showAuditLogsModal}
+            onClose={() => setShowAuditLogsModal(false)}
+            targetType="SIMULATION"
+            targetId={simulation.id}
+            token={session.token}
+            title={`${t("auditLogsModal", "title")} - ${simulation.referenceNumber || simulation.id}`}
+          />
+        )}
     </CrudPageLayout>
   );
 }

@@ -116,6 +116,7 @@ export const POST = withErrorHandler(
           @media print {
             *  { box-sizing: border-box; }
             body { margin: 0; padding: 0; }
+            .asim-page { min-height: 0 !important; }
             table, figure, img,
             .asim-comparison,
             .asim-plan-card, .asim-plan-body,

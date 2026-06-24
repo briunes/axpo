@@ -166,7 +166,7 @@ function CopyableCell({ children, text }: { children: React.ReactNode; text: str
               '&:hover': { color: copied ? 'success.main' : 'var(--scheme-neutral-100)' },
             }}
           >
-            {copied ? <CheckIcon sx={{ fontSize: 13 }} /> : <ContentCopyIcon sx={{ fontSize: 13 }} />}
+            {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
           </IconButton>
         </Tooltip>
       )}
@@ -414,6 +414,21 @@ export function DataTable<T extends { id: string }>({
             return <Skeleton variant="rounded" width="100%" height={'50%'} />;
           }
           const content = col.renderCell(params.row);
+          const cellContent = isActionsColumn ? content : (
+            <Typography
+              component="div"
+              variant="body2"
+              className="dt-grid-cell-content"
+              sx={{
+                minWidth: 0,
+                width: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {content}
+            </Typography>
+          );
           if (col.copyable) {
             // Use explicit copyText extractor when provided, otherwise try params.value
             // (params.value reflects row[col.key] which may be an object or undefined)
@@ -424,9 +439,9 @@ export function DataTable<T extends { id: string }>({
               const raw = params.value;
               cellValue = (raw != null && typeof raw !== 'object') ? String(raw) : '';
             }
-            return <CopyableCell text={cellValue}>{content}</CopyableCell>;
+            return <CopyableCell text={cellValue}>{cellContent}</CopyableCell>;
           }
-          return content;
+          return cellContent;
         },
       } as GridColDef<T>);
     });
@@ -611,9 +626,9 @@ export function DataTable<T extends { id: string }>({
                 {mobileCard.icon(row)}
               </Box>
             )}
-            <Box sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--scheme-neutral-100)', fontWeight: 600 }}>
+            <Typography variant="body2" component="div" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--scheme-neutral-100)', fontWeight: 600 }}>
               {title}
-            </Box>
+            </Typography>
           </Box>
           {status && (
             <Box sx={{ flexShrink: 0, display: 'inline-flex', justifyContent: 'flex-end' }}>
@@ -623,7 +638,7 @@ export function DataTable<T extends { id: string }>({
         </Box>
 
         {mobileFields.length > 0 && (
-          <Box sx={{ display: 'grid', gap: 0.65, fontSize: 13.5, color: 'var(--scheme-neutral-300)' }}>
+          <Box sx={{ display: 'grid', gap: 0.65, color: 'var(--scheme-neutral-300)' }}>
             {mobileFields.map((field) => {
               const fieldKey = typeof field === 'string' ? field : field.key;
               const col = columnByKey.get(fieldKey);
@@ -635,12 +650,12 @@ export function DataTable<T extends { id: string }>({
                   : col.renderCell(row);
               return (
                 <Box key={fieldKey} sx={{ display: 'flex', gap: 0.5, minWidth: 0 }}>
-                  <Box component="span" sx={{ color: 'var(--scheme-neutral-500)', flexShrink: 0 }}>
+                  <Typography component="span" variant="caption" sx={{ color: 'var(--scheme-neutral-500)', flexShrink: 0 }}>
                     {typeof field === 'string' ? col.label : (field.label ?? col.label)}:
-                  </Box>
-                  <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', overflowWrap: 'anywhere' }}>
+                  </Typography>
+                  <Typography component="span" variant="body2" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', overflowWrap: 'anywhere' }}>
                     {content}
-                  </Box>
+                  </Typography>
                 </Box>
               );
             })}
@@ -860,7 +875,7 @@ export function DataTable<T extends { id: string }>({
               {tI18n('dataTable', 'columnsTitle')}
             </Typography>
             {hiddenCols.size > 0 && (
-              <Button size="small" variant="text" onClick={showAllCols} sx={{ fontSize: 11, py: 0, minWidth: 0 }}>
+              <Button size="small" variant="text" onClick={showAllCols} sx={{ py: 0, minWidth: 0 }}>
                 {tI18n('dataTable', 'showAll')}
               </Button>
             )}
@@ -900,7 +915,7 @@ export function DataTable<T extends { id: string }>({
       >
         <Box sx={{ p: 2, overflowY: 'auto' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="subtitle1" fontWeight={700}>
+            <Typography variant="subtitle1" fontWeight={600}>
               {tI18n('dataTable', 'visibleColumns')}
             </Typography>
             <IconButton size="small" onClick={() => setMobileColumnsOpen(false)} aria-label="Close">
@@ -953,7 +968,7 @@ export function DataTable<T extends { id: string }>({
         >
           <Box sx={{ p: 2, overflowY: 'auto' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="subtitle1" fontWeight={700}>
+              <Typography variant="subtitle1" fontWeight={600}>
                 {tI18n('dataTable', 'filters')}
               </Typography>
               <IconButton size="small" onClick={() => setMobileFiltersOpen(false)} aria-label="Close">
@@ -1027,7 +1042,11 @@ export function DataTable<T extends { id: string }>({
       )}
 
       {/* Error */}
-      {error && <div className="dt-error-banner">{error}</div>}
+      {error && (
+        <Typography component="div" variant="body2" className="dt-error-banner">
+          {error}
+        </Typography>
+      )}
       {/* Mass-actions bar – always rendered with fixed height to prevent layout shift */}
       <Box
         sx={{
@@ -1045,9 +1064,9 @@ export function DataTable<T extends { id: string }>({
           color: 'primary.main',
         }}
       >
-        <span style={{ fontSize: 14, color: 'inherit', marginRight: 8 }}>
+        <Typography variant="body2" component="span" sx={{ color: 'inherit', mr: 1 }}>
           {tI18n('dataTable', 'selected').replace('{count}', String(selectedIds.size))}
-        </span>
+        </Typography>
         {massActions?.map((action) => (
           <Tooltip key={action.label} title={action.label}>
             <Button
@@ -1114,6 +1133,7 @@ export function DataTable<T extends { id: string }>({
                 '& .MuiDataGrid-cell': {
                   display: 'flex',
                   alignItems: 'center',
+                  fontWeight: 400,
                   minWidth: 0,
                   minHeight: '53px !important',
                   maxHeight: '53px !important',
@@ -1151,8 +1171,7 @@ export function DataTable<T extends { id: string }>({
                 '& .MuiDataGrid-columnHeaders': {
                   borderBottom: '1px solid color-mix(in srgb, var(--scheme-neutral-900) 78%, transparent)',
                   backgroundColor: tableHeaderBackground,
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
+                  fontWeight: 600,
                   color: 'var(--scheme-neutral-500)',
                   boxShadow: '0 1px 0 rgba(16, 24, 40, 0.04)',
                 },
@@ -1160,7 +1179,7 @@ export function DataTable<T extends { id: string }>({
                   borderRight: 'none',
                 },
                 '& .MuiDataGrid-columnHeaderTitle': {
-                  fontWeight: 700,
+                  fontWeight: 600,
                   letterSpacing: '0.02em',
                 },
                 '& .dt-grid-cell-actions': {
@@ -1216,9 +1235,9 @@ export function DataTable<T extends { id: string }>({
                 </Box>
               ))
               : (
-                <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary', fontSize: 14 }}>
+                <Typography variant="body2" component="div" sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
                   {emptyMessage}
-                </Box>
+                </Typography>
               )}
         </Box>
       )}
@@ -1240,13 +1259,13 @@ export function DataTable<T extends { id: string }>({
             {footerLeft}
           </Box>
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '14px' }}>
-              <span>{tI18n('pagination', 'rowsPerPage')}</span>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" component="span">{tI18n('pagination', 'rowsPerPage')}</Typography>
               <FormControl size="small" sx={{ minWidth: 70 }}>
                 <Select
                   value={pagination.pageSize}
                   onChange={(e) => pagination.onPageSizeChange(Number(e.target.value))}
-                  sx={{ fontSize: '14px' }}
+                  sx={{ '& .MuiSelect-select': { typography: 'body2' } }}
                 >
                   {PAGE_SIZE_OPTIONS.map((size) => (
                     <MenuItem key={size} value={size}>
@@ -1256,12 +1275,12 @@ export function DataTable<T extends { id: string }>({
                 </Select>
               </FormControl>
             </Box>
-            <Box sx={{ fontSize: '14px', color: 'text.secondary' }}>
+            <Typography variant="body2" component="div" color="text.secondary">
               {`${(pagination.page - 1) * pagination.pageSize + 1}-${Math.min(
                 pagination.page * pagination.pageSize,
                 pagination.total
               )} ${tI18n('pagination', 'of')} ${pagination.total}`}
-            </Box>
+            </Typography>
             <Pagination
               count={totalPages}
               page={pagination.page}
@@ -1273,9 +1292,9 @@ export function DataTable<T extends { id: string }>({
             />
           </Box>
           <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1, width: '100%' }}>
-            <Box sx={{ fontSize: '13px', color: 'text.secondary', flex: 1 }}>
+            <Typography variant="body2" component="div" color="text.secondary" sx={{ flex: 1 }}>
               {`${visibleCount} ${tI18n('pagination', 'of')} ${pagination.total}`}
-            </Box>
+            </Typography>
             <Button
               size="small"
               variant="outlined"

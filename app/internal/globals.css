@@ -4,6 +4,10 @@ body {
   overflow-x: hidden;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   background: var(--scheme-surface-content);
@@ -528,8 +532,8 @@ textarea {
 }
 
 .app-sidebar.collapsed {
-  width: 64px;
-  min-width: 64px;
+  width: 56px;
+  min-width: 56px;
 }
 
 /* ─── Sidebar header (logo + toggle) ─────────────────────── */
@@ -591,7 +595,6 @@ textarea {
 }
 
 .sidebar-logo-title {
-  font-size: 14px;
   font-weight: 700;
   color: var(--scheme-neutral-100);
   white-space: nowrap;
@@ -599,7 +602,6 @@ textarea {
 }
 
 .sidebar-logo-sub {
-  font-size: 11px;
   color: var(--scheme-neutral-500);
   white-space: nowrap;
   line-height: 1.3;
@@ -648,7 +650,6 @@ textarea {
 }
 
 .app-nav-section-title {
-  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -682,7 +683,6 @@ textarea {
   width: 100%;
   text-align: left;
   color: var(--scheme-neutral-400);
-  font-size: 14px;
   font-family: inherit;
   font-weight: 500;
   line-height: 1;
@@ -790,7 +790,6 @@ textarea {
 }
 
 .app-user-name {
-  font-size: 13px;
   font-weight: 600;
   color: var(--scheme-neutral-200);
   white-space: nowrap;
@@ -800,7 +799,6 @@ textarea {
 }
 
 .app-user-role {
-  font-size: 11px;
   color: var(--scheme-neutral-500);
   white-space: nowrap;
   line-height: 1.3;
@@ -846,12 +844,67 @@ textarea {
 }
 
 .topbar-section-title {
-  font-size: 15px;
   font-weight: 600;
   color: var(--scheme-neutral-200);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.topbar-breadcrumbs {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: min(54vw, 720px);
+  overflow: hidden;
+}
+
+.topbar-breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.topbar-breadcrumb-item:first-child {
+  flex: 0 0 auto;
+}
+
+.topbar-breadcrumb-separator {
+  color: var(--scheme-neutral-500);
+  flex: 0 0 auto;
+  margin: 0 4px;
+}
+
+.topbar-breadcrumb-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--scheme-neutral-300);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 0;
+  font: inherit;
+  text-align: left;
+}
+
+.topbar-breadcrumb-link span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-breadcrumb-link:hover:not(:disabled) {
+  color: var(--scheme-brand-600);
+}
+
+.topbar-breadcrumb-link:disabled {
+  color: var(--scheme-neutral-100);
+  cursor: default;
 }
 
 .topbar-right {
@@ -884,6 +937,15 @@ textarea {
   white-space: nowrap;
 }
 
+.simulation-topbar-base-values {
+  flex: 0 1 420px;
+  width: min(42vw, 420px);
+}
+
+.simulation-topbar-base-values .MuiFormControl-root {
+  min-width: 0;
+}
+
 .topbar-icon-btn {
   width: 32px;
   height: 32px;
@@ -914,7 +976,8 @@ textarea {
 .app-content {
   flex: 1;
   overflow-y: auto;
-  padding: 32px 28px;
+  scroll-behavior: smooth;
+  padding: 16px 16px;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--scheme-neutral-1200) 58%, transparent), transparent 180px),
     var(--scheme-surface-content);
@@ -1136,7 +1199,8 @@ textarea {
   }
 
   .topbar-section-icon,
-  .topbar-section-title {
+  .topbar-section-title,
+  .topbar-breadcrumbs {
     display: none;
   }
 
@@ -1269,7 +1333,7 @@ textarea {
   background: transparent;
   color: var(--scheme-neutral-200);
   font-family: inherit;
-  font-size: 13px;
+  
   min-width: 0;
 }
 
@@ -1314,7 +1378,7 @@ textarea {
   background: rgb(217 83 79 / 12%);
   border-bottom: 1px solid rgb(217 83 79 / 30%);
   color: #f4adab;
-  font-size: 13px;
+  
 }
 
 /* Scroll wrapper */
@@ -1332,8 +1396,7 @@ textarea {
 .dt-th {
   text-align: left;
   padding: 10px 12px;
-  font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--scheme-neutral-500);
@@ -1385,10 +1448,18 @@ textarea {
 
 .dt-td {
   padding: 10px 12px;
-  font-size: 13px;
   color: var(--scheme-neutral-300);
   border-bottom: 1px solid var(--scheme-neutral-900);
   vertical-align: middle;
+}
+
+.dt-grid-cell-content,
+.dt-grid-cell-content .MuiTypography-root,
+.dt-grid-cell-content .MuiChip-label,
+.dt-grid-cell-content .status-badge,
+.dt-grid-cell-content span,
+.dt-grid-cell-content div {
+  font-size: inherit !important;
 }
 
 .dt-td--actions {
@@ -1445,7 +1516,6 @@ textarea {
   text-align: center;
   padding: 48px 24px;
   color: var(--scheme-neutral-600);
-  font-size: 13px;
 }
 
 /* Footer */
@@ -1461,7 +1531,6 @@ textarea {
 }
 
 .dt-footer-left {
-  font-size: 12px;
   color: var(--scheme-neutral-500);
 }
 
@@ -1472,7 +1541,6 @@ textarea {
 }
 
 .dt-page-size-label {
-  font-size: 12px;
   color: var(--scheme-neutral-500);
   display: flex;
   align-items: center;
@@ -1540,20 +1608,17 @@ textarea {
 
 /* Shared cell helpers */
 .dt-cell-primary {
-  font-size: 13px;
   font-weight: 600;
   color: var(--scheme-neutral-200);
 }
 
 .dt-cell-secondary {
-  font-size: 12px;
   color: var(--scheme-neutral-500);
   margin-top: 2px;
 }
 
 .dt-cell-mono {
   font-family: monospace;
-  font-size: 12px;
   color: var(--scheme-neutral-400);
 }
 
@@ -1636,15 +1701,13 @@ textarea {
 }
 
 .section-title {
-  font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--scheme-neutral-100);
   line-height: 1.2;
   margin: 0;
 }
 
 .section-subtitle {
-  font-size: 13px;
   color: var(--scheme-neutral-500);
   margin-top: 4px;
 }
@@ -1777,7 +1840,7 @@ textarea {
   background: var(--scheme-neutral-1100);
   color: var(--scheme-neutral-200);
   font-family: inherit;
-  font-size: 13px;
+  
   transition: border-color 150ms;
 }
 
@@ -1794,7 +1857,7 @@ textarea {
   background: var(--scheme-neutral-1100);
   color: var(--scheme-neutral-200);
   font-family: inherit;
-  font-size: 13px;
+  
   min-height: 96px;
   resize: vertical;
   width: 100%;
@@ -1845,12 +1908,12 @@ textarea {
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--scheme-surface-raised) 92%, var(--scheme-surface-raised-subtle)), var(--scheme-surface-raised));
   border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 78%, transparent);
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: var(--scheme-shadow-soft);
 }
 
 .simulation-meta-item {
-  padding: 4px 0;
+  padding: 2px 0;
 }
 
 .simulation-meta-actions {
@@ -2005,7 +2068,6 @@ textarea {
 
 .simulation-offer-card__title {
   color: var(--scheme-neutral-100);
-  font-size: 13px;
   font-weight: 700;
   line-height: 1.3;
   overflow-wrap: anywhere;
@@ -2034,7 +2096,6 @@ textarea {
 .simulation-offer-card__metrics span {
   display: block;
   color: var(--scheme-neutral-500);
-  font-size: 10px;
   font-weight: 700;
   line-height: 1.25;
   text-transform: uppercase;
@@ -2043,7 +2104,6 @@ textarea {
 .simulation-offer-card__metrics strong {
   display: block;
   color: var(--scheme-neutral-100);
-  font-size: 14px;
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
   margin-top: 3px;
@@ -2136,7 +2196,6 @@ textarea {
   .simulation-results-offer-heading {
     align-items: flex-start !important;
     flex-wrap: wrap;
-    font-size: 17px !important;
     gap: 8px !important;
   }
 
@@ -2198,7 +2257,7 @@ textarea {
   border-radius: 8px;
   background: var(--scheme-brand-600);
   color: white;
-  font-size: 13px;
+  
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -2221,7 +2280,7 @@ textarea {
   border-radius: 8px;
   background: transparent;
   color: var(--scheme-neutral-300);
-  font-size: 13px;
+  
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
@@ -2364,7 +2423,7 @@ textarea {
   border-radius: 6px;
   padding: 10px 14px;
   color: #dc2626;
-  font-size: 13px;
+  
   line-height: 1.4;
   margin-bottom: 16px;
 }
@@ -2375,7 +2434,7 @@ textarea {
   border-radius: 6px;
   padding: 10px 14px;
   color: #8F43A7;
-  font-size: 13px;
+  
   line-height: 1.4;
   margin-bottom: 16px;
 }

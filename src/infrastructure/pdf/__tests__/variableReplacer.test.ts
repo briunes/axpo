@@ -179,5 +179,10 @@ describe("extractVariableValues", () => {
     expect(variables.ELECTRICITY_TAX_RATE).toBe("5,11269");
     expect(variables.CURRENT_REACTIVE_COST).toBe("3.00");
     expect(variables.CURRENT_OTHER_CHARGES).toBe("2.00");
+    expect(variables.CHART_COMPARATIVA).toContain("display:block;width:100%");
+    expect(variables.CHART_COMPARATIVA).toContain('width="100%"');
+    expect(variables.CHART_COMPARATIVA).toContain("flex:0 0 50%");
+    expect(variables.CHART_COMPARATIVA).toContain("font-size:20px");
+    expect(variables.CHART_COMPARATIVA).toContain("border-top:1px solid");
   });
 });

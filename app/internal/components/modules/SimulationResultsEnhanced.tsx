@@ -28,9 +28,7 @@ function ProductRow({ r, isHighlight }: { r: ProductResult; isHighlight?: boolea
         }}>
             <td style={{
                 padding: "10px 14px",
-                fontWeight: 600,
-                fontSize: 13,
-                color: "#e2e8f0",
+                fontWeight: 600, color: "#e2e8f0",
                 borderBottom: "1px solid rgba(255,255,255,0.05)",
             }}>
                 {r.productLabel}
@@ -59,9 +57,7 @@ function ProductRow({ r, isHighlight }: { r: ProductResult; isHighlight?: boolea
             </td>
             <td style={{
                 padding: "10px 14px",
-                textAlign: "right",
-                fontSize: 13,
-                fontWeight: 600,
+                textAlign: "right", fontWeight: 600,
                 color: pctColor,
                 borderBottom: "1px solid rgba(255,255,255,0.05)",
             }}>
@@ -70,9 +66,7 @@ function ProductRow({ r, isHighlight }: { r: ProductResult; isHighlight?: boolea
             <td style={{
                 padding: "10px 14px",
                 textAlign: "right",
-                fontVariantNumeric: "tabular-nums",
-                fontSize: 13,
-                color: "#cbd5e1",
+                fontVariantNumeric: "tabular-nums", color: "#cbd5e1",
                 fontWeight: 500,
                 borderBottom: "1px solid rgba(255,255,255,0.05)",
             }}>
@@ -113,9 +107,7 @@ function GroupSection({
                 background: bgColor,
                 padding: "8px 16px",
                 borderRadius: "6px 6px 0 0",
-                fontWeight: 700,
-                fontSize: 13,
-                color: "#0f172a",
+                fontWeight: 700, color: "#0f172a",
                 letterSpacing: "0.02em",
             }}>
                 {title}

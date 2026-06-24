@@ -231,9 +231,7 @@ function PeriodValues({ label, values }: { label: string; values: Record<string,
                         style={{
                             padding: "6px 12px",
                             background: "var(--scheme-neutral-1000)",
-                            borderRadius: 6,
-                            fontSize: 13,
-                        }}
+                            borderRadius: 6, }}
                     >
                         <span style={{ color: "var(--scheme-neutral-500)", marginRight: 6 }}>{period}:</span>
                         <span style={{ fontWeight: 600, color: "var(--scheme-neutral-200)" }}>{Number(value).toFixed(2)}</span>

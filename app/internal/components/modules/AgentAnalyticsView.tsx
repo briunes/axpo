@@ -1,5 +1,6 @@
 "use client";
 
+import { Box, Typography } from "@mui/material";
 import type { AnalyticsOverview, AnalyticsUserStat } from "../../lib/internalApi";
 import { DataTable, GradientLineChart, GradientBarChart, ResponsivePieChart } from "../ui";
 import type { ColumnDef } from "../ui";
@@ -150,19 +151,19 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             key: "userName",
             label: t("analyticsModule", "colCommercialName"),
             sortable: true,
-            renderCell: (r) => <span className="dt-cell-primary">{r.userName}</span>,
+            renderCell: (r) => <Typography component="span" variant="body2" className="dt-cell-primary">{r.userName}</Typography>,
         },
         {
             key: "total",
             label: t("analyticsModule", "colCreated"),
             sortable: true,
             renderCell: (r) => (
-                <span style={{
+                <Typography component="span" variant="body2" sx={{
                     fontWeight: 600,
                     color: r.total > 10 ? "#10b981" : r.total > 5 ? "#06b6d4" : "inherit",
                 }}>
                     {r.total}
-                </span>
+                </Typography>
             ),
         },
         {
@@ -170,8 +171,8 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             label: t("analyticsModule", "colSent"),
             sortable: true,
             renderCell: (r) => (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontWeight: 600, color: "#10b981" }}>{r.shared}</span>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography component="span" variant="body2" sx={{ fontWeight: 600, color: "#10b981" }}>{r.shared}</Typography>
                     <div style={{
                         flex: 1,
                         height: 6,
@@ -186,7 +187,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                             background: "linear-gradient(90deg, #10b981 0%, #10b981CC 100%)",
                         }} />
                     </div>
-                </div>
+                </Box>
             ),
         },
         {
@@ -196,7 +197,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                 const rate = r.shared > 0 ? Math.round(((r.opened ?? 0) / r.shared) * 100) : 0;
                 const color = rate > 70 ? "#10b981" : rate > 40 ? "#06b6d4" : "#f59e0b";
                 return (
-                    <div style={{
+                    <Box sx={{
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 6,
@@ -205,13 +206,13 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         border: `1px solid ${color}40`,
                         borderRadius: 6,
                     }}>
-                        <span style={{
+                        <Typography component="span" variant="body2" sx={{
                             fontWeight: 600,
                             color: color,
                         }}>
                             {rate}%
-                        </span>
-                    </div>
+                        </Typography>
+                    </Box>
                 );
             },
         },
@@ -339,7 +340,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                             margin={{ left: 0, right: 140, top: 10, bottom: 10 }}
                         />
                     ) : (
-                        <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
+                        <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, }}>
                             {t("analyticsModule", "noDataAvailable")}
                         </div>
                     )}
@@ -359,7 +360,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f59e0b", marginBottom: 2 }}>
                             {t("analyticsModule", "followUpsRequired")}
                         </h3>
-                        <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
+                        <p style={{color: "var(--scheme-neutral-500)" }}>
                             {t("analyticsModule", "followUpsRequiredSub")}
                         </p>
                     </div>
@@ -437,7 +438,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--scheme-neutral-100)", marginBottom: 4 }}>
                             {t("analyticsModule", "tableCommercialPerformance")}
                         </h3>
-                        <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
+                        <p style={{color: "var(--scheme-neutral-500)" }}>
                             {t("analyticsModule", "tableCommercialPerformanceSub")}
                         </p>
                     </div>
@@ -477,7 +478,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--scheme-neutral-100)", marginBottom: 4 }}>
                             {t("analyticsModule", "sectionSimContent")}
                         </h3>
-                        <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
+                        <p style={{color: "var(--scheme-neutral-500)" }}>
                             {t("analyticsModule", "sectionSimContentSub")}
                         </p>
                     </div>
@@ -507,7 +508,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                                     margin={{ left: 0, right: 120, top: 10, bottom: 10 }}
                                 />
                             ) : (
-                                <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
+                                <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, }}>
                                     {t("analyticsModule", "noDataAvailable")}
                                 </div>
                             )}
@@ -541,7 +542,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                                         </div>
                                     </>
                                 ) : (
-                                    <div style={{ opacity: 0.4, fontSize: 13 }}>{t("analyticsModule", "noDataAvailable")}</div>
+                                    <div style={{ opacity: 0.4, }}>{t("analyticsModule", "noDataAvailable")}</div>
                                 )}
                             </div>
                         </ChartPanel>

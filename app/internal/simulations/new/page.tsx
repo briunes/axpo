@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import { State } from "country-state-city";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
@@ -22,6 +22,7 @@ import { CurrencyInput } from "../../components/ui/CurrencyInput";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import { useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 
 type SimType = "ELECTRICITY" | "GAS";
 
@@ -156,6 +157,8 @@ export default function NewSimulationPage() {
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const breadcrumbs = useMemo(() => [{ label: t("newSimulationPage", "title") }], [t]);
+    useTopBarBreadcrumbs(breadcrumbs);
 
     const [clients, setClients] = useState<ClientItem[]>([]);
     const [clientId, setClientId] = useState("");
@@ -584,9 +587,7 @@ export default function NewSimulationPage() {
                         <div style={{
                             display: "flex", flexDirection: "column", gap: 0,
                             padding: "10px 14px",
-                            borderRadius: 8, marginBottom: 12,
-                            fontSize: 13,
-                            background: isDarkMode ? "#1c1507" : "#fffbeb",
+                            borderRadius: 8, marginBottom: 12, background: isDarkMode ? "#1c1507" : "#fffbeb",
                             color: isDarkMode ? "#fcd34d" : "#78350f",
                             border: `1px solid ${isDarkMode ? "#3d2a05" : "#f59e0b"}`,
                         }}>
@@ -614,8 +615,7 @@ export default function NewSimulationPage() {
                     {llmEnabled && extractedData && isMostlyEmpty && !showReportIssue && reportSubmitted && (
                         <div style={{
                             display: "flex", alignItems: "center", gap: 6,
-                            padding: "8px 14px", borderRadius: 8, marginBottom: 12,
-                            fontSize: 13, fontWeight: 500,
+                            padding: "8px 14px", borderRadius: 8, marginBottom: 12, fontWeight: 500,
                             background: isDarkMode ? "#052e16" : "#f0fdf4",
                             color: isDarkMode ? "#86efac" : "#166534",
                             border: `1px solid ${isDarkMode ? "#166534" : "#86efac"}`,
@@ -644,7 +644,7 @@ export default function NewSimulationPage() {
                                 }}>
                                     <span style={{ color: isDarkMode ? "#9dd8bc" : "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>
                                 </div>
-                                <span style={{ fontWeight: 700, color: isDarkMode ? "#9dd8bc" : "#065f46", fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                                <span style={{ fontWeight: 700, color: isDarkMode ? "#9dd8bc" : "#065f46", letterSpacing: "0.04em", textTransform: "uppercase" }}>
                                     {t("invoiceExtractor", "extractedDataTitle")}
                                 </span>
                                 {/* Commodity type toggle - always visible */}
@@ -660,11 +660,11 @@ export default function NewSimulationPage() {
                                     sx={{ ml: 1, height: 26 }}
                                 >
                                     <ToggleButton value="ELECTRICITY" sx={{ px: 1.2, py: 0, fontSize: 11, fontWeight: 700, gap: 0.5 }}>
-                                        <BoltIcon sx={{ fontSize: 13, color: "#f59e0b" }} />
+                                        <BoltIcon sx={{color: "#f59e0b" }} />
                                         Electricity
                                     </ToggleButton>
                                     <ToggleButton value="GAS" sx={{ px: 1.2, py: 0, fontSize: 11, fontWeight: 700, gap: 0.5 }}>
-                                        <LocalFireDepartmentIcon sx={{ fontSize: 13, color: "#ef4444" }} />
+                                        <LocalFireDepartmentIcon sx={{color: "#ef4444" }} />
                                         Gas
                                     </ToggleButton>
                                 </ToggleButtonGroup>
@@ -765,8 +765,7 @@ export default function NewSimulationPage() {
                             {!isMostlyEmpty && reportSubmitted && (
                                 <div style={{
                                     display: "flex", alignItems: "center", gap: 6,
-                                    padding: "8px 14px", borderRadius: 8, marginBottom: 14,
-                                    fontSize: 13, fontWeight: 500,
+                                    padding: "8px 14px", borderRadius: 8, marginBottom: 14, fontWeight: 500,
                                     background: isDarkMode ? "#052e16" : "#f0fdf4",
                                     color: isDarkMode ? "#86efac" : "#166534",
                                     border: `1px solid ${isDarkMode ? "#166534" : "#86efac"}`,
@@ -779,9 +778,9 @@ export default function NewSimulationPage() {
                             {/* Grid of fields */}
                             {(() => {
                                 const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 };
-                                const valueStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827" };
-                                const missingStyle: React.CSSProperties = { fontSize: 13, fontWeight: 500, color: isDarkMode ? "#a16207" : "#92400e", fontStyle: "italic", display: "flex", alignItems: "center", gap: 4 };
-                                const warnIcon = <span title="Not extracted by AI" style={{ fontSize: 13, lineHeight: 1 }}>⚠️</span>;
+                                const valueStyle: React.CSSProperties = {fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827" };
+                                const missingStyle: React.CSSProperties = {fontWeight: 500, color: isDarkMode ? "#a16207" : "#92400e", fontStyle: "italic", display: "flex", alignItems: "center", gap: 4 };
+                                const warnIcon = <span title="Not extracted by AI" style={{lineHeight: 1 }}>⚠️</span>;
                                 const upStr = (key: keyof ExtractedInvoiceData, val: string) =>
                                     setExtractedData(prev => prev ? { ...prev, [key]: val || undefined } : prev);
                                 return (

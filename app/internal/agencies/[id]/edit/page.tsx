@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import {
   Box,
   FormControlLabel,
@@ -37,6 +37,7 @@ import {
 } from "../../../components/ui";
 import { AgencyTariffConfig } from "../../../components/ui/AgencyTariffConfig";
 import { AgencyTlvProductConfig } from "../../../components/ui/AgencyTlvProductConfig";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../../components/InternalWorkspace";
 
 interface ValidationErrors {
   name?: string;
@@ -52,6 +53,7 @@ export default function EditAgencyPage({
   const [session] = useState(loadSession());
   const { showSuccess, showError } = useAlerts();
   const { t } = useI18n();
+  const onActionButtons = useActionButtons();
 
   const [agency, setAgency] = useState<AgencyItem | null>(null);
   const [name, setName] = useState("");
@@ -78,6 +80,11 @@ export default function EditAgencyPage({
       isEnabled: boolean;
     }>
   >([]);
+  const breadcrumbs = useMemo(
+    () => agency ? [{ label: agency.name, href: `/internal/agencies/${agency.id}/edit` }] : null,
+    [agency],
+  );
+  useTopBarBreadcrumbs(breadcrumbs);
 
   useEffect(() => {
     if (!isTlv && activeTab === 3) {
@@ -166,6 +173,32 @@ export default function EditAgencyPage({
     }
   };
 
+  useEffect(() => {
+    if (!session || !agency) {
+      onActionButtons?.(null);
+      return;
+    }
+
+    onActionButtons?.(
+      <>
+        <span className="topbar-action-wrap">
+          <Button
+            className="topbar-action topbar-action--compact"
+            variant="outlined"
+            size="small"
+            startIcon={<HistoryIcon />}
+            onClick={() => setShowAuditLogsModal(true)}
+          >
+            <span className="topbar-action-label">{t("auditLogsModal", "title")}</span>
+          </Button>
+        </span>
+        {formActions}
+      </>,
+    );
+
+    return () => onActionButtons?.(null);
+  }, [agency, formActions, onActionButtons, session, t]);
+
   if (!session || !agency) {
     return (
       <CrudPageLayout
@@ -225,19 +258,7 @@ export default function EditAgencyPage({
       title={t("agencyFormPage", "editTitle")}
       subtitle={t("agencyFormPage", "editSubtitle", { name: agency.name })}
       backHref="/internal/agencies"
-      actions={
-        <>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<HistoryIcon />}
-            onClick={() => setShowAuditLogsModal(true)}
-          >
-            {t("auditLogsModal", "title")}
-          </Button>
-          {formActions}
-        </>
-      }
+      hideHeader
     >
       <Box className="crud-tab-panel">
         <Box className="crud-tab-panel__tabs">

@@ -156,6 +156,7 @@ export default function ProfilePage() {
                                 mode="edit"
                                 isEditingSelf
                                 originalRole={user?.role}
+                                formVariant="plain"
                             />
                         </Stack>
                     )}

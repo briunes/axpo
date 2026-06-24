@@ -63,7 +63,6 @@ export function FormSelect({
                     style={{
                         display: 'block',
                         marginBottom: '8px',
-                        fontSize: '14px',
                         fontWeight: 500,
                         color: 'inherit',
                         opacity: disabled ? 0.5 : 1,

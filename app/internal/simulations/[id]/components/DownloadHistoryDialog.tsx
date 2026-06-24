@@ -291,7 +291,7 @@ function buildHistoryHtml(
 
         return `
           <div class="asim-history-block" style="margin-bottom:28px;break-inside:avoid;page-break-inside:avoid;">
-            <div class="asim-history-title" style="text-align:center;color:${HISTORY_HEADER_RED};font-weight:bold;font-size:13px;margin-bottom:6px;break-after:avoid;page-break-after:avoid;">${tariff}</div>
+            <div class="asim-history-title" style="text-align:center;color:${HISTORY_HEADER_RED};font-weight:bold;margin-bottom:6px;break-after:avoid;page-break-after:avoid;">${tariff}</div>
             <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
               <thead>
                 <tr>

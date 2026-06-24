@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Checkbox, FormControlLabel, Stack } from "@mui/material";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { createAgency } from "../../lib/internalApi";
 import { AddressForm, CrudFormContainer, CrudPageLayout, useAlerts, type AddressData } from "../../components/shared";
 import { FormInput } from "../../components/ui";
+import { useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 
 interface ValidationErrors {
     name?: string;
@@ -26,6 +27,8 @@ export default function NewAgencyPage() {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
+    const breadcrumbs = useMemo(() => [{ label: t("agencyFormPage", "newTitle") }], [t]);
+    useTopBarBreadcrumbs(breadcrumbs);
 
     if (!session) return null;
 

@@ -127,7 +127,7 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
       copyText: (c) => c.agency?.name ?? '',
       renderCell: (c) => (
         <Typography variant="body2">
-          {c.agency?.name ?? <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>—</span>}
+          {c.agency?.name ?? <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>—</Typography>}
         </Typography>
       ),
     },
@@ -137,12 +137,12 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
       width: "220",
       sortable: true,
       renderCell: (c) => (
-        <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {new Date(c.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
-          <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
+          <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {c.createdByUser ? `${c.createdByUser.fullName}` : "System"}
-          </span>
+          </Typography>
         </Typography>
       ),
     },
@@ -152,12 +152,12 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
       width: "220",
       sortable: true,
       renderCell: (c) => (
-        <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {new Date(c.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
-          <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
+          <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {c.updatedByUser ? `${c.updatedByUser.fullName}` : "System"}
-          </span>
+          </Typography>
         </Typography>
       ),
     },
@@ -515,9 +515,7 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
             key={i}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
-            sx={{
-              fontSize: 13,
-              color: item.danger ? "error.main" : "text.primary",
+            sx={{color: item.danger ? "error.main" : "text.primary",
               py: 0.75,
               gap: 1,
             }}

@@ -741,9 +741,7 @@ export function SimulationFormPanel({
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
                         style={{
-                            padding: "8px 16px",
-                            fontSize: 13,
-                            fontWeight: activeTab === tab.key ? 600 : 400,
+                            padding: "8px 16px", fontWeight: activeTab === tab.key ? 600 : 400,
                             background: "none",
                             border: "none",
                             cursor: "pointer",
@@ -772,9 +770,7 @@ export function SimulationFormPanel({
                                         borderRadius: 8,
                                         border: `1.5px solid ${simType === stype ? "var(--scheme-brand-600, #888)" : "var(--scheme-neutral-800)"}`,
                                         background: simType === stype ? "var(--scheme-brand-800, rgba(255,255,255,0.08))" : "transparent",
-                                        cursor: "pointer",
-                                        fontSize: 13,
-                                        fontWeight: simType === stype ? 600 : 400,
+                                        cursor: "pointer", fontWeight: simType === stype ? 600 : 400,
                                         color: simType === stype ? "var(--scheme-neutral-100)" : "var(--scheme-neutral-400)",
                                     }}
                                 >
@@ -804,7 +800,7 @@ export function SimulationFormPanel({
                     {results ? (
                         <SimulationResultsTable results={results} facturaActual={facturaActual} />
                     ) : (
-                        <div style={{ padding: 40, textAlign: "center", opacity: 0.5, fontSize: 13 }}>
+                        <div style={{ padding: 40, textAlign: "center", opacity: 0.5, }}>
                             {t("simulationForm", "noResultsPrompt")}
                         </div>
                     )}

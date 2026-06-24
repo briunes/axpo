@@ -300,7 +300,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                     ? `${electricityLabel} + ${gasLabel}`
                     : undefined
             }
-            style={{
+            sx={{
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "flex-start",
@@ -315,7 +315,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 <LocalFireDepartmentIcon sx={{ ...gasIconStyle, ml: "-4px" }} />
               </>
             )}
-            {!type && <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
+            {!type && <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-600)" }}>—</Typography>}
           </Box>
         );
       },
@@ -327,9 +327,9 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       copyable: true,
       sortable: true,
       renderCell: (s) => (
-        <span className="dt-cell-mono" style={{ fontSize: 12, letterSpacing: "0.08em", opacity: s.isDeleted ? 0.4 : 1, color: "var(--scheme-neutral-300)" }}>
-          {s.referenceNumber ?? <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
-        </span>
+        <Typography variant="body2" className="dt-cell-mono" sx={{ fontSize: '5px', opacity: s.isDeleted ? 0.4 : 1, color: "var(--scheme-neutral-300)" }}>
+          {s.referenceNumber ?? <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-600)" }}>—</Typography>}
+        </Typography>
       ),
     },
     {
@@ -340,9 +340,9 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       copyText: (s) => s.ownerUser?.fullName ?? '',
       sortable: true,
       renderCell: (s) => (
-        <span className="dt-cell-primary" style={{ opacity: s.isDeleted ? 0.5 : 1 }}>
+        <Typography variant="body2" className="dt-cell-primary" sx={{ opacity: s.isDeleted ? 0.5 : 1 }}>
           {s.ownerUser?.fullName ?? "—"}
-        </span>
+        </Typography>
       ),
     },
     {
@@ -354,8 +354,8 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       sortable: true,
       renderCell: (s) => {
         return (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: s.isDeleted ? 0.5 : 1 }}>
-            <span className="dt-cell-primary" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, opacity: s.isDeleted ? 0.5 : 1 }}>
+            <Typography variant="body2" className="dt-cell-primary" sx={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {s.client?.name
                 ? <Box
                   component={'a'}
@@ -369,10 +369,10 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 >
                   {s.client.name}
                 </Box>
-                : <span style={{ color: "var(--scheme-neutral-500)", fontStyle: "italic" }}>{t("status", "noClient")}</span>
+                : <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-500)", fontStyle: "italic" }}>{t("status", "noClient")}</Typography>
               }
-            </span>
-          </div>
+            </Typography>
+          </Box>
         );
       },
     },
@@ -393,17 +393,17 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         const cups = s.cupsNumber || cupsElec || cupsGas;
 
         return (
-          <span className="dt-cell-mono" style={{ opacity: s.isDeleted ? 0.5 : 1, fontSize: 12, whiteSpace: "nowrap" }}>
+          <Typography variant="body2" className="dt-cell-mono" sx={{ opacity: s.isDeleted ? 0.5 : 1, whiteSpace: "nowrap" }}>
             {cups ? (
-              <span style={{ display: 'block' }}>
-                {cupsElec && <div>{cupsElec}</div>}
-                {cupsGas && cupsElec && <div style={{ fontSize: 11, opacity: 0.7 }}>{cupsGas}</div>}
-                {!cupsElec && cupsGas && <div>{cupsGas}</div>}
-              </span>
+              <Typography component="span" variant="body2" sx={{ display: 'block' }}>
+                {cupsElec && <Typography component="span" variant="body2" sx={{ display: "block" }}>{cupsElec}</Typography>}
+                {cupsGas && cupsElec && <Typography component="span" variant="body2" sx={{ display: "block", opacity: 0.7 }}>{cupsGas}</Typography>}
+                {!cupsElec && cupsGas && <Typography component="span" variant="body2" sx={{ display: "block" }}>{cupsGas}</Typography>}
+              </Typography>
             ) : (
-              <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>
+              <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-600)" }}>—</Typography>
             )}
-          </span>
+          </Typography>
         );
       },
     },
@@ -412,12 +412,12 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       label: t("columns", "status"),
       sortable: true,
       renderCell: (s) => (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}>
           <StatusBadge label={s.status} tone={simulationStatusTone(s.status)} />
           {s.status === "SHARED" && s.clientOpenedAt && (
             <StatusBadge label={t("simulationsModule", "clientViewed") || "Viewed"} tone="accent" />
           )}
-        </span>
+        </Box>
       ),
     },
     // {
@@ -426,7 +426,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     //   width: "70",
     //   sortable: true,
     //   renderCell: (s) => (
-    //     <span className="dt-cell-mono" style={{ fontSize: 13, letterSpacing: "0.12em", opacity: s.isDeleted ? 0.4 : 1 }}>
+    //     <span className="dt-cell-mono" style={{letterSpacing: "0.12em", opacity: s.isDeleted ? 0.4 : 1 }}>
     //       {s.pinSnapshot ?? <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
     //     </span>
     //   ),
@@ -436,9 +436,9 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       label: t("columns", "expires"),
       sortable: true,
       renderCell: (s) => (
-        <span style={{ whiteSpace: "nowrap", fontSize: 13 }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {formatDateTime(s.expiresAt)}
-        </span>
+        </Typography>
       ),
     },
     {
@@ -446,12 +446,12 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       label: t("columns", "created"),
       sortable: true,
       renderCell: (s) => (
-        <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {formatDateTime(s.createdAt)}
           {" - "}
-          <span style={{ color: "var(--scheme-neutral-400)" }}>
+          <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)" }}>
             {s.ownerUser?.fullName || "—"}
-          </span>
+          </Typography>
         </Typography>
       ),
     },
@@ -460,12 +460,12 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       label: t("columns", "updated"),
       sortable: true,
       renderCell: (s) => (
-        <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {formatDateTime(s.updatedAt)}
           {" - "}
-          <span style={{ color: "var(--scheme-neutral-400)" }}>
+          <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)" }}>
             {s.ownerUser?.fullName || "—"}
-          </span>
+          </Typography>
         </Typography>
       ),
     },
@@ -774,7 +774,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
           <label className="sp-form-label">{t("simulationsModule", "payloadJson")}</label>
           <textarea
             className="sp-form-textarea"
-            style={{ minHeight: 360, fontFamily: "monospace", fontSize: 13 }}
+            style={{ minHeight: 360, fontFamily: "monospace", }}
             value={editPayloadJson}
             onChange={(e) => setEditPayloadJson(e.target.value)}
           />
@@ -887,9 +887,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             key={i}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
-            sx={{
-              fontSize: 13,
-              color: item.danger ? "error.main" : item.warning ? "warning.main" : "text.primary",
+            sx={{color: item.danger ? "error.main" : item.warning ? "warning.main" : "text.primary",
               py: 0.75,
               gap: 1,
             }}

@@ -168,7 +168,6 @@
 
 .config-field-description {
   display: block;
-  font-size: 13px;
   color: var(--scheme-neutral-500);
   margin-bottom: 10px;
   line-height: 1.5;
@@ -358,7 +357,6 @@
 
 .code-editor {
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -475,7 +473,6 @@
   background: var(--scheme-neutral-1100);
   padding: 16px;
   text-align: left;
-  font-size: 13px;
   font-weight: 700;
   color: var(--scheme-neutral-500);
   text-transform: uppercase;
@@ -537,7 +534,6 @@
   border-radius: 6px;
   background: var(--scheme-neutral-1200);
   color: var(--scheme-neutral-300);
-  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -667,7 +663,6 @@
   .template-table th,
   .template-table td {
     padding: 12px;
-    font-size: 13px;
   }
 }
 

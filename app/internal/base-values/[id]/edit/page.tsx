@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { Divider, Stack, Button, Tooltip } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import { loadSession } from "../../../lib/authSession";
@@ -24,6 +24,7 @@ import { BaseValueItemBuilder } from "../../../components/ui/BaseValueItemBuilde
 import { BaseValueItemsViewer } from "../../../components/ui/BaseValueItemsViewer";
 import { FormInput } from "../../../components/ui";
 import { useI18n } from "../../../../../src/lib/i18n-context";
+import { useTopBarBreadcrumbs } from "../../../components/InternalWorkspace";
 
 export default function EditBaseValueSetPage({
     params,
@@ -44,6 +45,11 @@ export default function EditBaseValueSetPage({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
+    const breadcrumbs = useMemo(
+        () => set ? [{ label: set.name, href: `/internal/base-values/${set.id}/edit` }] : null,
+        [set],
+    );
+    useTopBarBreadcrumbs(breadcrumbs);
 
     useEffect(() => {
         if (!session) return;

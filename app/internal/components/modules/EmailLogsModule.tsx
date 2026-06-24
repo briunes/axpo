@@ -64,7 +64,7 @@ interface EmailLogsModuleProps {
 }
 
 function TriggerBadge({ trigger }: { trigger?: string }) {
-    if (!trigger) return <span style={{ fontSize: 11, color: "#94a3b8" }}>—</span>;
+    if (!trigger) return <Typography component="span" variant="body2" sx={{ color: "#94a3b8" }}>—</Typography>;
 
     const toneMap: Record<string, "brand" | "accent" | "success" | "neutral"> = {
         "user-creation": "brand",
@@ -232,7 +232,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             sortable: true,
             width: "180",
             renderCell: (log) => (
-                <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+                <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
                     {formatDate(log.sentAt)}
                 </Typography>
             ),
@@ -241,7 +241,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             key: "recipientEmail",
             label: t("logs", "recipient"),
             renderCell: (log) => (
-                <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
+                <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
                     {log.recipientEmail}
                 </Typography>
             ),
@@ -250,7 +250,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             key: "subject",
             label: t("logs", "subject"),
             renderCell: (log) => (
-                <Typography variant="body2" sx={{ fontSize: 13 }}>
+                <Typography variant="body2">
                     {log.subject}
                 </Typography>
             ),
@@ -323,7 +323,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 value={localSearch}
                                 onChange={(e) => setLocalSearch(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                                sx={{ "& .MuiInputBase-root": { fontSize: 13 } }}
+                                sx={{ "& .MuiInputBase-root": { } }}
                             />
                         </Box>
                         <Box sx={{ flex: 2, }}>

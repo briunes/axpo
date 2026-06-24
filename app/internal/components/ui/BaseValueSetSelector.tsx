@@ -83,7 +83,7 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
                     value: s.id,
                     label: `${s.name}  v${s.version}`,
                     secondaryLabel: `Uploaded ${formatUploadDate(s.createdAt)}`,
-                    icon: s.isActive ? <StarIcon sx={{ fontSize: 13, color: "warning.main" }} /> : undefined,
+                    icon: s.isActive ? <StarIcon sx={{color: "warning.main" }} /> : undefined,
                 }))}
                 value={selected}
                 onChange={(id) => {
@@ -102,9 +102,7 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
                     maxWidth: compact ? 420 : "100%",
                     "& .MuiInputBase-root": compact
                         ? {
-                            minHeight: 36,
-                            fontSize: 13,
-                        }
+                            minHeight: 36, }
                         : undefined,
                 }}
             />

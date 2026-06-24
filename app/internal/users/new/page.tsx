@@ -4,7 +4,7 @@ import { Button } from "@once-ui-system/core";
 import { Box, Tabs, Tab, Alert, Typography } from "@mui/material";
 import { FormSelect } from "../../components/ui/FormSelect";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useAgencies } from "../../components/hooks/useAgencies";
@@ -12,6 +12,7 @@ import { useUsers } from "../../components/hooks/useUsers";
 import { UserForm, type UserFormData } from "../../components/modules/UserForm";
 import { UserSessionsPanel } from "../../components/modules/UserSessionsPanel";
 import { CrudPageLayout, useAlerts } from "../../components/shared";
+import { useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 import type { UserRole } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
 
@@ -29,6 +30,8 @@ export default function NewUserPage() {
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const breadcrumbs = useMemo(() => [{ label: t("userFormPage", "newTitle") }], [t]);
+    useTopBarBreadcrumbs(breadcrumbs);
 
     const usersActions = useUsers(session, 25, { queryEnabled: false });
     const agenciesActions = useAgencies(session, 1000, { minimal: true });

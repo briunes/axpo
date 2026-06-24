@@ -1,6 +1,6 @@
 "use client";
 
-import { Stack } from "@mui/material";
+import { Stack, Typography } from "@mui/material";
 
 export interface CrudPageLayoutProps {
     title: string;
@@ -37,8 +37,14 @@ export function CrudPageLayout({
                     <div className="crud-page-header">
                         <div className="crud-page-title-section">
                             <div className="crud-page-title-copy">
-                                <h2 className="section-title">{title}</h2>
-                                {subtitle && <p className="section-subtitle">{subtitle}</p>}
+                                <Typography variant="subtitle1" component="h2" className="section-title" sx={{ fontWeight: 600 }}>
+                                    {title}
+                                </Typography>
+                                {subtitle && (
+                                    <Typography variant="body2" component="p" className="section-subtitle" color="text.secondary">
+                                        {subtitle}
+                                    </Typography>
+                                )}
                             </div>
                             {actions && <div className="crud-page-actions">{actions}</div>}
                         </div>

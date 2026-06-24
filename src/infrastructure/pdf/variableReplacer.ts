@@ -509,19 +509,21 @@ function buildComparativaChart(
       maximumFractionDigits: 2,
     });
 
-  // Chart dimensions
-  const svgW = 340;
-  const svgH = 220;
-  const barW = 80;
-  const maxBarH = 150;
-  const barY0 = 170; // baseline y
+  // Chart dimensions tuned for the proposal PDF layout.
+  const svgW = 360;
+  const svgH = 230;
+  const plotX0 = 44;
+  const plotX1 = 350;
+  const barW = 82;
+  const maxBarH = 160;
+  const barY0 = 190; // baseline y
 
   const maxVal = Math.max(annualCurrent, annualAxpo, 1);
   const hCurrent = (annualCurrent / maxVal) * maxBarH;
   const hAxpo = (annualAxpo / maxVal) * maxBarH;
 
-  const xCurrent = 60;
-  const xAxpo = 180;
+  const xCurrent = 66;
+  const xAxpo = 216;
 
   // Y-axis ticks (4 ticks)
   const tickCount = 4;
@@ -534,24 +536,20 @@ function buildComparativaChart(
   const tickLines = ticks
     .map(
       (t) =>
-        `<line x1="45" y1="${t.y.toFixed(1)}" x2="${svgW - 10}" y2="${t.y.toFixed(1)}" stroke="#e5e7eb" stroke-width="1"/>` +
-        `<text x="40" y="${(t.y + 4).toFixed(1)}" text-anchor="end" font-size="9" fill="#6b7280">${Math.round(t.val)}</text>`,
+        `<line x1="${plotX0}" y1="${t.y.toFixed(1)}" x2="${plotX1}" y2="${t.y.toFixed(1)}" stroke="#e5e7eb" stroke-width="1"/>` +
+        `<text x="${plotX0 - 6}" y="${(t.y + 4).toFixed(1)}" text-anchor="end" font-size="8" fill="#6b7280">${Math.round(t.val)}</text>`,
     )
     .join("");
 
-  // SVG width fills most of the left column; we scale it via viewBox so it
-  // stretches to whatever width the left flex child occupies.
   return `
-<div style="display:block;width:100%;box-sizing:border-box;padding:16px 0;font-family:Arial,sans-serif;page-break-inside:avoid">
+<div style="display:block;width:100%;box-sizing:border-box;padding:0;font-family:Arial,sans-serif;page-break-inside:avoid">
 
-  <div style="font-size:13px;font-weight:700;color:#3b3bd4;margin-bottom:12px">Comparativa</div>
+  <div style="font-size:20px;line-height:1.15;font-weight:400;color:#1E2CF4;margin-bottom:12px">Comparativa</div>
 
-  <!-- Two-column row: chart left, stats right -->
-  <div style="display:flex;width:100%;gap:24px;align-items:flex-start">
+  <div style="display:flex;width:100%;gap:28px;align-items:flex-end">
 
-    <!-- Bar chart - 50% width -->
     <div style="flex:0 0 50%;min-width:0">
-      <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block">
+      <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:100%">
         <defs>
           <linearGradient id="axpoGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="#facc15"/>
@@ -563,7 +561,7 @@ function buildComparativaChart(
         ${tickLines}
 
         <!-- X axis -->
-        <line x1="45" y1="${barY0}" x2="${svgW - 10}" y2="${barY0}" stroke="#9ca3af" stroke-width="1.5"/>
+        <line x1="${plotX0}" y1="${barY0}" x2="${plotX1}" y2="${barY0}" stroke="#9ca3af" stroke-width="1.5"/>
 
         <!-- Current bar -->
         <rect x="${xCurrent}" y="${(barY0 - hCurrent).toFixed(1)}" width="${barW}" height="${hCurrent.toFixed(1)}" fill="#9ca3af" rx="4"/>
@@ -572,28 +570,27 @@ function buildComparativaChart(
         <rect x="${xAxpo}" y="${(barY0 - hAxpo).toFixed(1)}" width="${barW}" height="${hAxpo.toFixed(1)}" fill="url(#axpoGrad)" rx="4"/>
 
         <!-- X labels -->
-        <text x="${xCurrent + barW / 2}" y="${barY0 + 16}" text-anchor="middle" font-size="10" fill="#374151">Competencia</text>
-        <text x="${xAxpo + barW / 2}" y="${barY0 + 16}" text-anchor="middle" font-size="10" fill="#374151">Axpo</text>
+        <text x="${xCurrent + barW / 2}" y="${barY0 + 18}" text-anchor="middle" font-size="9" fill="#374151">Competencia</text>
+        <text x="${xAxpo + barW / 2}" y="${barY0 + 18}" text-anchor="middle" font-size="9" fill="#374151">Axpo</text>
 
         <!-- Value labels on top of bars -->
-        <text x="${xCurrent + barW / 2}" y="${(barY0 - hCurrent - 5).toFixed(1)}" text-anchor="middle" font-size="9" fill="#374151">${fmt(annualCurrent)} €</text>
-        <text x="${xAxpo + barW / 2}" y="${(barY0 - hAxpo - 5).toFixed(1)}" text-anchor="middle" font-size="9" fill="#374151">${fmt(annualAxpo)} €</text>
+        <text x="${xCurrent + barW / 2}" y="${(barY0 - hCurrent - 5).toFixed(1)}" text-anchor="middle" font-size="8" fill="#374151">${fmt(annualCurrent)} €</text>
+        <text x="${xAxpo + barW / 2}" y="${(barY0 - hAxpo - 5).toFixed(1)}" text-anchor="middle" font-size="8" fill="#374151">${fmt(annualAxpo)} €</text>
       </svg>
     </div>
 
-    <!-- Stats boxes - 50% width, stacked vertically -->
-    <div style="flex:0 0 50%;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;padding-left:12px">
-      <div style="background:#3b3bd4;border-radius:8px;padding:12px 16px;color:white">
-        <div style="font-size:10px;font-weight:600;margin-bottom:6px">Ahorro Anual</div>
-        <div style="font-size:22px;font-weight:700;text-align:right">${fmt(annualSavings)} €</div>
+    <div style="flex:1 1 0;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;padding-bottom:6px">
+      <div style="background:#3F43D4;border-radius:8px;padding:10px 16px;color:white;min-height:64px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.25)">
+        <div style="font-size:10px;font-weight:700;margin-bottom:7px">Ahorro Anual</div>
+        <div style="border-top:1px solid rgba(255,255,255,0.34);padding-top:4px;font-size:22px;line-height:1.05;font-weight:700;text-align:right">${fmt(annualSavings)} €</div>
       </div>
-      <div style="background:#3b3bd4;border-radius:8px;padding:12px 16px;color:white">
-        <div style="font-size:10px;font-weight:600;margin-bottom:6px">Ahorro Mensual</div>
-        <div style="font-size:22px;font-weight:700;text-align:right">${fmt(monthlySavings)} €</div>
+      <div style="background:#3F43D4;border-radius:8px;padding:10px 16px;color:white;min-height:64px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.25)">
+        <div style="font-size:10px;font-weight:700;margin-bottom:7px">Ahorro Mensual</div>
+        <div style="border-top:1px solid rgba(255,255,255,0.34);padding-top:4px;font-size:22px;line-height:1.05;font-weight:700;text-align:right">${fmt(monthlySavings)} €</div>
       </div>
-      <div style="background:#3b3bd4;border-radius:8px;padding:12px 16px;color:white">
-        <div style="font-size:10px;font-weight:600;margin-bottom:6px">% Ahorrado</div>
-        <div style="font-size:22px;font-weight:700;text-align:right">${savingsPct.toFixed(2).replace(".", ",")} %</div>
+      <div style="background:#3F43D4;border-radius:8px;padding:10px 16px;color:white;min-height:64px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.25)">
+        <div style="font-size:10px;font-weight:700;margin-bottom:7px">% Ahorrado</div>
+        <div style="border-top:1px solid rgba(255,255,255,0.34);padding-top:4px;font-size:22px;line-height:1.05;font-weight:700;text-align:right">${savingsPct.toFixed(2).replace(".", ",")} %</div>
       </div>
     </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
@@ -19,6 +19,7 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { DownloadHistoryDialog } from "../components/DownloadHistoryDialog";
 import { useUserPreferences } from "../../../components/providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../../lib/formatPreferences";
+import { useTopBarBreadcrumbs } from "../../../components/InternalWorkspace";
 
 function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) {
     const { t } = useI18n();
@@ -279,6 +280,16 @@ export default function SimulationViewPage({ params }: { params: Promise<{ id: s
     const [lastResults, setLastResults] = useState<SimulationResults | null>(null);
     const [showHistoryDialog, setShowHistoryDialog] = useState(false);
     const [selectedOfferProductKey, setSelectedOfferProductKey] = useState<string>("");
+    const simulationBreadcrumbLabel =
+        simulation?.referenceNumber || simulation?.client?.name || simulation?.id || id;
+    const breadcrumbs = useMemo(
+        () => simulation ? [
+            { label: simulationBreadcrumbLabel, href: `/internal/simulations/${simulation.id}` },
+            { label: t("simulationDetail", "title") },
+        ] : null,
+        [simulation, simulationBreadcrumbLabel, t],
+    );
+    useTopBarBreadcrumbs(breadcrumbs);
 
     const fetchedRef = useRef(false);
     useEffect(() => {

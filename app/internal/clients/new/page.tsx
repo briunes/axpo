@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { createClient, isAdmin } from "../../lib/internalApi";
 import { useAgencies } from "../../components/hooks/useAgencies";
 import { ClientForm, type ClientFormData } from "../../components/modules/ClientForm";
 import { CrudPageLayout, useAlerts } from "../../components/shared";
+import { useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 
 export default function NewClientPage() {
     const router = useRouter();
@@ -31,6 +32,8 @@ export default function NewClientPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
+    const breadcrumbs = useMemo(() => [{ label: t("clientFormPage", "newTitle") }], [t]);
+    useTopBarBreadcrumbs(breadcrumbs);
 
     useEffect(() => {
         if (agenciesActions.agencies.length > 0 && !formData.agencyId) {

@@ -15,7 +15,7 @@ import { DateInput } from "../ui/DateInput";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { FormInput } from "../ui/FormInput";
 import { CurrencyInput } from "../ui/CurrencyInput";
-import { Autocomplete, TextField, Collapse, Divider, Box, Button, Tabs, Tab } from "@mui/material";
+import { Autocomplete, TextField, Collapse, Divider, Box, Button, Tabs, Tab, Typography } from "@mui/material";
 import { Country } from "country-state-city";
 import type {
     SimulationPayload,
@@ -767,7 +767,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                 borderRadius: 8,
             }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
+                    <span style={{fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
                         {t("simulationForm", "formCompletion", { completed: completedCount, total: totalSteps })}
                     </span>
                     <span style={{ fontSize: 12, color: "var(--scheme-neutral-400)" }}>{Math.round(progressPercent)}%</span>
@@ -817,7 +817,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                                     : null;
                                 return (
                                     <li key={key ?? entry.cups} {...restProps} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 14px', gap: 2, cursor: 'pointer' }}>
-                                        <span style={{ fontWeight: 600, fontSize: 13, letterSpacing: '0.03em' }}>{entry.cups}</span>
+                                        <span style={{ fontWeight: 600, letterSpacing: '0.03em' }}>{entry.cups}</span>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
 
                                             {entry.lastStatus && (
@@ -1069,7 +1069,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                 borderRadius: 8,
             }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
+                    <span style={{fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
                         {t("simulationForm", "formCompletion", { completed: completedCount, total: totalSteps })}
                     </span>
                     <span style={{ fontSize: 12, color: "var(--scheme-neutral-400)" }}>{Math.round(progressPercent)}%</span>
@@ -1650,28 +1650,34 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
     return (
         <div>
-            <Box className="simulation-detail-tabs" sx={{ mb: 3.5 }}>
+            <Box className="simulation-detail-tabs" sx={{ mb: '12px' }}>
                 <Tabs
                     value={activeTab}
                     onChange={(_, value: "inputs" | "results") => void handleTabClick(value)}
                     textColor="primary"
                     indicatorColor="primary"
                     sx={{
-                        minHeight: 40,
+                        minHeight: 36,
                         "& .MuiTab-root": {
-                            minHeight: 40,
-                            px: 2.5,
-                            py: 1,
+                            minHeight: 36,
+                            px: 2,
+                            py: 0.75,
                             textTransform: "none",
-                            fontSize: 14,
-                            fontWeight: 600,
+                            fontWeight: 500,
                         },
                     }}
                 >
-                    <Tab value="inputs" label={t("simulationForm", "tabInputs")} />
+                    <Tab
+                        value="inputs"
+                        label={<Typography component="span" variant="body2" sx={{ fontWeight: 500 }}>{t("simulationForm", "tabInputs")}</Typography>}
+                    />
                     <Tab
                         value="results"
-                        label={results ? t("simulationForm", "tabResultsWithCount", { count: resultCount }) : t("simulationForm", "tabResults")}
+                        label={
+                            <Typography component="span" variant="body2" sx={{ fontWeight: 500 }}>
+                                {results ? t("simulationForm", "tabResultsWithCount", { count: resultCount }) : t("simulationForm", "tabResults")}
+                            </Typography>
+                        }
                     />
                 </Tabs>
             </Box>
@@ -1688,13 +1694,12 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                             padding: "10px 14px",
                             borderRadius: 8,
                             marginBottom: 20,
-                            fontSize: 13,
                             background: "rgba(245, 158, 11, 0.08)",
                             color: "var(--scheme-warning-400, #f59e0b)",
                             border: "1px solid rgba(245, 158, 11, 0.3)",
                         }}>
-                            <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>⚠️</span>
-                            <span>{t("invoiceExtractor", "ocrDisclaimer") ?? "O OCR pode conter erros. Por favor, valide os dados preenchidos antes de continuar."}</span>
+                            <Typography component="span" variant="body2" sx={{ flexShrink: 0, lineHeight: 1.3 }}>⚠️</Typography>
+                            <Typography component="span" variant="body2">{t("invoiceExtractor", "ocrDisclaimer") ?? "O OCR pode conter erros. Por favor, valide os dados preenchidos antes de continuar."}</Typography>
                         </div>
                     )}
 
@@ -1709,11 +1714,11 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                         alignItems: "center",
                         gap: 10,
                     }}>
-                        <span style={{ fontSize: 13, color: "var(--scheme-neutral-400)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{t("simulationForm", "commodityType")}</span>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--scheme-neutral-200)", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Typography component="span" variant="caption" sx={{ color: "var(--scheme-neutral-400)", fontWeight: 600, textTransform: "uppercase" }}>{t("simulationForm", "commodityType")}</Typography>
+                        <Typography component="span" variant="body2" sx={{ fontWeight: 600, color: "var(--scheme-neutral-200)", display: "flex", alignItems: "center", gap: 0.75 }}>
                             {simType === "ELECTRICITY" && <><BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} /> {t("simulationForm", "electricity")}</>}
                             {simType === "GAS" && <><LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444" }} /> {t("simulationForm", "gas")}</>}
-                        </span>
+                        </Typography>
                     </div>
 
                     {(simType === "ELECTRICITY") && (
@@ -1808,9 +1813,9 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
                     {/* Validation + API error + Calculate button */}
                     {hasErrors && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "10px 14px", background: "rgba(248,113,113,0.08)", border: "1px solid var(--scheme-error-400, #f87171)", borderRadius: 8, fontSize: 13, color: "var(--scheme-error-400, #f87171)" }}>
-                            <span>⚠</span>
-                            <span>{t("simulationForm", "fieldsRequireAttention", { count: Object.keys(elecErrors).length + Object.keys(gasErrors).length })}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "10px 14px", background: "rgba(248,113,113,0.08)", border: "1px solid var(--scheme-error-400, #f87171)", borderRadius: 8, color: "var(--scheme-error-400, #f87171)" }}>
+                            <Typography component="span" variant="body2">⚠</Typography>
+                            <Typography component="span" variant="body2">{t("simulationForm", "fieldsRequireAttention", { count: Object.keys(elecErrors).length + Object.keys(gasErrors).length })}</Typography>
                         </div>
                     )}
                     {error && (
@@ -1916,8 +1921,8 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                     ) : (
                         <div style={{ padding: "60px 20px", textAlign: "center", opacity: 0.5 }}>
                             <div style={{ marginBottom: 12 }}><BoltIcon sx={{ fontSize: 48, color: "#f59e0b" }} /></div>
-                            <div style={{ fontSize: 15, marginBottom: 8 }}>{t("simulationForm", "noResultsYet")}</div>
-                            <div style={{ fontSize: 13 }}>{t("simulationForm", "noResultsInstructions")}</div>
+                            <Typography variant="body2" component="div" sx={{ mb: 1, fontWeight: 600 }}>{t("simulationForm", "noResultsYet")}</Typography>
+                            <Typography variant="body2" component="div">{t("simulationForm", "noResultsInstructions")}</Typography>
                             <Button variant="contained" onClick={() => void handleTabClick("inputs")} sx={{ mt: 2.5 }}>
                                 {t("simulationForm", "goToInputs")}
                             </Button>

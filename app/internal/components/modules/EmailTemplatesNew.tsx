@@ -527,7 +527,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                                 {TEMPLATE_TYPE_LABELS[template.type as EmailTemplateType]}
                                             </span>
                                         </td>
-                                        <td style={{ color: "var(--scheme-neutral-500)", fontSize: "13px", maxWidth: "300px" }}>
+                                        <td style={{ color: "var(--scheme-neutral-500)", maxWidth: "300px" }}>
                                             {template.subject}
                                         </td>
                                         <td>
@@ -535,7 +535,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                                 {template.active ? t("emailTemplatesModule", "statusActive") : t("emailTemplatesModule", "statusInactive")}
                                             </span>
                                         </td>
-                                        <td style={{ fontSize: "13px", color: "var(--scheme-neutral-500)" }}>
+                                        <td style={{color: "var(--scheme-neutral-500)" }}>
                                             {(() => { const d = new Date(template.updatedAt); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; })()}
                                         </td>
                                         <td>
@@ -691,7 +691,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                                 placeholder={t("emailTemplatesModule", "fieldSubjectPlaceholder")}
                                             />
                                             {translationsMap[activeLanguage]?.subject && (
-                                                <div style={{ marginTop: "8px", padding: "8px", background: "var(--scheme-neutral-1100)", borderRadius: "6px", fontSize: "13px", color: "var(--scheme-neutral-500)", border: "1px solid var(--scheme-neutral-900)" }}>
+                                                <div style={{ marginTop: "8px", padding: "8px", background: "var(--scheme-neutral-1100)", borderRadius: "6px", color: "var(--scheme-neutral-500)", border: "1px solid var(--scheme-neutral-900)" }}>
                                                     {t("emailTemplatesModule", "subjectPreviewLabel")} <strong>{renderSubjectPreview()}</strong>
                                                 </div>
                                             )}
