@@ -29,6 +29,7 @@ import { ConfirmDialog } from "../shared";
 import { DataTable, FormInput, FormSelect, StatusBadge } from "../ui";
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
 
 interface AgenciesModuleProps {
@@ -40,6 +41,7 @@ interface AgenciesModuleProps {
 
 export function AgenciesModule({ session, actions, onNotify, onActionButtons }: AgenciesModuleProps) {
   const { t } = useI18n();
+  const router = useRouter();
   const {
     agencies, loading, busyAction, errorText, successText, clearFeedback, refresh,
     page, pageSize, total, setPage, setPageSize,
@@ -232,7 +234,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       width: "140",
       renderCell: (a) => {
         const primaryLabel = t("actions", "edit");
-        const primaryOnClick = () => window.location.href = `/internal/agencies/${a.id}/edit`;
+        const primaryOnClick = () => router.push(`/internal/agencies/${a.id}/edit`);
 
         const secondaryItems: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }> = [];
         secondaryItems.push({

@@ -215,20 +215,17 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
     }
 
     return (
-        <div style={{
+        <div className="simulation-meta-card" style={{
             display: "flex",
             flexDirection: "column",
             gap: 14,
             marginBottom: 24,
-            padding: "14px 16px",
-            background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",
-            border: "1px solid var(--scheme-neutral-900)",
-            borderRadius: 10,
+            padding: "16px",
         }}>
             <div className="simulation-meta-grid" style={{
                 display: "flex",
                 flexWrap: "wrap",
-                columnGap: 22,
+                columnGap: 24,
                 rowGap: 10,
                 alignItems: "center",
                 minWidth: 0,
@@ -302,7 +299,7 @@ export default function SimulationViewPage({ params }: { params: Promise<{ id: s
 
     if (!session || !simulation) {
         return (
-            <CrudPageLayout title={t("simulationDetail", "title")} backHref="/internal/simulations">
+            <CrudPageLayout title={t("simulationDetail", "title")} backHref="/internal/simulations" hideHeader>
                 <LoadingState message={t("simulationDetail", "loading")} size={100} />
             </CrudPageLayout>
         );
@@ -312,6 +309,7 @@ export default function SimulationViewPage({ params }: { params: Promise<{ id: s
         <CrudPageLayout
             title={t("simulationDetail", "title")}
             backHref="/internal/simulations"
+            hideHeader
         >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 0 }}>
                 <div style={{ flex: 1 }}>

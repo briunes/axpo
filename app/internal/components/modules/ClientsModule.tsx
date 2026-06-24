@@ -31,6 +31,7 @@ import { ConfirmDialog } from "../shared";
 import { DataTable, StatusBadge, FormSelect, FormInput } from "../ui";
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
 
 interface ClientsModuleProps {
@@ -42,6 +43,7 @@ interface ClientsModuleProps {
 
 export function ClientsModule({ session, actions, onNotify, onActionButtons }: ClientsModuleProps) {
   const { t } = useI18n();
+  const router = useRouter();
   const { canDo } = usePermissions();
   const role = session.user.role;
   const {
@@ -164,7 +166,7 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
       label: t("columns", "actions"),
       renderCell: (c) => {
         const primaryLabel = t("actions", "edit");
-        const primaryOnClick = () => window.location.href = `/internal/clients/${c.id}/edit`;
+        const primaryOnClick = () => router.push(`/internal/clients/${c.id}/edit`);
 
         const secondaryItems: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }> = [];
         if (canDo(role, "clients.edit")) {
@@ -379,7 +381,7 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
                   <Button
                     variant="outlined"
                     size="small"
-                    onClick={() => window.location.href = `/internal/clients/${c.id}/edit`}
+                    onClick={() => router.push(`/internal/clients/${c.id}/edit`)}
                     startIcon={<EditIcon fontSize="small" />}
                     sx={{ minWidth: 0 }}
                   >

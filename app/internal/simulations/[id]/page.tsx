@@ -257,26 +257,24 @@ function SimulationMeta({
 
   return (
     <div
+      className="simulation-meta-card"
       style={{
         display: "flex",
         flexDirection: "column",
         gap: 14,
         marginBottom: 24,
-        padding: "14px 16px",
-        background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",
-        border: "1px solid var(--scheme-neutral-900)",
-        borderRadius: 10,
+        padding: "16px",
       }}
     >
       <div
         className="simulation-meta-grid"
         style={{
           display: "flex",
-          flexWrap: "wrap",
-          columnGap: 22,
-          rowGap: 10,
-          alignItems: "center",
-          minWidth: 0,
+            flexWrap: "wrap",
+            columnGap: 24,
+            rowGap: 10,
+            alignItems: "center",
+            minWidth: 0,
         }}
       >
         {metaItems.map((item) => (
@@ -332,7 +330,7 @@ function SimulationMeta({
             alignItems: "center",
             justifyContent: "flex-end",
             flexWrap: "wrap",
-            borderTop: "1px solid var(--scheme-neutral-900)",
+            borderTop: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 72%, transparent)",
             paddingTop: 12,
             minWidth: 0,
           }}
@@ -454,6 +452,7 @@ export default function SimulationDetailPage({
       <CrudPageLayout
         title={t("simulationDetail", "title")}
         backHref="/internal/simulations"
+        hideHeader
       >
         <LoadingState message={t("simulationDetail", "loading")} size={100} />
       </CrudPageLayout>
@@ -464,6 +463,7 @@ export default function SimulationDetailPage({
     <CrudPageLayout
       title={t("simulationDetail", "title")}
       backHref="/internal/simulations"
+      hideHeader
     >
       <SimulationMeta
         sim={simulation}
@@ -482,6 +482,7 @@ export default function SimulationDetailPage({
                   isAdmin
                   usedBaseValueSetId={usedBaseValueSetId}
                   forAgencyId={session.user.agencyId}
+                  compact
                   onChange={handleBaseValueSetChange}
                   onChangeItem={(item) =>
                     setSelectedBvsIsProduction(item.isProduction)

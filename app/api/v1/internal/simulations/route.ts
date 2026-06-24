@@ -75,6 +75,46 @@ const mergeVersionPayloads = (
   };
 };
 
+const getNestedString = (
+  value: Record<string, unknown> | null,
+  path: string[],
+) => {
+  let current: unknown = value;
+  for (const key of path) {
+    if (
+      typeof current !== "object" ||
+      current === null ||
+      Array.isArray(current)
+    ) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+  return typeof current === "string" ? current : undefined;
+};
+
+const buildListPayloadSummary = (payload: Record<string, unknown> | null) => {
+  if (!payload) return null;
+
+  const electricityCups = getNestedString(payload, [
+    "electricity",
+    "clientData",
+    "cups",
+  ]);
+  const gasCups = getNestedString(payload, ["gas", "clientData", "cups"]);
+
+  return {
+    ...(typeof payload.type === "string" ? { type: payload.type } : {}),
+    ...(electricityCups
+      ? { electricity: { clientData: { cups: electricityCups } } }
+      : {}),
+    ...(gasCups ? { gas: { clientData: { cups: gasCups } } } : {}),
+    ...(Object.prototype.hasOwnProperty.call(payload, "selectedOffer")
+      ? { selectedOffer: payload.selectedOffer }
+      : {}),
+  };
+};
+
 /**
  * @swagger
  * /api/v1/internal/simulations:
@@ -311,7 +351,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         client: { select: { id: true, name: true } },
         versions: {
           orderBy: { createdAt: "desc" },
-          take: 20,
+          // The list only needs a compact payload summary (type, CUPS, selectedOffer).
+          // A small recent window preserves legacy selectedOffer patch versions while
+          // avoiding deserializing large historical calculation payloads for every row.
+          take: 5,
           select: { payloadJson: true },
         },
       },
@@ -324,17 +367,18 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   // Attach payloadJson and extract CUPS from latest version
   const items = simulations.map((sim) => {
-    const payload = mergeVersionPayloads(sim.versions) as any;
+    const payload = mergeVersionPayloads(sim.versions);
+    const payloadSummary = buildListPayloadSummary(payload);
     const cupsNumber =
-      payload?.electricity?.clientData?.cups ||
-      payload?.gas?.clientData?.cups ||
+      getNestedString(payloadSummary, ["electricity", "clientData", "cups"]) ||
+      getNestedString(payloadSummary, ["gas", "clientData", "cups"]) ||
       null;
 
-    const { versions, publicToken, ...simWithoutVersions } = sim;
+    const { versions, ...simWithoutVersions } = sim;
     return {
       ...simWithoutVersions,
-      hasPublicToken: Boolean(publicToken),
-      payloadJson: payload ?? null,
+      hasPublicToken: Boolean(sim.publicToken),
+      payloadJson: payloadSummary,
       cupsNumber,
     };
   });

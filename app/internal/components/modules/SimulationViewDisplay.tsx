@@ -78,12 +78,12 @@ function Field({ label, value, mono }: { label: string; value: React.ReactNode; 
 function FormLikeSection({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
     return (
         <div className="simulation-view-section simulation-form-section simulation-form-section--block" style={{
-            background: "var(--scheme-neutral-1200)",
-            border: "1px solid var(--scheme-neutral-850, var(--scheme-neutral-900))",
-            borderRadius: 8,
+            background: "linear-gradient(180deg, color-mix(in srgb, var(--scheme-neutral-1200) 94%, var(--scheme-neutral-1000)), var(--scheme-neutral-1200))",
+            border: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800))",
+            borderRadius: 12,
             padding: "clamp(14px, 4vw, 24px)",
             marginBottom: 24,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            boxShadow: "var(--scheme-shadow-soft)",
         }}>
             <div style={{
                 display: "flex",
@@ -163,9 +163,9 @@ function ReadOnlyInputField({
                 display: "flex",
                 alignItems: "center",
                 padding: "7px 12px",
-                border: "1px solid var(--scheme-neutral-800)",
-                borderRadius: 6,
-                background: "var(--scheme-neutral-1150, var(--scheme-neutral-1100))",
+                border: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 72%, var(--scheme-neutral-800))",
+                borderRadius: 9,
+                background: "var(--scheme-neutral-1200)",
                 color: isEmpty ? "var(--scheme-neutral-600)" : "var(--scheme-neutral-200)",
                 fontSize: 14,
                 fontFamily: mono ? "monospace" : undefined,
@@ -309,7 +309,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
 
     return (
         <div className="simulation-view-display">
-            <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3.5 }}>
+            <Box className="simulation-detail-tabs" sx={{ mb: 3.5 }}>
                 <Tabs
                     value={activeTab}
                     onChange={(_, value: "inputs" | "results") => setActiveTab(value)}

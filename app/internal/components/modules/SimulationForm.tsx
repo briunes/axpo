@@ -567,11 +567,11 @@ function Sec({ title, children, block, collapsible, defaultOpen = true, optional
         <div className={block ? "simulation-form-section simulation-form-section--block" : "simulation-form-section"} style={{
             marginBottom: 24,
             ...(block ? {
-                background: "var(--scheme-neutral-1200)",
-                border: `1px solid var(--scheme-neutral-${complete ? '700' : '900'}, rgba(255,255,255,0.08))`,
+                background: "linear-gradient(180deg, color-mix(in srgb, var(--scheme-neutral-1200) 94%, var(--scheme-neutral-1000)), var(--scheme-neutral-1200))",
+                border: `1px solid ${complete ? "var(--scheme-neutral-800)" : "color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800))"}`,
                 borderRadius: 12,
                 padding: "clamp(14px, 4vw, 24px)",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.03)",
+                boxShadow: "var(--scheme-shadow-soft)",
             } : {})
         }}>
             <div
@@ -759,7 +759,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     return (
         <>
             {/* Progress indicator */}
-            <div style={{
+            <div className="simulation-input-progress-card" style={{
                 marginBottom: 28,
                 padding: "16px 20px",
                 background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",
@@ -1061,7 +1061,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
     return (
         <>
             {/* Progress indicator */}
-            <div style={{
+            <div className="simulation-input-progress-card" style={{
                 marginBottom: 28,
                 padding: "16px 20px",
                 background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",
@@ -1650,7 +1650,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
     return (
         <div>
-            <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3.5 }}>
+            <Box className="simulation-detail-tabs" sx={{ mb: 3.5 }}>
                 <Tabs
                     value={activeTab}
                     onChange={(_, value: "inputs" | "results") => void handleTabClick(value)}
@@ -1681,7 +1681,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 <div>
                     {/* OCR disclaimer */}
                     {isOcrFilled && (
-                        <div style={{
+                        <div className="simulation-input-notice-card simulation-input-notice-card--warning" style={{
                             display: "flex",
                             alignItems: "flex-start",
                             gap: 8,
@@ -1699,7 +1699,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                     )}
 
                     {/* Commodity type indicator (read-only) */}
-                    <div style={{
+                    <div className="simulation-input-utility-card" style={{
                         marginBottom: 28,
                         padding: "12px 16px",
                         background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",

@@ -1,12 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 interface ForbiddenStateProps {
     section?: string;
 }
 
 export function ForbiddenState({ section }: ForbiddenStateProps) {
+    const { t } = useI18n();
     const router = useRouter();
 
     return (
@@ -40,7 +42,7 @@ export function ForbiddenState({ section }: ForbiddenStateProps) {
                     margin: 0,
                 }}
             >
-                Access Denied
+                {t("forbiddenState", "title")}
             </h2>
             <p
                 style={{
@@ -52,8 +54,8 @@ export function ForbiddenState({ section }: ForbiddenStateProps) {
                 }}
             >
                 {section
-                    ? `Your role does not have permission to access the "${section}" section.`
-                    : "Your role does not have permission to access this section."}
+                    ? t("forbiddenState", "withSection", { section })
+                    : t("forbiddenState", "generic")}
             </p>
             <button
                 onClick={() => router.push("/internal/simulations")}
@@ -69,7 +71,7 @@ export function ForbiddenState({ section }: ForbiddenStateProps) {
                     fontWeight: 500,
                 }}
             >
-                ← Back to Simulations
+                {t("common", "backToSimulations")}
             </button>
         </div>
     );

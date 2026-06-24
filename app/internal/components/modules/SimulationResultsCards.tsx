@@ -7,7 +7,7 @@ import { FormSelect } from "../ui/FormSelect";
 import { CurrencyInput } from "../ui/CurrencyInput";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { alpha, useTheme } from "@mui/material/styles";
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Radio, Stack, Tab, Tabs, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Radio, Stack, Tab, Tabs, Typography, useMediaQuery } from "@mui/material";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import BoltIcon from "@mui/icons-material/Bolt";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -71,9 +71,9 @@ function fmt(n: number, digits = 2): string {
 }
 
 const uiColors = {
-    surface: "var(--scheme-neutral-1200)",
-    surfaceRaised: "var(--scheme-neutral-1100)",
-    surfaceMuted: "var(--scheme-neutral-1000)",
+    surface: "var(--scheme-surface-raised)",
+    surfaceRaised: "var(--scheme-surface-raised-muted)",
+    surfaceMuted: "var(--scheme-surface-raised-subtle)",
     border: "var(--scheme-neutral-900)",
     borderStrong: "var(--scheme-neutral-800)",
     text: "var(--scheme-neutral-100)",
@@ -175,6 +175,7 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
         cursor: "pointer",
         userSelect: "none",
         whiteSpace: "nowrap",
+        background: "color-mix(in srgb, var(--scheme-surface-raised) 82%, var(--scheme-surface-raised-subtle))",
     });
 
     return (
@@ -182,8 +183,8 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
             background: uiColors.surface,
             borderRadius: 12,
             overflow: "hidden",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.14)",
-            border: `1px solid ${uiColors.border}`,
+            boxShadow: "var(--scheme-shadow-soft)",
+            border: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800))",
         }}>
             <table className="simulation-offers-table" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
@@ -199,6 +200,7 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                 letterSpacing: "0.05em",
                                 borderBottom: `2px solid ${uiColors.border}`,
                                 width: "80px",
+                                background: "color-mix(in srgb, var(--scheme-surface-raised) 82%, var(--scheme-surface-raised-subtle))",
                             }}>
                                 {t("simulationOffersCards", "colSelect")}
                             </th>
@@ -535,10 +537,11 @@ function EditableInputPanel({
             sx={{
                 mt: 1,
                 border: "1px solid",
-                borderColor: "divider",
-                borderRadius: "6px !important",
-                bgcolor: "transparent",
+                borderColor: "color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent)",
+                borderRadius: "9px !important",
+                bgcolor: "color-mix(in srgb, var(--scheme-surface-raised) 70%, var(--scheme-surface-raised-subtle))",
                 "&::before": { display: "none" },
+                overflow: "hidden",
             }}
         >
             <AccordionSummary
@@ -568,11 +571,11 @@ function EditableInputPanel({
             height: "100%",
             overflowY: "auto",
             boxSizing: "border-box",
-            background: uiColors.surface,
+            background: "linear-gradient(180deg, color-mix(in srgb, var(--scheme-surface-raised) 88%, var(--scheme-surface-raised-subtle)), var(--scheme-surface-raised))",
             borderRadius: 12,
             padding: 16,
-            boxShadow: "0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.04)",
-            border: `1px solid ${uiColors.border}`,
+            boxShadow: "var(--scheme-shadow-soft)",
+            border: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800))",
         }}>
             <h3 style={{
                 margin: "0 0 12px 0",
@@ -912,6 +915,8 @@ export function SimulationResultsCards({
     onUpdateGasPersonalizadaFijo,
 }: SimulationResultsCardsProps) {
     const { t, locale } = useI18n();
+    const theme = useTheme();
+    const showOfferTabScrollButtons = useMediaQuery(theme.breakpoints.down("sm"), { noSsr: true });
     const [elecTab, setElecTab] = useState<"all" | "fixed" | "indexed" | "personalizadas">("all");
     const [gasTab, setGasTab] = useState<"all" | "fixed" | "indexed" | "personalizadas">("all");
     const [pendingOffer, setPendingOffer] = useState<PendingOffer | null>(null);
@@ -970,9 +975,9 @@ export function SimulationResultsCards({
             <div className="simulation-results-grid" style={{
                 display: "grid",
                 gridTemplateColumns: "minmax(280px, 320px) minmax(0, 1fr)",
-                gap: 16,
+                gap: 18,
                 alignItems: "stretch",
-                height: "calc(100vh - 180px)",
+                height: "min(760px, calc(100vh - 220px))",
                 minHeight: 520,
                 overflow: "hidden",
             }}>
@@ -1005,7 +1010,7 @@ export function SimulationResultsCards({
                 />
 
                 {/* Right side - Product tables */}
-                <div className="simulation-results-offers-pane" style={{ minHeight: 0, minWidth: 0, height: "100%", overflowY: "auto", paddingRight: 4 }}>
+                <div className="simulation-results-offers-pane" style={{ minHeight: 0, minWidth: 0, height: "100%", paddingRight: 6 }}>
                     {/* Electricity section */}
                     {hasElec && (() => {
                         const elecProducts = [...results.electricity!].sort((a, b) => b.ahorro - a.ahorro);
@@ -1027,7 +1032,7 @@ export function SimulationResultsCards({
                                     : indexedProducts;
 
                         return (
-                            <div className="simulation-results-offer-section" style={{ marginBottom: 40 }}>
+                            <div className="simulation-results-offer-section">
                                 <h2 className="simulation-results-offer-heading" style={{
                                     margin: "0 0 16px 0",
                                     fontSize: 20,
@@ -1058,11 +1063,11 @@ export function SimulationResultsCards({
                                     textColor="primary"
                                     indicatorColor="primary"
                                     variant="scrollable"
-                                    scrollButtons="auto"
+                                    scrollButtons={showOfferTabScrollButtons ? "auto" : false}
+                                    allowScrollButtonsMobile
                                     sx={{
                                         mb: 2,
-                                        borderBottom: 1,
-                                        borderColor: "divider",
+                                        borderBottom: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent)",
                                         minHeight: 40,
                                         "& .MuiTab-root": {
                                             minHeight: 40,
@@ -1169,11 +1174,11 @@ export function SimulationResultsCards({
                                     textColor="primary"
                                     indicatorColor="primary"
                                     variant="scrollable"
-                                    scrollButtons="auto"
+                                    scrollButtons={showOfferTabScrollButtons ? "auto" : false}
+                                    allowScrollButtonsMobile
                                     sx={{
                                         mb: 2,
-                                        borderBottom: 1,
-                                        borderColor: "divider",
+                                        borderBottom: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent)",
                                         minHeight: 40,
                                         "& .MuiTab-root": {
                                             minHeight: 40,
@@ -1227,29 +1232,6 @@ export function SimulationResultsCards({
                         );
                     })()}
 
-                    {/* Footer info */}
-                    <div className="simulation-results-footer" style={{
-                        marginTop: 32,
-                        padding: 16,
-                        background: uiColors.surfaceRaised,
-                        borderRadius: 8,
-                        border: `1px solid ${uiColors.border}`,
-                        fontSize: 11,
-                        color: uiColors.textMuted,
-                        fontWeight: 500,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                    }}>
-                        <div>
-                            {t("simulationOffersCards", "calculatedAt")} {new Date(results.calculatedAt).toLocaleString()}
-                        </div>
-                        <div>
-                            {t("simulationOffersCards", "priceBase")} <span style={{ color: uiColors.text, fontWeight: 700, fontFamily: "monospace" }}>
-                                {results.baseValueSetId.slice(0, 12)}…
-                            </span>
-                        </div>
-                    </div>
                 </div>
 
             </div>

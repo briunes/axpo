@@ -1,8 +1,6 @@
 "use client";
 
-import { Stack, Divider } from "@mui/material";
-import { useRouter } from "next/navigation";
-import { ChevronLeftIcon } from "../ui/icons";
+import { Stack } from "@mui/material";
 
 export interface CrudPageLayoutProps {
     title: string;
@@ -12,6 +10,7 @@ export interface CrudPageLayoutProps {
     children: React.ReactNode;
     actions?: React.ReactNode;
     maxWidth?: number;
+    hideHeader?: boolean;
 }
 
 /**
@@ -22,38 +21,33 @@ export interface CrudPageLayoutProps {
 export function CrudPageLayout({
     title,
     subtitle,
-    backLabel = "Back",
-    backHref,
     children,
     actions,
     maxWidth,
+    hideHeader = false,
 }: CrudPageLayoutProps) {
-    const router = useRouter();
-
-    const handleBack = () => {
-        if (backHref) {
-            router.push(backHref);
-        } else {
-            router.back();
-        }
-    };
-
     return (
-        <Stack spacing={0} sx={{ maxWidth: maxWidth ?? '100%', width: '100%' }}>
-            {/* Header with back navigation */}
-            <div className="crud-page-header">
-                <div className="crud-page-title-section">
-                    <div>
-                        <h2 className="section-title">{title}</h2>
-                        {subtitle && <p className="section-subtitle">{subtitle}</p>}
+        <Stack
+            spacing={0}
+            className={hideHeader ? "crud-page-frame" : "crud-page-shell"}
+            sx={{ maxWidth: maxWidth ?? "100%", width: "100%" }}
+        >
+            {!hideHeader && (
+                <>
+                    <div className="crud-page-header">
+                        <div className="crud-page-title-section">
+                            <div className="crud-page-title-copy">
+                                <h2 className="section-title">{title}</h2>
+                                {subtitle && <p className="section-subtitle">{subtitle}</p>}
+                            </div>
+                            {actions && <div className="crud-page-actions">{actions}</div>}
+                        </div>
                     </div>
-                    {actions && <div className="crud-page-actions">{actions}</div>}
-                </div>
-            </div>
 
-            <Divider sx={{ my: 3 }} />
+                    <div className="crud-page-divider" />
+                </>
+            )}
 
-            {/* Content area */}
             {children}
         </Stack>
     );

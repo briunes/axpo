@@ -73,7 +73,7 @@ function MagicLinkVerifyContent() {
                     <img src="/axpo-mark.svg" className={styles.brandMark} width={72} height={72} alt="AXPO" />
                     <div className={styles.brandName}>AXPO</div>
                     <div className={styles.brandDivider} />
-                    <div className={styles.brandProduct}>OFFERS SIMULATOR</div>
+                    <div className={styles.brandProduct}>{t("common", "offersSimulator")}</div>
                 </div>
 
                 <div className={styles.formPanel}>

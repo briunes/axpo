@@ -3,11 +3,11 @@
 import { useI18n } from '../../src/lib/i18n-context';
 
 export function LanguageSwitcher() {
-    const { locale, setLocale } = useI18n();
+    const { locale, setLocale, t } = useI18n();
 
     return (
         <div style={{ padding: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <span style={{ marginRight: '10px' }}>Language:</span>
+            <span style={{ marginRight: '10px' }}>{t("common", "language")}</span>
             <button
                 onClick={() => setLocale('en')}
                 style={{
@@ -20,7 +20,7 @@ export function LanguageSwitcher() {
                     fontWeight: locale === 'en' ? 'bold' : 'normal',
                 }}
             >
-                English
+                {t("common", "english")}
             </button>
             <button
                 onClick={() => setLocale('es')}
@@ -34,7 +34,7 @@ export function LanguageSwitcher() {
                     fontWeight: locale === 'es' ? 'bold' : 'normal',
                 }}
             >
-                Español
+                {t("common", "spanish")}
             </button>
         </div>
     );

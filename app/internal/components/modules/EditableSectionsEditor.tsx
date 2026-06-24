@@ -8,6 +8,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "../../../../src/lib/i18n-context";
 import type { EditableSectionsConfig, EditableSectionDefinition } from "../../../../src/infrastructure/templates/editableSections";
 
 interface EditableSectionsEditorProps {
@@ -16,6 +17,7 @@ interface EditableSectionsEditorProps {
 }
 
 export function EditableSectionsEditor({ value, onChange }: EditableSectionsEditorProps) {
+  const { t } = useI18n();
   const [sections, setSections] = useState<EditableSectionsConfig>(value || {});
   const [newSectionKey, setNewSectionKey] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
@@ -55,32 +57,31 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
   return (
     <div className="editable-sections-editor">
       <div className="sections-header">
-        <h4>Editable Sections</h4>
+        <h4>{t("editableSectionsEditor", "title")}</h4>
         <button
           type="button"
           className="btn-add-section"
           onClick={() => setShowAddForm(!showAddForm)}
         >
-          {showAddForm ? "Cancel" : "+ Add Section"}
+          {showAddForm ? t("actions", "cancel") : t("editableSectionsEditor", "addSection")}
         </button>
       </div>
 
       <p className="sections-description">
-        Define which parts of this template users can edit when using it.
-        Each section will appear in the draggable variables list and can be used like <code>{'{{SECTION_KEY}}'}</code>
+        {t("editableSectionsEditor", "description")} <code>{'{{SECTION_KEY}}'}</code>
       </p>
 
       {showAddForm && (
         <div className="add-section-form">
           <input
             type="text"
-            placeholder="SECTION_KEY (e.g., INTRO_TEXT)"
+            placeholder={t("editableSectionsEditor", "sectionKeyPlaceholder")}
             value={newSectionKey}
             onChange={(e) => setNewSectionKey(e.target.value.toUpperCase().replace(/[^A-Z_]/g, ""))}
             onKeyDown={(e) => e.key === "Enter" && handleAddSection()}
           />
           <button type="button" onClick={handleAddSection}>
-            Add
+            {t("common", "add")}
           </button>
         </div>
       )}
@@ -88,7 +89,7 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
       <div className="sections-list">
         {Object.keys(sections).length === 0 ? (
           <p className="no-sections">
-            No editable sections defined. Add sections to allow users to customize specific parts of this template.
+            {t("editableSectionsEditor", "empty")}
           </p>
         ) : (
           Object.entries(sections).map(([key, section]) => (
@@ -99,7 +100,7 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
                   type="button"
                   className="btn-remove"
                   onClick={() => handleRemoveSection(key)}
-                  title="Remove section"
+                  title={t("editableSectionsEditor", "removeSection")}
                 >
                   ×
                 </button>
@@ -107,32 +108,32 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
 
               <div className="section-fields">
                 <div className="field">
-                  <label>Label:</label>
+                  <label>{t("editableSectionsEditor", "label")}</label>
                   <input
                     type="text"
                     value={section.label}
                     onChange={(e) => handleUpdateSection(key, { label: e.target.value })}
-                    placeholder="Display name"
+                    placeholder={t("editableSectionsEditor", "labelPlaceholder")}
                   />
                 </div>
 
                 <div className="field">
-                  <label>Description:</label>
+                  <label>{t("editableSectionsEditor", "descriptionLabel")}</label>
                   <input
                     type="text"
                     value={section.description || ""}
                     onChange={(e) => handleUpdateSection(key, { description: e.target.value })}
-                    placeholder="Help text (optional)"
+                    placeholder={t("editableSectionsEditor", "descriptionPlaceholder")}
                   />
                 </div>
 
                 <div className="field full-width">
-                  <label>Default Text:</label>
+                  <label>{t("editableSectionsEditor", "defaultText")}</label>
                   {section.multiline ? (
                     <textarea
                       value={section.default}
                       onChange={(e) => handleUpdateSection(key, { default: e.target.value })}
-                      placeholder="Default text content..."
+                      placeholder={t("editableSectionsEditor", "defaultTextPlaceholder")}
                       rows={3}
                     />
                   ) : (
@@ -140,7 +141,7 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
                       type="text"
                       value={section.default}
                       onChange={(e) => handleUpdateSection(key, { default: e.target.value })}
-                      placeholder="Default text content..."
+                      placeholder={t("editableSectionsEditor", "defaultTextPlaceholder")}
                     />
                   )}
                 </div>
@@ -152,7 +153,7 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
                       checked={section.multiline || false}
                       onChange={(e) => handleUpdateSection(key, { multiline: e.target.checked })}
                     />
-                    Multiline
+                    {t("editableSectionsEditor", "multiline")}
                   </label>
 
                   <label className="checkbox-label">
@@ -161,11 +162,11 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
                       checked={section.required || false}
                       onChange={(e) => handleUpdateSection(key, { required: e.target.checked })}
                     />
-                    Required
+                    {t("editableSectionsEditor", "required")}
                   </label>
 
                   <div className="field max-length">
-                    <label>Max Length:</label>
+                    <label>{t("editableSectionsEditor", "maxLength")}</label>
                     <input
                       type="number"
                       value={section.maxLength || ""}
@@ -174,7 +175,7 @@ export function EditableSectionsEditor({ value, onChange }: EditableSectionsEdit
                           maxLength: e.target.value ? parseInt(e.target.value) : undefined,
                         })
                       }
-                      placeholder="No limit"
+                      placeholder={t("editableSectionsEditor", "noLimit")}
                       min="1"
                     />
                   </div>

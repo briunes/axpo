@@ -74,7 +74,7 @@ export function CrudFormContainer({
     }, [submitLabel, cancelLabel, isSubmitting]);
 
     return (
-        <Stack spacing={3}>
+        <Stack spacing={3} className="crud-form-panel">
             {/* Error/Success messages */}
             {errorMessage && (
                 <div className="crud-alert crud-alert--error">

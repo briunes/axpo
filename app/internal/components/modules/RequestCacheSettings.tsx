@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Box, Button, Stack, Switch, TextField, Typography } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
+import { useI18n } from "../../../../src/lib/i18n-context";
 import { getSystemConfig, updateSystemConfig } from "../../lib/configApi";
 import {
   normalizeRequestCacheConfig,
@@ -23,6 +24,7 @@ const durationToMinutes = (ms: number) => Math.round((ms / 60_000) * 100) / 100;
 const minutesToDuration = (minutes: number) => Math.round(minutes * 60_000);
 
 export function RequestCacheSettings({ onNotify }: RequestCacheSettingsProps) {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const [config, setConfig] = useState<RequestCacheConfig>(() =>
     normalizeRequestCacheConfig(null),
@@ -42,7 +44,7 @@ export function RequestCacheSettings({ onNotify }: RequestCacheSettingsProps) {
           setIsDirty(false);
         }
       } catch (error) {
-        onNotify("Failed to load cache configuration", "error");
+        onNotify(t("requestCache", "loadError"), "error");
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -77,9 +79,9 @@ export function RequestCacheSettings({ onNotify }: RequestCacheSettingsProps) {
       });
       setConfig(nextConfig);
       setIsDirty(false);
-      onNotify("Cache configuration saved", "success");
+      onNotify(t("requestCache", "saveSuccess"), "success");
     } catch (error) {
-      onNotify("Failed to save cache configuration", "error");
+      onNotify(t("requestCache", "saveError"), "error");
     } finally {
       setIsSaving(false);
     }
@@ -91,14 +93,14 @@ export function RequestCacheSettings({ onNotify }: RequestCacheSettingsProps) {
   };
 
   if (isLoading) {
-    return <LoadingState message="Loading cache configuration..." />;
+    return <LoadingState message={t("requestCache", "loading")} />;
   }
 
   return (
     <div className="settings-panel">
-      <h3 className="settings-panel-title">Request Cache</h3>
+      <h3 className="settings-panel-title">{t("requestCache", "title")}</h3>
       <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
-        Configure TanStack Query freshness per module. Automatic refetch uses the cache duration as the refresh interval.
+        {t("requestCache", "description")}
       </Typography>
 
       <Stack spacing={1.5}>
@@ -122,7 +124,7 @@ export function RequestCacheSettings({ onNotify }: RequestCacheSettingsProps) {
                   {REQUEST_CACHE_MODULE_LABELS[module]}
                 </Typography>
                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                  Query data remains fresh for the configured duration.
+                  {t("requestCache", "moduleDescription")}
                 </Typography>
               </Box>
 
@@ -134,14 +136,14 @@ export function RequestCacheSettings({ onNotify }: RequestCacheSettingsProps) {
                   }
                 />
                 <Typography variant="body2">
-                  {moduleConfig.enabled ? "Active" : "Inactive"}
+                  {moduleConfig.enabled ? t("common", "active") : t("common", "inactive")}
                 </Typography>
               </Box>
 
               <TextField
                 size="small"
                 type="number"
-                label="Cache minutes"
+                label={t("requestCache", "cacheMinutes")}
                 value={durationToMinutes(moduleConfig.durationMs)}
                 disabled={!moduleConfig.enabled}
                 slotProps={{ htmlInput: { min: 0.08, max: 1440, step: 1 } }}
@@ -163,7 +165,7 @@ export function RequestCacheSettings({ onNotify }: RequestCacheSettingsProps) {
                     })
                   }
                 />
-                <Typography variant="body2">Refetch on expiry</Typography>
+                <Typography variant="body2">{t("requestCache", "refetchOnExpiry")}</Typography>
               </Box>
             </Box>
           );
@@ -172,14 +174,14 @@ export function RequestCacheSettings({ onNotify }: RequestCacheSettingsProps) {
 
       <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5, mt: 3 }}>
         <Button variant="outlined" onClick={handleReset} disabled={isSaving}>
-          Reset defaults
+          {t("requestCache", "resetDefaults")}
         </Button>
         <Button
           variant="contained"
           onClick={handleSave}
           disabled={!isDirty || isSaving}
         >
-          Save changes
+          {t("actions", "saveChanges")}
         </Button>
       </Box>
     </div>

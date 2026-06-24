@@ -239,121 +239,123 @@ export default function EditAgencyPage({
         </>
       }
     >
-      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
-        <Tabs
-          value={activeTab}
-          onChange={(_, newValue) => setActiveTab(newValue)}
-        >
-          <Tab label={t("agencyFormPage", "tabDetails")} />
-          <Tab label={t("agencyFormPage", "tabUsers")} />
-          {isTlv && <Tab label={t("agencyFormPage", "tabTlvProducts")} />}
-          {false && <Tab label={t("agencyFormPage", "tabTariffs")} />}
-        </Tabs>
-      </Box>
-      <Box sx={{ display: activeTab === 0 ? "block" : "none" }}>
-        <CrudFormContainer
-          onSubmit={handleSubmit}
-          errorMessage={errorMessage}
-          submitLabel={t("actions", "saveChanges")}
-          cancelLabel={t("actions", "cancel")}
-          onCancel={() => router.push("/internal/agencies")}
-          isSubmitting={isSubmitting}
-          onRenderActions={setFormActions}
-        >
-          <Stack spacing={2}>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) auto" },
-                alignItems: "flex-end",
-                columnGap: 3,
-                rowGap: 1.5,
-              }}
-            >
-              <FormInput
-                label={t("agencyFormPage", "nameLabel")}
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName((e.target as HTMLInputElement).value);
-                  clearError("name");
-                }}
-                autoFocus
-                required
-                disabled={isSubmitting}
-                error={!!validationErrors.name}
-                helperText={validationErrors.name}
-              />
-              <FormControlLabel
-                sx={{
-                  mb: validationErrors.name ? "24px" : 0,
-                  mr: 0,
-                  minHeight: "37px",
-                  whiteSpace: "nowrap",
-                }}
-                control={
-                  <Switch
-                    checked={isTlv}
-                    onChange={(event) => setIsTlv(event.target.checked)}
-                    disabled={isSubmitting}
-                  />
-                }
-                label={t("agencyFormPage", "tlvAgencyLabel")}
-              />
-            </Box>
-            <AddressForm
-              value={address}
-              onChange={setAddress}
-              disabled={isSubmitting}
-            />
-          </Stack>
-        </CrudFormContainer>
-      </Box>
-      {activeTab === 1 && (
-        <Box>
-          <Box sx={{ mb: 2 }}>
-            <h3 style={{ margin: 0, marginBottom: "4px", fontSize: "1.1rem" }}>
-              {t("agencyFormPage", "assignedUsers")}
-            </h3>
-            <p style={{ margin: 0, fontSize: "0.875rem", color: "#666" }}>
-              {t("agencyFormPage", "assignedUsersSubtitle")}
-            </p>
-          </Box>
-          <DataTable<UserItem>
-            columns={userColumns}
-            rows={users}
-            loading={loadingUsers}
-            onClearFilters={() => undefined}
-            hasActiveFilters={false}
-            emptyMessage={t("agencyFormPage", "noUsers")}
-            t={t}
-          />
+      <Box className="crud-tab-panel">
+        <Box className="crud-tab-panel__tabs">
+          <Tabs
+            value={activeTab}
+            onChange={(_, newValue) => setActiveTab(newValue)}
+          >
+            <Tab label={t("agencyFormPage", "tabDetails")} />
+            <Tab label={t("agencyFormPage", "tabUsers")} />
+            {isTlv && <Tab label={t("agencyFormPage", "tabTlvProducts")} />}
+            {false && <Tab label={t("agencyFormPage", "tabTariffs")} />}
+          </Tabs>
         </Box>
-      )}
-      <Box sx={{ display: activeTab === 3 ? "block" : "none" }}>
-        <AgencyTariffConfig
-          agencyId={agency.id}
-          token={session.token}
-          hideSaveButton
-          onTariffsChange={setTariffsDraft}
-          onNotify={(msg, type) =>
-            type === "error" ? showError(msg) : showSuccess(msg)
-          }
-        />
-      </Box>
-      {isTlv && (
-        <Box sx={{ display: activeTab === 2 ? "block" : "none" }}>
-          <AgencyTlvProductConfig
+        <Box sx={{ display: activeTab === 0 ? "block" : "none" }}>
+          <CrudFormContainer
+            onSubmit={handleSubmit}
+            errorMessage={errorMessage}
+            submitLabel={t("actions", "saveChanges")}
+            cancelLabel={t("actions", "cancel")}
+            onCancel={() => router.push("/internal/agencies")}
+            isSubmitting={isSubmitting}
+            onRenderActions={setFormActions}
+          >
+            <Stack spacing={2}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) auto" },
+                  alignItems: "flex-end",
+                  columnGap: 3,
+                  rowGap: 1.5,
+                }}
+              >
+                <FormInput
+                  label={t("agencyFormPage", "nameLabel")}
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    setName((e.target as HTMLInputElement).value);
+                    clearError("name");
+                  }}
+                  autoFocus
+                  required
+                  disabled={isSubmitting}
+                  error={!!validationErrors.name}
+                  helperText={validationErrors.name}
+                />
+                <FormControlLabel
+                  sx={{
+                    mb: validationErrors.name ? "24px" : 0,
+                    mr: 0,
+                    minHeight: "37px",
+                    whiteSpace: "nowrap",
+                  }}
+                  control={
+                    <Switch
+                      checked={isTlv}
+                      onChange={(event) => setIsTlv(event.target.checked)}
+                      disabled={isSubmitting}
+                    />
+                  }
+                  label={t("agencyFormPage", "tlvAgencyLabel")}
+                />
+              </Box>
+              <AddressForm
+                value={address}
+                onChange={setAddress}
+                disabled={isSubmitting}
+              />
+            </Stack>
+          </CrudFormContainer>
+        </Box>
+        {activeTab === 1 && (
+          <Box>
+            <Box sx={{ mb: 2 }}>
+              <h3 style={{ margin: 0, marginBottom: "4px", fontSize: "1.1rem" }}>
+                {t("agencyFormPage", "assignedUsers")}
+              </h3>
+              <p style={{ margin: 0, fontSize: "0.875rem", color: "#666" }}>
+                {t("agencyFormPage", "assignedUsersSubtitle")}
+              </p>
+            </Box>
+            <DataTable<UserItem>
+              columns={userColumns}
+              rows={users}
+              loading={loadingUsers}
+              onClearFilters={() => undefined}
+              hasActiveFilters={false}
+              emptyMessage={t("agencyFormPage", "noUsers")}
+              t={t}
+            />
+          </Box>
+        )}
+        <Box sx={{ display: activeTab === 3 ? "block" : "none" }}>
+          <AgencyTariffConfig
             agencyId={agency.id}
             token={session.token}
             hideSaveButton
-            onProductsChange={setProductsDraft}
+            onTariffsChange={setTariffsDraft}
             onNotify={(msg, type) =>
               type === "error" ? showError(msg) : showSuccess(msg)
             }
           />
         </Box>
-      )}
+        {isTlv && (
+          <Box sx={{ display: activeTab === 2 ? "block" : "none" }}>
+            <AgencyTlvProductConfig
+              agencyId={agency.id}
+              token={session.token}
+              hideSaveButton
+              onProductsChange={setProductsDraft}
+              onNotify={(msg, type) =>
+                type === "error" ? showError(msg) : showSuccess(msg)
+              }
+            />
+          </Box>
+        )}
+      </Box>
       {session && (
         <AuditLogsModal
           open={showAuditLogsModal}

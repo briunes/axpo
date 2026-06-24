@@ -197,6 +197,46 @@ input[type="number"] {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
+.analytics-dashboard {
+  min-width: 0;
+}
+
+.analytics-dashboard .panel-card {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--scheme-surface-raised) 92%, var(--scheme-surface-raised-subtle)), var(--scheme-surface-raised));
+  border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800));
+  border-radius: 12px;
+  box-shadow: var(--scheme-shadow-soft);
+}
+
+.analytics-dashboard .panel-card:hover {
+  box-shadow: var(--scheme-shadow-medium);
+}
+
+.analytics-dashboard .analytics-funnel-stage > div {
+  background: var(--scheme-surface-raised-muted) !important;
+  border-width: 1px !important;
+  box-shadow: none;
+}
+
+.analytics-dashboard .analytics-funnel-arrow {
+  color: color-mix(in srgb, var(--scheme-neutral-400) 82%, transparent) !important;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: var(--scheme-surface-raised);
+  border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, transparent);
+  border-radius: 999px;
+  box-shadow: var(--scheme-shadow-soft);
+  font-size: 20px !important;
+  line-height: 1;
+}
+
+.analytics-dashboard .dt-root {
+  box-shadow: var(--scheme-shadow-soft);
+}
+
 .analytics-funnel-stage {
   min-width: 0;
 }
@@ -412,6 +452,14 @@ textarea {
   .analytics-funnel-arrow {
     display: none;
   }
+
+  .analytics-dashboard {
+    gap: 16px !important;
+  }
+
+  .analytics-dashboard .panel-card {
+    border-radius: 10px !important;
+  }
 }
 
 @media (max-width: 560px) {
@@ -429,6 +477,10 @@ textarea {
   .topbar-card,
   .login-panel {
     box-shadow: none;
+  }
+
+  .analytics-dashboard .panel-card {
+    box-shadow: var(--scheme-shadow-soft);
   }
 
   .data-table th,
@@ -464,6 +516,7 @@ textarea {
   height: 100%;
   background: var(--scheme-surface-chrome);
   border-right: 1px solid var(--scheme-neutral-900);
+  box-shadow: 8px 0 30px rgba(16, 24, 40, 0.04);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -484,6 +537,7 @@ textarea {
   height: 56px;
   padding: 0 12px 0 14px;
   border-bottom: 1px solid var(--scheme-neutral-900);
+  background: color-mix(in srgb, var(--scheme-surface-chrome) 92%, var(--scheme-neutral-1000));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -617,9 +671,9 @@ textarea {
   align-items: center;
   gap: 10px;
   padding: 9px 8px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background 150ms, color 150ms;
+  transition: background 150ms, color 150ms, box-shadow 150ms, transform 150ms;
   white-space: nowrap;
   overflow: hidden;
   border: none;
@@ -637,13 +691,15 @@ textarea {
 .app-nav-item:hover {
   background: var(--scheme-neutral-1100);
   color: var(--scheme-neutral-200);
+  transform: translateX(1px);
 }
 
 .app-nav-item.active {
-  background: rgba(255, 50, 84, 0.08);
+  background: linear-gradient(90deg, rgba(255, 50, 84, 0.13), rgba(255, 50, 84, 0.07));
   color: var(--scheme-brand-600);
   font-weight: 600;
   border-left-color: var(--scheme-brand-600);
+  box-shadow: inset 0 0 0 1px rgba(255, 50, 84, 0.08), 0 8px 18px rgba(255, 50, 84, 0.08);
 }
 
 .app-nav-item .nav-icon {
@@ -763,12 +819,13 @@ textarea {
 /* ─── Top bar ─────────────────────────────────────────────── */
 .app-topbar {
   min-height: 56px;
-  padding: 8px 24px;
+  padding: 8px 28px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--scheme-neutral-900);
   background: var(--scheme-surface-chrome);
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.03), 0 8px 26px rgba(16, 24, 40, 0.04);
   flex-shrink: 0;
   gap: 16px;
 }
@@ -831,8 +888,8 @@ textarea {
   width: 32px;
   height: 32px;
   border: 1px solid var(--scheme-neutral-900);
-  border-radius: 6px;
-  background: transparent;
+  border-radius: 8px;
+  background: var(--scheme-neutral-1200);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -846,6 +903,7 @@ textarea {
   background: var(--scheme-neutral-1000);
   color: var(--scheme-neutral-300);
   border-color: var(--scheme-neutral-800);
+  box-shadow: var(--scheme-shadow-soft);
 }
 
 .topbar-hamburger {
@@ -857,6 +915,9 @@ textarea {
   flex: 1;
   overflow-y: auto;
   padding: 32px 28px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--scheme-neutral-1200) 58%, transparent), transparent 180px),
+    var(--scheme-surface-content);
 }
 
 /* ─── Sidebar overlay (mobile) ────────────────────────────── */
@@ -898,9 +959,9 @@ textarea {
 
 /* ─── Module page header separator ───────────────────────── */
 .module-header {
-  padding-bottom: 20px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid var(--scheme-neutral-900);
+  padding: 0 2px 18px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 78%, transparent);
 }
 
 /* ─── Login enterprise ────────────────────────────────────── */
@@ -1129,9 +1190,10 @@ textarea {
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  background: var(--scheme-neutral-1200);
-  border: 1px solid var(--scheme-neutral-900);
-  border-radius: 10px;
+  background: var(--scheme-surface-raised);
+  border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800));
+  border-radius: 12px;
+  box-shadow: var(--scheme-shadow-soft);
   overflow: hidden;
 }
 
@@ -1140,10 +1202,10 @@ textarea {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--scheme-neutral-900);
-  background: var(--scheme-neutral-1200);
-  min-height: 52px;
+  padding: 10px 16px 9px;
+  border-bottom: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent);
+  background: color-mix(in srgb, var(--scheme-surface-raised) 84%, var(--scheme-surface-raised-subtle));
+  min-height: 54px;
   flex-wrap: wrap;
 }
 
@@ -1184,16 +1246,18 @@ textarea {
 .dt-search-wrap {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--scheme-neutral-900);
-  border-radius: 8px;
-  background: var(--scheme-neutral-1100);
+  border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 72%, var(--scheme-neutral-800));
+  border-radius: 9px;
+  background: var(--scheme-surface-raised);
   overflow: hidden;
-  transition: border-color 150ms, background 150ms;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  transition: border-color 150ms, background 150ms, box-shadow 150ms;
 }
 
 .dt-search-wrap:focus-within {
   border-color: var(--scheme-brand-600);
-  background: var(--scheme-neutral-1200);
+  background: var(--scheme-surface-raised);
+  box-shadow: 0 0 0 4px rgba(255, 50, 84, 0.10), 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 
 .dt-search {
@@ -1238,8 +1302,8 @@ textarea {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--scheme-neutral-900);
+  padding: 10px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent);
   background: var(--scheme-neutral-1100);
   flex-wrap: wrap;
 }
@@ -1273,7 +1337,7 @@ textarea {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--scheme-neutral-500);
-  background: var(--scheme-neutral-1100);
+  background: color-mix(in srgb, var(--scheme-surface-raised) 78%, var(--scheme-surface-raised-subtle));
   border-bottom: 1px solid var(--scheme-neutral-900);
   white-space: nowrap;
   user-select: none;
@@ -1307,7 +1371,7 @@ textarea {
 }
 
 .dt-row {
-  transition: background 120ms;
+  transition: background 120ms, box-shadow 120ms;
 }
 
 .dt-row:nth-child(even) {
@@ -1316,6 +1380,7 @@ textarea {
 
 .dt-row:hover {
   background: rgba(255, 50, 84, 0.05);
+  box-shadow: inset 3px 0 0 rgba(255, 50, 84, 0.38);
 }
 
 .dt-td {
@@ -1776,6 +1841,34 @@ textarea {
   max-width: 100%;
 }
 
+.simulation-meta-card {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--scheme-surface-raised) 92%, var(--scheme-surface-raised-subtle)), var(--scheme-surface-raised));
+  border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 78%, transparent);
+  border-radius: 12px;
+  box-shadow: var(--scheme-shadow-soft);
+}
+
+.simulation-meta-item {
+  padding: 4px 0;
+}
+
+.simulation-meta-actions {
+  background: color-mix(in srgb, var(--scheme-surface-raised) 64%, var(--scheme-surface-raised-subtle));
+  border-radius: 10px;
+  padding: 10px !important;
+  row-gap: 8px !important;
+}
+
+.simulation-detail-tabs {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--scheme-surface-raised) 92%, var(--scheme-surface-raised-subtle)), var(--scheme-surface-raised));
+  border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 78%, transparent);
+  border-radius: 12px;
+  padding: 0 12px;
+  box-shadow: var(--scheme-shadow-soft);
+}
+
 .simulation-period-field {
   min-width: 0;
 }
@@ -1795,9 +1888,107 @@ textarea {
 }
 
 .simulation-offer-card {
-  border: 1px solid var(--scheme-neutral-900);
-  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800));
+  border-radius: 10px;
   padding: 12px;
+  box-shadow: var(--scheme-shadow-soft);
+}
+
+.simulation-view-section,
+.simulation-form-section--block,
+.simulation-results-input-panel,
+.simulation-offers-table-card {
+  border-color: color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800)) !important;
+  box-shadow: var(--scheme-shadow-soft) !important;
+}
+
+.simulation-view-section,
+.simulation-form-section--block {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--scheme-surface-raised) 92%, var(--scheme-surface-raised-subtle)), var(--scheme-surface-raised)) !important;
+}
+
+.simulation-input-progress-card,
+.simulation-input-utility-card,
+.simulation-input-notice-card {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--scheme-surface-raised) 92%, var(--scheme-surface-raised-subtle)), var(--scheme-surface-raised)) !important;
+  border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800)) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--scheme-shadow-soft);
+}
+
+.simulation-input-progress-card {
+  padding: 16px 20px !important;
+}
+
+.simulation-input-progress-card > div:last-child {
+  background: color-mix(in srgb, var(--scheme-neutral-1000) 80%, var(--scheme-neutral-900)) !important;
+}
+
+.simulation-input-utility-card {
+  min-height: 48px;
+}
+
+.simulation-input-notice-card--warning {
+  color: #b45309 !important;
+  border-color: rgba(245, 158, 11, 0.34) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 247, 237, 0.92), rgba(255, 251, 235, 0.88)) !important;
+}
+
+[data-theme="dark"] .simulation-input-notice-card--warning {
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.32) !important;
+  background:
+    linear-gradient(180deg, rgba(69, 45, 12, 0.42), rgba(36, 36, 36, 0.94)) !important;
+}
+
+.simulation-results-input-panel {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--scheme-surface-raised) 92%, var(--scheme-surface-raised-subtle)), var(--scheme-surface-raised)) !important;
+  height: 100%;
+}
+
+.simulation-results-offers-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-self: stretch;
+  overflow: hidden !important;
+}
+
+.simulation-results-offer-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  flex: 1 1 0;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--scheme-surface-raised) 92%, var(--scheme-surface-raised-subtle)), var(--scheme-surface-raised));
+  border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 78%, transparent);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: var(--scheme-shadow-soft);
+}
+
+.simulation-offers-table-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto !important;
+  box-shadow: var(--scheme-shadow-soft) !important;
+}
+
+.simulation-offers-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--scheme-surface-raised) 82%, var(--scheme-surface-raised-subtle));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--scheme-neutral-900) 78%, transparent);
+}
+
+.simulation-results-footer {
+  flex: 0 0 auto;
 }
 
 .simulation-offer-card__top {

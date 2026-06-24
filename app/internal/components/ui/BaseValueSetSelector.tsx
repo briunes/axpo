@@ -13,6 +13,7 @@ interface BaseValueSetSelectorProps {
     forAgencyId?: string;
     onChange?: (id: string, meta?: { userInitiated: boolean }) => void;
     onChangeItem?: (item: BaseValueSetItem) => void;
+    compact?: boolean;
 }
 
 function formatUploadDate(dateStr: string): string {
@@ -25,7 +26,7 @@ function formatUploadDate(dateStr: string): string {
     });
 }
 
-export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scopeType, forAgencyId, onChange, onChangeItem }: BaseValueSetSelectorProps) {
+export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scopeType, forAgencyId, onChange, onChangeItem, compact = false }: BaseValueSetSelectorProps) {
     const [sets, setSets] = useState<BaseValueSetItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<string>("");
@@ -66,7 +67,16 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
 
 
     return isAdmin ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, width: "100%" }}>
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                minWidth: 0,
+                width: compact ? "min(100%, 420px)" : "100%",
+                flex: compact ? "0 1 420px" : "1 1 auto",
+            }}
+        >
             <FormSelect
                 label=""
                 options={sets.map((s) => ({
@@ -86,7 +96,17 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
                 }}
                 fullWidth
                 textFieldProps={{ size: "small", placeholder: "Select base values set…" }}
-                sx={{ width: "100%", minWidth: { xs: 0, sm: 360 }, maxWidth: "100%" }}
+                sx={{
+                    width: "100%",
+                    minWidth: compact ? 0 : { xs: 0, sm: 360 },
+                    maxWidth: compact ? 420 : "100%",
+                    "& .MuiInputBase-root": compact
+                        ? {
+                            minHeight: 36,
+                            fontSize: 13,
+                        }
+                        : undefined,
+                }}
             />
         </div>
     ) : null;

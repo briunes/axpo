@@ -597,9 +597,10 @@ export function DataTable<T extends { id: string }>({
       <Box
         data-mobile-datatable-card="true"
         sx={{
-          border: '1px solid var(--scheme-neutral-900)',
-          borderRadius: '8px',
+          border: '1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800))',
+          borderRadius: '10px',
           backgroundColor: 'var(--scheme-neutral-1100)',
+          boxShadow: 'var(--scheme-shadow-soft)',
           p: 1.5,
         }}
       >
@@ -655,8 +656,9 @@ export function DataTable<T extends { id: string }>({
     );
   }, [columnByKey, mobileActionsKey, mobileCard, mobileFields, mobileStatusKey, mobileTitleKey, renderMobileCell, rowActions]);
 
-  const tableHeaderBackground = 'var(--scheme-neutral-1200)';
-  const tableHoverBackground = 'var(--scheme-neutral-1100)';
+  const tableSurface = 'var(--scheme-surface-raised)';
+  const tableHeaderBackground = 'color-mix(in srgb, var(--scheme-surface-raised) 84%, var(--scheme-surface-raised-subtle))';
+  const tableHoverBackground = 'color-mix(in srgb, var(--scheme-brand-600) 5%, var(--scheme-surface-raised))';
   const tableSelectedBackground = theme.palette.mode === 'dark'
     ? theme.palette.primary.dark + '33'
     : theme.palette.primary.main + '20';
@@ -674,7 +676,7 @@ export function DataTable<T extends { id: string }>({
             gap: 1,
             p: 1,
             backgroundColor: tableHeaderBackground,
-            borderBottom: '1px solid var(--scheme-neutral-900)',
+            borderBottom: '1px solid color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent)',
           }}
         >
           {onSearch && (
@@ -892,6 +894,7 @@ export function DataTable<T extends { id: string }>({
             backgroundColor: 'var(--scheme-neutral-1100)',
             color: 'var(--scheme-neutral-100)',
             maxHeight: '80vh',
+            boxShadow: 'var(--scheme-shadow-strong)',
           },
         }}
       >
@@ -944,6 +947,7 @@ export function DataTable<T extends { id: string }>({
               backgroundColor: 'var(--scheme-neutral-1100)',
               color: 'var(--scheme-neutral-100)',
               maxHeight: '85vh',
+              boxShadow: 'var(--scheme-shadow-strong)',
             },
           }}
         >
@@ -1035,9 +1039,10 @@ export function DataTable<T extends { id: string }>({
           height: hasMassActions && someSelected ? 44 : 0,
           minHeight: hasMassActions && someSelected ? 44 : 0,
           transition: 'height 0.2s, min-height 0.2s',
-          backgroundColor: 'primary.50',
+          backgroundColor: 'rgba(255, 50, 84, 0.08)',
           borderBottom: hasMassActions && someSelected ? '1px solid' : 'none',
-          borderColor: 'primary.100',
+          borderColor: 'rgba(255, 50, 84, 0.18)',
+          color: 'primary.main',
         }}
       >
         <span style={{ fontSize: 14, color: 'inherit', marginRight: 8 }}>
@@ -1096,26 +1101,26 @@ export function DataTable<T extends { id: string }>({
               getRowClassName={getRowClassName}
               sx={{
                 height: '100%',
-                border: '0px solid rgba(0, 0, 0, 0.12)',
-                borderRadius: '8px',
-                backgroundColor: 'var(--scheme-neutral-1200)',
+                border: 0,
+                borderRadius: 0,
+                backgroundColor: tableSurface,
                 color: 'var(--scheme-neutral-100)',
                 '& .MuiDataGrid-main': {
                   border: 'none',
                 },
                 '& .MuiDataGrid-virtualScroller': {
-                  backgroundColor: 'var(--scheme-neutral-1200)',
+                  backgroundColor: tableSurface,
                 },
                 '& .MuiDataGrid-cell': {
                   display: 'flex',
                   alignItems: 'center',
                   minWidth: 0,
-                  minHeight: '52px !important',
-                  maxHeight: '52px !important',
+                  minHeight: '53px !important',
+                  maxHeight: '53px !important',
                   py: 0,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  borderBottom: '1px solid var(--scheme-neutral-900)',
+                  borderBottom: '1px solid color-mix(in srgb, var(--scheme-neutral-900) 72%, transparent)',
                   borderRight: 'none',
                   outline: 'none !important',
                   '&:focus, &:focus-within': {
@@ -1125,19 +1130,16 @@ export function DataTable<T extends { id: string }>({
                     outline: 'none !important',
                   },
                 },
-                '& .MuiDataGrid-cell:hover': {
-                  backgroundColor: 'rgba(255, 50, 84, 0.08)',
-                  borderRadius: '4px',
-                  cursor: 'default',
-                },
                 '& .MuiDataGrid-row': {
-                  backgroundColor: 'var(--scheme-neutral-1200)',
+                  backgroundColor: tableSurface,
                   borderBottom: '0px solid rgba(0, 0, 0, 0.08)',
+                  transition: 'background-color 140ms ease, box-shadow 140ms ease',
                   '&:last-child': {
                     borderBottom: 'none',
                   },
                   '&:hover': {
                     backgroundColor: tableHoverBackground,
+                    boxShadow: 'inset 3px 0 0 rgba(255, 50, 84, 0.34)',
                   },
                   '&.dt-row-selected': {
                     backgroundColor: tableSelectedBackground,
@@ -1147,17 +1149,19 @@ export function DataTable<T extends { id: string }>({
                   },
                 },
                 '& .MuiDataGrid-columnHeaders': {
-                  borderBottom: '0px solid',
+                  borderBottom: '1px solid color-mix(in srgb, var(--scheme-neutral-900) 78%, transparent)',
                   backgroundColor: tableHeaderBackground,
                   fontSize: '0.75rem',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: 'var(--scheme-neutral-500)',
+                  boxShadow: '0 1px 0 rgba(16, 24, 40, 0.04)',
                 },
                 '& .MuiDataGrid-columnHeader': {
                   borderRight: 'none',
                 },
                 '& .MuiDataGrid-columnHeaderTitle': {
-                  fontWeight: 600,
+                  fontWeight: 700,
+                  letterSpacing: '0.02em',
                 },
                 '& .dt-grid-cell-actions': {
                   overflow: 'visible',
@@ -1167,7 +1171,7 @@ export function DataTable<T extends { id: string }>({
                   backgroundColor: 'inherit',
                 },
                 '& .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller': {
-                  backgroundColor: 'var(--scheme-neutral-1200)',
+                  backgroundColor: tableSurface,
                 },
                 '& .MuiDataGrid-columnSeparator': {
                   display: 'flex',
@@ -1198,7 +1202,7 @@ export function DataTable<T extends { id: string }>({
             flex: '1 1 auto',
             minHeight: 320,
             overflowY: 'auto',
-            backgroundColor: 'var(--scheme-neutral-1200)',
+            backgroundColor: 'color-mix(in srgb, var(--scheme-surface-raised) 74%, var(--scheme-surface-raised-subtle))',
           }}
         >
           {loading
@@ -1226,9 +1230,10 @@ export function DataTable<T extends { id: string }>({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            p: 1,
-            borderTop: '1px solid',
-            borderColor: 'divider',
+            px: 2,
+            py: 1,
+            borderTop: '1px solid color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent)',
+            backgroundColor: tableHeaderBackground,
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

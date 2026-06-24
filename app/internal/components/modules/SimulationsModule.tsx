@@ -34,7 +34,7 @@ import ShareIcon from "@mui/icons-material/Share";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
-import { useEffect, useState, useLayoutEffect } from "react";
+import { useCallback, useEffect, useMemo, useState, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import type { SessionState } from "../../lib/authSession";
@@ -92,6 +92,11 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     items: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; warning?: boolean; danger?: boolean; disabled?: boolean }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
+  const isAdminRole = isAdmin(session.user.role);
+  const canCreateSimulation = canDo(session.user.role, "simulations.create");
+  const canArchiveSimulation = canDo(session.user.role, "simulations.archive");
+  const canShareSimulation = canDo(session.user.role, "simulations.share");
+  const canDuplicateSimulation = canDo(session.user.role, "simulations.duplicate");
 
   useEffect(() => {
     if (successText) {
@@ -119,7 +124,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             </Button>
           </span>
         </Tooltip>
-        {isAdmin(session.user.role) && (
+        {isAdminRole && (
           <Tooltip title={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")} arrow>
             <span className="topbar-action-wrap">
               <Button
@@ -137,7 +142,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             </span>
           </Tooltip>
         )}
-        {canDo(session.user.role, "simulations.create") && (
+        {canCreateSimulation && (
           <Tooltip title={t("actions", "newSimulation")} arrow>
             <span className="topbar-action-wrap">
               <Button
@@ -156,14 +161,17 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       </>
     );
     return () => onActionButtons?.(null);
-  }, [onActionButtons, showArchived, loading, session.user.role, t, refresh, router, setShowArchived]);
+  }, [onActionButtons, showArchived, loading, session.user.role, isAdminRole, canCreateSimulation, t, refresh, router, setShowArchived]);
 
   // Keep the archived toggle as an exclusive view even if a stale response is mixed.
-  const displayData = showArchived
-    ? simulations.filter((s) => s.isDeleted)
-    : simulations.filter((s) => !s.isDeleted);
+  const displayData = useMemo(
+    () => showArchived
+      ? simulations.filter((s) => s.isDeleted)
+      : simulations.filter((s) => !s.isDeleted),
+    [showArchived, simulations],
+  );
 
-  const handleShareAction = async (sim: SimulationItem) => {
+  const handleShareAction = useCallback(async (sim: SimulationItem) => {
     setShareModalLoading(true);
     setShareSim(sim);
     try {
@@ -174,50 +182,83 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     } finally {
       setShareModalLoading(false);
     }
-  };
+  }, [onNotify, session.token]);
 
-  const formatDateTime = (value: string | null | undefined) => {
+  const timeFormatter = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: preferences.timeFormat === "12h",
+        timeZone: preferences.timezone,
+      });
+    } catch {
+      return new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: preferences.timeFormat === "12h",
+      });
+    }
+  }, [preferences.timeFormat, preferences.timezone]);
+
+  const formatDateTime = useCallback((value: string | null | undefined) => {
     if (!value) return "—";
 
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "—";
 
     const datePart = formatDisplayDate(date, preferences.dateFormat);
+    const timePart = timeFormatter.format(date);
 
-    try {
-      const timePart = new Intl.DateTimeFormat(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: preferences.timeFormat === "12h",
-        timeZone: preferences.timezone,
-      }).format(date);
+    return `${datePart} ${timePart}`;
+  }, [preferences.dateFormat, timeFormatter]);
 
-      return `${datePart} ${timePart}`;
-    } catch {
-      const timePart = new Intl.DateTimeFormat(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: preferences.timeFormat === "12h",
-      }).format(date);
-
-      return `${datePart} ${timePart}`;
-    }
-  };
-
-  const hasSelectedProduct = (sim: SimulationItem) => {
+  const hasSelectedProduct = useCallback((sim: SimulationItem) => {
     const payload = sim.payloadJson as { selectedOffer?: { productKey?: string } } | null;
     return Boolean(payload?.selectedOffer?.productKey);
-  };
+  }, []);
 
   const getSimulationReference = (sim: SimulationItem) =>
     sim.referenceNumber || sim.id.slice(0, 8) + "…";
 
-  const getSimulationType = (sim: SimulationItem) => {
+  const getSimulationType = useCallback((sim: SimulationItem) => {
     const payload = sim.payloadJson as { type?: string } | null;
     return payload?.type;
-  };
+  }, []);
 
-  const columns: ColumnDef<SimulationItem>[] = [
+  const ownerOptions = useMemo(
+    () => [
+      { value: "", label: t("search", "allOwners") },
+      ...Array.from(new Map(
+        users
+          .filter((user) => user.isActive)
+          .map((user) => [user.id, user]),
+      ).values())
+        .map((user) => ({
+          value: user.id,
+          label: user.fullName || user.email,
+          secondaryLabel: user.email,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ],
+    [t, users],
+  );
+
+  const clientOptions = useMemo(
+    () => [
+      { value: "", label: t("search", "allClients") },
+      ...clients
+        .filter((client) => !client.isDeleted)
+        .map((client) => ({
+          value: client.id,
+          label: client.name,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ],
+    [clients, t],
+  );
+
+  const columns = useMemo<ColumnDef<SimulationItem>[]>(() => [
     {
       key: "type",
       label: t("columns", "type"),
@@ -434,11 +475,9 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       renderCell: (s) => {
         const isShared = s.status === "SHARED";
         const canDelete =
-          (!s.isDeleted && canDo(session.user.role, "simulations.archive")) ||
-          (Boolean(s.isDeleted) && isAdmin(session.user.role));
-        const canShare = canDo(session.user.role, "simulations.share");
-        const canDuplicate = canDo(session.user.role, "simulations.duplicate");
-        const canDraftShare = !s.isDeleted && s.status === "DRAFT" && canShare && hasSelectedProduct(s);
+          (!s.isDeleted && canArchiveSimulation) ||
+          (Boolean(s.isDeleted) && isAdminRole);
+        const canDraftShare = !s.isDeleted && s.status === "DRAFT" && canShareSimulation && hasSelectedProduct(s);
 
         const primaryLabel = isShared ? t("actions", "view") : t("actions", "simulate");
         const primaryVariant = isShared ? "outlined" : "outlined";
@@ -455,7 +494,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             onClick: () => handleShareAction(s),
           });
         }
-        if (canDuplicate) {
+        if (canDuplicateSimulation) {
           secondaryItems.push({ label: t("actions", "duplicate"), icon: <ContentCopyIcon fontSize="small" />, onClick: () => handleClone(s), disabled: busyAction === `clone-${s.id}` });
         }
         if (canDelete) {
@@ -496,7 +535,20 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         );
       },
     },
-  ];
+  ], [
+    busyAction,
+    canArchiveSimulation,
+    canDuplicateSimulation,
+    canShareSimulation,
+    formatDateTime,
+    handleClone,
+    handleShareAction,
+    hasSelectedProduct,
+    isAdminRole,
+    router,
+    session.user.role,
+    t,
+  ]);
 
   return (
     <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
@@ -555,20 +607,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
               <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
                 <FormSelect
                   label=""
-                  options={[
-                    { value: "", label: t("search", "allOwners") },
-                    ...Array.from(new Map(
-                      users
-                        .filter(u => u.isActive)
-                        .map((u) => [u.id, u]),
-                    ).values())
-                      .map(user => ({
-                        value: user.id,
-                        label: user.fullName || user.email,
-                        secondaryLabel: user.email,
-                      }))
-                      .sort((a, b) => a.label.localeCompare(b.label)),
-                  ]}
+                  options={ownerOptions}
                   value={filterOwnerUserId}
                   onChange={(val) => {
                     setFilterOwnerUserId(val as string);
@@ -583,16 +622,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
               <FormSelect
                 label=""
-                options={[
-                  { value: "", label: t("search", "allClients") },
-                  ...clients
-                    .filter(c => !c.isDeleted)
-                    .map(client => ({
-                      value: client.id,
-                      label: client.name,
-                    }))
-                    .sort((a, b) => a.label.localeCompare(b.label)),
-                ]}
+                options={clientOptions}
                 value={filterClientId}
                 onChange={(val) => {
                   setFilterClientId(val as string);

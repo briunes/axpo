@@ -25,6 +25,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import { useI18n } from "../../../../src/lib/i18n-context";
 import type { SessionState } from "../../lib/authSession";
 
 export interface LLMBenchmarkProps {
@@ -142,6 +143,7 @@ interface FieldCompareTableProps {
 }
 
 function FieldCompareTable({ fieldScores, expected, actual }: FieldCompareTableProps) {
+    const { t } = useI18n();
     const fields = Object.entries(fieldScores);
     if (!fields.length) return null;
     return (
@@ -149,9 +151,9 @@ function FieldCompareTable({ fieldScores, expected, actual }: FieldCompareTableP
             <Table size="small" sx={{ fontSize: 12 }}>
                 <TableHead>
                     <TableRow>
-                        <TableCell sx={{ fontWeight: 700, py: 0.5, fontSize: 11 }}>Field</TableCell>
-                        <TableCell sx={{ fontWeight: 700, py: 0.5, fontSize: 11 }}>Expected</TableCell>
-                        <TableCell sx={{ fontWeight: 700, py: 0.5, fontSize: 11 }}>Got</TableCell>
+                        <TableCell sx={{ fontWeight: 700, py: 0.5, fontSize: 11 }}>{t("llmBenchmark", "field")}</TableCell>
+                        <TableCell sx={{ fontWeight: 700, py: 0.5, fontSize: 11 }}>{t("llmBenchmark", "expected")}</TableCell>
+                        <TableCell sx={{ fontWeight: 700, py: 0.5, fontSize: 11 }}>{t("llmBenchmark", "got")}</TableCell>
                         <TableCell sx={{ fontWeight: 700, py: 0.5, fontSize: 11, width: 50 }}>✓</TableCell>
                     </TableRow>
                 </TableHead>
@@ -187,6 +189,7 @@ function FieldCompareTable({ fieldScores, expected, actual }: FieldCompareTableP
 }
 
 function ResultRow({ result, idx }: { result: BenchmarkResult; idx: number }) {
+    const { t } = useI18n();
     const [expanded, setExpanded] = useState(false);
 
     const totalTokens =
@@ -214,7 +217,7 @@ function ResultRow({ result, idx }: { result: BenchmarkResult; idx: number }) {
                 <TableCell align="center">
                     {result.detection.success
                         ? <ScoreBadge score={result.detection.score} />
-                        : <Chip label="Error" color="error" size="small" />}
+                        : <Chip label={t("llmBenchmark", "error")} color="error" size="small" />}
                 </TableCell>
                 <TableCell align="right">
                     <DurationCell ms={result.detection.durationMs} />
@@ -226,7 +229,7 @@ function ResultRow({ result, idx }: { result: BenchmarkResult; idx: number }) {
                 <TableCell align="center">
                     {result.extraction.success
                         ? <ScoreBadge score={result.extraction.score} />
-                        : <Chip label="Error" color="error" size="small" />}
+                        : <Chip label={t("llmBenchmark", "error")} color="error" size="small" />}
                 </TableCell>
                 <TableCell align="right">
                     <DurationCell ms={result.extraction.durationMs} />
@@ -254,7 +257,7 @@ function ResultRow({ result, idx }: { result: BenchmarkResult; idx: number }) {
                                 {/* Detection detail */}
                                 <Box>
                                     <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-                                        Provider Detection — {result.detection.success ? `${result.detection.correctFields}/${result.detection.totalFields} fields correct` : "Failed"}
+                                        {t("llmBenchmark", "providerDetection")} — {result.detection.success ? t("llmBenchmark", "fieldsCorrect", { correct: result.detection.correctFields, total: result.detection.totalFields }) : t("llmBenchmark", "failed")}
                                     </Typography>
                                     {result.detection.error && (
                                         <Alert severity="error" sx={{ mb: 1, fontSize: 12 }}>{result.detection.error}</Alert>
@@ -271,7 +274,7 @@ function ResultRow({ result, idx }: { result: BenchmarkResult; idx: number }) {
                                 {/* Extraction detail */}
                                 <Box>
                                     <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-                                        Invoice Extraction — {result.extraction.success ? `${result.extraction.correctFields}/${result.extraction.totalFields} fields correct` : "Failed"}
+                                        {t("llmBenchmark", "invoiceExtraction")} — {result.extraction.success ? t("llmBenchmark", "fieldsCorrect", { correct: result.extraction.correctFields, total: result.extraction.totalFields }) : t("llmBenchmark", "failed")}
                                     </Typography>
                                     {result.extraction.error && (
                                         <Alert severity="error" sx={{ mb: 1, fontSize: 12 }}>{result.extraction.error}</Alert>
@@ -302,6 +305,7 @@ function ResultsTable({
     results: BenchmarkResult[];
     footer?: string;
 }) {
+    const { t } = useI18n();
     if (results.length === 0) return null;
 
     return (
@@ -322,35 +326,35 @@ function ResultsTable({
                                 align="center"
                                 sx={{ fontWeight: 700, borderLeft: "1px solid var(--scheme-neutral-900)", fontSize: 11, color: "var(--axpo-text-secondary)" }}
                             >
-                                Provider Detection
+                                {t("llmBenchmark", "providerDetection")}
                             </TableCell>
                             <TableCell
                                 colSpan={3}
                                 align="center"
                                 sx={{ fontWeight: 700, borderLeft: "1px solid var(--scheme-neutral-900)", fontSize: 11, color: "var(--axpo-text-secondary)" }}
                             >
-                                Invoice Extraction
+                                {t("llmBenchmark", "invoiceExtraction")}
                             </TableCell>
                             <TableCell
                                 colSpan={3}
                                 align="center"
                                 sx={{ fontWeight: 700, borderLeft: "1px solid var(--scheme-neutral-900)", fontSize: 11, color: "var(--axpo-text-secondary)" }}
                             >
-                                Overall
+                                {t("llmBenchmark", "overall")}
                             </TableCell>
                         </TableRow>
                         <TableRow sx={{ backgroundColor: "var(--scheme-neutral-1200)" }}>
                             <TableCell />
                             <TableCell />
-                            <TableCell align="center" sx={{ fontWeight: 600, fontSize: 11, borderLeft: "1px solid var(--scheme-neutral-900)" }}>Score</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Time</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Tokens</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 600, fontSize: 11, borderLeft: "1px solid var(--scheme-neutral-900)" }}>Score</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Time</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Tokens</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 600, fontSize: 11, borderLeft: "1px solid var(--scheme-neutral-900)" }}>Score</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Time</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>Tokens</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 600, fontSize: 11, borderLeft: "1px solid var(--scheme-neutral-900)" }}>{t("llmBenchmark", "score")}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>{t("llmBenchmark", "time")}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>{t("llmBenchmark", "tokens")}</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 600, fontSize: 11, borderLeft: "1px solid var(--scheme-neutral-900)" }}>{t("llmBenchmark", "score")}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>{t("llmBenchmark", "time")}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>{t("llmBenchmark", "tokens")}</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 600, fontSize: 11, borderLeft: "1px solid var(--scheme-neutral-900)" }}>{t("llmBenchmark", "score")}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>{t("llmBenchmark", "time")}</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 11 }}>{t("llmBenchmark", "tokens")}</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -373,6 +377,7 @@ function ResultsTable({
 }
 
 export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }: LLMBenchmarkProps) {
+    const { t } = useI18n();
     const activeProviders = providers.filter((p) => p.enabled);
     const allIds = activeProviders.map((p) => p.id);
     const [selected, setSelected] = useState<Set<string>>(new Set(allIds));
@@ -401,16 +406,16 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
             });
             const data = await res.json();
             if (!res.ok || !data.success) {
-                throw new Error(data.message || "Failed to load benchmark history");
+                throw new Error(data.message || t("llmBenchmark", "loadHistoryError"));
             }
             setBenchmarkRuns(data.benchmarkRuns ?? []);
             setHistoryWarning(
                 data.historyAvailable === false
-                    ? "Benchmark history storage is not ready yet. Apply the pending database migration to enable averages and saved history."
+                    ? t("llmBenchmark", "historyNotReady")
                     : null,
             );
         } catch (err: any) {
-            onNotify(err.message || "Failed to load benchmark history", "error");
+            onNotify(err.message || t("llmBenchmark", "loadHistoryError"), "error");
         } finally {
             setHistoryLoading(false);
         }
@@ -455,10 +460,10 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
         let pdfBlob: Blob | null = null;
         try {
             const pdfRes = await fetch("/benchmark/serigrafia-arrigorriaga.pdf");
-            if (!pdfRes.ok) throw new Error(`Could not load benchmark PDF (${pdfRes.status})`);
+            if (!pdfRes.ok) throw new Error(t("llmBenchmark", "couldNotLoadPdf", { status: pdfRes.status }));
             pdfBlob = await pdfRes.blob();
         } catch (err: any) {
-            onNotify(`Failed to load benchmark PDF: ${err.message}`, "error");
+            onNotify(t("llmBenchmark", "loadPdfError", { message: err.message }), "error");
             setRunning(false);
             return;
         }
@@ -484,13 +489,13 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
                 if (data.success) {
                     setResults((prev) => [...prev, data as BenchmarkResult]);
                     if (data.historySaved === false) {
-                        setHistoryWarning(data.historyMessage || "Benchmark result was not saved to history.");
+                        setHistoryWarning(data.historyMessage || t("llmBenchmark", "resultNotSaved"));
                     }
                 } else {
-                    setErrors((prev) => ({ ...prev, [p.id]: data.message || "Unknown error" }));
+                    setErrors((prev) => ({ ...prev, [p.id]: data.message || t("llmBenchmark", "unknownError") }));
                 }
             } catch (err: any) {
-                setErrors((prev) => ({ ...prev, [p.id]: err.message || "Request failed" }));
+                setErrors((prev) => ({ ...prev, [p.id]: err.message || t("llmBenchmark", "requestFailed") }));
             }
         }
 
@@ -499,7 +504,7 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
         setRunning(false);
         await loadHistory();
         onHistoryChanged?.();
-        onNotify("Benchmark complete", "success");
+        onNotify(t("llmBenchmark", "complete"), "success");
     };
 
     const selectedCount = selected.size;
@@ -524,17 +529,16 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
         <Stack spacing={3}>
             {/* Header + description */}
             <Box>
-                <h3 className="settings-panel-title">LLM Benchmark</h3>
+                <h3 className="settings-panel-title">{t("llmBenchmark", "title")}</h3>
                 <p style={{ margin: 0, color: "var(--axpo-text-secondary)" }}>
-                    Test each LLM against a known invoice (<strong>Serigrafia arrigorriaga.pdf</strong>) and compare
-                    provider detection and data extraction accuracy, latency, and token usage.
+                    {t("llmBenchmark", "description", { file: "Serigrafia arrigorriaga.pdf" })}
                 </p>
             </Box>
 
             {/* Provider selection */}
             {activeProviders.length === 0 ? (
                 <Box sx={{ color: "var(--axpo-text-secondary)", py: 2, textAlign: "center" }}>
-                    No active LLM providers configured. Enable providers in the <strong>Available LLMs</strong> tab first.
+                    {t("llmBenchmark", "noActiveProviders", { tab: t("llmBenchmark", "availableLlms") })}
                 </Box>
             ) : (
                 <Box
@@ -565,7 +569,7 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
                                 disabled={running}
                             />
                             <span style={{ fontWeight: 700, fontSize: 13 }}>
-                                Select LLMs to benchmark ({selectedCount}/{activeProviders.length})
+                                {t("llmBenchmark", "selectLlms", { selected: selectedCount, total: activeProviders.length })}
                             </span>
                         </label>
                         <Button
@@ -575,7 +579,7 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
                             onClick={runBenchmark}
                             disabled={running || selectedCount === 0}
                         >
-                            {running ? "Running…" : "Run Benchmark"}
+                            {running ? t("llmBenchmark", "running") : t("llmBenchmark", "runBenchmark")}
                         </Button>
                     </Box>
 
@@ -615,7 +619,7 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
                                     {isCurrent && (
                                         <Stack direction="row" alignItems="center" gap={1} sx={{ fontSize: 12, color: "var(--scheme-brand-600)" }}>
                                             <CircularProgress size={12} color="inherit" />
-                                            <span>Testing…</span>
+                                            <span>{t("llmBenchmark", "testing")}</span>
                                         </Stack>
                                     )}
                                     {isDone && !isCurrent && (
@@ -643,8 +647,8 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
                     />
                     <Box sx={{ mt: 0.5, fontSize: 12, color: "var(--axpo-text-secondary)" }}>
                         {currentlyTesting
-                            ? `Testing: ${providers.find((p) => p.id === currentlyTesting)?.name ?? currentlyTesting}`
-                            : "Preparing…"}
+                            ? t("llmBenchmark", "testingProvider", { provider: providers.find((p) => p.id === currentlyTesting)?.name ?? currentlyTesting })
+                            : t("llmBenchmark", "preparing")}
                     </Box>
                 </Box>
             )}
@@ -672,7 +676,7 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
             <Box>
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, mb: 1 }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                        {results.length ? "Current benchmark results" : "Previous benchmark results"}
+                        {results.length ? t("llmBenchmark", "currentResults") : t("llmBenchmark", "previousResults")}
                     </Typography>
                     <Button
                         variant="outlined"
@@ -681,32 +685,32 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
                         onClick={loadHistory}
                         disabled={historyLoading || running}
                     >
-                        Refresh
+                        {t("common", "refresh")}
                     </Button>
                 </Box>
                 {displayedRun ? (
                     <Stack spacing={1.5}>
                         <Box sx={{ fontSize: 12, color: "var(--axpo-text-secondary)" }}>
                             {results.length
-                                ? `${displayedRun.resultCount} LLM${displayedRun.resultCount === 1 ? "" : "s"} tested in this run`
-                                : `${formatDateTime(displayedRun.createdAt)} · ${displayedRun.resultCount} LLM${displayedRun.resultCount === 1 ? "" : "s"} tested`}
+                                ? t("llmBenchmark", "llmsTestedCurrent", { count: displayedRun.resultCount, plural: displayedRun.resultCount === 1 ? "" : "s" })
+                                : t("llmBenchmark", "llmsTested", { date: formatDateTime(displayedRun.createdAt), count: displayedRun.resultCount, plural: displayedRun.resultCount === 1 ? "" : "s" })}
                         </Box>
                         <ResultsTable
                             title=""
                             results={displayedRun.results}
-                            footer="Sorted by overall score. Scores compare output against the known correct answer for Serigrafia arrigorriaga.pdf."
+                            footer={t("llmBenchmark", "sortedFooter")}
                         />
                     </Stack>
                 ) : (
                     <Box sx={{ color: "var(--axpo-text-secondary)", py: 2 }}>
-                        No benchmark runs have been saved yet.
+                        {t("llmBenchmark", "noRuns")}
                     </Box>
                 )}
             </Box>
 
             <Box>
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-                    Benchmark history
+                    {t("llmBenchmark", "history")}
                 </Typography>
                 {historyRuns.length > 0 ? (
                     <Stack spacing={2.5}>
@@ -717,7 +721,7 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
                                         {formatDateTime(run.createdAt)}
                                     </Box>
                                     <Box sx={{ fontSize: 12, color: "var(--axpo-text-secondary)" }}>
-                                        {run.resultCount} LLM{run.resultCount === 1 ? "" : "s"} tested
+                                        {t("llmBenchmark", "runCount", { count: run.resultCount, plural: run.resultCount === 1 ? "" : "s" })}
                                     </Box>
                                 </Box>
                                 <ResultsTable
@@ -729,7 +733,7 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
                     </Stack>
                 ) : (
                     <Box sx={{ color: "var(--axpo-text-secondary)", py: 2 }}>
-                        No older benchmark runs to show.
+                        {t("llmBenchmark", "noOlderRuns")}
                     </Box>
                 )}
             </Box>

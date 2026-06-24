@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useI18n } from "../../../../src/lib/i18n-context";
 import type { SessionState } from "../../lib/authSession";
 
 export interface SystemSettingsProps {
@@ -46,6 +47,7 @@ const DEFAULT_CONFIG: SystemConfig = {
 };
 
 export function SystemSettings({ session, onNotify }: SystemSettingsProps) {
+    const { t } = useI18n();
     const [config, setConfig] = useState<SystemConfig>(DEFAULT_CONFIG);
     const [isDirty, setIsDirty] = useState(false);
 
@@ -63,10 +65,10 @@ export function SystemSettings({ session, onNotify }: SystemSettingsProps) {
         try {
             // TODO: Save to API
             // await saveSystemConfig(config);
-            onNotify("System settings saved successfully", "success");
+            onNotify(t("legacySystemSettings", "saveSuccess"), "success");
             setIsDirty(false);
         } catch (error) {
-            onNotify("Failed to save system settings", "error");
+            onNotify(t("legacySystemSettings", "saveError"), "error");
         }
     };
 
@@ -78,15 +80,15 @@ export function SystemSettings({ session, onNotify }: SystemSettingsProps) {
     return (
         <div className="config-panel">
             <div className="config-section">
-                <h3 className="config-section-title">Simulation Settings</h3>
+                <h3 className="config-section-title">{t("legacySystemSettings", "simulationTitle")}</h3>
                 <p className="config-section-description">
-                    Configure simulation behavior, expiration, and sharing settings
+                    {t("legacySystemSettings", "simulationDesc")}
                 </p>
 
                 <div className="config-field">
-                    <label className="config-field-label">Simulation Expiration (Days)</label>
+                    <label className="config-field-label">{t("systemSettings", "fieldExpirationDays")}</label>
                     <span className="config-field-description">
-                        Number of days before a simulation expires and becomes read-only
+                        {t("systemSettings", "fieldExpirationDesc")}
                     </span>
                     <input
                         type="number"
@@ -98,14 +100,14 @@ export function SystemSettings({ session, onNotify }: SystemSettingsProps) {
                 </div>
 
                 <div className="config-field">
-                    <label className="config-field-label">Default Share Text Template</label>
+                    <label className="config-field-label">{t("legacySystemSettings", "defaultShareText")}</label>
                     <span className="config-field-description">
-                        Text template used when sharing simulations. Use {`{PIN}`} for dynamic PIN insertion.
+                        {t("legacySystemSettings", "defaultShareTextDesc", { pin: "{PIN}" })}
                     </span>
                     <textarea
                         value={config.defaultShareText}
                         onChange={(e) => handleChange("defaultShareText", e.target.value)}
-                        placeholder="Enter share text template..."
+                        placeholder={t("legacySystemSettings", "defaultShareTextPlaceholder")}
                     />
                 </div>
 
@@ -116,18 +118,18 @@ export function SystemSettings({ session, onNotify }: SystemSettingsProps) {
                             checked={config.enablePixelTracking}
                             onChange={(e) => handleChange("enablePixelTracking", e.target.checked)}
                         />
-                        <span>Enable Pixel Tracking</span>
+                        <span>{t("legacySystemSettings", "enablePixelTracking")}</span>
                     </label>
                     <span className="config-field-description" style={{ marginLeft: "30px" }}>
-                        Track when clients view their simulations (newsletter-style tracking)
+                        {t("legacySystemSettings", "enablePixelTrackingDesc")}
                     </span>
                 </div>
             </div>
 
             <div className="config-section">
-                <h3 className="config-section-title">User & Authentication Settings</h3>
+                <h3 className="config-section-title">{t("legacySystemSettings", "userAuthTitle")}</h3>
                 <p className="config-section-description">
-                    Configure user authentication, PIN requirements, and access control
+                    {t("legacySystemSettings", "userAuthDesc")}
                 </p>
 
                 <div className="config-field">
@@ -137,17 +139,17 @@ export function SystemSettings({ session, onNotify }: SystemSettingsProps) {
                             checked={config.requirePinForSimulations}
                             onChange={(e) => handleChange("requirePinForSimulations", e.target.checked)}
                         />
-                        <span>Require PIN for Simulation Access</span>
+                        <span>{t("legacySystemSettings", "requirePin")}</span>
                     </label>
                     <span className="config-field-description" style={{ marginLeft: "30px" }}>
-                        Clients must enter a PIN to view their simulation
+                        {t("legacySystemSettings", "requirePinDesc")}
                     </span>
                 </div>
 
                 <div className="config-field">
-                    <label className="config-field-label">PIN Length</label>
+                    <label className="config-field-label">{t("legacySystemSettings", "pinLength")}</label>
                     <span className="config-field-description">
-                        Number of digits in the generated PIN (recommended: 4-6)
+                        {t("legacySystemSettings", "pinLengthDesc")}
                     </span>
                     <input
                         type="number"
@@ -160,9 +162,9 @@ export function SystemSettings({ session, onNotify }: SystemSettingsProps) {
             </div>
 
             <div className="config-section">
-                <h3 className="config-section-title">Client Management Settings</h3>
+                <h3 className="config-section-title">{t("legacySystemSettings", "clientManagementTitle")}</h3>
                 <p className="config-section-description">
-                    Configure automatic client creation and profile management
+                    {t("legacySystemSettings", "clientManagementDesc")}
                 </p>
 
                 <div className="config-field">
@@ -172,18 +174,18 @@ export function SystemSettings({ session, onNotify }: SystemSettingsProps) {
                             checked={config.autoCreateClientOnSimulation}
                             onChange={(e) => handleChange("autoCreateClientOnSimulation", e.target.checked)}
                         />
-                        <span>Auto-create Client on New Simulation</span>
+                        <span>{t("legacySystemSettings", "autoCreateClient")}</span>
                     </label>
                     <span className="config-field-description" style={{ marginLeft: "30px" }}>
-                        Automatically create a new client record when creating a simulation without selecting an existing client
+                        {t("systemSettings", "fieldAutoCreateDesc")}
                     </span>
                 </div>
             </div>
 
             <div className="config-section">
-                <h3 className="config-section-title">Module Visibility</h3>
+                <h3 className="config-section-title">{t("legacySystemSettings", "moduleVisibilityTitle")}</h3>
                 <p className="config-section-description">
-                    Enable or disable specific modules across the application
+                    {t("legacySystemSettings", "moduleVisibilityDesc")}
                 </p>
 
                 <div className="config-field">
@@ -193,7 +195,7 @@ export function SystemSettings({ session, onNotify }: SystemSettingsProps) {
                             checked={config.enableAnalytics}
                             onChange={(e) => handleChange("enableAnalytics", e.target.checked)}
                         />
-                        <span>Enable Analytics Module</span>
+                        <span>{t("legacySystemSettings", "enableAnalytics")}</span>
                     </label>
                 </div>
 
@@ -204,29 +206,29 @@ export function SystemSettings({ session, onNotify }: SystemSettingsProps) {
                             checked={config.enableAuditLogs}
                             onChange={(e) => handleChange("enableAuditLogs", e.target.checked)}
                         />
-                        <span>Enable Audit Logs Module</span>
+                        <span>{t("legacySystemSettings", "enableAuditLogs")}</span>
                     </label>
                 </div>
             </div>
 
             <div className="config-section">
-                <h3 className="config-section-title">Dashboard & Reports</h3>
+                <h3 className="config-section-title">{t("legacySystemSettings", "dashboardReportsTitle")}</h3>
                 <p className="config-section-description">
-                    Configure default dashboard views and reporting behavior
+                    {t("legacySystemSettings", "dashboardReportsDesc")}
                 </p>
 
                 <div className="config-field">
-                    <label className="config-field-label">Default Dashboard View</label>
+                    <label className="config-field-label">{t("legacySystemSettings", "defaultDashboardView")}</label>
                     <span className="config-field-description">
-                        Default view for users when they access the dashboard
+                        {t("legacySystemSettings", "defaultDashboardViewDesc")}
                     </span>
                     <select
                         value={config.defaultDashboardView}
                         onChange={(e) => handleChange("defaultDashboardView", e.target.value)}
                     >
-                        <option value="admin">Admin View</option>
-                        <option value="master">Master View</option>
-                        <option value="commercial">Commercial View</option>
+                        <option value="admin">{t("legacySystemSettings", "adminView")}</option>
+                        <option value="master">{t("legacySystemSettings", "masterView")}</option>
+                        <option value="commercial">{t("legacySystemSettings", "commercialView")}</option>
                     </select>
                 </div>
 
@@ -237,10 +239,10 @@ export function SystemSettings({ session, onNotify }: SystemSettingsProps) {
                             checked={config.realtimeReportRefresh}
                             onChange={(e) => handleChange("realtimeReportRefresh", e.target.checked)}
                         />
-                        <span>Enable Real-time Report Refresh</span>
+                        <span>{t("legacySystemSettings", "realtimeRefresh")}</span>
                     </label>
                     <span className="config-field-description" style={{ marginLeft: "30px" }}>
-                        Automatically refresh reports as filters change
+                        {t("legacySystemSettings", "realtimeRefreshDesc")}
                     </span>
                 </div>
             </div>
@@ -251,14 +253,14 @@ export function SystemSettings({ session, onNotify }: SystemSettingsProps) {
                     onClick={handleSave}
                     disabled={!isDirty}
                 >
-                    Save Changes
+                    {t("actions", "saveChanges")}
                 </button>
                 <button
                     className="config-btn config-btn-secondary"
                     onClick={handleReset}
                     disabled={!isDirty}
                 >
-                    Reset to Defaults
+                    {t("legacySystemSettings", "resetDefaults")}
                 </button>
             </div>
         </div>

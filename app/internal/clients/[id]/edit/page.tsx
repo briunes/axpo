@@ -156,6 +156,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
                     token={session.token}
                     title={`${t("auditLogsModal", "title")} - ${client.name}`}
                 />
-            )}        </CrudPageLayout>
+            )}
+        </CrudPageLayout>
     );
 }

@@ -244,63 +244,65 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                     </>
                 }
             >
-                <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
-                    <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
-                        <Tab label={t("userFormPage", "tabDetails")} />
-                        <Tab label={t("userPreferences", "tabPreferences")} />
-                        {canManageUserSessions && <Tab label={t("userFormPage", "tabSessions")} />}
-                    </Tabs>
-                </Box>
+                <Box className="crud-tab-panel">
+                    <Box className="crud-tab-panel__tabs">
+                        <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+                            <Tab label={t("userFormPage", "tabDetails")} />
+                            <Tab label={t("userPreferences", "tabPreferences")} />
+                            {canManageUserSessions && <Tab label={t("userFormPage", "tabSessions")} />}
+                        </Tabs>
+                    </Box>
 
-                <Box sx={{ display: activeTab === 0 ? "block" : "none" }}>
-                    <UserForm
-                        session={session}
-                        agencies={agenciesActions.agencies}
-                        data={formData}
-                        onChange={setFormData}
-                        onSubmit={handleSubmit}
-                        errorMessage={usersActions.errorText}
-                        isSubmitting={usersActions.busyAction === "update-user"}
-                        submitLabel={t("userFormPage", "submitLabel")}
-                        cancelLabel={t("actions", "cancel")}
-                        onCancel={() => router.push("/internal/users")}
-                        mode="edit"
-                        isEditingSelf={isEditingSelf}
-                        originalRole={user.role}
-                        onRenderActions={setFormActions}
-                    />
-                </Box>
-
-                <Box sx={{ display: activeTab === 1 ? "block" : "none" }}>
-                    {session && (
-                        <UserPreferencesForm
-                            userId={id}
-                            token={session.token}
-                            hideSaveButton
-                            onPreferencesChange={setPreferencesDraft}
-                            onNotify={(msg, tone) => tone === "error" ? alertError(msg) : alertSuccess(msg)}
+                    <Box sx={{ display: activeTab === 0 ? "block" : "none" }}>
+                        <UserForm
+                            session={session}
+                            agencies={agenciesActions.agencies}
+                            data={formData}
+                            onChange={setFormData}
+                            onSubmit={handleSubmit}
+                            errorMessage={usersActions.errorText}
+                            isSubmitting={usersActions.busyAction === "update-user"}
+                            submitLabel={t("userFormPage", "submitLabel")}
+                            cancelLabel={t("actions", "cancel")}
+                            onCancel={() => router.push("/internal/users")}
+                            mode="edit"
+                            isEditingSelf={isEditingSelf}
+                            originalRole={user.role}
+                            onRenderActions={setFormActions}
                         />
-                    )}
-                </Box>
+                    </Box>
 
-                {canManageUserSessions && (
-                    <Box sx={{ display: activeTab === 2 ? "block" : "none" }}>
+                    <Box sx={{ display: activeTab === 1 ? "block" : "none" }}>
                         {session && (
-                            <UserSessionsPanel
-                                session={session}
+                            <UserPreferencesForm
                                 userId={id}
-                                initialPageSize={preferences.itemsPerPage}
-                                allowUserLogoutAll
-                                maxActiveDevices={formData.maxActiveDevices ?? defaultMaxActiveDevices}
-                                maxActiveDevicesLimit={defaultMaxActiveDevices}
-                                onMaxActiveDevicesChange={(value) => {
-                                    setFormData((prev) => ({ ...prev, maxActiveDevices: value }));
-                                }}
+                                token={session.token}
+                                hideSaveButton
+                                onPreferencesChange={setPreferencesDraft}
                                 onNotify={(msg, tone) => tone === "error" ? alertError(msg) : alertSuccess(msg)}
                             />
                         )}
                     </Box>
-                )}
+
+                    {canManageUserSessions && (
+                        <Box sx={{ display: activeTab === 2 ? "block" : "none" }}>
+                            {session && (
+                                <UserSessionsPanel
+                                    session={session}
+                                    userId={id}
+                                    initialPageSize={preferences.itemsPerPage}
+                                    allowUserLogoutAll
+                                    maxActiveDevices={formData.maxActiveDevices ?? defaultMaxActiveDevices}
+                                    maxActiveDevicesLimit={defaultMaxActiveDevices}
+                                    onMaxActiveDevicesChange={(value) => {
+                                        setFormData((prev) => ({ ...prev, maxActiveDevices: value }));
+                                    }}
+                                    onNotify={(msg, tone) => tone === "error" ? alertError(msg) : alertSuccess(msg)}
+                                />
+                            )}
+                        </Box>
+                    )}
+                </Box>
             </CrudPageLayout>
 
             {showPinDialog && newPin && (

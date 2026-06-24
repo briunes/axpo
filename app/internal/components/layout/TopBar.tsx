@@ -36,7 +36,7 @@ export function TopBar({
         <button
           className="topbar-icon-btn topbar-hamburger"
           onClick={onMobileMenuToggle}
-          aria-label="Toggle menu"
+          aria-label={t("common", "toggleMenu")}
         >
           <MenuIcon />
         </button>

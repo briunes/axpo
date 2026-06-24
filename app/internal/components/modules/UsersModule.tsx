@@ -15,6 +15,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, RotatePinResult } from "../../lib/internalApi";
@@ -48,6 +49,7 @@ type UserItem = UsersActions["users"] extends (infer T)[] ? T : never;
 
 export function UsersModule({ session, actions, agencies, onNotify, onActionButtons }: UsersModuleProps) {
   const { t } = useI18n();
+  const router = useRouter();
   const {
     users, loading, busyAction, errorText, successText, clearFeedback, refresh,
     page, pageSize, total, setPage, setPageSize,
@@ -269,7 +271,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           (u.isDeleted && isAdmin(role));
 
         const primaryLabel = t("actions", "edit");
-        const primaryOnClick = () => window.location.href = `/internal/users/${u.id}/edit`;
+        const primaryOnClick = () => router.push(`/internal/users/${u.id}/edit`);
 
         const secondaryItems: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }> = [];
         if (canToggle) {
@@ -473,7 +475,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
                   <Button
                     variant="outlined"
                     size="small"
-                    onClick={() => window.location.href = `/internal/users/${u.id}/edit`}
+                    onClick={() => router.push(`/internal/users/${u.id}/edit`)}
                     startIcon={<EditIcon fontSize="small" />}
                     sx={{ minWidth: 0 }}
                   >

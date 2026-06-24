@@ -143,14 +143,14 @@ export default function LoginPage() {
         <button
           onClick={() => setLocale("en")}
           className={`${styles.langBtn} ${locale === "en" ? styles.active : ""}`}
-          title="English"
+          title={t("common", "english")}
         >
           🇬🇧
         </button>
         <button
           onClick={() => setLocale("es")}
           className={`${styles.langBtn} ${locale === "es" ? styles.active : ""}`}
-          title="Español"
+          title={t("common", "spanish")}
         >
           🇪🇸
         </button>
@@ -168,7 +168,7 @@ export default function LoginPage() {
           />
           <div className={styles.brandName}>AXPO</div>
           <div className={styles.brandDivider} />
-          <div className={styles.brandProduct}>OFFERS SIMULATOR</div>
+          <div className={styles.brandProduct}>{t("common", "offersSimulator")}</div>
           <div className={styles.brandDesc}>
             {t("login", "brandDesc")}
           </div>

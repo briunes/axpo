@@ -19,7 +19,7 @@ function KpiCard({ title, value, sub, accent, percentage, trend }: KpiCardProps)
     return (
         <div className="panel-card" style={{
             flex: "1 1 160px",
-            background: accent ? `linear-gradient(135deg, ${accent}15 0%, ${accent}05 100%)` : undefined,
+            background: accent ? `linear-gradient(135deg, ${accent}14 0%, ${accent}05 100%), var(--scheme-surface-raised)` : undefined,
             border: accent ? `1px solid ${accent}40` : undefined,
             borderRadius: 12,
             padding: "18px 20px",
@@ -260,7 +260,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                         <div className="analytics-funnel-stage" key={stage.label} style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", gap: 8, position: "relative", minWidth: 0 }}>
                             <div style={{
                                 background: `${stage.color}20`,
-                                border: `2px solid ${stage.color}60`,
+                                border: `1px solid ${stage.color}55`,
                                 borderRadius: 8,
                                 padding: "20px",
                                 textAlign: "center",
@@ -422,7 +422,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: 14, paddingBottom: "2rem" }}>
                 <div className="panel-card" style={{
                     padding: "16px",
-                    background: "linear-gradient(135deg, #f59e0b15 0%, #f59e0b05 100%)",
+                    background: "linear-gradient(135deg, #f59e0b14 0%, #f59e0b05 100%), var(--scheme-surface-raised)",
                     border: "1px solid #f59e0b40",
                     borderRadius: 8,
                 }}>
@@ -437,7 +437,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
 
                 <div className="panel-card" style={{
                     padding: "16px",
-                    background: "linear-gradient(135deg, #10b98115 0%, #10b98105 100%)",
+                    background: "linear-gradient(135deg, #10b98114 0%, #10b98105 100%), var(--scheme-surface-raised)",
                     border: "1px solid #10b98140",
                     borderRadius: 8,
                 }}>
@@ -452,7 +452,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
 
                 <div className="panel-card" style={{
                     padding: "16px",
-                    background: "linear-gradient(135deg, #8b5cf615 0%, #8b5cf605 100%)",
+                    background: "linear-gradient(135deg, #8b5cf614 0%, #8b5cf605 100%), var(--scheme-surface-raised)",
                     border: "1px solid #8b5cf640",
                     borderRadius: 8,
                     paddingBottom: '10px'
