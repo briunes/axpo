@@ -757,14 +757,14 @@ export function DataTable<T extends { id: string }>({
       )}
 
       {/* Toolbar */}
-      <Box className="dt-toolbar" sx={{ backgroundColor: tableHeaderBackground, display: { xs: useMobileCards ? 'none' : 'flex', md: 'flex' } }}>
+      <Box className="dt-toolbar" sx={{ backgroundColor: tableHeaderBackground, display: { xs: useMobileCards ? 'none' : 'flex', md: 'flex' }, flexWrap: 'nowrap' }}>
 
         <div
           className="dt-toolbar-left"
           style={renderCustomSearch ? { flex: 1, minWidth: 0 } : undefined}
         >
           {renderCustomSearch ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', width: '100%', minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', width: '100%', minWidth: 0, overflowX: 'auto', overflowY: 'hidden' }}>
               {renderCustomSearch({ draft, setDraft, commitSearch, searchPlaceholder, mode: "desktop" })}
               <Button
                 size="small"

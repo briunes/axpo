@@ -63,16 +63,32 @@ interface EmailLogsModuleProps {
     onNotify?: (text: string, tone: "success" | "error") => void;
 }
 
+const EMAIL_TRIGGER_OPTIONS = [
+    { value: "otp-login", label: "OTP login" },
+    { value: "magic-link-request", label: "Magic link request" },
+    { value: "password-reset-request", label: "Password reset request" },
+    { value: "user-creation", label: "User creation" },
+    { value: "simulation-share", label: "Simulation share" },
+    { value: "test-email", label: "Prompt test" },
+];
+
+const EMAIL_TRIGGER_LABELS = Object.fromEntries(
+    EMAIL_TRIGGER_OPTIONS.map((option) => [option.value, option.label]),
+) as Record<string, string>;
+
 function TriggerBadge({ trigger }: { trigger?: string }) {
     if (!trigger) return <Typography component="span" variant="body2" sx={{ color: "#94a3b8" }}>—</Typography>;
 
-    const toneMap: Record<string, "brand" | "accent" | "success" | "neutral"> = {
+    const toneMap: Record<string, "brand" | "accent" | "success" | "warning" | "neutral"> = {
+        "otp-login": "neutral",
+        "magic-link-request": "brand",
+        "password-reset-request": "warning",
         "user-creation": "brand",
         "simulation-share": "accent",
         "test-email": "success",
     };
 
-    return <StatusBadge label={trigger} tone={toneMap[trigger] || "neutral"} />;
+    return <StatusBadge label={EMAIL_TRIGGER_LABELS[trigger] ?? trigger} tone={toneMap[trigger] || "neutral"} />;
 }
 
 export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
@@ -285,8 +301,8 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                 onApplyFilters={handleSearch}
                 onClearFilters={resetFilters}
                 renderCustomSearch={() => (
-                    <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
-                        <Box sx={{ flex: 1, }}>
+                    <Box sx={{ display: 'flex', gap: 1, flex: "0 1 auto", minWidth: 0 }}>
+                        <Box sx={{ width: 230, flex: "0 0 auto" }}>
                             <FormSelect
                                 label=""
                                 options={[
@@ -300,14 +316,12 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
-                        <Box sx={{ flex: 1, }}>
+                        <Box sx={{ width: 230, flex: "0 0 auto" }}>
                             <FormSelect
                                 label=""
                                 options={[
                                     { value: "all", label: t("logs", "allTriggers") },
-                                    { value: "user-creation", label: t("auditEvents", "created") },
-                                    { value: "simulation-share", label: t("auditEvents", "shared") },
-                                    { value: "test-email", label: t("logs", "promptTest") },
+                                    ...EMAIL_TRIGGER_OPTIONS,
                                 ]}
                                 value={localTrigger}
                                 onChange={(v) => setLocalTrigger(String(v ?? "all"))}
@@ -315,7 +329,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
-                        <Box sx={{ flex: 1, }}>
+                        <Box sx={{ width: 310, flex: "0 0 auto" }}>
                             <TextField
                                 size="small"
                                 fullWidth
@@ -326,7 +340,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 sx={{ "& .MuiInputBase-root": { } }}
                             />
                         </Box>
-                        <Box sx={{ flex: 2, }}>
+                        <Box sx={{ width: 430, flex: "0 0 auto" }}>
                             <DateRangePicker
                                 variant="inline"
                                 label={t("logs", "date")}

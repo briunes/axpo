@@ -75,7 +75,7 @@ export function CrudFormContainer({
         if (onRenderActionsRef.current) {
             onRenderActionsRef.current(actionButtons);
         }
-    }, [submitLabel, cancelLabel, isSubmitting]);
+    }, [submitLabel, cancelLabel, isSubmitting, hideSubmit]);
 
     return (
         <Stack spacing={3} className={variant === "plain" ? "crud-form-panel crud-form-panel--plain" : "crud-form-panel"}>

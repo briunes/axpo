@@ -1798,8 +1798,8 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                 onApplyFilters={handleSearch}
                 onClearFilters={handleClear}
                 renderCustomSearch={() => (
-                    <Box sx={{ display: "flex", gap: 1, width: '100%' }}>
-                        <Box sx={{ flex: 1 }}>
+                    <Box sx={{ display: "flex", gap: 1, flex: "0 1 auto", minWidth: 0 }}>
+                        <Box sx={{ width: 180, flex: "0 0 auto" }}>
                             <FormSelect
                                 label=""
                                 options={[
@@ -1816,7 +1816,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
-                        <Box sx={{ flex: 1 }}>
+                        <Box sx={{ width: 180, flex: "0 0 auto" }}>
                             <FormSelect
                                 label=""
                                 options={[
@@ -1832,7 +1832,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
-                        <Box sx={{ flex: 1 }}>
+                        <Box sx={{ width: 180, flex: "0 0 auto" }}>
                             <FormSelect
                                 label=""
                                 options={[
@@ -1849,7 +1849,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
-                        <Box sx={{ flex: 1 }}>
+                        <Box sx={{ width: 260, flex: "0 0 auto" }}>
                             <FormInput
                                 label=""
                                 size="small"
@@ -1861,7 +1861,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                                 sx={{ "& .MuiInputBase-root": { } }}
                             />
                         </Box>
-                        <Box sx={{ flex: 1 }}>
+                        <Box sx={{ width: 360, flex: "0 0 auto" }}>
                             <DateRangePicker
                                 variant="inline"
                                 label={t("logs", "timestamp")}

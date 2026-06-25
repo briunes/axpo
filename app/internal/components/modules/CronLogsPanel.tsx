@@ -265,8 +265,8 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                 onApplyFilters={handleSearch}
                 onClearFilters={handleClear}
                 renderCustomSearch={() => (
-                    <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
-                        <Box sx={{ flex: 1, }}>
+                    <Box sx={{ display: 'flex', gap: 1, flex: "0 1 auto", minWidth: 0 }}>
+                        <Box sx={{ width: 390, flex: "0 0 auto" }}>
                             <FormSelect
                                 label=""
                                 options={[
@@ -280,7 +280,7 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
-                        <Box sx={{ flex: 1, }}>
+                        <Box sx={{ width: 390, flex: "0 0 auto" }}>
                             <FormSelect
                                 label=""
                                 options={[
@@ -294,7 +294,7 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
-                        <Box sx={{ flex: 2, }}>
+                        <Box sx={{ width: 520, flex: "0 0 auto" }}>
                             <DateRangePicker
                                 variant="inline"
                                 label={t("logs", "timestamp")}
