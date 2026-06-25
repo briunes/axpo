@@ -587,7 +587,7 @@ export function LLMSettings({ session, onNotify }: LLMSettingsProps) {
                                         <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "modelName")}</TableCell>
                                         <TableCell align="center" sx={{ fontWeight: 700 }}>Avg certainty</TableCell>
                                         <TableCell align="right" sx={{ fontWeight: 700 }}>Avg response</TableCell>
-                                        <TableCell sx={{ fontWeight: 700 }}>Benchmarks</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>Runs</TableCell>
                                         <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "baseUrl")}</TableCell>
                                         <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "apiKey")}</TableCell>
                                         <TableCell sx={{ fontWeight: 700 }}>{t("llmSettings", "temperature")}</TableCell>
