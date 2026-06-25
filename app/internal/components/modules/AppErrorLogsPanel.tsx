@@ -386,8 +386,8 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                 onApplyFilters={handleSearch}
                 onClearFilters={handleClear}
                 renderCustomSearch={() => (
-                    <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
-                        <Box sx={{ flex: 1, }}>
+                    <Box sx={{ display: 'flex', gap: 1, flex: "0 1 auto", minWidth: 0 }}>
+                        <Box sx={{ width: 350, flex: "0 0 auto" }}>
                             <FormSelect
                                 label=""
                                 options={[
@@ -403,7 +403,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
-                        <Box sx={{ flex: 1 }}>
+                        <Box sx={{ width: 350, flex: "0 0 auto" }}>
                             <TextField
                                 size="small"
                                 fullWidth
@@ -414,7 +414,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                                 sx={{ "& .MuiInputBase-root": { } }}
                             />
                         </Box>
-                        <Box sx={{ flex: 2 }}>
+                        <Box sx={{ width: 450, flex: "0 0 auto" }}>
                             <DateRangePicker
                                 variant="inline"
                                 label={t("logs", "timestamp")}
@@ -432,7 +432,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         size="small"
                         endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
                         onClick={() => window.open(`${SENTRY_BASE_URL}/issues/`, "_blank", "noopener,noreferrer")}
-                        sx={{ fontSize: 12, whiteSpace: "nowrap", ml: 2 }}
+                        sx={{ fontSize: 12, whiteSpace: "nowrap" }}
                     >
                         {t("logs", "openSentry")}
                     </Button>}

@@ -1,15 +1,21 @@
 "use client";
 
+import type { ReactNode } from "react";
+import { useState } from "react";
 import {
   Tooltip,
-  Button,
   Box,
+  IconButton,
   List,
   ListItem,
   ListItemButton,
   ListItemIcon,
+  SpeedDial,
+  SpeedDialAction,
   Typography,
 } from "@mui/material";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import LightModeIcon from "@mui/icons-material/LightMode";
 import { useRouter } from "next/navigation";
 import type { SessionState } from "../../lib/authSession";
 import {
@@ -23,11 +29,12 @@ import {
   AnalyticsIcon,
   LogoutIcon,
   ConfigurationsIcon,
+  NotificationsNavIcon,
 } from "../ui/icons";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useThemeMode } from "../../lib/ThemeModeContext";
 
-export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "logs" | "analytics" | "configurations";
+export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "logs" | "analytics" | "configurations" | "notifications";
 
 // Static English labels kept for non-UI uses (routes, test-ids, etc.)
 export const sectionLabel: Record<AppSection, string> = {
@@ -39,6 +46,7 @@ export const sectionLabel: Record<AppSection, string> = {
   logs: "System Logs",
   analytics: "Analytics",
   configurations: "Configurations",
+  notifications: "Notifications",
 };
 
 // Maps kebab-case AppSection keys to camelCase nav translation keys
@@ -51,6 +59,7 @@ const sectionNavKey: Record<AppSection, string> = {
   logs: "logs",
   analytics: "analytics",
   configurations: "configurations",
+  notifications: "notifications",
 };
 
 export const sectionDescription: Record<AppSection, string> = {
@@ -62,6 +71,7 @@ export const sectionDescription: Record<AppSection, string> = {
   logs: "Review audit logs, email logs, and cron job execution logs for governance and compliance monitoring.",
   analytics: "Track simulation performance and access metrics for operational decisions.",
   configurations: "Manage system settings, PDF templates, email templates and other configurable definitions.",
+  notifications: "Review and triage system notifications.",
 };
 
 export const sectionRoute: Record<AppSection, string> = {
@@ -73,6 +83,7 @@ export const sectionRoute: Record<AppSection, string> = {
   logs: "/internal/logs",
   analytics: "/internal/analytics",
   configurations: "/internal/configurations",
+  notifications: "/internal/notifications",
 };
 
 export const sectionPrimaryAction: Record<AppSection, { label: string; targetId: string }> = {
@@ -84,6 +95,7 @@ export const sectionPrimaryAction: Record<AppSection, { label: string; targetId:
   logs: { label: "View System Logs", targetId: "system-logs-table" },
   analytics: { label: "Refresh Metrics", targetId: "analytics-panel" },
   configurations: { label: "System Settings", targetId: "configurations-panel" },
+  notifications: { label: "Refresh Notifications", targetId: "notifications-table" },
 };
 
 export const sectionIcon: Record<AppSection, React.FC<{ className?: string }>> = {
@@ -95,6 +107,7 @@ export const sectionIcon: Record<AppSection, React.FC<{ className?: string }>> =
   logs: AuditLogsIcon,
   analytics: AnalyticsIcon,
   configurations: ConfigurationsIcon,
+  notifications: NotificationsNavIcon,
 };
 
 function getInitials(name: string): string {
@@ -104,6 +117,11 @@ function getInitials(name: string): string {
     .map((n) => n[0]?.toUpperCase() ?? "")
     .join("");
 }
+
+const LANGUAGE_OPTIONS = [
+  { locale: "en", label: "English", shortLabel: "EN", flag: "🇬🇧" },
+  { locale: "es", label: "Español", shortLabel: "ES", flag: "🇪🇸" },
+] as const;
 
 export function SectionMenu({
   section,
@@ -118,6 +136,7 @@ export function SectionMenu({
   onLogout,
   session,
   collapsed,
+  notificationBell,
 }: {
   section: AppSection;
   canSeeUsersSection: boolean;
@@ -131,13 +150,16 @@ export function SectionMenu({
   onLogout: () => void;
   session: SessionState;
   collapsed: boolean;
+  notificationBell?: ReactNode;
 }) {
   const { t, locale, setLocale } = useI18n();
   const { mode, toggleMode } = useThemeMode();
   const router = useRouter();
+  const [languageDialOpen, setLanguageDialOpen] = useState(false);
 
   const items = (Object.keys(sectionLabel) as AppSection[])
     .filter((item) => item !== "configurations")
+    .filter((item) => item !== "notifications")
     .filter((item) => {
       if (item === "users" && !canSeeUsersSection) return false;
       if (item === "agencies" && !canSeeAgenciesSection) return false;
@@ -150,6 +172,7 @@ export function SectionMenu({
 
   const ConfigIcon = sectionIcon["configurations"];
   const isConfigurationsActive = section === "configurations";
+  const activeLanguage = LANGUAGE_OPTIONS.find((option) => option.locale === locale) ?? LANGUAGE_OPTIONS[0];
 
   return (
     <>
@@ -318,118 +341,106 @@ export function SectionMenu({
           </List>
         )}
 
-        {/* Language toggle */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: collapsed ? 0.5 : 0.75,
-            px: collapsed ? 1 : 1.5,
-            py: 0.75,
-            mb: 0.5,
-            justifyContent: "center",
-            flexDirection: collapsed ? "column" : "row",
-          }}
-        >
-          {!collapsed && (
-            <Typography component="span" variant="caption" sx={{ color: "var(--scheme-neutral-500)", mr: 0.25 }}>
-              Lang
-            </Typography>
-          )}
-          <Tooltip title="English" placement="right">
-            <Button
-              onClick={() => setLocale("en")}
-              variant={locale === "en" ? "contained" : "outlined"}
+        <Box className={`sidebar-quick-actions${collapsed ? " collapsed" : ""}`}>
+          <Tooltip title={mode === "dark" ? t("theme", "lightMode") : t("theme", "darkMode")} placement="right" arrow>
+            <IconButton
               size="small"
-              sx={{
-                minWidth: collapsed ? 32 : 36,
-                minHeight: collapsed ? 32 : 36,
-                width: collapsed ? 32 : 36,
-                height: collapsed ? 32 : 36,
-                p: 0.5,
-                fontSize: collapsed ? 16 : 18,
-                lineHeight: 1,
-                borderRadius: collapsed ? "50%" : 1.5,
-                borderWidth: 2,
-                borderColor: locale === "en" ? "primary.main" : "transparent",
-                bgcolor: locale === "en" ? "rgba(255, 50, 84, 0.08)" : "var(--scheme-neutral-1100)",
-                opacity: locale === "en" ? 1 : 0.5,
-                transform: locale === "en" ? "scale(1.05)" : "scale(1)",
-                transition: "all 0.2s ease",
-                boxShadow: locale === "en" ? 1 : 0,
-                "&:hover": {
-                  opacity: 0.8,
-                  transform: "scale(1.05)",
-                  borderColor: locale === "en" ? "primary.main" : "var(--scheme-neutral-800)",
-                  bgcolor: locale === "en" ? "rgba(255, 50, 84, 0.12)" : "var(--scheme-neutral-1000)",
-                },
-              }}
-            >
-              🇬🇧
-            </Button>
-          </Tooltip>
-          <Tooltip title="Español" placement="right">
-            <Button
-              onClick={() => setLocale("es")}
-              variant={locale === "es" ? "contained" : "outlined"}
-              size="small"
-              sx={{
-                minWidth: collapsed ? 32 : 36,
-                minHeight: collapsed ? 32 : 36,
-                width: collapsed ? 32 : 36,
-                height: collapsed ? 32 : 36,
-                p: 0.5,
-                fontSize: collapsed ? 16 : 18,
-                lineHeight: 1,
-                borderRadius: collapsed ? "50%" : 1.5,
-                borderWidth: 2,
-                borderColor: locale === "es" ? "primary.main" : "transparent",
-                bgcolor: locale === "es" ? "rgba(255, 50, 84, 0.08)" : "var(--scheme-neutral-1100)",
-                opacity: locale === "es" ? 1 : 0.5,
-                transform: locale === "es" ? "scale(1.05)" : "scale(1)",
-                transition: "all 0.2s ease",
-                boxShadow: locale === "es" ? 1 : 0,
-                "&:hover": {
-                  opacity: 0.8,
-                  transform: "scale(1.05)",
-                  borderColor: locale === "es" ? "primary.main" : "var(--scheme-neutral-800)",
-                  bgcolor: locale === "es" ? "rgba(255, 50, 84, 0.12)" : "var(--scheme-neutral-1000)",
-                },
-              }}
-            >
-              🇪🇸
-            </Button>
-          </Tooltip>
-          <Tooltip title={mode === "dark" ? "Light mode" : "Dark mode"} placement="right">
-            <Button
               onClick={toggleMode}
-              variant="outlined"
-              size="small"
+              aria-label={mode === "dark" ? t("theme", "switchToLight") : t("theme", "switchToDark")}
               sx={{
-                minWidth: collapsed ? 32 : 36,
-                minHeight: collapsed ? 32 : 36,
-                width: collapsed ? 32 : 36,
-                height: collapsed ? 32 : 36,
-                p: 0.5,
-                fontSize: collapsed ? 16 : 18,
-                lineHeight: 1,
-                borderRadius: collapsed ? "50%" : 1.5,
-                borderWidth: 2,
-                borderColor: "transparent",
-                bgcolor: "var(--scheme-neutral-1100)",
-                opacity: 0.7,
-                transition: "all 0.2s ease",
-                "&:hover": {
-                  opacity: 1,
-                  transform: "scale(1.05)",
-                  borderColor: "var(--scheme-neutral-800)",
-                  bgcolor: "var(--scheme-neutral-1000)",
+                width: 36,
+                height: 36,
+              }}
+            >
+              {mode === "dark" ? <LightModeIcon color="warning" /> : <DarkModeIcon sx={{ fontSize: 19 }} />}
+            </IconButton>
+          </Tooltip>
+
+          <Box
+            onMouseEnter={() => setLanguageDialOpen(true)}
+            onMouseLeave={() => setLanguageDialOpen(false)}
+            onFocus={() => setLanguageDialOpen(true)}
+            onBlur={() => setLanguageDialOpen(false)}
+            sx={{
+              position: "relative",
+              width: 36,
+              height: 36,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 20,
+            }}
+          >
+            <SpeedDial
+              ariaLabel="Language selector"
+              icon={
+                <Box
+                  component="span"
+                  aria-hidden="true"
+                  sx={{ fontSize: 21, lineHeight: 1, display: "inline-flex" }}
+                >
+                  {activeLanguage.flag}
+                </Box>
+              }
+              direction={collapsed ? "right" : "up"}
+              open={languageDialOpen}
+              onOpen={() => setLanguageDialOpen(true)}
+              onClose={() => setLanguageDialOpen(false)}
+              FabProps={{
+                size: "small",
+                sx: {
+                  width: 36,
+                  height: 36,
+                  minHeight: 36,
+                  backgroundColor: 'transparent'
+                },
+              }}
+              sx={{
+                position: "absolute",
+                inset: 0,
+                "& .MuiSpeedDial-actions": {
+                  gap: 1,
                 },
               }}
             >
-              {mode === "dark" ? "☀️" : "🌙"}
-            </Button>
-          </Tooltip>
+              {LANGUAGE_OPTIONS.filter((option) => option.locale !== locale).map((option) => (
+                <SpeedDialAction
+                  key={option.locale}
+                  icon={
+                    <Box component="span" aria-hidden="true" sx={{ fontSize: 20, lineHeight: 1 }}>
+                      {option.flag}
+                    </Box>
+                  }
+                  tooltipTitle={option.label}
+                  tooltipPlacement={collapsed ? "top" : "right"}
+                  onClick={() => {
+                    setLocale(option.locale);
+                    setLanguageDialOpen(false);
+                  }}
+                  slotProps={{
+                    fab: {
+                      sx: {
+                        width: 36,
+                        height: 36,
+                        minHeight: 36,
+                        boxShadow: "0 5px 14px rgba(16, 24, 40, 0.2)",
+                        color: "var(--scheme-neutral-300)",
+                        backgroundColor: "var(--scheme-neutral-1200)",
+                        border: "1px solid var(--scheme-neutral-800)",
+                        "&:hover": {
+                          backgroundColor: "var(--scheme-neutral-1000)",
+                          boxShadow: "0 7px 18px rgba(16, 24, 40, 0.24)",
+                        },
+                      },
+                    },
+
+                  }}
+                />
+              ))}
+            </SpeedDial>
+          </Box>
+
+          {notificationBell}
         </Box>
 
         <Box sx={{ display: "flex", flexDirection: collapsed ? "column" : "row", alignItems: "center", gap: collapsed ? 1 : 0.5, px: collapsed ? 1 : 0 }}>

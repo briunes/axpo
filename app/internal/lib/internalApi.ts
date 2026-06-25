@@ -627,6 +627,20 @@ function cachedInternalRead<T>(
   return entry.promise as Promise<T>;
 }
 
+export function invalidateBaseValuesReadCache(token: string): void {
+  if (typeof window === "undefined") return;
+
+  const keyPrefix = tokenScopedCacheKey(
+    token,
+    `${baseUrl}/api/v1/internal/base-values`,
+  );
+  for (const key of internalReadCache.keys()) {
+    if (key.startsWith(keyPrefix)) {
+      internalReadCache.delete(key);
+    }
+  }
+}
+
 export function maybePersistRefreshedToken(response: Response): void {
   if (typeof window === "undefined") return;
 
@@ -2231,6 +2245,96 @@ export function simulationStatusTone(
     return "warning";
   }
   return "neutral";
+}
+
+// ── Notifications ──────────────────────────────────────────────────────────
+
+export type NotificationSeverity =
+  | "INFO"
+  | "SUCCESS"
+  | "WARNING"
+  | "ERROR"
+  | "CRITICAL";
+
+export interface NotificationItem {
+  id: string;
+  type: string;
+  category: string;
+  severity: NotificationSeverity;
+  title: string;
+  body?: string | null;
+  actionUrl?: string | null;
+  sourceType?: string | null;
+  sourceId?: string | null;
+  metadata?: Record<string, unknown> | null;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  readAt?: string | null;
+  dismissedAt?: string | null;
+}
+
+export interface NotificationsResult {
+  items: NotificationItem[];
+  unreadCount: number;
+  totalCount: number;
+  unavailable?: boolean;
+}
+
+export type NotificationStatusFilter = "all" | "unread" | "read" | "dismissed";
+
+export async function listNotifications(
+  token: string,
+  params?: {
+    limit?: number;
+    offset?: number;
+    unreadOnly?: boolean;
+    includeDismissed?: boolean;
+    status?: NotificationStatusFilter;
+    severity?: NotificationSeverity | "all";
+    type?: string;
+    category?: string;
+    sourceType?: string;
+  },
+): Promise<NotificationsResult> {
+  const qs = new URLSearchParams();
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.offset) qs.set("offset", String(params.offset));
+  if (params?.unreadOnly) qs.set("unreadOnly", "true");
+  if (params?.includeDismissed) qs.set("includeDismissed", "true");
+  if (params?.status) qs.set("status", params.status);
+  if (params?.severity && params.severity !== "all") qs.set("severity", params.severity);
+  if (params?.type && params.type !== "all") qs.set("type", params.type);
+  if (params?.category && params.category !== "all") qs.set("category", params.category);
+  if (params?.sourceType && params.sourceType !== "all") qs.set("sourceType", params.sourceType);
+  const queryString = qs.toString();
+  const response = await fetch(
+    `/api/v1/internal/notifications${queryString ? `?${queryString}` : ""}`,
+    {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+  return parseApiResponse<NotificationsResult>(
+    response,
+    "Notifications request failed",
+  );
+}
+
+export async function markNotifications(
+  token: string,
+  ids: string[],
+  action: "read" | "dismiss",
+): Promise<void> {
+  const response = await fetch("/api/v1/internal/notifications", {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ ids, action }),
+  });
+  await parseApiResponse<{ updated: number; skipped?: number }>(
+    response,
+    "Notification update failed",
+  );
 }
 
 // ── Role Permissions ────────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ import {
   updateBaseValueSet,
   uploadBaseValueFile,
   toggleBaseValueSetProduction,
+  invalidateBaseValuesReadCache,
   type BaseValueScopeType,
   type BaseValueSetItem,
   type ListBaseValueSetsParams,
@@ -53,6 +54,7 @@ export interface BaseValuesActions {
   // actions
   handleActivateBaseValueSet: (setItem: BaseValueSetItem) => Promise<void>;
   handleArchiveBaseValueSet: (setItem: BaseValueSetItem) => Promise<void>;
+  handleBulkArchiveBaseValueSets: (ids: string[]) => Promise<void>;
   handleToggleProduction: (setItem: BaseValueSetItem) => Promise<void>;
   handleUploadFile: (
     file: File,
@@ -201,6 +203,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
   const loading = isFetching;
 
   const invalidate = useCallback(async () => {
+    if (session?.token) invalidateBaseValuesReadCache(session.token);
     await queryClient.invalidateQueries({
       queryKey: ["base-values", session?.token ?? ""],
     });
@@ -208,9 +211,10 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
 
   const refresh = useCallback(
     async (_overrides?: ListBaseValueSetsParams) => {
+      if (session?.token) invalidateBaseValuesReadCache(session.token);
       await refetch();
     },
-    [refetch],
+    [refetch, session?.token],
   );
   // ────────────────────────────────────────────────────────────────────────
 
@@ -238,6 +242,11 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
   const handleArchiveBaseValueSet = async (setItem: BaseValueSetItem) => {
     await runAction(`archive-base-value-${setItem.id}`, async () => {
       if (!session) return;
+      if (!setItem.isDeleted && (setItem.isActive || setItem.isProduction)) {
+        throw new Error(
+          "Only draft, non-production base value sets can be archived.",
+        );
+      }
       await updateBaseValueSet(session.token, setItem.id, {
         isDeleted: !setItem.isDeleted,
       });
@@ -245,6 +254,32 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
       setSuccessText(
         `Base value set ${setItem.isDeleted ? "restored" : "archived"}.`,
       );
+    });
+  };
+
+  const handleBulkArchiveBaseValueSets = async (ids: string[]) => {
+    await runAction("bulk-archive-base-values", async () => {
+      if (!session) return;
+      const selectedSets = baseValueSets.filter((setItem) =>
+        ids.includes(setItem.id),
+      );
+      const invalidSets = selectedSets.filter(
+        (setItem) =>
+          setItem.isDeleted || setItem.isActive || setItem.isProduction,
+      );
+      if (invalidSets.length > 0) {
+        throw new Error(
+          "Only draft, non-production base value sets can be archived.",
+        );
+      }
+
+      await Promise.all(
+        ids.map((id) =>
+          updateBaseValueSet(session.token, id, { isDeleted: true }),
+        ),
+      );
+      await invalidate();
+      setSuccessText(`${ids.length} base value set(s) archived.`);
     });
   };
 
@@ -309,6 +344,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
     setProductionFilter,
     handleActivateBaseValueSet,
     handleArchiveBaseValueSet,
+    handleBulkArchiveBaseValueSets,
     handleToggleProduction,
     handleUploadFile,
   };

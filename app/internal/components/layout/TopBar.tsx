@@ -18,6 +18,7 @@ const sectionNavKey: Record<AppSection, string> = {
   logs: "logs",
   analytics: "analytics",
   configurations: "configurations",
+  notifications: "notifications",
 };
 
 export function TopBar({

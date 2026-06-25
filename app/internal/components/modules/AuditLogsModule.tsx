@@ -504,8 +504,8 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
                     px: 2,
                 }}
             >
-                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} flexWrap="wrap" >
-                    <Box sx={{ minWidth: 180, flex: 1, }}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} flexWrap={{ xs: "wrap", md: "nowrap" }}>
+                    <Box sx={{ width: { xs: "100%", md: 272 }, flex: "0 0 auto" }}>
                         <FormSelect
                             label=""
                             options={[
@@ -532,7 +532,7 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
                         />
                     </Box>
 
-                    <Box sx={{ minWidth: 200, flex: 1 }}>
+                    <Box sx={{ width: { xs: "100%", md: 272 }, flex: "0 0 auto" }}>
                         <FormSelect
                             label=""
                             options={eventTypeOptions}
@@ -541,7 +541,7 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
                         />
                     </Box>
 
-                    <Box sx={{ minWidth: 200, flex: 1 }}>
+                    <Box sx={{ width: { xs: "100%", md: 272 }, flex: "0 0 auto" }}>
                         <FormInput
                             placeholder={t("logs", "searchActor")}
                             value={localActorSearch}
@@ -550,7 +550,7 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
                         />
                     </Box>
 
-                    <Box sx={{ minWidth: 280, flex: 2 }}>
+                    <Box sx={{ width: { xs: "100%", md: 546 }, flex: "0 0 auto" }}>
                         <DateRangePicker
                             variant="inline"
                             startDate={localDateFrom}
@@ -562,7 +562,7 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
                         />
                     </Box>
 
-                    <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: "stretch", md: "flex-end" } }}>
+                    <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: "stretch", md: "flex-end" }, flex: "0 0 auto" }}>
                         <Button variant="contained" onClick={handleSearch} >
                             <SearchIcon sx={{ fontSize: 16, mr: 0.5 }} />
                             {t("common", "search")}

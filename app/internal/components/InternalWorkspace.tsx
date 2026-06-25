@@ -15,6 +15,7 @@ import {
   type PermissionKey,
 } from "../lib/permissionsDefinitions";
 import { TopBar, SectionMenu, SidebarHeader, type AppSection } from "./layout";
+import { NotificationBell } from "./layout/NotificationBell";
 import { useUserPreferences } from "./providers/UserPreferencesProvider";
 import { ForbiddenState, LoadingState } from "./shared";
 import { Toast, useToast } from "./ui";
@@ -151,6 +152,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
       logs: "/internal/logs",
       analytics: "/internal/analytics",
       configurations: "/internal/configurations",
+      notifications: "/internal/notifications",
     };
     router.push(routes[target]);
   };
@@ -190,6 +192,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
     logs: canSeeAnyLogs,
     analytics: canDo(role, "section.analytics"),
     configurations: canDo(role, "section.configurations"),
+    notifications: role === "SYS_ADMIN",
   };
   if (!sectionAllowed[section]) {
     return (
@@ -222,6 +225,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
             onLogout={handleLogout}
             session={session}
             collapsed={collapsed}
+            notificationBell={<NotificationBell token={session.token} role={role} surface="sidebar" collapsed={collapsed} />}
           />
         </aside>
         <div className="app-main">
@@ -280,6 +284,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
                 onLogout={handleLogout}
                 session={session}
                 collapsed={collapsed}
+                notificationBell={<NotificationBell token={session.token} role={role} surface="sidebar" collapsed={collapsed} />}
               />
             </aside>
 
