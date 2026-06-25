@@ -35,6 +35,10 @@ export interface NotificationListParams {
 }
 
 const SYS_ADMIN_AUDIENCE = UserRole.SYS_ADMIN;
+const DEFAULT_SYS_ADMIN_SYNC_TTL_MS = 60_000;
+
+let sysAdminSyncLastSuccessAt = 0;
+let sysAdminSyncInFlight: Promise<void> | null = null;
 
 function toIsoString(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : value;
@@ -99,7 +103,35 @@ export class NotificationService {
     };
   }
 
-  static async syncSysAdminNotifications(): Promise<void> {
+  private static getSysAdminSyncTtlMs(): number {
+    const value = Number(process.env.NOTIFICATION_SYNC_TTL_MS);
+    if (!Number.isFinite(value) || value < 0) return DEFAULT_SYS_ADMIN_SYNC_TTL_MS;
+    return Math.min(Math.round(value), 10 * 60_000);
+  }
+
+  static async syncSysAdminNotifications(options: { force?: boolean } = {}): Promise<void> {
+    const now = Date.now();
+    if (!options.force && now - sysAdminSyncLastSuccessAt < NotificationService.getSysAdminSyncTtlMs()) {
+      return;
+    }
+    if (sysAdminSyncInFlight) {
+      return sysAdminSyncInFlight;
+    }
+
+    const syncPromise = NotificationService.performSysAdminNotificationSync()
+      .then(() => {
+        sysAdminSyncLastSuccessAt = Date.now();
+      })
+      .finally(() => {
+        if (sysAdminSyncInFlight === syncPromise) {
+          sysAdminSyncInFlight = null;
+        }
+      });
+    sysAdminSyncInFlight = syncPromise;
+    return syncPromise;
+  }
+
+  private static async performSysAdminNotificationSync(): Promise<void> {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const [

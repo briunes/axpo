@@ -313,7 +313,7 @@ export default function NotificationsPage() {
     [queryParams, session?.token],
   );
 
-  const { data, error: queryError, isFetching, isLoading, refetch } = useQuery({
+  const { data, error: queryError, isFetching, isLoading, isPlaceholderData, refetch } = useQuery({
     queryKey,
     queryFn: () => listNotifications(session!.token, queryParams),
     enabled: !!session,
@@ -322,7 +322,7 @@ export default function NotificationsPage() {
   });
 
   const items = data?.items ?? [];
-  const loading = isLoading || (isFetching && !data);
+  const loading = isLoading || isPlaceholderData || (isFetching && !data);
   const error = data?.unavailable
     ? t("notifications", "migrationPending")
     : queryError

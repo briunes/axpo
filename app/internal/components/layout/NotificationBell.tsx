@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import CheckIcon from "@mui/icons-material/Check";
@@ -61,11 +61,12 @@ export function NotificationBell({
   collapsed?: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const cachePolicy = useRequestCachePolicy("notifications");
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
-  const isVisible = role === "SYS_ADMIN";
+  const isVisible = role === "SYS_ADMIN" && !pathname.startsWith("/internal/notifications");
   const queryKey = useMemo(() => ["notifications", token, { limit: 10 }] as const, [token]);
 
   const { data, error: queryError, isFetching, isLoading, refetch } = useQuery({
