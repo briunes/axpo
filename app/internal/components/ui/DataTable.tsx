@@ -399,7 +399,7 @@ export function DataTable<T extends { id: string }>({
 
       cols.push({
         field: col.key,
-        headerName: col.label.toUpperCase(),
+        headerName: col.label,
         sortable: col.sortable ?? false,
         width: explicitWidth ?? (isActionsColumn ? 180 : undefined),
         minWidth: isActionsColumn ? 164 : undefined,
@@ -450,7 +450,7 @@ export function DataTable<T extends { id: string }>({
     if (rowActions) {
       cols.push({
         field: "actions",
-        headerName: "ACTIONS",
+        headerName: tI18n('common', 'actions'),
         sortable: false,
         width: 200,
         renderCell: (params) => {
@@ -473,7 +473,7 @@ export function DataTable<T extends { id: string }>({
     // are accessed via refs inside renderCell to prevent the grid from re-mounting
     // (and scrolling to top) on every checkbox click.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns, rowActions, loading, hasMassActions, hiddenCols]);
+  }, [columns, rowActions, loading, hasMassActions, hiddenCols, tI18n]);
 
   // Create skeleton rows when loading
   const skeletonRows = useMemo(() => {
@@ -1171,16 +1171,20 @@ export function DataTable<T extends { id: string }>({
                 '& .MuiDataGrid-columnHeaders': {
                   borderBottom: '1px solid color-mix(in srgb, var(--scheme-neutral-900) 78%, transparent)',
                   backgroundColor: tableHeaderBackground,
-                  fontWeight: 600,
-                  color: 'var(--scheme-neutral-500)',
+                  fontWeight: 400,
+                  color: 'primary.main',
                   boxShadow: '0 1px 0 rgba(16, 24, 40, 0.04)',
+                  textTransform: 'none',
+                  fontSize: 'inherit'
                 },
                 '& .MuiDataGrid-columnHeader': {
                   borderRight: 'none',
+                  textTransform: 'none',
                 },
                 '& .MuiDataGrid-columnHeaderTitle': {
-                  fontWeight: 600,
-                  letterSpacing: '0.02em',
+                  fontWeight: 500,
+                  letterSpacing: 0,
+                  textTransform: 'none',
                 },
                 '& .dt-grid-cell-actions': {
                   overflow: 'visible',

@@ -1396,9 +1396,9 @@ textarea {
 .dt-th {
   text-align: left;
   padding: 10px 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--scheme-neutral-500);
   background: color-mix(in srgb, var(--scheme-surface-raised) 78%, var(--scheme-surface-raised-subtle));
   border-bottom: 1px solid var(--scheme-neutral-900);
