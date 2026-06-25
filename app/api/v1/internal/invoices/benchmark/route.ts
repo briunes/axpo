@@ -631,6 +631,66 @@ function isMissingBenchmarkHistoryTableError(error: unknown): boolean {
   );
 }
 
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
+const normalizeProviderKeyPart = (value: unknown): string =>
+  String(value ?? "").trim().toLowerCase();
+
+const providerConfigKey = (
+  provider: unknown,
+  modelName: unknown,
+  baseUrl?: unknown,
+): string =>
+  [
+    normalizeProviderKeyPart(provider),
+    normalizeProviderKeyPart(modelName),
+    normalizeProviderKeyPart(baseUrl),
+  ].join("::");
+
+const getExtractedOcrFieldKeys = (extractedFields: unknown): Set<string> =>
+  new Set(
+    Object.entries(asRecord(extractedFields))
+      .filter(
+        ([, value]) => value !== null && value !== undefined && value !== "",
+      )
+      .map(([key]) => key),
+  );
+
+const countExtractedOcrFields = (
+  extractedFieldKeys: Set<string>,
+  fieldsExtracted: unknown,
+): number => {
+  const storedCount = Number(fieldsExtracted);
+  if (Number.isFinite(storedCount) && storedCount > 0) {
+    return Math.max(storedCount, extractedFieldKeys.size);
+  }
+
+  return extractedFieldKeys.size;
+};
+
+const scoreOcrExtractionLog = (log: {
+  extractedFields: unknown;
+  fieldsExtracted: unknown;
+  userCorrections: unknown;
+}): number | null => {
+  const extractedFieldKeys = getExtractedOcrFieldKeys(log.extractedFields);
+  const corrections = asRecord(log.userCorrections);
+  const missingCorrectionCount = Object.keys(corrections).filter(
+    (field) => !extractedFieldKeys.has(field),
+  ).length;
+  const totalFields =
+    countExtractedOcrFields(extractedFieldKeys, log.fieldsExtracted) +
+    missingCorrectionCount;
+  if (totalFields <= 0) return null;
+
+  const correctionsCount = Object.keys(corrections).length;
+  const correctFields = Math.max(totalFields - correctionsCount, 0);
+  return Math.round((correctFields / totalFields) * 100);
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/v1/internal/invoices/benchmark
 // Returns persisted benchmark history and per-LLM averages.
@@ -643,9 +703,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
   let runs: any[] = [];
   let statsRuns: any[] = [];
+  let ocrRuns: any[] = [];
 
   try {
-    [runs, statsRuns] = await Promise.all([
+    [runs, statsRuns, ocrRuns] = await Promise.all([
       (prisma as any).llmBenchmarkRun.findMany({
         take: limit,
         orderBy: { createdAt: "desc" },
@@ -666,6 +727,25 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
           totalDurationMs: true,
           overallScore: true,
           createdAt: true,
+        },
+      }),
+      prisma.ocrLog.findMany({
+        take: 5000,
+        orderBy: { requestedAt: "desc" },
+        where: {
+          type: "INVOICE_EXTRACTION",
+          status: "SUCCESS",
+          durationMs: { not: null },
+        },
+        select: {
+          provider: true,
+          model: true,
+          baseUrl: true,
+          durationMs: true,
+          extractedFields: true,
+          fieldsExtracted: true,
+          userCorrections: true,
+          requestedAt: true,
         },
       }),
     ]);
@@ -722,6 +802,65 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     const candidateLast = run.createdAt ? new Date(run.createdAt).getTime() : 0;
     if (candidateLast > currentLast) {
       existing.lastRunAt = run.createdAt;
+    }
+  }
+
+  const systemConfig = await prisma.systemConfig.findFirst();
+  const configuredProviders = getConfiguredAiProviders(systemConfig ?? {});
+  const providerConfigByExactKey = new Map(
+    configuredProviders.map((providerConfig) => [
+      providerConfigKey(
+        providerConfig.provider,
+        providerConfig.modelName,
+        providerConfig.baseUrl,
+      ),
+      providerConfig,
+    ]),
+  );
+  const providerConfigByModelKey = new Map(
+    configuredProviders.map((providerConfig) => [
+      providerConfigKey(providerConfig.provider, providerConfig.modelName),
+      providerConfig,
+    ]),
+  );
+
+  for (const run of ocrRuns as any[]) {
+    const score = scoreOcrExtractionLog(run);
+    if (score === null) continue;
+
+    const providerConfig =
+      providerConfigByExactKey.get(
+        providerConfigKey(run.provider, run.model, run.baseUrl),
+      ) ??
+      providerConfigByModelKey.get(providerConfigKey(run.provider, run.model));
+    if (!providerConfig) continue;
+
+    const existing = summaryAccumulator.get(providerConfig.id);
+    if (!existing) {
+      summaryAccumulator.set(providerConfig.id, {
+        providerConfigId: providerConfig.id,
+        providerName: providerConfig.name,
+        provider: providerConfig.provider,
+        modelName: providerConfig.modelName,
+        runCount: 1,
+        totalDurationMs: Number(run.durationMs ?? 0),
+        totalCertainty: score,
+        lastRunAt: run.requestedAt ?? null,
+      });
+      continue;
+    }
+
+    existing.runCount += 1;
+    existing.totalDurationMs += Number(run.durationMs ?? 0);
+    existing.totalCertainty += score;
+    const currentLast = existing.lastRunAt
+      ? new Date(existing.lastRunAt).getTime()
+      : 0;
+    const candidateLast = run.requestedAt
+      ? new Date(run.requestedAt).getTime()
+      : 0;
+    if (candidateLast > currentLast) {
+      existing.lastRunAt = run.requestedAt;
     }
   }
 
