@@ -243,6 +243,27 @@ const models: Record<string, ModelMeta> = {
     timestamps: true,
     compoundUniques: { role_permissionKey: ["role", "permissionKey"] },
   },
+  notification: {
+    table: "notifications",
+    timestamps: true,
+    relations: {
+      audienceUser: { table: "users", localField: "audienceUserId" },
+      reads: {
+        table: "notification_reads",
+        many: true,
+        foreignField: "notificationId",
+      },
+    },
+  },
+  notificationRead: {
+    table: "notification_reads",
+    timestamps: true,
+    relations: {
+      notification: { table: "notifications", localField: "notificationId" },
+      user: { table: "users", localField: "userId" },
+    },
+    compoundUniques: { notificationId_userId: ["notificationId", "userId"] },
+  },
   templateVariable: { table: "template_variables", timestamps: true },
   emailLog: {
     table: "email_logs",

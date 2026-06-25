@@ -150,6 +150,8 @@ model User {
   ocrPricesUpdated            OcrModelPrice[]     @relation("OcrPriceUpdatedBy")
   ocrInvoicesCreated          OcrUsageInvoice[]   @relation("OcrInvoiceCreatedBy")
   ocrInvoicesAsUser           OcrUsageInvoice[]   @relation("OcrInvoiceUser")
+  audienceNotifications       Notification[]      @relation("NotificationAudienceUser")
+  notificationReads           NotificationRead[]
   agency                      Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   createdByUser               User?               @relation("UserCreatedBy", fields: [createdByUserId], references: [id])
   createdUsers                User[]              @relation("UserCreatedBy")
@@ -498,6 +500,52 @@ model RolePermission {
   @@map("role_permissions")
 }
 
+model Notification {
+  id             String                 @id @default(cuid())
+  type           String
+  category       String
+  severity       NotificationSeverity   @default(INFO)
+  title          String
+  body           String?
+  audienceRole   UserRole?
+  audienceUserId String?
+  sourceType     String?
+  sourceId       String?
+  dedupeKey      String                 @unique
+  actionUrl      String?
+  metadata       Json?
+  firstSeenAt    DateTime               @default(now())
+  lastSeenAt     DateTime               @default(now())
+  resolvedAt     DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  audienceUser   User?                  @relation("NotificationAudienceUser", fields: [audienceUserId], references: [id], onDelete: Cascade)
+  reads          NotificationRead[]
+
+  @@index([audienceRole, resolvedAt, lastSeenAt(sort: Desc)])
+  @@index([audienceUserId, resolvedAt, lastSeenAt(sort: Desc)])
+  @@index([category, severity])
+  @@index([sourceType, sourceId])
+  @@map("notifications")
+}
+
+model NotificationRead {
+  id             String       @id @default(cuid())
+  notificationId String
+  userId         String
+  readAt         DateTime?
+  dismissedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId, dismissedAt])
+  @@map("notification_reads")
+}
+
 model TemplateVariable {
   id            String    @id @default(cuid())
   key           String    @unique
@@ -723,6 +771,14 @@ enum BaseValueScope {
   GLOBAL
   AGENCY
   TLV
+}
+
+enum NotificationSeverity {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  CRITICAL
 }
 
 model AppErrorLog {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { SessionState } from "../../lib/authSession";
 import type { AuditLogsActions } from "../hooks/useAuditLogs";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -38,8 +39,12 @@ const isElevatedRole = (role: string) => role === "ADMIN" || role === "SYS_ADMIN
 
 export function SystemLogsModule({ session, auditLogsActions, onNotify, onActionButtons }: SystemLogsModuleProps) {
     const { t } = useI18n();
+    const searchParams = useSearchParams();
     const { canDo } = usePermissions();
-    const [activeTab, setActiveTab] = useState<LogType>("audit");
+    const requestedTab = searchParams.get("tab") as LogType | null;
+    const [activeTab, setActiveTab] = useState<LogType>(
+        requestedTab && LOG_TABS.some((tab) => tab.id === requestedTab) ? requestedTab : "audit",
+    );
 
     const visibleTabs = isElevatedRole(session.user.role)
         ? LOG_TABS.filter((tab) => canDo(session.user.role, tab.permission))
@@ -50,6 +55,12 @@ export function SystemLogsModule({ session, auditLogsActions, onNotify, onAction
             setActiveTab(visibleTabs[0].id);
         }
     }, [activeTab, visibleTabs]);
+
+    useEffect(() => {
+        if (requestedTab && visibleTabs.some((tab) => tab.id === requestedTab)) {
+            setActiveTab(requestedTab);
+        }
+    }, [requestedTab, visibleTabs]);
 
     if (visibleTabs.length === 0) {
         return (

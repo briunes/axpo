@@ -12,6 +12,7 @@ import EmailIcon from "@mui/icons-material/Email";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
+import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -53,5 +54,8 @@ export function ConfigurationsIcon({ className }: { className?: string }) {
   return <SettingsIcon className={className} sx={{ fontSize: 18 }} />;
 }
 
-export { LogoutIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon, MenuIcon };
+export function NotificationsNavIcon({ className }: { className?: string }) {
+  return <NotificationsNoneIcon className={className} sx={{ fontSize: 18 }} />;
+}
 
+export { LogoutIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon, MenuIcon };

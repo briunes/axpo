@@ -524,7 +524,7 @@ textarea {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  overflow: hidden;
+  overflow: visible;
   transition:
     width 220ms cubic-bezier(0.4, 0, 0.2, 1),
     min-width 220ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -789,6 +789,21 @@ textarea {
   align-items: center;
 }
 
+.sidebar-quick-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 6px 8px;
+  position: relative;
+}
+
+.sidebar-quick-actions.collapsed {
+  flex-direction: column;
+  gap: 7px;
+  padding: 6px 0 8px;
+}
+
 .app-user-name {
   font-weight: 600;
   color: var(--scheme-neutral-200);
@@ -966,6 +981,11 @@ textarea {
   color: var(--scheme-neutral-300);
   border-color: var(--scheme-neutral-800);
   box-shadow: var(--scheme-shadow-soft);
+}
+
+.notification-bell {
+  position: relative;
+  flex: 0 0 auto;
 }
 
 .topbar-hamburger {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Box, Tabs, Tab } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -22,8 +23,12 @@ type ConfigTab = "templates-communications" | "system-business" | "user-experien
 
 export function ConfigurationsModule({ session, onNotify, role }: ConfigurationsModuleProps) {
     const { t } = useI18n();
+    const searchParams = useSearchParams();
     const isSysAdmin = role === "SYS_ADMIN";
-    const [activeTab, setActiveTab] = useState<ConfigTab>("templates-communications");
+    const requestedTab = searchParams.get("tab") as ConfigTab | null;
+    const [activeTab, setActiveTab] = useState<ConfigTab>(
+        requestedTab ? requestedTab : "templates-communications",
+    );
 
     const ALL_TAB_LABELS: Record<ConfigTab, string> = {
         "templates-communications": t("configurationsModule", "tabTemplatesCommunications"),
@@ -48,6 +53,12 @@ export function ConfigurationsModule({ session, onNotify, role }: Configurations
     const tabIndex = visibleTabs.indexOf(activeTab);
     // Reset active tab if it becomes invisible
     const resolvedTab = visibleTabs.includes(activeTab) ? activeTab : visibleTabs[0];
+
+    useEffect(() => {
+        if (requestedTab && visibleTabs.includes(requestedTab)) {
+            setActiveTab(requestedTab);
+        }
+    }, [requestedTab, visibleTabs]);
 
     return (
         <div className="configurations-container">

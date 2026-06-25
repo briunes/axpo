@@ -6,6 +6,7 @@ export type RequestCacheModule =
   | "agencies"
   | "clients"
   | "baseValues"
+  | "notifications"
   | "logs"
   | "analytics";
 
@@ -26,6 +27,7 @@ export const REQUEST_CACHE_MODULE_LABELS: Record<RequestCacheModule, string> = {
   agencies: "Agencies",
   clients: "Clients",
   baseValues: "Base values",
+  notifications: "Notifications",
   logs: "Logs",
   analytics: "Analytics",
 };
@@ -40,6 +42,7 @@ export const DEFAULT_REQUEST_CACHE_CONFIG: RequestCacheConfig = {
   agencies: { enabled: true, durationMs: 5 * 60_000, autoRefetchOnExpire: false },
   clients: { enabled: true, durationMs: 5 * 60_000, autoRefetchOnExpire: false },
   baseValues: { enabled: true, durationMs: 5 * 60_000, autoRefetchOnExpire: false },
+  notifications: { enabled: true, durationMs: 2 * 60_000, autoRefetchOnExpire: true },
   logs: { enabled: true, durationMs: 60_000, autoRefetchOnExpire: false },
   analytics: { enabled: true, durationMs: 5 * 60_000, autoRefetchOnExpire: false },
 };
