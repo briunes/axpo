@@ -627,6 +627,20 @@ function cachedInternalRead<T>(
   return entry.promise as Promise<T>;
 }
 
+export function invalidateBaseValuesReadCache(token: string): void {
+  if (typeof window === "undefined") return;
+
+  const keyPrefix = tokenScopedCacheKey(
+    token,
+    `${baseUrl}/api/v1/internal/base-values`,
+  );
+  for (const key of internalReadCache.keys()) {
+    if (key.startsWith(keyPrefix)) {
+      internalReadCache.delete(key);
+    }
+  }
+}
+
 export function maybePersistRefreshedToken(response: Response): void {
   if (typeof window === "undefined") return;
 

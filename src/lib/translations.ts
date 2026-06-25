@@ -730,6 +730,12 @@ export const translations = {
         'Activate "{name}"? It will replace the current active set for its scope.',
       archiveConfirm: 'Archive "{name}"? It will be hidden from simulations.',
       restoreConfirm: 'Restore "{name}"?',
+      bulkArchiveTitle: "Archive base value sets",
+      bulkArchiveConfirm:
+        "Archive {count} selected draft, non-production base value set(s)? Active and production sets cannot be archived.",
+      bulkArchiveLabel: "Archive selected",
+      archiveNotAllowed:
+        "Only draft, non-production base value sets can be archived.",
       colName: "Name",
       colScope: "Scope",
       colVersion: "Version",
@@ -3379,6 +3385,12 @@ export const translations = {
         '¿Activar "{name}"? Reemplazará el conjunto activo actual para su alcance.',
       archiveConfirm: '¿Archivar "{name}"? Se ocultará de las simulaciones.',
       restoreConfirm: '¿Restaurar "{name}"?',
+      bulkArchiveTitle: "Archivar conjuntos de valores base",
+      bulkArchiveConfirm:
+        "¿Archivar {count} conjunto(s) seleccionado(s) en borrador y no producción? Los conjuntos activos y de producción no se pueden archivar.",
+      bulkArchiveLabel: "Archivar seleccionados",
+      archiveNotAllowed:
+        "Solo se pueden archivar conjuntos de valores base en borrador y no producción.",
       colName: "Nombre",
       colScope: "Alcance",
       colVersion: "Versión",

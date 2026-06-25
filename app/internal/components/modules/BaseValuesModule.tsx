@@ -59,10 +59,11 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
     scopeFilter, setScopeFilter,
     statusFilter, setStatusFilter,
     productionFilter, setProductionFilter,
-    handleActivateBaseValueSet, handleArchiveBaseValueSet, handleToggleProduction, handleUploadFile,
+    handleActivateBaseValueSet, handleArchiveBaseValueSet, handleBulkArchiveBaseValueSets, handleToggleProduction, handleUploadFile,
   } = actions;
 
   const [confirmAction, setConfirmAction] = useState<{ id: string; type: "activate" | "archive" | "restore" } | null>(null);
+  const [confirmBulkArchiveIds, setConfirmBulkArchiveIds] = useState<string[] | null>(null);
   const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
   const [uploadScopeType, setUploadScopeType] =
     useState<Extract<BaseValueScopeType, "GLOBAL" | "TLV">>("GLOBAL");
@@ -104,6 +105,8 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
   const hasActiveFilters = Boolean(
     search || scopeFilter || statusFilter || productionFilter,
   );
+  const canArchiveSet = (setItem: BaseValueSetItem) =>
+    !setItem.isDeleted && !setItem.isActive && !setItem.isProduction;
 
   const columns: ColumnDef<BaseValueSetItem>[] = [
     {
@@ -239,7 +242,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
               </IconButton>
             </Tooltip>
           )}
-          {!s.isDeleted && (
+          {canArchiveSet(s) && (
             <Tooltip title={t("baseValuesModule", "archive_tooltip")} placement="top">
               <IconButton
                 onClick={() => setConfirmAction({ id: s.id, type: "archive" })}
@@ -373,6 +376,23 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
           onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
         }}
         t={t}
+        massActions={canManage ? [
+          {
+            label: t("baseValuesModule", "bulkArchiveLabel"),
+            color: "error",
+            icon: <ArchiveIcon fontSize="small" />,
+            onClick: (ids) => {
+              const selectedSets = baseValueSets.filter((setItem) =>
+                ids.includes(setItem.id),
+              );
+              if (selectedSets.some((setItem) => !canArchiveSet(setItem))) {
+                onNotify?.(t("baseValuesModule", "archiveNotAllowed"), "error");
+                return;
+              }
+              setConfirmBulkArchiveIds(ids);
+            },
+          },
+        ] : undefined}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
           <>
             <Box sx={{ flex:1 }}>
@@ -495,7 +515,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
                   {t("actions", "activate")}
                 </Button>
               ) : null,
-              !s.isDeleted ? (
+              canArchiveSet(s) ? (
                 <Button
                   key="archive"
                   variant="outlined"
@@ -531,6 +551,22 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
           },
         }}
       />
+
+      {confirmBulkArchiveIds && (
+        <ConfirmDialog
+          title={t("baseValuesModule", "bulkArchiveTitle")}
+          message={t("baseValuesModule", "bulkArchiveConfirm", {
+            count: confirmBulkArchiveIds.length,
+          })}
+          confirmLabel={t("baseValuesModule", "bulkArchiveLabel")}
+          busy={busyAction === "bulk-archive-base-values"}
+          onConfirm={async () => {
+            await handleBulkArchiveBaseValueSets(confirmBulkArchiveIds);
+            setConfirmBulkArchiveIds(null);
+          }}
+          onCancel={() => setConfirmBulkArchiveIds(null)}
+        />
+      )}
 
       {confirmAction && confirmTarget && (
         <ConfirmDialog

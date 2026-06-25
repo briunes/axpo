@@ -91,6 +91,15 @@ export const PATCH = withErrorHandler(
     if (!exists) {
       throw new NotFoundError("BaseValueSet", id);
     }
+    if (
+      payload.isDeleted === true &&
+      !exists.isDeleted &&
+      (exists.isActive || exists.isProduction)
+    ) {
+      throw new ValidationError(
+        "Only draft, non-production base value sets can be archived.",
+      );
+    }
 
     const updated = await prisma.baseValueSet.update({
       where: { id },
