@@ -42,9 +42,19 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const includeDismissed = searchParams.get("includeDismissed") === "true" || status === "dismissed";
   const requestedSeverity = notificationSeveritySchema.safeParse(cleanFilterValue(searchParams.get("severity")));
   const severity = requestedSeverity.success ? requestedSeverity.data : undefined;
+  const shouldSync =
+    offset === 0 &&
+    !includeDismissed &&
+    (status === "all" || status === "unread") &&
+    !severity &&
+    !cleanFilterValue(searchParams.get("type")) &&
+    !cleanFilterValue(searchParams.get("category")) &&
+    !cleanFilterValue(searchParams.get("sourceType"));
 
   try {
-    await NotificationService.syncSysAdminNotifications();
+    if (shouldSync) {
+      await NotificationService.syncSysAdminNotifications();
+    }
 
     const result = await NotificationService.listForUser({
       userId: auth.userId,
@@ -75,7 +85,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   assertSysAdmin(auth.role);
 
   try {
-    await NotificationService.syncSysAdminNotifications();
+    await NotificationService.syncSysAdminNotifications({ force: true });
     const result = await NotificationService.listForUser({
       userId: auth.userId,
       role: auth.role,

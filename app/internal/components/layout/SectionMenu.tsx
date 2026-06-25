@@ -173,6 +173,23 @@ export function SectionMenu({
   const ConfigIcon = sectionIcon["configurations"];
   const isConfigurationsActive = section === "configurations";
   const activeLanguage = LANGUAGE_OPTIONS.find((option) => option.locale === locale) ?? LANGUAGE_OPTIONS[0];
+  const openLanguageDial = () => setLanguageDialOpen(true);
+  const closeLanguageDial = () => setLanguageDialOpen(false);
+  const quickActionButtonSx = {
+    width: 36,
+    height: 36,
+    minHeight: 36,
+    p: 0,
+    color: "var(--scheme-neutral-500)",
+    backgroundColor: "transparent",
+    boxShadow: "none",
+    transition: "background-color 160ms ease, color 160ms ease, box-shadow 160ms ease",
+    "&:hover": {
+      color: "var(--scheme-neutral-300)",
+      backgroundColor: "var(--scheme-neutral-1000)",
+      boxShadow: "none",
+    },
+  };
 
   return (
     <>
@@ -347,23 +364,16 @@ export function SectionMenu({
               size="small"
               onClick={toggleMode}
               aria-label={mode === "dark" ? t("theme", "switchToLight") : t("theme", "switchToDark")}
-              sx={{
-                width: 36,
-                height: 36,
-              }}
+              sx={quickActionButtonSx}
             >
               {mode === "dark" ? <LightModeIcon color="warning" /> : <DarkModeIcon sx={{ fontSize: 19 }} />}
             </IconButton>
           </Tooltip>
 
           <Box
-            onMouseEnter={() => setLanguageDialOpen(true)}
-            onMouseLeave={() => setLanguageDialOpen(false)}
-            onFocus={() => setLanguageDialOpen(true)}
-            onBlur={() => setLanguageDialOpen(false)}
             sx={{
               position: "relative",
-              width: 36,
+              width: collapsed ? 130 : 36,
               height: 36,
               display: "inline-flex",
               alignItems: "center",
@@ -377,29 +387,53 @@ export function SectionMenu({
                 <Box
                   component="span"
                   aria-hidden="true"
-                  sx={{ fontSize: 21, lineHeight: 1, display: "inline-flex" }}
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    fontSize: 21,
+                    lineHeight: 0,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
                   {activeLanguage.flag}
                 </Box>
               }
               direction={collapsed ? "right" : "up"}
               open={languageDialOpen}
-              onOpen={() => setLanguageDialOpen(true)}
-              onClose={() => setLanguageDialOpen(false)}
+              onOpen={openLanguageDial}
+              onClose={closeLanguageDial}
               FabProps={{
                 size: "small",
                 sx: {
-                  width: 36,
-                  height: 36,
-                  minHeight: 36,
-                  backgroundColor: 'transparent'
+                  ...quickActionButtonSx,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  lineHeight: 0,
                 },
               }}
               sx={{
-                position: "absolute",
                 inset: 0,
+                width: collapsed ? 36 : 36,
+                height: 36,
+                overflow: "visible",
+                "& .MuiSpeedDial-fab": {
+                  position: "absolute",
+                  top: 0,
+                  left: collapsed ? 47 : 0,
+                },
                 "& .MuiSpeedDial-actions": {
                   gap: 1,
+                  alignItems: "center",
+                  ...(collapsed
+                    ? {
+                        marginLeft: 0,
+                      }
+                    : {
+                        marginBottom: 0,
+                      }),
                 },
               }}
             >
@@ -407,7 +441,19 @@ export function SectionMenu({
                 <SpeedDialAction
                   key={option.locale}
                   icon={
-                    <Box component="span" aria-hidden="true" sx={{ fontSize: 20, lineHeight: 1 }}>
+                    <Box
+                      component="span"
+                      aria-hidden="true"
+                      sx={{
+                        width: "100%",
+                        height: "100%",
+                        fontSize: 20,
+                        lineHeight: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
                       {option.flag}
                     </Box>
                   }
@@ -415,20 +461,25 @@ export function SectionMenu({
                   tooltipPlacement={collapsed ? "top" : "right"}
                   onClick={() => {
                     setLocale(option.locale);
-                    setLanguageDialOpen(false);
+                    closeLanguageDial();
                   }}
                   slotProps={{
                     fab: {
                       sx: {
-                        width: 36,
-                        height: 36,
                         minHeight: 36,
+                        p: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        lineHeight: 0,
                         boxShadow: "0 5px 14px rgba(16, 24, 40, 0.2)",
                         color: "var(--scheme-neutral-300)",
                         backgroundColor: "var(--scheme-neutral-1200)",
                         border: "1px solid var(--scheme-neutral-800)",
+                        transition: "background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease",
                         "&:hover": {
                           backgroundColor: "var(--scheme-neutral-1000)",
+                          borderColor: "var(--scheme-neutral-700)",
                           boxShadow: "0 7px 18px rgba(16, 24, 40, 0.24)",
                         },
                       },
