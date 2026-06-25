@@ -160,6 +160,14 @@ export function NotificationBell({
         sx={{
           width: 36,
           height: 36,
+          color: "var(--scheme-neutral-500)",
+          backgroundColor: "transparent",
+          transition: "background-color 160ms ease, color 160ms ease, box-shadow 160ms ease",
+          "&:hover": {
+            color: "var(--scheme-neutral-300)",
+            backgroundColor: "var(--scheme-neutral-1000)",
+            boxShadow: "none",
+          },
         }}
       >
         <Badge color="error" badgeContent={unreadCount} max={9}>

@@ -120,6 +120,11 @@ export async function GET(
             commercialEmail: true,
             commercialPhone: true,
             mobilePhone: true,
+            preferences: {
+              select: {
+                language: true,
+              },
+            },
           },
         },
         client: {
@@ -129,6 +134,7 @@ export async function GET(
             contactName: true,
             contactEmail: true,
             contactPhone: true,
+            language: true,
           },
         },
       },
@@ -163,7 +169,10 @@ export async function GET(
       ) ?? recentVersions[0];
     const latestOfferPayload = recentVersions.find((v) => {
       const payload = v.payloadJson as Record<string, unknown> | null;
-      return payload !== null && Object.prototype.hasOwnProperty.call(payload, "selectedOffer");
+      return (
+        payload !== null &&
+        Object.prototype.hasOwnProperty.call(payload, "selectedOffer")
+      );
     })?.payloadJson as Record<string, unknown> | null;
     const mergedPayload: Record<string, unknown> | null =
       baseVersion?.payloadJson
@@ -175,10 +184,64 @@ export async function GET(
           }
         : null;
 
-    // Fetch the PDF template
-    const pdfTemplate = await prisma.pdfTemplate.findUnique({
-      where: { id: "simulation-output-default" },
-    });
+    // Resolve preferred language: client > owner preferences > null
+    const preferredLanguage =
+      simulation.client?.language ??
+      simulation.ownerUser?.preferences?.language ??
+      null;
+
+    // Determine commodity from merged payload to select the right template
+    const commodity = mergedPayload?.type as "ELECTRICITY" | "GAS" | undefined;
+
+    // Fetch the appropriate PDF template via system config (same approach as /access route)
+    let pdfTemplate: {
+      id: string;
+      active: boolean;
+      htmlContent: string;
+      translations: { languageCode: string; htmlContent: string }[];
+    } | null = null;
+
+    if (commodity) {
+      const systemConfig = await prisma.systemConfig.findFirst({
+        select: {
+          defaultPdfTemplateGasId: true,
+          defaultPdfTemplateElectricityId: true,
+        },
+      });
+      const templateId =
+        commodity === "GAS"
+          ? systemConfig?.defaultPdfTemplateGasId
+          : systemConfig?.defaultPdfTemplateElectricityId;
+
+      if (templateId) {
+        pdfTemplate = await prisma.pdfTemplate.findFirst({
+          where: { id: templateId, isDeleted: false, active: true },
+          select: {
+            id: true,
+            active: true,
+            htmlContent: true,
+            translations: {
+              select: { languageCode: true, htmlContent: true },
+            },
+          },
+        });
+      }
+    }
+
+    // Fallback to the legacy hardcoded template if no commodity-based template found
+    if (!pdfTemplate) {
+      pdfTemplate = (await prisma.pdfTemplate.findUnique({
+        where: { id: "simulation-output-default" },
+        select: {
+          id: true,
+          active: true,
+          htmlContent: true,
+          translations: {
+            select: { languageCode: true, htmlContent: true },
+          },
+        },
+      })) as typeof pdfTemplate;
+    }
 
     if (!pdfTemplate || !pdfTemplate.active) {
       return NextResponse.json(
@@ -186,6 +249,14 @@ export async function GET(
         { status: 404 },
       );
     }
+
+    // Pick the translation for the preferred language, fall back to default htmlContent
+    const resolvedTemplateContent =
+      (preferredLanguage &&
+        pdfTemplate.translations.find(
+          (t) => t.languageCode === preferredLanguage,
+        )?.htmlContent) ??
+      pdfTemplate.htmlContent;
 
     // Extract variable values from simulation data
     const simulationPayload = mergedPayload as SimulationPayload | null;
@@ -196,7 +267,7 @@ export async function GET(
 
     // Replace variables in template
     const processedHtml = replaceVariables(
-      pdfTemplate.htmlContent,
+      resolvedTemplateContent,
       variableValues,
     );
 
