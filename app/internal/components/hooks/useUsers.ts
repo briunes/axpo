@@ -21,6 +21,8 @@ import {
   type UserRole,
 } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
+import { useRequestCachePolicy } from "./useRequestCachePolicy";
+import { normalizeQueryKeyParams } from "./queryKeys";
 
 export interface UsersActions {
   users: UserItem[];
@@ -144,6 +146,7 @@ export function useUsers(
   options?: UseUsersOptions,
 ): UsersActions {
   const queryClient = useQueryClient();
+  const cachePolicy = useRequestCachePolicy("users");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
@@ -276,21 +279,21 @@ export function useUsers(
     contextual: contextual || undefined,
   };
 
-  // Create a stable cache key by serializing query params
-  const queryKeyString = JSON.stringify({
+  const queryKeyParams = normalizeQueryKeyParams({
     page,
     pageSize,
-    search: search || null,
-    role: roleFilter || null,
-    agencyId: agencyFilter || null,
+    search,
+    role: roleFilter,
+    agencyId: agencyFilter,
     orderBy: sortColumn,
     sortDir,
-    includeDeleted: showArchived || null,
+    includeDeleted: showArchived,
+    minimal,
     contextual,
   });
 
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["users", session?.token ?? "", queryKeyString],
+    queryKey: ["users", session?.token ?? "", queryKeyParams],
     queryFn: async () => {
       const result = await listUsers(session!.token, queryParams);
       // seed the agencyId for the create form if not yet set
@@ -302,6 +305,7 @@ export function useUsers(
     },
     enabled: !!session && queryEnabled,
     placeholderData: keepPreviousData,
+    ...cachePolicy,
   });
 
   const users = data?.items ?? [];

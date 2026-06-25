@@ -14,7 +14,6 @@ import {
     IconButton,
     Tab,
     Tabs,
-    TextField,
     Tooltip,
     Typography,
     useTheme,
@@ -29,6 +28,7 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
@@ -36,14 +36,13 @@ import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 import AutoFixHighRoundedIcon from "@mui/icons-material/AutoFixHighRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
-import SearchIcon from "@mui/icons-material/Search";
-import ClearIcon from "@mui/icons-material/Clear";
 import AssignmentTurnedInRoundedIcon from "@mui/icons-material/AssignmentTurnedInRounded";
 import DoDisturbAltRoundedIcon from "@mui/icons-material/DoDisturbAltRounded";
 import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
 import type { SessionState } from "../../lib/authSession";
 import { DataTable, type ColumnDef } from "../ui";
 import { FormSelect } from "../ui/FormSelect";
+import { FormInput } from "../ui/FormInput";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
@@ -181,6 +180,7 @@ function formatProvider(provider: string): string {
         "openai": "OpenAI",
         "azure-openai": "Azure OpenAI",
         "anthropic": "Anthropic",
+        "aws-bedrock-anthropic": "AWS Bedrock (Claude)",
         "google": "Google AI",
     };
     return map[provider] ?? provider;
@@ -492,7 +492,7 @@ function OcrLogDetailDialog({
                                     />
                                     {log.simulationReferenceNumber && (
                                         <Chip
-                                            icon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
+                                            icon={<OpenInNewIcon fontSize="small" />}
                                             label={`${t("logs", "simulation")} ${log.simulationReferenceNumber}`}
                                             size="small"
                                             component="a"
@@ -658,7 +658,7 @@ function OcrLogDetailDialog({
                                         {item.label}
                                     </Typography>
                                 </Box>
-                                <Typography sx={{ fontSize: 13, fontWeight: 700, color: "text.primary", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                <Typography sx={{fontWeight: 700, color: "text.primary", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                     {item.value}
                                 </Typography>
                                 <Tooltip title={item.subvalue}>
@@ -716,7 +716,7 @@ function OcrLogDetailDialog({
                                 }}
                             >
                                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                                    <Typography sx={{ fontSize: 13, fontWeight: 800, color: "text.primary" }}>
+                                    <Typography sx={{fontWeight: 800, color: "text.primary" }}>
                                         {t("logs", "issue")}
                                     </Typography>
                                     <IssueChip log={log} />
@@ -732,7 +732,7 @@ function OcrLogDetailDialog({
                                     {log.reportedIssue && (
                                         <Chip
                                             size="small"
-                                            icon={<WarningAmberIcon sx={{ fontSize: 13 }} />}
+                                            icon={<WarningAmberIcon fontSize="small" />}
                                             label={t("logs", "reported")}
                                             sx={{ height: 22, fontSize: 10.5, fontWeight: 700, color: theme.palette.warning.main, backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.18 : 0.1), "& .MuiChip-icon": { color: theme.palette.warning.main } }}
                                         />
@@ -740,7 +740,7 @@ function OcrLogDetailDialog({
                                     {correctionEntries.length > 0 && (
                                         <Chip
                                             size="small"
-                                            icon={<AssignmentTurnedInRoundedIcon sx={{ fontSize: 13 }} />}
+                                            icon={<AssignmentTurnedInRoundedIcon fontSize="small" />}
                                             label={`${correctionEntries.length} correction${correctionEntries.length !== 1 ? "s" : ""}`}
                                             sx={{ height: 22, fontSize: 10.5, fontWeight: 700, color: theme.palette.info.main, backgroundColor: alpha(theme.palette.info.main, isDark ? 0.18 : 0.1), "& .MuiChip-icon": { color: theme.palette.info.main } }}
                                         />
@@ -756,7 +756,7 @@ function OcrLogDetailDialog({
                                 >
                                     {log.reportedIssue && (
                                         <Box>
-                                            <Typography sx={labelSx}>Reported message</Typography>
+                                            <Typography sx={labelSx}>{t("logs", "reportedMessage")}</Typography>
                                             <Typography variant="body2" sx={{ fontSize: 12.5, color: "text.primary", lineHeight: 1.45 }}>
                                                 {log.reportedIssue}
                                             </Typography>
@@ -764,7 +764,7 @@ function OcrLogDetailDialog({
                                     )}
                                     {correctionEntries.length > 0 && (
                                         <Box>
-                                            <Typography sx={labelSx}>Correction preview</Typography>
+                                            <Typography sx={labelSx}>{t("logs", "correctionPreview")}</Typography>
                                             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.45 }}>
                                                 {correctionEntries.slice(0, 2).map(([field, { ocr, corrected }]) => (
                                                     <Box
@@ -785,13 +785,13 @@ function OcrLogDetailDialog({
                                                             {field}
                                                         </Typography>
                                                         <Typography sx={{ fontSize: 11.5, color: "text.secondary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                                            {ocr === null || ocr === undefined ? "empty" : String(ocr)}{" -> "}{corrected === null || corrected === undefined ? "cleared" : String(corrected)}
+                                                            {ocr === null || ocr === undefined ? t("logs", "emptyValue") : String(ocr)}{" -> "}{corrected === null || corrected === undefined ? t("logs", "clearedValue") : String(corrected)}
                                                         </Typography>
                                                     </Box>
                                                 ))}
                                                 {correctionEntries.length > 2 && (
                                                     <Typography sx={{ fontSize: 11.5, color: "text.secondary" }}>
-                                                        +{correctionEntries.length - 2} more in the User Corrections tab
+                                                        {t("logs", "moreCorrections", { count: correctionEntries.length - 2 })}
                                                     </Typography>
                                                 )}
                                             </Box>
@@ -799,7 +799,7 @@ function OcrLogDetailDialog({
                                     )}
                                     {!log.reportedIssue && correctionEntries.length === 0 && (
                                         <Typography sx={{ fontSize: 12.5, color: "text.secondary", lineHeight: 1.45 }}>
-                                            This log is being tracked manually.
+                                            {t("logs", "manualTracking")}
                                         </Typography>
                                     )}
                                 </Box>
@@ -808,7 +808,7 @@ function OcrLogDetailDialog({
                                     <Box sx={{ borderTop: "1px solid", borderColor: isDark ? "#30363d" : "#e2e8f0", pt: 1 }}>
                                         {log.issueResolution && (
                                             <Typography sx={{ fontSize: 12.5, color: "text.primary", fontWeight: 700, mb: 0.35 }}>
-                                                Resolution: {log.issueResolution}
+                                                {t("logs", "resolutionWithValue", { resolution: log.issueResolution })}
                                             </Typography>
                                         )}
                                         {log.issueNotes && (
@@ -831,18 +831,18 @@ function OcrLogDetailDialog({
                                             alignItems: "start",
                                         }}
                                     >
-                                        <TextField
+                                        <FormInput
                                             size="small"
-                                            label="Resolution"
-                                            placeholder={issueAction === "resolve" ? "What fixed it?" : "Why dismiss it?"}
+                                            label={t("logs", "resolution")}
+                                            placeholder={issueAction === "resolve" ? t("logs", "resolvePlaceholder") : t("logs", "dismissPlaceholder")}
                                             value={issueResolution}
                                             onChange={(event) => setIssueResolution(event.target.value)}
                                             sx={{ "& .MuiInputBase-root": { fontSize: 12.5 } }}
                                         />
-                                        <TextField
+                                        <FormInput
                                             size="small"
-                                            label="Notes"
-                                            placeholder="Optional details"
+                                            label={t("logs", "notes")}
+                                            placeholder={t("logs", "optionalDetails")}
                                             value={issueNotes}
                                             onChange={(event) => setIssueNotes(event.target.value)}
                                             multiline
@@ -857,17 +857,17 @@ function OcrLogDetailDialog({
                                                 onClick={() => setIssueAction(null)}
                                                 sx={{ borderRadius: 999, textTransform: "none", fontWeight: 700, fontSize: 12 }}
                                             >
-                                                Cancel
+                                                {t("common", "cancel")}
                                             </Button>
                                             <Button
                                                 size="small"
                                                 variant="contained"
                                                 color={issueAction === "resolve" ? "success" : "inherit"}
                                                 disabled={isUpdatingIssue}
-                                                onClick={() => handleIssueUpdate(issueAction === "resolve" ? "RESOLVED" : "DISMISSED", issueAction === "resolve" ? "Fixed" : "Dismissed")}
+                                                onClick={() => handleIssueUpdate(issueAction === "resolve" ? "RESOLVED" : "DISMISSED", issueAction === "resolve" ? t("logs", "fixed") : t("logs", "dismissed"))}
                                                 sx={{ borderRadius: 999, textTransform: "none", fontWeight: 800, fontSize: 12, whiteSpace: "nowrap" }}
                                             >
-                                                {issueAction === "resolve" ? "Save resolution" : "Dismiss issue"}
+                                                {issueAction === "resolve" ? t("logs", "saveResolution") : t("logs", "dismissIssue")}
                                             </Button>
                                         </Box>
                                     </Box>
@@ -887,7 +887,7 @@ function OcrLogDetailDialog({
                         }}>
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 1 }}>
                                 <AutoFixHighRoundedIcon sx={{ fontSize: 18, color: theme.palette.warning.main, flexShrink: 0 }} />
-                                <Typography sx={{ fontSize: 13, fontWeight: 800, color: theme.palette.warning.main }}>
+                                <Typography sx={{fontWeight: 800, color: theme.palette.warning.main }}>
                                     {improveStep === "generating" ? "Generating improved prompt..." : "Testing the new prompt..."}
                                 </Typography>
                             </Box>
@@ -927,18 +927,18 @@ function OcrLogDetailDialog({
                     <DialogContent sx={{ pt: 2, pb: 2.5 }}>
                         {tab === 0 && (
                             <Box>
-                                <Typography sx={{ ...labelSx, mb: 1 }}>Raw text returned by the model</Typography>
+                                <Typography sx={{ ...labelSx, mb: 1 }}>{t("logs", "rawTextReturned")}</Typography>
                                 <Box sx={codeBoxSx}>
                                     {log.rawResponseSnippet
                                         ? log.rawResponseSnippet
-                                        : <Typography component="span" sx={{ color: "text.secondary", fontStyle: "italic", fontSize: 12 }}>No response text recorded for this request.</Typography>
+                                        : <Typography component="span" sx={{ color: "text.secondary", fontStyle: "italic", fontSize: 12 }}>{t("logs", "noResponseText")}</Typography>
                                     }
                                 </Box>
                             </Box>
                         )}
                         {tab === tabPrompt && hasPrompt && (
                             <Box>
-                                <Typography sx={{ ...labelSx, mb: 1 }}>Full prompt sent to the LLM</Typography>
+                                <Typography sx={{ ...labelSx, mb: 1 }}>{t("logs", "fullPrompt")}</Typography>
                                 <Box sx={codeBoxSx}>
                                     {log.promptText}
                                 </Box>
@@ -946,7 +946,7 @@ function OcrLogDetailDialog({
                         )}
                         {tab === tabStoredFiles && hasStoredFiles && (
                             <Box>
-                                <Typography sx={{ ...labelSx, mb: 1 }}>Files persisted for this OCR request</Typography>
+                                <Typography sx={{ ...labelSx, mb: 1 }}>{t("logs", "persistedFiles")}</Typography>
                                 <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
                                     {log.files?.map((file, index) => (
                                         <Box
@@ -968,7 +968,7 @@ function OcrLogDetailDialog({
                                             <Box sx={{ minWidth: 0, flex: 1 }}>
                                                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
                                                     <InsertDriveFileOutlinedIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-                                                    <Typography variant="body2" sx={{ fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                    <Typography variant="body2" sx={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                         File {index + 1}: {file.fileName}
                                                     </Typography>
                                                 </Box>
@@ -1001,7 +1001,7 @@ function OcrLogDetailDialog({
                         )}
                         {tab === tabExtracted && hasExtracted && (
                             <Box>
-                                <Typography sx={{ ...labelSx, mb: 1 }}>Extracted & post-processed fields (JSON)</Typography>
+                                <Typography sx={{ ...labelSx, mb: 1 }}>{t("logs", "extractedJson")}</Typography>
                                 <Box sx={codeBoxSx}>
                                     {JSON.stringify(log.extractedFields, null, 2)}
                                 </Box>
@@ -1060,7 +1060,7 @@ function OcrLogDetailDialog({
                                                     py: 0.5,
                                                 }}>
                                                     <Typography sx={{ fontSize: 12, fontFamily: "monospace", color: "error.main", wordBreak: "break-all" }}>
-                                                        {ocr === null || ocr === undefined ? <em style={{ opacity: 0.6 }}>not extracted</em> : String(ocr)}
+                                                            {ocr === null || ocr === undefined ? <em style={{ opacity: 0.6 }}>{t("logs", "notExtracted")}</em> : String(ocr)}
                                                     </Typography>
                                                 </Box>
                                             </Box>
@@ -1076,7 +1076,7 @@ function OcrLogDetailDialog({
                                                     py: 0.5,
                                                 }}>
                                                     <Typography sx={{ fontSize: 12, fontFamily: "monospace", color: "success.main", wordBreak: "break-all" }}>
-                                                        {corrected === null || corrected === undefined ? <em style={{ opacity: 0.6 }}>cleared</em> : String(corrected)}
+                                                        {corrected === null || corrected === undefined ? <em style={{ opacity: 0.6 }}>{t("logs", "clearedValue")}</em> : String(corrected)}
                                                     </Typography>
                                                 </Box>
                                             </Box>
@@ -1087,7 +1087,7 @@ function OcrLogDetailDialog({
                         )}
                         {tab === tabMetadata && hasMetadata && (
                             <Box>
-                                <Typography sx={{ ...labelSx, mb: 1 }}>Request metadata</Typography>
+                                <Typography sx={{ ...labelSx, mb: 1 }}>{t("logs", "requestMetadata")}</Typography>
                                 <Box sx={codeBoxSx}>
                                     {JSON.stringify(log.metadata, null, 2)}
                                 </Box>
@@ -1141,7 +1141,7 @@ function OcrLogDetailDialog({
                             }}>
                                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1.5 }}>
                                     <AutoFixHighRoundedIcon sx={{ fontSize: 18, color: theme.palette.warning.main, flexShrink: 0 }} />
-                                    <Typography sx={{ fontSize: 13.5, fontWeight: 700, color: theme.palette.warning.main }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 700, color: theme.palette.warning.main }}>
                                         {improveStep === "generating" ? "Generating improved prompt…" : "Testing the new prompt…"}
                                     </Typography>
                                 </Box>
@@ -1220,7 +1220,7 @@ function OcrLogDetailDialog({
                                         }}
                                     >
                                         <Typography sx={{ fontSize: 11, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                                            Re-improve with feedback
+                                            {t("logs", "reImproveWithFeedback")}
                                         </Typography>
                                         <KeyboardArrowDownRoundedIcon sx={{
                                             fontSize: 18, color: "text.secondary",
@@ -1231,26 +1231,18 @@ function OcrLogDetailDialog({
                                     <Collapse in={feedbackOpen}>
                                         <Box sx={{ px: 2, pb: 2 }}>
                                             <Typography variant="caption" sx={{ display: "block", color: "text.secondary", mb: 1.5, lineHeight: 1.5 }}>
-                                                Describe what is still wrong with the prompt above (e.g. "alquiler is not being returned", "precioEnergia values are incorrect"). The AI will iterate on the improved prompt using your feedback and the original invoice files.
+                                                {t("logs", "feedbackDescription")}
                                             </Typography>
-                                            <textarea
+                                            <FormInput
+                                                label=""
                                                 value={feedbackComment}
                                                 onChange={e => setFeedbackComment(e.target.value)}
-                                                placeholder="e.g. alquiler is not being returned, precioEnergiaP1 is always 0..."
+                                                placeholder={t("logs", "feedbackPlaceholder")}
+                                                multiline
                                                 rows={3}
-                                                style={{
-                                                    width: "100%",
-                                                    boxSizing: "border-box",
-                                                    resize: "vertical",
-                                                    fontFamily: "inherit",
-                                                    fontSize: 13,
-                                                    lineHeight: 1.5,
-                                                    padding: "8px 10px",
-                                                    borderRadius: 6,
-                                                    border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`,
-                                                    background: isDark ? "#0d1117" : "#ffffff",
-                                                    color: isDark ? "#e6edf3" : "#24292f",
-                                                    outline: "none",
+                                                sx={{
+                                                    "& .MuiInputBase-root": {
+                                                        alignItems: "flex-start", },
                                                 }}
                                             />
                                             <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1.5 }}>
@@ -1285,7 +1277,7 @@ function OcrLogDetailDialog({
                                                                 } catch { /* non-fatal */ }
                                                             }
                                                         } catch (err: any) {
-                                                            onNotify?.(err?.message ?? "Re-improve failed", "error");
+                                                            onNotify?.(err?.message ?? t("logs", "reImproveFailed"), "error");
                                                         } finally {
                                                             setIsReImproving(false);
                                                             setImproveStep(null);
@@ -1293,7 +1285,7 @@ function OcrLogDetailDialog({
                                                     }}
                                                     sx={{ borderRadius: 999, fontWeight: 700, textTransform: "none", fontSize: 12 }}
                                                 >
-                                                    {isReImproving ? "Re-improving & testing…" : "Re-improve with this feedback"}
+                                                    {isReImproving ? t("logs", "reImproving") : t("logs", "reImproveSubmit")}
                                                 </Button>
                                             </Box>
                                         </Box>
@@ -1306,7 +1298,7 @@ function OcrLogDetailDialog({
                                         <Tabs
                                             value={improveDialogTab}
                                             onChange={(_, v) => setImproveDialogTab(v)}
-                                            sx={{ minHeight: 40, "& .MuiTab-root": { minHeight: 40, py: 0.5, textTransform: "none", fontWeight: 600, fontSize: 13 } }}
+                                            sx={{ minHeight: 40, "& .MuiTab-root": { minHeight: 40, py: 0.5, textTransform: "none", fontWeight: 600, } }}
                                         >
                                             <Tab label={testResult ? (() => {
                                                 const allF = Array.from(new Set([...Object.keys(testResult.oldFields), ...Object.keys(testResult.newFields)]));
@@ -1367,7 +1359,7 @@ function OcrLogDetailDialog({
                                         <Box sx={{ pt: 2, overflowY: "auto", flex: 1 }}>
                                             {!testResult ? (
                                                 <Box sx={{ p: 2.5, borderRadius: 2, background: alpha(theme.palette.info.main, isDark ? 0.1 : 0.07), border: `1px solid ${alpha(theme.palette.info.main, 0.22)}` }}>
-                                                    <Typography sx={{ fontSize: 13, color: "text.secondary" }}>No test results available yet.</Typography>
+                                                    <Typography sx={{color: "text.secondary" }}>{t("logs", "noTestResults")}</Typography>
                                                 </Box>
                                             ) : (() => {
                                                 const allFields = Array.from(new Set([
@@ -1379,14 +1371,14 @@ function OcrLogDetailDialog({
                                                     <Box>
                                                         <Box sx={{ borderRadius: 1.5, border: `1px solid ${isDark ? "#30363d" : "#d0d7de"}`, overflow: "hidden" }}>
                                                             <Box sx={{ display: "grid", gridTemplateColumns: "200px 1fr 1fr", background: isDark ? "#161b22" : "#f6f8fa", borderBottom: `1px solid ${isDark ? "#30363d" : "#d0d7de"}` }}>
-                                                                <Box sx={{ px: 1.5, py: 0.75 }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>Field</Typography></Box>
-                                                                <Box sx={{ px: 1.5, py: 0.75, borderLeft: `1px solid ${isDark ? "#30363d" : "#d0d7de"}` }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, color: theme.palette.error.main, textTransform: "uppercase", letterSpacing: "0.05em" }}>Old prompt result</Typography></Box>
-                                                                <Box sx={{ px: 1.5, py: 0.75, borderLeft: `1px solid ${isDark ? "#30363d" : "#d0d7de"}` }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, color: theme.palette.success.main, textTransform: "uppercase", letterSpacing: "0.05em" }}>New prompt result</Typography></Box>
+                                                                <Box sx={{ px: 1.5, py: 0.75 }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>{t("logs", "field")}</Typography></Box>
+                                                                <Box sx={{ px: 1.5, py: 0.75, borderLeft: `1px solid ${isDark ? "#30363d" : "#d0d7de"}` }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, color: theme.palette.error.main, textTransform: "uppercase", letterSpacing: "0.05em" }}>{t("logs", "oldPromptResult")}</Typography></Box>
+                                                                <Box sx={{ px: 1.5, py: 0.75, borderLeft: `1px solid ${isDark ? "#30363d" : "#d0d7de"}` }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, color: theme.palette.success.main, textTransform: "uppercase", letterSpacing: "0.05em" }}>{t("logs", "newPromptResult")}</Typography></Box>
                                                             </Box>
                                                             {changed.map((field, i) => {
                                                                 const oldVal = testResult.oldFields[field];
                                                                 const newVal = testResult.newFields[field];
-                                                                const fmt = (v: unknown) => v === null || v === undefined || v === "" ? <em style={{ opacity: 0.4 }}>(empty)</em> : String(v);
+                                                                const fmt = (v: unknown) => v === null || v === undefined || v === "" ? <em style={{ opacity: 0.4 }}>{t("logs", "emptyValue")}</em> : String(v);
                                                                 return (
                                                                     <Box key={field} sx={{
                                                                         display: "grid",
@@ -1447,6 +1439,7 @@ function OcrLogDetailDialog({
 // ── Main panel ───────────────────────────────────────────────────────────────
 
 export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
+    const cachePolicy = useRequestCachePolicy("logs");
     const theme = useTheme();
     const queryClient = useQueryClient();
     const { locale, t } = useI18n();
@@ -1530,7 +1523,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             };
         },
         placeholderData: keepPreviousData,
-        staleTime: 30_000,
+        ...cachePolicy,
     });
 
     const issueMutation = useMutation({
@@ -1586,10 +1579,10 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             label: t("logs", "timestamp"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
-                    <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>
                         {formatDate(log.requestedAt)}
                     </Typography>
-                    <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary" }}>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
                         {formatDistanceToNow(new Date(log.requestedAt), { addSuffix: true, locale: locale === "es" ? es : undefined })}
                     </Typography>
                 </Box>
@@ -1603,7 +1596,6 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                     label={formatLogType(log.type, t)}
                     size="small"
                     sx={{
-                        fontSize: 11,
                         fontWeight: 700,
                         height: 24,
                         backgroundColor: alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.16 : 0.1),
@@ -1622,11 +1614,11 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             label: t("logs", "user"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2 }}>
-                    <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
                         {log.userName ?? log.userEmail ?? t("logs", "unknown")}
                     </Typography>
                     {log.userName && log.userEmail && (
-                        <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", lineHeight: 1.2 }}>
+                        <Typography variant="caption" sx={{ color: "text.secondary", lineHeight: 1.2 }}>
                             {log.userEmail}
                         </Typography>
                     )}
@@ -1638,10 +1630,10 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             label: t("logs", "providerModel"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2 }}>
-                    <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
                         {formatProvider(log.provider)}
                     </Typography>
-                    <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", fontFamily: "monospace", lineHeight: 1.2 }}>
+                    <Typography variant="caption" sx={{ color: "text.secondary", fontFamily: "monospace", lineHeight: 1.2 }}>
                         {log.model}
                     </Typography>
                 </Box>
@@ -1653,11 +1645,11 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2 }}>
                     <Tooltip title={log.fileName ?? ""}>
-                        <Typography variant="body2" sx={{ fontSize: 12, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3 }}>
+                        <Typography variant="body2" sx={{ maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3 }}>
                             {log.fileName ?? "—"}
                         </Typography>
                     </Tooltip>
-                    <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", lineHeight: 1.2 }}>
+                    <Typography variant="caption" sx={{ color: "text.secondary", lineHeight: 1.2 }}>
                         {[
                             log.fileType?.replace("application/", "").replace("image/", ""),
                             formatFileSize(log.fileSizeBytes),
@@ -1673,11 +1665,11 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             label: t("logs", "storedFiles"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2, maxWidth: 180 }}>
-                    <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
                         {log.files?.length ?? 0}
                     </Typography>
                     <Tooltip title={log.files?.map((file) => `${file.fileName} (${formatFileSize(file.fileSizeBytes)})`).join(" · ") ?? t("logs", "noFilesStored")}>
-                        <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <Typography variant="caption" sx={{ color: "text.secondary", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {getStoredFilesSummary(log, t)}
                         </Typography>
                     </Tooltip>
@@ -1689,11 +1681,11 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             label: t("logs", "simulation"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2, maxWidth: 130 }}>
-                    <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, lineHeight: 1.3 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
                         {log.simulationReferenceNumber ?? "—"}
                     </Typography>
                     {log.simulationId && (
-                        <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", lineHeight: 1.2, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <Typography variant="caption" sx={{ color: "text.secondary", lineHeight: 1.2, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {log.simulationId}
                         </Typography>
                     )}
@@ -1704,7 +1696,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             key: "duration",
             label: t("logs", "duration"),
             renderCell: (log) => (
-                <Typography variant="body2" sx={{ fontSize: 12, fontFamily: "monospace", fontWeight: 600, color: "text.secondary", whiteSpace: "nowrap" }}>
+                <Typography variant="body2" sx={{ fontFamily: "monospace", fontWeight: 600, color: "text.secondary", whiteSpace: "nowrap" }}>
                     {log.durationMs != null ? `${(log.durationMs / 1000).toFixed(1)}s` : "—"}
                 </Typography>
             ),
@@ -1718,10 +1710,10 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                 }
                 return (
                     <Box sx={{ display: "flex", flexDirection: "column", gap: 0.2 }}>
-                        <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", lineHeight: 1.3 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: "monospace", lineHeight: 1.3 }}>
                             {log.totalTokens != null ? log.totalTokens.toLocaleString() : "—"}
                         </Typography>
-                        <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", fontFamily: "monospace", lineHeight: 1.2 }}>
+                        <Typography variant="caption" sx={{ color: "text.secondary", fontFamily: "monospace", lineHeight: 1.2 }}>
                             {log.promptTokens ?? 0}↑&nbsp;/&nbsp;{log.completionTokens ?? 0}↓
                         </Typography>
                     </Box>
@@ -1740,7 +1732,6 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                         label={log.fieldsExtracted != null ? `${log.fieldsExtracted}` : "—"}
                         size="small"
                         sx={{
-                            fontSize: 11,
                             fontWeight: 700,
                             height: 22,
                             minWidth: 32,
@@ -1765,17 +1756,17 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                         <IssueChip log={log} />
                         <Box sx={{ display: "flex", gap: 0.45, flexWrap: "wrap" }}>
                             {log.reportedIssue && (
-                                <Typography variant="caption" sx={{ fontSize: 10, color: "warning.main", fontWeight: 700 }}>
+                                <Typography variant="caption" sx={{ color: "warning.main", fontWeight: 700 }}>
                                     {t("logs", "reported")}
                                 </Typography>
                             )}
                             {correctionCount > 0 && (
-                                <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", fontWeight: 600 }}>
+                                <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>
                                     {correctionCount} {t("logs", correctionCount === 1 ? "correction" : "corrections")}
                                 </Typography>
                             )}
                             {!log.reportedIssue && correctionCount === 0 && (
-                                <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary" }}>
+                                <Typography variant="caption" sx={{ color: "text.secondary" }}>
                                     {t("logs", "manual")}
                                 </Typography>
                             )}
@@ -1804,6 +1795,8 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                 columns={columns}
                 rows={logs}
                 loading={isFetching}
+                onApplyFilters={handleSearch}
+                onClearFilters={handleClear}
                 renderCustomSearch={() => (
                     <Box sx={{ display: "flex", gap: 1, width: '100%' }}>
                         <Box sx={{ flex: 1 }}>
@@ -1857,14 +1850,15 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                             />
                         </Box>
                         <Box sx={{ flex: 1 }}>
-                            <TextField
+                            <FormInput
+                                label=""
                                 size="small"
                                 fullWidth
                                 placeholder={t("logs", "searchUser")}
                                 value={localUserSearch}
                                 onChange={(e) => setLocalUserSearch(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                                sx={{ "& .MuiInputBase-root": { fontSize: 13 } }}
+                                sx={{ "& .MuiInputBase-root": { } }}
                             />
                         </Box>
                         <Box sx={{ flex: 1 }}>
@@ -1876,12 +1870,6 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                                 onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
                             />
                         </Box>
-                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
-                            <SearchIcon />
-                        </Button>
-                        <Button variant="outlined" size="small" onClick={handleClear}>
-                            <ClearIcon />
-                        </Button>
                     </Box>
                 )}
                 pagination={{

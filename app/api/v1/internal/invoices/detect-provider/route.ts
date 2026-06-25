@@ -8,6 +8,10 @@ import {
 } from "@/lib/pdfToImage";
 import { resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
 
+const isAnthropicBedrockRuntime = (provider: string, baseUrl: string): boolean =>
+  provider === "aws-bedrock-anthropic" ||
+  (provider === "anthropic" && /bedrock-runtime\.[^.]+\.amazonaws\.com/.test(baseUrl));
+
 /**
  * Sends images to the configured LLM and returns the raw text response.
  */
@@ -54,6 +58,35 @@ async function callLlmWithImages(
       }),
       signal: AbortSignal.timeout(60000),
     });
+  } else if (isAnthropicBedrockRuntime(llmProvider, llmBaseUrl)) {
+    const content: any[] = [];
+    for (const img of images) {
+      content.push({
+        type: "image",
+        source: { type: "base64", media_type: img.mimeType, data: img.base64 },
+      });
+    }
+    content.push({ type: "text", text: prompt });
+
+    const bedrockBaseUrl = llmBaseUrl.replace(/\/+$/, "");
+    llmResponse = await fetch(
+      `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/invoke`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          anthropic_version: "bedrock-2023-05-31",
+          max_tokens: llmMaxTokens,
+          temperature: llmTemperature,
+          messages: [{ role: "user", content }],
+        }),
+        signal: AbortSignal.timeout(60000),
+      },
+    );
   } else if (llmProvider === "anthropic") {
     const content: any[] = [];
     for (const img of images) {
@@ -112,7 +145,10 @@ async function callLlmWithImages(
   let completionTokens: number | undefined;
   let totalTokens: number | undefined;
 
-  if (llmProvider === "anthropic") {
+  if (
+    llmProvider === "anthropic" ||
+    llmProvider === "aws-bedrock-anthropic"
+  ) {
     text = llmData.content?.[0]?.text || "";
     promptTokens = llmData.usage?.input_tokens;
     completionTokens = llmData.usage?.output_tokens;

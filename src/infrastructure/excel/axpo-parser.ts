@@ -5,7 +5,114 @@
  * Port of scripts/parse-xlsm-prices.py to TypeScript.
  */
 
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+
+interface CellAddress {
+  r: number;
+  c: number;
+}
+
+type WorksheetLike = Record<string, any> & {
+  "!ref"?: string;
+};
+
+interface WorkbookLike {
+  SheetNames: string[];
+  Sheets: Record<string, WorksheetLike>;
+}
+
+const encodeCol = (columnIndex: number): string => {
+  let value = columnIndex + 1;
+  let label = "";
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    label = String.fromCharCode(65 + remainder) + label;
+    value = Math.floor((value - 1) / 26);
+  }
+  return label;
+};
+
+const decodeCol = (label: string): number =>
+  label
+    .toUpperCase()
+    .split("")
+    .reduce((sum, char) => sum * 26 + char.charCodeAt(0) - 64, 0) - 1;
+
+const encodeCell = ({ r, c }: CellAddress): string => `${encodeCol(c)}${r + 1}`;
+
+const decodeCell = (address: string): CellAddress => {
+  const match = address.match(/^([A-Z]+)(\d+)$/i);
+  if (!match) throw new Error(`Invalid Excel cell address: ${address}`);
+  return { c: decodeCol(match[1]), r: Number(match[2]) - 1 };
+};
+
+const decodeRange = (ref: string): { s: CellAddress; e: CellAddress } => {
+  const [start, end = start] = ref.split(":");
+  return { s: decodeCell(start), e: decodeCell(end) };
+};
+
+const excelCellValue = (value: ExcelJS.CellValue): unknown => {
+  if (value === null || value === undefined) return undefined;
+  if (value instanceof Date) return value;
+  if (typeof value !== "object") return value;
+
+  const record = value as unknown as Record<string, unknown>;
+  if ("result" in record) return record.result;
+  if ("text" in record) return record.text;
+  if (Array.isArray(record.richText)) {
+    return record.richText
+      .map((part) =>
+        typeof part === "object" && part && "text" in part
+          ? String((part as { text?: unknown }).text ?? "")
+          : "",
+      )
+      .join("");
+  }
+  if ("formula" in record || "sharedFormula" in record) return 0;
+  return String(value);
+};
+
+async function readWorkbook(buffer: Buffer): Promise<WorkbookLike> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer as any);
+
+  const result: WorkbookLike = { SheetNames: [], Sheets: {} };
+  workbook.eachSheet((worksheet) => {
+    const sheet: WorksheetLike = {};
+    let minRow = Number.POSITIVE_INFINITY;
+    let minCol = Number.POSITIVE_INFINITY;
+    let maxRow = 0;
+    let maxCol = 0;
+
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+        const value = excelCellValue(cell.value);
+        if (value === undefined || value === null || value === "") return;
+
+        const r = rowNumber - 1;
+        const c = colNumber - 1;
+        sheet[encodeCell({ r, c })] = { v: value };
+        minRow = Math.min(minRow, r);
+        minCol = Math.min(minCol, c);
+        maxRow = Math.max(maxRow, r);
+        maxCol = Math.max(maxCol, c);
+      });
+    });
+
+    sheet["!ref"] =
+      Number.isFinite(minRow) && Number.isFinite(minCol)
+        ? `${encodeCell({ r: minRow, c: minCol })}:${encodeCell({
+            r: maxRow,
+            c: maxCol,
+          })}`
+        : "A1";
+
+    result.SheetNames.push(worksheet.name);
+    result.Sheets[worksheet.name] = sheet;
+  });
+
+  return result;
+}
 
 export interface BaseValueItem {
   key: string;
@@ -16,10 +123,27 @@ export interface BaseValueItem {
 
 export interface ParsedBaseValues {
   name: string;
-  scopeType: "GLOBAL" | "AGENCY";
+  scopeType: BaseValueImportScope;
   sourceWorkbookRef?: string;
   sourceScope?: string;
   items: BaseValueItem[];
+}
+
+export type BaseValueImportScope = "GLOBAL" | "AGENCY" | "TLV";
+
+export interface AxpoImportProfile {
+  scopeType: BaseValueImportScope;
+  sourceScope?: string;
+  fixedProductNames?: Record<string, string>;
+  indexProductNames?: Record<string, string>;
+  gasFixedProductNames?: Record<string, string>;
+  gasIndexProductNames?: Record<string, string>;
+  dinamicaSheetNames?: Record<string, [string, string]>;
+}
+
+export interface ParseAxpoExcelOptions {
+  scopeType?: BaseValueImportScope;
+  profile?: AxpoImportProfile;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -56,6 +180,49 @@ const INDEX_PRODUCT_MAP: Record<string, string> = {
   Dinamica: "DINAMICA",
   "Dinamica Plus": "DINAMICA_PLUS",
 };
+
+const IMPORT_PROFILES: Record<"GLOBAL" | "TLV", AxpoImportProfile> = {
+  GLOBAL: {
+    scopeType: "GLOBAL",
+    sourceScope: "GLOBAL",
+    fixedProductNames: {
+      "1P PLUS SSCC LIBRES (Periodo Único)": "1P_PLUS_SSCC_LIBRES",
+      "1P PLUS SSAA LIBRES (Periodo Único)": "1P_PLUS_SSCC_LIBRES",
+    },
+  },
+  TLV: {
+    scopeType: "TLV",
+    sourceScope: "TLV",
+    fixedProductNames: {
+      "1PT PLUS (Periodo Único)": "1P_PLUS",
+      "1PT PLUS": "1P_PLUS",
+      "1P PLUS (Periodo Único)": "1P_PLUS",
+      "1P PLUS XL (Periodo Único)": "1P_PLUS_XL",
+    },
+  },
+};
+
+export function inferAxpoImportScope(filename: string): "GLOBAL" | "TLV" {
+  return /(^|[^A-Z])TELEVENTA([^A-Z]|$)|\bTLV\b/i.test(filename)
+    ? "TLV"
+    : "GLOBAL";
+}
+
+function resolveImportProfile(
+  filename: string,
+  options?: ParseAxpoExcelOptions,
+): AxpoImportProfile {
+  if (options?.profile) {
+    return {
+      ...options.profile,
+      scopeType: options.scopeType ?? options.profile.scopeType,
+    };
+  }
+
+  const scope = options?.scopeType ?? inferAxpoImportScope(filename);
+  if (scope === "TLV") return IMPORT_PROFILES.TLV;
+  return { ...IMPORT_PROFILES.GLOBAL, scopeType: scope };
+}
 
 const GAS_FIJO_PRODUCT_MAP: Record<string, [string, string]> = {
   "Fijo N1": ["FIJO", "N1"],
@@ -136,13 +303,16 @@ function parseMibgasMonth(label: string): string | null {
   return `MIBGAS:${year}-${monthNum}`;
 }
 
-function parseIndexProductTier(raw: string): [string | null, string | null] {
+function parseIndexProductTier(
+  raw: string,
+  profile: AxpoImportProfile,
+): [string | null, string | null] {
   const match = raw.trim().match(/^(.*?)\s+(N[123])$/);
   if (!match) return [null, null];
 
   const productRaw = match[1].trim();
   const tier = match[2];
-  const slug = INDEX_PRODUCT_MAP[productRaw] || null;
+  const slug = profile.indexProductNames?.[productRaw] || INDEX_PRODUCT_MAP[productRaw] || null;
 
   return [slug, tier];
 }
@@ -154,21 +324,21 @@ interface SheetData {
 }
 
 function worksheetToRows(
-  sheet: XLSX.WorkSheet,
+  sheet: WorksheetLike,
   maxRows: number = 300,
 ): SheetData {
   const rows: SheetData = {};
-  const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
+  const range = decodeRange(sheet["!ref"] || "A1");
 
   for (let R = range.s.r; R <= Math.min(range.e.r, maxRows - 1); R++) {
     const rowData: { [col: string]: any } = {};
 
     for (let C = range.s.c; C <= range.e.c; C++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+      const cellAddress = encodeCell({ r: R, c: C });
       const cell = sheet[cellAddress];
 
       if (cell && cell.v !== undefined && cell.v !== null) {
-        const colLetter = XLSX.utils.encode_col(C);
+        const colLetter = encodeCol(C);
         rowData[colLetter] = cell.v;
       }
     }
@@ -181,7 +351,10 @@ function worksheetToRows(
   return rows;
 }
 
-function parseFijo(rows: SheetData): BaseValueItem[] {
+function parseFijo(
+  rows: SheetData,
+  profile: AxpoImportProfile,
+): BaseValueItem[] {
   const items: BaseValueItem[] = [];
 
   // Find product block start rows
@@ -200,6 +373,8 @@ function parseFijo(rows: SheetData): BaseValueItem[] {
       const rawName = nonEmpty["K"];
       const cleanName = rawName.replace(/\s*\(.*?\)\s*$/, "").trim();
       const slug =
+        profile.fixedProductNames?.[rawName] ||
+        profile.fixedProductNames?.[cleanName] ||
         FIJO_PRODUCT_NAMES[rawName] ||
         FIJO_PRODUCT_NAMES[cleanName] ||
         // Auto-slug unknown products so new products are captured automatically
@@ -323,7 +498,10 @@ function parseFijo(rows: SheetData): BaseValueItem[] {
   return items;
 }
 
-function parseIndex(rows: SheetData): BaseValueItem[] {
+function parseIndex(
+  rows: SheetData,
+  profile: AxpoImportProfile,
+): BaseValueItem[] {
   const items: BaseValueItem[] = [];
 
   // Find product blocks
@@ -339,7 +517,7 @@ function parseIndex(rows: SheetData): BaseValueItem[] {
       );
 
     if (Object.keys(nonEmpty).length === 1 && nonEmpty["A"]) {
-      const [slug, tier] = parseIndexProductTier(nonEmpty["A"]);
+      const [slug, tier] = parseIndexProductTier(nonEmpty["A"], profile);
       if (slug && tier) {
         productStarts.push([rowNum, slug, tier]);
       } else {
@@ -404,11 +582,126 @@ function parseIndex(rows: SheetData): BaseValueItem[] {
   return items;
 }
 
-function parseGasFijo(rows: SheetData): BaseValueItem[] {
+function parseProductTierLabel(
+  raw: string,
+): { productLabel: string; tier: string } | null {
+  const match = raw.trim().match(/^(.*?)\s+(N[123])$/);
+  if (!match) return null;
+  return { productLabel: match[1].trim(), tier: match[2] };
+}
+
+function normalizeLookupLabel(value: string): string {
+  return value
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+const HIDDEN_FIXED_PRODUCT_MAP: Record<string, string> = {
+  ESTABLE: "ESTABLE",
+  "ESTABLE PLUS": "ESTABLE_PLUS",
+  "1P": "1P_PLUS",
+  "1P XL": "1P_PLUS_XL",
+  "ESTABLE TALLER": "ESTABLE_TALLERES",
+  "ESTABLE TALLER +": "ESTABLE_PLUS_TALLERES",
+};
+
+const HIDDEN_INDEX_PRODUCT_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(INDEX_PRODUCT_MAP).map(([label, productKey]) => [
+    normalizeLookupLabel(label),
+    productKey,
+  ]),
+);
+
+function parseHiddenElectricityLookup(sheet: WorksheetLike): BaseValueItem[] {
+  const items: BaseValueItem[] = [];
+  const range = decodeRange(sheet["!ref"] || "A1");
+  const periods = ["P1", "P2", "P3", "P4", "P5", "P6"];
+  const energyCols = [4, 5, 6, 7, 8, 9]; // E-J
+  const powerCols = [10, 11, 12, 13, 14, 15]; // K-P, stored as €/kW/día
+
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    const rawProduct = String(
+      sheet[encodeCell({ r: R, c: 1 })]?.v ?? "",
+    ).trim();
+    const tariff = String(
+      sheet[encodeCell({ r: R, c: 2 })]?.v ?? "",
+    ).trim();
+    const monthLabel = String(
+      sheet[encodeCell({ r: R, c: 3 })]?.v ?? "",
+    ).trim();
+
+    if (!rawProduct || !ELEC_TARIFFS.has(tariff)) continue;
+
+    const parsed = parseProductTierLabel(rawProduct);
+    if (!parsed) continue;
+
+    const monthKey = parseSpanishMonthYear(monthLabel);
+    const normalizedProduct = normalizeLookupLabel(parsed.productLabel);
+    const fixedProduct = HIDDEN_FIXED_PRODUCT_MAP[normalizedProduct];
+    const indexProduct = HIDDEN_INDEX_PRODUCT_MAP[normalizedProduct];
+
+    if (!fixedProduct && (!indexProduct || monthKey === null)) continue;
+
+    for (let i = 0; i < periods.length; i++) {
+      const energyValue = safeFloat(
+        sheet[encodeCell({ r: R, c: energyCols[i] })]?.v,
+      );
+      if (energyValue !== null) {
+        items.push({
+          key: fixedProduct
+            ? `ELEC:FIJO:${fixedProduct}:${parsed.tier}:${tariff}:${periods[i]}:ENERGIA`
+            : `ELEC:INDEX:${indexProduct}:${parsed.tier}:${tariff}:${periods[i]}:MARGEN:${monthKey}`,
+          valueNumeric: Math.round(energyValue * 1e10) / 1e10,
+          unit: "€/kWh",
+        });
+      }
+
+      const dailyPowerValue = safeFloat(
+        sheet[encodeCell({ r: R, c: powerCols[i] })]?.v,
+      );
+      if (dailyPowerValue !== null) {
+        items.push({
+          key: fixedProduct
+            ? `ELEC:FIJO:${fixedProduct}:${parsed.tier}:${tariff}:${periods[i]}:POTENCIA`
+            : `ELEC:INDEX:${indexProduct}:${parsed.tier}:${tariff}:${periods[i]}:POTENCIA`,
+          valueNumeric: Math.round(dailyPowerValue * 365 * 1e10) / 1e10,
+          unit: "€/kW/año",
+        });
+      }
+    }
+  }
+
+  return items;
+}
+
+function productAndTierFromGasLabel(
+  rawName: string,
+  configuredProductKey?: string | null,
+): [string, string] | null {
+  const match = rawName.trim().match(/^(.*?)\s+(N[123])$/);
+  if (!match) return null;
+
+  const productKey =
+    configuredProductKey ||
+    match[1]
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_|_$/g, "");
+  return [productKey, match[2]];
+}
+
+function parseGasFijo(
+  rows: SheetData,
+  profile: AxpoImportProfile,
+): BaseValueItem[] {
   const items: BaseValueItem[] = [];
 
   // Find product blocks
-  const productStarts: [number, string][] = [];
+  const productStarts: [number, string, string][] = [];
 
   for (const [r, cells] of Object.entries(rows)) {
     const rowNum = parseInt(r);
@@ -420,31 +713,27 @@ function parseGasFijo(rows: SheetData): BaseValueItem[] {
       );
 
     if (nonEmpty["A"] && Object.keys(nonEmpty).length <= 2) {
-      if (GAS_FIJO_PRODUCT_MAP[nonEmpty["A"]]) {
-        productStarts.push([rowNum, nonEmpty["A"]]);
+      const rawName = nonEmpty["A"];
+      const configured = productAndTierFromGasLabel(
+        rawName,
+        profile.gasFixedProductNames?.[rawName],
+      );
+      const fallback = GAS_FIJO_PRODUCT_MAP[rawName];
+      if (configured) {
+        productStarts.push([rowNum, configured[0], configured[1]]);
+      } else if (fallback) {
+        productStarts.push([rowNum, fallback[0], fallback[1]]);
       } else {
-        // Auto-capture unknown gas fijo products using a synthetic map entry
-        const rawName = nonEmpty["A"];
-        const match = rawName.trim().match(/^(.*?)\s+(N[123])$/);
-        if (match) {
-          const autoSlug = match[1]
-            .trim()
-            .toUpperCase()
-            .replace(/[^A-Z0-9]+/g, "_")
-            .replace(/^_|_$/g, "");
-          // Register dynamically so the parser block below can consume it
-          GAS_FIJO_PRODUCT_MAP[rawName] = [autoSlug, match[2]];
-          productStarts.push([rowNum, rawName]);
-        }
+        const auto = productAndTierFromGasLabel(rawName);
+        if (auto) productStarts.push([rowNum, auto[0], auto[1]]);
       }
     }
   }
 
   for (let idx = 0; idx < productStarts.length; idx++) {
-    const [start, rawName] = productStarts[idx];
+    const [start, slug, tier] = productStarts[idx];
     const end =
       idx + 1 < productStarts.length ? productStarts[idx + 1][0] : start + 20;
-    const [slug, tier] = GAS_FIJO_PRODUCT_MAP[rawName];
 
     for (let r = start; r < end; r++) {
       const cells = rows[r] || {};
@@ -532,11 +821,14 @@ function parseGasFijo(rows: SheetData): BaseValueItem[] {
   return items;
 }
 
-function parseGasIndex(rows: SheetData): BaseValueItem[] {
+function parseGasIndex(
+  rows: SheetData,
+  profile: AxpoImportProfile,
+): BaseValueItem[] {
   const items: BaseValueItem[] = [];
 
   // Find product blocks
-  const productStarts: [number, string][] = [];
+  const productStarts: [number, string, string][] = [];
 
   for (const [r, cells] of Object.entries(rows)) {
     const rowNum = parseInt(r);
@@ -548,30 +840,27 @@ function parseGasIndex(rows: SheetData): BaseValueItem[] {
       );
 
     if (nonEmpty["A"] && Object.keys(nonEmpty).length <= 2) {
-      if (GAS_INDEX_PRODUCT_MAP[nonEmpty["A"]]) {
-        productStarts.push([rowNum, nonEmpty["A"]]);
+      const rawName = nonEmpty["A"];
+      const configured = productAndTierFromGasLabel(
+        rawName,
+        profile.gasIndexProductNames?.[rawName],
+      );
+      const fallback = GAS_INDEX_PRODUCT_MAP[rawName];
+      if (configured) {
+        productStarts.push([rowNum, configured[0], configured[1]]);
+      } else if (fallback) {
+        productStarts.push([rowNum, fallback[0], fallback[1]]);
       } else {
-        // Auto-capture unknown gas index products
-        const rawName = nonEmpty["A"];
-        const match = rawName.trim().match(/^(.*?)\s+(N[123])$/);
-        if (match) {
-          const autoSlug = match[1]
-            .trim()
-            .toUpperCase()
-            .replace(/[^A-Z0-9]+/g, "_")
-            .replace(/^_|_$/g, "");
-          GAS_INDEX_PRODUCT_MAP[rawName] = [autoSlug, match[2]];
-          productStarts.push([rowNum, rawName]);
-        }
+        const auto = productAndTierFromGasLabel(rawName);
+        if (auto) productStarts.push([rowNum, auto[0], auto[1]]);
       }
     }
   }
 
   for (let idx = 0; idx < productStarts.length; idx++) {
-    const [start, rawName] = productStarts[idx];
+    const [start, slug, tier] = productStarts[idx];
     const end =
       idx + 1 < productStarts.length ? productStarts[idx + 1][0] : start + 20;
-    const [slug, tier] = GAS_INDEX_PRODUCT_MAP[rawName];
 
     for (let r = start; r < end; r++) {
       const cells = rows[r] || {};
@@ -717,7 +1006,7 @@ const OMIE_B_FACTOR_REFS: Record<
 };
 
 function computeOmieBFactor(
-  sheet: XLSX.WorkSheet,
+  sheet: WorksheetLike,
   row: number,
   tariff: string,
   period: string,
@@ -728,14 +1017,14 @@ function computeOmieBFactor(
 
   const profile = safeFloat(
     sheet[
-      XLSX.utils.encode_cell({
+      encodeCell({
         r: profileRow,
         c: factorRefs.profileCol,
       })
     ]?.v,
   );
   const predh = safeFloat(
-    sheet[XLSX.utils.encode_cell({ r: 6, c: factorRefs.predhCol })]?.v,
+    sheet[encodeCell({ r: 6, c: factorRefs.predhCol })]?.v,
   );
   if (profile === null || predh === null) return null;
 
@@ -761,7 +1050,7 @@ function averageRefsFromFormula(
 
   return Array.from(
     selectedAverage.matchAll(/\$?([A-Z]+)\$?(\d+)/gi),
-    (match) => XLSX.utils.decode_cell(`${match[1]}${match[2]}`),
+    (match) => decodeCell(`${match[1]}${match[2]}`),
   );
 }
 
@@ -819,25 +1108,25 @@ function parseSpanishMonthYear(s: string): string | null {
  *   of tariff — analysis of simulator results confirmed this was wrong.
  */
 function parseDinamicaSheet(
-  sheet: XLSX.WorkSheet,
+  sheet: WorksheetLike,
   product: string,
   tier: string,
   potenciaByTariff = false,
 ): BaseValueItem[] {
   const items: BaseValueItem[] = [];
-  const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
+  const range = decodeRange(sheet["!ref"] || "A1");
 
   // The "Precio TE" section starts after the header row that has "Precio TE" at
   // col 4.  Each subsequent row either holds a month ("ENERO-26" etc.) or is the
   // PROMEDIO summary row.  We stop after the PROMEDIO row.
   let inSection = false;
   const zone = String(
-    sheet[XLSX.utils.encode_cell({ r: 41, c: 6 })]?.v ?? "Peninsula",
+    sheet[encodeCell({ r: 41, c: 6 })]?.v ?? "Peninsula",
   );
   const promedioBFactors = new Map<string, { sum: number; count: number }>();
 
   for (let R = range.s.r; R <= range.e.r; R++) {
-    const labelCell = sheet[XLSX.utils.encode_cell({ r: R, c: 4 })];
+    const labelCell = sheet[encodeCell({ r: R, c: 4 })];
     const labelRaw = labelCell?.v != null ? String(labelCell.v).trim() : "";
     const labelUp = labelRaw.toUpperCase();
 
@@ -859,7 +1148,7 @@ function parseDinamicaSheet(
     // Extract prices for each tariff × period using the known column layout
     for (const { tariff, periods, cols, bCols } of PRECIO_TE_COLS) {
       for (let i = 0; i < periods.length; i++) {
-        const cell = sheet[XLSX.utils.encode_cell({ r: R, c: cols[i] })];
+        const cell = sheet[encodeCell({ r: R, c: cols[i] })];
         if (!cell || cell.v === undefined || cell.v === null) continue;
         const v = safeFloat(cell.v);
         if (v === null || v <= 0) continue;
@@ -903,7 +1192,7 @@ function parseDinamicaSheet(
           }
 
           const embeddedB = safeFloat(
-            sheet[XLSX.utils.encode_cell({ r: 28, c: bCols[i] })]?.v,
+            sheet[encodeCell({ r: 28, c: bCols[i] })]?.v,
           );
           if (embeddedB !== null && bFactor !== null) {
             adjustedMwh = Math.max(0, adjustedMwh - embeddedB * bFactor);
@@ -956,7 +1245,7 @@ function parseDinamicaSheet(
   let inPotenciaSection = false;
 
   for (let R = range.s.r; R <= range.e.r; R++) {
-    const labelCell = sheet[XLSX.utils.encode_cell({ r: R, c: 1 })]; // col B
+    const labelCell = sheet[encodeCell({ r: R, c: 1 })]; // col B
     const labelRaw = labelCell?.v != null ? String(labelCell.v).trim() : "";
     const labelUp = labelRaw.toUpperCase();
 
@@ -976,19 +1265,21 @@ function parseDinamicaSheet(
       continue;
     }
 
-    // Each tariff row is emitted only for its own tariff.
-    // Earlier versions assumed the Excel VLOOKUP always used the 6.1TD row for
-    // both 3.0TD and 6.1TD, but analysis of the actual simulator results confirms
-    // each tariff uses its own dedicated power-price row.
+    // Each tariff row is normally emitted only for its own tariff.  The TLV
+    // workbook's lookup table has one explicit exception: DINAMICA CONTROL PLUS
+    // N3 rows for 3.0TD reference the 6.1TD power row.  Emit the 6.1TD row again
+    // under 3.0TD so last-write-wins de-duplication matches the simulator.
     const tariffsToEmit: string[] = isTariff2
       ? ["2.0TD"]
       : isTariff3
         ? ["3.0TD"]
-        : ["6.1TD"];
+        : product === "DINAMICA_CONTROL_PLUS" && tier === "N3"
+          ? ["6.1TD", "3.0TD"]
+          : ["6.1TD"];
     const periods = ["P1", "P2", "P3", "P4", "P5", "P6"];
 
     for (let i = 0; i < periods.length; i++) {
-      const cell = sheet[XLSX.utils.encode_cell({ r: R, c: 2 + i })]; // cols C–H
+      const cell = sheet[encodeCell({ r: R, c: 2 + i })]; // cols C–H
       if (!cell || cell.v === undefined || cell.v === null) continue;
       const dailyRate = safeFloat(cell.v);
       if (dailyRate === null || dailyRate <= 0) continue;
@@ -996,7 +1287,7 @@ function parseDinamicaSheet(
       const embeddedPowerMargin =
         product === "PERSONALIZADA_OMIE_B"
           ? (safeFloat(
-              sheet[XLSX.utils.encode_cell({ r: R + 8, c: 10 + i })]?.v,
+              sheet[encodeCell({ r: R + 8, c: 10 + i })]?.v,
             ) ?? 0)
           : 0;
       const yearlyRate =
@@ -1028,7 +1319,7 @@ function parseDinamicaSheet(
  *   ELEC:LIBRE:PERSONALIZADA_FIJO:P{n}:POTENCIA  (€/kWdia)
  *   ELEC:LIBRE:PERSONALIZADA_FIJO:P{n}:ENERGIA   (€/kWh)
  */
-function parseComparativaLibreLuz(sheet: XLSX.WorkSheet): BaseValueItem[] {
+function parseComparativaLibreLuz(sheet: WorksheetLike): BaseValueItem[] {
   const items: BaseValueItem[] = [];
   const periods = ["P1", "P2", "P3", "P4", "P5", "P6"];
   const potenciaRowIdx = 42; // row 43, 0-based
@@ -1037,7 +1328,7 @@ function parseComparativaLibreLuz(sheet: XLSX.WorkSheet): BaseValueItem[] {
   for (let i = 0; i < 6; i++) {
     const col = 8 + i; // cols I–N
 
-    const potAddr = XLSX.utils.encode_cell({ r: potenciaRowIdx, c: col });
+    const potAddr = encodeCell({ r: potenciaRowIdx, c: col });
     const potCell = sheet[potAddr];
     if (potCell && potCell.v != null) {
       const v = parseFloat(String(potCell.v));
@@ -1050,7 +1341,7 @@ function parseComparativaLibreLuz(sheet: XLSX.WorkSheet): BaseValueItem[] {
       }
     }
 
-    const enaAddr = XLSX.utils.encode_cell({ r: energiaRowIdx, c: col });
+    const enaAddr = encodeCell({ r: energiaRowIdx, c: col });
     const enaCell = sheet[enaAddr];
     if (enaCell && enaCell.v != null) {
       const v = parseFloat(String(enaCell.v));
@@ -1079,10 +1370,10 @@ function parseComparativaLibreLuz(sheet: XLSX.WorkSheet): BaseValueItem[] {
  *   GAS:LIBRE:PERSONALIZADA_FIJO:TERMINO_DIA      (€/día)
  *   GAS:LIBRE:PERSONALIZADA_FIJO:TERMINO_VARIABLE (€/kWh)
  */
-function parseComparativaLibreGas(sheet: XLSX.WorkSheet): BaseValueItem[] {
+function parseComparativaLibreGas(sheet: WorksheetLike): BaseValueItem[] {
   const items: BaseValueItem[] = [];
 
-  const terminoDiaCell = sheet[XLSX.utils.encode_cell({ r: 41, c: 10 })];
+  const terminoDiaCell = sheet[encodeCell({ r: 41, c: 10 })];
   if (terminoDiaCell && terminoDiaCell.v != null) {
     const v = parseFloat(String(terminoDiaCell.v));
     if (!isNaN(v) && v > 0) {
@@ -1094,7 +1385,7 @@ function parseComparativaLibreGas(sheet: XLSX.WorkSheet): BaseValueItem[] {
     }
   }
 
-  const terminoVarCell = sheet[XLSX.utils.encode_cell({ r: 46, c: 10 })];
+  const terminoVarCell = sheet[encodeCell({ r: 46, c: 10 })];
   if (terminoVarCell && terminoVarCell.v != null) {
     const v = parseFloat(String(terminoVarCell.v));
     if (!isNaN(v) && v > 0) {
@@ -1111,11 +1402,13 @@ function parseComparativaLibreGas(sheet: XLSX.WorkSheet): BaseValueItem[] {
 
 // ─── Main Parser ─────────────────────────────────────────────────────────────
 
-export function parseAxpoExcel(
+export async function parseAxpoExcel(
   buffer: Buffer,
   filename: string,
-): ParsedBaseValues {
-  const workbook = XLSX.read(buffer, { type: "buffer" });
+  options?: ParseAxpoExcelOptions,
+): Promise<ParsedBaseValues> {
+  const workbook = await readWorkbook(buffer);
+  const profile = resolveImportProfile(filename, options);
 
   const allItems: BaseValueItem[] = [];
 
@@ -1123,7 +1416,7 @@ export function parseAxpoExcel(
   if (workbook.SheetNames.includes("BASE DE DATOS FIJO")) {
     const sheet = workbook.Sheets["BASE DE DATOS FIJO"];
     const rows = worksheetToRows(sheet);
-    const fijoItems = parseFijo(rows);
+    const fijoItems = parseFijo(rows, profile);
     allItems.push(...fijoItems);
   }
 
@@ -1131,7 +1424,7 @@ export function parseAxpoExcel(
   if (workbook.SheetNames.includes("BASE DE DATOS INDEX")) {
     const sheet = workbook.Sheets["BASE DE DATOS INDEX"];
     const rows = worksheetToRows(sheet);
-    const indexItems = parseIndex(rows);
+    const indexItems = parseIndex(rows, profile);
     allItems.push(...indexItems);
   }
 
@@ -1142,10 +1435,14 @@ export function parseAxpoExcel(
   const trimmedSheetNames = new Map(
     workbook.SheetNames.map((n) => [n.trim(), n]),
   );
+  const dinamicaSheetMap = {
+    ...DINAMICA_SHEET_MAP,
+    ...(profile.dinamicaSheetNames ?? {}),
+  };
   // Auto-detect any sheets that look like DINAMICA product sheets but aren't in
   // the hardcoded map (e.g. new products added in future file versions).
   for (const [trimmed, actual] of trimmedSheetNames) {
-    if (!DINAMICA_SHEET_MAP[trimmed]) {
+    if (!dinamicaSheetMap[trimmed]) {
       // Match patterns like "SOME PRODUCT N1", "SOME PRODUCT N2", "SOME PRODUCT N3"
       const m = trimmed.match(/^(.+?)\s+(N[123])$/);
       if (m) {
@@ -1166,9 +1463,7 @@ export function parseAxpoExcel(
     }
   }
 
-  for (const [sheetName, [product, tier]] of Object.entries(
-    DINAMICA_SHEET_MAP,
-  )) {
+  for (const [sheetName, [product, tier]] of Object.entries(dinamicaSheetMap)) {
     const actualSheetName = trimmedSheetNames.get(sheetName);
     if (actualSheetName) {
       const sheet = workbook.Sheets[actualSheetName];
@@ -1178,16 +1473,27 @@ export function parseAxpoExcel(
     }
   }
 
+  // The simulator result grid VLOOKUPs this hidden table directly.  It contains
+  // the final month-specific electricity prices, including product-specific
+  // adjustments such as DINAMICA CONTROL TECHO caps and zero-price 1P rows for
+  // tariff combinations that still appear in Excel.
+  if (workbook.SheetNames.includes(".")) {
+    const hiddenElectricityItems = parseHiddenElectricityLookup(
+      workbook.Sheets["."],
+    );
+    allItems.push(...hiddenElectricityItems);
+  }
+
   // Parse GAS FIJO sheet (note: sheet name is "PRECIOS FIJOS GAS" in actual files)
   if (workbook.SheetNames.includes("PRECIOS FIJOS GAS")) {
     const sheet = workbook.Sheets["PRECIOS FIJOS GAS"];
     const rows = worksheetToRows(sheet, 110);
-    const gasFijoItems = parseGasFijo(rows);
+    const gasFijoItems = parseGasFijo(rows, profile);
     allItems.push(...gasFijoItems);
   } else if (workbook.SheetNames.includes("GAS FIJO")) {
     const sheet = workbook.Sheets["GAS FIJO"];
     const rows = worksheetToRows(sheet, 110);
-    const gasFijoItems = parseGasFijo(rows);
+    const gasFijoItems = parseGasFijo(rows, profile);
     allItems.push(...gasFijoItems);
   }
 
@@ -1195,12 +1501,12 @@ export function parseAxpoExcel(
   if (workbook.SheetNames.includes("PRECIOS INDEX GAS")) {
     const sheet = workbook.Sheets["PRECIOS INDEX GAS"];
     const rows = worksheetToRows(sheet, 110);
-    const gasIndexItems = parseGasIndex(rows);
+    const gasIndexItems = parseGasIndex(rows, profile);
     allItems.push(...gasIndexItems);
   } else if (workbook.SheetNames.includes("GAS INDEX")) {
     const sheet = workbook.Sheets["GAS INDEX"];
     const rows = worksheetToRows(sheet, 110);
-    const gasIndexItems = parseGasIndex(rows);
+    const gasIndexItems = parseGasIndex(rows, profile);
     allItems.push(...gasIndexItems);
   }
 
@@ -1235,9 +1541,9 @@ export function parseAxpoExcel(
 
   return {
     name: `AXPO Price Tables ${dateStr.split("-").reverse().join("-")}`,
-    scopeType: "GLOBAL",
+    scopeType: profile.scopeType,
     sourceWorkbookRef: filename,
-    sourceScope: "ALL",
+    sourceScope: profile.sourceScope ?? profile.scopeType,
     items: uniqueItems,
   };
 }

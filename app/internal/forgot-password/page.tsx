@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { forgotPassword } from "../lib/internalApi";
 import { useI18n } from "../../../src/lib/i18n-context";
-import "../globals.css";
+import styles from "../authPages.module.css";
 
 export default function ForgotPasswordPage() {
     const router = useRouter();
@@ -35,60 +35,60 @@ export default function ForgotPasswordPage() {
     };
 
     return (
-        <div className="login-shell-v2">
-            <div className="login-lang-switcher-v2">
+        <div className={styles.shell}>
+            <div className={styles.langSwitcher}>
                 <button
                     onClick={() => setLocale("en")}
-                    className={`login-lang-btn-v2 ${locale === "en" ? "active" : ""}`}
-                    title="English"
+                    className={`${styles.langBtn} ${locale === "en" ? styles.active : ""}`}
+                    title={t("common", "english")}
                 >
                     🇬🇧
                 </button>
                 <button
                     onClick={() => setLocale("es")}
-                    className={`login-lang-btn-v2 ${locale === "es" ? "active" : ""}`}
-                    title="Español"
+                    className={`${styles.langBtn} ${locale === "es" ? styles.active : ""}`}
+                    title={t("common", "spanish")}
                 >
                     🇪🇸
                 </button>
             </div>
-            <div className="login-grid-v2">
+            <div className={styles.grid}>
 
                 {/* ── Brand panel ── */}
-                <div className="login-brand-panel-v2">
+                <div className={styles.brandPanel}>
                     <img
                         src="/axpo-mark.svg"
-                        className="login-brand-mark-v2"
+                        className={styles.brandMark}
                         width={72}
                         height={72}
                         alt="AXPO"
                     />
-                    <div className="login-brand-name-v2">AXPO</div>
-                    <div className="login-brand-divider-v2" />
-                    <div className="login-brand-product-v2">OFFERS SIMULATOR</div>
-                    <div className="login-brand-desc-v2">
+                    <div className={styles.brandName}>AXPO</div>
+                    <div className={styles.brandDivider} />
+                    <div className={styles.brandProduct}>{t("common", "offersSimulator")}</div>
+                    <div className={styles.brandDesc}>
                         {t("login", "brandDesc")}
                     </div>
                 </div>
 
                 {/* ── Form panel ── */}
-                <div className="login-form-panel-v2">
-                    <div className="login-form-logo-v2">
+                <div className={styles.formPanel}>
+                    <div className={styles.formLogo}>
                         <img src="/axpo-mark.svg" width={32} height={32} alt="AXPO" />
                     </div>
-                    <h2 className="login-form-title-v2">{t("forgotPassword", "title")}</h2>
-                    <p className="login-form-subtitle-v2">
+                    <h2 className={styles.formTitle}>{t("forgotPassword", "title")}</h2>
+                    <p className={styles.formSubtitle}>
                         {t("forgotPassword", "subtitle")}
                     </p>
 
                     {status === "success" ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                            <div className="login-success-v2" style={{ color: "var(--scheme-green, #22c55e)", fontWeight: 500, padding: "12px 0" }}>
+                            <div className={styles.success} style={{ color: "var(--scheme-green, #22c55e)", fontWeight: 500, padding: "12px 0" }}>
                                 {t("forgotPassword", "successMessage")}
                             </div>
                             <button
                                 type="button"
-                                className="login-submit-v2"
+                                className={styles.submit}
                                 onClick={() => router.push("/internal/login")}
                             >
                                 {t("forgotPassword", "backToLogin")}
@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
                         <form onSubmit={handleSubmit} style={{ width: "100%" }}>
                             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-                                <div className="login-form-field-v2">
+                                <div className={styles.formField}>
                                     <label htmlFor="fp-email">{t("forgotPassword", "emailLabel")}</label>
                                     <input
                                         id="fp-email"
@@ -115,12 +115,12 @@ export default function ForgotPasswordPage() {
                                 </div>
 
                                 {errorText && (
-                                    <div className="login-error-v2">{errorText}</div>
+                                    <div className={styles.error}>{errorText}</div>
                                 )}
 
                                 <button
                                     type="submit"
-                                    className="login-submit-v2"
+                                    className={styles.submit}
                                     disabled={!canSubmit || status === "loading"}
                                 >
                                     {status === "loading"
@@ -131,7 +131,7 @@ export default function ForgotPasswordPage() {
                                 <button
                                     type="button"
                                     onClick={() => router.push("/internal/login")}
-                                    className="login-link-v2"
+                                    className={styles.link}
                                     style={{ marginTop: 8 }}
                                 >
                                     {t("forgotPassword", "backToLogin")}

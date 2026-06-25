@@ -5,7 +5,7 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import { SimulationResultsCards } from "./SimulationResultsCards";
 import type { SimulationItem, ClientItem, CupsLookupEntry } from "../../lib/internalApi";
-import { calculateSimulation, updateSimulation, fetchCupsLookup, listBaseValueSets, listBaseValueItems } from "../../lib/internalApi";
+import { calculateSimulation, updateSimulationSelectedOffer, fetchCupsLookup, listBaseValueSets, listBaseValueItems } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
@@ -15,7 +15,7 @@ import { DateInput } from "../ui/DateInput";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { FormInput } from "../ui/FormInput";
 import { CurrencyInput } from "../ui/CurrencyInput";
-import { Autocomplete, TextField, Collapse, Divider, Box, Button } from "@mui/material";
+import { Autocomplete, TextField, Collapse, Divider, Box, Button, Tabs, Tab, Typography } from "@mui/material";
 import { Country } from "country-state-city";
 import type {
     SimulationPayload,
@@ -250,7 +250,7 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
     return {
         clientData: {
             cups: s.cups || undefined,
-            consumoAnual: s.consumoAnual || undefined,
+            consumoAnual: s.consumoAnual,
             nombreTitular: s.nombreTitular || undefined,
             personaContacto: s.personaContacto || undefined,
             comercial: s.comercial || undefined,
@@ -564,14 +564,14 @@ function Sec({ title, children, block, collapsible, defaultOpen = true, optional
     const { t } = useI18n();
     const [isOpen, setIsOpen] = useState(defaultOpen);
     return (
-        <div style={{
+        <div className={block ? "simulation-form-section simulation-form-section--block" : "simulation-form-section"} style={{
             marginBottom: 24,
             ...(block ? {
-                background: "var(--scheme-neutral-1200)",
-                border: `1px solid var(--scheme-neutral-${complete ? '700' : '900'}, rgba(255,255,255,0.08))`,
+                background: "linear-gradient(180deg, color-mix(in srgb, var(--scheme-neutral-1200) 94%, var(--scheme-neutral-1000)), var(--scheme-neutral-1200))",
+                border: `1px solid ${complete ? "var(--scheme-neutral-800)" : "color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800))"}`,
                 borderRadius: 12,
-                padding: "24px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.03)",
+                padding: "clamp(14px, 4vw, 24px)",
+                boxShadow: "var(--scheme-shadow-soft)",
             } : {})
         }}>
             <div
@@ -609,7 +609,7 @@ function Sec({ title, children, block, collapsible, defaultOpen = true, optional
 }
 
 function Row({ children }: { children: React.ReactNode }) {
-    return <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>{children}</div>;
+    return <div className="simulation-form-row" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>{children}</div>;
 }
 
 function Field({ label, hint, flex, error, required, help, children }: {
@@ -622,7 +622,7 @@ function Field({ label, hint, flex, error, required, help, children }: {
     children: React.ReactNode;
 }) {
     return (
-        <div className="sp-form-group" style={{ flex: flex ?? "1 1 150px", minWidth: 110, ...(error ? { borderLeft: "2px solid var(--scheme-error-400, #f87171)", paddingLeft: 8 } : {}) }}>
+        <div className="sp-form-group simulation-form-field" style={{ flex: flex ?? "1 1 150px", minWidth: 0, maxWidth: "100%", ...(error ? { borderLeft: "2px solid var(--scheme-error-400, #f87171)", paddingLeft: 8 } : {}) }}>
             <label className="sp-form-label" style={error ? { color: "var(--scheme-error-400, #f87171)" } : undefined}>
                 {label}
                 {required && <span style={{ color: "var(--scheme-error-400, #f87171)", marginLeft: 2 }}>*</span>}
@@ -675,11 +675,11 @@ function PeriodGrid({ label, periods, values, onChange, step, hint, errorPeriods
     return (
         <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 11, opacity: 0.55, marginBottom: 6 }}>{label}</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div className="simulation-period-grid" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {periods.map((p) => {
                     const isInvalid = errorPeriods?.includes(p);
                     return (
-                        <div key={p} style={{ flex: "1 1 90px", minWidth: 75 }}>
+                        <div className="simulation-period-field" key={p} style={{ flex: "1 1 90px", minWidth: 0 }}>
                             <div style={{ fontSize: 10, textAlign: "center", marginBottom: 3, ...(isInvalid ? { color: "var(--scheme-error-400, #f87171)", fontWeight: 600 } : { opacity: 0.5 }) }}>{p}</div>
                             <FormInput
                                 label=""
@@ -759,7 +759,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     return (
         <>
             {/* Progress indicator */}
-            <div style={{
+            <div className="simulation-input-progress-card" style={{
                 marginBottom: 28,
                 padding: "16px 20px",
                 background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",
@@ -767,7 +767,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                 borderRadius: 8,
             }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
+                    <span style={{fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
                         {t("simulationForm", "formCompletion", { completed: completedCount, total: totalSteps })}
                     </span>
                     <span style={{ fontSize: 12, color: "var(--scheme-neutral-400)" }}>{Math.round(progressPercent)}%</span>
@@ -817,7 +817,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                                     : null;
                                 return (
                                     <li key={key ?? entry.cups} {...restProps} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 14px', gap: 2, cursor: 'pointer' }}>
-                                        <span style={{ fontWeight: 600, fontSize: 13, letterSpacing: '0.03em' }}>{entry.cups}</span>
+                                        <span style={{ fontWeight: 600, letterSpacing: '0.03em' }}>{entry.cups}</span>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
 
                                             {entry.lastStatus && (
@@ -916,9 +916,9 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
             </Sec>
 
             <Sec title={t("simulationForm", "sectionInvoiceBreakdown")} block collapsible complete={powerComplete && consumptionComplete && invoiceComplete}>
-                <Box style={{
+                <Box className="simulation-form-responsive-grid" style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
                     gap: 16,
                 }}>
                     <Sec>
@@ -1061,7 +1061,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
     return (
         <>
             {/* Progress indicator */}
-            <div style={{
+            <div className="simulation-input-progress-card" style={{
                 marginBottom: 28,
                 padding: "16px 20px",
                 background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",
@@ -1069,7 +1069,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                 borderRadius: 8,
             }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
+                    <span style={{fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
                         {t("simulationForm", "formCompletion", { completed: completedCount, total: totalSteps })}
                     </span>
                     <span style={{ fontSize: 12, color: "var(--scheme-neutral-400)" }}>{Math.round(progressPercent)}%</span>
@@ -1140,9 +1140,9 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
 
             {/* Invoice breakdown section */}
             <Sec title={t("simulationForm", "sectionInvoiceBreakdown")} block collapsible complete={invoiceComplete && consumptionComplete}>
-                <Box style={{
+                <Box className="simulation-form-responsive-grid" style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
                     gap: 16,
                 }}>
                     <Sec>
@@ -1278,9 +1278,9 @@ export interface SimulationFormProps {
     token: string;
     clients?: ClientItem[];
     onClientFieldsChanged?: (clientId: string, data: { name?: string; contactName?: string }) => void;
-    onSuccess?: (results: SimulationResults, baseValueSetId?: string) => void;
+    onSuccess?: (results: SimulationResults, baseValueSetId?: string, payload?: SimulationPayload) => void;
     onNotify?: (text: string, tone: "success" | "error") => void;
-    onOfferSelected?: (productKey?: string) => void;
+    onOfferSelected?: (productKey?: string, selectedOffer?: SimulationPayload["selectedOffer"]) => void;
     readOnly?: boolean;
     /** ID of the base value set to use for calculation (Admin override) */
     baseValueSetId?: string;
@@ -1522,11 +1522,17 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
                 ...(selectedOffer ? { selectedOffer } : {}),
             };
-            await updateSimulation(token, simulation.id, { payloadJson: payload as Record<string, unknown> });
-            const calcResult = await calculateSimulation(token, simulation.id, baseValueSetId ? { baseValueSetId } : undefined);
+            const calcResult = await calculateSimulation(token, simulation.id, {
+                ...(baseValueSetId ? { baseValueSetId } : {}),
+                payloadJson: payload,
+            });
+            const updatedPayload: SimulationPayload = {
+                ...payload,
+                results: calcResult.results,
+            };
             setResults(calcResult.results);
             setActiveTab("results");
-            onSuccess?.(calcResult.results, calcResult.baseValueSetId);
+            onSuccess?.(calcResult.results, calcResult.baseValueSetId, updatedPayload);
             onNotify?.(t("simulationForm", "calculationComplete", { count: (calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0) }), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "calculationFailed");
@@ -1553,14 +1559,18 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
                 ...(selectedOffer ? { selectedOffer } : {}),
             };
-            await updateSimulation(token, simulation.id, { payloadJson: payload as Record<string, unknown> });
             const calcResult = await calculateSimulation(token, simulation.id, {
                 ...(baseValueSetId ? { baseValueSetId } : {}),
+                payloadJson: payload,
                 selectedMonth: month,
             });
+            const updatedPayload: SimulationPayload = {
+                ...payload,
+                results: calcResult.results,
+            };
             setResults(calcResult.results);
             setActiveTab("results");
-            onSuccess?.(calcResult.results, calcResult.baseValueSetId);
+            onSuccess?.(calcResult.results, calcResult.baseValueSetId, updatedPayload);
             onNotify?.(t("simulationForm", "calculationComplete", { count: (calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0) }), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "calculationFailed");
@@ -1578,20 +1588,8 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         const previousOffer = selectedOffer;
         setSelectedOffer(offerData);
         try {
-            // Build the full payload from current state so we never lose inputs or
-            // results when only the selectedOffer changes.  Using simulation.payloadJson
-            // (the mount-time prop) would spread stale data that is missing the inputs
-            // and/or results saved by the most recent calculation.
-            const updatedPayload: SimulationPayload = {
-                schemaVersion: "1",
-                type: simType,
-                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
-                gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
-                ...(results ? { results } : {}),
-                selectedOffer: offerData,
-            };
-            await updateSimulation(token, simulation.id, { payloadJson: updatedPayload as Record<string, unknown> });
-            onOfferSelected?.(productKey);
+            await updateSimulationSelectedOffer(token, simulation.id, offerData);
+            onOfferSelected?.(productKey, offerData);
             onNotify?.(t("simulationForm", "offerSaved"), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "failedToSaveSelection");
@@ -1599,22 +1597,14 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             setSelectedOffer(previousOffer);
         } finally {
         }
-    }, [simulation.id, token, simType, elecState, gasState, results, selectedOffer, onOfferSelected, onNotify]);
+    }, [simulation.id, token, selectedOffer, onOfferSelected, onNotify]);
 
     const handleClearOffer = useCallback(async () => {
         const previousOffer = selectedOffer;
         setSelectedOffer(undefined);
         try {
-            const updatedPayload: SimulationPayload = {
-                schemaVersion: "1",
-                type: simType,
-                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
-                gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
-                ...(results ? { results } : {}),
-                selectedOffer: null,
-            };
-            await updateSimulation(token, simulation.id, { payloadJson: updatedPayload as Record<string, unknown> });
-            onOfferSelected?.(undefined);
+            await updateSimulationSelectedOffer(token, simulation.id, null);
+            onOfferSelected?.(undefined, null);
             onNotify?.(t("simulationForm", "offerCleared"), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "failedToClearSelection");
@@ -1622,7 +1612,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             onNotify?.(msg, "error");
             throw err;
         }
-    }, [simulation.id, token, simType, elecState, gasState, results, selectedOffer, onOfferSelected, onNotify]);
+    }, [simulation.id, token, selectedOffer, onOfferSelected, onNotify]);
 
     const facturaActual = simType === "ELECTRICITY" ? elecState.facturaActual
         : simType === "GAS" ? gasState.facturaActual : undefined;
@@ -1646,67 +1636,75 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     })();
 
     const resultCount = (results?.electricity?.length ?? 0) + (results?.gas?.length ?? 0);
-    const isOfferLocked = !!selectedOffer;
 
-    useEffect(() => {
-        if (isOfferLocked && activeTab !== "results") {
-            setActiveTab("results");
+    const handleTabClick = useCallback(async (tab: "inputs" | "results") => {
+        if (tab === "inputs" && selectedOffer && !readOnly) {
+            try {
+                await handleClearOffer();
+            } catch {
+                return;
+            }
         }
-    }, [isOfferLocked, activeTab]);
+        setActiveTab(tab);
+    }, [selectedOffer, readOnly, handleClearOffer]);
 
     return (
         <div>
-            {/* Tabs */}
-            <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--scheme-neutral-900)", marginBottom: 28 }}>
-                {[
-                    ...(!isOfferLocked ? [{ key: "inputs" as const, label: t("simulationForm", "tabInputs") }] : []),
-                    { key: "results" as const, label: results ? t("simulationForm", "tabResultsWithCount", { count: resultCount }) : t("simulationForm", "tabResults") },
-                ].map((tab) => (
-                    <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setActiveTab(tab.key)}
-                        style={{
-                            padding: "10px 20px",
-                            fontSize: 14,
-                            fontWeight: activeTab === tab.key ? 600 : 400,
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            color: activeTab === tab.key ? "var(--scheme-neutral-100)" : "var(--scheme-neutral-400)",
-                            borderBottom: activeTab === tab.key ? "2px solid var(--scheme-brand-600, #4ade80)" : "2px solid transparent",
-                            marginBottom: -1,
-                        }}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+            <Box className="simulation-detail-tabs" sx={{ mb: '12px' }}>
+                <Tabs
+                    value={activeTab}
+                    onChange={(_, value: "inputs" | "results") => void handleTabClick(value)}
+                    textColor="primary"
+                    indicatorColor="primary"
+                    sx={{
+                        minHeight: 36,
+                        "& .MuiTab-root": {
+                            minHeight: 36,
+                            px: 2,
+                            py: 0.75,
+                            textTransform: "none",
+                            fontWeight: 500,
+                        },
+                    }}
+                >
+                    <Tab
+                        value="inputs"
+                        label={<Typography component="span" variant="body2" sx={{ fontWeight: 500 }}>{t("simulationForm", "tabInputs")}</Typography>}
+                    />
+                    <Tab
+                        value="results"
+                        label={
+                            <Typography component="span" variant="body2" sx={{ fontWeight: 500 }}>
+                                {results ? t("simulationForm", "tabResultsWithCount", { count: resultCount }) : t("simulationForm", "tabResults")}
+                            </Typography>
+                        }
+                    />
+                </Tabs>
+            </Box>
 
             {/* Inputs tab */}
-            {!isOfferLocked && activeTab === "inputs" && (
+            {activeTab === "inputs" && (
                 <div>
                     {/* OCR disclaimer */}
                     {isOcrFilled && (
-                        <div style={{
+                        <div className="simulation-input-notice-card simulation-input-notice-card--warning" style={{
                             display: "flex",
                             alignItems: "flex-start",
                             gap: 8,
                             padding: "10px 14px",
                             borderRadius: 8,
                             marginBottom: 20,
-                            fontSize: 13,
                             background: "rgba(245, 158, 11, 0.08)",
                             color: "var(--scheme-warning-400, #f59e0b)",
                             border: "1px solid rgba(245, 158, 11, 0.3)",
                         }}>
-                            <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>⚠️</span>
-                            <span>{t("invoiceExtractor", "ocrDisclaimer") ?? "O OCR pode conter erros. Por favor, valide os dados preenchidos antes de continuar."}</span>
+                            <Typography component="span" variant="body2" sx={{ flexShrink: 0, lineHeight: 1.3 }}>⚠️</Typography>
+                            <Typography component="span" variant="body2">{t("invoiceExtractor", "ocrDisclaimer") ?? "O OCR pode conter erros. Por favor, valide os dados preenchidos antes de continuar."}</Typography>
                         </div>
                     )}
 
                     {/* Commodity type indicator (read-only) */}
-                    <div style={{
+                    <div className="simulation-input-utility-card" style={{
                         marginBottom: 28,
                         padding: "12px 16px",
                         background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",
@@ -1716,11 +1714,11 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                         alignItems: "center",
                         gap: 10,
                     }}>
-                        <span style={{ fontSize: 13, color: "var(--scheme-neutral-400)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{t("simulationForm", "commodityType")}</span>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--scheme-neutral-200)", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Typography component="span" variant="caption" sx={{ color: "var(--scheme-neutral-400)", fontWeight: 600, textTransform: "uppercase" }}>{t("simulationForm", "commodityType")}</Typography>
+                        <Typography component="span" variant="body2" sx={{ fontWeight: 600, color: "var(--scheme-neutral-200)", display: "flex", alignItems: "center", gap: 0.75 }}>
                             {simType === "ELECTRICITY" && <><BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} /> {t("simulationForm", "electricity")}</>}
                             {simType === "GAS" && <><LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444" }} /> {t("simulationForm", "gas")}</>}
-                        </span>
+                        </Typography>
                     </div>
 
                     {(simType === "ELECTRICITY") && (
@@ -1815,9 +1813,9 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
                     {/* Validation + API error + Calculate button */}
                     {hasErrors && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "10px 14px", background: "rgba(248,113,113,0.08)", border: "1px solid var(--scheme-error-400, #f87171)", borderRadius: 8, fontSize: 13, color: "var(--scheme-error-400, #f87171)" }}>
-                            <span>⚠</span>
-                            <span>{t("simulationForm", "fieldsRequireAttention", { count: Object.keys(elecErrors).length + Object.keys(gasErrors).length })}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "10px 14px", background: "rgba(248,113,113,0.08)", border: "1px solid var(--scheme-error-400, #f87171)", borderRadius: 8, color: "var(--scheme-error-400, #f87171)" }}>
+                            <Typography component="span" variant="body2">⚠</Typography>
+                            <Typography component="span" variant="body2">{t("simulationForm", "fieldsRequireAttention", { count: Object.keys(elecErrors).length + Object.keys(gasErrors).length })}</Typography>
                         </div>
                     )}
                     {error && (
@@ -1923,13 +1921,11 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                     ) : (
                         <div style={{ padding: "60px 20px", textAlign: "center", opacity: 0.5 }}>
                             <div style={{ marginBottom: 12 }}><BoltIcon sx={{ fontSize: 48, color: "#f59e0b" }} /></div>
-                            <div style={{ fontSize: 15, marginBottom: 8 }}>{t("simulationForm", "noResultsYet")}</div>
-                            <div style={{ fontSize: 13 }}>{t("simulationForm", "noResultsInstructions")}</div>
-                            {!isOfferLocked && (
-                                <button type="button" className="sp-btn-primary" onClick={() => setActiveTab("inputs")} style={{ marginTop: 20 }}>
-                                    {t("simulationForm", "goToInputs")}
-                                </button>
-                            )}
+                            <Typography variant="body2" component="div" sx={{ mb: 1, fontWeight: 600 }}>{t("simulationForm", "noResultsYet")}</Typography>
+                            <Typography variant="body2" component="div">{t("simulationForm", "noResultsInstructions")}</Typography>
+                            <Button variant="contained" onClick={() => void handleTabClick("inputs")} sx={{ mt: 2.5 }}>
+                                {t("simulationForm", "goToInputs")}
+                            </Button>
                         </div>
                     )}
                 </div>

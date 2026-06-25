@@ -27,4 +27,5 @@ export type { ToastTone, ToastMessage } from "./Toast";
 export type { FormSelectProps } from "./FormSelect";
 export { GradientLineChart } from "./GradientLineChart";
 export { GradientBarChart } from "./GradientBarChart";
+export { ResponsivePieChart } from "./ResponsivePieChart";
 export { AuditLogsModal } from "./AuditLogsModal";

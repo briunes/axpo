@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface SlidePanelProps {
   open: boolean;
@@ -21,6 +22,7 @@ export function SlidePanel({
   footer,
   width = 520,
 }: SlidePanelProps) {
+  const { t } = useI18n();
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Esc key to close
@@ -59,7 +61,7 @@ export function SlidePanel({
             <div className="sp-title">{title}</div>
             {subtitle && <div className="sp-subtitle">{subtitle}</div>}
           </div>
-          <button className="sp-close-btn" onClick={onClose} aria-label="Close panel" type="button">
+          <button className="sp-close-btn" onClick={onClose} aria-label={t("common", "closePanel")} type="button">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>

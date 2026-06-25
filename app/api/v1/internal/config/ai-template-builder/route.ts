@@ -170,6 +170,30 @@ async function callLLM(
     });
   }
 
+  if (provider === "aws-bedrock-nvidia") {
+    const bedrockBaseUrl = baseUrl.replace(/\/+$/, "");
+    return fetch(
+      `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/converse`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          system: [{ text: systemPrompt }],
+          messages: [{ role: "user", content: [{ text: userMessage }] }],
+          inferenceConfig: {
+            temperature,
+            maxTokens,
+          },
+        }),
+        signal: timeout,
+      },
+    );
+  }
+
   if (provider === "anthropic") {
     return fetch(`${baseUrl}/messages`, {
       method: "POST",
@@ -224,6 +248,9 @@ function extractResponseText(provider: string, llmData: any): string {
   }
   if (provider === "anthropic") {
     return llmData.content?.[0]?.text || "";
+  }
+  if (provider === "aws-bedrock-nvidia") {
+    return llmData.output?.message?.content?.[0]?.text || "";
   }
   if (provider === "google") {
     return llmData.candidates?.[0]?.content?.parts?.[0]?.text || "";

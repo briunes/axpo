@@ -1,14 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import { State } from "country-state-city";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import AddIcon from "@mui/icons-material/Add";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { createSimulation, createClient, listAllClients, getAgency, calculateSimulation, type ClientItem, type AgencyItem } from "../../lib/internalApi";
+import { createSimulation, createClient, listAllClients, getAgency, type ClientItem, type AgencyItem } from "../../lib/internalApi";
 import { CrudPageLayout, LoadingState, useAlerts } from "../../components/shared";
 import { CrudFormContainer } from "../../components/shared/CrudFormContainer";
 import { getSystemConfig } from "../../lib/configApi";
@@ -22,6 +22,7 @@ import { CurrencyInput } from "../../components/ui/CurrencyInput";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 
 type SimType = "ELECTRICITY" | "GAS";
 
@@ -156,6 +157,9 @@ export default function NewSimulationPage() {
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const onActionButtons = useActionButtons();
+    const breadcrumbs = useMemo(() => [{ label: t("newSimulationPage", "title") }], [t]);
+    useTopBarBreadcrumbs(breadcrumbs);
 
     const [clients, setClients] = useState<ClientItem[]>([]);
     const [clientId, setClientId] = useState("");
@@ -185,7 +189,6 @@ export default function NewSimulationPage() {
     const [errorMessage,] = useState<string | null>(null);
     const [extractedData, setExtractedData] = useState<ExtractedInvoiceData | null>(null);
     const [isValidatedExtractedData, setIsValidatedExtractedData] = useState(false);
-    const [uploadedInvoiceFile, setUploadedInvoiceFile] = useState<File | null>(null);
     const [ocrLogIds, setOcrLogIds] = useState<string[]>([]);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isMostlyEmpty, setIsMostlyEmpty] = useState(false);
@@ -196,6 +199,7 @@ export default function NewSimulationPage() {
     const [reportSubmitted, setReportSubmitted] = useState(false);
     const [electricityTaxConfig, setElectricityTaxConfig] = useState<any>(null);
     const [gasTaxConfig, setGasTaxConfig] = useState<any>(null);
+    const [formActions, setFormActions] = useState<React.ReactNode>(null);
 
     useEffect(() => {
         const root = document.documentElement;
@@ -210,6 +214,11 @@ export default function NewSimulationPage() {
 
         return () => observer.disconnect();
     }, []);
+
+    useEffect(() => {
+        onActionButtons?.(formActions);
+        return () => onActionButtons?.(null);
+    }, [formActions, onActionButtons]);
 
     const handleInvoiceDataExtracted = (data: ExtractedInvoiceData, context?: InvoiceExtractionContext) => {
         // Resolve config-based tax defaults (used only when OCR didn't return a value)
@@ -245,9 +254,6 @@ export default function NewSimulationPage() {
                 : defaultElecTax;
 
         setExtractedData({ ...data, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax });
-        if (context?.file) {
-            setUploadedInvoiceFile(context.file);
-        }
         setOcrLogIds([
             context?.providerDetectionLogId,
             context?.extractionLogId,
@@ -507,36 +513,6 @@ export default function NewSimulationPage() {
                 ocrLogIds: ocrLogIds.length > 0 ? ocrLogIds : undefined,
             });
 
-            // Upload invoice file if one was extracted
-            if (uploadedInvoiceFile) {
-                try {
-                    const formData = new FormData();
-                    formData.append("file", uploadedInvoiceFile);
-                    formData.append("simulationId", created.id);
-
-                    await fetch("/api/v1/internal/simulations/upload-invoice", {
-                        method: "POST",
-                        headers: {
-                            Authorization: `Bearer ${session.token}`,
-                        },
-                        body: formData,
-                    });
-                } catch (uploadErr) {
-                    console.error("Failed to upload invoice file:", uploadErr);
-                    // Don't fail the simulation creation if file upload fails
-                }
-            }
-
-            // If created via OCR, trigger calculation immediately so results are ready
-            if (extractedData) {
-                try {
-                    await calculateSimulation(session.token, created.id);
-                } catch (calcErr) {
-                    console.error("Auto-calculate after OCR creation failed:", calcErr);
-                    // Don't block redirect if calculation fails
-                }
-            }
-
             showSuccess(t("newSimulationPage", "created"));
             router.push(`/internal/simulations/${created.id}`);
         } catch (err) {
@@ -552,6 +528,7 @@ export default function NewSimulationPage() {
             title={t("newSimulationPage", "title")}
             subtitle={t("newSimulationPage", "subtitle")}
             backHref="/internal/simulations"
+            hideHeader
         >
             {isLoading ? (
                 <div style={{ padding: "40px", textAlign: "center" }}>
@@ -565,6 +542,7 @@ export default function NewSimulationPage() {
                     onCancel={() => router.push("/internal/simulations")}
                     isSubmitting={isSubmitting}
                     hideSubmit={llmEnabled && hasInvoiceFile && !extractedData}
+                    onRenderActions={setFormActions}
                 >
                     {/* Invoice Data Extraction - Only show if LLM is enabled */}
                     {llmEnabled && (
@@ -602,7 +580,6 @@ export default function NewSimulationPage() {
                                 onBeforeExtract={() => {
                                     setExtractedData(null);
                                     setIsValidatedExtractedData(false);
-                                    setUploadedInvoiceFile(null);
                                     setOcrLogIds([]);
                                     setIsMostlyEmpty(false);
                                     setExtractionLogId(null);
@@ -619,9 +596,7 @@ export default function NewSimulationPage() {
                         <div style={{
                             display: "flex", flexDirection: "column", gap: 0,
                             padding: "10px 14px",
-                            borderRadius: 8, marginBottom: 12,
-                            fontSize: 13,
-                            background: isDarkMode ? "#1c1507" : "#fffbeb",
+                            borderRadius: 8, marginBottom: 12, background: isDarkMode ? "#1c1507" : "#fffbeb",
                             color: isDarkMode ? "#fcd34d" : "#78350f",
                             border: `1px solid ${isDarkMode ? "#3d2a05" : "#f59e0b"}`,
                         }}>
@@ -649,8 +624,7 @@ export default function NewSimulationPage() {
                     {llmEnabled && extractedData && isMostlyEmpty && !showReportIssue && reportSubmitted && (
                         <div style={{
                             display: "flex", alignItems: "center", gap: 6,
-                            padding: "8px 14px", borderRadius: 8, marginBottom: 12,
-                            fontSize: 13, fontWeight: 500,
+                            padding: "8px 14px", borderRadius: 8, marginBottom: 12, fontWeight: 500,
                             background: isDarkMode ? "#052e16" : "#f0fdf4",
                             color: isDarkMode ? "#86efac" : "#166534",
                             border: `1px solid ${isDarkMode ? "#166534" : "#86efac"}`,
@@ -679,7 +653,7 @@ export default function NewSimulationPage() {
                                 }}>
                                     <span style={{ color: isDarkMode ? "#9dd8bc" : "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>
                                 </div>
-                                <span style={{ fontWeight: 700, color: isDarkMode ? "#9dd8bc" : "#065f46", fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                                <span style={{ fontWeight: 700, color: isDarkMode ? "#9dd8bc" : "#065f46", letterSpacing: "0.04em", textTransform: "uppercase" }}>
                                     {t("invoiceExtractor", "extractedDataTitle")}
                                 </span>
                                 {/* Commodity type toggle - always visible */}
@@ -695,11 +669,11 @@ export default function NewSimulationPage() {
                                     sx={{ ml: 1, height: 26 }}
                                 >
                                     <ToggleButton value="ELECTRICITY" sx={{ px: 1.2, py: 0, fontSize: 11, fontWeight: 700, gap: 0.5 }}>
-                                        <BoltIcon sx={{ fontSize: 13, color: "#f59e0b" }} />
+                                        <BoltIcon sx={{color: "#f59e0b" }} />
                                         Electricity
                                     </ToggleButton>
                                     <ToggleButton value="GAS" sx={{ px: 1.2, py: 0, fontSize: 11, fontWeight: 700, gap: 0.5 }}>
-                                        <LocalFireDepartmentIcon sx={{ fontSize: 13, color: "#ef4444" }} />
+                                        <LocalFireDepartmentIcon sx={{color: "#ef4444" }} />
                                         Gas
                                     </ToggleButton>
                                 </ToggleButtonGroup>
@@ -713,7 +687,7 @@ export default function NewSimulationPage() {
                                             onClick={() => setShowReportIssue(v => !v)}
                                             sx={{ fontSize: 11, py: 0.3, px: 1.2, minWidth: 0, textTransform: "none", fontWeight: 600, opacity: 0.75, '&:hover': { opacity: 1 } }}
                                         >
-                                            {showReportIssue ? t("invoiceExtractor", "reportIssueCancel") : "⚑ Report issue"}
+                                            {showReportIssue ? t("invoiceExtractor", "reportIssueCancel") : t("invoiceExtractor", "reportIssueFlagButton")}
                                         </Button>
                                     )}
                                     <Button
@@ -725,7 +699,7 @@ export default function NewSimulationPage() {
                                         startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
                                         sx={{ fontSize: 11, py: 0.3, px: 1.2, minWidth: 0, textTransform: "none", fontWeight: 700 }}
                                     >
-                                        {isValidatedExtractedData ? "Validated" : "Validate"}
+                                        {isValidatedExtractedData ? t("invoiceExtractor", "validated") : t("invoiceExtractor", "validate")}
                                     </Button>
                                 </div>
                             </div>
@@ -800,8 +774,7 @@ export default function NewSimulationPage() {
                             {!isMostlyEmpty && reportSubmitted && (
                                 <div style={{
                                     display: "flex", alignItems: "center", gap: 6,
-                                    padding: "8px 14px", borderRadius: 8, marginBottom: 14,
-                                    fontSize: 13, fontWeight: 500,
+                                    padding: "8px 14px", borderRadius: 8, marginBottom: 14, fontWeight: 500,
                                     background: isDarkMode ? "#052e16" : "#f0fdf4",
                                     color: isDarkMode ? "#86efac" : "#166534",
                                     border: `1px solid ${isDarkMode ? "#166534" : "#86efac"}`,
@@ -814,9 +787,9 @@ export default function NewSimulationPage() {
                             {/* Grid of fields */}
                             {(() => {
                                 const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 };
-                                const valueStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827" };
-                                const missingStyle: React.CSSProperties = { fontSize: 13, fontWeight: 500, color: isDarkMode ? "#a16207" : "#92400e", fontStyle: "italic", display: "flex", alignItems: "center", gap: 4 };
-                                const warnIcon = <span title="Not extracted by AI" style={{ fontSize: 13, lineHeight: 1 }}>⚠️</span>;
+                                const valueStyle: React.CSSProperties = {fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827" };
+                                const missingStyle: React.CSSProperties = {fontWeight: 500, color: isDarkMode ? "#a16207" : "#92400e", fontStyle: "italic", display: "flex", alignItems: "center", gap: 4 };
+                                const warnIcon = <span title="Not extracted by AI" style={{lineHeight: 1 }}>⚠️</span>;
                                 const upStr = (key: keyof ExtractedInvoiceData, val: string) =>
                                     setExtractedData(prev => prev ? { ...prev, [key]: val || undefined } : prev);
                                 return (

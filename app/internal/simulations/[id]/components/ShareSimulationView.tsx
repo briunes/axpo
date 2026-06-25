@@ -2,12 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "../../../../../src/lib/i18n-context";
-import { getClient, maybePersistRefreshedToken, shareSimulation } from "../../../lib/internalApi";
+import { getSimulationShareInit, maybePersistRefreshedToken, shareSimulation } from "../../../lib/internalApi";
 import { loadSession } from "../../../lib/authSession";
 import {
-    getPdfTemplates,
-    getEmailTemplates,
-    getTemplateVariables,
     type PdfTemplate,
     type EmailTemplate,
     type TemplateVariable,
@@ -25,12 +22,14 @@ import {
     Card,
     CardContent,
     Checkbox,
+    Collapse,
     Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
     FormControl,
     FormControlLabel,
+    Grow,
     InputLabel,
     MenuItem,
     Paper,
@@ -39,7 +38,6 @@ import {
     Select,
     Tab,
     Tabs,
-    TextField,
     Typography,
     Stack,
 } from "@mui/material";
@@ -48,6 +46,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { LoadingState } from "../../../components/shared";
+import { FormInput } from "../../../components/ui/FormInput";
 
 type ShareMode = "pdf" | "email";
 
@@ -90,59 +89,34 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
     const [clientLanguage, setClientLanguage] = useState<string>("en");
 
     useEffect(() => {
-        Promise.all([
-            getPdfTemplates({ active: true, excludeType: "price-history" }),
-            getEmailTemplates({ active: true, excludeType: "price-history" }),
-            getTemplateVariables(),
-        ])
-            .then(async ([pdfTpl, emailTpl, variables]) => {
-                // Get simulation type from payload (defaults to ELECTRICITY if not specified)
-                const payload = simulation.payloadJson as { type?: "ELECTRICITY" | "GAS" } | null;
-                const simulationType =
-                    payload?.type === "GAS" || (payload as any)?.gas
-                        ? "GAS"
-                        : "ELECTRICITY";
+        let isCurrent = true;
+        setIsLoading(true);
+        getSimulationShareInit(token, simulation.id)
+            .then((init) => {
+                if (!isCurrent) return;
 
-                // Filter PDF templates by commodity and type
-                const simulationPdfTemplates = pdfTpl.filter((t) => {
-                    // Must be simulation template type
-                    if (t.type !== "simulation-output" && t.type !== "simulation-detailed") return false;
-
-                    // Filter by commodity - treat null/undefined as ELECTRICITY
-                    const templateCommodity = t.commodity || "ELECTRICITY";
-                    return templateCommodity === simulationType;
-                });
-
-                const simulationEmailTemplates = emailTpl.filter(
-                    (t) => t.type === "simulation-share"
-                );
-
-                setPdfTemplates(simulationPdfTemplates);
-                setEmailTemplates(simulationEmailTemplates);
-                setTemplateVariables(variables);
+                setPdfTemplates(init.pdfTemplates);
+                setEmailTemplates(init.emailTemplates);
+                setTemplateVariables(init.templateVariables);
 
                 // Determine client language from language preference (falls back to country detection)
                 let detectedLanguage = "en";
-                if (!isTestingMode && simulation.clientId) {
-                    try {
-                        const clientData = await getClient(token, simulation.clientId);
-                        if (clientData.contactEmail) {
-                            setRecipientEmail(clientData.contactEmail);
-                        }
-                        detectedLanguage = clientData.language
-                            ? clientData.language
-                            : getLanguageFromCountry(clientData.country);
-                    } catch (err) {
-                        // Client data not available, that's okay
+                if (!isTestingMode) {
+                    const clientDefaults = init.clientDefaults ?? simulation.client;
+                    if (clientDefaults?.contactEmail) {
+                        setRecipientEmail(clientDefaults.contactEmail);
                     }
+                    detectedLanguage = clientDefaults?.language
+                        ? clientDefaults.language
+                        : getLanguageFromCountry(clientDefaults?.country);
                 } else if (isTestingMode && loggedUserEmail) {
                     setRecipientEmail(loggedUserEmail);
                 }
                 setClientLanguage(detectedLanguage);
 
                 // Set default selections
-                const defaultPdf = simulationPdfTemplates.find((t) => t.active);
-                const defaultEmail = simulationEmailTemplates.find((t) => t.active);
+                const defaultPdf = init.pdfTemplates.find((t) => t.active);
+                const defaultEmail = init.emailTemplates.find((t) => t.active);
                 if (defaultPdf) {
                     const pdfTranslation = resolveTranslation(defaultPdf.translations ?? [], detectedLanguage);
                     const pdfContent = pdfTranslation?.htmlContent ?? defaultPdf.htmlContent;
@@ -174,12 +148,17 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 }
             })
             .catch((err) => {
-                onError?.(err.message || "Failed to load templates");
+                if (!isCurrent) return;
+                onError?.(err.message || t("shareSimulation", "loadTemplatesFailed"));
             })
             .finally(() => {
+                if (!isCurrent) return;
                 setIsLoading(false);
             });
-    }, [simulation, token, locale]);
+        return () => {
+            isCurrent = false;
+        };
+    }, [simulation, token, locale, isTestingMode, loggedUserEmail]);
 
     const handleTemplateChange = (templateId: string) => {
         if (shareMode === "pdf") {
@@ -308,7 +287,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             if (markAsShared) {
                 try {
                     const shared = await shareSimulation(token, simulation.id, "PDF");
-                    const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
+                    const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://simuladorpublicoaxpo.b-cdn.net";
                     if (shared.publicToken) {
                         simulationLink = `${baseUrl}/?token=${shared.publicToken}`;
                     }
@@ -336,7 +315,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
 
             if (!response.ok) {
                 const errorData = await response.json();
-                const errMsg = typeof errorData.error === "string" ? errorData.error : (errorData.error?.message || 'Failed to generate PDF');
+                const errMsg = typeof errorData.error === "string" ? errorData.error : (errorData.error?.message || t("shareSimulation", "generatePdfFailed"));
                 throw new Error(errMsg);
             }
 
@@ -353,7 +332,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             if (didShare) {
                 onStatusChange?.();
             }
-            onSuccess?.(t("shareSimulation", "pdfDownloaded") || "PDF downloaded successfully");
+            onSuccess?.(t("shareSimulation", "pdfDownloaded"));
             return true;
         } catch (err) {
             onError?.(err instanceof Error ? err.message : "Failed to download PDF");
@@ -365,7 +344,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
 
     const handleSendEmail = async () => {
         if (!recipientEmail) {
-            onError?.(t("shareSimulation", "emailRequired") || "Email is required");
+            onError?.(t("shareSimulation", "emailRequired"));
             return false;
         }
 
@@ -377,7 +356,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             let didShare = false;
             try {
                 const shared = await shareSimulation(token, simulation.id, "EMAIL");
-                const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es";
+                const baseUrl = process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || "https://simuladorpublicoaxpo.b-cdn.net";
                 if (shared.publicToken) {
                     simulationLink = `${baseUrl}/?token=${shared.publicToken}`;
                 }
@@ -412,14 +391,14 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
 
             if (!response.ok) {
                 const errorData = await response.json();
-                const errMsg = typeof errorData.error === "string" ? errorData.error : (errorData.error?.message || "Failed to send email");
+                const errMsg = typeof errorData.error === "string" ? errorData.error : (errorData.error?.message || t("shareSimulation", "sendEmailFailed"));
                 throw new Error(errMsg);
             }
 
             if (didShare) {
                 onStatusChange?.();
             }
-            onSuccess?.(t("shareSimulation", "emailSent") || "Email sent successfully");
+            onSuccess?.(t("shareSimulation", "emailSent"));
             return true;
         } catch (err) {
             onError?.(err instanceof Error ? err.message : "Failed to send email");
@@ -432,11 +411,14 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
     const currentTemplate = shareMode === "pdf"
         ? pdfTemplates.find((t) => t.id === selectedPdfTemplate)
         : emailTemplates.find((t) => t.id === selectedEmailTemplate);
+    const currentTemplateOptions = shareMode === "pdf" ? pdfTemplates : emailTemplates;
+    const onlyTemplate = currentTemplateOptions.length === 1 ? currentTemplateOptions[0] : null;
+    const onlyEmailPdfTemplate = pdfTemplates.length === 1 ? pdfTemplates[0] : null;
 
     if (isLoading) {
         return (
             <Box sx={{ p: 4, textAlign: "center" }}>
-                <LoadingState size={100} message={t("shareSimulation", "loading") || "Loading..."} />
+                <LoadingState size={100} message={t("shareSimulation", "loading")} />
             </Box>
         );
     }
@@ -453,7 +435,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                             {/* Share Mode Selection */}
                             <Box sx={{ flex: 1 }}>
                                 <Typography variant="h6" gutterBottom>
-                                    {t("shareSimulation", "selectMode") || "Select Mode"}
+                                    {t("shareSimulation", "selectMode")}
                                 </Typography>
                                 <RadioGroup
                                     value={shareMode}
@@ -465,7 +447,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                         label={
                                             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                                 <DownloadIcon />
-                                                {t("shareSimulation", "downloadPdfAndShare") || "Download PDF and Share"}
+                                                {t("shareSimulation", "downloadPdfAndShare")}
                                             </Box>
                                         }
                                     />
@@ -475,7 +457,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                         label={
                                             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                                 <SendIcon />
-                                                {t("shareSimulation", "sendEmail") || "Send Email"}
+                                                {t("shareSimulation", "sendEmail")}
                                             </Box>
                                         }
                                     />
@@ -485,84 +467,24 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                             {/* Template Selection */}
                             <Box sx={{ flex: 1 }}>
                                 <Typography variant="h6" gutterBottom>
-                                    {t("shareSimulation", "selectTemplate") || "Select Template"}
+                                    {t("shareSimulation", "selectTemplate")}
                                 </Typography>
-                                <FormControl fullWidth>
-                                    <InputLabel>{t("shareSimulation", "selectTemplate") || "Template"}</InputLabel>
-                                    <Select
-                                        value={shareMode === "pdf" ? selectedPdfTemplate : selectedEmailTemplate}
-                                        onChange={(e) => handleTemplateChange(e.target.value)}
-                                        label={t("shareSimulation", "selectTemplate") || "Template"}
-                                    >
-                                        {(shareMode === "pdf" ? pdfTemplates : emailTemplates).map((template) => (
-                                            <MenuItem key={template.id} value={template.id}>
-                                                <Box>
-                                                    <Typography variant="body2">{template.name}</Typography>
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        {template.description}
-                                                    </Typography>
-                                                </Box>
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </Box>
-                        </Box>
-                    </CardContent>
-                </Card>
-
-                {/* Email Recipient (only for email mode) */}
-                {shareMode === "email" && (
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>
-                                {t("shareSimulation", "recipient") || "Recipient"}
-                            </Typography>
-                            <TextField
-                                fullWidth
-                                type="email"
-                                label={t("shareSimulation", "recipientEmail") || "Email"}
-                                value={recipientEmail}
-                                onChange={(e) => !isTestingMode && setRecipientEmail(e.target.value)}
-                                placeholder="client@example.com"
-                                disabled={isTestingMode}
-                                helperText={isTestingMode ? "Testing mode: email will be sent to your account only" : undefined}
-                            />
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Attach PDF to Email (only for email mode) */}
-                {shareMode === "email" && (
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>
-                                {t("shareSimulation", "attachPdf") || "Attach PDF to email"}
-                            </Typography>
-                            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-                                <FormControlLabel
-                                    control={
-                                        <Checkbox
-                                            checked={attachPdfToEmail}
-                                            onChange={(e) => setAttachPdfToEmail(e.target.checked)}
-                                        />
-                                    }
-                                    label={t("shareSimulation", "attachPdfLabel") || "Include PDF attachment"}
-                                />
-                                {attachPdfToEmail && (
-                                    <FormControl sx={{ flex: 1 }}>
-                                        <InputLabel>{t("shareSimulation", "selectPdfTemplate") || "PDF Template"}</InputLabel>
+                                {onlyTemplate ? (
+                                    <Paper variant="outlined" sx={{ px: 1.5, py: 1.25 }}>
+                                        <Typography variant="body2">{onlyTemplate.name}</Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {onlyTemplate.description}
+                                        </Typography>
+                                    </Paper>
+                                ) : (
+                                    <FormControl fullWidth>
+                                        <InputLabel>{t("shareSimulation", "selectTemplate")}</InputLabel>
                                         <Select
-                                            value={selectedEmailPdfTemplate}
-                                            onChange={(e) => {
-                                                const templateId = e.target.value;
-                                                setSelectedEmailPdfTemplate(templateId);
-                                                const template = pdfTemplates.find((t) => t.id === templateId);
-                                                if (template) setEditedEmailPdfContent(template.htmlContent);
-                                            }}
-                                            label={t("shareSimulation", "selectPdfTemplate") || "PDF Template"}
+                                            value={shareMode === "pdf" ? selectedPdfTemplate : selectedEmailTemplate}
+                                            onChange={(e) => handleTemplateChange(e.target.value)}
+                                            label={t("shareSimulation", "selectTemplate")}
                                         >
-                                            {pdfTemplates.map((template) => (
+                                            {currentTemplateOptions.map((template) => (
                                                 <MenuItem key={template.id} value={template.id}>
                                                     <Box>
                                                         <Typography variant="body2">{template.name}</Typography>
@@ -576,21 +498,121 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                     </FormControl>
                                 )}
                             </Box>
+                        </Box>
+                    </CardContent>
+                </Card>
+
+                {/* Email Recipient (only for email mode) */}
+                <Grow in={shareMode === "email"} mountOnEnter unmountOnExit>
+                    <Card>
+                        <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                                {t("shareSimulation", "recipient")}
+                            </Typography>
+                            <FormInput
+                                fullWidth
+                                type="email"
+                                label={t("shareSimulation", "recipientEmail")}
+                                value={recipientEmail}
+                                onChange={(e) => !isTestingMode && setRecipientEmail(e.target.value)}
+                                placeholder="client@example.com"
+                                disabled={isTestingMode}
+                                helperText={isTestingMode ? t("shareSimulation", "testingModeEmailHint") : undefined}
+                            />
                         </CardContent>
                     </Card>
-                )}
+                </Grow>
+
+                {/* Attach PDF to Email (only for email mode) */}
+                <Grow in={shareMode === "email"} mountOnEnter unmountOnExit>
+                    <Card>
+                        <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                                {t("shareSimulation", "attachPdf")}
+                            </Typography>
+                            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={attachPdfToEmail}
+                                            onChange={(e) => setAttachPdfToEmail(e.target.checked)}
+                                        />
+                                    }
+                                    label={t("shareSimulation", "attachPdfLabel")}
+                                />
+                                <Collapse in={attachPdfToEmail} timeout="auto" unmountOnExit sx={{ flex: 1 }}>
+                                    {onlyEmailPdfTemplate ? (
+                                        <Paper variant="outlined" sx={{ px: 1.5, py: 1.25 }}>
+                                            <Typography variant="body2">{onlyEmailPdfTemplate.name}</Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                {onlyEmailPdfTemplate.description}
+                                            </Typography>
+                                        </Paper>
+                                    ) : (
+                                        <FormControl sx={{ flex: 1 }}>
+                                            <InputLabel>{t("shareSimulation", "selectPdfTemplate")}</InputLabel>
+                                            <Select
+                                                value={selectedEmailPdfTemplate}
+                                                onChange={(e) => {
+                                                    const templateId = e.target.value;
+                                                    setSelectedEmailPdfTemplate(templateId);
+                                                    const template = pdfTemplates.find((t) => t.id === templateId);
+                                                    if (template) setEditedEmailPdfContent(template.htmlContent);
+                                                }}
+                                                label={t("shareSimulation", "selectPdfTemplate")}
+                                            >
+                                                {pdfTemplates.map((template) => (
+                                                    <MenuItem key={template.id} value={template.id}>
+                                                        <Box>
+                                                            <Typography variant="body2">{template.name}</Typography>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {template.description}
+                                                            </Typography>
+                                                        </Box>
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    )}
+                                </Collapse>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Grow>
 
                 {/* Template Editor / Preview */}
                 {currentTemplate && (
-                    <Card>
+                    <>
+                    <Card sx={{ display: { xs: "block", md: "none" } }}>
+                        <CardContent>
+                            <Box
+                                sx={{
+                                    p: 2,
+                                    borderRadius: 1,
+                                    border: "1px dashed",
+                                    borderColor: "divider",
+                                    bgcolor: "action.hover",
+                                }}
+                            >
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                                    {t("shareSimulation", "previewUnavailableMobileTitle") || "Preview not available on mobile"}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    {t("shareSimulation", "previewUnavailableMobile") || "Template previews and editing are available on medium screens and above."}
+                                </Typography>
+                            </Box>
+                        </CardContent>
+                    </Card>
+
+                    <Card sx={{ display: { xs: "none", md: "block" } }}>
                         <CardContent>
                             {/* Tabs for Email mode - always show tabs */}
                             {shareMode === "email" ? (
                                 <>
                                     <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
-                                        <Tab label={t("shareSimulation", "tabPreviewEmail") || "Preview Email"} value="email" />
+                                        <Tab label={t("shareSimulation", "tabPreviewEmail")} value="email" />
                                         {attachPdfToEmail && selectedEmailPdfTemplate && (
-                                            <Tab label={t("shareSimulation", "tabPreviewPdf") || "Preview PDF"} value="pdf" />
+                                            <Tab label={t("shareSimulation", "tabPreviewPdf")} value="pdf" />
                                         )}
                                     </Tabs>
 
@@ -605,16 +627,16 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                                     onClick={() => setTemplateViewMode(templateViewMode === "edit" ? "preview" : "edit")}
                                                 >
                                                     {templateViewMode === "edit"
-                                                        ? t("shareSimulation", "btnPreviewEmailTemplate") || "Preview"
-                                                        : t("shareSimulation", "btnEditEmailTemplate") || "Edit"}
+                                                        ? t("shareSimulation", "btnPreviewEmailTemplate")
+                                                        : t("shareSimulation", "btnEditEmailTemplate")}
                                                 </Button>
                                             </Box>
 
                                             {templateViewMode === "edit" ? (
                                                 <>
-                                                    <TextField
+                                                    <FormInput
                                                         fullWidth
-                                                        label={t("shareSimulation", "subject") || "Subject"}
+                                                        label={t("shareSimulation", "subject")}
                                                         value={editedSubject}
                                                         onChange={(e) => setEditedSubject(e.target.value)}
                                                         sx={{ mb: 2 }}
@@ -638,7 +660,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                                                 ...Object.entries((currentTemplate?.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
                                                                     name: key,
                                                                     label: `📝 ${section.label || key}`,
-                                                                    description: section.description || "Editable section",
+                                                                    description: section.description || t("shareSimulation", "editableSection"),
                                                                 }))
                                                             ]}
                                                         />
@@ -649,7 +671,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                                     {currentTemplate?.editableSections && (
                                                         <Box sx={{ mb: 1.5, fontSize: "0.75rem", color: "text.secondary", display: "flex", alignItems: "center", gap: 0.5 }}>
                                                             <Box component="span" sx={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", bgcolor: "#e53935" }} />
-                                                            Click highlighted sections to edit them
+                                                            {t("shareSimulation", "clickHighlightedSections")}
                                                         </Box>
                                                     )}
                                                     <Paper
@@ -680,8 +702,8 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                                         onClick={() => setPdfTemplateViewMode(pdfTemplateViewMode === "edit" ? "preview" : "edit")}
                                                     >
                                                         {pdfTemplateViewMode === "edit"
-                                                            ? t("shareSimulation", "btnPreviewPdfTemplate") || "Preview"
-                                                            : t("shareSimulation", "btnEditPdfTemplate") || "Edit"}
+                                                            ? t("shareSimulation", "btnPreviewPdfTemplate")
+                                                            : t("shareSimulation", "btnEditPdfTemplate")}
                                                     </Button>
                                                 </Box>
 
@@ -707,7 +729,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                                                 ...Object.entries((emailPdfTpl?.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
                                                                     name: key,
                                                                     label: `📝 ${section.label || key}`,
-                                                                    description: section.description || "Editable section",
+                                                                    description: section.description || t("shareSimulation", "editableSection"),
                                                                 }))
                                                             ]}
                                                         />
@@ -717,7 +739,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                                         {emailPdfTpl?.editableSections && (
                                                             <Box sx={{ mb: 1.5, fontSize: "0.75rem", color: "text.secondary", display: "flex", alignItems: "center", gap: 0.5 }}>
                                                                 <Box component="span" sx={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", bgcolor: "#e53935" }} />
-                                                                Click highlighted sections to edit them
+                                                                {t("shareSimulation", "clickHighlightedSections")}
                                                             </Box>
                                                         )}
                                                         <Paper
@@ -742,8 +764,8 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
                                         <Typography variant="h6">
                                             {templateViewMode === "edit"
-                                                ? t("shareSimulation", "editTemplate") || "Edit Template"
-                                                : t("shareSimulation", "previewTemplate") || "Preview Template"}
+                                                ? t("shareSimulation", "editTemplate")
+                                                : t("shareSimulation", "previewTemplate")}
                                         </Typography>
                                         <Button
                                             variant="outlined"
@@ -752,8 +774,8 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                             onClick={() => setTemplateViewMode(templateViewMode === "edit" ? "preview" : "edit")}
                                         >
                                             {templateViewMode === "edit"
-                                                ? t("shareSimulation", "previewTemplate") || "Preview"
-                                                : t("shareSimulation", "editTemplate") || "Edit"}
+                                                ? t("shareSimulation", "previewTemplate")
+                                                : t("shareSimulation", "editTemplate")}
                                         </Button>
                                     </Box>
 
@@ -779,7 +801,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                                     ...Object.entries((currentTemplate?.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
                                                         name: key,
                                                         label: `📝 ${section.label || key}`,
-                                                        description: section.description || "Editable section",
+                                                        description: section.description || t("shareSimulation", "editableSection"),
                                                     }))
                                                 ]}
                                             />
@@ -789,7 +811,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                             {currentTemplate?.editableSections && (
                                                 <Box sx={{ mb: 1.5, fontSize: "0.75rem", color: "text.secondary", display: "flex", alignItems: "center", gap: 0.5 }}>
                                                     <Box component="span" sx={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", bgcolor: "#e53935" }} />
-                                                    Click highlighted sections to edit them
+                                                    {t("shareSimulation", "clickHighlightedSections")}
                                                 </Box>
                                             )}
                                             <Paper
@@ -808,6 +830,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                             )}
                         </CardContent>
                     </Card>
+                    </>
                 )}
 
                 {/* Actions */}
@@ -819,7 +842,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                             disabled={isSending || !currentTemplate}
                             startIcon={<DownloadIcon />}
                         >
-                            {t("shareSimulation", "downloadOnly") || "Download PDF"}
+                            {t("shareSimulation", "downloadOnly")}
                         </Button>
                     )}
                     <Button
@@ -834,10 +857,10 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                         startIcon={shareMode === "pdf" ? <DownloadIcon /> : <SendIcon />}
                     >
                         {isSending
-                            ? t("shareSimulation", "processing") || "Processing..."
+                            ? t("shareSimulation", "processing")
                             : shareMode === "pdf"
-                                ? t("shareSimulation", "downloadPdfAndShare") || "Download PDF and Share"
-                                : t("shareSimulation", "sendEmail") || "Send Email"}
+                                ? t("shareSimulation", "downloadPdfAndShare")
+                                : t("shareSimulation", "sendEmail")}
                     </Button>
                 </Box>
             </Stack>
@@ -845,9 +868,9 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             {/* Inline section editing modal */}
             {sec && (
                 <Dialog open onClose={() => setEditingSection(null)} maxWidth="sm" fullWidth>
-                    <DialogTitle sx={{ pb: 1 }}>Edit: {sec.label}</DialogTitle>
+                    <DialogTitle sx={{ pb: 1 }}>{t("shareSimulation", "editSectionTitle", { label: sec.label })}</DialogTitle>
                     <DialogContent>
-                        <TextField
+                        <FormInput
                             autoFocus
                             fullWidth
                             multiline={sec.multiline}
@@ -861,9 +884,9 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                         />
                     </DialogContent>
                     <DialogActions>
-                        <Button onClick={() => setEditingSection(null)}>Cancel</Button>
+                        <Button onClick={() => setEditingSection(null)}>{t("common", "cancel")}</Button>
                         <Button variant="contained" onClick={() => sec.onSave(sec.value)}>
-                            Apply
+                            {t("common", "apply")}
                         </Button>
                     </DialogActions>
                 </Dialog>

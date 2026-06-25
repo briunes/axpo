@@ -23,6 +23,8 @@ import {
 import type { SimulationPayload, SimulationResults } from "@/domain/types";
 import type { SessionState } from "../../lib/authSession";
 import { keepPreviousData } from "@tanstack/react-query";
+import { useRequestCachePolicy } from "./useRequestCachePolicy";
+import { normalizeQueryKeyParams } from "./queryKeys";
 
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "N/A";
@@ -64,7 +66,7 @@ export interface SimulationsActions {
   setFilterCups: (v: string) => void;
   filterStatus: string;
   setFilterStatus: (v: string) => void;
-  applyFilters: () => void;
+  applyFilters: (searchOverride?: string) => void;
   clearFilters: () => void;
   filtersAppliedAt: number;
   // create form state
@@ -126,6 +128,7 @@ export function useSimulations(
   initialPageSize = 25,
 ): SimulationsActions {
   const queryClient = useQueryClient();
+  const cachePolicy = useRequestCachePolicy("simulations");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
@@ -276,25 +279,25 @@ export function useSimulations(
     status: appliedStatus || undefined,
   };
 
-  // Create a stable cache key by serializing query params
-  const queryKeyString = JSON.stringify({
+  const queryKeyParams = normalizeQueryKeyParams({
     page,
     pageSize,
     orderBy: sortColumn,
     sortDir,
-    includeDeleted: showArchived || null,
-    search: appliedSearch || null,
-    ownerUserId: appliedOwnerUserId || null,
-    clientId: appliedClientId || null,
-    cups: appliedCups || null,
-    status: appliedStatus || null,
+    includeDeleted: showArchived,
+    search: appliedSearch,
+    ownerUserId: appliedOwnerUserId,
+    clientId: appliedClientId,
+    cups: appliedCups,
+    status: appliedStatus,
   });
 
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["simulations", session?.token ?? "", queryKeyString],
+    queryKey: ["simulations", session?.token ?? "", queryKeyParams],
     queryFn: () => listSimulations(session!.token, queryParams),
     enabled: !!session,
     placeholderData: keepPreviousData,
+    ...cachePolicy,
   });
 
   const simulations = data?.items ?? [];
@@ -324,8 +327,10 @@ export function useSimulations(
     }
   };
 
-  const applyFilters = useCallback(() => {
-    setAppliedSearch(filterSearch);
+  const applyFilters = useCallback((searchOverride?: string) => {
+    const nextSearch = searchOverride ?? filterSearch;
+    setFilterSearch(nextSearch);
+    setAppliedSearch(nextSearch);
     setAppliedOwnerUserId(filterOwnerUserId);
     setAppliedClientId(filterClientId);
     setAppliedCups(filterCups);

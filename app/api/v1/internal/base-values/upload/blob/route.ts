@@ -49,10 +49,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(response);
   } catch (error) {
+    console.error(
+      "Base value blob upload authorization failed:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "Could not authorize upload",
+        error: "Could not authorize upload",
       },
       { status: 400 },
     );

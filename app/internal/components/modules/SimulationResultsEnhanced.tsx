@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import type { SimulationResults, ProductResult } from "@/domain/types";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 interface SimulationResultsEnhancedProps {
     results: SimulationResults;
@@ -16,6 +17,7 @@ function fmt(n: number, digits = 2): string {
 }
 
 function ProductRow({ r, isHighlight }: { r: ProductResult; isHighlight?: boolean }) {
+    const { t } = useI18n();
     const savingsColor = r.ahorro > 0 ? "#22c55e" : r.ahorro < 0 ? "#ef4444" : "#94a3b8";
     const pctColor = r.pctAhorro > 0 ? "#22c55e" : r.pctAhorro < 0 ? "#ef4444" : "#94a3b8";
 
@@ -26,9 +28,7 @@ function ProductRow({ r, isHighlight }: { r: ProductResult; isHighlight?: boolea
         }}>
             <td style={{
                 padding: "10px 14px",
-                fontWeight: 600,
-                fontSize: 13,
-                color: "#e2e8f0",
+                fontWeight: 600, color: "#e2e8f0",
                 borderBottom: "1px solid rgba(255,255,255,0.05)",
             }}>
                 {r.productLabel}
@@ -57,9 +57,7 @@ function ProductRow({ r, isHighlight }: { r: ProductResult; isHighlight?: boolea
             </td>
             <td style={{
                 padding: "10px 14px",
-                textAlign: "right",
-                fontSize: 13,
-                fontWeight: 600,
+                textAlign: "right", fontWeight: 600,
                 color: pctColor,
                 borderBottom: "1px solid rgba(255,255,255,0.05)",
             }}>
@@ -68,9 +66,7 @@ function ProductRow({ r, isHighlight }: { r: ProductResult; isHighlight?: boolea
             <td style={{
                 padding: "10px 14px",
                 textAlign: "right",
-                fontVariantNumeric: "tabular-nums",
-                fontSize: 13,
-                color: "#cbd5e1",
+                fontVariantNumeric: "tabular-nums", color: "#cbd5e1",
                 fontWeight: 500,
                 borderBottom: "1px solid rgba(255,255,255,0.05)",
             }}>
@@ -85,7 +81,7 @@ function ProductRow({ r, isHighlight }: { r: ProductResult; isHighlight?: boolea
                     color: "#22c55e",
                     borderBottom: "1px solid rgba(255,255,255,0.05)",
                 }}>
-                    MEJOR AHORRO
+                    {t("simulationResultsEnhanced", "bestSavings")}
                 </td>
             )}
         </tr>
@@ -111,9 +107,7 @@ function GroupSection({
                 background: bgColor,
                 padding: "8px 16px",
                 borderRadius: "6px 6px 0 0",
-                fontWeight: 700,
-                fontSize: 13,
-                color: "#0f172a",
+                fontWeight: 700, color: "#0f172a",
                 letterSpacing: "0.02em",
             }}>
                 {title}
@@ -140,6 +134,7 @@ function GroupSection({
 }
 
 function SavingsChart({ items, facturaActual }: { items: ProductResult[]; facturaActual?: number }) {
+    const { t } = useI18n();
     if (!facturaActual || items.length === 0) return null;
 
     const maxAbsSaving = Math.max(...items.map(r => Math.abs(r.ahorro)));
@@ -159,7 +154,7 @@ function SavingsChart({ items, facturaActual }: { items: ProductResult[]; factur
                 fontWeight: 700,
                 color: "#f1f5f9",
             }}>
-                Comparación de ahorro (Top 10)
+                {t("simulationResultsEnhanced", "savingsComparison")}
             </h4>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {chartItems.map((item) => {
@@ -208,6 +203,7 @@ function SavingsChart({ items, facturaActual }: { items: ProductResult[]; factur
 }
 
 function ComparisonStats({ items, facturaActual }: { items: ProductResult[]; facturaActual?: number }) {
+    const { t } = useI18n();
     const stats = useMemo(() => {
         if (!items.length || !facturaActual) return null;
 
@@ -235,7 +231,7 @@ function ComparisonStats({ items, facturaActual }: { items: ProductResult[]; fac
                 borderRadius: 8,
                 padding: 16,
             }}>
-                <div style={{ fontSize: 11, color: "#d1fae5", fontWeight: 600, marginBottom: 4 }}>MEJOR AHORRO</div>
+                <div style={{ fontSize: 11, color: "#d1fae5", fontWeight: 600, marginBottom: 4 }}>{t("simulationResultsEnhanced", "bestSavings")}</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: "#4ade80" }}>
                     +{fmt(stats.best.ahorro)} €
                 </div>
@@ -250,7 +246,7 @@ function ComparisonStats({ items, facturaActual }: { items: ProductResult[]; fac
                 borderRadius: 8,
                 padding: 16,
             }}>
-                <div style={{ fontSize: 11, color: "#e2e8f0", fontWeight: 600, marginBottom: 4 }}>AHORRO MEDIO</div>
+                <div style={{ fontSize: 11, color: "#e2e8f0", fontWeight: 600, marginBottom: 4 }}>{t("simulationResultsEnhanced", "averageSavings")}</div>
                 <div style={{
                     fontSize: 20,
                     fontWeight: 700,
@@ -259,7 +255,7 @@ function ComparisonStats({ items, facturaActual }: { items: ProductResult[]; fac
                     {stats.avgSaving > 0 ? "+" : ""}{fmt(stats.avgSaving)} €
                 </div>
                 <div style={{ fontSize: 11, color: "#f1f5f9", fontWeight: 500, marginTop: 4 }}>
-                    Promedio de {items.length} productos
+                    {t("simulationResultsEnhanced", "averageOfProducts", { count: items.length })}
                 </div>
             </div>
 
@@ -269,12 +265,12 @@ function ComparisonStats({ items, facturaActual }: { items: ProductResult[]; fac
                 borderRadius: 8,
                 padding: 16,
             }}>
-                <div style={{ fontSize: 11, color: "#d1fae5", fontWeight: 600, marginBottom: 4 }}>OFERTAS CON AHORRO</div>
+                <div style={{ fontSize: 11, color: "#d1fae5", fontWeight: 600, marginBottom: 4 }}>{t("simulationResultsEnhanced", "offersWithSavings")}</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: "#4ade80" }}>
                     {stats.withSavings.length}
                 </div>
                 <div style={{ fontSize: 11, color: "#f1f5f9", fontWeight: 500, marginTop: 4 }}>
-                    de {items.length} productos
+                    {t("simulationResultsEnhanced", "ofProducts", { count: items.length })}
                 </div>
             </div>
 
@@ -284,12 +280,12 @@ function ComparisonStats({ items, facturaActual }: { items: ProductResult[]; fac
                 borderRadius: 8,
                 padding: 16,
             }}>
-                <div style={{ fontSize: 11, color: "#fecaca", fontWeight: 600, marginBottom: 4 }}>SIN AHORRO</div>
+                <div style={{ fontSize: 11, color: "#fecaca", fontWeight: 600, marginBottom: 4 }}>{t("simulationResultsEnhanced", "noSavings")}</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: "#f87171" }}>
                     {stats.withLosses.length}
                 </div>
                 <div style={{ fontSize: 11, color: "#f1f5f9", fontWeight: 500, marginTop: 4 }}>
-                    Cuestan más que actual
+                    {t("simulationResultsEnhanced", "costMoreThanCurrent")}
                 </div>
             </div>
         </div>
@@ -303,13 +299,14 @@ export function SimulationResultsEnhanced({
     consumoAnual,
     mes,
 }: SimulationResultsEnhancedProps) {
+    const { t } = useI18n();
     const hasElec = (results.electricity?.length ?? 0) > 0;
     const hasGas = (results.gas?.length ?? 0) > 0;
 
     if (!hasElec && !hasGas) {
         return (
             <div style={{ padding: 40, textAlign: "center", opacity: 0.6, fontSize: 14 }}>
-                No se obtuvieron resultados. Comprueba que los datos de entrada son correctos.
+                {t("simulationResultsEnhanced", "empty")}
             </div>
         );
     }
@@ -339,24 +336,24 @@ export function SimulationResultsEnhanced({
             }}>
                 <div>
                     <div style={{ fontSize: 12, color: "#d1d5db", fontWeight: 600, marginBottom: 8 }}>
-                        RESULTADO DE LA SIMULACIÓN
+                        {t("simulationResultsEnhanced", "simulationResult")}
                     </div>
                     <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
                         {tarifaAcceso && (
                             <div>
-                                <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>TARIFA ACCESO: </span>
+                                <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>{t("simulationResultsEnhanced", "accessTariff")} </span>
                                 <span style={{ fontSize: 14, fontWeight: 700, color: "#f9fafb" }}>{tarifaAcceso}</span>
                             </div>
                         )}
                         {consumoAnual && (
                             <div>
-                                <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>CONSUMO ANUAL: </span>
+                                <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>{t("simulationResultsEnhanced", "annualConsumption")} </span>
                                 <span style={{ fontSize: 14, fontWeight: 700, color: "#f9fafb" }}>{consumoAnual.toLocaleString()}</span>
                             </div>
                         )}
                         {mes && (
                             <div>
-                                <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>MES: </span>
+                                <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>{t("simulationResultsEnhanced", "month")} </span>
                                 <span style={{ fontSize: 14, fontWeight: 700, color: "#f9fafb" }}>{mes}</span>
                             </div>
                         )}
@@ -370,7 +367,7 @@ export function SimulationResultsEnhanced({
                         textAlign: "center",
                     }}>
                         <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 4 }}>
-                            FACTURA ACTUAL
+                            {t("simulationResultsEnhanced", "currentInvoice")}
                         </div>
                         <div style={{ fontSize: 24, fontWeight: 700, color: "#f1f5f9" }}>
                             {fmt(facturaActual)} €
@@ -392,7 +389,7 @@ export function SimulationResultsEnhanced({
                         gap: 8,
                     }}>
                         <span>⚡</span>
-                        <span>ELECTRICIDAD</span>
+                        <span>{t("simulationResultsEnhanced", "electricity")}</span>
                     </div>
 
                     <ComparisonStats items={results.electricity!} facturaActual={facturaActual} />
@@ -411,22 +408,22 @@ export function SimulationResultsEnhanced({
                         textTransform: "uppercase",
                         letterSpacing: "0.05em",
                     }}>
-                        <div>Producto</div>
-                        <div style={{ textAlign: "right" }}>Total Factura</div>
-                        <div style={{ textAlign: "right" }}>€ Ahorro</div>
-                        <div style={{ textAlign: "right" }}>% Ahorro</div>
-                        <div style={{ textAlign: "right" }}>Ahorro Anual</div>
+                        <div>{t("simulationResultsEnhanced", "product")}</div>
+                        <div style={{ textAlign: "right" }}>{t("simulationResultsEnhanced", "totalInvoice")}</div>
+                        <div style={{ textAlign: "right" }}>{t("simulationResultsEnhanced", "savingsEuro")}</div>
+                        <div style={{ textAlign: "right" }}>{t("simulationResultsEnhanced", "savingsPercent")}</div>
+                        <div style={{ textAlign: "right" }}>{t("simulationResultsEnhanced", "annualSavings")}</div>
                     </div>
 
                     <GroupSection
-                        title="FIJAS"
+                        title={t("simulationResultsEnhanced", "fixed")}
                         items={elecFijas}
                         bgColor="#93c5fd"
                         bestProduct={bestElec}
                     />
 
                     <GroupSection
-                        title="INDEXADAS"
+                        title={t("simulationResultsEnhanced", "indexed")}
                         items={elecIndexadas}
                         bgColor="#86efac"
                         bestProduct={bestElec}
@@ -448,7 +445,7 @@ export function SimulationResultsEnhanced({
                         gap: 8,
                     }}>
                         <span>🔥</span>
-                        <span>GAS</span>
+                        <span>{t("systemSettings", "calcGas").toUpperCase()}</span>
                     </div>
 
                     <ComparisonStats items={results.gas!} facturaActual={facturaActual} />
@@ -467,22 +464,22 @@ export function SimulationResultsEnhanced({
                         textTransform: "uppercase",
                         letterSpacing: "0.05em",
                     }}>
-                        <div>Producto</div>
-                        <div style={{ textAlign: "right" }}>Total Factura</div>
-                        <div style={{ textAlign: "right" }}>€ Ahorro</div>
-                        <div style={{ textAlign: "right" }}>% Ahorro</div>
-                        <div style={{ textAlign: "right" }}>Ahorro Anual</div>
+                        <div>{t("simulationResultsEnhanced", "product")}</div>
+                        <div style={{ textAlign: "right" }}>{t("simulationResultsEnhanced", "totalInvoice")}</div>
+                        <div style={{ textAlign: "right" }}>{t("simulationResultsEnhanced", "savingsEuro")}</div>
+                        <div style={{ textAlign: "right" }}>{t("simulationResultsEnhanced", "savingsPercent")}</div>
+                        <div style={{ textAlign: "right" }}>{t("simulationResultsEnhanced", "annualSavings")}</div>
                     </div>
 
                     <GroupSection
-                        title="FIJAS"
+                        title={t("simulationResultsEnhanced", "fixed")}
                         items={gasFijas}
                         bgColor="#fbbf24"
                         bestProduct={bestGas}
                     />
 
                     <GroupSection
-                        title="INDEXADAS"
+                        title={t("simulationResultsEnhanced", "indexed")}
                         items={gasIndexadas}
                         bgColor="#86efac"
                         bestProduct={bestGas}
@@ -504,10 +501,10 @@ export function SimulationResultsEnhanced({
                 alignItems: "center",
             }}>
                 <div>
-                    Calculado: {new Date(results.calculatedAt).toLocaleString("es-ES")}
+                    {t("simulationResultsEnhanced", "calculated")} {new Date(results.calculatedAt).toLocaleString("es-ES")}
                 </div>
                 <div>
-                    Base de precios: <span className="dt-cell-mono" style={{ color: "#cbd5e1", fontWeight: 600 }}>
+                    {t("simulationResultsEnhanced", "priceBase")} <span className="dt-cell-mono" style={{ color: "#cbd5e1", fontWeight: 600 }}>
                         {results.baseValueSetId.slice(0, 12)}…
                     </span>
                 </div>

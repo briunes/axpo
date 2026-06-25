@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
-import { InvalidTokenError, NotFoundError } from "@/domain/errors/errors";
+import { InvalidTokenError } from "@/domain/errors/errors";
 import { SimulationService } from "@/application/services/simulationService";
 import { prisma } from "@/infrastructure/database/prisma";
 import {
@@ -13,6 +13,7 @@ import {
   buildSimulationPdfFilenameFromSimulation,
   resolveSimulationProductName,
 } from "@/infrastructure/pdf/pdfFilename";
+import { installPdfResourceGuard } from "@/infrastructure/pdf/pdfResourceGuard";
 
 interface PublicSessionPayload {
   typ?: string;
@@ -147,11 +148,10 @@ export async function GET(
       );
     }
 
-    // Get recent versions to find one with results
     const recentVersions = await prisma.simulationVersion.findMany({
       where: { simulationId: simulation.id },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: 200,
     });
 
     // Build a merged payload: use the most recent version with results (which
@@ -175,18 +175,6 @@ export async function GET(
           }
         : null;
 
-    // Debug: log what we have
-    console.log("[PDF] Simulation ID:", simulation.id);
-    console.log("[PDF] Versions found:", recentVersions.length);
-    console.log(
-      "[PDF] Base version has results:",
-      !!(baseVersion?.payloadJson as any)?.results,
-    );
-    console.log(
-      "[PDF] Merged payload keys:",
-      mergedPayload ? Object.keys(mergedPayload) : "null",
-    );
-
     // Fetch the PDF template
     const pdfTemplate = await prisma.pdfTemplate.findUnique({
       where: { id: "simulation-output-default" },
@@ -205,12 +193,6 @@ export async function GET(
       simulation,
       simulationPayload ?? undefined,
     );
-
-    // Debug: log variable values
-    console.log("[PDF] Client name:", variableValues.CLIENT_NAME);
-    console.log("[PDF] CUPS:", variableValues.CUPS_NUMBER);
-    console.log("[PDF] Current Total:", variableValues.CURRENT_TOTAL);
-    console.log("[PDF] AXPO Total:", variableValues.AXPO_TOTAL);
 
     // Replace variables in template
     const processedHtml = replaceVariables(
@@ -239,6 +221,7 @@ ${processedHtml}
         @media print {
           *  { box-sizing: border-box; }
           body { margin: 0; padding: 0; }
+          .asim-page { min-height: 0 !important; }
           table, figure, img,
           .asim-period-grid, .asim-period-item,
           .asim-cost-breakdown, .asim-cost-item,
@@ -260,27 +243,33 @@ ${processedHtml}
       ? fullHtml.replace("</head>", `${pageBreakStyle}\n</head>`)
       : `${pageBreakStyle}\n${fullHtml}`;
 
-    // Generate PDF with Puppeteer
     const browser = await launchBrowser();
+    let pdfBuffer: Uint8Array;
 
-    const page = await browser.newPage();
-    await page.setContent(enrichedHtml, {
-      waitUntil: "networkidle0",
-    });
+    try {
+      const page = await browser.newPage();
+      page.setDefaultTimeout(30_000);
+      page.setDefaultNavigationTimeout(30_000);
+      await installPdfResourceGuard(page);
+      await page.setContent(enrichedHtml, {
+        waitUntil: "load",
+        timeout: 30_000,
+      });
 
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      margin: {
-        top: "15mm",
-        right: "12mm",
-        bottom: "15mm",
-        left: "12mm",
-      },
-      printBackground: true,
-      preferCSSPageSize: false,
-    });
-
-    await browser.close();
+      pdfBuffer = await page.pdf({
+        format: "A4",
+        margin: {
+          top: "15mm",
+          right: "12mm",
+          bottom: "15mm",
+          left: "12mm",
+        },
+        printBackground: true,
+        preferCSSPageSize: false,
+      });
+    } finally {
+      await browser.close();
+    }
 
     const filename = buildSimulationPdfFilenameFromSimulation(
       {
@@ -303,7 +292,10 @@ ${processedHtml}
       },
     });
   } catch (error) {
-    console.error("Public PDF generation error:", error);
+    console.error(
+      "Public PDF generation error:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
 
     if (error instanceof jwt.JsonWebTokenError) {
       return NextResponse.json(
@@ -315,7 +307,6 @@ ${processedHtml}
     return NextResponse.json(
       {
         error: "Failed to generate PDF",
-        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     );

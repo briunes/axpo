@@ -99,4 +99,35 @@ describe("simulation pin rotate route security", () => {
     expect(updateSimulationMock).not.toHaveBeenCalled();
     expect(logEventMock).not.toHaveBeenCalled();
   });
+
+  it("refreshes hash snapshot even when current display PIN cannot be decrypted", async () => {
+    process.env.SECURITY_DATA_KEY = "test-security-data-key";
+    assertSimulationAccessMock.mockResolvedValue({ id: "sim-1", ownerUserId: "owner-1" });
+    findOwnerMock.mockResolvedValue({
+      id: "owner-1",
+      pinHash: "hash-1",
+      pinCurrent: "enc:v1:invalid",
+    });
+    updateSimulationMock.mockResolvedValue({ id: "sim-1" });
+    logEventMock.mockResolvedValue(undefined);
+
+    const request = new NextRequest("http://localhost/api/v1/internal/simulations/sim-1/pin/rotate", {
+      method: "POST",
+      headers: { authorization: "Bearer token" },
+    });
+
+    const response = await POST(request, { params: { id: "sim-1" } });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(updateSimulationMock).toHaveBeenCalledWith({
+      where: { id: "sim-1" },
+      data: {
+        pinHashSnapshot: "hash-1",
+        pinSnapshot: null,
+      },
+    });
+    expect(logEventMock).toHaveBeenCalledTimes(1);
+  });
 });

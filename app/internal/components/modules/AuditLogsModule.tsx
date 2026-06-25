@@ -17,6 +17,7 @@ import {
     TableHead,
     TablePagination,
     TableRow,
+    Tooltip,
     Typography,
 } from "@mui/material";
 import { FormSelect, type FormSelectOption } from "../ui/FormSelect";
@@ -24,6 +25,8 @@ import LaunchIcon from '@mui/icons-material/Launch';
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
+import SyncIcon from "@mui/icons-material/Sync";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import { Button as OnceButton, Column } from "@once-ui-system/core";
 import { Country } from "country-state-city";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -232,8 +235,36 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
     useLayoutEffect(() => {
         onActionButtons?.(
             <>
-                <OnceButton variant="secondary" size="s" onClick={handleExportCsv} label={t("auditLogsModule", "exportCsv")} disabled={filteredLogs.length === 0} />
-                <OnceButton variant="secondary" size="s" onClick={() => refresh()} label={t("actions", "refresh")} loading={loading} />
+                <Tooltip title={t("actions", "refresh")} arrow>
+                    <span className="topbar-action-wrap">
+                        <Button
+                            className="topbar-action topbar-action--compact"
+                            variant="outlined"
+                            size="small"
+                            onClick={() => refresh()}
+                            disabled={loading}
+                            startIcon={<SyncIcon fontSize="small" />}
+                            aria-label={t("actions", "refresh")}
+                        >
+                            <span className="topbar-action-label">{t("actions", "refresh")}</span>
+                        </Button>
+                    </span>
+                </Tooltip>
+                <Tooltip title={t("actions", "exportCsv")} arrow>
+                    <span className="topbar-action-wrap">
+                        <Button
+                            className="topbar-action topbar-action--compact"
+                            variant="outlined"
+                            size="small"
+                            onClick={() => handleExportCsv()}
+                            disabled={loading || filteredLogs.length === 0}
+                            startIcon={<FileDownloadIcon fontSize="small" />}
+                            aria-label={t("actions", "exportCsv")}
+                        >
+                            <span className="topbar-action-label">{t("actions", "exportCsv")}</span>
+                        </Button>
+                    </span>
+                </Tooltip>
             </>
         );
         return () => onActionButtons?.(null);

@@ -8,6 +8,7 @@ export interface CrudFormContainerProps {
     onSubmit?: (e: React.FormEvent) => void;
     errorMessage?: string | null;
     successMessage?: string | null;
+    variant?: "card" | "plain";
     // Footer
     submitLabel?: string;
     cancelLabel?: string;
@@ -31,6 +32,7 @@ export function CrudFormContainer({
     isSubmitting,
     hideSubmit,
     onRenderActions,
+    variant = "card",
 }: CrudFormContainerProps) {
     const onRenderActionsRef = useRef(onRenderActions);
     const formId = useId();
@@ -43,6 +45,7 @@ export function CrudFormContainer({
         <>
             {onCancel && (
                 <Button
+                    className={onRenderActions ? "topbar-action topbar-action--compact" : undefined}
                     variant="outlined"
                     size="small"
                     type="button"
@@ -54,6 +57,7 @@ export function CrudFormContainer({
             )}
             {!hideSubmit && (
                 <Button
+                    className={onRenderActions ? "topbar-action topbar-action--compact" : undefined}
                     type="submit"
                     form={formId}
                     variant="contained"
@@ -74,7 +78,7 @@ export function CrudFormContainer({
     }, [submitLabel, cancelLabel, isSubmitting]);
 
     return (
-        <Stack spacing={3}>
+        <Stack spacing={3} className={variant === "plain" ? "crud-form-panel crud-form-panel--plain" : "crud-form-panel"}>
             {/* Error/Success messages */}
             {errorMessage && (
                 <div className="crud-alert crud-alert--error">

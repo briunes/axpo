@@ -16,6 +16,8 @@ import {
   type ListAgenciesParams,
 } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
+import { useRequestCachePolicy } from "./useRequestCachePolicy";
+import { normalizeQueryKeyParams } from "./queryKeys";
 
 export interface AgenciesActions {
   agencies: AgencyItem[];
@@ -38,6 +40,10 @@ export interface AgenciesActions {
   // search
   search: string;
   setSearch: (v: string) => void;
+  tlvFilter: string;
+  setTlvFilter: (v: string) => void;
+  statusFilter: string;
+  setStatusFilter: (v: string) => void;
   showArchived: boolean;
   setShowArchived: (v: boolean) => void;
   // create
@@ -59,6 +65,12 @@ export interface AgenciesActions {
 interface UseAgenciesOptions {
   queryEnabled?: boolean;
   minimal?: boolean;
+  usePersistedState?: boolean;
+}
+
+interface AgenciesFilterPersistentState {
+  tlvFilter: string;
+  statusFilter: string;
 }
 
 export function useAgencies(
@@ -67,12 +79,16 @@ export function useAgencies(
   options?: UseAgenciesOptions,
 ): AgenciesActions {
   const queryClient = useQueryClient();
+  const cachePolicy = useRequestCachePolicy("agencies");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
+  const minimal = options?.minimal ?? false;
+  const usePersistedState = options?.usePersistedState ?? !minimal;
 
   // Load persisted state from localStorage
   const getPersistedState = () => {
+    if (!usePersistedState) return null;
     if (typeof window === "undefined") return null;
     try {
       const raw = localStorage.getItem("axpo_dt_state_agencies");
@@ -83,6 +99,23 @@ export function useAgencies(
     }
   };
   const persistedState = getPersistedState();
+
+  const getPersistedFilters = (): AgenciesFilterPersistentState | null => {
+    if (!usePersistedState) return null;
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_agencies_filters");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<AgenciesFilterPersistentState>;
+      return {
+        tlvFilter: parsed.tlvFilter ?? "",
+        statusFilter: parsed.statusFilter ?? "",
+      };
+    } catch {
+      return null;
+    }
+  };
+  const persistedFilters = getPersistedFilters();
 
   // pagination
   const [page, setPage] = useState(1);
@@ -105,18 +138,35 @@ export function useAgencies(
   };
   // search - load from persisted state if available
   const [search, setSearch] = useState(persistedState?.search || "");
+  const [tlvFilter, setTlvFilter] = useState(persistedFilters?.tlvFilter || "");
+  const [statusFilter, setStatusFilter] = useState(
+    persistedFilters?.statusFilter || "",
+  );
   const [showArchived, setShowArchived] = useState(false);
 
   const [newAgencyName, setNewAgencyName] = useState("");
   const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
   const [editAgencyName, setEditAgencyName] = useState("");
   const queryEnabled = options?.queryEnabled ?? true;
-  const minimal = options?.minimal ?? false;
 
   const clearFeedback = () => {
     setErrorText(null);
     setSuccessText(null);
   };
+
+  useEffect(() => {
+    if (!usePersistedState) return;
+    if (typeof window === "undefined") return;
+    try {
+      const nextState: AgenciesFilterPersistentState = {
+        tlvFilter,
+        statusFilter,
+      };
+      localStorage.setItem("axpo_agencies_filters", JSON.stringify(nextState));
+    } catch {
+      // ignore persistence failures
+    }
+  }, [usePersistedState, tlvFilter, statusFilter]);
 
   // ── TanStack Query ──────────────────────────────────────────────────────
   const queryParams: ListAgenciesParams = {
@@ -127,13 +177,35 @@ export function useAgencies(
     sortDir,
     includeDeleted: showArchived || undefined,
     minimal: minimal || undefined,
+    isTlv:
+      tlvFilter === "tlv"
+        ? true
+        : tlvFilter === "standard"
+          ? false
+          : undefined,
+    status:
+      statusFilter === "active" || statusFilter === "inactive"
+        ? statusFilter
+        : undefined,
   };
+  const queryKeyParams = normalizeQueryKeyParams({
+    page,
+    pageSize,
+    search,
+    orderBy: sortColumn,
+    sortDir,
+    includeDeleted: showArchived,
+    minimal,
+    isTlv: queryParams.isTlv,
+    status: queryParams.status,
+  });
 
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["agencies", session?.token ?? "", queryParams],
+    queryKey: ["agencies", session?.token ?? "", queryKeyParams],
     queryFn: () => listAgencies(session!.token, queryParams),
     enabled: !!session && queryEnabled,
     placeholderData: keepPreviousData,
+    ...cachePolicy,
   });
 
   const agencies = data?.items ?? [];
@@ -250,6 +322,10 @@ export function useAgencies(
     setSort,
     search,
     setSearch,
+    tlvFilter,
+    setTlvFilter,
+    statusFilter,
+    setStatusFilter,
     showArchived,
     setShowArchived,
     newAgencyName,

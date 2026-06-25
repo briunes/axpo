@@ -11,6 +11,20 @@ import {
 } from "@/lib/pdfToImage";
 import { getConfiguredAiProviders } from "@/application/lib/aiConfig";
 
+const isAnthropicBedrockRuntime = (provider: string, baseUrl: string): boolean =>
+  provider === "aws-bedrock-anthropic" ||
+  (provider === "anthropic" && /bedrock-runtime\.[^.]+\.amazonaws\.com/.test(baseUrl));
+
+const isNvidiaBedrockRuntime = (provider: string): boolean =>
+  provider === "aws-bedrock-nvidia";
+
+const getBedrockImageFormat = (mimeType: string): "png" | "jpeg" | "gif" | "webp" => {
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("gif")) return "gif";
+  if (mimeType.includes("webp")) return "webp";
+  return "jpeg";
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Expected results for the benchmark invoice (Serigrafia arrigorriaga.pdf)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -309,6 +323,79 @@ async function callLlmForBenchmark(
       }),
       signal: AbortSignal.timeout(300000),
     });
+  } else if (isAnthropicBedrockRuntime(provider, baseUrl)) {
+    const content: any[] = [{ type: "text", text: prompt }];
+    const bedrockImages =
+      images.length > 0
+        ? images
+        : [{ base64: base64File, mimeType: fileMimeType }];
+
+    for (const img of bedrockImages) {
+      content.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: img.mimeType as any,
+          data: img.base64,
+        },
+      });
+    }
+
+    const bedrockBaseUrl = baseUrl.replace(/\/+$/, "");
+    llmResponse = await fetch(
+      `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/invoke`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          anthropic_version: "bedrock-2023-05-31",
+          max_tokens: maxTokens,
+          temperature,
+          messages: [{ role: "user", content }],
+        }),
+        signal: AbortSignal.timeout(300000),
+      },
+    );
+  } else if (isNvidiaBedrockRuntime(provider)) {
+    const content: any[] = [{ text: prompt }];
+    const bedrockImages =
+      images.length > 0
+        ? images
+        : [{ base64: base64File, mimeType: fileMimeType }];
+
+    for (const img of bedrockImages) {
+      content.push({
+        image: {
+          format: getBedrockImageFormat(img.mimeType),
+          source: { bytes: img.base64 },
+        },
+      });
+    }
+
+    const bedrockBaseUrl = baseUrl.replace(/\/+$/, "");
+    llmResponse = await fetch(
+      `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/converse`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content }],
+          inferenceConfig: {
+            maxTokens,
+            temperature,
+          },
+        }),
+        signal: AbortSignal.timeout(300000),
+      },
+    );
   } else if (provider === "anthropic") {
     const content: any[] = [
       { type: "text", text: prompt },
@@ -366,12 +453,17 @@ async function callLlmForBenchmark(
   let completionTokens: number | undefined;
   let totalTokens: number | undefined;
 
-  if (provider === "anthropic") {
+  if (provider === "anthropic" || provider === "aws-bedrock-anthropic") {
     text = llmData.content?.[0]?.text || "";
     promptTokens = llmData.usage?.input_tokens;
     completionTokens = llmData.usage?.output_tokens;
     totalTokens =
       (llmData.usage?.input_tokens ?? 0) + (llmData.usage?.output_tokens ?? 0);
+  } else if (isNvidiaBedrockRuntime(provider)) {
+    text = llmData.output?.message?.content?.[0]?.text || "";
+    promptTokens = llmData.usage?.inputTokens;
+    completionTokens = llmData.usage?.outputTokens;
+    totalTokens = llmData.usage?.totalTokens;
   } else if (provider === "google") {
     text = llmData.candidates?.[0]?.content?.parts?.[0]?.text || "";
     promptTokens = llmData.usageMetadata?.promptTokenCount;
@@ -529,6 +621,221 @@ function scoreExtraction(actual: any) {
   };
 }
 
+function isMissingBenchmarkHistoryTableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("llm_benchmark_runs") &&
+    (message.includes("PGRST205") ||
+      message.includes("Could not find the table") ||
+      message.includes("does not exist"))
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/v1/internal/invoices/benchmark
+// Returns persisted benchmark history and per-LLM averages.
+// ─────────────────────────────────────────────────────────────────────────────
+export const GET = withErrorHandler(async (req: NextRequest) => {
+  await requireAuth(req);
+
+  const limitParam = req.nextUrl.searchParams.get("limit");
+  const limit = Math.min(Math.max(Number(limitParam) || 50, 1), 200);
+
+  let runs: any[] = [];
+  let statsRuns: any[] = [];
+
+  try {
+    [runs, statsRuns] = await Promise.all([
+      (prisma as any).llmBenchmarkRun.findMany({
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          createdByUser: {
+            select: { id: true, fullName: true, email: true },
+          },
+        },
+      }),
+      (prisma as any).llmBenchmarkRun.findMany({
+        take: 5000,
+        orderBy: { createdAt: "desc" },
+        select: {
+          providerConfigId: true,
+          providerName: true,
+          provider: true,
+          modelName: true,
+          totalDurationMs: true,
+          overallScore: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+  } catch (error) {
+    if (!isMissingBenchmarkHistoryTableError(error)) throw error;
+    console.warn(
+      "[llm-benchmark] History table is not available yet. Apply the llm_benchmark_runs migration to enable benchmark history.",
+    );
+    return NextResponse.json({
+      success: true,
+      summaries: [],
+      history: [],
+      benchmarkRuns: [],
+      historyAvailable: false,
+    });
+  }
+
+  const summaryAccumulator = new Map<
+    string,
+    {
+      providerConfigId: string;
+      providerName: string;
+      provider: string;
+      modelName: string;
+      runCount: number;
+      totalDurationMs: number;
+      totalCertainty: number;
+      lastRunAt: Date | string | null;
+    }
+  >();
+
+  for (const run of statsRuns as any[]) {
+    const existing = summaryAccumulator.get(run.providerConfigId);
+    if (!existing) {
+      summaryAccumulator.set(run.providerConfigId, {
+        providerConfigId: run.providerConfigId,
+        providerName: run.providerName,
+        provider: run.provider,
+        modelName: run.modelName,
+        runCount: 1,
+        totalDurationMs: Number(run.totalDurationMs ?? 0),
+        totalCertainty: Number(run.overallScore ?? 0),
+        lastRunAt: run.createdAt ?? null,
+      });
+      continue;
+    }
+
+    existing.runCount += 1;
+    existing.totalDurationMs += Number(run.totalDurationMs ?? 0);
+    existing.totalCertainty += Number(run.overallScore ?? 0);
+    const currentLast = existing.lastRunAt
+      ? new Date(existing.lastRunAt).getTime()
+      : 0;
+    const candidateLast = run.createdAt ? new Date(run.createdAt).getTime() : 0;
+    if (candidateLast > currentLast) {
+      existing.lastRunAt = run.createdAt;
+    }
+  }
+
+  const summaries = Array.from(summaryAccumulator.values())
+    .map((stat) => ({
+      providerConfigId: stat.providerConfigId,
+      providerName: stat.providerName,
+      provider: stat.provider,
+      modelName: stat.modelName,
+      runCount: stat.runCount,
+      averageDurationMs: Math.round(stat.totalDurationMs / stat.runCount),
+      averageCertainty: Math.round(stat.totalCertainty / stat.runCount),
+      lastRunAt: stat.lastRunAt,
+    }))
+    .sort((a: any, b: any) => {
+      const aDate = a.lastRunAt ? new Date(a.lastRunAt).getTime() : 0;
+      const bDate = b.lastRunAt ? new Date(b.lastRunAt).getTime() : 0;
+      return bDate - aDate;
+    });
+
+  const history = runs.map((run: any) => ({
+    id: run.id,
+    benchmarkRunId: run.benchmarkRunId ?? run.id,
+    createdAt: run.createdAt,
+    createdBy: run.createdByUser
+      ? {
+          id: run.createdByUser.id,
+          name: run.createdByUser.fullName,
+          email: run.createdByUser.email,
+        }
+      : null,
+    status: run.status,
+    providerConfigId: run.providerConfigId,
+    providerName: run.providerName,
+    provider: run.provider,
+    modelName: run.modelName,
+    benchmarkFileName: run.benchmarkFileName,
+    detection: {
+      success: run.detectionSuccess,
+      durationMs: run.detectionDurationMs,
+      promptTokens: run.detectionPromptTokens ?? undefined,
+      completionTokens: run.detectionCompletionTokens ?? undefined,
+      totalTokens: run.detectionTotalTokens ?? undefined,
+      result: run.detectionResult ?? undefined,
+      error: run.detectionError ?? undefined,
+      score: run.detectionScore,
+      fieldScores: run.detectionFieldScores ?? {},
+      correctFields: run.detectionCorrectFields,
+      totalFields: run.detectionTotalFields,
+    },
+    extraction: {
+      success: run.extractionSuccess,
+      durationMs: run.extractionDurationMs,
+      promptTokens: run.extractionPromptTokens ?? undefined,
+      completionTokens: run.extractionCompletionTokens ?? undefined,
+      totalTokens: run.extractionTotalTokens ?? undefined,
+      result: run.extractionResult ?? undefined,
+      error: run.extractionError ?? undefined,
+      score: run.extractionScore,
+      fieldScores: run.extractionFieldScores ?? {},
+      correctFields: run.extractionCorrectFields,
+      totalFields: run.extractionTotalFields,
+    },
+    overallScore: run.overallScore,
+    totalDurationMs: run.totalDurationMs,
+    totalTokens: run.totalTokens ?? undefined,
+    expectedDetection: BENCHMARK_EXPECTED_DETECTION,
+    expectedExtraction: BENCHMARK_EXPECTED_EXTRACTION,
+  }));
+
+  const runGroups = new Map<string, any>();
+  for (const item of history) {
+    const groupId = item.benchmarkRunId ?? item.id;
+    const existing = runGroups.get(groupId);
+    if (!existing) {
+      runGroups.set(groupId, {
+        id: groupId,
+        createdAt: item.createdAt,
+        createdBy: item.createdBy,
+        benchmarkFileName: item.benchmarkFileName,
+        resultCount: 1,
+        results: [item],
+      });
+      continue;
+    }
+
+    existing.results.push(item);
+    existing.resultCount = existing.results.length;
+    if (new Date(item.createdAt).getTime() < new Date(existing.createdAt).getTime()) {
+      existing.createdAt = item.createdAt;
+      existing.createdBy = item.createdBy;
+    }
+  }
+
+  const benchmarkRuns = Array.from(runGroups.values())
+    .map((group: any) => ({
+      ...group,
+      results: group.results.sort(
+        (a: any, b: any) => b.overallScore - a.overallScore,
+      ),
+    }))
+    .sort(
+      (a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+  return NextResponse.json({
+    success: true,
+    summaries,
+    history,
+    benchmarkRuns,
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/v1/internal/invoices/benchmark
 // Body: { providerConfigId: string }
@@ -537,6 +844,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
   const formData = await req.formData();
   const providerConfigId = formData.get("providerConfigId") as string | null;
+  const benchmarkRunId = formData.get("benchmarkRunId") as string | null;
   const uploadedFile = formData.get("file") as File | null;
 
   if (!providerConfigId) {
@@ -631,9 +939,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
             .join("\n")
         : "(no providers configured yet)";
 
-    // For Ollama Cloud, convert PDF to images first; others handle PDF natively
+    // Providers that need image input receive rendered invoice pages.
     let detectionImages: Array<{ base64: string; mimeType: string }> = [];
-    if (llmProvider === "ollama-cloud") {
+    if (
+      llmProvider === "ollama-cloud" ||
+      isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
+      isNvidiaBedrockRuntime(llmProvider)
+    ) {
       const pdfImages = await convertAllPdfPagesToImages(
         pdfBuffer,
         OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
@@ -702,9 +1014,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   };
 
   try {
-    // For Ollama Cloud, convert PDF to images first; others handle PDF natively
+    // Providers that need image input receive rendered invoice pages.
     let extractionImages: Array<{ base64: string; mimeType: string }> = [];
-    if (llmProvider === "ollama-cloud") {
+    if (
+      llmProvider === "ollama-cloud" ||
+      isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
+      isNvidiaBedrockRuntime(llmProvider)
+    ) {
       const pdfImages = await convertPdfToImages(
         pdfBuffer,
         OCR_MAX_PDF_PAGES,
@@ -794,9 +1110,18 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   );
   const totalDurationMs =
     detectionStepResult.durationMs + extractionStepResult.durationMs;
+  const totalTokens =
+    (detectionStepResult.totalTokens ?? 0) +
+    (extractionStepResult.totalTokens ?? 0);
+  const status =
+    detectionStepResult.success && extractionStepResult.success
+      ? "SUCCESS"
+      : "PARTIAL";
 
-  return NextResponse.json({
+  const responsePayload: Record<string, any> = {
     success: true,
+    historySaved: true,
+    benchmarkRunId,
     providerConfigId,
     providerName: providerCfg.name,
     provider: llmProvider,
@@ -805,7 +1130,56 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     extraction: extractionStepResult,
     overallScore,
     totalDurationMs,
+    totalTokens: totalTokens || undefined,
     expectedDetection: BENCHMARK_EXPECTED_DETECTION,
     expectedExtraction: BENCHMARK_EXPECTED_EXTRACTION,
-  });
+  };
+
+  try {
+    await (prisma as any).llmBenchmarkRun.create({
+      data: {
+        providerConfigId,
+        benchmarkRunId,
+        providerName: providerCfg.name,
+        provider: llmProvider,
+        modelName: llmModelName,
+        benchmarkFileName: uploadedFile.name || "serigrafia-arrigorriaga.pdf",
+        status,
+        detectionSuccess: detectionStepResult.success,
+        detectionScore: detectionStepResult.score,
+        detectionDurationMs: detectionStepResult.durationMs,
+        detectionPromptTokens: detectionStepResult.promptTokens,
+        detectionCompletionTokens: detectionStepResult.completionTokens,
+        detectionTotalTokens: detectionStepResult.totalTokens,
+        detectionCorrectFields: detectionStepResult.correctFields,
+        detectionTotalFields: detectionStepResult.totalFields,
+        detectionResult: detectionStepResult.result ?? undefined,
+        detectionFieldScores: detectionStepResult.fieldScores,
+        detectionError: detectionStepResult.error,
+        extractionSuccess: extractionStepResult.success,
+        extractionScore: extractionStepResult.score,
+        extractionDurationMs: extractionStepResult.durationMs,
+        extractionPromptTokens: extractionStepResult.promptTokens,
+        extractionCompletionTokens: extractionStepResult.completionTokens,
+        extractionTotalTokens: extractionStepResult.totalTokens,
+        extractionCorrectFields: extractionStepResult.correctFields,
+        extractionTotalFields: extractionStepResult.totalFields,
+        extractionResult: extractionStepResult.result ?? undefined,
+        extractionFieldScores: extractionStepResult.fieldScores,
+        extractionError: extractionStepResult.error,
+        overallScore,
+        totalDurationMs,
+        totalTokens: totalTokens || undefined,
+        createdByUserId: auth.userId,
+      },
+    });
+  } catch (err) {
+    responsePayload.historySaved = false;
+    responsePayload.historyMessage = isMissingBenchmarkHistoryTableError(err)
+      ? "Benchmark result was not saved because the llm_benchmark_runs table is not available. Apply the pending migration to enable benchmark history."
+      : "Benchmark result was not saved because benchmark history storage failed.";
+    console.error("[llm-benchmark] Failed to persist benchmark result", err);
+  }
+
+  return NextResponse.json(responsePayload);
 });

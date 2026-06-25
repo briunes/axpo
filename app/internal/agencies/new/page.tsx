@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Stack } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import { Checkbox, FormControlLabel, Stack } from "@mui/material";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { createAgency } from "../../lib/internalApi";
 import { AddressForm, CrudFormContainer, CrudPageLayout, useAlerts, type AddressData } from "../../components/shared";
 import { FormInput } from "../../components/ui";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 
 interface ValidationErrors {
     name?: string;
@@ -18,13 +19,22 @@ export default function NewAgencyPage() {
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const onActionButtons = useActionButtons();
 
     const [name, setName] = useState("");
+    const [isTlv, setIsTlv] = useState(false);
     const [address, setAddress] = useState<AddressData>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
+    const breadcrumbs = useMemo(() => [{ label: t("agencyFormPage", "newTitle") }], [t]);
+    useTopBarBreadcrumbs(breadcrumbs);
+
+    useEffect(() => {
+        onActionButtons?.(formActions);
+        return () => onActionButtons?.(null);
+    }, [formActions, onActionButtons]);
 
     if (!session) return null;
 
@@ -55,6 +65,7 @@ export default function NewAgencyPage() {
         try {
             await createAgency(session.token, {
                 name: name.trim(),
+                isTlv,
                 street: address.street?.trim() || undefined,
                 city: address.city?.trim() || undefined,
                 postalCode: address.postalCode?.trim() || undefined,
@@ -77,7 +88,7 @@ export default function NewAgencyPage() {
             title={t("agencyFormPage", "newTitle")}
             subtitle={t("agencyFormPage", "newSubtitle")}
             backHref="/internal/agencies"
-            actions={formActions}
+            hideHeader
         >
             <CrudFormContainer
                 onSubmit={handleSubmit}
@@ -103,6 +114,16 @@ export default function NewAgencyPage() {
                         disabled={isSubmitting}
                         error={!!validationErrors.name}
                         helperText={validationErrors.name}
+                    />
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={isTlv}
+                                onChange={(event) => setIsTlv(event.target.checked)}
+                                disabled={isSubmitting}
+                            />
+                        }
+                        label={t("agencyFormPage", "tlvAgencyLabel")}
                     />
                     <AddressForm value={address} onChange={setAddress} disabled={isSubmitting} />
                 </Stack>

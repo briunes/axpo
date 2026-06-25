@@ -17,6 +17,7 @@ import { AuditService } from "@/application/services/auditService";
 
 const updateAgencySchema = z.object({
   name: z.string().min(2).optional(),
+  isTlv: z.boolean().optional(),
   street: z.string().optional(),
   city: z.string().optional(),
   postalCode: z.string().optional(),
@@ -27,6 +28,16 @@ const updateAgencySchema = z.object({
     .array(
       z.object({
         tariffType: z.string().min(1),
+        isEnabled: z.boolean(),
+      }),
+    )
+    .optional(),
+  products: z
+    .array(
+      z.object({
+        productKey: z.string().min(1),
+        commodity: z.enum(["ELECTRICITY", "GAS"]),
+        pricingType: z.enum(["FIXED", "INDEXED"]),
         isEnabled: z.boolean(),
       }),
     )
@@ -226,15 +237,29 @@ export const PATCH = withErrorHandler(
           select: { tariffType: true, isEnabled: true },
         })
       : [];
+    const existingProducts = payload.products
+      ? await prisma.agencyProductConfig.findMany({
+          where: { agencyId: id },
+          select: {
+            productKey: true,
+            commodity: true,
+            pricingType: true,
+            isEnabled: true,
+          },
+        })
+      : [];
 
     const updateData = {
-      name: payload.name,
-      street: payload.street,
-      city: payload.city,
-      postalCode: payload.postalCode,
-      province: payload.province,
-      country: payload.country,
-      isActive: payload.isActive,
+      ...(payload.name !== undefined && { name: payload.name }),
+      ...(payload.isTlv !== undefined && { isTlv: payload.isTlv }),
+      ...(payload.street !== undefined && { street: payload.street }),
+      ...(payload.city !== undefined && { city: payload.city }),
+      ...(payload.postalCode !== undefined && {
+        postalCode: payload.postalCode,
+      }),
+      ...(payload.province !== undefined && { province: payload.province }),
+      ...(payload.country !== undefined && { country: payload.country }),
+      ...(payload.isActive !== undefined && { isActive: payload.isActive }),
       updatedByUserId: auth.userId,
     };
     const resultInclude = {
@@ -256,6 +281,12 @@ export const PATCH = withErrorHandler(
           ? payload.tariffs.map((tariff) => ({
               id: crypto.randomUUID(),
               ...tariff,
+            }))
+          : null,
+        p_products: payload.products
+          ? payload.products.map((product) => ({
+              id: crypto.randomUUID(),
+              ...product,
             }))
           : null,
         p_now: new Date(),
@@ -294,11 +325,36 @@ export const PATCH = withErrorHandler(
           );
         }
 
+        if (payload.products) {
+          await Promise.all(
+            payload.products.map((product) =>
+              tx.agencyProductConfig.upsert({
+                where: {
+                  agencyId_commodity_pricingType_productKey: {
+                    agencyId: id,
+                    commodity: product.commodity,
+                    pricingType: product.pricingType,
+                    productKey: product.productKey,
+                  },
+                },
+                update: { isEnabled: product.isEnabled },
+                create: {
+                  agencyId: id,
+                  productKey: product.productKey,
+                  commodity: product.commodity,
+                  pricingType: product.pricingType,
+                  isEnabled: product.isEnabled,
+                },
+              }),
+            ),
+          );
+        }
+
         return updatedAgency;
       });
     }
 
-    const { tariffs, ...agencyFields } = payload;
+    const { tariffs, products, ...agencyFields } = payload;
     const changedKeys = Object.keys(
       agencyFields,
     ) as (keyof typeof agencyFields)[];
@@ -317,6 +373,10 @@ export const PATCH = withErrorHandler(
     if (tariffs) {
       metadata.tariffsBefore = existingTariffs;
       metadata.tariffsAfter = tariffs;
+    }
+    if (products) {
+      metadata.productsBefore = existingProducts;
+      metadata.productsAfter = products;
     }
 
     await AuditService.logEvent({
@@ -354,23 +414,24 @@ export const DELETE = withErrorHandler(
     }
 
     const existing = await prisma.agency.findUnique({ where: { id } });
-    if (!existing || existing.isDeleted) {
+    if (!existing || existing.deletedAt) {
       throw new NotFoundError("Agency", id);
     }
 
-    // Admin sets isDeleted = true (soft delete)
+    const isPermanentDelete = existing.isDeleted;
+
     await prisma.agency.update({
       where: { id },
       data: {
         isDeleted: true,
-        deletedAt: new Date(),
+        deletedAt: isPermanentDelete ? new Date() : null,
         isActive: false,
       },
     });
 
     await AuditService.logEvent({
       actorUserId: auth.userId,
-      eventType: "AGENCY_DELETED",
+      eventType: isPermanentDelete ? "AGENCY_DELETED" : "AGENCY_ARCHIVED",
       targetType: "AGENCY",
       targetId: id,
     });

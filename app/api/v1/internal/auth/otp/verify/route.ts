@@ -5,7 +5,7 @@ import { AuthService } from "@/application/services/authService";
 import { ValidationError } from "@/domain/errors/errors";
 import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
 import {
-  applyRateLimit,
+  applyRateLimitShared,
   getClientRateLimitKey,
 } from "@/application/middleware/rateLimit";
 
@@ -18,7 +18,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     throw new ValidationError("otpSessionToken and code are required");
   }
 
-  applyRateLimit(
+  await applyRateLimitShared(
     getClientRateLimitKey(
       sessionContext.ipAddress,
       `otp:${String(otpSessionToken).slice(0, 12)}`,

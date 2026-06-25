@@ -1,0 +1,351 @@
+.shell {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 3vw, 40px);
+  background: var(--scheme-neutral-1000);
+  position: relative;
+  overflow-y: auto;
+}
+
+:global(.environment-indicator) ~ :global(.environment-content) .shell {
+  min-height: calc(100svh - 38px);
+}
+
+.langSwitcher {
+  position: absolute;
+  top: clamp(12px, 2vw, 24px);
+  right: clamp(12px, 2vw, 24px);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.langBtn {
+  min-width: 44px;
+  height: 36px;
+  border: 1px solid var(--scheme-neutral-800);
+  border-radius: 6px;
+  background: var(--scheme-neutral-1100);
+  color: var(--scheme-neutral-400);
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+  padding: 0 12px;
+  line-height: 1;
+}
+
+.langBtn:hover {
+  background: var(--scheme-neutral-1000);
+  border-color: var(--scheme-neutral-700);
+}
+
+.active {
+  background: var(--scheme-brand-600);
+  border-color: var(--scheme-brand-600);
+  color: white;
+}
+
+.active:hover {
+  background: var(--scheme-brand-500);
+  border-color: var(--scheme-brand-500);
+}
+
+.grid {
+  width: min(1120px, 100%);
+  display: grid;
+  grid-template-columns: minmax(360px, 1.05fr) minmax(360px, 0.95fr);
+  min-height: clamp(540px, 72svh, 680px);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+}
+
+.brandPanel {
+  background: #181534;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(69, 69, 207, 0.35) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 110% 100%, rgba(143, 67, 167, 0.20) 0%, transparent 60%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: clamp(40px, 5vw, 72px) clamp(32px, 4vw, 56px);
+  position: relative;
+  overflow: hidden;
+}
+
+.brandPanel::before {
+  content: "";
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  border: 1px solid rgba(69, 69, 207, 0.12);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.brandPanel::after {
+  content: "";
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  border: 1px solid rgba(69, 69, 207, 0.07);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.brandMark {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 4px 24px rgba(69, 69, 207, 0.4));
+  margin-bottom: 20px;
+  width: clamp(56px, 7vw, 80px);
+  height: clamp(56px, 7vw, 80px);
+}
+
+.brandName {
+  font-size: clamp(34px, 4vw, 48px);
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -1px;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.brandProduct {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.brandDivider {
+  width: 36px;
+  height: 2px;
+  background: linear-gradient(90deg, #4545CF, #8F43A7);
+  border-radius: 2px;
+  margin: 20px auto;
+  position: relative;
+  z-index: 1;
+}
+
+.brandDesc {
+  color: rgba(255, 255, 255, 0.35);
+  max-width: 220px;
+  line-height: 1.6;
+  position: relative;
+  z-index: 1;
+}
+
+.formPanel {
+  background: var(--scheme-neutral-1200);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(40px, 5vw, 64px) clamp(32px, 4vw, 56px);
+  min-width: 0;
+}
+
+.formLogo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: clamp(20px, 3vw, 32px);
+}
+
+.formLogoName {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--scheme-neutral-100);
+  letter-spacing: -0.5px;
+}
+
+.formTitle {
+  font-size: clamp(21px, 2vw, 26px);
+  font-weight: 700;
+  color: var(--scheme-neutral-100);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.formSubtitle {
+  color: var(--scheme-neutral-500);
+  margin-bottom: clamp(20px, 3vw, 28px);
+  line-height: 1.55;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.formField label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--scheme-neutral-400);
+}
+
+.formField input {
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--scheme-neutral-900);
+  border-radius: 8px;
+  background: var(--scheme-neutral-1100);
+  color: var(--scheme-neutral-200);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.formField input:focus {
+  outline: none;
+  border-color: var(--scheme-brand-600);
+}
+
+.error {
+  font-size: 12px;
+  color: #f4adab;
+  padding: 8px 12px;
+  background: rgb(217 83 79 / 12%);
+  border-radius: 6px;
+  border: 1px solid rgb(217 83 79 / 25%);
+  margin-bottom: 14px;
+}
+
+.success {
+  font-size: 14px;
+}
+
+.submit {
+  width: 100%;
+  height: 42px;
+  border: none;
+  border-radius: 8px;
+  background: var(--scheme-brand-600);
+  color: white;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 150ms;
+}
+
+.submit:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.submit:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.link {
+  background: none;
+  border: none;
+  color: var(--scheme-neutral-400);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  padding: 0;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.link:hover {
+  color: var(--scheme-brand-600);
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .shell {
+    align-items: center;
+    background: var(--scheme-neutral-1200);
+    padding: 64px 24px max(24px, env(safe-area-inset-bottom));
+  }
+
+  :global(.environment-indicator) ~ :global(.environment-content) .shell {
+    min-height: calc(100svh - 38px);
+  }
+
+  .langSwitcher {
+    position: fixed;
+    top: calc(38px + 12px);
+    right: 12px;
+  }
+
+  .grid {
+    width: min(420px, 100%);
+    min-height: auto;
+    grid-template-columns: 1fr;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .brandPanel {
+    display: none;
+  }
+
+  .formPanel {
+    justify-content: center;
+    min-height: auto;
+    padding: 0;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1100px) {
+  .grid {
+    grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.05fr);
+    min-height: clamp(520px, 78svh, 640px);
+  }
+
+  .brandPanel,
+  .formPanel {
+    padding-left: 36px;
+    padding-right: 36px;
+  }
+}
+
+@media (max-width: 520px) {
+  .shell {
+    padding: 56px 16px max(20px, env(safe-area-inset-bottom));
+  }
+
+  .langSwitcher {
+    gap: 6px;
+    right: 10px;
+  }
+
+  .langBtn {
+    min-width: 40px;
+    height: 34px;
+    padding: 0 8px;
+    font-size: 18px;
+  }
+
+  .formLogo {
+    margin-bottom: 28px;
+  }
+}
+
+@media (max-width: 380px) {
+  .shell {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+}

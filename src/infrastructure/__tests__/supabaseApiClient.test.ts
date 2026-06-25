@@ -42,6 +42,43 @@ describe("Supabase Data API database adapter", () => {
     );
   });
 
+  it("maps Excel parser product configs to the Supabase API table", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: "config-1",
+            scopeType: "GLOBAL",
+            sourceLabel: "2.0TD",
+            productKey: "electricity-fixed",
+            displayName: "Electricity fixed",
+            commodity: "ELECTRICITY",
+            pricingType: "FIXED",
+            enabled: true,
+            singlePeriod: false,
+            eligibilityMin: null,
+            eligibilityMax: null,
+            sortOrder: 1,
+            createdAt: "2026-06-16T00:00:00",
+            updatedAt: "2026-06-16T00:00:00",
+          },
+        ]),
+        { status: 200 },
+      ),
+    );
+    const client = createSupabaseApiPrismaClient();
+
+    const rows = await client.excelParserProductConfig.findMany({
+      where: { scopeType: "GLOBAL" },
+      orderBy: [{ sortOrder: "asc" }, { sourceLabel: "asc" }],
+    });
+
+    expect(rows).toHaveLength(1);
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain("/rest/v1/excel_parser_product_configs?");
+    expect(url).toContain("scopeType=eq.GLOBAL");
+  });
+
   it("disambiguates the user agency relation", async () => {
     fetchMock.mockResolvedValue(
       new Response(

@@ -165,7 +165,7 @@ export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSe
 
                     <div className="settings-panel" style={{ marginTop: 24 }}>
                         <h3 className="settings-panel-title">{t("systemSettings", "titleMagicLink")}</h3>
-                        <p style={{ color: "var(--text-secondary, #888)", fontSize: 13, marginBottom: 16 }}>
+                        <p style={{ color: "var(--text-secondary, #888)", marginBottom: 16 }}>
                             {t("systemSettings", "titleMagicLinkDesc")}
                         </p>
 
@@ -223,7 +223,7 @@ export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSe
 
                     <div className="settings-panel" style={{ marginTop: 24 }}>
                         <h3 className="settings-panel-title">{t("systemSettings", "titleOtp")}</h3>
-                        <p style={{ color: "var(--text-secondary, #888)", fontSize: 13, marginBottom: 16 }}>
+                        <p style={{ color: "var(--text-secondary, #888)", marginBottom: 16 }}>
                             {t("systemSettings", "titleOtpDesc")}
                         </p>
 

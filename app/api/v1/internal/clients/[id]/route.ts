@@ -374,22 +374,30 @@ export const DELETE = withErrorHandler(
     if (!id) throw new NotFoundError("Client");
 
     const client = await prisma.client.findUnique({ where: { id } });
-    if (!client || client.isDeleted) {
+    if (!client || client.deletedAt) {
       throw new NotFoundError("Client", id);
+    }
+
+    if (client.isDeleted && !isElevatedRole(auth.role)) {
+      throw new ForbiddenError("Only administrators can delete archived clients");
     }
 
     if (!isElevatedRole(auth.role) && client.agencyId !== auth.agencyId) {
       throw new ForbiddenError("Access denied");
     }
 
+    const isPermanentDelete = client.isDeleted && isElevatedRole(auth.role);
     const deleted = await prisma.client.update({
       where: { id },
-      data: { isDeleted: true, deletedAt: new Date() },
+      data: {
+        isDeleted: true,
+        deletedAt: isPermanentDelete ? new Date() : null,
+      },
     });
 
     await AuditService.logEvent({
       actorUserId: auth.userId,
-      eventType: "CLIENT_DELETED",
+      eventType: isPermanentDelete ? "CLIENT_DELETED" : "CLIENT_ARCHIVED",
       targetType: "CLIENT",
       targetId: deleted.id,
     });

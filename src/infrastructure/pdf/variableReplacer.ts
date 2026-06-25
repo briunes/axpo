@@ -19,7 +19,7 @@ import {
  * Formats a number as currency (euros)
  */
 function formatCurrency(value: number | undefined): string {
-  if (value === undefined || value === null) return "—";
+  if (value === undefined || value === null) return "-";
   return value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
@@ -27,7 +27,7 @@ function formatCurrency(value: number | undefined): string {
  * Formats a number with comma decimal separator
  */
 function formatNumber(value: number | undefined, decimals: number = 4): string {
-  if (value === undefined || value === null) return "—";
+  if (value === undefined || value === null) return "-";
   return value.toFixed(decimals).replace(".", ",");
 }
 
@@ -39,9 +39,9 @@ function getPeriodValue(
   period: keyof ElecPeriodMap,
   decimals: number = 4,
 ): string {
-  if (!periodMap) return "—";
+  if (!periodMap) return "-";
   const value = periodMap[period];
-  return value !== undefined ? formatNumber(value, decimals) : "—";
+  return value !== undefined ? formatNumber(value, decimals) : "-";
 }
 
 /**
@@ -85,6 +85,7 @@ export function extractVariableValues(
   );
 
   const electricity = payload?.electricity as any; // Cast to any to access clientData
+  const gas = payload?.gas as any;
   const results = payload?.results;
 
   // Get selected offer index or default to first result
@@ -114,7 +115,7 @@ export function extractVariableValues(
   // Calculate period dates
   const periodStart = electricity?.periodo?.fechaInicio || "N/A";
   const periodEnd = electricity?.periodo?.fechaFin || "N/A";
-  const simulationPeriod = `${periodStart} — ${periodEnd}`;
+  const simulationPeriod = `${periodStart} - ${periodEnd}`;
 
   // Calculate annual consumption (approximate from monthly)
   const totalConsumption = electricity?.consumo
@@ -124,22 +125,38 @@ export function extractVariableValues(
       )
     : 0;
   const annualConsumption = (totalConsumption as number) * 12;
+  const electricityBillingDays = electricity?.periodo?.dias || 0;
 
-  // Extract client info - check both simulation.client and electricity.clientData
+  // Extract client info - check simulation, electricity and gas payload shapes.
   const clientData = electricity?.clientData || {};
+  const gasClientData = gas?.clientData || {};
   const clientName =
-    simulation.client?.name || clientData.nombreTitular || "N/A";
+    simulation.client?.name ||
+    clientData.nombreTitular ||
+    gas?.nombreTitular ||
+    gasClientData.nombreTitular ||
+    "N/A";
   const contactPerson =
     simulation.client?.contactPerson ||
     simulation.client?.contactName ||
     clientData.personaContacto ||
+    gas?.personaContacto ||
+    gasClientData.personaContacto ||
     clientName;
   const clientAddress = simulation.client?.address
     ? `${simulation.client.address}, ${simulation.client.postalCode || ""} ${simulation.client.city || ""}`.trim()
-    : clientData.direccion || "N/A";
+    : clientData.direccion ||
+      gas?.direccion ||
+      gasClientData.direccion ||
+      "N/A";
 
-  // CUPS - check both simulation and electricity.clientData
-  const cupsNumber = simulation.cupsNumber || clientData.cups || "N/A";
+  // CUPS - check simulation-level, electricity payload and gas payload fields.
+  const cupsNumber =
+    simulation.cupsNumber ||
+    clientData.cups ||
+    gas?.cups ||
+    gasClientData.cups ||
+    "N/A";
 
   // Product name
   const productName = selectedResult?.productLabel || "N/A";
@@ -203,7 +220,7 @@ export function extractVariableValues(
     ?.terminoPotenciaActual;
   const explicitCurrentEnergy = (electricity?.extras as any)
     ?.terminoEnergiaActual;
-  // Otherwise, mirror the Axpo plan's power/energy ratio — a much
+  // Otherwise, mirror the Axpo plan's power/energy ratio - a much
   // better estimate than fixed 35%/40% because it adapts to the
   // access tariff, period mix and consumption profile of THIS simulation.
   const axpoPeSum = axpoPowerCost + axpoEnergyCost || 1;
@@ -224,7 +241,6 @@ export function extractVariableValues(
   const savingsAmount = selectedResult?.ahorro || 0;
 
   // ─── Gas variables ────────────────────────────────────────────────────────
-  const gas = payload?.gas as any;
   const gasResults = payload?.results?.gas;
   const selectedGasOfferKey =
     payload?.selectedOffer?.commodity === "GAS"
@@ -234,13 +250,15 @@ export function extractVariableValues(
     ? gasResults?.find((r: any) => r.productKey === selectedGasOfferKey)
     : gasResults?.[0];
 
-  // Gas consumption — prefer consumoAnual, fall back to consumo (monthly * 12)
+  // Gas consumption - prefer consumoAnual, fall back to consumo (monthly * 12)
   const gasAnnualConsumptionKwh =
     gas?.consumoAnual || (gas?.consumo ? (gas.consumo as number) * 12 : 0);
 
   // Current gas costs
   const gasCurrentTotal: number = gas?.facturaActual || 0;
   const gasIvaTasa: number = gas?.ivaTasa ?? 21;
+  const gasCurrentRentalCost: number = gas?.extras?.alquilerEquipoMedida || 0;
+  const gasCurrentOtherCost: number = gas?.extras?.otrosCargos || 0;
   // Back-calculate VAT and tax from current total using input rates
   const gasCurrentVat = gasCurrentTotal * (gasIvaTasa / (100 + gasIvaTasa));
   const gasCurrentPreVat = gasCurrentTotal - gasCurrentVat;
@@ -248,7 +266,13 @@ export function extractVariableValues(
   // IEH = impuestoHidrocarburo (€/kWh) * consumption in billing period
   const gasBillingConsumption: number = gas?.consumo || 0;
   const gasCurrentTax = gasImpHidro * gasBillingConsumption;
-  const gasCurrentBase = gasCurrentPreVat - gasCurrentTax;
+  const gasCurrentBase = Math.max(
+    0,
+    gasCurrentPreVat -
+      gasCurrentTax -
+      gasCurrentRentalCost -
+      gasCurrentOtherCost,
+  );
   // Rough 70/30 split of base into variable/fixed
   const gasCurrentVariableCost = gasCurrentBase * 0.7;
   const gasCurrentFixedCost = gasCurrentBase * 0.3;
@@ -258,6 +282,8 @@ export function extractVariableValues(
   const gasAxpoFixedCost: number = gasAxpoDesglose.terminoFijo || 0;
   const gasAxpoVariableCost: number = gasAxpoDesglose.terminoEnergia || 0;
   const gasAxpoTax: number = gasAxpoDesglose.impuestoHidrocarburo || 0;
+  const gasAxpoRentalCost: number = gasAxpoDesglose.alquiler || 0;
+  const gasAxpoOtherCost: number = gasAxpoDesglose.otrosCargos || 0;
   const gasAxpoVat: number = gasAxpoDesglose.iva || 0;
   const gasAxpoTotal: number = selectedGasResult?.totalFactura || 0;
 
@@ -268,7 +294,7 @@ export function extractVariableValues(
   // Gas period dates
   const gasPeriodStart = gas?.periodo?.fechaInicio || "N/A";
   const gasPeriodEnd = gas?.periodo?.fechaFin || "N/A";
-  const gasSimulationPeriod = `${gasPeriodStart} — ${gasPeriodEnd}`;
+  const gasSimulationPeriod = `${gasPeriodStart} - ${gasPeriodEnd}`;
 
   // Determine if this is a gas simulation
   const isGas = payload?.type === "GAS" || !!gas;
@@ -283,8 +309,7 @@ export function extractVariableValues(
 
     // Simulation metadata
     SIMULATION_ID: simulation.id,
-    SIMULATION_REFERENCE:
-      simulation.referenceNumber || simulation.id || "N/A",
+    SIMULATION_REFERENCE: simulation.referenceNumber || simulation.id || "N/A",
     SIMULATION_PERIOD: isGas ? gasSimulationPeriod : simulationPeriod,
     ANNUAL_CONSUMPTION: formatNumber(annualConsumption, 0),
     PRODUCT_NAME: isGas ? gasProductName : productName,
@@ -300,7 +325,7 @@ export function extractVariableValues(
     SIMULATION_LINK:
       shareContext?.simulationLink ||
       (simulation.publicToken
-        ? `${process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || process.env.FRONTEND_SIMULADOR_URL || "https://tuenergia.axpoiberia.es"}/?token=${simulation.publicToken}`
+        ? `${process.env.NEXT_PUBLIC_FRONTEND_SIMULADOR_URL || process.env.FRONTEND_SIMULADOR_URL || "https://simuladorpublicoaxpo.b-cdn.net"}/?token=${simulation.publicToken}`
         : "N/A"),
     PIN: shareContext?.pin || "N/A",
     EXPIRES_IN_DAYS:
@@ -397,18 +422,43 @@ export function extractVariableValues(
     ),
 
     // ─── Gas-specific variables ──────────────────────────────────────────────
+    // ─── Electricity-specific variables ──────────────────────────────────────
+    ELECTRICITY_TARIFF: electricity?.tarifaAcceso || "N/A",
+    ELECTRICITY_ZONE: electricity?.zonaGeografica || "N/A",
+    ELECTRICITY_PROFILE: electricity?.perfilCarga || "N/A",
+    ELECTRICITY_BILLING_DAYS: electricityBillingDays
+      ? String(electricityBillingDays)
+      : "N/A",
+    ELECTRICITY_CONSUMPTION_KWH: formatNumber(totalConsumption as number, 0),
+    ELECTRICITY_IVA_RATE: formatNumber(currentIvaTasa, 2),
+    ELECTRICITY_TAX_RATE: formatNumber(currentIeTasa, 5),
+    CURRENT_REACTIVE_COST: formatCurrency(currentReactiveCost),
+    CURRENT_OTHER_CHARGES: formatCurrency(currentOtherChargeCost),
+
+    // ─── Gas-specific variables ──────────────────────────────────────────────
+    GAS_TARIFF: gas?.tarifaAcceso || "N/A",
+    GAS_ZONE: gas?.zonaGeografica || "N/A",
+    GAS_TELEMEASURED: gas?.telemedida || "N/A",
+    GAS_BILLING_DAYS: gas?.periodo?.dias ? String(gas.periodo.dias) : "N/A",
+    GAS_CONSUMPTION_KWH: formatNumber(gasBillingConsumption, 0),
     GAS_ANNUAL_CONSUMPTION_KWH: formatNumber(gasAnnualConsumptionKwh, 0),
     GAS_ANNUAL_CONSUMPTION_M3: formatNumber(gasAnnualConsumptionKwh / 11.63, 0), // approx kWh → m³
+    GAS_IVA_RATE: formatNumber(gasIvaTasa, 2),
+    GAS_HYDROCARBON_TAX_RATE: formatNumber(gasImpHidro, 5),
 
     CURRENT_GAS_FIXED_COST: formatCurrency(gasCurrentFixedCost),
     CURRENT_GAS_VARIABLE_COST: formatCurrency(gasCurrentVariableCost),
     CURRENT_GAS_TAX: formatCurrency(gasCurrentTax),
+    CURRENT_GAS_RENTAL_COST: formatCurrency(gasCurrentRentalCost),
+    CURRENT_GAS_OTHER_COST: formatCurrency(gasCurrentOtherCost),
     CURRENT_GAS_VAT: formatCurrency(gasCurrentVat),
     CURRENT_GAS_TOTAL: formatCurrency(gasCurrentTotal),
 
     AXPO_GAS_FIXED_COST: formatCurrency(gasAxpoFixedCost),
     AXPO_GAS_VARIABLE_COST: formatCurrency(gasAxpoVariableCost),
     AXPO_GAS_TAX: formatCurrency(gasAxpoTax),
+    AXPO_GAS_RENTAL_COST: formatCurrency(gasAxpoRentalCost),
+    AXPO_GAS_OTHER_COST: formatCurrency(gasAxpoOtherCost),
     AXPO_GAS_VAT: formatCurrency(gasAxpoVat),
     AXPO_GAS_TOTAL: formatCurrency(gasAxpoTotal),
   };
@@ -427,7 +477,7 @@ export function extractVariableValues(
 
 /**
  * Builds a self-contained HTML snippet for the Comparativa bar chart.
- * Uses pure SVG + inline CSS — no JavaScript — so it renders in Puppeteer PDFs.
+ * Uses pure SVG + inline CSS - no JavaScript - so it renders in Puppeteer PDFs.
  *
  * Both currentTotal and axpoTotal are period figures (€).
  * The chart displays annual totals using (value / dias) × 365 extrapolation.
@@ -459,19 +509,21 @@ function buildComparativaChart(
       maximumFractionDigits: 2,
     });
 
-  // Chart dimensions
-  const svgW = 340;
-  const svgH = 220;
-  const barW = 80;
-  const maxBarH = 150;
-  const barY0 = 170; // baseline y
+  // Chart dimensions tuned for the proposal PDF layout.
+  const svgW = 360;
+  const svgH = 230;
+  const plotX0 = 44;
+  const plotX1 = 350;
+  const barW = 82;
+  const maxBarH = 160;
+  const barY0 = 190; // baseline y
 
   const maxVal = Math.max(annualCurrent, annualAxpo, 1);
   const hCurrent = (annualCurrent / maxVal) * maxBarH;
   const hAxpo = (annualAxpo / maxVal) * maxBarH;
 
-  const xCurrent = 60;
-  const xAxpo = 180;
+  const xCurrent = 66;
+  const xAxpo = 216;
 
   // Y-axis ticks (4 ticks)
   const tickCount = 4;
@@ -484,24 +536,20 @@ function buildComparativaChart(
   const tickLines = ticks
     .map(
       (t) =>
-        `<line x1="45" y1="${t.y.toFixed(1)}" x2="${svgW - 10}" y2="${t.y.toFixed(1)}" stroke="#e5e7eb" stroke-width="1"/>` +
-        `<text x="40" y="${(t.y + 4).toFixed(1)}" text-anchor="end" font-size="9" fill="#6b7280">${Math.round(t.val)}</text>`,
+        `<line x1="${plotX0}" y1="${t.y.toFixed(1)}" x2="${plotX1}" y2="${t.y.toFixed(1)}" stroke="#e5e7eb" stroke-width="1"/>` +
+        `<text x="${plotX0 - 6}" y="${(t.y + 4).toFixed(1)}" text-anchor="end" font-size="8" fill="#6b7280">${Math.round(t.val)}</text>`,
     )
     .join("");
 
-  // SVG width fills most of the left column; we scale it via viewBox so it
-  // stretches to whatever width the left flex child occupies.
   return `
-<div style="display:block;width:100%;box-sizing:border-box;padding:16px 0;font-family:Arial,sans-serif;page-break-inside:avoid">
+<div style="display:block;width:100%;box-sizing:border-box;padding:0;font-family:Arial,sans-serif;page-break-inside:avoid">
 
-  <div style="font-size:13px;font-weight:700;color:#3b3bd4;margin-bottom:12px">Comparativa</div>
+  <div style="font-size:20px;line-height:1.15;font-weight:400;color:#1E2CF4;margin-bottom:12px">Comparativa</div>
 
-  <!-- Two-column row: chart left, stats right -->
-  <div style="display:flex;width:100%;gap:24px;align-items:flex-start">
+  <div style="display:flex;width:100%;gap:28px;align-items:flex-end">
 
-    <!-- Bar chart — 50% width -->
     <div style="flex:0 0 50%;min-width:0">
-      <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block">
+      <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:100%">
         <defs>
           <linearGradient id="axpoGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="#facc15"/>
@@ -513,7 +561,7 @@ function buildComparativaChart(
         ${tickLines}
 
         <!-- X axis -->
-        <line x1="45" y1="${barY0}" x2="${svgW - 10}" y2="${barY0}" stroke="#9ca3af" stroke-width="1.5"/>
+        <line x1="${plotX0}" y1="${barY0}" x2="${plotX1}" y2="${barY0}" stroke="#9ca3af" stroke-width="1.5"/>
 
         <!-- Current bar -->
         <rect x="${xCurrent}" y="${(barY0 - hCurrent).toFixed(1)}" width="${barW}" height="${hCurrent.toFixed(1)}" fill="#9ca3af" rx="4"/>
@@ -522,28 +570,27 @@ function buildComparativaChart(
         <rect x="${xAxpo}" y="${(barY0 - hAxpo).toFixed(1)}" width="${barW}" height="${hAxpo.toFixed(1)}" fill="url(#axpoGrad)" rx="4"/>
 
         <!-- X labels -->
-        <text x="${xCurrent + barW / 2}" y="${barY0 + 16}" text-anchor="middle" font-size="10" fill="#374151">Competencia</text>
-        <text x="${xAxpo + barW / 2}" y="${barY0 + 16}" text-anchor="middle" font-size="10" fill="#374151">Axpo</text>
+        <text x="${xCurrent + barW / 2}" y="${barY0 + 18}" text-anchor="middle" font-size="9" fill="#374151">Competencia</text>
+        <text x="${xAxpo + barW / 2}" y="${barY0 + 18}" text-anchor="middle" font-size="9" fill="#374151">Axpo</text>
 
         <!-- Value labels on top of bars -->
-        <text x="${xCurrent + barW / 2}" y="${(barY0 - hCurrent - 5).toFixed(1)}" text-anchor="middle" font-size="9" fill="#374151">${fmt(annualCurrent)} €</text>
-        <text x="${xAxpo + barW / 2}" y="${(barY0 - hAxpo - 5).toFixed(1)}" text-anchor="middle" font-size="9" fill="#374151">${fmt(annualAxpo)} €</text>
+        <text x="${xCurrent + barW / 2}" y="${(barY0 - hCurrent - 5).toFixed(1)}" text-anchor="middle" font-size="8" fill="#374151">${fmt(annualCurrent)} €</text>
+        <text x="${xAxpo + barW / 2}" y="${(barY0 - hAxpo - 5).toFixed(1)}" text-anchor="middle" font-size="8" fill="#374151">${fmt(annualAxpo)} €</text>
       </svg>
     </div>
 
-    <!-- Stats boxes — 50% width, stacked vertically -->
-    <div style="flex:0 0 50%;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;padding-left:12px">
-      <div style="background:#3b3bd4;border-radius:8px;padding:12px 16px;color:white">
-        <div style="font-size:10px;font-weight:600;margin-bottom:6px">Ahorro Anual</div>
-        <div style="font-size:22px;font-weight:700;text-align:right">${fmt(annualSavings)} €</div>
+    <div style="flex:1 1 0;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;padding-bottom:6px">
+      <div style="background:#3F43D4;border-radius:8px;padding:10px 16px;color:white;min-height:64px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.25)">
+        <div style="font-size:10px;font-weight:700;margin-bottom:7px">Ahorro Anual</div>
+        <div style="border-top:1px solid rgba(255,255,255,0.34);padding-top:4px;font-size:22px;line-height:1.05;font-weight:700;text-align:right">${fmt(annualSavings)} €</div>
       </div>
-      <div style="background:#3b3bd4;border-radius:8px;padding:12px 16px;color:white">
-        <div style="font-size:10px;font-weight:600;margin-bottom:6px">Ahorro Mensual</div>
-        <div style="font-size:22px;font-weight:700;text-align:right">${fmt(monthlySavings)} €</div>
+      <div style="background:#3F43D4;border-radius:8px;padding:10px 16px;color:white;min-height:64px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.25)">
+        <div style="font-size:10px;font-weight:700;margin-bottom:7px">Ahorro Mensual</div>
+        <div style="border-top:1px solid rgba(255,255,255,0.34);padding-top:4px;font-size:22px;line-height:1.05;font-weight:700;text-align:right">${fmt(monthlySavings)} €</div>
       </div>
-      <div style="background:#3b3bd4;border-radius:8px;padding:12px 16px;color:white">
-        <div style="font-size:10px;font-weight:600;margin-bottom:6px">% Ahorrado</div>
-        <div style="font-size:22px;font-weight:700;text-align:right">${savingsPct.toFixed(2).replace(".", ",")} %</div>
+      <div style="background:#3F43D4;border-radius:8px;padding:10px 16px;color:white;min-height:64px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.25)">
+        <div style="font-size:10px;font-weight:700;margin-bottom:7px">% Ahorrado</div>
+        <div style="border-top:1px solid rgba(255,255,255,0.34);padding-top:4px;font-size:22px;line-height:1.05;font-weight:700;text-align:right">${savingsPct.toFixed(2).replace(".", ",")} %</div>
       </div>
     </div>
 

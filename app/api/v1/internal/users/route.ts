@@ -161,7 +161,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ...searchWhere,
     ...roleWhere,
     ...agencyWhere,
-    ...(includeDeleted ? {} : { isDeleted: false }),
+    ...(includeDeleted
+      ? { isDeleted: true, deletedAt: null }
+      : { isDeleted: false }),
   };
 
   if (minimal) {
@@ -176,6 +178,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
           fullName: true,
           email: true,
           isActive: true,
+          isDeleted: true,
+          deletedAt: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -203,6 +207,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         otherDetails: true,
         maxActiveDevices: true,
         isActive: true,
+        isDeleted: true,
+        deletedAt: true,
         createdAt: true,
         updatedAt: true,
         pinRotatedAt: true,

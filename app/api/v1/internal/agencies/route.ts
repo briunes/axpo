@@ -13,6 +13,7 @@ import { prisma } from "@/infrastructure/database/prisma";
 
 const createAgencySchema = z.object({
   name: z.string().min(2),
+  isTlv: z.boolean().optional().default(false),
   street: z.string().optional(),
   city: z.string().optional(),
   postalCode: z.string().optional(),
@@ -134,6 +135,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const orderBy = searchParams.get("orderBy") ?? "createdAt";
   const sortDir =
     (searchParams.get("sortDir") ?? "desc") === "asc" ? "asc" : "desc";
+  const isTlvParam = searchParams.get("isTlv");
+  const statusParam = searchParams.get("status");
   // minimal=true: skip all includes/joins. Used by dropdowns that only need id + name.
   const minimal = searchParams.get("minimal") === "true";
 
@@ -152,7 +155,19 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const where = {
     ...baseWhere,
-    ...(includeDeleted ? {} : { isDeleted: false }),
+    ...(includeDeleted
+      ? { isDeleted: true, deletedAt: null }
+      : { isDeleted: false }),
+    ...(isTlvParam === "true"
+      ? { isTlv: true }
+      : isTlvParam === "false"
+        ? { isTlv: false }
+        : {}),
+    ...(statusParam === "active"
+      ? { isActive: true }
+      : statusParam === "inactive"
+        ? { isActive: false }
+        : {}),
   };
 
   if (minimal) {
@@ -166,8 +181,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         select: {
           id: true,
           name: true,
+          isTlv: true,
           isActive: true,
           isDeleted: true,
+          deletedAt: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -285,6 +302,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const agency = await prisma.agency.create({
     data: {
       name: payload.name,
+      isTlv: payload.isTlv,
       street: payload.street,
       city: payload.city,
       postalCode: payload.postalCode,

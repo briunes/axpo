@@ -5,7 +5,7 @@ import { prisma } from "@/infrastructure/database/prisma";
 import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
 import {
-  applyRateLimit,
+  applyRateLimitShared,
   getClientRateLimitKey,
 } from "@/application/middleware/rateLimit";
 import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
@@ -27,9 +27,10 @@ const clientErrorSchema = z.object({
  * and saves them to the database + forwards to Sentry.
  * No auth required — errors can happen before login.
  */
+
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const { ipAddress } = getRequestSessionContext(request);
-  applyRateLimit(getClientRateLimitKey(ipAddress, "client-error"), {
+  await applyRateLimitShared(getClientRateLimitKey(ipAddress, "client-error"), {
     maxRequests: 20,
     windowMs: 15 * 60 * 1000,
   });

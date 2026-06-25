@@ -234,9 +234,7 @@ export function AITemplateBuilder({
                     {/* Prompt area */}
                     <label
                         style={{
-                            display: "block",
-                            fontSize: "13px",
-                            fontWeight: 600,
+                            display: "block", fontWeight: 600,
                             marginBottom: "6px",
                             color: "#c4b5fd",
                         }}
@@ -261,9 +259,7 @@ export function AITemplateBuilder({
                             borderRadius: "6px",
                             border: "1px solid #3a2a6a",
                             background: "#0d0d1a",
-                            color: "#e2e8f0",
-                            fontSize: "13px",
-                            resize: "vertical",
+                            color: "#e2e8f0", resize: "vertical",
                             fontFamily: "inherit",
                             boxSizing: "border-box",
                             marginBottom: "12px",
@@ -277,9 +273,7 @@ export function AITemplateBuilder({
                             style={{
                                 display: "flex",
                                 alignItems: "center",
-                                gap: "8px",
-                                fontSize: "13px",
-                                color: "#a78bfa",
+                                gap: "8px", color: "#a78bfa",
                                 marginBottom: "14px",
                                 cursor: "pointer",
                             }}
@@ -465,9 +459,7 @@ export function AITemplateBuilder({
                                         borderRadius: "6px",
                                         border: "none",
                                         background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
-                                        color: "#fff",
-                                        fontSize: "13px",
-                                        fontWeight: 700,
+                                        color: "#fff", fontWeight: 700,
                                         cursor: "pointer",
                                     }}
                                 >
@@ -482,9 +474,7 @@ export function AITemplateBuilder({
                                         borderRadius: "6px",
                                         border: "1px solid #3a2a6a",
                                         background: "transparent",
-                                        color: "#a78bfa",
-                                        fontSize: "13px",
-                                        fontWeight: 600,
+                                        color: "#a78bfa", fontWeight: 600,
                                         cursor: isGenerating ? "not-allowed" : "pointer",
                                         opacity: isGenerating ? 0.5 : 1,
                                     }}
@@ -499,9 +489,7 @@ export function AITemplateBuilder({
                                         borderRadius: "6px",
                                         border: "1px solid #3a2a6a",
                                         background: "transparent",
-                                        color: "#6b7280",
-                                        fontSize: "13px",
-                                        cursor: "pointer",
+                                        color: "#6b7280", cursor: "pointer",
                                     }}
                                 >
                                     🗑 {t("aiTemplateBuilder", "discard")}

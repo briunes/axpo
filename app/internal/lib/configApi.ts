@@ -1,4 +1,5 @@
 // Configuration API client functions
+import type { RequestCacheConfig } from "./requestCacheConfig";
 
 // Helper to get auth token from localStorage
 function getAuthToken(): string | null {
@@ -14,6 +15,12 @@ function authHeaders(): HeadersInit {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
+
+const RUNTIME_SYSTEM_CONFIG_TTL_MS = 60_000;
+const runtimeSystemConfigCache = new Map<
+  string,
+  { expiresAt: number; promise: Promise<SystemConfig> }
+>();
 
 export interface SystemConfig {
   id: string;
@@ -97,6 +104,7 @@ export interface SystemConfig {
   ocrBillingMarkupPercent?: number;
   ocrBillingFixedFeePerCall?: number;
   ocrBillingIncludeFailedCalls?: boolean;
+  requestCacheConfig?: RequestCacheConfig;
 }
 
 export interface PdfTemplateTranslationInput {
@@ -259,11 +267,37 @@ export async function getSystemConfig(options?: {
 }): Promise<SystemConfig> {
   const view = options?.view ?? "runtime";
   const query = `?view=${view}`;
-  const res = await fetch(`/api/v1/internal/config/system${query}`, {
-    headers: authHeaders(),
+  const fetchConfig = async () => {
+    const res = await fetch(`/api/v1/internal/config/system${query}`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch system config");
+    return res.json();
+  };
+
+  if (view !== "runtime" || typeof window === "undefined") {
+    return fetchConfig();
+  }
+
+  const token = getAuthToken();
+  const key = `${view}:${token ? token.slice(-12) : "anonymous"}`;
+  const now = Date.now();
+  const cached = runtimeSystemConfigCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cached.promise;
+  }
+
+  const entry = {
+    expiresAt: now + RUNTIME_SYSTEM_CONFIG_TTL_MS,
+    promise: fetchConfig(),
+  };
+  entry.promise.catch(() => {
+    if (runtimeSystemConfigCache.get(key) === entry) {
+      runtimeSystemConfigCache.delete(key);
+    }
   });
-  if (!res.ok) throw new Error("Failed to fetch system config");
-  return res.json();
+  runtimeSystemConfigCache.set(key, entry);
+  return entry.promise;
 }
 
 export async function updateSystemConfig(
@@ -275,6 +309,7 @@ export async function updateSystemConfig(
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Failed to update system config");
+  runtimeSystemConfigCache.clear();
   return res.json();
 }
 

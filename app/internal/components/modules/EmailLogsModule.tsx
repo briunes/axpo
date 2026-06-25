@@ -19,10 +19,9 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { DataTable, StatusBadge } from "../ui";
 import type { ColumnDef } from "../ui";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import SearchIcon from "@mui/icons-material/Search";
-import ClearIcon from "@mui/icons-material/Clear";
 import { FormSelect } from "../ui/FormSelect";
 import { DateRangePicker } from "../ui/DateRangePicker";
+import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
 
@@ -65,7 +64,7 @@ interface EmailLogsModuleProps {
 }
 
 function TriggerBadge({ trigger }: { trigger?: string }) {
-    if (!trigger) return <span style={{ fontSize: 11, color: "#94a3b8" }}>—</span>;
+    if (!trigger) return <Typography component="span" variant="body2" sx={{ color: "#94a3b8" }}>—</Typography>;
 
     const toneMap: Record<string, "brand" | "accent" | "success" | "neutral"> = {
         "user-creation": "brand",
@@ -77,6 +76,7 @@ function TriggerBadge({ trigger }: { trigger?: string }) {
 }
 
 export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
+    const cachePolicy = useRequestCachePolicy("logs");
     const { t } = useI18n();
     const { preferences } = useUserPreferences();
     const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
@@ -174,7 +174,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             };
         },
         placeholderData: keepPreviousData,
-        staleTime: 60_000,
+        ...cachePolicy,
     });
 
     const {
@@ -193,7 +193,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             return (result.data || result) as EmailLog;
         },
         enabled: !!selectedLogId,
-        staleTime: 300_000,
+        ...cachePolicy,
     });
 
     useEffect(() => {
@@ -232,7 +232,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             sortable: true,
             width: "180",
             renderCell: (log) => (
-                <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+                <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
                     {formatDate(log.sentAt)}
                 </Typography>
             ),
@@ -241,7 +241,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             key: "recipientEmail",
             label: t("logs", "recipient"),
             renderCell: (log) => (
-                <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12 }}>
+                <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
                     {log.recipientEmail}
                 </Typography>
             ),
@@ -250,7 +250,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
             key: "subject",
             label: t("logs", "subject"),
             renderCell: (log) => (
-                <Typography variant="body2" sx={{ fontSize: 13 }}>
+                <Typography variant="body2">
                     {log.subject}
                 </Typography>
             ),
@@ -282,6 +282,8 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                 loading={loading}
                 sortState={{ column: sortColumn, direction: sortDir }}
                 onSort={handleSort}
+                onApplyFilters={handleSearch}
+                onClearFilters={resetFilters}
                 renderCustomSearch={() => (
                     <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
                         <Box sx={{ flex: 1, }}>
@@ -321,7 +323,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 value={localSearch}
                                 onChange={(e) => setLocalSearch(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                                sx={{ "& .MuiInputBase-root": { fontSize: 13 } }}
+                                sx={{ "& .MuiInputBase-root": { } }}
                             />
                         </Box>
                         <Box sx={{ flex: 2, }}>
@@ -333,12 +335,6 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
                             />
                         </Box>
-                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
-                            <SearchIcon />
-                        </Button>
-                        <Button variant="outlined" size="small" onClick={resetFilters}>
-                            <ClearIcon />
-                        </Button>
                     </Box>
                 )}
                 pagination={{

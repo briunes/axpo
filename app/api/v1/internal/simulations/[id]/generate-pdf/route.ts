@@ -8,6 +8,7 @@ import {
   buildSimulationPdfFilenameFromSimulation,
   resolveSimulationProductName,
 } from "@/infrastructure/pdf/pdfFilename";
+import { installPdfResourceGuard } from "@/infrastructure/pdf/pdfResourceGuard";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { SimulationService } from "@/application/services/simulationService";
 import { ValidationError } from "@/domain/errors/errors";
@@ -16,45 +17,6 @@ const generatePdfSchema = z.object({
   htmlContent: z.string().min(1, "htmlContent is required"),
   watermark: z.string().optional(),
 });
-
-const isBlockedPdfResource = (rawUrl: string): boolean => {
-  let url: URL;
-  try {
-    url = new URL(rawUrl);
-  } catch {
-    return true;
-  }
-
-  if (["data:", "blob:", "about:"].includes(url.protocol)) return false;
-  if (!["http:", "https:"].includes(url.protocol)) return true;
-
-  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (
-    host === "localhost" ||
-    host === "::1" ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".local") ||
-    host === "metadata.google.internal"
-  ) {
-    return true;
-  }
-
-  const parts = host.split(".").map(Number);
-  if (parts.length === 4 && parts.every((part) => Number.isInteger(part))) {
-    const [a, b] = parts;
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      a >= 224
-    );
-  }
-
-  return false;
-};
 
 /**
  * @swagger
@@ -176,6 +138,7 @@ export const POST = withErrorHandler(
         @media print {
           *  { box-sizing: border-box; }
           body { margin: 0; padding: 0; }
+          .asim-page { min-height: 0 !important; }
           /* Prevent page breaks inside key layout containers and leaf elements */
           table, figure, img,
           .asim-comparison,
@@ -209,16 +172,9 @@ export const POST = withErrorHandler(
 
     try {
       const page = await browser.newPage();
-      await page.setRequestInterception(true);
-      page.on("request", (resourceRequest) => {
-        if (isBlockedPdfResource(resourceRequest.url())) {
-          resourceRequest.abort("blockedbyclient");
-        } else {
-          resourceRequest.continue();
-        }
-      });
+      await installPdfResourceGuard(page);
       await page.setContent(enrichedHtml, {
-        waitUntil: "networkidle0",
+        waitUntil: "load",
       });
 
       pdfBuffer = await page.pdf({

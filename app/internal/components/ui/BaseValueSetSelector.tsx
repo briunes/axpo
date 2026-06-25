@@ -9,8 +9,11 @@ interface BaseValueSetSelectorProps {
     token: string;
     isAdmin: boolean;
     usedBaseValueSetId?: string | null;
-    onChange?: (id: string) => void;
+    scopeType?: BaseValueSetItem["scopeType"];
+    forAgencyId?: string;
+    onChange?: (id: string, meta?: { userInitiated: boolean }) => void;
     onChangeItem?: (item: BaseValueSetItem) => void;
+    compact?: boolean;
 }
 
 function formatUploadDate(dateStr: string): string {
@@ -23,13 +26,13 @@ function formatUploadDate(dateStr: string): string {
     });
 }
 
-export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, onChange, onChangeItem }: BaseValueSetSelectorProps) {
+export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scopeType, forAgencyId, onChange, onChangeItem, compact = false }: BaseValueSetSelectorProps) {
     const [sets, setSets] = useState<BaseValueSetItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<string>("");
 
     useEffect(() => {
-        listBaseValueSets(token, { pageSize: 100, showArchived: false })
+        listBaseValueSets(token, { pageSize: 100, showArchived: false, scopeType, forAgencyId, minimal: true })
             .then((res) => {
                 setSets(res.items);
                 let resolved: BaseValueSetItem | undefined;
@@ -43,11 +46,14 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, onCha
                         res.items[0];
                     if (def) { setSelected(def.id); resolved = def; }
                 }
-                if (resolved) onChangeItem?.(resolved);
+                if (resolved) {
+                    onChange?.(resolved.id, { userInitiated: false });
+                    onChangeItem?.(resolved);
+                }
             })
             .catch(() => { /* non-critical */ })
             .finally(() => setLoading(false));
-    }, [token]);
+    }, [token, scopeType, forAgencyId]);
 
     useEffect(() => {
         if (usedBaseValueSetId && sets.find((s) => s.id === usedBaseValueSetId)) {
@@ -61,27 +67,44 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, onCha
 
 
     return isAdmin ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                minWidth: 0,
+                width: compact ? "min(100%, 420px)" : "100%",
+                flex: compact ? "0 1 420px" : "1 1 auto",
+            }}
+        >
             <FormSelect
                 label=""
                 options={sets.map((s) => ({
                     value: s.id,
                     label: `${s.name}  v${s.version}`,
                     secondaryLabel: `Uploaded ${formatUploadDate(s.createdAt)}`,
-                    icon: s.isActive ? <StarIcon sx={{ fontSize: 13, color: "warning.main" }} /> : undefined,
+                    icon: s.isActive ? <StarIcon sx={{color: "warning.main" }} /> : undefined,
                 }))}
                 value={selected}
                 onChange={(id) => {
                     if (!id) return;
                     const idStr = String(id);
                     setSelected(idStr);
-                    onChange?.(idStr);
+                    onChange?.(idStr, { userInitiated: true });
                     const item = sets.find((s) => s.id === idStr);
                     if (item) onChangeItem?.(item);
                 }}
                 fullWidth
                 textFieldProps={{ size: "small", placeholder: "Select base values set…" }}
-                sx={{ minWidth: 360 }}
+                sx={{
+                    width: "100%",
+                    minWidth: compact ? 0 : { xs: 0, sm: 360 },
+                    maxWidth: compact ? 420 : "100%",
+                    "& .MuiInputBase-root": compact
+                        ? {
+                            minHeight: 36, }
+                        : undefined,
+                }}
             />
         </div>
     ) : null;

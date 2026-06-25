@@ -76,3 +76,13 @@ export const decryptSensitiveValue = (
     decipher.final(),
   ]).toString("utf8");
 };
+
+export const tryDecryptSensitiveValue = (
+  value: string | null | undefined,
+): string | null => {
+  try {
+    return decryptSensitiveValue(value);
+  } catch {
+    return null;
+  }
+};

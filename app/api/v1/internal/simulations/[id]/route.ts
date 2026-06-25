@@ -8,7 +8,7 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
-import { decryptSensitiveValue } from "@/application/lib/sensitiveData";
+import { tryDecryptSensitiveValue } from "@/application/lib/sensitiveData";
 
 const updateSimulationSchema = z.object({
   status: z.nativeEnum(SimulationStatus).optional(),
@@ -16,6 +16,57 @@ const updateSimulationSchema = z.object({
   payloadJson: z.record(z.unknown()).optional(),
   baseValueSetId: z.string().nullable().optional(),
 });
+
+const hasPayloadBase = (payload: unknown): payload is Record<string, unknown> =>
+  typeof payload === "object" &&
+  payload !== null &&
+  !Array.isArray(payload) &&
+  ("type" in payload ||
+    "electricity" in payload ||
+    "gas" in payload ||
+    "invoiceData" in payload ||
+    "results" in payload ||
+    "schemaVersion" in payload);
+
+const latestSelectedOfferFromVersions = (
+  versions: Array<{ payloadJson: unknown }>,
+) => {
+  for (const version of versions) {
+    const payload = version.payloadJson;
+    if (
+      typeof payload === "object" &&
+      payload !== null &&
+      !Array.isArray(payload) &&
+      Object.prototype.hasOwnProperty.call(payload, "selectedOffer")
+    ) {
+      return (payload as Record<string, unknown>).selectedOffer;
+    }
+  }
+  return undefined;
+};
+
+const mergeVersionPayloads = (
+  versions: Array<{ payloadJson: unknown }>,
+): Record<string, unknown> | null => {
+  const basePayload = versions.find((version) =>
+    hasPayloadBase(version.payloadJson),
+  )?.payloadJson as Record<string, unknown> | undefined;
+  const fallbackPayload = versions[0]?.payloadJson;
+  const payload =
+    basePayload ??
+    (typeof fallbackPayload === "object" &&
+    fallbackPayload !== null &&
+    !Array.isArray(fallbackPayload)
+      ? (fallbackPayload as Record<string, unknown>)
+      : undefined);
+  if (!payload) return null;
+
+  const selectedOffer = latestSelectedOfferFromVersions(versions);
+  return {
+    ...payload,
+    ...(selectedOffer !== undefined ? { selectedOffer } : {}),
+  };
+};
 
 /**
  * @swagger
@@ -51,22 +102,37 @@ export const GET = withErrorHandler(
 
     const simulation = await SimulationService.assertSimulationAccess(auth, id);
 
-    // Load the latest version to get payloadJson
-    const latestVersion = await prisma.simulationVersion.findFirst({
-      where: { simulationId: id },
-      orderBy: { createdAt: "desc" },
-    });
-
     const versions = await prisma.simulationVersion.findMany({
       where: { simulationId: id },
       orderBy: { createdAt: "desc" },
-      take: 10,
+      take: 200,
+      select: {
+        id: true,
+        payloadJson: true,
+        baseValueSetId: true,
+        createdBy: true,
+        createdAt: true,
+      },
     });
 
     // Enrich with client and full ownerUser for PDF/email template variable replacement
-    const [client, ownerUser] = await Promise.all([
+    const [client, ownerUser, agency] = await Promise.all([
       simulation.clientId
-        ? prisma.client.findUnique({ where: { id: simulation.clientId } })
+        ? prisma.client.findUnique({
+            where: { id: simulation.clientId },
+            select: {
+              id: true,
+              name: true,
+              contactName: true,
+              contactEmail: true,
+              street: true,
+              city: true,
+              postalCode: true,
+              province: true,
+              country: true,
+              language: true,
+            },
+          })
         : null,
       prisma.user.findUnique({
         where: { id: simulation.ownerUserId },
@@ -81,49 +147,36 @@ export const GET = withErrorHandler(
           pinCurrent: true,
         },
       }),
+      prisma.agency.findUnique({
+        where: { id: simulation.agencyId },
+        select: { id: true, name: true, isTlv: true },
+      }),
     ]);
 
-    // Build a merged payload so the form always loads with complete data.
-    // A "select offer" save used to create a version with only the selectedOffer
-    // field, stripping inputs and results.  To recover from those broken versions
-    // (and guard against future regressions) we reconstruct the canonical payload
-    // by taking the most recent version that contains calculated results as the
-    // base (it always includes inputs too), then overlaying the most recent
-    // selectedOffer on top.
-    const versionsWithResults = versions.filter(
-      (v) => (v.payloadJson as Record<string, unknown> | null)?.results,
-    );
-    const versionsWithOffer = versions.filter((v) => {
-      const payload = v.payloadJson as Record<string, unknown> | null;
-      return payload !== null && Object.prototype.hasOwnProperty.call(payload, "selectedOffer");
-    });
-    const baseVersionPayload = (versionsWithResults[0]?.payloadJson ??
-      latestVersion?.payloadJson) as Record<string, unknown> | null;
-    const latestSelectedOffer = (
-      versionsWithOffer[0]?.payloadJson as Record<string, unknown> | null
-    )?.selectedOffer;
-    const mergedPayload: Record<string, unknown> | null = baseVersionPayload
-      ? {
-          ...baseVersionPayload,
-          ...(latestSelectedOffer !== undefined
-            ? { selectedOffer: latestSelectedOffer }
-            : {}),
-        }
-      : null;
+    const mergedPayload = mergeVersionPayloads(versions);
+
+    const displayPin =
+      tryDecryptSensitiveValue(simulation.pinSnapshot) ??
+      tryDecryptSensitiveValue(ownerUser?.pinCurrent);
+    const { pinHashSnapshot: _pinHashSnapshot, ...simulationPublicFields } =
+      simulation;
 
     // Attach payloadJson from latest version to simulation
     const simulationWithPayload = {
-      ...simulation,
-      pinSnapshot: decryptSensitiveValue(
-        simulation.pinSnapshot ?? ownerUser?.pinCurrent,
-      ),
+      ...simulationPublicFields,
+      pinSnapshot: displayPin,
       payloadJson: mergedPayload,
       client: client ?? null,
       ownerUser: ownerUser ?? simulation.ownerUser,
+      agency: agency ?? null,
     };
 
+    const versionSummaries = versions.map(
+      ({ payloadJson: _payloadJson, ...version }) => version,
+    );
+
     return ResponseHandler.ok(
-      { simulation: simulationWithPayload, versions },
+      { simulation: simulationWithPayload, versions: versionSummaries },
       200,
     );
   },

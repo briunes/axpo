@@ -9,6 +9,7 @@ import { SystemBusinessSettings } from "./SystemBusinessSettings";
 import { UserExperienceSettings } from "./UserExperienceSettings";
 import { IntegrationsSettings } from "./IntegrationsSettings";
 import { OcrUsageDashboard } from "./OcrUsageDashboard";
+import { ExcelParserConfigSettings } from "./ExcelParserConfigSettings";
 import "./configurations.css";
 
 export interface ConfigurationsModuleProps {
@@ -17,7 +18,7 @@ export interface ConfigurationsModuleProps {
     role?: string;
 }
 
-type ConfigTab = "templates-communications" | "system-business" | "user-experience" | "integrations" | "ocr-usage";
+type ConfigTab = "templates-communications" | "system-business" | "user-experience" | "integrations" | "ocr-usage" | "excel-parser";
 
 export function ConfigurationsModule({ session, onNotify, role }: ConfigurationsModuleProps) {
     const { t } = useI18n();
@@ -30,6 +31,7 @@ export function ConfigurationsModule({ session, onNotify, role }: Configurations
         "user-experience": t("configurationsModule", "tabUserExperience"),
         "integrations": t("configurationsModule", "tabIntegrations"),
         "ocr-usage": t("ocrUsage", "title"),
+        "excel-parser": "Excel Parser",
     };
 
     // SYS_ADMIN-only tabs
@@ -103,6 +105,9 @@ export function ConfigurationsModule({ session, onNotify, role }: Configurations
                 )}
                 {resolvedTab === "ocr-usage" && (
                     <OcrUsageDashboard session={session} onNotify={onNotify} />
+                )}
+                {resolvedTab === "excel-parser" && (
+                    <ExcelParserConfigSettings session={session} onNotify={onNotify} />
                 )}
             </div>
         </div>

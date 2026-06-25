@@ -4,7 +4,7 @@ import { InvalidTokenError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import {
-  applyRateLimit,
+  applyRateLimitShared,
   getClientRateLimitKey,
 } from "@/application/middleware/rateLimit";
 import { prisma } from "@/infrastructure/database/prisma";
@@ -48,7 +48,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const body = await request.json();
   const { token } = initSchema.parse(body);
 
-  applyRateLimit(
+  await applyRateLimitShared(
     getClientRateLimitKey(ip, `public-init:${token.slice(0, 8)}`),
     {
       maxRequests: 20,

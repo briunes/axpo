@@ -215,7 +215,7 @@ export function CronSettings({ session, onNotify }: CronSettingsProps) {
                                 onChange={(e) => handleCustomScheduleChange(e.target.value)}
                                 style={{ fontFamily: "monospace" }}
                             />
-                            <div style={{ marginTop: "8px", fontSize: "13px", color: "var(--axpo-text-muted)" }}>
+                            <div style={{ marginTop: "8px", color: "var(--axpo-text-muted)" }}>
                                 <a
                                     href="https://crontab.guru/"
                                     target="_blank"
@@ -253,7 +253,7 @@ export function CronSettings({ session, onNotify }: CronSettingsProps) {
                                 borderRadius: "6px",
                                 border: "1px solid var(--axpo-border)",
                             }}>
-                                <div style={{ fontSize: "13px", color: "var(--axpo-text-muted)", marginBottom: "4px" }}>
+                                <div style={{color: "var(--axpo-text-muted)", marginBottom: "4px" }}>
                                     {t("cronSettings", "currentSchedule")}
                                 </div>
                                 <div style={{ fontSize: "14px", fontWeight: 600 }}>

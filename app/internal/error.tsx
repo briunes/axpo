@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import { reportClientError } from "./lib/reportClientError";
+import { useI18n } from "../../src/lib/i18n-context";
 
 /**
  * error.tsx for the /internal section.
@@ -17,6 +18,8 @@ export default function InternalError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
+    const { t } = useI18n();
+
     useEffect(() => {
         Sentry.captureException(error);
         reportClientError(error);
@@ -37,22 +40,21 @@ export default function InternalError({
         >
             <ErrorOutlineIcon sx={{ fontSize: 56, color: "error.main" }} />
             <Typography variant="h5" fontWeight={700}>
-                Something went wrong
+                {t("common", "somethingWentWrong")}
             </Typography>
             <Typography variant="body2" color="text.secondary" maxWidth={440}>
-                An unexpected error occurred on this page. It has been reported
-                automatically.
+                {t("internalError", "description")}
             </Typography>
             {error.digest && (
                 <Typography
                     variant="caption"
                     sx={{ fontFamily: "monospace", color: "text.disabled" }}
                 >
-                    Error ID: {error.digest}
+                    {t("internalError", "errorId")} {error.digest}
                 </Typography>
             )}
             <Button variant="contained" color="error" onClick={reset} sx={{ mt: 1 }}>
-                Try again
+                {t("internalError", "tryAgain")}
             </Button>
         </Box>
     );

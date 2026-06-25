@@ -12,20 +12,24 @@ import {
   ButtonGroup,
 } from "@mui/material";
 import SyncIcon from "@mui/icons-material/Sync";
+import AddIcon from "@mui/icons-material/Add";
+import ArchiveIcon from "@mui/icons-material/Archive";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import BlockIcon from "@mui/icons-material/Block";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import CloseIcon from "@mui/icons-material/Close";
 import { useEffect, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
 import type { AgenciesActions } from "../hooks/useAgencies";
 import { ConfirmDialog } from "../shared";
-import { DataTable, StatusBadge } from "../ui";
+import { DataTable, FormInput, FormSelect, StatusBadge } from "../ui";
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
 
 interface AgenciesModuleProps {
@@ -37,11 +41,14 @@ interface AgenciesModuleProps {
 
 export function AgenciesModule({ session, actions, onNotify, onActionButtons }: AgenciesModuleProps) {
   const { t } = useI18n();
+  const router = useRouter();
   const {
     agencies, loading, busyAction, errorText, successText, clearFeedback, refresh,
     page, pageSize, total, setPage, setPageSize,
     sortColumn, sortDir, setSort,
     search, setSearch,
+    tlvFilter, setTlvFilter,
+    statusFilter, setStatusFilter,
     showArchived, setShowArchived,
     handleToggleAgencyStatus,
     handleDeleteAgency,
@@ -51,9 +58,12 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
   const [confirmToggle, setConfirmToggle] = useState<AgencyItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AgencyItem | null>(null);
   const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
+  const bulkDeleteIncludesArchived = Boolean(
+    confirmBulkDeleteIds?.some((id) => agencies.find((agency) => agency.id === id)?.isDeleted),
+  );
   const [dropdownState, setDropdownState] = useState<{
     anchorEl: HTMLElement | null;
-    items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }>;
+    items: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
 
@@ -99,11 +109,22 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
         <Box>
           <Typography variant="body1" sx={{ fontWeight: 500 }}>{a.name}</Typography>
           {(a.city || a.province) && (
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12 }}>
+            <Typography variant="body2" color="text.secondary">
               {[a.city, a.province].filter(Boolean).join(", ")}
             </Typography>
           )}
         </Box>
+      ),
+    },
+    {
+      key: "isTlv",
+      label: "Type",
+      width: "110",
+      renderCell: (a) => (
+        <StatusBadge
+          label={a.isTlv ? "TLV" : "Standard"}
+          tone={a.isTlv ? "accent" : "neutral"}
+        />
       ),
     },
     {
@@ -117,8 +138,8 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
           <Box>
             {hasAddress ? (
               <>
-                {a.street && <Typography variant="body2" sx={{ fontSize: 13 }}>{a.street}</Typography>}
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12 }}>
+                {a.street && <Typography variant="body2">{a.street}</Typography>}
+                <Typography variant="body2" color="text.secondary">
                   {[a.postalCode, a.city].filter(Boolean).join(" ")}
                   {a.country && `, ${a.country}`}
                 </Typography>
@@ -135,6 +156,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     {
       key: "commercialUsers",
       label: t("columns", "commercialUsers"),
+      width: "150",
       renderCell: (a) => {
         const commercialUsers = a.users?.filter(u => u.role === "COMMERCIAL") || [];
         return (
@@ -144,7 +166,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
                 title={
                   <Box>
                     {commercialUsers.map(u => (
-                      <Typography key={u.id} variant="body2" sx={{ fontSize: 12 }}>
+                      <Typography key={u.id} variant="body2">
                         {u.fullName} ({u.email})
                       </Typography>
                     ))}
@@ -168,6 +190,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     {
       key: "status",
       label: t("columns", "status"),
+      width: "120",
       renderCell: (a) => (
         <StatusBadge
           label={a.isActive ? t("status", "active") : t("status", "inactive")}
@@ -181,12 +204,12 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       width: "220",
       sortable: true,
       renderCell: (a) => (
-        <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {new Date(a.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
-          <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
+          <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {a.createdByUser ? `${a.createdByUser.fullName}` : "System"}
-          </span>
+          </Typography>
         </Typography>
       ),
     },
@@ -196,31 +219,34 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       width: "220",
       sortable: true,
       renderCell: (a) => (
-        <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {new Date(a.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
-          <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
+          <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {a.updatedByUser ? `${a.updatedByUser.fullName}` : "System"}
-          </span>
+          </Typography>
         </Typography>
       ),
     },
     {
       key: "actions",
       label: t("columns", "actions"),
+      width: "140",
       renderCell: (a) => {
         const primaryLabel = t("actions", "edit");
-        const primaryOnClick = () => window.location.href = `/internal/agencies/${a.id}/edit`;
+        const primaryOnClick = () => router.push(`/internal/agencies/${a.id}/edit`);
 
-        const secondaryItems: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
+        const secondaryItems: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }> = [];
         secondaryItems.push({
           label: a.isActive ? t("actions", "deactivate") : t("actions", "activate"),
           onClick: () => setConfirmToggle(a),
+          icon: a.isActive ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />,
           danger: a.isActive,
         });
         secondaryItems.push({
           label: t("actions", "delete"),
           onClick: () => setConfirmDelete(a),
+          icon: <DeleteOutlineIcon fontSize="small" />,
           danger: true,
         });
 
@@ -229,7 +255,13 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
         return (
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
             <ButtonGroup variant="outlined" size="small">
-              <Button onClick={primaryOnClick} sx={{ minWidth: '80px !important' }}>
+              <Button
+                onClick={primaryOnClick}
+                startIcon={<EditIcon fontSize="small" />}
+                title={primaryLabel}
+                aria-label={primaryLabel}
+                sx={{ minWidth: '80px !important' }}
+              >
                 {primaryLabel}
               </Button>
               {hasDropdown && (
@@ -256,27 +288,55 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     if (canManage) {
       onActionButtons?.(
         <>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => refresh()}
-            disabled={loading}
-            loading={loading}
-          >
-            <SyncIcon fontSize="small" />&nbsp;{t("actions", "refresh")}
-          </Button>
+          <Tooltip title={t("actions", "refresh")} arrow>
+            <span className="topbar-action-wrap">
+              <Button
+                className="topbar-action topbar-action--compact"
+                variant="outlined"
+                size="small"
+                onClick={() => refresh()}
+                disabled={loading}
+                loading={loading}
+                startIcon={<SyncIcon fontSize="small" />}
+                aria-label={t("actions", "refresh")}
+              >
+                <span className="topbar-action-label">{t("actions", "refresh")}</span>
+              </Button>
+            </span>
+          </Tooltip>
           {isAdmin(session.user.role) && (
-            <Button
-              variant={showArchived ? "contained" : "outlined"}
-              size="small"
-              onClick={() => setShowArchived(!showArchived)}
-            >
-              {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
-            </Button>
+            <Tooltip title={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")} arrow>
+              <span className="topbar-action-wrap">
+                <Button
+                  className="topbar-action topbar-action--compact"
+                  variant={showArchived ? "contained" : "outlined"}
+                  size="small"
+                  onClick={() => setShowArchived(!showArchived)}
+                  startIcon={<ArchiveIcon fontSize="small" />}
+                  aria-label={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+                >
+                  <span className="topbar-action-label">
+                    {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+                  </span>
+                </Button>
+              </span>
+            </Tooltip>
           )}
-          <Link href="/internal/agencies/new" style={{ textDecoration: "none" }}>
-            <Button variant="contained" size="small">{t("actions", "newAgency")}</Button>
-          </Link>
+          <Tooltip title={t("actions", "newAgency")} arrow>
+            <span className="topbar-action-wrap">
+              <Link href="/internal/agencies/new" style={{ textDecoration: "none" }}>
+                <Button
+                  className="topbar-action topbar-action--compact"
+                  variant="contained"
+                  size="small"
+                  startIcon={<AddIcon fontSize="small" />}
+                  aria-label={t("actions", "newAgency")}
+                >
+                  <span className="topbar-action-label">{t("actions", "newAgency")}</span>
+                </Button>
+              </Link>
+            </span>
+          </Tooltip>
         </>
       );
     }
@@ -300,7 +360,14 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
-        onClearFilters={() => { setSearch(""); setPage(1); }}
+        onApplyFilters={(draft) => { setSearch(draft); setPage(1); }}
+        onClearFilters={() => {
+          setSearch("");
+          setTlvFilter("");
+          setStatusFilter("");
+          setPage(1);
+        }}
+        hasActiveFilters={Boolean(search || tlvFilter || statusFilter)}
         searchPlaceholder={t("search", "agencies")}
         emptyMessage={t("search", "emptyAgencies")}
         sortState={{ column: sortColumn, direction: sortDir }}
@@ -325,14 +392,119 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
             onClick: (ids) => setConfirmBulkDeleteIds(ids),
           },
         ]}
+        renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
+          <>
+            <Box sx={{ width: 280 }}>
+              <FormInput
+                label=""
+                placeholder={searchPlaceholder}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
+                size="small"
+                slotProps={{
+                  input: {
+                    endAdornment: draft ? (
+                      <IconButton
+                        size="small"
+                        onClick={() => { setDraft(""); setSearch(""); setPage(1); }}
+                        aria-label="Clear"
+                        edge="end"
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    ) : null,
+                  },
+                }}
+              />
+            </Box>
+            <Box sx={{ width: 280 }}>
+              <FormSelect
+                label=""
+                options={[
+                  { value: "", label: "All agency types" },
+                  { value: "tlv", label: "TLV" },
+                  { value: "standard", label: "Standard" },
+                ]}
+                value={tlvFilter}
+                onChange={(val) => {
+                  setTlvFilter(val as string);
+                  setPage(1);
+                }}
+                placeholder="Type"
+                textFieldProps={{ size: "small" }}
+              />
+            </Box>
+            <Box sx={{ width: 280 }}>
+              <FormSelect
+                label=""
+                options={[
+                  { value: "", label: t("search", "allStatuses") },
+                  { value: "active", label: t("status", "active") },
+                  { value: "inactive", label: t("status", "inactive") },
+                ]}
+                value={statusFilter}
+                onChange={(val) => {
+                  setStatusFilter(val as string);
+                  setPage(1);
+                }}
+                placeholder={t("columns", "status")}
+                textFieldProps={{ size: "small" }}
+              />
+            </Box>
+          </>
+        )}
+        mobileCard={{
+          title: "name",
+          status: "status",
+          actions: (a) => (
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 0.75 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                component={Link}
+                href={`/internal/agencies/${a.id}/edit`}
+                startIcon={<EditIcon fontSize="small" />}
+                sx={{ minWidth: 0 }}
+              >
+                {t("actions", "edit")}
+              </Button>
+              <Button
+                variant="outlined"
+                color={a.isActive ? "error" : "success"}
+                size="small"
+                onClick={() => setConfirmToggle(a)}
+                startIcon={a.isActive ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
+                sx={{ minWidth: 0 }}
+              >
+                {a.isActive ? t("actions", "deactivate") : t("actions", "activate")}
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                onClick={() => setConfirmDelete(a)}
+                startIcon={<DeleteOutlineIcon fontSize="small" />}
+                sx={{ minWidth: 0 }}
+              >
+                {t("actions", "delete")}
+              </Button>
+            </Box>
+          ),
+        }}
       />
 
       {/* ── Confirm bulk delete ──────────────────────────────────── */}
       {confirmBulkDeleteIds && (
         <ConfirmDialog
           title={t("agenciesModule", "bulkDeleteTitle")}
-          message={t("agenciesModule", "bulkDeleteConfirm", { count: confirmBulkDeleteIds.length })}
+          message={t(
+            "agenciesModule",
+            bulkDeleteIncludesArchived ? "bulkDeletePermanentConfirm" : "bulkDeleteConfirm",
+            { count: confirmBulkDeleteIds.length },
+          )}
           confirmLabel={t("actions", "delete")}
+          countdownSeconds={bulkDeleteIncludesArchived ? 5 : undefined}
           busy={busyAction === "bulk-delete-agencies"}
           onConfirm={async () => {
             await handleBulkDeleteAgencies(confirmBulkDeleteIds);
@@ -360,8 +532,13 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       {confirmDelete && (
         <ConfirmDialog
           title={t("agenciesModule", "deleteTitle")}
-          message={t("agenciesModule", "deleteConfirm", { name: confirmDelete.name })}
+          message={t(
+            "agenciesModule",
+            confirmDelete.isDeleted ? "deletePermanentConfirm" : "deleteConfirm",
+            { name: confirmDelete.name },
+          )}
           confirmLabel={t("actions", "delete")}
+          countdownSeconds={confirmDelete.isDeleted ? 5 : undefined}
           busy={busyAction === `delete-agency-${confirmDelete.id}`}
           onConfirm={async () => {
             await handleDeleteAgency(confirmDelete);
@@ -394,12 +571,16 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
             key={i}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
-            sx={{
-              fontSize: 13,
-              color: item.danger ? "error.main" : "text.primary",
+            sx={{color: item.danger ? "error.main" : "text.primary",
               py: 0.75,
+              gap: 1,
             }}
           >
+            {item.icon && (
+              <Box component="span" sx={{ display: "inline-flex", width: 18, color: "inherit" }}>
+                {item.icon}
+              </Box>
+            )}
             {item.label}
           </MenuItem>
         ))}

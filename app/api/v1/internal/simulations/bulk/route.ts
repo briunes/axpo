@@ -1,11 +1,9 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
-import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 import { AuditService } from "@/application/services/auditService";
 
@@ -75,20 +73,7 @@ export const PATCH = withErrorHandler(async (request: NextRequest) => {
 
   for (const id of ids) {
     try {
-      // Verify access then archive
-      const simulation = await SimulationService.assertSimulationAccess(
-        auth,
-        id,
-      );
-
-      await prisma.simulation.update({
-        where: { id: simulation.id },
-        data: {
-          isDeleted: true,
-          deletedAt: new Date(),
-        },
-      });
-
+      await SimulationService.softDeleteSimulation(auth, id);
       results.push({ id, success: true });
     } catch (err: unknown) {
       results.push({

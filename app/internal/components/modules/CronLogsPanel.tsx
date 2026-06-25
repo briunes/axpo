@@ -9,10 +9,9 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
-import SearchIcon from "@mui/icons-material/Search";
-import ClearIcon from "@mui/icons-material/Clear";
 import { FormSelect } from "../ui/FormSelect";
 import { DateRangePicker } from "../ui/DateRangePicker";
+import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -41,6 +40,7 @@ export interface CronLogsPanelProps {
 }
 
 export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
+    const cachePolicy = useRequestCachePolicy("logs");
     const theme = useTheme();
     const { locale, t } = useI18n();
     const { preferences } = useUserPreferences();
@@ -114,7 +114,7 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
             };
         },
         placeholderData: keepPreviousData,
-        staleTime: 60_000,
+        ...cachePolicy,
     });
 
     useEffect(() => {
@@ -133,10 +133,10 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
             label: t("logs", "timestamp"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                    <Typography variant="body2" sx={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>
                         {formatDate(log.executedAt)}
                     </Typography>
-                    <Typography variant="caption" sx={{ fontSize: 11, color: "text.secondary" }}>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
                         {formatDistanceToNow(new Date(log.executedAt), { addSuffix: true, locale: locale === "es" ? es : undefined })}
                     </Typography>
                 </Box>
@@ -154,7 +154,6 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                         size="small"
                         sx={{
                             fontWeight: 600,
-                            fontSize: 12,
                             height: 26,
                             color: isSuccess ? theme.palette.success.main : theme.palette.error.main,
                             backgroundColor: isSuccess
@@ -176,7 +175,6 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                     <Typography
                         variant="body2"
                         sx={{
-                            fontSize: 16,
                             fontWeight: 700,
                             color: log.totalAffected > 0 ? "primary.main" : "text.secondary",
                         }}
@@ -184,7 +182,7 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                         {log.totalAffected}
                     </Typography>
                     {log.totalAffected > 0 && (
-                        <Typography variant="caption" sx={{ fontSize: 11, color: "text.secondary" }}>
+                        <Typography variant="caption" sx={{ color: "text.secondary" }}>
                             {t("logs", "expired")}
                         </Typography>
                     )}
@@ -201,7 +199,6 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                     variant="outlined"
                     sx={{
                         fontFamily: "monospace",
-                        fontSize: 12,
                         fontWeight: 600,
                         height: 24,
                         borderColor: "divider",
@@ -221,7 +218,6 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                         label={isApi ? t("logs", "manualApi") : t("logs", "scheduled")}
                         size="small"
                         sx={{
-                            fontSize: 11,
                             fontWeight: 600,
                             height: 24,
                             backgroundColor: isApi
@@ -239,20 +235,20 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
             renderCell: (log) => {
                 if (log.errorMessage) {
                     return (
-                        <Typography variant="body2" sx={{ fontSize: 12, color: "error.main", fontWeight: 500 }}>
+                        <Typography variant="body2" sx={{ color: "error.main", fontWeight: 500 }}>
                             {t("logs", "error")}: {log.errorMessage}
                         </Typography>
                     );
                 }
                 if (log.metadata?.expiredIds && log.metadata.expiredIds.length > 0) {
                     return (
-                        <Typography variant="body2" sx={{ fontSize: 12, color: "success.main" }}>
+                        <Typography variant="body2" sx={{ color: "success.main" }}>
                             {t("logs", "cronProcessed", { count: log.metadata.expiredIds.length })}
                         </Typography>
                     );
                 }
                 return (
-                    <Typography variant="body2" sx={{ fontSize: 12, color: "text.secondary", fontStyle: "italic" }}>
+                    <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic" }}>
                         {t("logs", "noSimulationsToExpire")}
                     </Typography>
                 );
@@ -266,6 +262,8 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                 columns={columns}
                 rows={logs}
                 loading={loading}
+                onApplyFilters={handleSearch}
+                onClearFilters={handleClear}
                 renderCustomSearch={() => (
                     <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
                         <Box sx={{ flex: 1, }}>
@@ -305,12 +303,6 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                                 onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
                             />
                         </Box>
-                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
-                            <SearchIcon />
-                        </Button>
-                        <Button variant="outlined" size="small" onClick={handleClear}>
-                            <ClearIcon />
-                        </Button>
                     </Box>
                 )}
                 pagination={{

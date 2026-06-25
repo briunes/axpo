@@ -32,6 +32,10 @@ const models: Record<string, ModelMeta> = {
       clients: { table: "clients", many: true },
       simulations: { table: "simulations", many: true },
       agencyTariffs: { table: "agency_tariffs", many: true },
+      agencyProductConfigs: {
+        table: "agency_product_configs",
+        many: true,
+      },
       createdByUser: {
         table: "users",
         constraint: "agencies_createdByUserId_fkey",
@@ -50,6 +54,22 @@ const models: Record<string, ModelMeta> = {
     },
     compoundUniques: {
       agencyId_tariffType: ["agencyId", "tariffType"],
+    },
+  },
+  agencyProductConfig: {
+    table: "agency_product_configs",
+    timestamps: true,
+    relations: {
+      agency: { table: "agencies", localField: "agencyId" },
+    },
+    compoundUniques: {
+      agencyId_productKey: ["agencyId", "productKey"],
+      agencyId_commodity_pricingType_productKey: [
+        "agencyId",
+        "commodity",
+        "pricingType",
+        "productKey",
+      ],
     },
   },
   client: {
@@ -157,6 +177,13 @@ const models: Record<string, ModelMeta> = {
       baseValueSetId_key: ["baseValueSetId", "key"],
     },
   },
+  excelParserProductConfig: {
+    table: "excel_parser_product_configs",
+    timestamps: true,
+    compoundUniques: {
+      scopeType_sourceLabel: ["scopeType", "sourceLabel"],
+    },
+  },
   accessAttempt: {
     table: "access_attempts",
     relations: { simulation: { table: "simulations" } },
@@ -244,6 +271,15 @@ const models: Record<string, ModelMeta> = {
   ocrLogFile: {
     table: "ocr_log_files",
     relations: { ocrLog: { table: "ocr_logs" } },
+  },
+  llmBenchmarkRun: {
+    table: "llm_benchmark_runs",
+    relations: {
+      createdByUser: {
+        table: "users",
+        constraint: "llm_benchmark_runs_createdByUserId_fkey",
+      },
+    },
   },
   appErrorLog: {
     table: "app_error_logs",

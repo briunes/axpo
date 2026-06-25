@@ -144,6 +144,14 @@ export function getAiUsage(data: any, provider: string) {
     };
   }
 
+  if (provider === "aws-bedrock-nvidia") {
+    return {
+      promptTokens: data.usage?.inputTokens,
+      completionTokens: data.usage?.outputTokens,
+      totalTokens: data.usage?.totalTokens,
+    };
+  }
+
   return {
     promptTokens: data.usage?.prompt_tokens,
     completionTokens: data.usage?.completion_tokens,

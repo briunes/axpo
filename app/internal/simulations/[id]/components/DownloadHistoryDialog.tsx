@@ -291,7 +291,7 @@ function buildHistoryHtml(
 
         return `
           <div class="asim-history-block" style="margin-bottom:28px;break-inside:avoid;page-break-inside:avoid;">
-            <div class="asim-history-title" style="text-align:center;color:${HISTORY_HEADER_RED};font-weight:bold;font-size:13px;margin-bottom:6px;break-after:avoid;page-break-after:avoid;">${tariff}</div>
+            <div class="asim-history-title" style="text-align:center;color:${HISTORY_HEADER_RED};font-weight:bold;margin-bottom:6px;break-after:avoid;page-break-after:avoid;">${tariff}</div>
             <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
               <thead>
                 <tr>
@@ -558,7 +558,7 @@ export function DownloadHistoryDialog({
             onClose={onClose}
             maxWidth="lg"
             fullWidth
-            PaperProps={{ sx: { height: "90vh" } }}
+            PaperProps={{ sx: { height: { xs: "auto", md: "90vh" }, maxHeight: { xs: "92vh", md: "90vh" } } }}
         >
             <DialogTitle
                 sx={{
@@ -581,7 +581,7 @@ export function DownloadHistoryDialog({
 
             <Divider />
 
-            <DialogContent sx={{ p: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <DialogContent sx={{ p: 0, display: "flex", flexDirection: "column", overflow: { xs: "auto", md: "hidden" } }}>
                 {isLoading ? (
                     <Box
                         sx={{
@@ -616,7 +616,7 @@ export function DownloadHistoryDialog({
                             }}
                         >
                             {/* Product selector */}
-                            <Box sx={{ minWidth: 300 }}>
+                            <Box sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { xs: 0, sm: 300 } }}>
                                 <FormSelect
                                     label={t("downloadHistory", "selectProduct") || "Product"}
                                     value={selectedProductKey}
@@ -631,7 +631,7 @@ export function DownloadHistoryDialog({
 
                             {/* Template selector — only shown when price-history templates exist */}
                             {historyTemplates.length > 0 && (
-                                <Box sx={{ minWidth: 300 }}>
+                                <Box sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { xs: 0, sm: 300 } }}>
                                     <FormSelect
                                         label={t("downloadHistory", "selectTemplate") || "Template"}
                                         value={selectedTemplateId}
@@ -653,7 +653,9 @@ export function DownloadHistoryDialog({
                                         display: "flex",
                                         alignItems: "center",
                                         gap: 0.5,
-                                        ml: "auto",
+                                        ml: { xs: 0, sm: "auto" },
+                                        minWidth: 0,
+                                        width: { xs: "100%", sm: "auto" },
                                     }}
                                 >
                                     <VisibilityIcon fontSize="small" color="action" />
@@ -669,7 +671,24 @@ export function DownloadHistoryDialog({
                         </Box>
 
                         {/* Preview area */}
-                        <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
+                        <Box sx={{ display: { xs: "block", md: "none" }, p: 2 }}>
+                            <Paper
+                                variant="outlined"
+                                sx={{
+                                    p: 2,
+                                    borderStyle: "dashed",
+                                    bgcolor: "action.hover",
+                                }}
+                            >
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                                    {t("downloadHistory", "previewUnavailableMobileTitle") || "Preview not available on mobile"}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    {t("downloadHistory", "previewUnavailableMobile") || "The PDF preview is available on medium screens and above."}
+                                </Typography>
+                            </Paper>
+                        </Box>
+                        <Box sx={{ display: { xs: "none", md: "block" }, flex: 1, overflow: "auto", p: 2 }}>
                             <Paper
                                 variant="outlined"
                                 sx={{

@@ -4,12 +4,14 @@ import { useState } from "react";
 import { TextField, type TextFieldProps, Box, IconButton, InputAdornment } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 /**
  * Reusable styled input component with consistent border radius and styling.
  * When type="password", a toggle button is shown to reveal/hide the value.
  */
 export function FormInput({ label, required, helperText, type, ...props }: TextFieldProps) {
+    const { t } = useI18n();
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === "password";
 
@@ -34,12 +36,6 @@ export function FormInput({ label, required, helperText, type, ...props }: TextF
                 helperText={helperText}
                 size="small"
                 fullWidth
-                onChange={props.onChange ? (e) => {
-                    if (type === "number") {
-                        e.target.value = String(parseFloat(e.target.value));
-                    }
-                    props.onChange!(e);
-                } : undefined}
                 slotProps={{
                     input: isPassword ? {
                         endAdornment: (
@@ -49,7 +45,7 @@ export function FormInput({ label, required, helperText, type, ...props }: TextF
                                     edge="end"
                                     onClick={() => setShowPassword((v) => !v)}
                                     onMouseDown={(e) => e.preventDefault()}
-                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                    aria-label={showPassword ? t("common", "hidePassword") : t("common", "showPassword")}
                                     tabIndex={-1}
                                 >
                                     {showPassword

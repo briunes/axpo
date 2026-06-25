@@ -8,6 +8,8 @@ const assertRoleMock = jest.fn();
 const assertPermissionMock = jest.fn();
 const findAgencyMock = jest.fn();
 const updateAgencyMock = jest.fn();
+const transactionMock = jest.fn();
+const auditLogMock = jest.fn();
 
 jest.mock("@/application/middleware/auth", () => ({
   requireAuth: (...args: unknown[]) => requireAuthMock(...args),
@@ -26,6 +28,13 @@ jest.mock("@/infrastructure/database/prisma", () => ({
       findUnique: (...args: unknown[]) => findAgencyMock(...args),
       update: (...args: unknown[]) => updateAgencyMock(...args),
     },
+    $transaction: (...args: unknown[]) => transactionMock(...args),
+  },
+}));
+
+jest.mock("@/application/services/auditService", () => ({
+  AuditService: {
+    logEvent: (...args: unknown[]) => auditLogMock(...args),
   },
 }));
 
@@ -36,6 +45,7 @@ describe("agency by id security", () => {
     jest.clearAllMocks();
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
     assertPermissionMock.mockResolvedValue(undefined);
+    auditLogMock.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -121,5 +131,51 @@ describe("agency by id security", () => {
     expect(body.error.code).toBe("FORBIDDEN");
     expect(findAgencyMock).not.toHaveBeenCalled();
     expect(updateAgencyMock).not.toHaveBeenCalled();
+  });
+
+  it("persists the TLV agency flag when admin patches agency", async () => {
+    requireAuthMock.mockResolvedValue({
+      userId: "admin-1",
+      role: UserRole.ADMIN,
+      agencyId: "agency-admin",
+      email: "admin@example.com",
+    });
+    findAgencyMock.mockResolvedValue({
+      id: "agency-1",
+      name: "Agency 1",
+      isActive: true,
+      isDeleted: false,
+      isTlv: false,
+    });
+    updateAgencyMock.mockResolvedValue({
+      id: "agency-1",
+      name: "Agency 1",
+      isTlv: true,
+    });
+    transactionMock.mockImplementation(async (callback) =>
+      callback({
+        agency: {
+          update: updateAgencyMock,
+        },
+      }),
+    );
+
+    const request = new NextRequest("http://localhost/api/v1/internal/agencies/agency-1", {
+      method: "PATCH",
+      body: JSON.stringify({ name: "Agency 1", isTlv: true }),
+      headers: {
+        authorization: "Bearer token",
+        "content-type": "application/json",
+      },
+    });
+
+    const response = await PATCH(request, { params: { id: "agency-1" } });
+
+    expect(response.status).toBe(200);
+    expect(updateAgencyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ isTlv: true }),
+      }),
+    );
   });
 });

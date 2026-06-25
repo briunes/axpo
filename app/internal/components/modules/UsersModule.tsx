@@ -12,10 +12,10 @@ import {
   MenuItem,
   ButtonGroup,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, RotatePinResult } from "../../lib/internalApi";
@@ -27,6 +27,9 @@ import { DataTable, StatusBadge, FormSelect, FormInput } from "../ui";
 import type { ColumnDef } from "../ui";
 import { RefreshIcon } from "../ui/icons";
 import SyncIcon from '@mui/icons-material/Sync';
+import AddIcon from '@mui/icons-material/Add';
+import ArchiveIcon from '@mui/icons-material/Archive';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -46,6 +49,7 @@ type UserItem = UsersActions["users"] extends (infer T)[] ? T : never;
 
 export function UsersModule({ session, actions, agencies, onNotify, onActionButtons }: UsersModuleProps) {
   const { t } = useI18n();
+  const router = useRouter();
   const {
     users, loading, busyAction, errorText, successText, clearFeedback, refresh,
     page, pageSize, total, setPage, setPageSize,
@@ -66,9 +70,12 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
   const [confirmToggleUser, setConfirmToggleUser] = useState<UserItem | null>(null);
   const [confirmPinRotateUser, setConfirmPinRotateUser] = useState<UserItem | null>(null);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<UserItem | null>(null);
+  const bulkDeleteIncludesArchived = Boolean(
+    confirmBulkDeleteIds?.some((id) => users.find((user) => user.id === id)?.isDeleted),
+  );
   const [dropdownState, setDropdownState] = useState<{
     anchorEl: HTMLElement | null;
-    items: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }>;
+    items: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
 
@@ -98,28 +105,75 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
 
   // Render action buttons for topbar
   useLayoutEffect(() => {
-    console.log('UsersModule setting buttons, onActionButtons:', onActionButtons);
     onActionButtons?.(
       <>
-        <Button variant="outlined" size="small" onClick={() => refresh()} disabled={loading} loading={loading}><SyncIcon fontSize="small" /> {t("actions", "refresh")}</Button>
+        <Tooltip title={t("actions", "refresh")} arrow>
+          <span className="topbar-action-wrap">
+            <Button
+              className="topbar-action topbar-action--compact"
+              variant="outlined"
+              size="small"
+              onClick={() => refresh()}
+              disabled={loading}
+              loading={loading}
+              startIcon={<SyncIcon fontSize="small" />}
+              aria-label={t("actions", "refresh")}
+            >
+              <span className="topbar-action-label">{t("actions", "refresh")}</span>
+            </Button>
+          </span>
+        </Tooltip>
         {isAdminUser && (
-          <Button
-            variant={showArchived ? "contained" : "outlined"}
-            size="small"
-            onClick={() => setShowArchived(!showArchived)}
-          >
-            {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
-          </Button>
+          <Tooltip title={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")} arrow>
+            <span className="topbar-action-wrap">
+              <Button
+                className="topbar-action topbar-action--compact"
+                variant={showArchived ? "contained" : "outlined"}
+                size="small"
+                onClick={() => setShowArchived(!showArchived)}
+                startIcon={<ArchiveIcon fontSize="small" />}
+                aria-label={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+              >
+                <span className="topbar-action-label">
+                  {showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")}
+                </span>
+              </Button>
+            </span>
+          </Tooltip>
         )}
         {canManageUserSessions && (
-          <Link href="/internal/users/sessions" style={{ textDecoration: "none" }}>
-            <Button variant="outlined" size="small">{t("userSessions", "openSessionsPage")}</Button>
-          </Link>
+          <Tooltip title={t("userSessions", "openSessionsPage")} arrow>
+            <span className="topbar-action-wrap">
+              <Link href="/internal/users/sessions" style={{ textDecoration: "none" }}>
+                <Button
+                  className="topbar-action topbar-action--compact"
+                  variant="outlined"
+                  size="small"
+                  startIcon={<ManageAccountsIcon fontSize="small" />}
+                  aria-label={t("userSessions", "openSessionsPage")}
+                >
+                  <span className="topbar-action-label">{t("userSessions", "openSessionsPage")}</span>
+                </Button>
+              </Link>
+            </span>
+          </Tooltip>
         )}
         {canCreateUsers && (
-          <Link href="/internal/users/new" style={{ textDecoration: "none" }}>
-            <Button variant="contained" size="small">{t("actions", "newUser")}</Button>
-          </Link>
+          <Tooltip title={t("actions", "newUser")} arrow>
+            <span className="topbar-action-wrap">
+              <Link href="/internal/users/new" style={{ textDecoration: "none" }}>
+                <Button
+                  className="topbar-action topbar-action--compact"
+                  variant="contained"
+                  size="small"
+                  startIcon={<AddIcon fontSize="small" />}
+                  aria-label={t("actions", "newUser")}
+                >
+                  <span className="topbar-action-label">{t("actions", "newUser")}</span>
+                </Button>
+              </Link>
+            </span>
+          </Tooltip>
         )}
       </>
     );
@@ -163,9 +217,9 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       copyable: true,
       copyText: (u) => agencies.find((a) => a.id === u.agencyId)?.name ?? '',
       renderCell: (u) => (
-        <span className="dt-cell-secondary">
+        <Typography component="span" variant="body2" className="dt-cell-secondary">
           {agencies.find((a) => a.id === u.agencyId)?.name ?? u.agencyId.slice(0, 8)}
-        </span>
+        </Typography>
       ),
     },
     {
@@ -181,12 +235,12 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       width: "220",
       sortable: true,
       renderCell: (u) => (
-        <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {new Date(u.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
-          <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
+          <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {u.createdByUser?.fullName ?? "—"}
-          </span>
+          </Typography>
         </Typography>
       ),
     },
@@ -196,12 +250,12 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       width: "220",
       sortable: true,
       renderCell: (u) => (
-        <Typography variant="body2" sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
+        <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
           {new Date(u.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
           {" - "}
-          <span style={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
+          <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {u.updatedByUser?.fullName ?? "—"}
-          </span>
+          </Typography>
         </Typography>
       ),
     },
@@ -212,16 +266,19 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
         const canEdit = canDo(role, "users.edit");
         const canToggle = canDo(role, "users.deactivate");
         const canRotatePin = canDo(role, "users.edit");
-        const canDelete = canDo(role, "users.edit");
+        const canDelete =
+          (!u.isDeleted && canDo(role, "users.edit")) ||
+          (u.isDeleted && isAdmin(role));
 
         const primaryLabel = t("actions", "edit");
-        const primaryOnClick = () => window.location.href = `/internal/users/${u.id}/edit`;
+        const primaryOnClick = () => router.push(`/internal/users/${u.id}/edit`);
 
-        const secondaryItems: Array<{ label: string; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
+        const secondaryItems: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }> = [];
         if (canToggle) {
           secondaryItems.push({
             label: u.isActive ? t("actions", "deactivate") : t("actions", "activate"),
             onClick: () => setConfirmToggleUser(u),
+            icon: u.isActive ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />,
             danger: u.isActive,
           });
         }
@@ -229,12 +286,14 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           secondaryItems.push({
             label: t("actions", "rotatePin"),
             onClick: () => setConfirmPinRotateUser(u),
+            icon: <FiberPinIcon fontSize="small" />,
           });
         }
         if (canDelete) {
           secondaryItems.push({
             label: t("actions", "delete"),
             onClick: () => setConfirmDeleteUser(u),
+            icon: <DeleteOutlineIcon fontSize="small" />,
             danger: true,
           });
         }
@@ -245,8 +304,23 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
             {canEdit ? (
               <ButtonGroup variant="outlined" size="small">
-                <Button onClick={primaryOnClick} sx={{ minWidth: '80px !important' }}>
-                  {primaryLabel}
+                <Button
+                  onClick={primaryOnClick}
+                  startIcon={<EditIcon fontSize="small" />}
+                  title={primaryLabel}
+                  aria-label={primaryLabel}
+                  sx={{
+                    minWidth: "88px !important",
+                    "@media (max-width: 1400px)": {
+                      minWidth: "36px !important",
+                      px: 0.75,
+                      "& .MuiButton-startIcon": { mr: 0, ml: 0 },
+                    },
+                  }}
+                >
+                  <Box component="span" sx={{ "@media (max-width: 1400px)": { display: "none" } }}>
+                    {primaryLabel}
+                  </Box>
                 </Button>
                 {hasDropdown && (
                   <Button
@@ -282,6 +356,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
+        onApplyFilters={(draft) => { setSearch(draft); setPage(1); }}
         onClearFilters={() => {
           setSearch("");
           setRoleFilter("");
@@ -378,27 +453,86 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
                 />
               </Box>
             )}
-            <Button
-              variant="contained"
-              size="small"
-              onClick={commitSearch}
-              aria-label="Search"
-              sx={{
-                minWidth: 'auto',
-              }}
-            >
-              <SearchIcon />
-              {t("common", "search")}
-            </Button>
           </>
         )}
+        mobileCard={{
+          title: "fullName",
+          status: "status",
+          actions: (u) => {
+            const canEdit = canDo(role, "users.edit");
+            const canToggle = canDo(role, "users.deactivate");
+            const canRotatePin = canDo(role, "users.edit");
+            const canDelete =
+              (!u.isDeleted && canDo(role, "users.edit")) ||
+              (u.isDeleted && isAdmin(role));
+            const actionCount = [canEdit, canToggle, canRotatePin, canDelete].filter(Boolean).length;
+
+            if (actionCount === 0) return null;
+
+            return (
+              <Box sx={{ display: "grid", gridTemplateColumns: actionCount > 2 ? "repeat(2, 1fr)" : `repeat(${actionCount}, 1fr)`, gap: 0.75 }}>
+                {canEdit && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => router.push(`/internal/users/${u.id}/edit`)}
+                    startIcon={<EditIcon fontSize="small" />}
+                    sx={{ minWidth: 0 }}
+                  >
+                    {t("actions", "edit")}
+                  </Button>
+                )}
+                {canToggle && (
+                  <Button
+                    variant="outlined"
+                    color={u.isActive ? "error" : "success"}
+                    size="small"
+                    onClick={() => setConfirmToggleUser(u)}
+                    startIcon={u.isActive ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
+                    sx={{ minWidth: 0 }}
+                  >
+                    {u.isActive ? t("actions", "deactivate") : t("actions", "activate")}
+                  </Button>
+                )}
+                {canRotatePin && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setConfirmPinRotateUser(u)}
+                    startIcon={<FiberPinIcon fontSize="small" />}
+                    sx={{ minWidth: 0 }}
+                  >
+                    {t("actions", "rotatePin")}
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    onClick={() => setConfirmDeleteUser(u)}
+                    startIcon={<DeleteOutlineIcon fontSize="small" />}
+                    sx={{ minWidth: 0 }}
+                  >
+                    {t("actions", "delete")}
+                  </Button>
+                )}
+              </Box>
+            );
+          },
+        }}
       />
 
       {confirmBulkDeleteIds && (
         <ConfirmDialog
           title={t("usersModule", "bulkDeleteTitle")}
-          message={t("usersModule", "bulkDeleteConfirm", { count: confirmBulkDeleteIds.length })}
+          message={t(
+            "usersModule",
+            bulkDeleteIncludesArchived ? "bulkDeletePermanentConfirm" : "bulkDeleteConfirm",
+            { count: confirmBulkDeleteIds.length },
+          )}
           confirmLabel={t("actions", "delete")}
+          countdownSeconds={bulkDeleteIncludesArchived ? 5 : undefined}
           busy={busyAction === "bulk-delete-users"}
           onConfirm={async () => {
             await handleBulkDeleteUsers(confirmBulkDeleteIds);
@@ -487,8 +621,13 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       {confirmDeleteUser && (
         <ConfirmDialog
           title={t("usersModule", "deleteTitle")}
-          message={t("usersModule", "deleteConfirm", { name: confirmDeleteUser.fullName })}
+          message={t(
+            "usersModule",
+            confirmDeleteUser.isDeleted ? "deletePermanentConfirm" : "deleteConfirm",
+            { name: confirmDeleteUser.fullName },
+          )}
           confirmLabel={t("actions", "delete")}
+          countdownSeconds={confirmDeleteUser.isDeleted ? 5 : undefined}
           busy={busyAction === `delete-user-${confirmDeleteUser.id}`}
           onConfirm={async () => {
             await handleDeleteUser(confirmDeleteUser);
@@ -521,12 +660,16 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             key={i}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
-            sx={{
-              fontSize: 13,
-              color: item.danger ? "error.main" : "text.primary",
+            sx={{color: item.danger ? "error.main" : "text.primary",
               py: 0.75,
+              gap: 1,
             }}
           >
+            {item.icon && (
+              <Box component="span" sx={{ display: "inline-flex", width: 18, color: "inherit" }}>
+                {item.icon}
+              </Box>
+            )}
             {item.label}
           </MenuItem>
         ))}

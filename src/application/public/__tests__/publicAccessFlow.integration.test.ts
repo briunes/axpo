@@ -14,6 +14,7 @@ const auditLogEventMock = jest.fn();
 
 jest.mock("@/application/middleware/rateLimit", () => ({
   applyRateLimit: (...args: unknown[]) => applyRateLimitMock(...args),
+  applyRateLimitShared: (...args: unknown[]) => applyRateLimitMock(...args),
   getClientRateLimitKey: (...args: unknown[]) =>
     getClientRateLimitKeyMock(...args),
 }));

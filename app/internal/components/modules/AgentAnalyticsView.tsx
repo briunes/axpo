@@ -1,8 +1,8 @@
 "use client";
 
-import { PieChart } from "@mui/x-charts/PieChart";
+import { Box, Typography } from "@mui/material";
 import type { AnalyticsOverview, AnalyticsUserStat } from "../../lib/internalApi";
-import { DataTable, GradientLineChart, GradientBarChart } from "../ui";
+import { DataTable, GradientLineChart, GradientBarChart, ResponsivePieChart } from "../ui";
 import type { ColumnDef } from "../ui";
 import { useI18n } from "../../../../src/lib/i18n-context";
 
@@ -19,12 +19,13 @@ function KpiCard({ title, value, sub, accent, percentage, trend }: KpiCardProps)
     return (
         <div className="panel-card" style={{
             flex: "1 1 160px",
-            background: accent ? `linear-gradient(135deg, ${accent}15 0%, ${accent}05 100%)` : undefined,
+            background: accent ? `linear-gradient(135deg, ${accent}14 0%, ${accent}05 100%), var(--scheme-surface-raised)` : undefined,
             border: accent ? `1px solid ${accent}40` : undefined,
             borderRadius: 12,
             padding: "18px 20px",
             position: "relative",
             overflow: "hidden",
+            minWidth: 0,
         }}>
             {accent && (
                 <div style={{
@@ -85,6 +86,9 @@ function ChartPanel({ title, subtitle, children, style }: {
         <div className="panel-card" style={{
             borderRadius: 10,
             padding: "18px 20px",
+            width: "100%",
+            minWidth: 0,
+            overflow: "hidden",
             ...style,
         }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--scheme-neutral-500)", marginBottom: subtitle ? 2 : 14 }}>{title}</div>
@@ -147,19 +151,19 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             key: "userName",
             label: t("analyticsModule", "colCommercialName"),
             sortable: true,
-            renderCell: (r) => <span className="dt-cell-primary">{r.userName}</span>,
+            renderCell: (r) => <Typography component="span" variant="body2" className="dt-cell-primary">{r.userName}</Typography>,
         },
         {
             key: "total",
             label: t("analyticsModule", "colCreated"),
             sortable: true,
             renderCell: (r) => (
-                <span style={{
+                <Typography component="span" variant="body2" sx={{
                     fontWeight: 600,
                     color: r.total > 10 ? "#10b981" : r.total > 5 ? "#06b6d4" : "inherit",
                 }}>
                     {r.total}
-                </span>
+                </Typography>
             ),
         },
         {
@@ -167,8 +171,8 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             label: t("analyticsModule", "colSent"),
             sortable: true,
             renderCell: (r) => (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontWeight: 600, color: "#10b981" }}>{r.shared}</span>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography component="span" variant="body2" sx={{ fontWeight: 600, color: "#10b981" }}>{r.shared}</Typography>
                     <div style={{
                         flex: 1,
                         height: 6,
@@ -183,7 +187,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                             background: "linear-gradient(90deg, #10b981 0%, #10b981CC 100%)",
                         }} />
                     </div>
-                </div>
+                </Box>
             ),
         },
         {
@@ -193,7 +197,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                 const rate = r.shared > 0 ? Math.round(((r.opened ?? 0) / r.shared) * 100) : 0;
                 const color = rate > 70 ? "#10b981" : rate > 40 ? "#06b6d4" : "#f59e0b";
                 return (
-                    <div style={{
+                    <Box sx={{
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 6,
@@ -202,13 +206,13 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         border: `1px solid ${color}40`,
                         borderRadius: 6,
                     }}>
-                        <span style={{
+                        <Typography component="span" variant="body2" sx={{
                             fontWeight: 600,
                             color: color,
                         }}>
                             {rate}%
-                        </span>
-                    </div>
+                        </Typography>
+                    </Box>
                 );
             },
         },
@@ -262,16 +266,16 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
 
             {/* ── Team Funnel ───────────────────────────────────────────────── */}
             <ChartPanel title={t("analyticsModule", "chartTeamEngagementFunnel")} subtitle={t("analyticsModule", "chartTeamEngagementFunnelSub")}>
-                <div style={{ display: "flex", gap: 12, alignItems: "stretch", padding: "12px 0", position: "relative" }}>
+                <div className="analytics-funnel" style={{ display: "flex", gap: 12, alignItems: "stretch", padding: "12px 0", position: "relative" }}>
                     {[
                         { label: t("analyticsModule", "funnelCreated"), value: analytics.totalSimulations, color: "#3b82f6", percent: 100 },
                         { label: t("analyticsModule", "funnelSentEmail") || "Sent (Email)", value: emailSent, color: "#10b981", percent: analytics.totalSimulations > 0 ? Math.round((emailSent / analytics.totalSimulations) * 100) : 0 },
                         { label: t("analyticsModule", "funnelOpened"), value: analytics.successfulAccess || 0, color: "#06b6d4", percent: openRate },
                     ].map((stage, idx) => (
-                        <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, position: "relative" }}>
+                        <div className="analytics-funnel-stage" key={stage.label} style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", gap: 8, position: "relative", minWidth: 0 }}>
                             <div style={{
                                 background: `${stage.color}20`,
-                                border: `2px solid ${stage.color}60`,
+                                border: `1px solid ${stage.color}55`,
                                 borderRadius: 8,
                                 padding: "20px",
                                 textAlign: "center",
@@ -281,7 +285,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                                 <div style={{ fontSize: 20, fontWeight: 600, color: `${stage.color}CC`, marginTop: 6 }}>{stage.percent}%</div>
                             </div>
                             {idx < 2 && (
-                                <div style={{
+                                <div className="analytics-funnel-arrow" style={{
                                     position: "absolute",
                                     right: "-24px",
                                     top: "50%",
@@ -297,7 +301,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             </ChartPanel>
 
             {/* ── Activity Trends + Status ──────────────────────────────────── */}
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 14 }}>
                 <ChartPanel
                     title={t("analyticsModule", "chartActivityOverTime")}
                     subtitle={t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))}
@@ -316,7 +320,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
 
                 <ChartPanel title={t("analyticsModule", "chartStatusDistribution")}>
                     {pieData.length > 0 ? (
-                        <PieChart
+                        <ResponsivePieChart
                             series={[{
                                 data: pieData,
                                 innerRadius: 48,
@@ -336,7 +340,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                             margin={{ left: 0, right: 140, top: 10, bottom: 10 }}
                         />
                     ) : (
-                        <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
+                        <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, }}>
                             {t("analyticsModule", "noDataAvailable")}
                         </div>
                     )}
@@ -346,7 +350,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             {/* ── CRITICAL: Follow-ups Section ──────────────────────────────── */}
             <div className="panel-card" style={{
                 padding: "20px",
-                background: "linear-gradient(135deg, #f59e0b15 0%, #f59e0b05 100%)",
+                background: "linear-gradient(135deg, #f59e0b14 0%, #f59e0b05 100%), var(--scheme-surface-raised)",
                 border: "2px solid #f59e0b60",
                 borderRadius: 12,
             }}>
@@ -356,13 +360,13 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f59e0b", marginBottom: 2 }}>
                             {t("analyticsModule", "followUpsRequired")}
                         </h3>
-                        <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
+                        <p style={{color: "var(--scheme-neutral-500)" }}>
                             {t("analyticsModule", "followUpsRequiredSub")}
                         </p>
                     </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 }}>
                     <div style={{
                         padding: "16px",
                         background: "var(--scheme-neutral-950)",
@@ -434,7 +438,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--scheme-neutral-100)", marginBottom: 4 }}>
                             {t("analyticsModule", "tableCommercialPerformance")}
                         </h3>
-                        <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
+                        <p style={{color: "var(--scheme-neutral-500)" }}>
                             {t("analyticsModule", "tableCommercialPerformanceSub")}
                         </p>
                     </div>
@@ -474,15 +478,15 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                         <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--scheme-neutral-100)", marginBottom: 4 }}>
                             {t("analyticsModule", "sectionSimContent")}
                         </h3>
-                        <p style={{ fontSize: 13, color: "var(--scheme-neutral-500)" }}>
+                        <p style={{color: "var(--scheme-neutral-500)" }}>
                             {t("analyticsModule", "sectionSimContentSub")}
                         </p>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, paddingBottom: "2rem" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 14, paddingBottom: "2rem" }}>
                         {/* Energy type split */}
                         <ChartPanel title={t("analyticsModule", "chartEnergyType")} subtitle={t("analyticsModule", "chartEnergyTypeSub")}>
                             {(analytics.energyTypeSplit?.length ?? 0) > 0 ? (
-                                <PieChart
+                                <ResponsivePieChart
                                     series={[{
                                         data: (analytics.energyTypeSplit ?? []).map((e, i) => ({
                                             id: i,
@@ -504,7 +508,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                                     margin={{ left: 0, right: 120, top: 10, bottom: 10 }}
                                 />
                             ) : (
-                                <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, fontSize: 13 }}>
+                                <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4, }}>
                                     {t("analyticsModule", "noDataAvailable")}
                                 </div>
                             )}
@@ -538,7 +542,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
                                         </div>
                                     </>
                                 ) : (
-                                    <div style={{ opacity: 0.4, fontSize: 13 }}>{t("analyticsModule", "noDataAvailable")}</div>
+                                    <div style={{ opacity: 0.4, }}>{t("analyticsModule", "noDataAvailable")}</div>
                                 )}
                             </div>
                         </ChartPanel>
