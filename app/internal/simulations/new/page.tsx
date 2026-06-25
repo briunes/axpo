@@ -22,7 +22,7 @@ import { CurrencyInput } from "../../components/ui/CurrencyInput";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
-import { useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 
 type SimType = "ELECTRICITY" | "GAS";
 
@@ -157,6 +157,7 @@ export default function NewSimulationPage() {
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const onActionButtons = useActionButtons();
     const breadcrumbs = useMemo(() => [{ label: t("newSimulationPage", "title") }], [t]);
     useTopBarBreadcrumbs(breadcrumbs);
 
@@ -198,6 +199,7 @@ export default function NewSimulationPage() {
     const [reportSubmitted, setReportSubmitted] = useState(false);
     const [electricityTaxConfig, setElectricityTaxConfig] = useState<any>(null);
     const [gasTaxConfig, setGasTaxConfig] = useState<any>(null);
+    const [formActions, setFormActions] = useState<React.ReactNode>(null);
 
     useEffect(() => {
         const root = document.documentElement;
@@ -212,6 +214,11 @@ export default function NewSimulationPage() {
 
         return () => observer.disconnect();
     }, []);
+
+    useEffect(() => {
+        onActionButtons?.(formActions);
+        return () => onActionButtons?.(null);
+    }, [formActions, onActionButtons]);
 
     const handleInvoiceDataExtracted = (data: ExtractedInvoiceData, context?: InvoiceExtractionContext) => {
         // Resolve config-based tax defaults (used only when OCR didn't return a value)
@@ -521,6 +528,7 @@ export default function NewSimulationPage() {
             title={t("newSimulationPage", "title")}
             subtitle={t("newSimulationPage", "subtitle")}
             backHref="/internal/simulations"
+            hideHeader
         >
             {isLoading ? (
                 <div style={{ padding: "40px", textAlign: "center" }}>
@@ -534,6 +542,7 @@ export default function NewSimulationPage() {
                     onCancel={() => router.push("/internal/simulations")}
                     isSubmitting={isSubmitting}
                     hideSubmit={llmEnabled && hasInvoiceFile && !extractedData}
+                    onRenderActions={setFormActions}
                 >
                     {/* Invoice Data Extraction - Only show if LLM is enabled */}
                     {llmEnabled && (

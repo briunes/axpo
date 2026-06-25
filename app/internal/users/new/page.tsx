@@ -12,7 +12,7 @@ import { useUsers } from "../../components/hooks/useUsers";
 import { UserForm, type UserFormData } from "../../components/modules/UserForm";
 import { UserSessionsPanel } from "../../components/modules/UserSessionsPanel";
 import { CrudPageLayout, useAlerts } from "../../components/shared";
-import { useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 import type { UserRole } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
 
@@ -30,6 +30,7 @@ export default function NewUserPage() {
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const onActionButtons = useActionButtons();
     const breadcrumbs = useMemo(() => [{ label: t("userFormPage", "newTitle") }], [t]);
     useTopBarBreadcrumbs(breadcrumbs);
 
@@ -163,6 +164,11 @@ export default function NewUserPage() {
         router.push("/internal/users");
     };
 
+    useEffect(() => {
+        onActionButtons?.(!newlyCreated?.pin ? formActions : null);
+        return () => onActionButtons?.(null);
+    }, [formActions, newlyCreated?.pin, onActionButtons]);
+
     if (!session) {
         return null;
     }
@@ -172,7 +178,7 @@ export default function NewUserPage() {
             title={t("userFormPage", "newTitle")}
             subtitle={t("userFormPage", "newSubtitle")}
             backHref="/internal/users"
-            actions={formActions}
+            hideHeader
         >
             {newlyCreated?.pin && (
                 <div className="crud-callout" style={{ marginBottom: "24px" }}>

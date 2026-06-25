@@ -307,21 +307,21 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
 
     return (
         <div className="simulation-view-display">
-            <Box className="simulation-detail-tabs" sx={{ mb: 3.5 }}>
+            <Box className="simulation-detail-tabs" sx={{ mb: "12px" }}>
                 <Tabs
                     value={activeTab}
                     onChange={(_, value: "inputs" | "results") => setActiveTab(value)}
                     textColor="primary"
                     indicatorColor="primary"
                     sx={{
-                        minHeight: 40,
+                        minHeight: 36,
                         "& .MuiTab-root": {
-                            minHeight: 40,
-                            px: 2.5,
-                            py: 1,
+                            minHeight: 36,
+                            px: 2,
+                            py: 0.75,
                             textTransform: "none",
                             fontSize: 14,
-                            fontWeight: 600,
+                            fontWeight: 500,
                         },
                     }}
                 >

@@ -8,13 +8,14 @@ import { createClient, isAdmin } from "../../lib/internalApi";
 import { useAgencies } from "../../components/hooks/useAgencies";
 import { ClientForm, type ClientFormData } from "../../components/modules/ClientForm";
 import { CrudPageLayout, useAlerts } from "../../components/shared";
-import { useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 
 export default function NewClientPage() {
     const router = useRouter();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const onActionButtons = useActionButtons();
 
     const agenciesActions = useAgencies(session, 1000, { minimal: true });
 
@@ -43,6 +44,11 @@ export default function NewClientPage() {
             }));
         }
     }, [agenciesActions.agencies, formData.agencyId, session]);
+
+    useEffect(() => {
+        onActionButtons?.(formActions);
+        return () => onActionButtons?.(null);
+    }, [formActions, onActionButtons]);
 
     if (!session) return null;
 
@@ -82,7 +88,7 @@ export default function NewClientPage() {
             title={t("clientFormPage", "newTitle")}
             subtitle={t("clientFormPage", "newSubtitle")}
             backHref="/internal/clients"
-            actions={formActions}
+            hideHeader
         >
             <ClientForm
                 session={session}

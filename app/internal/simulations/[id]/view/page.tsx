@@ -219,15 +219,15 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
         <div className="simulation-meta-card" style={{
             display: "flex",
             flexDirection: "column",
-            gap: 14,
-            marginBottom: 24,
-            padding: "16px",
+            gap: 6,
+            marginBottom: 12,
+            padding: "6px 14px",
         }}>
             <div className="simulation-meta-grid" style={{
                 display: "flex",
                 flexWrap: "wrap",
-                columnGap: 24,
-                rowGap: 10,
+                columnGap: 20,
+                rowGap: 4,
                 alignItems: "center",
                 minWidth: 0,
             }}>

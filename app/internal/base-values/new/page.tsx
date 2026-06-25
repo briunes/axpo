@@ -10,7 +10,7 @@ import { CrudFormContainer, CrudPageLayout, useAlerts } from "../../components/s
 import { BaseValueItemBuilder } from "../../components/ui/BaseValueItemBuilder";
 import { FormInput } from "../../components/ui";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 
 const defaultItem = (): BaseValueItem => ({ key: "", valueNumeric: undefined, unit: "" });
 
@@ -19,6 +19,7 @@ export default function NewBaseValueSetPage() {
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const onActionButtons = useActionButtons();
 
     const agenciesActions = useAgencies(session, 1000, { minimal: true });
 
@@ -41,6 +42,11 @@ export default function NewBaseValueSetPage() {
             return;
         }
     }, [router, session]);
+
+    useEffect(() => {
+        onActionButtons?.(formActions);
+        return () => onActionButtons?.(null);
+    }, [formActions, onActionButtons]);
 
     if (!session) return null;
 
@@ -88,7 +94,7 @@ export default function NewBaseValueSetPage() {
             title={t("baseValuesModule", "newTitle")}
             subtitle={t("baseValuesModule", "newSubtitle")}
             backHref="/internal/base-values"
-            actions={formActions}
+            hideHeader
         >
             <CrudFormContainer
                 onSubmit={handleSubmit}

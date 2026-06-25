@@ -1326,6 +1326,7 @@ export const translations = {
       roleAgent: "Agente Máster",
       roleAdmin: "Admin",
       roleSysAdmin: "Sys Admin",
+      validFullNameRequired: "Full name is required.",
       validEmailRequired: "Email is required",
       validEmailInvalid: "Please enter a valid email address",
       validMobilePhoneRequired: "Mobile phone is required",

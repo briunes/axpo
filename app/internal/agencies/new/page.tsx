@@ -1,14 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Checkbox, FormControlLabel, Stack } from "@mui/material";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { createAgency } from "../../lib/internalApi";
 import { AddressForm, CrudFormContainer, CrudPageLayout, useAlerts, type AddressData } from "../../components/shared";
 import { FormInput } from "../../components/ui";
-import { useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 
 interface ValidationErrors {
     name?: string;
@@ -19,6 +19,7 @@ export default function NewAgencyPage() {
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const onActionButtons = useActionButtons();
 
     const [name, setName] = useState("");
     const [isTlv, setIsTlv] = useState(false);
@@ -29,6 +30,11 @@ export default function NewAgencyPage() {
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
     const breadcrumbs = useMemo(() => [{ label: t("agencyFormPage", "newTitle") }], [t]);
     useTopBarBreadcrumbs(breadcrumbs);
+
+    useEffect(() => {
+        onActionButtons?.(formActions);
+        return () => onActionButtons?.(null);
+    }, [formActions, onActionButtons]);
 
     if (!session) return null;
 
@@ -82,7 +88,7 @@ export default function NewAgencyPage() {
             title={t("agencyFormPage", "newTitle")}
             subtitle={t("agencyFormPage", "newSubtitle")}
             backHref="/internal/agencies"
-            actions={formActions}
+            hideHeader
         >
             <CrudFormContainer
                 onSubmit={handleSubmit}
