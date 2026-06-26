@@ -128,6 +128,21 @@ function TokenCell({ total }: { total?: number }) {
     return <span style={{ fontVariantNumeric: "tabular-nums" }}>{total.toLocaleString()}</span>;
 }
 
+function getResultTokens(result: BenchmarkResult): number | undefined {
+    const stepTokens = (
+        (result.detection.totalTokens ?? 0) + (result.extraction.totalTokens ?? 0)
+    ) || undefined;
+    return result.totalTokens ?? stepTokens;
+}
+
+function getBestRunResult(run: BenchmarkRunGroup): BenchmarkResult | null {
+    if (!run.results.length) return null;
+    return [...run.results].sort((a, b) => {
+        if (b.overallScore !== a.overallScore) return b.overallScore - a.overallScore;
+        return a.totalDurationMs - b.totalDurationMs;
+    })[0];
+}
+
 function formatDateTime(value?: string | null) {
     if (!value) return "—";
     return new Intl.DateTimeFormat(undefined, {
@@ -372,6 +387,89 @@ function ResultsTable({
                     {footer}
                 </Box>
             )}
+        </Box>
+    );
+}
+
+function BenchmarkHistoryRow({ run }: { run: BenchmarkRunGroup }) {
+    const { t } = useI18n();
+    const [expanded, setExpanded] = useState(false);
+    const bestResult = getBestRunResult(run);
+
+    return (
+        <>
+            <TableRow
+                hover
+                sx={{ cursor: "pointer", "&:hover": { backgroundColor: "var(--scheme-neutral-1100)" } }}
+                onClick={() => setExpanded((v) => !v)}
+            >
+                <TableCell sx={{ width: 32 }}>
+                    <IconButton size="small" tabIndex={-1} aria-label={expanded ? t("llmBenchmark", "closeDetails") : t("llmBenchmark", "openDetails")}>
+                        {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                    </IconButton>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>{formatDateTime(run.createdAt)}</TableCell>
+                <TableCell>
+                    {bestResult ? (
+                        <>
+                            <Box sx={{ fontWeight: 600 }}>{bestResult.providerName}</Box>
+                            <Box sx={{ fontSize: 11, color: "var(--axpo-text-secondary)" }}>
+                                {bestResult.provider} / {bestResult.modelName}
+                            </Box>
+                        </>
+                    ) : (
+                        <Box sx={{ color: "var(--axpo-text-secondary)" }}>—</Box>
+                    )}
+                </TableCell>
+                <TableCell align="center">
+                    {bestResult ? <ScoreBadge score={bestResult.overallScore} /> : "—"}
+                </TableCell>
+                <TableCell align="right">
+                    {bestResult ? <DurationCell ms={bestResult.totalDurationMs} /> : "—"}
+                </TableCell>
+                <TableCell align="right">
+                    {bestResult ? <TokenCell total={getResultTokens(bestResult)} /> : "—"}
+                </TableCell>
+                <TableCell align="right" sx={{ color: "var(--axpo-text-secondary)", fontSize: 12 }}>
+                    {t("llmBenchmark", "runCount", { count: run.resultCount, plural: run.resultCount === 1 ? "" : "s" })}
+                </TableCell>
+            </TableRow>
+            <TableRow>
+                <TableCell colSpan={7} sx={{ p: 0, border: expanded ? undefined : "none" }}>
+                    <Collapse in={expanded} timeout="auto" unmountOnExit>
+                        <Box sx={{ p: 2, backgroundColor: "var(--scheme-neutral-1100)", borderTop: "1px solid var(--scheme-neutral-900)" }}>
+                            <ResultsTable title="" results={run.results} />
+                        </Box>
+                    </Collapse>
+                </TableCell>
+            </TableRow>
+        </>
+    );
+}
+
+function BenchmarkHistoryTable({ runs }: { runs: BenchmarkRunGroup[] }) {
+    const { t } = useI18n();
+
+    return (
+        <Box sx={{ overflowX: "auto", border: "1px solid var(--scheme-neutral-900)", borderRadius: "8px" }}>
+            <Table size="small" sx={{ minWidth: 760 }}>
+                <TableHead>
+                    <TableRow sx={{ backgroundColor: "var(--scheme-neutral-1200)" }}>
+                        <TableCell sx={{ width: 32 }} />
+                        <TableCell sx={{ fontWeight: 700 }}>{t("llmBenchmark", "date")}</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{t("llmBenchmark", "bestLlm")}</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 700 }}>{t("llmBenchmark", "overall")}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>{t("llmBenchmark", "time")}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>{t("llmBenchmark", "tokens")}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>{t("llmBenchmark", "tested")}</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {runs.map((run) => (
+                        <BenchmarkHistoryRow key={run.id} run={run} />
+                    ))}
+                </TableBody>
+            </Table>
         </Box>
     );
 }
@@ -713,24 +811,7 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
                     {t("llmBenchmark", "history")}
                 </Typography>
                 {historyRuns.length > 0 ? (
-                    <Stack spacing={2.5}>
-                        {historyRuns.map((run) => (
-                            <Box key={run.id}>
-                                <Box sx={{ mb: 1, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 2 }}>
-                                    <Box sx={{ fontWeight: 700 }}>
-                                        {formatDateTime(run.createdAt)}
-                                    </Box>
-                                    <Box sx={{ fontSize: 12, color: "var(--axpo-text-secondary)" }}>
-                                        {t("llmBenchmark", "runCount", { count: run.resultCount, plural: run.resultCount === 1 ? "" : "s" })}
-                                    </Box>
-                                </Box>
-                                <ResultsTable
-                                    title=""
-                                    results={run.results}
-                                />
-                            </Box>
-                        ))}
-                    </Stack>
+                    <BenchmarkHistoryTable runs={historyRuns} />
                 ) : (
                     <Box sx={{ color: "var(--axpo-text-secondary)", py: 2 }}>
                         {t("llmBenchmark", "noOlderRuns")}

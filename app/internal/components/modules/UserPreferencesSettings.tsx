@@ -7,6 +7,7 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { getSystemConfig, updateSystemConfig } from "../../lib/configApi";
 import { LoadingState } from "../shared/LoadingState";
 import { FormSelect } from "../ui";
+import { getLanguageOptions } from "../../../../src/lib/supportedLanguages";
 
 export interface UserPreferencesSettingsProps {
     session: SessionState;
@@ -105,10 +106,7 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
                                 helperText={t("systemSettings", "fieldLanguageDesc")}
                                 value={config.defaultLanguage}
                                 onChange={(value) => handleChange("defaultLanguage", value)}
-                                options={[
-                                    { value: "en", label: "🇬🇧 English" },
-                                    { value: "es", label: "🇪🇸 Español" }
-                                ]}
+                                options={getLanguageOptions()}
                             />
 
                             <FormSelect

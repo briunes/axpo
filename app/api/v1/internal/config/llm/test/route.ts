@@ -3,7 +3,10 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
-import { getConfiguredAiProviders } from "@/application/lib/aiConfig";
+import {
+  getConfiguredAiProviders,
+  isOpenAiCompatibleProvider,
+} from "@/application/lib/aiConfig";
 
 const isAnthropicBedrockRuntime = (provider: string, baseUrl: string): boolean =>
   provider === "aws-bedrock-anthropic" ||
@@ -125,7 +128,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           signal: AbortSignal.timeout(10000), // 10 second timeout
         });
       }
-    } else if (provider === "openai" || provider === "azure-openai") {
+    } else if (isOpenAiCompatibleProvider(provider)) {
       // OpenAI-compatible API format
       url = `${baseUrl}/chat/completions`;
       response = await fetch(url, {

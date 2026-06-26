@@ -3,7 +3,11 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SUPPORTED_LANGUAGES } from "@/lib/supportedLanguages";
-import { getAiUsage, resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
+import {
+  getAiUsage,
+  isOpenAiCompatibleProvider,
+  resolveAiConfigFromSystemConfig,
+} from "@/application/lib/aiConfig";
 
 // Allow up to 5 minutes — template generation for multiple languages can be slow
 export const maxDuration = 300;
@@ -145,12 +149,7 @@ async function callLLM(
     });
   }
 
-  if (
-    provider === "openai" ||
-    provider === "azure-openai" ||
-    provider === "ollama-cloud" ||
-    provider === "custom"
-  ) {
+  if (isOpenAiCompatibleProvider(provider) || provider === "custom") {
     return fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
@@ -235,12 +234,7 @@ async function callLLM(
 }
 
 function extractResponseText(provider: string, llmData: any): string {
-  if (
-    provider === "openai" ||
-    provider === "azure-openai" ||
-    provider === "ollama-cloud" ||
-    provider === "custom"
-  ) {
+  if (isOpenAiCompatibleProvider(provider) || provider === "custom") {
     return llmData.choices?.[0]?.message?.content || "";
   }
   if (provider === "ollama") {

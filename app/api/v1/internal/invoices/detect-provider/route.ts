@@ -6,7 +6,10 @@ import {
   convertAllPdfPagesToImages,
   OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
-import { resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
+import {
+  isOpenAiCompatibleProvider,
+  resolveAiConfigFromSystemConfig,
+} from "@/application/lib/aiConfig";
 
 const isAnthropicBedrockRuntime = (provider: string, baseUrl: string): boolean =>
   provider === "aws-bedrock-anthropic" ||
@@ -32,11 +35,7 @@ async function callLlmWithImages(
 }> {
   let llmResponse: Response;
 
-  if (
-    llmProvider === "ollama-cloud" ||
-    llmProvider === "openai" ||
-    llmProvider === "azure-openai"
-  ) {
+  if (isOpenAiCompatibleProvider(llmProvider)) {
     const content: any[] = [{ type: "text", text: prompt }];
     for (const img of images) {
       content.push({

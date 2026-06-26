@@ -32,6 +32,7 @@ import {
   NotificationsNavIcon,
 } from "../ui/icons";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { UI_LANGUAGES } from "../../../../src/lib/uiLanguages";
 import { useThemeMode } from "../../lib/ThemeModeContext";
 
 export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "logs" | "analytics" | "configurations" | "notifications";
@@ -118,10 +119,13 @@ function getInitials(name: string): string {
     .join("");
 }
 
-const LANGUAGE_OPTIONS = [
-  { locale: "en", label: "English", shortLabel: "EN", flag: "🇬🇧" },
-  { locale: "es", label: "Español", shortLabel: "ES", flag: "🇪🇸" },
-] as const;
+const LANGUAGE_OPTIONS = UI_LANGUAGES
+  .map((language) => ({
+    locale: language.code,
+    label: language.label,
+    shortLabel: language.code.toUpperCase(),
+    flag: language.flag,
+  }));
 
 export function SectionMenu({
   section,

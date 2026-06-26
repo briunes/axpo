@@ -15,6 +15,7 @@ import { CrudPageLayout, useAlerts } from "../../components/shared";
 import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 import type { UserRole } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
+import { getLanguageOptions } from "../../../../src/lib/supportedLanguages";
 
 interface LocalPreferences {
     language: string | null;
@@ -257,10 +258,7 @@ export default function NewUserPage() {
                                     label={t("userPreferences", "fieldLanguage")}
                                     value={localPreferences.language ?? "en"}
                                     onChange={(value) => setLocalPreferences((p) => ({ ...p, language: (value as string) || null }))}
-                                    options={[
-                                        { value: "en", label: "🇬🇧 English" },
-                                        { value: "es", label: "🇪🇸 Español" },
-                                    ]}
+                                    options={getLanguageOptions()}
                                 />
                                 <FormSelect
                                     label={t("systemSettings", "fieldDateFormat")}

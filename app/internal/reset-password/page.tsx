@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { saveSession } from "../lib/authSession";
 import { resetPassword } from "../lib/internalApi";
 import { useI18n } from "../../../src/lib/i18n-context";
+import { UI_LANGUAGES } from "../../../src/lib/uiLanguages";
 import styles from "../authPages.module.css";
 
 export default function ResetPasswordPage() {
@@ -77,20 +78,16 @@ function ResetPasswordContent() {
     return (
         <div className={styles.shell}>
             <div className={styles.langSwitcher}>
-                <button
-                    onClick={() => setLocale("en")}
-                    className={`${styles.langBtn} ${locale === "en" ? styles.active : ""}`}
-                    title={t("common", "english")}
-                >
-                    🇬🇧
-                </button>
-                <button
-                    onClick={() => setLocale("es")}
-                    className={`${styles.langBtn} ${locale === "es" ? styles.active : ""}`}
-                    title={t("common", "spanish")}
-                >
-                    🇪🇸
-                </button>
+                {UI_LANGUAGES.map((language) => (
+                    <button
+                        key={language.code}
+                        onClick={() => setLocale(language.code)}
+                        className={`${styles.langBtn} ${locale === language.code ? styles.active : ""}`}
+                        title={language.label}
+                    >
+                        {language.flag}
+                    </button>
+                ))}
             </div>
             <div className={styles.grid}>
 

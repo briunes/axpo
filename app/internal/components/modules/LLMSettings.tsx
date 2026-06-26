@@ -154,6 +154,17 @@ const LLM_PROVIDERS: Record<string, {
         description: "OpenAI GPT models",
         commonModels: ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
     },
+    "aws-bedrock-mantle": {
+        name: "AWS Bedrock (Mantle)",
+        requiresApiKey: true,
+        defaultBaseUrl: "https://bedrock-mantle.eu-west-1.api.aws/v1",
+        defaultModel: "qwen.qwen3-vl-235b-a22b-instruct",
+        description: "Amazon Bedrock Mantle using OpenAI-compatible Chat Completions.",
+        commonModels: [
+            "qwen.qwen3-vl-235b-a22b-instruct",
+            "qwen.qwen3-vl-235b-a22b",
+        ],
+    },
     anthropic: {
         name: "Anthropic",
         requiresApiKey: true,

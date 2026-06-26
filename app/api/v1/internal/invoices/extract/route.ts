@@ -8,7 +8,10 @@ import {
   OCR_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
 import { extractPdfWithOpenDataLoader } from "@/lib/opendataloaderPdfExtraction";
-import { resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
+import {
+  isOpenAiCompatibleProvider,
+  resolveAiConfigFromSystemConfig,
+} from "@/application/lib/aiConfig";
 
 const OCR_DEBUG_LOGS =
   process.env.NODE_ENV !== "production" ||
@@ -1119,7 +1122,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       // Providers that need image input receive rendered invoice pages.
       if (
         llmProvider === "ollama" ||
-        llmProvider === "ollama-cloud" ||
+        isOpenAiCompatibleProvider(llmProvider) ||
         isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
         isNvidiaBedrockRuntime(llmProvider)
       ) {
@@ -1267,7 +1270,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
         }),
         signal: AbortSignal.timeout(300000), // 300 second timeout for large vision models (e.g. qwen3-vl:235b)
       });
-    } else if (llmProvider === "openai" || llmProvider === "azure-openai") {
+    } else if (isOpenAiCompatibleProvider(llmProvider)) {
       // OpenAI Vision API supports both images and PDFs
       const messages: any[] = [
         {
@@ -1506,9 +1509,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
     // Extract the response text based on provider
     let extractedText = "";
     if (
-      llmProvider === "openai" ||
-      llmProvider === "azure-openai" ||
-      llmProvider === "ollama-cloud"
+      isOpenAiCompatibleProvider(llmProvider)
     ) {
       const msg = llmData.choices?.[0]?.message;
       // qwen3 thinking models put the answer in `reasoning` when `content` is empty
@@ -1877,9 +1878,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
     let completionTokens: number | undefined;
     let totalTokens: number | undefined;
     if (
-      llmProvider === "openai" ||
-      llmProvider === "azure-openai" ||
-      llmProvider === "ollama-cloud"
+      isOpenAiCompatibleProvider(llmProvider)
     ) {
       promptTokens = llmData.usage?.prompt_tokens;
       completionTokens = llmData.usage?.completion_tokens;

@@ -8,6 +8,7 @@ import { AddressForm, CrudFormContainer, CrudFormRow } from "../shared";
 import type { AddressData } from "../shared";
 import { FormAutocomplete, FormInput, FormSelect, PhoneInput } from "../ui";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { getLanguageOptions } from "../../../../src/lib/supportedLanguages";
 
 export interface ClientFormData {
     name: string;
@@ -195,10 +196,7 @@ export function ClientForm({
                 label={t("clientFormPage", "fieldLanguage")}
                 value={data.language ?? ""}
                 onChange={(val) => onChange({ ...data, language: (val as string) || undefined })}
-                options={[
-                    { value: "en", label: "🇬🇧 English" },
-                    { value: "es", label: "🇪🇸 Español" },
-                ]}
+                options={getLanguageOptions()}
                 disabled={isSubmitting}
             />
 

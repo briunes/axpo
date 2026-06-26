@@ -1,11 +1,12 @@
 'use client';
 
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
-import { translations, type Locale, type TranslationKey } from './translations';
+import { isSupportedLanguage } from './supportedLanguages';
+import { isLocale, translations, type TranslationKey } from './translations';
 
 interface I18nContextType {
-    locale: Locale;
-    setLocale: (locale: Locale) => void;
+    locale: string;
+    setLocale: (locale: string) => void;
     t: (namespace: TranslationKey, key: string, params?: Record<string, string | number>) => string;
 }
 
@@ -14,19 +15,20 @@ const I18nContext = createContext<I18nContextType | undefined>(undefined);
 const LOCALE_STORAGE_KEY = 'axpo-locale';
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-    const [locale, setLocaleState] = useState<Locale>('en');
+    const [locale, setLocaleState] = useState('en');
     const [isHydrated, setIsHydrated] = useState(false);
 
     // Load locale from localStorage after hydration
     useEffect(() => {
         const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-        if (stored === 'en' || stored === 'es') {
+        if (isSupportedLanguage(stored)) {
             setLocaleState(stored);
         }
         setIsHydrated(true);
     }, []);
 
-    const setLocale = useCallback((newLocale: Locale) => {
+    const setLocale = useCallback((newLocale: string) => {
+        if (!isSupportedLanguage(newLocale)) return;
         setLocaleState(newLocale);
         if (typeof window !== 'undefined') {
             localStorage.setItem(LOCALE_STORAGE_KEY, newLocale);
@@ -36,7 +38,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const t = useCallback((namespace: TranslationKey, key: string, params?: Record<string, string | number>) => {
-        const namespaceTranslations = translations[locale][namespace];
+        const activeTranslations = isLocale(locale) ? translations[locale] : translations.en;
+        const namespaceTranslations = activeTranslations[namespace] ?? translations.en[namespace];
         if (!namespaceTranslations) {
             return key;
         }
