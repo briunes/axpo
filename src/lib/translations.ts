@@ -1879,9 +1879,44 @@ export const translations = {
       tabSystemSettings: "System Settings",
       tabPdfTemplates: "PDF Templates",
       tabEmailTemplates: "Email Templates",
+      tabPdfDefaults: "PDF Defaults",
       tabRolePermissions: "Role Permissions",
       tabLlmSettings: "LLM Settings",
       tabInvoiceProviders: "Invoice Providers",
+      tabGeneralMaintenance: "General & Maintenance",
+      tabSessions: "Sessions",
+      tabCache: "Cache",
+      tabCronJobs: "Cron Jobs",
+      groupDocuments: "Documents & Messages",
+      groupDocumentsSummary: "Templates, defaults, and message automation.",
+      groupBusiness: "Business Rules",
+      groupBusinessSummary: "Simulation behavior and calculation inputs.",
+      groupPlatform: "Platform",
+      groupPlatformSummary: "Runtime, sessions, cache, and delivery plumbing.",
+      groupAiOcr: "AI & OCR",
+      groupAiOcrSummary: "LLM routing, invoice prompts, and usage costs.",
+      groupAccess: "Access & Experience",
+      groupAccessSummary: "Defaults for people using the simulator.",
+      descPdfTemplates: "Customer-facing simulation documents.",
+      descEmailTemplates: "Reusable email copy and variables.",
+      descPdfDefaults: "Default templates by commodity.",
+      descAutomatedEmails: "Rules for system-sent messages.",
+      descSimulation: "Expiration and simulation defaults.",
+      descClients: "Client creation behavior.",
+      descCalculation: "Taxes and commodity calculation options.",
+      descExcelParser: "Source spreadsheet field mapping.",
+      descGeneralMaintenance: "App version and maintenance controls.",
+      descSmtp: "Outbound email server connection.",
+      descSessions: "Default active device limits.",
+      descCache: "Request cache policy controls.",
+      descCronJobs: "Scheduled task configuration.",
+      descLlmSettings: "Provider routing and model tests.",
+      descInvoiceProviders: "Provider-specific extraction prompts.",
+      descOcrUsage: "OCR volume, cost, and billing.",
+      descPreferences: "User-facing application defaults.",
+      descPermissions: "Role capabilities and access rules.",
+      sidebarAria: "Configuration pages",
+      settingsKicker: "Settings",
     },
     cronSettings: {
       scheduleDaily2: "Daily at 2:00 AM",
@@ -2044,6 +2079,7 @@ export const translations = {
 
     systemSettings: {
       loading: "Loading configuration...",
+      tabGeneral: "General",
       tabSimulation: "Simulation",
       tabClients: "Clients",
       tabCalculation: "Calculation",
@@ -2051,12 +2087,34 @@ export const translations = {
       tabPreferences: "User Preferences",
       tabSmtp: "SMTP Email",
       tabAutomatedEmails: "Automated Emails",
+      tabSessions: "Sessions",
+      tabCache: "Cache",
+      tabCronJobs: "Cron Jobs",
       titleSimulation: "Simulation Configuration",
       titleClients: "Client Management Configuration",
       titleCalculation: "Calculation Formula Parameters",
       titlePreferences: "Default User Preferences",
       titleSmtp: "SMTP Email Configuration",
       titleAutomatedEmails: "Automated Email Configuration",
+      fieldAppVersion: "App Version",
+      fieldAppVersionDesc:
+        "Bump this value after each deployment to force all clients to clear their cache and reload the latest version.",
+      fieldMaintenanceMode: "Maintenance Mode",
+      fieldMaintenanceModeDesc:
+        "When enabled, all visitors will be redirected to a maintenance page.",
+      fieldMaintenanceModeActiveDesc:
+        "Site is currently down for maintenance — all visitors see the maintenance page.",
+      fieldMaintenanceUntil: "Expected back online (optional)",
+      fieldMaintenanceUntilDesc:
+        "Leave blank to show no expected time to visitors.",
+      fieldMaintenanceMessage: "Maintenance message (optional)",
+      fieldMaintenanceMessagePlaceholder:
+        "We're performing scheduled maintenance to improve your experience.",
+      fieldMaintenanceMessageDesc:
+        "Custom message shown to visitors on the maintenance page.",
+      fieldDefaultMaxActiveDevices: "Default max active sessions per user",
+      fieldDefaultMaxActiveDevicesDesc:
+        "Used as the default and maximum limit when creating users or when a user has no explicit value.",
       preferencesDescription:
         "Set system-wide defaults for user preferences. Users can override these in their personal settings.",
       fieldExpirationDays: "Simulation Expiration (Days)",
@@ -2110,6 +2168,7 @@ export const translations = {
       fieldFromEmailDesc: "Email address that will appear as the sender",
       fieldFromName: "From Name",
       fieldFromNameDesc: "Display name that will appear as the sender",
+      fieldFromNamePlaceholder: "Axpo Simulator",
       fieldUserCreationTemplate: "User Creation Email Template",
       fieldUserCreationTemplateDesc:
         "Email template to send when a new user is created (leave empty to disable)",
@@ -2163,6 +2222,7 @@ export const translations = {
       smtpTestError: "SMTP connection failed",
       savedSuccess: "System settings saved successfully",
       savedError: "Failed to save system settings",
+      taxRateValue: "Value",
       taxRateActiveValue: "Active value",
       taxRateActive: "Active",
       taxRateAddPlaceholder: "Add new value…",
@@ -2533,6 +2593,7 @@ export const translations = {
       aiBuilderError: "Failed to generate template",
       aiBuilderNotEnabled:
         "LLM features are not enabled. Enable them in System Settings \u2192 LLM Configuration.",
+      defaultHtmlTitle: "New PDF Template",
     },
     emailTemplatesModule: {
       title: "Email Templates",
@@ -2594,6 +2655,29 @@ export const translations = {
       savedError: "Failed to save template",
       loadError: "Failed to load data",
       loadTemplatesError: "Failed to load templates",
+      defaultHtmlTitle: "New Email Template",
+      defaultHtmlBody: "Your content here...",
+      buttonSetupPasswordLabel: "Button - Set Up Password",
+      buttonSetupPasswordDesc:
+        "Drops a styled CTA button linked to {{SETUP_PASSWORD_URL}}",
+      buttonSetupPasswordText: "Set Up Your Password",
+      buttonResetPasswordLabel: "Button - Reset Password",
+      buttonResetPasswordDesc:
+        "Drops a styled CTA button linked to {{RESET_PASSWORD_URL}}",
+      buttonResetPasswordText: "Reset Your Password",
+      buttonViewSimulationLabel: "Button - View Simulation",
+      buttonViewSimulationDesc:
+        "Drops a styled CTA button linked to {{SIMULATION_LINK}}",
+      buttonViewSimulationText: "View Simulation",
+      varSetupPasswordValidityLabel: "Setup Password Validity Hours",
+      varSetupPasswordValidityDesc:
+        "Configured number of hours the setup-password link remains valid",
+      varMagicLinkValidityLabel: "Magic Link Validity Minutes",
+      varMagicLinkValidityDesc:
+        "Configured number of minutes the magic login link remains valid",
+      varOtpValidityLabel: "OTP Validity Minutes",
+      varOtpValidityDesc:
+        "Configured number of minutes the OTP code remains valid",
     },
     rolePermissionsModule: {
       description:
@@ -4607,9 +4691,47 @@ export const translations = {
       tabSystemSettings: "Ajustes del Sistema",
       tabPdfTemplates: "Plantillas PDF",
       tabEmailTemplates: "Plantillas de Correo",
+      tabPdfDefaults: "Valores PDF por defecto",
       tabRolePermissions: "Permisos por Rol",
       tabLlmSettings: "Ajustes LLM",
       tabInvoiceProviders: "Proveedores de Facturas",
+      tabGeneralMaintenance: "General y mantenimiento",
+      tabSessions: "Sesiones",
+      tabCache: "Caché",
+      tabCronJobs: "Tareas cron",
+      groupDocuments: "Documentos y mensajes",
+      groupDocumentsSummary:
+        "Plantillas, valores por defecto y automatización de mensajes.",
+      groupBusiness: "Reglas de negocio",
+      groupBusinessSummary:
+        "Comportamiento de simulación y parámetros de cálculo.",
+      groupPlatform: "Plataforma",
+      groupPlatformSummary:
+        "Runtime, sesiones, caché y entrega de mensajes.",
+      groupAiOcr: "IA y OCR",
+      groupAiOcrSummary: "Enrutado LLM, prompts de facturas y costes de uso.",
+      groupAccess: "Acceso y experiencia",
+      groupAccessSummary: "Valores por defecto para quienes usan el simulador.",
+      descPdfTemplates: "Documentos de simulación para clientes.",
+      descEmailTemplates: "Textos de correo reutilizables y variables.",
+      descPdfDefaults: "Plantillas por defecto por suministro.",
+      descAutomatedEmails: "Reglas para mensajes enviados por el sistema.",
+      descSimulation: "Caducidad y valores por defecto de simulación.",
+      descClients: "Comportamiento de creación de clientes.",
+      descCalculation: "Impuestos y opciones de cálculo por suministro.",
+      descExcelParser: "Mapeo de campos de hojas de cálculo origen.",
+      descGeneralMaintenance: "Versión de la app y controles de mantenimiento.",
+      descSmtp: "Conexión del servidor de correo saliente.",
+      descSessions: "Límites de dispositivos activos por defecto.",
+      descCache: "Controles de política de caché de peticiones.",
+      descCronJobs: "Configuración de tareas programadas.",
+      descLlmSettings: "Enrutado de proveedores y pruebas de modelos.",
+      descInvoiceProviders: "Prompts de extracción específicos por proveedor.",
+      descOcrUsage: "Volumen, coste y facturación OCR.",
+      descPreferences: "Valores por defecto visibles para usuarios.",
+      descPermissions: "Capacidades de rol y reglas de acceso.",
+      sidebarAria: "Páginas de configuración",
+      settingsKicker: "Ajustes",
     },
     cronSettings: {
       scheduleDaily2: "Diario a las 2:00",
@@ -4775,6 +4897,7 @@ export const translations = {
 
     systemSettings: {
       loading: "Cargando configuración...",
+      tabGeneral: "General",
       tabSimulation: "Simulación",
       tabClients: "Clientes",
       tabCalculation: "Cálculo",
@@ -4782,12 +4905,35 @@ export const translations = {
       tabPreferences: "Preferencias de Usuario",
       tabSmtp: "Correo SMTP",
       tabAutomatedEmails: "Correos Automáticos",
+      tabSessions: "Sesiones",
+      tabCache: "Caché",
+      tabCronJobs: "Tareas cron",
       titleSimulation: "Configuración de Simulación",
       titleClients: "Configuración de Gestión de Clientes",
       titleCalculation: "Parámetros de Fórmulas de Cálculo",
       titlePreferences: "Preferencias de Usuario Predeterminadas",
       titleSmtp: "Configuración de Correo SMTP",
       titleAutomatedEmails: "Configuración de Correos Automáticos",
+      fieldAppVersion: "Versión de la aplicación",
+      fieldAppVersionDesc:
+        "Incrementa este valor tras cada despliegue para forzar que todos los clientes limpien la caché y recarguen la última versión.",
+      fieldMaintenanceMode: "Modo mantenimiento",
+      fieldMaintenanceModeDesc:
+        "Cuando está activo, todos los visitantes serán redirigidos a una página de mantenimiento.",
+      fieldMaintenanceModeActiveDesc:
+        "El sitio está actualmente en mantenimiento; todos los visitantes ven la página de mantenimiento.",
+      fieldMaintenanceUntil: "Fecha prevista de vuelta (opcional)",
+      fieldMaintenanceUntilDesc:
+        "Déjalo vacío para no mostrar una hora prevista a los visitantes.",
+      fieldMaintenanceMessage: "Mensaje de mantenimiento (opcional)",
+      fieldMaintenanceMessagePlaceholder:
+        "Estamos realizando mantenimiento programado para mejorar tu experiencia.",
+      fieldMaintenanceMessageDesc:
+        "Mensaje personalizado mostrado a los visitantes en la página de mantenimiento.",
+      fieldDefaultMaxActiveDevices:
+        "Máximo de sesiones activas por usuario por defecto",
+      fieldDefaultMaxActiveDevicesDesc:
+        "Se usa como valor por defecto y límite máximo al crear usuarios o cuando un usuario no tiene un valor explícito.",
       preferencesDescription:
         "Establece valores predeterminados para las preferencias de usuario. Los usuarios pueden anularlos en su configuración personal.",
       fieldExpirationDays: "Expiración de Simulación (Días)",
@@ -4847,6 +4993,7 @@ export const translations = {
       fieldFromEmailDesc: "Dirección de correo que aparecerá como remitente",
       fieldFromName: "Nombre Remitente",
       fieldFromNameDesc: "Nombre que aparecerá como remitente",
+      fieldFromNamePlaceholder: "Axpo Simulator",
       fieldUserCreationTemplate: "Plantilla de Correo de Creación de Usuario",
       fieldUserCreationTemplateDesc:
         "Plantilla de correo para enviar cuando se crea un nuevo usuario (dejar vacío para deshabilitar)",
@@ -4902,6 +5049,7 @@ export const translations = {
       smtpTestSuccess: "Conexión SMTP exitosa",
       smtpTestError: "Falló la conexión SMTP",
       savedSuccess: "Configuración del sistema guardada correctamente",
+      taxRateValue: "Valor",
       taxRateActiveValue: "Valor activo",
       taxRateActive: "Activo",
       taxRateAddPlaceholder: "Añadir nuevo valor…",
@@ -5279,6 +5427,7 @@ export const translations = {
       aiBuilderError: "Error al generar la plantilla",
       aiBuilderNotEnabled:
         "Las funciones LLM no est\u00e1n habilitadas. Actl\u00edvalas en Configuraci\u00f3n del Sistema \u2192 LLM.",
+      defaultHtmlTitle: "Nueva plantilla PDF",
     },
     emailTemplatesModule: {
       title: "Plantillas de Correo",
@@ -5340,6 +5489,30 @@ export const translations = {
       savedError: "Error al guardar la plantilla",
       loadError: "Error al cargar los datos",
       loadTemplatesError: "Error al cargar las plantillas",
+      defaultHtmlTitle: "Nueva plantilla de correo",
+      defaultHtmlBody: "Tu contenido aquí...",
+      buttonSetupPasswordLabel: "Botón - Configurar contraseña",
+      buttonSetupPasswordDesc:
+        "Inserta un botón CTA con enlace a {{SETUP_PASSWORD_URL}}",
+      buttonSetupPasswordText: "Configurar contraseña",
+      buttonResetPasswordLabel: "Botón - Restablecer contraseña",
+      buttonResetPasswordDesc:
+        "Inserta un botón CTA con enlace a {{RESET_PASSWORD_URL}}",
+      buttonResetPasswordText: "Restablecer contraseña",
+      buttonViewSimulationLabel: "Botón - Ver simulación",
+      buttonViewSimulationDesc:
+        "Inserta un botón CTA con enlace a {{SIMULATION_LINK}}",
+      buttonViewSimulationText: "Ver simulación",
+      varSetupPasswordValidityLabel:
+        "Horas de validez de configuración de contraseña",
+      varSetupPasswordValidityDesc:
+        "Número de horas configurado durante las que el enlace de configuración de contraseña sigue siendo válido",
+      varMagicLinkValidityLabel: "Minutos de validez del enlace mágico",
+      varMagicLinkValidityDesc:
+        "Número de minutos configurado durante los que el enlace mágico sigue siendo válido",
+      varOtpValidityLabel: "Minutos de validez del OTP",
+      varOtpValidityDesc:
+        "Número de minutos configurado durante los que el código OTP sigue siendo válido",
     },
     rolePermissionsModule: {
       description:
@@ -7246,9 +7419,51 @@ export const translations = {
       tabSystemSettings: "Paramètres système",
       tabPdfTemplates: "PDF Modèles",
       tabEmailTemplates: "Modèles d'e-mails",
+      tabPdfDefaults: "Valeurs PDF par défaut",
       tabRolePermissions: "Autorisations de rôle",
       tabLlmSettings: "LLM Paramètres",
       tabInvoiceProviders: "Fournisseurs de factures",
+      tabGeneralMaintenance: "Général et maintenance",
+      tabSessions: "Sessions",
+      tabCache: "Cache",
+      tabCronJobs: "Tâches cron",
+      groupDocuments: "Documents et messages",
+      groupDocumentsSummary:
+        "Modèles, valeurs par défaut et automatisation des messages.",
+      groupBusiness: "Règles métier",
+      groupBusinessSummary:
+        "Comportement des simulations et paramètres de calcul.",
+      groupPlatform: "Plateforme",
+      groupPlatformSummary:
+        "Exécution, sessions, cache et acheminement des messages.",
+      groupAiOcr: "IA et OCR",
+      groupAiOcrSummary:
+        "Routage LLM, invites de factures et coûts d'utilisation.",
+      groupAccess: "Accès et expérience",
+      groupAccessSummary:
+        "Valeurs par défaut pour les personnes utilisant le simulateur.",
+      descPdfTemplates: "Documents de simulation destinés aux clients.",
+      descEmailTemplates: "Textes d'e-mails réutilisables et variables.",
+      descPdfDefaults: "Modèles par défaut par énergie.",
+      descAutomatedEmails: "Règles pour les messages envoyés par le système.",
+      descSimulation: "Expiration et valeurs par défaut des simulations.",
+      descClients: "Comportement de création des clients.",
+      descCalculation: "Taxes et options de calcul par énergie.",
+      descExcelParser: "Mappage des champs de feuilles de calcul source.",
+      descGeneralMaintenance:
+        "Version de l'application et contrôles de maintenance.",
+      descSmtp: "Connexion au serveur d'e-mail sortant.",
+      descSessions: "Limites par défaut des appareils actifs.",
+      descCache: "Contrôles de la politique de cache des requêtes.",
+      descCronJobs: "Configuration des tâches planifiées.",
+      descLlmSettings: "Routage des fournisseurs et tests de modèles.",
+      descInvoiceProviders:
+        "Invites d'extraction spécifiques aux fournisseurs.",
+      descOcrUsage: "Volume, coût et facturation OCR.",
+      descPreferences: "Valeurs par défaut visibles par les utilisateurs.",
+      descPermissions: "Capacités des rôles et règles d'accès.",
+      sidebarAria: "Pages de configuration",
+      settingsKicker: "Paramètres",
     },
     cronSettings: {
       scheduleDaily2: "Tous les jours à 2h00",
@@ -7397,6 +7612,7 @@ export const translations = {
     },
     systemSettings: {
       loading: "Chargement de la configuration...",
+      tabGeneral: "Général",
       tabSimulation: "Simulation",
       tabClients: "Clients",
       tabCalculation: "Calcul",
@@ -7404,12 +7620,35 @@ export const translations = {
       tabPreferences: "Préférences utilisateur",
       tabSmtp: "SMTP E-mail",
       tabAutomatedEmails: "E-mails automatisés",
+      tabSessions: "Sessions",
+      tabCache: "Cache",
+      tabCronJobs: "Tâches cron",
       titleSimulation: "Configuration des simulations",
       titleClients: "Configuration de la gestion des clients",
       titleCalculation: "Paramètres de formule de calcul",
       titlePreferences: "Préférences utilisateur par défaut",
       titleSmtp: "SMTP Configuration de la messagerie",
       titleAutomatedEmails: "Configuration automatisée des e-mails",
+      fieldAppVersion: "Version de l'application",
+      fieldAppVersionDesc:
+        "Augmentez cette valeur après chaque déploiement pour forcer tous les clients à vider leur cache et recharger la dernière version.",
+      fieldMaintenanceMode: "Mode maintenance",
+      fieldMaintenanceModeDesc:
+        "Lorsqu'il est activé, tous les visiteurs sont redirigés vers une page de maintenance.",
+      fieldMaintenanceModeActiveDesc:
+        "Le site est actuellement en maintenance ; tous les visiteurs voient la page de maintenance.",
+      fieldMaintenanceUntil: "Retour prévu en ligne (facultatif)",
+      fieldMaintenanceUntilDesc:
+        "Laissez vide pour ne pas afficher d'heure prévue aux visiteurs.",
+      fieldMaintenanceMessage: "Message de maintenance (facultatif)",
+      fieldMaintenanceMessagePlaceholder:
+        "Nous effectuons une maintenance programmée pour améliorer votre expérience.",
+      fieldMaintenanceMessageDesc:
+        "Message personnalisé affiché aux visiteurs sur la page de maintenance.",
+      fieldDefaultMaxActiveDevices:
+        "Nombre maximal de sessions actives par utilisateur par défaut",
+      fieldDefaultMaxActiveDevicesDesc:
+        "Utilisé comme valeur par défaut et limite maximale lors de la création d'utilisateurs ou lorsqu'un utilisateur n'a pas de valeur explicite.",
       preferencesDescription: "Définissez les valeurs par défaut du système pour les préférences utilisateur. Les utilisateurs peuvent les remplacer dans leurs paramètres personnels.",
       fieldExpirationDays: "Expiration de la simulation (jours)",
       fieldExpirationDesc: "Nombre de jours avant qu'une simulation n'expire et ne devienne en lecture seule",
@@ -7454,6 +7693,7 @@ export const translations = {
       fieldFromEmailDesc: "Adresse e-mail qui apparaîtra comme expéditeur",
       fieldFromName: "Du nom",
       fieldFromNameDesc: "Nom d'affichage qui apparaîtra en tant qu'expéditeur",
+      fieldFromNamePlaceholder: "Axpo Simulator",
       fieldUserCreationTemplate: "Modèle d'e-mail de création d'utilisateur",
       fieldUserCreationTemplateDesc: "Modèle d'e-mail à envoyer lors de la création d'un nouvel utilisateur (laisser vide pour désactiver)",
       fieldPasswordResetTemplate: "Modèle d'e-mail de réinitialisation de mot de passe",
@@ -7493,6 +7733,7 @@ export const translations = {
       smtpTestError: "Échec de la connexion SMTP",
       savedSuccess: "Paramètres système enregistrés avec succès",
       savedError: "Échec de l'enregistrement des paramètres système",
+      taxRateValue: "Valeur",
       taxRateActiveValue: "Valeur active",
       taxRateActive: "Actif",
       taxRateAddPlaceholder: "Ajouter une nouvelle valeur…",
@@ -7753,6 +7994,7 @@ export const translations = {
       aiBuilderApplied: "✨ Modèle IA appliqué ! Vérifiez et enregistrez lorsque vous êtes prêt.",
       aiBuilderError: "Échec de la génération du modèle",
       aiBuilderNotEnabled: "Les fonctionnalités LLM ne sont pas activées. Activez-les dans Paramètres système → Configuration LLM.",
+      defaultHtmlTitle: "Nouveau modèle PDF",
     },
     emailTemplatesModule: {
       title: "Modèles d'e-mails",
@@ -7814,6 +8056,30 @@ export const translations = {
       savedError: "Échec de l'enregistrement du modèle",
       loadError: "Échec du chargement des données",
       loadTemplatesError: "Échec du chargement des modèles",
+      defaultHtmlTitle: "Nouveau modèle d'e-mail",
+      defaultHtmlBody: "Votre contenu ici...",
+      buttonSetupPasswordLabel: "Bouton - Configurer le mot de passe",
+      buttonSetupPasswordDesc:
+        "Insère un bouton CTA lié à {{SETUP_PASSWORD_URL}}",
+      buttonSetupPasswordText: "Configurer le mot de passe",
+      buttonResetPasswordLabel: "Bouton - Réinitialiser le mot de passe",
+      buttonResetPasswordDesc:
+        "Insère un bouton CTA lié à {{RESET_PASSWORD_URL}}",
+      buttonResetPasswordText: "Réinitialiser le mot de passe",
+      buttonViewSimulationLabel: "Bouton - Voir la simulation",
+      buttonViewSimulationDesc:
+        "Insère un bouton CTA lié à {{SIMULATION_LINK}}",
+      buttonViewSimulationText: "Voir la simulation",
+      varSetupPasswordValidityLabel:
+        "Heures de validité de configuration du mot de passe",
+      varSetupPasswordValidityDesc:
+        "Nombre d'heures configuré pendant lesquelles le lien de configuration du mot de passe reste valide",
+      varMagicLinkValidityLabel: "Minutes de validité du lien magique",
+      varMagicLinkValidityDesc:
+        "Nombre de minutes configuré pendant lesquelles le lien magique reste valide",
+      varOtpValidityLabel: "Minutes de validité OTP",
+      varOtpValidityDesc:
+        "Nombre de minutes configuré pendant lesquelles le code OTP reste valide",
     },
     rolePermissionsModule: {
       description: "Contrôlez quelles sections et actions sont disponibles par rôle. {adminRole} a toujours un accès complet. Les modifications prennent effet lors du prochain chargement de la page de l'utilisateur.",
@@ -9695,9 +9961,51 @@ export const translations = {
       tabSystemSettings: "Configurações do sistema",
       tabPdfTemplates: "PDF Modelos",
       tabEmailTemplates: "Modelos de e-mail",
+      tabPdfDefaults: "Padrões de PDF",
       tabRolePermissions: "Permissões de função",
       tabLlmSettings: "LLM Configurações",
       tabInvoiceProviders: "Provedores de fatura",
+      tabGeneralMaintenance: "Geral e manutenção",
+      tabSessions: "Sessões",
+      tabCache: "Cache",
+      tabCronJobs: "Tarefas cron",
+      groupDocuments: "Documentos e mensagens",
+      groupDocumentsSummary:
+        "Modelos, padrões e automação de mensagens.",
+      groupBusiness: "Regras de negócio",
+      groupBusinessSummary:
+        "Comportamento de simulação e parâmetros de cálculo.",
+      groupPlatform: "Plataforma",
+      groupPlatformSummary:
+        "Runtime, sessões, cache e entrega de mensagens.",
+      groupAiOcr: "IA e OCR",
+      groupAiOcrSummary:
+        "Roteamento LLM, prompts de fatura e custos de uso.",
+      groupAccess: "Acesso e experiência",
+      groupAccessSummary:
+        "Padrões para pessoas que usam o simulador.",
+      descPdfTemplates: "Documentos de simulação voltados ao cliente.",
+      descEmailTemplates: "Texto de e-mail reutilizável e variáveis.",
+      descPdfDefaults: "Modelos padrão por commodity.",
+      descAutomatedEmails: "Regras para mensagens enviadas pelo sistema.",
+      descSimulation: "Expiração e padrões de simulação.",
+      descClients: "Comportamento de criação de clientes.",
+      descCalculation: "Impostos e opções de cálculo por commodity.",
+      descExcelParser: "Mapeamento de campos da planilha de origem.",
+      descGeneralMaintenance:
+        "Versão do aplicativo e controles de manutenção.",
+      descSmtp: "Conexão do servidor de e-mail de saída.",
+      descSessions: "Limites padrão de dispositivos ativos.",
+      descCache: "Controles da política de cache de requisições.",
+      descCronJobs: "Configuração de tarefas agendadas.",
+      descLlmSettings: "Roteamento de provedores e testes de modelos.",
+      descInvoiceProviders:
+        "Prompts de extração específicos por provedor.",
+      descOcrUsage: "Volume, custo e faturamento OCR.",
+      descPreferences: "Padrões visíveis para usuários.",
+      descPermissions: "Capacidades de função e regras de acesso.",
+      sidebarAria: "Páginas de configuração",
+      settingsKicker: "Configurações",
     },
     cronSettings: {
       scheduleDaily2: "Diariamente às 2h",
@@ -9846,6 +10154,7 @@ export const translations = {
     },
     systemSettings: {
       loading: "Carregando configuração...",
+      tabGeneral: "Geral",
       tabSimulation: "Simulação",
       tabClients: "Clientes",
       tabCalculation: "Cálculo",
@@ -9853,12 +10162,35 @@ export const translations = {
       tabPreferences: "Preferências do usuário",
       tabSmtp: "SMTP E-mail",
       tabAutomatedEmails: "E-mails automatizados",
+      tabSessions: "Sessões",
+      tabCache: "Cache",
+      tabCronJobs: "Tarefas cron",
       titleSimulation: "Configuração de Simulação",
       titleClients: "Configuração de gerenciamento de cliente",
       titleCalculation: "Parâmetros da fórmula de cálculo",
       titlePreferences: "Preferências padrão do usuário",
       titleSmtp: "SMTP Configuração de e-mail",
       titleAutomatedEmails: "Configuração automatizada de e-mail",
+      fieldAppVersion: "Versão do aplicativo",
+      fieldAppVersionDesc:
+        "Aumente este valor após cada implantação para forçar todos os clientes a limpar o cache e recarregar a versão mais recente.",
+      fieldMaintenanceMode: "Modo de manutenção",
+      fieldMaintenanceModeDesc:
+        "Quando ativado, todos os visitantes serão redirecionados para uma página de manutenção.",
+      fieldMaintenanceModeActiveDesc:
+        "O site está atualmente em manutenção; todos os visitantes veem a página de manutenção.",
+      fieldMaintenanceUntil: "Previsão de retorno online (opcional)",
+      fieldMaintenanceUntilDesc:
+        "Deixe em branco para não mostrar um horário previsto aos visitantes.",
+      fieldMaintenanceMessage: "Mensagem de manutenção (opcional)",
+      fieldMaintenanceMessagePlaceholder:
+        "Estamos realizando manutenção programada para melhorar sua experiência.",
+      fieldMaintenanceMessageDesc:
+        "Mensagem personalizada exibida aos visitantes na página de manutenção.",
+      fieldDefaultMaxActiveDevices:
+        "Máximo padrão de sessões ativas por usuário",
+      fieldDefaultMaxActiveDevicesDesc:
+        "Usado como valor padrão e limite máximo ao criar usuários ou quando um usuário não tem um valor explícito.",
       preferencesDescription: "Defina padrões de todo o sistema para preferências do usuário. Os usuários podem substituí-los em suas configurações pessoais.",
       fieldExpirationDays: "Expiração da simulação (dias)",
       fieldExpirationDesc: "Número de dias antes que uma simulação expire e se torne somente leitura",
@@ -9903,6 +10235,7 @@ export const translations = {
       fieldFromEmailDesc: "Endereço de e-mail que aparecerá como remetente",
       fieldFromName: "Do nome",
       fieldFromNameDesc: "Nome de exibição que aparecerá como remetente",
+      fieldFromNamePlaceholder: "Axpo Simulator",
       fieldUserCreationTemplate: "Modelo de e-mail de criação de usuário",
       fieldUserCreationTemplateDesc: "Modelo de e-mail para enviar quando um novo usuário for criado (deixe em branco para desabilitar)",
       fieldPasswordResetTemplate: "Modelo de e-mail de redefinição de senha",
@@ -9942,6 +10275,7 @@ export const translations = {
       smtpTestError: "SMTP conexão falhou",
       savedSuccess: "Configurações do sistema salvas com sucesso",
       savedError: "Falha ao salvar as configurações do sistema",
+      taxRateValue: "Valor",
       taxRateActiveValue: "Valor ativo",
       taxRateActive: "Ativo",
       taxRateAddPlaceholder: "Adicione novo valor…",
@@ -10202,6 +10536,7 @@ export const translations = {
       aiBuilderApplied: "✨ Modelo de IA aplicado! Revise e salve quando estiver pronto.",
       aiBuilderError: "Falha ao gerar modelo",
       aiBuilderNotEnabled: "LLM recursos não estão habilitados. Habilite-os em Configurações do sistema → Configuração LLM.",
+      defaultHtmlTitle: "Novo modelo PDF",
     },
     emailTemplatesModule: {
       title: "Modelos de e-mail",
@@ -10263,6 +10598,30 @@ export const translations = {
       savedError: "Falha ao salvar o modelo",
       loadError: "Falha ao carregar dados",
       loadTemplatesError: "Falha ao carregar modelos",
+      defaultHtmlTitle: "Novo modelo de e-mail",
+      defaultHtmlBody: "Seu conteúdo aqui...",
+      buttonSetupPasswordLabel: "Botão - Configurar senha",
+      buttonSetupPasswordDesc:
+        "Insere um botão CTA vinculado a {{SETUP_PASSWORD_URL}}",
+      buttonSetupPasswordText: "Configurar senha",
+      buttonResetPasswordLabel: "Botão - Redefinir senha",
+      buttonResetPasswordDesc:
+        "Insere um botão CTA vinculado a {{RESET_PASSWORD_URL}}",
+      buttonResetPasswordText: "Redefinir senha",
+      buttonViewSimulationLabel: "Botão - Ver simulação",
+      buttonViewSimulationDesc:
+        "Insere um botão CTA vinculado a {{SIMULATION_LINK}}",
+      buttonViewSimulationText: "Ver simulação",
+      varSetupPasswordValidityLabel:
+        "Horas de validade da configuração de senha",
+      varSetupPasswordValidityDesc:
+        "Número configurado de horas em que o link de configuração de senha permanece válido",
+      varMagicLinkValidityLabel: "Minutos de validade do link mágico",
+      varMagicLinkValidityDesc:
+        "Número configurado de minutos em que o link mágico permanece válido",
+      varOtpValidityLabel: "Minutos de validade do OTP",
+      varOtpValidityDesc:
+        "Número configurado de minutos em que o código OTP permanece válido",
     },
     rolePermissionsModule: {
       description: "Controle quais seções e ações estão disponíveis por função. {adminRole} sempre tem acesso total. As alterações entrarão em vigor no próximo carregamento de página do usuário.",

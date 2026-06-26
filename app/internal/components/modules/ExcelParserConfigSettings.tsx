@@ -100,11 +100,11 @@ export function ExcelParserConfigSettings({ session, onNotify }: ExcelParserConf
             );
             setIsDirty(false);
         } catch (error) {
-            onNotify(error instanceof Error ? error.message : "Failed to load Excel parser config", "error");
+            onNotify(error instanceof Error ? error.message : t("excelParserConfig", "loadError"), "error");
         } finally {
             setIsLoading(false);
         }
-    }, [onNotify, scopeType, session.token]);
+    }, [onNotify, scopeType, session.token, t]);
 
     useEffect(() => {
         loadConfig();
@@ -386,9 +386,6 @@ export function ExcelParserConfigSettings({ session, onNotify }: ExcelParserConf
             <Box sx={{ px: 2, py: 2, borderBottom: "1px solid var(--scheme-neutral-900)" }}>
                 <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between" flexWrap="wrap" useFlexGap>
                     <Stack direction="row" spacing={1.5} alignItems="center">
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                            {t("excelParserConfig", "title")}
-                        </Typography>
                         <ToggleButtonGroup
                             exclusive
                             size="small"
@@ -401,7 +398,7 @@ export function ExcelParserConfigSettings({ session, onNotify }: ExcelParserConf
                             <ToggleButton value="TLV">{t("excelParserConfig", "scopeTlv")}</ToggleButton>
                         </ToggleButtonGroup>
                     </Stack>
-                    <Stack direction="row" spacing={1}>
+                    <Stack className="configuration-page-actions" direction="row" spacing={1}>
                         <Tooltip title={t("common", "refresh")}>
                             <span>
                                 <IconButton onClick={loadConfig} disabled={isLoading || isSaving} size="small">

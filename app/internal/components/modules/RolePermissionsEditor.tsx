@@ -174,22 +174,24 @@ export function RolePermissionsEditor({
                         {t("rolePermissionsModule", "description", { adminRole: t("rolePermissionsModule", "roleLabelAdmin") })}
                     </p>
                 </div>
-                <button
-                    className={`rpe-save-btn${dirty ? " rpe-save-btn--active" : ""}`}
-                    onClick={handleSave}
-                    disabled={!dirty || saving}
-                >
-                    {saving ? (
-                        <>
-                            <CircularProgress size={14} sx={{ color: "inherit", mr: "6px" }} />
-                            {t("rolePermissionsModule", "btnSaving")}
-                        </>
-                    ) : dirty ? (
-                        t("rolePermissionsModule", "btnSave")
-                    ) : (
-                        t("rolePermissionsModule", "btnSaved")
-                    )}
-                </button>
+                <div className="configuration-page-actions">
+                    <button
+                        className={`rpe-save-btn${dirty ? " rpe-save-btn--active" : ""}`}
+                        onClick={handleSave}
+                        disabled={!dirty || saving}
+                    >
+                        {saving ? (
+                            <>
+                                <CircularProgress size={14} sx={{ color: "inherit", mr: "6px" }} />
+                                {t("rolePermissionsModule", "btnSaving")}
+                            </>
+                        ) : dirty ? (
+                            t("rolePermissionsModule", "btnSave")
+                        ) : (
+                            t("rolePermissionsModule", "btnSaved")
+                        )}
+                    </button>
+                </div>
             </div>
 
             {loading ? (

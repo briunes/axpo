@@ -672,8 +672,8 @@ export function DataTable<T extends { id: string }>({
   }, [columnByKey, mobileActionsKey, mobileCard, mobileFields, mobileStatusKey, mobileTitleKey, renderMobileCell, rowActions]);
 
   const tableSurface = 'var(--scheme-surface-raised)';
-  const tableHeaderBackground = 'color-mix(in srgb, var(--scheme-surface-raised) 84%, var(--scheme-surface-raised-subtle))';
-  const tableHoverBackground = 'color-mix(in srgb, var(--scheme-brand-600) 5%, var(--scheme-surface-raised))';
+  const tableHeaderBackground = 'var(--app-shell-topbar-gradient)';
+  const tableHoverBackground = 'var(--app-shell-topbar-gradient)';
   const tableSelectedBackground = theme.palette.mode === 'dark'
     ? theme.palette.primary.dark + '33'
     : theme.palette.primary.main + '20';

@@ -266,7 +266,7 @@ export function SectionMenu({
                         opacity: collapsed ? 0 : 1,
                         maxWidth: collapsed ? 0 : 180,
                         overflow: "hidden",
-                        fontWeight: isActive ? 600 : 'inherit',
+                        fontWeight: isActive ? 600 : 500,
                         color: isActive ? "var(--scheme-brand-600)" : "var(--scheme-neutral-400)",
                         whiteSpace: "nowrap",
                         textOverflow: "ellipsis",
@@ -345,7 +345,7 @@ export function SectionMenu({
                       opacity: collapsed ? 0 : 1,
                       maxWidth: collapsed ? 0 : 180,
                       overflow: "hidden",
-                      fontWeight: isConfigurationsActive ? 600 : 'inherit',
+                      fontWeight: isConfigurationsActive ? 600 : 500,
                       color: isConfigurationsActive
                         ? "var(--scheme-brand-600)"
                         : "var(--scheme-neutral-400)",

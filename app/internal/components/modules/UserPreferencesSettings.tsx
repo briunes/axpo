@@ -95,7 +95,6 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
             ) : (
                 <>
                     <div className="settings-panel">
-                        <h3 className="settings-panel-title">{t("systemSettings", "titlePreferences")}</h3>
                         <p style={{ color: "var(--axpo-text-secondary)", marginBottom: "24px" }}>
                             {t("systemSettings", "preferencesDescription")}
                         </p>

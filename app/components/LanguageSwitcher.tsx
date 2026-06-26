@@ -27,5 +27,5 @@ export function LanguageSwitcher() {
                 </button>
             ))}
         </div>
-    );
+    ); 
 }
