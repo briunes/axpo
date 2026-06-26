@@ -13,7 +13,7 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { Button, LinearProgress, Chip, Tooltip, CircularProgress } from "@mui/material";
 import { FormSelect } from "../ui/FormSelect";
-
+import WarningIcon from '@mui/icons-material/Warning';
 export interface ExtractedInvoiceData {
     // Client/Holder Information
     cups?: string;
@@ -721,7 +721,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
                 {extractionStatus === "success" && !isExtracting && (
                     <div className="ocr-disclaimer">
-                        <span className="ocr-disclaimer-icon">⚠️</span>
+                        <WarningIcon fontSize="small" sx={{ color: "warning.main" }} />
                         <span>{t("invoiceExtractor", "ocrDisclaimer") ?? "O OCR pode conter erros. Por favor, valide os dados preenchidos antes de continuar."}</span>
                     </div>
                 )}
@@ -731,9 +731,9 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
             <style jsx>{`
                 .invoice-extractor {
-                    background: var(--scheme-neutral-1100);
-                    border: 1px solid var(--scheme-neutral-900);
-                    border-radius: 12px;
+                    background: transparent;
+                    border: 0;
+                    border-radius: 0;
                     padding: 0;
                     color: var(--scheme-neutral-100);
                 }
@@ -759,9 +759,9 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 }
 
                 .extractor-content {
-                    background: var(--scheme-neutral-1100);
-                    border-radius: 8px;
-                    padding: 12px 16px;
+                    background: transparent;
+                    border-radius: 0;
+                    padding: 0;
                     color: var(--scheme-neutral-100);
                 }
 
@@ -770,18 +770,22 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
-                    padding: 40px 20px;
-                    border: 2px dashed var(--scheme-neutral-800);
-                    border-radius: 8px;
+                    min-height: 190px;
+                    padding: 36px 20px;
+                    border: 1px dashed color-mix(in srgb, var(--scheme-neutral-800) 86%, var(--scheme-neutral-700));
+                    border-radius: 12px;
                     cursor: pointer;
-                    transition: all 0.2s;
-                    background: var(--scheme-neutral-1000);
+                    transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+                    background:
+                        linear-gradient(180deg, color-mix(in srgb, var(--scheme-surface-raised) 92%, var(--scheme-surface-raised-subtle)), var(--scheme-surface-raised-muted));
                 }
 
                 .file-upload-area:hover,
                 .file-upload-area.dragging {
-                    border-color: var(--scheme-primary-500);
-                    background: var(--scheme-neutral-900);
+                    border-color: var(--scheme-brand-600);
+                    background: var(--scheme-surface-raised);
+                    box-shadow: 0 0 0 4px var(--scheme-brand-600-15);
+                    transform: translateY(-1px);
                 }
 
                 .upload-text {
@@ -816,7 +820,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 .file-selected {
                     display: flex;
                     flex-direction: column;
-                    gap: 8px;
+                    gap: 10px;
                 }
 
                 .file-row {
@@ -836,11 +840,11 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 .file-info {
                     display: flex;
                     align-items: center;
-                    gap: 10px;
-                    padding: 6px 10px;
-                    background: var(--scheme-neutral-1000);
-                    border-radius: 6px;
-                    border: 1px solid var(--scheme-neutral-900);
+                    gap: 12px;
+                    padding: 12px 14px;
+                    background: var(--scheme-surface-raised-muted);
+                    border-radius: 10px;
+                    border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, transparent);
                     min-width: 0;
                 }
 
@@ -966,6 +970,13 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 .file-actions {
                     display: flex;
                     gap: 8px;
+                    justify-content: flex-start;
+                }
+
+                .file-actions .MuiButton-root {
+                    border-radius: 9px;
+                    min-height: 34px;
+                    box-shadow: none;
                 }
 
                 /* Image cards grid */
@@ -1043,7 +1054,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     flex: 1;
                     justify-content: flex-end;
                     min-height: unset;
-                    margin: 0 8px;
+                    margin: 0;
                 }
 
                 .provider-detecting-label {
@@ -1058,9 +1069,9 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 .provider-inline-badge {
                     display: flex;
                     align-items: center;
-                    gap: 6px;
-                    padding: 4px 10px;
-                    border-radius: 6px;
+                    gap: 8px;
+                    padding: 6px 8px 6px 10px;
+                    border-radius: 9px;
                     font-size: 12px;
                     border: 1px solid transparent;
                 }
@@ -1116,8 +1127,8 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     display: flex;
                     align-items: center;
                     gap: 8px;
-                    padding: 7px 12px;
-                    border-radius: 6px;
+                    padding: 10px 12px;
+                    border-radius: 10px;
                     margin-top: 0;
                     margin-bottom: 10px;
                     margin-top: 10px;
@@ -1146,8 +1157,8 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     display: flex;
                     align-items: flex-start;
                     gap: 8px;
-                    padding: 7px 12px;
-                    border-radius: 6px;
+                    padding: 10px 12px;
+                    border-radius: 10px;
                     margin-top: 0;
                     font-size: 12px;
                     background: #fffbeb;

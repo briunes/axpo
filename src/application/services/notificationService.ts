@@ -44,6 +44,10 @@ function toIsoString(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : value;
 }
 
+function simulationLabel(input: { referenceNumber?: string | null; simulationId: string }): string {
+  return input.referenceNumber ? `Simulation ${input.referenceNumber}` : `Simulation ${input.simulationId}`;
+}
+
 async function upsertNotification(input: NotificationInput): Promise<void> {
   const createData: Prisma.NotificationUncheckedCreateInput = {
     type: input.type,
@@ -107,6 +111,94 @@ export class NotificationService {
     const value = Number(process.env.NOTIFICATION_SYNC_TTL_MS);
     if (!Number.isFinite(value) || value < 0) return DEFAULT_SYS_ADMIN_SYNC_TTL_MS;
     return Math.min(Math.round(value), 10 * 60_000);
+  }
+
+  static async notifySimulationViewed(input: {
+    simulationId: string;
+    referenceNumber?: string | null;
+    ownerUserId: string;
+    clientName?: string | null;
+    viewedAt?: Date;
+  }): Promise<void> {
+    const label = simulationLabel(input);
+    const clientLabel = input.clientName?.trim() || "the client";
+
+    await upsertNotification({
+      type: "simulation.client_viewed",
+      category: "simulations",
+      severity: "SUCCESS",
+      title: `${label} was viewed by ${clientLabel}`,
+      body: "The client opened the shared simulation link successfully.",
+      audienceUserId: input.ownerUserId,
+      sourceType: "simulation",
+      sourceId: input.simulationId,
+      dedupeKey: `user:${input.ownerUserId}:simulation.client_viewed:${input.simulationId}`,
+      actionUrl: `/internal/simulations/${input.simulationId}`,
+      metadata: {
+        clientName: input.clientName ?? null,
+        viewedAt: toIsoString(input.viewedAt ?? new Date()),
+      },
+    });
+  }
+
+  static async notifySimulationExpiringSoon(input: {
+    simulationId: string;
+    referenceNumber?: string | null;
+    ownerUserId: string;
+    clientName?: string | null;
+    expiresAt: Date;
+    daysRemaining: number;
+  }): Promise<void> {
+    const label = simulationLabel(input);
+    const clientSuffix = input.clientName?.trim() ? ` for ${input.clientName.trim()}` : "";
+    const daysLabel = input.daysRemaining === 1 ? "1 day" : `${input.daysRemaining} days`;
+
+    await upsertNotification({
+      type: "simulation.expiring_soon",
+      category: "simulations",
+      severity: input.daysRemaining <= 1 ? "WARNING" : "INFO",
+      title: `${label}${clientSuffix} expires in ${daysLabel}`,
+      body: "Follow up with the client or extend the simulation before the link expires.",
+      audienceUserId: input.ownerUserId,
+      sourceType: "simulation",
+      sourceId: input.simulationId,
+      dedupeKey: `user:${input.ownerUserId}:simulation.expiring_soon:${input.simulationId}`,
+      actionUrl: `/internal/simulations/${input.simulationId}`,
+      metadata: {
+        clientName: input.clientName ?? null,
+        expiresAt: toIsoString(input.expiresAt),
+        daysRemaining: input.daysRemaining,
+      },
+      expiresAt: input.expiresAt,
+    });
+  }
+
+  static async notifySimulationExpired(input: {
+    simulationId: string;
+    referenceNumber?: string | null;
+    ownerUserId: string;
+    clientName?: string | null;
+    expiresAt?: Date | null;
+  }): Promise<void> {
+    const label = simulationLabel(input);
+    const clientSuffix = input.clientName?.trim() ? ` for ${input.clientName.trim()}` : "";
+
+    await upsertNotification({
+      type: "simulation.expired",
+      category: "simulations",
+      severity: "WARNING",
+      title: `${label}${clientSuffix} has expired`,
+      body: "The client can no longer access the shared simulation link.",
+      audienceUserId: input.ownerUserId,
+      sourceType: "simulation",
+      sourceId: input.simulationId,
+      dedupeKey: `user:${input.ownerUserId}:simulation.expired:${input.simulationId}`,
+      actionUrl: `/internal/simulations/${input.simulationId}`,
+      metadata: {
+        clientName: input.clientName ?? null,
+        expiresAt: input.expiresAt ? toIsoString(input.expiresAt) : null,
+      },
+    });
   }
 
   static async syncSysAdminNotifications(options: { force?: boolean } = {}): Promise<void> {
@@ -314,6 +406,7 @@ export class NotificationService {
     const limit = Math.min(Math.max(params.limit ?? 10, 1), 100);
     const offset = Math.max(params.offset ?? 0, 0);
     const status = params.status ?? (params.unreadOnly ? "unread" : "all");
+    const now = new Date();
     const audienceWhere: Prisma.NotificationWhereInput[] =
       params.role === UserRole.SYS_ADMIN
         ? [{ audienceRole: UserRole.SYS_ADMIN }, { audienceUserId: params.userId }]
@@ -321,6 +414,11 @@ export class NotificationService {
 
     const where: Prisma.NotificationWhereInput = {
       resolvedAt: null,
+      AND: [
+        {
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+      ],
       OR: audienceWhere,
       ...(params.severity ? { severity: params.severity } : {}),
       ...(params.type ? { type: params.type } : {}),

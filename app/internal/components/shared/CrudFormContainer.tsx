@@ -15,6 +15,7 @@ export interface CrudFormContainerProps {
     onCancel?: () => void;
     isSubmitting?: boolean;
     hideSubmit?: boolean;
+    disableSubmit?: boolean;
     onRenderActions?: (actions: React.ReactNode) => void;
 }
 
@@ -31,6 +32,7 @@ export function CrudFormContainer({
     onCancel,
     isSubmitting,
     hideSubmit,
+    disableSubmit,
     onRenderActions,
     variant = "card",
 }: CrudFormContainerProps) {
@@ -45,7 +47,7 @@ export function CrudFormContainer({
         <>
             {onCancel && (
                 <Button
-                    className={onRenderActions ? "topbar-action topbar-action--compact" : undefined}
+                    className={onRenderActions ? "topbar-action topbar-action--compact topbar-action--text" : undefined}
                     variant="outlined"
                     size="small"
                     type="button"
@@ -57,25 +59,25 @@ export function CrudFormContainer({
             )}
             {!hideSubmit && (
                 <Button
-                    className={onRenderActions ? "topbar-action topbar-action--compact" : undefined}
+                    className={onRenderActions ? "topbar-action topbar-action--compact topbar-action--text" : undefined}
                     type="submit"
                     form={formId}
                     variant="contained"
                     size="small"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || disableSubmit}
                     loading={isSubmitting}
                 >
                     {submitLabel}
                 </Button>
             )}
         </>
-    ), [submitLabel, cancelLabel, isSubmitting, onCancel, formId, hideSubmit]);
+    ), [submitLabel, cancelLabel, isSubmitting, onCancel, formId, hideSubmit, disableSubmit]);
 
     useLayoutEffect(() => {
         if (onRenderActionsRef.current) {
             onRenderActionsRef.current(actionButtons);
         }
-    }, [submitLabel, cancelLabel, isSubmitting, hideSubmit]);
+    }, [submitLabel, cancelLabel, isSubmitting, hideSubmit, disableSubmit]);
 
     return (
         <Stack spacing={3} className={variant === "plain" ? "crud-form-panel crud-form-panel--plain" : "crud-form-panel"}>

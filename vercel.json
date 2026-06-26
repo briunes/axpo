@@ -29,6 +29,10 @@
     {
       "path": "/api/cron/expire-simulations",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/ocr-prompt-improvements",
+      "schedule": "30 2 * * *"
     }
   ]
 }
