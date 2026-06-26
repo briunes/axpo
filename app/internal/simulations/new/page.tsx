@@ -10,7 +10,7 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { createSimulation, createClient, listAllClients, getAgency, type ClientItem, type AgencyItem } from "../../lib/internalApi";
-import { CrudPageLayout, LoadingState, useAlerts } from "../../components/shared";
+import { CrudPageLayout, FormSkeleton, useAlerts } from "../../components/shared";
 import { CrudFormContainer } from "../../components/shared/CrudFormContainer";
 import { getSystemConfig } from "../../lib/configApi";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem, FormControl, Box, Paper } from "@mui/material";
@@ -598,8 +598,8 @@ export default function NewSimulationPage() {
                             </div>
                         ))}
                     </div>
-                    <div className="new-simulation-skeleton__panel">
-                        <LoadingState message={t("common", "loading")} />
+                    <div className="new-simulation-skeleton__panel new-simulation-skeleton__panel--form">
+                        <FormSkeleton variant="simulation" />
                     </div>
                 </div>
             ) : (

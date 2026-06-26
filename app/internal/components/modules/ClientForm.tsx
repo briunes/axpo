@@ -129,7 +129,6 @@ export function ClientForm({
                     value={data.cif}
                     onChange={(e) => onChange({ ...data, cif: e.target.value })}
                     disabled={isSubmitting}
-                    helperText={t("clientFormPage", "fieldCifHint")}
                 />
             </CrudFormRow>
 

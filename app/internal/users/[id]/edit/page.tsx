@@ -12,7 +12,7 @@ import { useUsers } from "../../../components/hooks/useUsers";
 import { usePermissions } from "../../../lib/permissionsContext";
 import { UserForm, type UserFormData } from "../../../components/modules/UserForm";
 import { UserSessionsPanel } from "../../../components/modules/UserSessionsPanel";
-import { CrudPageLayout, LoadingState, PinResultDialog, useAlerts } from "../../../components/shared";
+import { CrudPageLayout, FormSkeleton, PinResultDialog, useAlerts } from "../../../components/shared";
 import { UserPreferencesForm, type UserPreferences } from "../../../components/ui/UserPreferencesForm";
 import { AuditLogsModal } from "../../../components/ui/AuditLogsModal";
 import { useUserPreferences } from "../../../components/providers/UserPreferencesProvider";
@@ -262,14 +262,15 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
         usersActions.busyAction,
     ]);
 
-    if (!session || !user) {
+    if (!session || !user || false ) {
         return (
             <CrudPageLayout
                 title={t("userFormPage", "editTitle")}
                 backHref="/internal/users"
                 maxWidth={undefined}
+                hideHeader
             >
-                <LoadingState message={t("userFormPage", "loading")} size={100} />
+                <FormSkeleton variant="user" tabs={canManageUserSessions ? 3 : 2} />
             </CrudPageLayout>
         );
     }

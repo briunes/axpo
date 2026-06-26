@@ -6,6 +6,8 @@ export { SectionToolbar } from "./SectionToolbar";
 export { TableFooter } from "./TableFooter";
 export { EmptyState } from "./EmptyState";
 export { LoadingState } from "./LoadingState";
+export { FormSkeleton } from "./FormSkeleton";
+export type { FormSkeletonVariant } from "./FormSkeleton";
 export { ConfirmDialog } from "./ConfirmDialog";
 export type { ConfirmDialogProps } from "./ConfirmDialog";
 export { PinResultDialog } from "./PinResultDialog";

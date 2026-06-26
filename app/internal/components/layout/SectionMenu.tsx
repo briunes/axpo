@@ -345,7 +345,7 @@ export function SectionMenu({
                       opacity: collapsed ? 0 : 1,
                       maxWidth: collapsed ? 0 : 180,
                       overflow: "hidden",
-                      fontWeight: isConfigurationsActive ? 600 : 500,
+                      fontWeight: isConfigurationsActive ? 600 : 'inherit',
                       color: isConfigurationsActive
                         ? "var(--scheme-brand-600)"
                         : "var(--scheme-neutral-400)",

@@ -510,13 +510,16 @@ function buildComparativaChart(
     });
 
   // Chart dimensions tuned for the proposal PDF layout.
+  // The SVG height (~330) is sized to match the right column:
+  //   3 cards × min-height 64px + 2 × 6px gap = 204px
+  //   and rendered through `viewBox` so it scales with `width="100%"`.
   const svgW = 360;
-  const svgH = 230;
+  const svgH = 330;
   const plotX0 = 44;
   const plotX1 = 350;
   const barW = 82;
-  const maxBarH = 160;
-  const barY0 = 190; // baseline y
+  const maxBarH = 240;
+  const barY0 = 290; // baseline y
 
   const maxVal = Math.max(annualCurrent, annualAxpo, 1);
   const hCurrent = (annualCurrent / maxVal) * maxBarH;
@@ -546,7 +549,7 @@ function buildComparativaChart(
 
   <div style="font-size:20px;line-height:1.15;font-weight:400;color:#1E2CF4;margin-bottom:12px">Comparativa</div>
 
-  <div style="display:flex;width:100%;gap:28px;align-items:flex-end">
+  <div style="display:flex;width:100%;gap:20px;align-items:flex-end">
 
     <div style="flex:0 0 50%;min-width:0">
       <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:100%">
@@ -579,7 +582,7 @@ function buildComparativaChart(
       </svg>
     </div>
 
-    <div style="flex:1 1 0;display:flex;flex-direction:column;gap:10px;box-sizing:border-box;padding-bottom:6px">
+    <div style="flex:1 1 0;display:flex;flex-direction:column;gap:10px;box-sizing:border-box">
       <div style="background:#3F43D4;border-radius:8px;padding:10px 16px;color:white;min-height:64px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.25)">
         <div style="font-size:10px;font-weight:700;margin-bottom:7px">Ahorro Anual</div>
         <div style="border-top:1px solid rgba(255,255,255,0.34);padding-top:4px;font-size:22px;line-height:1.05;font-weight:700;text-align:right">${fmt(annualSavings)} €</div>

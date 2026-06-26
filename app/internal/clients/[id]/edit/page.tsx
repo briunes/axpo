@@ -7,7 +7,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
 import { getClient, isAdmin, listAgencies, updateClient, type ClientItem } from "../../../lib/internalApi";
-import { CrudPageLayout, LoadingState, useAlerts } from "../../../components/shared";
+import { CrudPageLayout, FormSkeleton, useAlerts } from "../../../components/shared";
 import { ClientForm, type ClientFormData } from "../../../components/modules/ClientForm";
 import { AuditLogsModal } from "../../../components/ui/AuditLogsModal";
 import type { AgencyItem } from "../../../lib/internalApi";
@@ -140,8 +140,8 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
 
     if (!session || !client) {
         return (
-            <CrudPageLayout title={t("clientFormPage", "editTitle")} backHref="/internal/clients">
-                <LoadingState message={t("clientFormPage", "loading")} size={100} />
+            <CrudPageLayout title={t("clientFormPage", "editTitle")} backHref="/internal/clients" hideHeader>
+                <FormSkeleton variant="client" />
             </CrudPageLayout>
         );
     }

@@ -445,6 +445,14 @@
   place-items: center;
 }
 
+/* When the panel hosts a full FormSkeleton (card-style), let the skeleton
+   stretch to fill the panel rather than being shrunk to its content width
+   by `place-items: center`. */
+.new-simulation-skeleton__panel--form {
+  display: block;
+  padding: clamp(18px, 2vw, 24px);
+}
+
 @keyframes axpo-page-enter {
   from {
     opacity: 0;
