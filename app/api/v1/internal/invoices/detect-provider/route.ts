@@ -15,6 +15,16 @@ const isAnthropicBedrockRuntime = (provider: string, baseUrl: string): boolean =
   provider === "aws-bedrock-anthropic" ||
   (provider === "anthropic" && /bedrock-runtime\.[^.]+\.amazonaws\.com/.test(baseUrl));
 
+const isNvidiaBedrockRuntime = (provider: string): boolean =>
+  provider === "aws-bedrock-nvidia";
+
+const getBedrockImageFormat = (mimeType: string): "png" | "jpeg" | "gif" | "webp" => {
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("gif")) return "gif";
+  if (mimeType.includes("webp")) return "webp";
+  return "jpeg";
+};
+
 /**
  * Sends images to the configured LLM and returns the raw text response.
  */
@@ -82,6 +92,37 @@ async function callLlmWithImages(
           max_tokens: llmMaxTokens,
           temperature: llmTemperature,
           messages: [{ role: "user", content }],
+        }),
+        signal: AbortSignal.timeout(60000),
+      },
+    );
+  } else if (isNvidiaBedrockRuntime(llmProvider)) {
+    const content: any[] = [{ text: prompt }];
+    for (const img of images) {
+      content.push({
+        image: {
+          format: getBedrockImageFormat(img.mimeType),
+          source: { bytes: img.base64 },
+        },
+      });
+    }
+
+    const bedrockBaseUrl = llmBaseUrl.replace(/\/+$/, "");
+    llmResponse = await fetch(
+      `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/converse`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content }],
+          inferenceConfig: {
+            maxTokens: llmMaxTokens,
+            temperature: llmTemperature,
+          },
         }),
         signal: AbortSignal.timeout(60000),
       },
@@ -158,6 +199,11 @@ async function callLlmWithImages(
     promptTokens = llmData.usageMetadata?.promptTokenCount;
     completionTokens = llmData.usageMetadata?.candidatesTokenCount;
     totalTokens = llmData.usageMetadata?.totalTokenCount;
+  } else if (isNvidiaBedrockRuntime(llmProvider)) {
+    text = llmData.output?.message?.content?.[0]?.text || "";
+    promptTokens = llmData.usage?.inputTokens;
+    completionTokens = llmData.usage?.outputTokens;
+    totalTokens = llmData.usage?.totalTokens;
   } else {
     const msg = llmData.choices?.[0]?.message;
     text = msg?.content || msg?.reasoning || "";

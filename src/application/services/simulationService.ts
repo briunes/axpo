@@ -457,6 +457,9 @@ export class SimulationService {
           id: true,
           type: true,
           status: true,
+          fileName: true,
+          fileType: true,
+          fileSizeBytes: true,
           extractedFields: true,
           ocrFiles: {
             orderBy: { createdAt: "asc" },
@@ -474,11 +477,20 @@ export class SimulationService {
           (log) =>
             log.type === "INVOICE_EXTRACTION" &&
             log.status === "SUCCESS" &&
-            log.ocrFiles.length > 0,
-        ) ?? existingLogs.find((log) => log.ocrFiles.length > 0);
-      const invoiceSourceFile = pickOriginalInvoiceFile(
-        invoiceSourceLog?.ocrFiles ?? [],
-      );
+            (log.ocrFiles.length > 0 || Boolean(log.fileName)),
+        ) ??
+        existingLogs.find(
+          (log) => log.ocrFiles.length > 0 || Boolean(log.fileName),
+        );
+      const invoiceSourceFile =
+        pickOriginalInvoiceFile(invoiceSourceLog?.ocrFiles ?? []) ??
+        (invoiceSourceLog?.fileName
+          ? {
+              fileName: invoiceSourceLog.fileName,
+              fileType: invoiceSourceLog.fileType,
+              fileSizeBytes: invoiceSourceLog.fileSizeBytes ?? 0,
+            }
+          : null);
 
       if (invoiceSourceFile) {
         const fileName = invoiceSourceFile.fileName

@@ -15,6 +15,10 @@
     "app/api/v1/internal/simulations/[id]/send-email/route.ts": {
       "memory": 1024,
       "maxDuration": 60
+    },
+    "app/api/v1/internal/invoices/extract/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
     }
   },
   "crons": [

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
@@ -17,8 +17,17 @@ const OCR_DEBUG_LOGS =
   process.env.NODE_ENV !== "production" ||
   process.env.OCR_DEBUG_LOGS === "true";
 
+const OCR_PERF_LOGS =
+  process.env.OCR_PERF_LOGS === "true" ||
+  process.env.APP_ENV === "preview" ||
+  process.env.APP_ENV === "dev";
+
 const debugOcrLog = (...args: unknown[]) => {
   if (OCR_DEBUG_LOGS) console.log(...args);
+};
+
+const perfOcrLog = (...args: unknown[]) => {
+  if (OCR_PERF_LOGS) console.info(...args);
 };
 
 const ocrDebugSnippet = (value: string, length = 500): string | undefined =>
@@ -616,6 +625,21 @@ You MUST always return a JSON that exactly matches this structure (all keys pres
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req);
   const requestStartTime = Date.now();
+  const phaseTimings: Record<string, number> = {};
+
+  const recordPhase = <T>(name: string, startedAt: number, value: T): T => {
+    phaseTimings[name] = Date.now() - startedAt;
+    return value;
+  };
+
+  const timed = async <T>(name: string, task: () => Promise<T>): Promise<T> => {
+    const startedAt = Date.now();
+    try {
+      return await task();
+    } finally {
+      phaseTimings[name] = Date.now() - startedAt;
+    }
+  };
 
   type OcrPersistedFile = {
     fileName: string;
@@ -624,7 +648,23 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     fileData: Buffer;
   };
 
-  // Helper: persist an OCR log entry (fire-and-forget, never throws)
+  const persistOcrLogFiles = async (
+    ocrLogId: string,
+    files: OcrPersistedFile[],
+  ) => {
+    if (files.length === 0) return;
+    await (prisma as any).ocrLogFile.createMany({
+      data: files.map((file) => ({
+        ocrLogId,
+        fileName: file.fileName,
+        fileType: file.fileType ?? null,
+        fileSizeBytes: file.fileSizeBytes ?? file.fileData.length,
+        fileData: file.fileData,
+      })),
+    });
+  };
+
+  // Helper: persist an OCR log entry (never throws)
   const saveOcrLog = async (data: {
     status: string;
     durationMs?: number;
@@ -648,8 +688,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     metadata?: any;
     files?: File[];
     persistedFiles?: OcrPersistedFile[];
+    deferFiles?: boolean;
   }) => {
     try {
+      const logStartedAt = Date.now();
       const uploadedFiles =
         data.files && data.files.length > 0
           ? await Promise.all(
@@ -696,15 +738,41 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           httpStatusCode: data.httpStatusCode,
           rawResponseSnippet: data.rawResponseSnippet,
           promptText: data.promptText,
-          metadata: data.metadata ?? undefined,
-          ocrFiles:
-            persistedFiles.length > 0
-              ? {
-                  create: persistedFiles,
-                }
-              : undefined,
+          metadata: {
+            ...(data.metadata ?? {}),
+            timings: {
+              ...phaseTimings,
+              totalBeforeLogMs: Date.now() - requestStartTime,
+            },
+          },
         },
       });
+
+      phaseTimings[`ocrLog.${data.status.toLowerCase()}.rowMs`] =
+        Date.now() - logStartedAt;
+
+      if (persistedFiles.length > 0) {
+        const persistFiles = async () => {
+          const filesStartedAt = Date.now();
+          try {
+            await persistOcrLogFiles(created.id, persistedFiles);
+            perfOcrLog("[Invoice extraction timing] OCR log files saved", {
+              ocrLogId: created.id,
+              fileCount: persistedFiles.length,
+              durationMs: Date.now() - filesStartedAt,
+            });
+          } catch (err) {
+            console.error("[OCR Log] Failed to save log files:", err);
+          }
+        };
+
+        if (data.deferFiles) {
+          after(persistFiles);
+        } else {
+          await persistFiles();
+        }
+      }
+
       return created;
     } catch (err) {
       console.error("[OCR Log] Failed to save log:", err);
@@ -713,7 +781,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   };
 
   // Get LLM configuration
-  const config = await prisma.systemConfig.findFirst();
+  const config = await timed("configMs", () => prisma.systemConfig.findFirst());
 
   if (!(config as any)?.llmEnabled) {
     await saveOcrLog({
@@ -777,7 +845,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   // Parse multipart form data
-  const formData = await req.formData();
+  const formData = await timed("formDataMs", () => req.formData());
   const requestFiles = formData
     .getAll("file")
     .filter((entry): entry is File => entry instanceof File);
@@ -800,11 +868,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   let invoiceProviderName: string | null = null;
   if (providerId) {
     try {
-      const providerRecord = await (
-        prisma as any
-      ).invoiceProviderPrompt.findUnique({
-        where: { id: providerId },
-      });
+      const providerRecord = (await timed("providerPromptMs", () =>
+        (prisma as any).invoiceProviderPrompt.findUnique({
+          where: { id: providerId },
+        }),
+      )) as any;
       if (providerRecord) {
         invoiceProviderName = providerRecord.name as string;
         // Pick the per-commodity prompt first, fall back to legacy generic prompt
@@ -1025,12 +1093,23 @@ If invoice text uses a different format, map it to the closest allowed value abo
   }
 
   let convertedPdfLogFiles: OcrPersistedFile[] = [];
+  let uploadedLogFiles: OcrPersistedFile[] = [];
 
   try {
     // Convert file to buffer
-    const bytes = await file.arrayBuffer();
+    const bytes = await timed("fileArrayBufferMs", () => file.arrayBuffer());
     const buffer = Buffer.from(bytes);
+    uploadedLogFiles = [
+      {
+        fileName: file.name,
+        fileType: file.type || null,
+        fileSizeBytes: file.size,
+        fileData: buffer,
+      },
+    ];
+    const base64StartedAt = Date.now();
     const base64File = buffer.toString("base64");
+    recordPhase("fileBase64Ms", base64StartedAt, undefined);
 
     // ── PDF text extraction (font-rendering fallback) ─────────────────────
     // Some PDFs use non-embedded fonts (e.g. Arial, Courier New) that are not
@@ -1042,34 +1121,36 @@ If invoice text uses a different format, map it to the closest allowed value abo
     // the rendered images are unreadable.
     if (file.type === "application/pdf") {
       try {
-        const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-        const path = await import("path");
-        const workerPath = path.resolve(
-          process.cwd(),
-          "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
-        );
-        (pdfjsLib as any).GlobalWorkerOptions.workerSrc =
-          `file://${workerPath}`;
+        const rawText = await timed("pdfTextExtractionMs", async () => {
+          const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+          const path = await import("path");
+          const workerPath = path.resolve(
+            process.cwd(),
+            "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+          );
+          (pdfjsLib as any).GlobalWorkerOptions.workerSrc =
+            `file://${workerPath}`;
 
-        const loadingTask = (pdfjsLib as any).getDocument({
-          data: new Uint8Array(buffer),
-          verbosity: 0,
+          const loadingTask = (pdfjsLib as any).getDocument({
+            data: new Uint8Array(buffer),
+            verbosity: 0,
+          });
+          const pdf = await loadingTask.promise;
+          const textParts: string[] = [];
+
+          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items
+              .map((item: any) => item.str ?? "")
+              .join(" ")
+              .replace(/\s{3,}/g, "  ")
+              .trim();
+            if (pageText) textParts.push(pageText);
+          }
+
+          return textParts.join("\n\n").trim();
         });
-        const pdf = await loadingTask.promise;
-        const textParts: string[] = [];
-
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          const page = await pdf.getPage(pageNum);
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items
-            .map((item: any) => item.str ?? "")
-            .join(" ")
-            .replace(/\s{3,}/g, "  ")
-            .trim();
-          if (pageText) textParts.push(pageText);
-        }
-
-        const rawText = textParts.join("\n\n").trim();
         if (rawText && rawText.length > 50) {
           activePrompt =
             activePrompt +
@@ -1084,10 +1165,14 @@ If invoice text uses a different format, map it to the closest allowed value abo
       }
 
       try {
-        const openDataLoaderExtraction = await extractPdfWithOpenDataLoader(
-          buffer,
-          file.name,
-          OCR_MAX_PDF_PAGES,
+        const openDataLoaderExtraction = await timed(
+          "openDataLoaderMs",
+          () =>
+            extractPdfWithOpenDataLoader(
+              buffer,
+              file.name,
+              OCR_MAX_PDF_PAGES,
+            ),
         );
 
         if (openDataLoaderExtraction?.skippedReason) {
@@ -1126,10 +1211,12 @@ If invoice text uses a different format, map it to the closest allowed value abo
         isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
         isNvidiaBedrockRuntime(llmProvider)
       ) {
-        const pdfImages = await convertPdfToImages(
-          buffer,
-          OCR_MAX_PDF_PAGES,
-          OCR_PDF_RENDER_SCALE,
+        const pdfImages = await timed("pdfRenderMs", () =>
+          convertPdfToImages(
+            buffer,
+            OCR_MAX_PDF_PAGES,
+            OCR_PDF_RENDER_SCALE,
+          ),
         );
         const fileNameWithoutExt = file.name.replace(/\.[^.]+$/, "");
 
@@ -1256,20 +1343,22 @@ If invoice text uses a different format, map it to the closest allowed value abo
         ),
       );
 
-      llmResponse = await fetch(`${llmBaseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
-        },
-        body: JSON.stringify({
-          model: llmModelName,
-          messages,
-          temperature: llmTemperature,
-          max_tokens: llmMaxTokens,
+      llmResponse = await timed("llmFetchMs", () =>
+        fetch(`${llmBaseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            model: llmModelName,
+            messages,
+            temperature: llmTemperature,
+            max_tokens: llmMaxTokens,
+          }),
+          signal: AbortSignal.timeout(300000), // 300 second timeout for large vision models (e.g. qwen3-vl:235b)
         }),
-        signal: AbortSignal.timeout(300000), // 300 second timeout for large vision models (e.g. qwen3-vl:235b)
-      });
+      );
     } else if (isOpenAiCompatibleProvider(llmProvider)) {
       // OpenAI Vision API supports both images and PDFs
       const messages: any[] = [
@@ -1287,20 +1376,22 @@ If invoice text uses a different format, map it to the closest allowed value abo
         },
       ];
 
-      llmResponse = await fetch(`${llmBaseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
-        },
-        body: JSON.stringify({
-          model: llmModelName,
-          messages,
-          temperature: llmTemperature,
-          max_tokens: llmMaxTokens,
+      llmResponse = await timed("llmFetchMs", () =>
+        fetch(`${llmBaseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            model: llmModelName,
+            messages,
+            temperature: llmTemperature,
+            max_tokens: llmMaxTokens,
+          }),
+          signal: AbortSignal.timeout(30000), // 30 second timeout
         }),
-        signal: AbortSignal.timeout(30000), // 30 second timeout
-      });
+      );
     } else if (isAnthropicBedrockRuntime(llmProvider, llmBaseUrl)) {
       const content: any[] = [{ type: "text", text: activePrompt }];
       const bedrockImages =
@@ -1320,28 +1411,30 @@ If invoice text uses a different format, map it to the closest allowed value abo
       }
 
       const bedrockBaseUrl = llmBaseUrl.replace(/\/+$/, "");
-      llmResponse = await fetch(
-        `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/invoke`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+      llmResponse = await timed("llmFetchMs", () =>
+        fetch(
+          `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/invoke`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+            },
+            body: JSON.stringify({
+              anthropic_version: "bedrock-2023-05-31",
+              max_tokens: llmMaxTokens,
+              temperature: llmTemperature,
+              messages: [
+                {
+                  role: "user",
+                  content,
+                },
+              ],
+            }),
+            signal: AbortSignal.timeout(300000),
           },
-          body: JSON.stringify({
-            anthropic_version: "bedrock-2023-05-31",
-            max_tokens: llmMaxTokens,
-            temperature: llmTemperature,
-            messages: [
-              {
-                role: "user",
-                content,
-              },
-            ],
-          }),
-          signal: AbortSignal.timeout(300000),
-        },
+        ),
       );
     } else if (isNvidiaBedrockRuntime(llmProvider)) {
       const content: any[] = [{ text: activePrompt }];
@@ -1360,81 +1453,58 @@ If invoice text uses a different format, map it to the closest allowed value abo
       }
 
       const bedrockBaseUrl = llmBaseUrl.replace(/\/+$/, "");
-      llmResponse = await fetch(
-        `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/converse`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
-          },
-          body: JSON.stringify({
-            messages: [
-              {
-                role: "user",
-                content,
-              },
-            ],
-            inferenceConfig: {
-              maxTokens: llmMaxTokens,
-              temperature: llmTemperature,
+      llmResponse = await timed("llmFetchMs", () =>
+        fetch(
+          `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/converse`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
             },
-          }),
-          signal: AbortSignal.timeout(300000),
-        },
+            body: JSON.stringify({
+              messages: [
+                {
+                  role: "user",
+                  content,
+                },
+              ],
+              inferenceConfig: {
+                maxTokens: llmMaxTokens,
+                temperature: llmTemperature,
+              },
+            }),
+            signal: AbortSignal.timeout(300000),
+          },
+        ),
       );
     } else if (
       llmProvider === "anthropic" ||
       llmProvider === "aws-bedrock-anthropic"
     ) {
       // Anthropic Claude Vision API supports PDFs and images
-      llmResponse = await fetch(`${llmBaseUrl}/messages`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": llmApiKey || "",
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: llmModelName,
-          max_tokens: llmMaxTokens,
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: activePrompt },
-                {
-                  type: "image",
-                  source: {
-                    type: "base64",
-                    media_type: file.type,
-                    data: base64File,
-                  },
-                },
-              ],
-            },
-          ],
-        }),
-        signal: AbortSignal.timeout(30000),
-      });
-    } else if (llmProvider === "google") {
-      // Google Gemini Vision API supports PDFs and images
-      llmResponse = await fetch(
-        `${llmBaseUrl}/models/${llmModelName}:generateContent?key=${llmApiKey}`,
-        {
+      llmResponse = await timed("llmFetchMs", () =>
+        fetch(`${llmBaseUrl}/messages`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-api-key": llmApiKey || "",
+            "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
-            contents: [
+            model: llmModelName,
+            max_tokens: llmMaxTokens,
+            messages: [
               {
-                parts: [
-                  { text: activePrompt },
+                role: "user",
+                content: [
+                  { type: "text", text: activePrompt },
                   {
-                    inline_data: {
-                      mime_type: file.type,
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: file.type,
                       data: base64File,
                     },
                   },
@@ -1443,7 +1513,38 @@ If invoice text uses a different format, map it to the closest allowed value abo
             ],
           }),
           signal: AbortSignal.timeout(30000),
-        },
+        }),
+      );
+    } else if (llmProvider === "google") {
+      // Google Gemini Vision API supports PDFs and images
+      llmResponse = await timed(
+        "llmFetchMs",
+        () =>
+          fetch(
+            `${llmBaseUrl}/models/${llmModelName}:generateContent?key=${llmApiKey}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    parts: [
+                      { text: activePrompt },
+                      {
+                        inline_data: {
+                          mime_type: file.type,
+                          data: base64File,
+                        },
+                      },
+                    ],
+                  },
+                ],
+              }),
+              signal: AbortSignal.timeout(30000),
+            },
+          ),
       );
     } else {
       await saveOcrLog({
@@ -1504,7 +1605,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       );
     }
 
-    const llmData = await llmResponse.json();
+    const llmData = await timed("llmResponseJsonMs", () => llmResponse.json());
 
     // Extract the response text based on provider
     let extractedText = "";
@@ -1535,7 +1636,11 @@ If invoice text uses a different format, map it to the closest allowed value abo
 
     if (jsonMatch) {
       try {
-        extractedData = JSON.parse(jsonMatch[1]);
+        extractedData = recordPhase(
+          "extractedJsonParseMs",
+          Date.now(),
+          JSON.parse(jsonMatch[1]),
+        );
       } catch (e) {
         console.error("Failed to parse extracted JSON:", e);
         const createdParseLog = await saveOcrLog({
@@ -1915,8 +2020,8 @@ If invoice text uses a different format, map it to the closest allowed value abo
       fileName: file.name,
       fileType: file.type,
       fileSizeBytes: file.size,
-      files: requestFiles,
-      persistedFiles: convertedPdfLogFiles,
+      persistedFiles: [...uploadedLogFiles, ...convertedPdfLogFiles],
+      deferFiles: true,
       pageCount:
         imagesToProcess.length > 0 ? imagesToProcess.length : undefined,
       promptTokens,
@@ -1935,6 +2040,13 @@ If invoice text uses a different format, map it to the closest allowed value abo
         invoiceProviderName: invoiceProviderName ?? null,
         invoiceType: effectiveInvoiceType,
       },
+    });
+    phaseTimings.responseReadyMs = Date.now() - requestStartTime;
+    perfOcrLog("[Invoice extraction timing] success", {
+      ocrLogId: createdLog?.id ?? null,
+      totalMs: phaseTimings.responseReadyMs,
+      timings: phaseTimings,
+      deferredFileCount: uploadedLogFiles.length + convertedPdfLogFiles.length,
     });
 
     return NextResponse.json({
@@ -1955,8 +2067,8 @@ If invoice text uses a different format, map it to the closest allowed value abo
       provider: llmProvider ?? "unknown",
       model: llmModelName ?? "unknown",
       baseUrl: llmBaseUrl,
-      files: requestFiles,
-      persistedFiles: convertedPdfLogFiles,
+      files: uploadedLogFiles.length > 0 ? undefined : requestFiles,
+      persistedFiles: [...uploadedLogFiles, ...convertedPdfLogFiles],
       errorMessage: error.message || "Unknown error",
       errorType: error.constructor?.name || "UnknownError",
       httpStatusCode: 500,
