@@ -665,6 +665,25 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     });
   };
 
+  const updateOcrLogDeferredFields = async (
+    ocrLogId: string,
+    data: {
+      promptText?: string;
+      rawResponseSnippet?: string;
+    },
+  ) => {
+    const updateData: Record<string, string> = {};
+    if (data.promptText !== undefined) updateData.promptText = data.promptText;
+    if (data.rawResponseSnippet !== undefined) {
+      updateData.rawResponseSnippet = data.rawResponseSnippet;
+    }
+    if (Object.keys(updateData).length === 0) return;
+    await prisma.ocrLog.update({
+      where: { id: ocrLogId },
+      data: updateData,
+    });
+  };
+
   // Helper: persist an OCR log entry (never throws)
   const saveOcrLog = async (data: {
     status: string;
@@ -690,6 +709,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     files?: File[];
     persistedFiles?: OcrPersistedFile[];
     deferFiles?: boolean;
+    deferDebugFields?: boolean;
   }) => {
     try {
       const logStartedAt = Date.now();
@@ -737,8 +757,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           errorMessage: data.errorMessage,
           errorType: data.errorType,
           httpStatusCode: data.httpStatusCode,
-          rawResponseSnippet: data.rawResponseSnippet,
-          promptText: data.promptText,
+          rawResponseSnippet: data.deferDebugFields
+            ? undefined
+            : data.rawResponseSnippet,
+          promptText: data.deferDebugFields ? undefined : data.promptText,
           metadata: {
             ...(data.metadata ?? {}),
             timings: {
@@ -772,6 +794,27 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         } else {
           await persistFiles();
         }
+      }
+
+      if (
+        data.deferDebugFields &&
+        (data.promptText !== undefined || data.rawResponseSnippet !== undefined)
+      ) {
+        after(async () => {
+          const debugFieldsStartedAt = Date.now();
+          try {
+            await updateOcrLogDeferredFields(created.id, {
+              promptText: data.promptText,
+              rawResponseSnippet: data.rawResponseSnippet,
+            });
+            perfOcrLog("[Invoice extraction timing] OCR debug fields saved", {
+              ocrLogId: created.id,
+              durationMs: Date.now() - debugFieldsStartedAt,
+            });
+          } catch (err) {
+            console.error("[OCR Log] Failed to save deferred debug fields:", err);
+          }
+        });
       }
 
       return created;
@@ -2017,6 +2060,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       fileSizeBytes: file.size,
       persistedFiles: [...uploadedLogFiles, ...convertedPdfLogFiles],
       deferFiles: true,
+      deferDebugFields: true,
       pageCount:
         imagesToProcess.length > 0 ? imagesToProcess.length : undefined,
       promptTokens,
