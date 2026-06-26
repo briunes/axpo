@@ -22,6 +22,19 @@ export const OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE = 3;
 export const OCR_MAX_PDF_PAGES = 30;
 export const OCR_PDF_IMAGE_QUALITY = 85;
 
+export async function configurePdfJsWorker(pdfjsLib: any): Promise<void> {
+  const { createRequire } = await import("module");
+  const path = await import("path");
+  const { pathToFileURL } = await import("url");
+  const resolveFromProject = createRequire(
+    path.join(process.cwd(), "package.json"),
+  );
+  const workerPath = resolveFromProject.resolve(
+    "pdfjs-dist/legacy/build/pdf.worker.mjs",
+  );
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
+}
+
 /**
  * Convert PDF pages to base64-encoded images
  * @param pdfBuffer - PDF file as Buffer
@@ -37,17 +50,7 @@ export async function convertPdfToImages(
   // Dynamically import dependencies to avoid Next.js edge runtime issues
   const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const { createCanvas } = await import("@napi-rs/canvas");
-  const path = await import("path");
-
-  // Use an absolute file:// URL so that pdfjs loads the worker via Node's
-  // native ESM loader rather than Turbopack's bundler (which rewrites dynamic
-  // import paths to '[project]' placeholders and breaks resolution). On Vercel
-  // the file is present because outputFileTracingIncludes copies it.
-  const workerPath = path.resolve(
-    process.cwd(),
-    "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
-  );
-  (pdfjsLib as any).GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
+  await configurePdfJsWorker(pdfjsLib);
 
   try {
     // Load PDF document

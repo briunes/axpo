@@ -3,6 +3,7 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
 import {
+  configurePdfJsWorker,
   convertPdfToImages,
   OCR_MAX_PDF_PAGES,
   OCR_PDF_RENDER_SCALE,
@@ -1123,13 +1124,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       try {
         const rawText = await timed("pdfTextExtractionMs", async () => {
           const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-          const path = await import("path");
-          const workerPath = path.resolve(
-            process.cwd(),
-            "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
-          );
-          (pdfjsLib as any).GlobalWorkerOptions.workerSrc =
-            `file://${workerPath}`;
+          await configurePdfJsWorker(pdfjsLib);
 
           const loadingTask = (pdfjsLib as any).getDocument({
             data: new Uint8Array(buffer),
