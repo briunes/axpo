@@ -672,8 +672,8 @@ export function DataTable<T extends { id: string }>({
   }, [columnByKey, mobileActionsKey, mobileCard, mobileFields, mobileStatusKey, mobileTitleKey, renderMobileCell, rowActions]);
 
   const tableSurface = 'var(--scheme-surface-raised)';
-  const tableHeaderBackground = 'color-mix(in srgb, var(--scheme-surface-raised) 84%, var(--scheme-surface-raised-subtle))';
-  const tableHoverBackground = 'color-mix(in srgb, var(--scheme-brand-600) 5%, var(--scheme-surface-raised))';
+  const tableHeaderBackground = 'var(--app-shell-topbar-gradient)';
+  const tableHoverBackground = 'var(--app-shell-topbar-gradient)';
   const tableSelectedBackground = theme.palette.mode === 'dark'
     ? theme.palette.primary.dark + '33'
     : theme.palette.primary.main + '20';
@@ -764,28 +764,39 @@ export function DataTable<T extends { id: string }>({
           style={renderCustomSearch ? { flex: 1, minWidth: 0 } : undefined}
         >
           {renderCustomSearch ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap', width: '100%', minWidth: 0, overflowX: 'auto', overflowY: 'hidden' }}>
-              {renderCustomSearch({ draft, setDraft, commitSearch, searchPlaceholder, mode: "desktop" })}
-              <Button
-                size="small"
-                variant="contained"
-                onClick={applyFilterControls}
-                startIcon={<SearchIcon fontSize="small" />}
-                sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap', display: { xs: useMobileCards ? 'none' : 'inline-flex', md: 'inline-flex' } }}
-              >
-                {tI18n('common', 'search')}
-              </Button>
-              {onClearFilters && (
+            <div className="dt-filter-shell">
+              <div className="dt-filter-shell__main">
+                <div className="dt-filter-shell__label">
+                  <FilterListIcon fontSize="small" />
+                  <span>{tI18n('dataTable', 'filters')}</span>
+                  {hasActiveFilters && <span className="dt-active-filter-dot" aria-hidden="true" />}
+                </div>
+                <div className="dt-filter-controls">
+                  {renderCustomSearch({ draft, setDraft, commitSearch, searchPlaceholder, mode: "desktop" })}
+                </div>
+              </div>
+              <div className="dt-filter-shell__actions">
                 <Button
                   size="small"
-                  variant="outlined"
-                  onClick={onClearFilters}
-                  startIcon={<ClearIcon fontSize="small" />}
+                  variant="contained"
+                  onClick={applyFilterControls}
+                  startIcon={<SearchIcon fontSize="small" />}
                   sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap', display: { xs: useMobileCards ? 'none' : 'inline-flex', md: 'inline-flex' } }}
                 >
-                  {tI18n('dataTable', 'clearFilters')}
+                  {tI18n('common', 'search')}
                 </Button>
-              )}
+                {onClearFilters && (
+                  <Button
+                    size="small"
+                    variant={hasActiveFilters ? "outlined" : "text"}
+                    onClick={onClearFilters}
+                    startIcon={<ClearIcon fontSize="small" />}
+                    sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap', display: { xs: useMobileCards ? 'none' : 'inline-flex', md: 'inline-flex' } }}
+                  >
+                    {tI18n('dataTable', 'clearFilters')}
+                  </Button>
+                )}
+              </div>
             </div>
           ) : (
             toolbarLeft

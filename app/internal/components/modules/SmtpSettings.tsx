@@ -120,8 +120,6 @@ export function SmtpSettings({ session, onNotify }: SmtpSettingsProps) {
             ) : (
                 <>
                     <div className="settings-panel">
-                        <h3 className="settings-panel-title">{t("systemSettings", "titleSmtp")}</h3>
-
                         <Stack spacing={3}>
                             <FormInput
                                 label={t("systemSettings", "fieldSmtpHost")}
@@ -188,7 +186,7 @@ export function SmtpSettings({ session, onNotify }: SmtpSettingsProps) {
                                 label={t("systemSettings", "fieldFromName")}
                                 helperText={t("systemSettings", "fieldFromNameDesc")}
                                 type="text"
-                                placeholder="Axpo Simulator"
+                                placeholder={t("systemSettings", "fieldFromNamePlaceholder")}
                                 value={config.smtpFromName}
                                 onChange={(e) => handleChange("smtpFromName", e.target.value)}
                             />
@@ -221,7 +219,7 @@ export function SmtpSettings({ session, onNotify }: SmtpSettingsProps) {
                         </Stack>
                     </div>
 
-                    <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
+                    <Box className="configuration-page-actions" sx={{ mt: 4, display: 'flex', gap: 2 }}>
                         <Button
                             variant="contained"
                             onClick={handleSave}

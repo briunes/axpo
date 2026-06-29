@@ -1,6 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import {
+    Box,
+    Button,
+    ButtonGroup,
+    Menu,
+    MenuItem,
+    Tooltip,
+    Typography,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import BlockIcon from "@mui/icons-material/Block";
+import BoltIcon from "@mui/icons-material/Bolt";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import EditIcon from "@mui/icons-material/Edit";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { HtmlEditor } from "./HtmlEditor";
@@ -19,6 +36,8 @@ import {
 import { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE } from "../../../../src/lib/supportedLanguages";
 import { LoadingState } from "../shared/LoadingState";
 import { AITemplateBuilder, type AIGeneratedTemplate } from "./AITemplateBuilder";
+import { DataTable, StatusBadge } from "../ui";
+import type { ColumnDef, SortState } from "../ui";
 
 export interface PdfTemplatesProps {
     session: SessionState;
@@ -247,6 +266,15 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
     const [activeLanguage, setActiveLanguage] = useState<string>(DEFAULT_LANGUAGE);
     const [showPreview, setShowPreview] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [sortState, setSortState] = useState<SortState>({ column: "updatedAt", direction: "desc" });
+    const [dropdownState, setDropdownState] = useState<{
+        anchorEl: HTMLElement | null;
+        items: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean }>;
+    }>({ anchorEl: null, items: [] });
+    const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
 
     useEffect(() => {
         loadData();
@@ -292,7 +320,7 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
 </head>
 <body>
 <div class="mainbody">
-    <h1>New PDF Template</h1>
+    <h1>${t("pdfTemplatesModule", "defaultHtmlTitle")}</h1>
 </div>
 </body>
 </html>`;
@@ -450,6 +478,176 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
         return sampleData;
     };
 
+    const formatDateTime = (value: string | Date) => {
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return "—";
+        return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    };
+
+    const getCommodityLabel = (commodity?: string | null) =>
+        commodity === "GAS"
+            ? (t("simulationForm", "gasLabel").trim() || "Gas")
+            : (t("simulationForm", "electricityLabel").trim() || "Electricity");
+
+    const filteredTemplates = useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
+        const rows = normalizedSearch
+            ? templates.filter((template) => [
+                template.name,
+                template.description,
+                TEMPLATE_TYPE_LABELS[template.type as PdfTemplateType],
+                getCommodityLabel(template.commodity),
+                template.active ? t("pdfTemplatesModule", "statusActive") : t("pdfTemplatesModule", "statusInactive"),
+            ].filter(Boolean).some((value) => String(value).toLowerCase().includes(normalizedSearch)))
+            : [...templates];
+
+        const direction = sortState.direction === "asc" ? 1 : -1;
+        rows.sort((a, b) => {
+            const getValue = (template: PdfTemplate) => {
+                switch (sortState.column) {
+                    case "name": return template.name ?? "";
+                    case "type": return TEMPLATE_TYPE_LABELS[template.type as PdfTemplateType] ?? template.type ?? "";
+                    case "commodity": return getCommodityLabel(template.commodity);
+                    case "status": return template.active ? 1 : 0;
+                    case "updatedAt": return new Date(template.updatedAt).getTime();
+                    default: return "";
+                }
+            };
+            const aValue = getValue(a);
+            const bValue = getValue(b);
+            if (typeof aValue === "number" && typeof bValue === "number") return (aValue - bValue) * direction;
+            return String(aValue).localeCompare(String(bValue)) * direction;
+        });
+
+        return rows;
+    }, [TEMPLATE_TYPE_LABELS, search, sortState.column, sortState.direction, templates, t]);
+
+    const pagedTemplates = useMemo(
+        () => filteredTemplates.slice((page - 1) * pageSize, page * pageSize),
+        [filteredTemplates, page, pageSize],
+    );
+
+    const columns = useMemo<ColumnDef<PdfTemplate>[]>(() => [
+        {
+            key: "name",
+            label: t("pdfTemplatesModule", "colName"),
+            sortable: true,
+            copyable: true,
+            renderCell: (template) => (
+                <Typography variant="body2" className="dt-cell-primary" sx={{ fontWeight: 600 }}>
+                    {template.name}
+                </Typography>
+            ),
+        },
+        {
+            key: "type",
+            label: t("pdfTemplatesModule", "colType"),
+            sortable: true,
+            renderCell: (template) => (
+                <StatusBadge
+                    label={TEMPLATE_TYPE_LABELS[template.type as PdfTemplateType] ?? template.type}
+                    tone="neutral"
+                />
+            ),
+        },
+        {
+            key: "commodity",
+            label: t("pdfTemplatesModule", "colCommodity") || "Commodity",
+            sortable: true,
+            renderCell: (template) => {
+                const isGas = template.commodity === "GAS";
+                const label = getCommodityLabel(template.commodity);
+                const icon = isGas
+                    ? <LocalFireDepartmentIcon sx={{ fontSize: 16, color: "#ef4444" }} />
+                    : <BoltIcon sx={{ fontSize: 16, color: "#f59e0b" }} />;
+                return (
+                    <StatusBadge
+                        label={label}
+                        tone={isGas ? "danger" : "warning"}
+                        icon={icon}
+                    />
+                );
+            },
+        },
+        {
+            key: "description",
+            label: t("pdfTemplatesModule", "colDescription"),
+            copyable: true,
+            renderCell: (template) => (
+                <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "normal", lineHeight: 1.35 }}>
+                    {template.description || "—"}
+                </Typography>
+            ),
+        },
+        {
+            key: "status",
+            label: t("pdfTemplatesModule", "colStatus"),
+            sortable: true,
+            width: "120",
+            renderCell: (template) => (
+                <StatusBadge
+                    label={template.active ? t("pdfTemplatesModule", "statusActive") : t("pdfTemplatesModule", "statusInactive")}
+                    tone={template.active ? "success" : "neutral"}
+                />
+            ),
+        },
+        {
+            key: "updatedAt",
+            label: t("pdfTemplatesModule", "colUpdated"),
+            sortable: true,
+            width: "170",
+            renderCell: (template) => (
+                <Typography variant="body2" sx={{ whiteSpace: "nowrap", color: "text.secondary" }}>
+                    {formatDateTime(template.updatedAt)}
+                </Typography>
+            ),
+        },
+        {
+            key: "actions",
+            label: t("pdfTemplatesModule", "colActions"),
+            renderCell: (template) => {
+                const secondaryItems = [
+                    {
+                        label: template.active ? t("pdfTemplatesModule", "btnDeactivate") : t("pdfTemplatesModule", "btnActivate"),
+                        onClick: () => handleToggleActive(template.id),
+                        icon: template.active ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />,
+                        danger: template.active,
+                    },
+                    {
+                        label: t("pdfTemplatesModule", "btnDelete"),
+                        onClick: () => handleDelete(template.id),
+                        icon: <DeleteOutlineIcon fontSize="small" />,
+                        danger: true,
+                    },
+                ];
+
+                return (
+                    <Box sx={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
+                        <ButtonGroup variant="outlined" size="small">
+                            <Button
+                                onClick={() => handleEdit(template)}
+                                startIcon={<EditIcon fontSize="small" />}
+                                title={t("pdfTemplatesModule", "btnEdit")}
+                                aria-label={t("pdfTemplatesModule", "btnEdit")}
+                                sx={{ minWidth: "88px !important" }}
+                            >
+                                {t("pdfTemplatesModule", "btnEdit")}
+                            </Button>
+                            <Button
+                                size="small"
+                                onClick={(e) => setDropdownState({ anchorEl: e.currentTarget, items: secondaryItems })}
+                                aria-label="More actions"
+                                sx={{ px: 0.5, minWidth: 32 }}
+                            >
+                                <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
+                            </Button>
+                        </ButtonGroup>
+                    </Box>
+                );
+            },
+        },
+    ], [TEMPLATE_TYPE_LABELS, t, templates]);
+
     const isEditorOpen = isCreating || editingTemplate !== null;
 
     return (
@@ -458,82 +656,54 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                 <LoadingState message={t("pdfTemplatesModule", "loading")} />
             ) : (
                 <>
-                    <div className="template-table-header">
-                        <h2 className="template-table-title">{t("pdfTemplatesModule", "title")}</h2>
-                        <div className="template-table-actions">
-                            <button className="config-btn config-btn-primary" onClick={handleCreate}>
-                                {t("pdfTemplatesModule", "btnNew")}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="template-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>{t("pdfTemplatesModule", "colName")}</th>
-                                    <th>{t("pdfTemplatesModule", "colType")}</th>
-                                    <th>{t("pdfTemplatesModule", "colCommodity") || "Commodity"}</th>
-                                    <th>{t("pdfTemplatesModule", "colDescription")}</th>
-                                    <th>{t("pdfTemplatesModule", "colStatus")}</th>
-                                    <th>{t("pdfTemplatesModule", "colUpdated")}</th>
-                                    <th>{t("pdfTemplatesModule", "colActions")}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {templates.map((template) => (
-                                    <tr key={template.id}>
-                                        <td style={{ fontWeight: 600 }}>{template.name}</td>
-                                        <td>
-                                            <span className="template-type-badge">
-                                                {TEMPLATE_TYPE_LABELS[template.type as PdfTemplateType]}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span style={{color: "var(--scheme-neutral-500)" }}>
-                                                {template.commodity === "ELECTRICITY" ? "⚡ Electricity"
-                                                    : template.commodity === "GAS" ? "🔥 Gas"
-                                                        : "⚡ Electricity"}
-                                            </span>
-                                        </td>
-                                        <td style={{ color: "var(--scheme-neutral-500)", }}>
-                                            {template.description}
-                                        </td>
-                                        <td>
-                                            <span className={`template-status-badge ${template.active ? "active" : "inactive"}`}>
-                                                {template.active ? t("pdfTemplatesModule", "statusActive") : t("pdfTemplatesModule", "statusInactive")}
-                                            </span>
-                                        </td>
-                                        <td style={{color: "var(--scheme-neutral-500)" }}>
-                                            {(() => { const d = new Date(template.updatedAt); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; })()}
-                                        </td>
-                                        <td>
-                                            <div className="template-row-actions">
-                                                <button
-                                                    className="template-action-btn"
-                                                    onClick={() => handleEdit(template)}
-                                                >
-                                                    {t("pdfTemplatesModule", "btnEdit")}
-                                                </button>
-                                                <button
-                                                    className="template-action-btn"
-                                                    onClick={() => handleToggleActive(template.id)}
-                                                >
-                                                    {template.active ? t("pdfTemplatesModule", "btnDeactivate") : t("pdfTemplatesModule", "btnActivate")}
-                                                </button>
-                                                <button
-                                                    className="template-action-btn delete"
-                                                    onClick={() => handleDelete(template.id)}
-                                                >
-                                                    {t("pdfTemplatesModule", "btnDelete")}
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <DataTable<PdfTemplate>
+                        tableId="pdf-templates"
+                        columns={columns}
+                        rows={pagedTemplates}
+                        loading={isLoading}
+                        searchValue={search}
+                        onSearch={(value) => { setSearch(value); setPage(1); }}
+                        onClearFilters={() => { setSearch(""); setPage(1); }}
+                        searchPlaceholder={t("pdfTemplatesModule", "title")}
+                        emptyMessage="No templates found."
+                        sortState={sortState}
+                        onSort={(column) => {
+                            setSortState((current) => ({
+                                column,
+                                direction: current.column === column && current.direction === "asc" ? "desc" : "asc",
+                            }));
+                            setPage(1);
+                        }}
+                        pagination={{
+                            page,
+                            pageSize,
+                            total: filteredTemplates.length,
+                            onPageChange: setPage,
+                            onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
+                        }}
+                        headerRight={
+                            <Tooltip title={t("pdfTemplatesModule", "btnNew")} arrow>
+                                <Button
+                                    variant="contained"
+                                    size="small"
+                                    onClick={handleCreate}
+                                    startIcon={<AddIcon fontSize="small" />}
+                                    sx={{ whiteSpace: "nowrap" }}
+                                >
+                                    {t("pdfTemplatesModule", "btnNew").replace("+ ", "")}
+                                </Button>
+                            </Tooltip>
+                        }
+                        mobileCard={{
+                            title: "name",
+                            status: "status",
+                            icon: (template) => template.commodity === "GAS"
+                                ? <LocalFireDepartmentIcon sx={{ fontSize: 20, color: "#ef4444" }} />
+                                : <BoltIcon sx={{ fontSize: 20, color: "#f59e0b" }} />,
+                            fields: ["type", "commodity", "description", "updatedAt"],
+                            actions: "actions",
+                        }}
+                    />
 
                     {isEditorOpen && (
                         <div className="template-editor-overlay" onClick={handleCancel}>
@@ -725,6 +895,25 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                             </div>
                         </div>
                     )}
+
+                    <Menu
+                        open={!!dropdownState.anchorEl}
+                        anchorEl={dropdownState.anchorEl}
+                        onClose={closeDropdown}
+                        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                        transformOrigin={{ vertical: "top", horizontal: "right" }}
+                    >
+                        {dropdownState.items.map((item) => (
+                            <MenuItem
+                                key={item.label}
+                                onClick={() => { item.onClick(); closeDropdown(); }}
+                                sx={{ color: item.danger ? "error.main" : "text.primary", gap: 1 }}
+                            >
+                                {item.icon && <Box component="span" sx={{ display: "inline-flex", width: 18 }}>{item.icon}</Box>}
+                                {item.label}
+                            </MenuItem>
+                        ))}
+                    </Menu>
                 </>
             )}
         </div>

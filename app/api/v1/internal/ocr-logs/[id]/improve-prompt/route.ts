@@ -9,7 +9,11 @@ import {
   OCR_MAX_PDF_PAGES,
   OCR_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
-import { getAiUsage, resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
+import {
+  getAiUsage,
+  isOpenAiCompatibleProvider,
+  resolveAiConfigFromSystemConfig,
+} from "@/application/lib/aiConfig";
 
 const isNvidiaBedrockRuntime = (provider: string): boolean =>
   provider === "aws-bedrock-nvidia";
@@ -746,7 +750,7 @@ Return ONLY the complete new prompt text — no commentary, no markdown fences, 
             signal: AbortSignal.timeout(300000),
           },
         );
-      } else if (llmProvider === "openai" || llmProvider === "azure-openai") {
+      } else if (isOpenAiCompatibleProvider(llmProvider)) {
         const content: any[] = [{ type: "text", text: metaPrompt }];
         for (const f of encodedFiles) {
           content.push(toOpenAIFilePart(f));
@@ -858,9 +862,7 @@ Return ONLY the complete new prompt text — no commentary, no markdown fences, 
     // ── 9. Extract text from response ──────────────────────────────────────
     let improvedPrompt = "";
     if (
-      llmProvider === "openai" ||
-      llmProvider === "azure-openai" ||
-      llmProvider === "ollama-cloud"
+      isOpenAiCompatibleProvider(llmProvider)
     ) {
       const msg = llmData.choices?.[0]?.message;
       improvedPrompt = msg?.content || msg?.reasoning || "";

@@ -98,7 +98,6 @@ export function RequestCacheSettings({ onNotify }: RequestCacheSettingsProps) {
 
   return (
     <div className="settings-panel">
-      <h3 className="settings-panel-title">{t("requestCache", "title")}</h3>
       <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
         {t("requestCache", "description")}
       </Typography>

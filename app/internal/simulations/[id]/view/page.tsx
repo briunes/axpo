@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
 import { getSimulation, openSimulationInvoice, type SimulationItem, simulationStatusTone } from "../../../lib/internalApi";
-import { CrudPageLayout, LoadingState, useAlerts } from "../../../components/shared";
+import { CrudPageLayout, FormSkeleton, useAlerts } from "../../../components/shared";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { SimulationViewDisplay } from "../../../components/modules/SimulationViewDisplay";
 import type { SimulationResults } from "@/domain/types";
@@ -311,7 +311,7 @@ export default function SimulationViewPage({ params }: { params: Promise<{ id: s
     if (!session || !simulation) {
         return (
             <CrudPageLayout title={t("simulationDetail", "title")} backHref="/internal/simulations" hideHeader>
-                <LoadingState message={t("simulationDetail", "loading")} size={100} />
+                <FormSkeleton variant="simulation-edit" />
             </CrudPageLayout>
         );
     }

@@ -7,6 +7,7 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { getSystemConfig, updateSystemConfig } from "../../lib/configApi";
 import { LoadingState } from "../shared/LoadingState";
 import { FormSelect } from "../ui";
+import { getLanguageOptions } from "../../../../src/lib/supportedLanguages";
 
 export interface UserPreferencesSettingsProps {
     session: SessionState;
@@ -94,7 +95,6 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
             ) : (
                 <>
                     <div className="settings-panel">
-                        <h3 className="settings-panel-title">{t("systemSettings", "titlePreferences")}</h3>
                         <p style={{ color: "var(--axpo-text-secondary)", marginBottom: "24px" }}>
                             {t("systemSettings", "preferencesDescription")}
                         </p>
@@ -105,10 +105,7 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
                                 helperText={t("systemSettings", "fieldLanguageDesc")}
                                 value={config.defaultLanguage}
                                 onChange={(value) => handleChange("defaultLanguage", value)}
-                                options={[
-                                    { value: "en", label: "🇬🇧 English" },
-                                    { value: "es", label: "🇪🇸 Español" }
-                                ]}
+                                options={getLanguageOptions()}
                             />
 
                             <FormSelect

@@ -25,7 +25,7 @@ import {
   AddressForm,
   CrudFormContainer,
   CrudPageLayout,
-  LoadingState,
+  FormSkeleton,
   useAlerts,
   type AddressData,
 } from "../../../components/shared";
@@ -204,8 +204,9 @@ export default function EditAgencyPage({
       <CrudPageLayout
         title={t("agencyFormPage", "editTitle")}
         backHref="/internal/agencies"
+        hideHeader
       >
-        <LoadingState message={t("agencyFormPage", "loading")} size={100} />
+        <FormSkeleton variant="agency" tabs={2} />
       </CrudPageLayout>
     );
   }

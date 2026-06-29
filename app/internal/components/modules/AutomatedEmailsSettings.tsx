@@ -111,8 +111,6 @@ export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSe
             ) : (
                 <>
                     <div className="settings-panel">
-                        <h3 className="settings-panel-title">{t("systemSettings", "titleAutomatedEmails")}</h3>
-
                         <Stack spacing={3}>
                             <FormSelect
                                 label={t("systemSettings", "fieldUserCreationTemplate")}
@@ -278,7 +276,7 @@ export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSe
                         </Stack>
                     </div>
 
-                    <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
+                    <Box className="configuration-page-actions" sx={{ mt: 4, display: 'flex', gap: 2 }}>
                         <Button
                             variant="contained"
                             onClick={handleSave}

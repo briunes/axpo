@@ -179,6 +179,7 @@ function formatProvider(provider: string): string {
         "ollama": "Ollama (local)",
         "openai": "OpenAI",
         "azure-openai": "Azure OpenAI",
+        "aws-bedrock-mantle": "AWS Bedrock (Mantle)",
         "anthropic": "Anthropic",
         "aws-bedrock-anthropic": "AWS Bedrock (Claude)",
         "google": "Google AI",

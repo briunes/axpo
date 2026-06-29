@@ -10,6 +10,7 @@ import {
 } from "@/application/middleware/rateLimit";
 import { PinService } from "@/application/services/pinService";
 import { SimulationService } from "@/application/services/simulationService";
+import { NotificationService } from "@/application/services/notificationService";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditService } from "@/application/services/auditService";
 import {
@@ -94,6 +95,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           },
         },
       },
+      client: {
+        select: {
+          name: true,
+        },
+      },
     },
   });
 
@@ -159,6 +165,14 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     await prisma.simulation.update({
       where: { id: simulation.id },
       data: { clientOpenedAt: new Date() },
+    });
+    await NotificationService.notifySimulationViewed({
+      simulationId: simulation.id,
+      referenceNumber: simulation.referenceNumber,
+      ownerUserId: simulation.ownerUserId,
+      clientName: simulation.client?.name,
+    }).catch((error) => {
+      console.error("[Notifications] Failed to create simulation viewed notification:", error);
     });
   }
 

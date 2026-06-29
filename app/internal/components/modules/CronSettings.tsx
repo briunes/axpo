@@ -164,7 +164,6 @@ export function CronSettings({ session, onNotify }: CronSettingsProps) {
 
     return (
         <div className="settings-panel">
-            <h3 className="settings-panel-title">{t("cronSettings", "title")}</h3>
             <p className="settings-panel-description">
                 {t("cronSettings", "description")}
             </p>

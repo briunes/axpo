@@ -15,7 +15,7 @@ import {
 import { usePermissions } from "../../lib/permissionsContext";
 import {
   CrudPageLayout,
-  LoadingState,
+  FormSkeleton,
   useAlerts,
 } from "../../components/shared";
 import {
@@ -538,14 +538,14 @@ export default function SimulationDetailPage({
     }
   };
 
-  if (!session || !simulation) {
+  if (!session || !simulation || false) {
     return (
       <CrudPageLayout
         title={t("simulationDetail", "title")}
         backHref="/internal/simulations"
         hideHeader
       >
-        <LoadingState message={t("simulationDetail", "loading")} size={100} />
+        <FormSkeleton variant="simulation-edit" />
       </CrudPageLayout>
     );
   }

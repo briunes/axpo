@@ -9,7 +9,11 @@ import {
   OCR_MAX_PDF_PAGES,
   OCR_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
-import { getAiUsage, resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
+import {
+  getAiUsage,
+  isOpenAiCompatibleProvider,
+  resolveAiConfigFromSystemConfig,
+} from "@/application/lib/aiConfig";
 
 const isNvidiaBedrockRuntime = (provider: string): boolean =>
   provider === "aws-bedrock-nvidia";
@@ -205,7 +209,7 @@ export const POST = withErrorHandler(
             signal: AbortSignal.timeout(300000),
           },
         );
-      } else if (llmProvider === "openai" || llmProvider === "azure-openai") {
+      } else if (isOpenAiCompatibleProvider(llmProvider)) {
         const content: any[] = [{ type: "text", text: prompt }];
         for (const f of encodedFiles) {
           if (isPdf(f.mimeType)) {
@@ -326,9 +330,7 @@ export const POST = withErrorHandler(
     // ── 5. Extract text ────────────────────────────────────────────────────
     let extractedText = "";
     if (
-      llmProvider === "openai" ||
-      llmProvider === "azure-openai" ||
-      llmProvider === "ollama-cloud"
+      isOpenAiCompatibleProvider(llmProvider)
     ) {
       const msg = llmData.choices?.[0]?.message;
       extractedText = msg?.content || msg?.reasoning || "";

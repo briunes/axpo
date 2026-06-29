@@ -32,6 +32,9 @@ const nextConfig = {
       "./node_modules/.pnpm/@opendataloader+pdf@2.4.7/node_modules/@opendataloader/pdf/dist/**/*",
       "./node_modules/.pnpm/@opendataloader+pdf@2.4.7/node_modules/@opendataloader/pdf/lib/**/*",
     ],
+    "/api/v1/internal/invoices/detect-provider": [
+      "./node_modules/pdfjs-dist/legacy/build/**/*",
+    ],
   },
   images: {
     remotePatterns: [

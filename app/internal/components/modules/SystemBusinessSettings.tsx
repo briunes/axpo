@@ -14,6 +14,8 @@ export interface SystemBusinessSettingsProps {
     session: SessionState;
     onNotify: (message: string, tone: "success" | "error") => void;
     role?: string;
+    activeSection?: BusinessTab;
+    hideNavigation?: boolean;
 }
 
 type BusinessTab = "general" | "simulation" | "clients" | "sessions" | "calculation" | "pdf-defaults" | "cache" | "cron";
@@ -103,10 +105,10 @@ const DEFAULT_CONFIG: BusinessConfig = {
     maintenanceMessage: "",
 };
 
-export function SystemBusinessSettings({ session, onNotify, role }: SystemBusinessSettingsProps) {
+export function SystemBusinessSettings({ session, onNotify, role, activeSection, hideNavigation = false }: SystemBusinessSettingsProps) {
     const { t } = useI18n();
     const isSysAdmin = role === "SYS_ADMIN";
-    const [activeTab, setActiveTab] = useState<BusinessTab>(isSysAdmin ? "general" : "simulation");
+    const [activeTab, setActiveTab] = useState<BusinessTab>(activeSection ?? (isSysAdmin ? "general" : "simulation"));
     const [calcEnergyTab, setCalcEnergyTab] = useState<"electricity" | "gas">("electricity");
     const [config, setConfig] = useState<BusinessConfig>(DEFAULT_CONFIG);
     const [isDirty, setIsDirty] = useState(false);
@@ -114,14 +116,14 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
     const [pdfTemplates, setPdfTemplates] = useState<any[]>([]);
 
     const ALL_BUSINESS_TABS: Record<BusinessTab, string> = {
-        general: "General",
+        general: t("systemSettings", "tabGeneral"),
         simulation: t("systemSettings", "tabSimulation"),
         clients: t("systemSettings", "tabClients"),
-        sessions: "Sessions",
+        sessions: t("systemSettings", "tabSessions"),
         calculation: t("systemSettings", "tabCalculation"),
         "pdf-defaults": t("systemSettings", "tabPdfDefaults"),
-        cache: "Cache",
-        cron: "Cron Jobs",
+        cache: t("systemSettings", "tabCache"),
+        cron: t("systemSettings", "tabCronJobs"),
     };
 
     // general and cron are SYS_ADMIN-only
@@ -138,6 +140,12 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
         loadConfig();
         loadPdfTemplates();
     }, []);
+
+    useEffect(() => {
+        if (activeSection && visibleBusinessTabs.includes(activeSection)) {
+            setActiveTab(activeSection);
+        }
+    }, [activeSection, visibleBusinessTabs]);
 
     const loadPdfTemplates = async () => {
         try {
@@ -255,6 +263,12 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
         setIsDirty(true);
     };
 
+    const sortUniqueNumbers = (values: number[]) => [...new Set(values)].sort((a, b) => a - b);
+    const replaceNumberValue = (values: number[], previousValue: number, nextValue: number) =>
+        sortUniqueNumbers(values.map((value) => (value === previousValue ? nextValue : value)));
+    const removeNumberValue = (values: number[], valueToRemove: number) =>
+        values.filter((value) => value !== valueToRemove);
+
     // ── Tax Rate Table ──────────────────────────────────────────────────────────
     function TaxRateTable({
         title,
@@ -262,6 +276,7 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
         columns,
         step,
         onAddRow,
+        onUpdateRow,
         onRemoveRow,
     }: {
         title: string;
@@ -269,9 +284,11 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
         columns: Array<{ key: string; label: string; activeValues: number[]; onToggle: (val: number) => void }>;
         step?: number;
         onAddRow: (val: number) => void;
+        onUpdateRow: (previousValue: number, nextValue: number) => void;
         onRemoveRow: (val: number) => void;
     }) {
         const [newValue, setNewValue] = useState("");
+        const [editingValues, setEditingValues] = useState<Record<string, string>>({});
 
         const addRow = () => {
             const v = parseFloat(newValue);
@@ -280,18 +297,42 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
             setNewValue("");
         };
 
-        const isActiveAnywhere = (val: number) => columns.some(c => c.activeValues.includes(val));
+        const setEditingValue = (value: number, nextText: string) => {
+            setEditingValues((prev) => ({ ...prev, [String(value)]: nextText }));
+        };
+
+        const resetEditingValue = (value: number) => {
+            setEditingValues((prev) => {
+                const next = { ...prev };
+                delete next[String(value)];
+                return next;
+            });
+        };
+
+        const commitEditingValue = (previousValue: number) => {
+            const rawValue = editingValues[String(previousValue)];
+            if (rawValue === undefined) return;
+            const nextValue = parseFloat(rawValue);
+            if (!Number.isFinite(nextValue) || (nextValue !== previousValue && rows.includes(nextValue))) {
+                resetEditingValue(previousValue);
+                return;
+            }
+            if (nextValue !== previousValue) {
+                onUpdateRow(previousValue, nextValue);
+            }
+            resetEditingValue(previousValue);
+        };
 
         return (
-            <Box>
-                <Typography variant="caption" sx={{ fontWeight: 700, mb: 1.5, display: "block", textTransform: "uppercase", letterSpacing: "0.06em", color: "text.secondary", fontSize: 11 }}>
+            <Box className="calculation-rate-table">
+                <Typography variant="caption" sx={{ fontWeight: 700, mb: 1.25, display: "block", textTransform: "uppercase", letterSpacing: "0.04em", color: "text.secondary", fontSize: 11 }}>
                     {title}
                 </Typography>
                 <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1.5, overflow: "hidden" }}>
                     {/* Header */}
-                    <Box sx={{ display: "grid", gridTemplateColumns: `180px ${columns.map(() => "1fr").join(" ")} 36px`, bgcolor: "action.hover", borderBottom: "1px solid", borderColor: "divider" }}>
+                    <Box sx={{ display: "grid", gridTemplateColumns: `minmax(150px, 190px) ${columns.map(() => "1fr").join(" ")} 44px`, bgcolor: "action.hover", borderBottom: "1px solid", borderColor: "divider" }}>
                         <Box sx={{ px: 2, py: 1 }}>
-                            <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", textTransform: "uppercase", fontSize: 10, letterSpacing: "0.05em" }}>Value</Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", textTransform: "uppercase", fontSize: 10, letterSpacing: "0.05em" }}>{t("systemSettings", "taxRateValue")}</Typography>
                         </Box>
                         {columns.map(col => (
                             <Box key={col.key} sx={{ px: 1, py: 1, textAlign: "center" }}>
@@ -306,15 +347,40 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                             key={val}
                             sx={{
                                 display: "grid",
-                                gridTemplateColumns: `180px ${columns.map(() => "1fr").join(" ")} 36px`,
+                                gridTemplateColumns: `minmax(150px, 190px) ${columns.map(() => "1fr").join(" ")} 44px`,
                                 borderBottom: "1px solid",
                                 borderColor: "divider",
                                 "&:last-child": { borderBottom: "none" },
                                 alignItems: "center",
                             }}
                         >
-                            <Box sx={{ px: 2, py: 0.75 }}>
-                                <Typography variant="body2" fontFamily="monospace" fontSize={13}>{val}</Typography>
+                            <Box sx={{ px: 1.5, py: 0.5 }}>
+                                <TextField
+                                    variant="standard"
+                                    type="number"
+                                    size="small"
+                                    value={editingValues[String(val)] ?? String(val)}
+                                    onChange={(event) => setEditingValue(val, event.target.value)}
+                                    onBlur={() => commitEditingValue(val)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter") {
+                                            event.preventDefault();
+                                            commitEditingValue(val);
+                                        }
+                                        if (event.key === "Escape") {
+                                            resetEditingValue(val);
+                                        }
+                                    }}
+                                    inputProps={{ step: step ?? 0.000001 }}
+                                    sx={{
+                                        width: "100%",
+                                        "& input": {
+                                            fontFamily: "monospace",
+                                            fontSize: 13,
+                                            py: 0.5,
+                                        },
+                                    }}
+                                />
                             </Box>
                             {columns.map(col => (
                                 <Box key={col.key} sx={{ display: "flex", justifyContent: "center" }}>
@@ -331,7 +397,7 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                                     <span>
                                         <IconButton
                                             size="small"
-                                            disabled={isActiveAnywhere(val) || rows.length <= 1}
+                                            disabled={rows.length <= 1}
                                             onClick={() => onRemoveRow(val)}
                                             sx={{ color: "var(--scheme-neutral-600)", "&:hover:not(:disabled)": { color: "error.main" } }}
                                         >
@@ -376,53 +442,53 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                 <LoadingState message={t("systemSettings", "loading")} />
             ) : (
                 <>
-                    <Box
-                        sx={{
-                            borderBottom: "1px solid var(--scheme-neutral-900)",
-                            px: 1,
-                            background: "linear-gradient(180deg, var(--scheme-neutral-1200) 0%, var(--scheme-neutral-1100) 100%)",
-                        }}
-                    >
-                        <Tabs
-                            value={tabIndex}
-                            onChange={(_, newValue) => {
-                                setActiveTab(visibleBusinessTabs[newValue]);
-                            }}
+                    {!hideNavigation && (
+                        <Box
                             sx={{
-                                minHeight: 52,
-                                '& .MuiTabs-indicator': {
-                                    backgroundColor: 'var(--scheme-brand-600)',
-                                    height: 2,
-                                },
+                                borderBottom: "1px solid var(--scheme-neutral-900)",
+                                px: 1,
+                                background: "linear-gradient(180deg, var(--scheme-neutral-1200) 0%, var(--scheme-neutral-1100) 100%)",
                             }}
                         >
-                            {visibleBusinessTabs.map((tab) => (
-                                <Tab
-                                    key={tab}
-                                    label={BUSINESS_TABS[tab]}
-                                    sx={{
-                                        textTransform: 'none',
-                                        minHeight: 52,
-                                        color: 'var(--scheme-neutral-500)',
-                                        fontWeight: 600,
-                                        '&.Mui-selected': {
-                                            color: 'var(--scheme-brand-600)',
-                                        },
-                                    }}
-                                />
-                            ))}
-                        </Tabs>
-                    </Box>
+                            <Tabs
+                                value={tabIndex}
+                                onChange={(_, newValue) => {
+                                    setActiveTab(visibleBusinessTabs[newValue]);
+                                }}
+                                sx={{
+                                    minHeight: 52,
+                                    '& .MuiTabs-indicator': {
+                                        backgroundColor: 'var(--scheme-brand-600)',
+                                        height: 2,
+                                    },
+                                }}
+                            >
+                                {visibleBusinessTabs.map((tab) => (
+                                    <Tab
+                                        key={tab}
+                                        label={BUSINESS_TABS[tab]}
+                                        sx={{
+                                            textTransform: 'none',
+                                            minHeight: 52,
+                                            color: 'var(--scheme-neutral-500)',
+                                            fontWeight: 600,
+                                            '&.Mui-selected': {
+                                                color: 'var(--scheme-brand-600)',
+                                            },
+                                        }}
+                                    />
+                                ))}
+                            </Tabs>
+                        </Box>
+                    )}
 
                     <div className="system-settings-content">
                         {resolvedBusinessTab === "general" && (
                             <div className="settings-panel">
-                                <h3 className="settings-panel-title">General</h3>
-
                                 <Box sx={{ mb: 3 }}>
                                     <FormInput
-                                        label="App Version"
-                                        helperText="Bump this value after each deployment to force all clients to clear their cache and reload the latest version."
+                                        label={t("systemSettings", "fieldAppVersion")}
+                                        helperText={t("systemSettings", "fieldAppVersionDesc")}
                                         value={config.appVersion}
                                         onChange={(e) => handleChange("appVersion", e.target.value)}
                                     />
@@ -447,12 +513,12 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                                                 {config.maintenanceMode && (
                                                     <Box component="span" sx={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 6px rgba(239,68,68,0.8)" }} />
                                                 )}
-                                                Maintenance Mode
+                                                {t("systemSettings", "fieldMaintenanceMode")}
                                             </Typography>
                                             <Typography variant="caption" sx={{ color: "text.secondary" }}>
                                                 {config.maintenanceMode
-                                                    ? "Site is currently down for maintenance — all visitors see the maintenance page."
-                                                    : "When enabled, all visitors will be redirected to a maintenance page."}
+                                                    ? t("systemSettings", "fieldMaintenanceModeActiveDesc")
+                                                    : t("systemSettings", "fieldMaintenanceModeDesc")}
                                             </Typography>
                                         </Box>
                                         <Switch
@@ -467,7 +533,7 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                                         <Stack spacing={2}>
                                             <Box>
                                                 <Typography variant="caption" sx={{ fontWeight: 600, color: "text.secondary", display: "block", mb: 0.75 }}>
-                                                    Expected back online (optional)
+                                                    {t("systemSettings", "fieldMaintenanceUntil")}
                                                 </Typography>
                                                 <TextField
                                                     type="datetime-local"
@@ -475,23 +541,23 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                                                     fullWidth
                                                     value={config.maintenanceUntil}
                                                     onChange={(e) => handleChange("maintenanceUntil", e.target.value)}
-                                                    helperText="Leave blank to show no expected time to visitors."
+                                                    helperText={t("systemSettings", "fieldMaintenanceUntilDesc")}
                                                     slotProps={{ htmlInput: { min: new Date().toISOString().slice(0, 16) } }}
                                                 />
                                             </Box>
                                             <Box>
                                                 <Typography variant="caption" sx={{ fontWeight: 600, color: "text.secondary", display: "block", mb: 0.75 }}>
-                                                    Maintenance message (optional)
+                                                    {t("systemSettings", "fieldMaintenanceMessage")}
                                                 </Typography>
                                                 <TextField
                                                     size="small"
                                                     fullWidth
                                                     multiline
                                                     rows={2}
-                                                    placeholder="We're performing scheduled maintenance to improve your experience."
+                                                    placeholder={t("systemSettings", "fieldMaintenanceMessagePlaceholder")}
                                                     value={config.maintenanceMessage}
                                                     onChange={(e) => handleChange("maintenanceMessage", e.target.value)}
-                                                    helperText="Custom message shown to visitors on the maintenance page."
+                                                    helperText={t("systemSettings", "fieldMaintenanceMessageDesc")}
                                                 />
                                             </Box>
                                         </Stack>
@@ -502,8 +568,6 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
 
                         {resolvedBusinessTab === "simulation" && (
                             <div className="settings-panel">
-                                <h3 className="settings-panel-title">{t("systemSettings", "titleSimulation")}</h3>
-
                                 <Box sx={{ mb: 3 }}>
                                     <FormInput
                                         label={t("systemSettings", "fieldExpirationDays")}
@@ -521,8 +585,6 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
 
                         {resolvedBusinessTab === "clients" && (
                             <div className="settings-panel">
-                                <h3 className="settings-panel-title">{t("systemSettings", "titleClients")}</h3>
-
                                 <Box sx={{ mb: 3 }}>
                                     <label className="config-field-inline">
                                         <input
@@ -545,12 +607,10 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
 
                         {resolvedBusinessTab === "sessions" && (
                             <div className="settings-panel">
-                                <h3 className="settings-panel-title">Sessions</h3>
-
                                 <Box sx={{ mb: 3 }}>
                                     <FormInput
-                                        label="Default max active sessions per user"
-                                        helperText="Used as the default and maximum limit when creating users or when a user has no explicit value."
+                                        label={t("systemSettings", "fieldDefaultMaxActiveDevices")}
+                                        helperText={t("systemSettings", "fieldDefaultMaxActiveDevicesDesc")}
                                         type="number"
                                         slotProps={{
                                             htmlInput: { min: 1 }
@@ -566,9 +626,7 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                         )}
 
                         {resolvedBusinessTab === "calculation" && (
-                            <div className="settings-panel">
-                                <h3 className="settings-panel-title">{t("systemSettings", "titleCalculation")}</h3>
-
+                            <div className="settings-panel calculation-settings-panel">
                                 {/* ─── Electricity / Gas tabs ─── */}
                                 <Box sx={{ borderBottom: "1px solid var(--scheme-neutral-800)", mb: 3 }}>
                                     <Tabs
@@ -596,8 +654,9 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                                                     { key: "baleares", label: t("systemSettings", "calcBaleares"), activeValues: config.electricityTaxConfig.baleares.ivaRates, onToggle: (val) => { const cur = config.electricityTaxConfig.baleares.ivaRates; const next = cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val]; handleElecZoneChange("baleares", "ivaRates", next); if (!config.electricityTaxConfig.baleares.ivaOptions.includes(val)) handleElecZoneChange("baleares", "ivaOptions", [...config.electricityTaxConfig.baleares.ivaOptions, val].sort((a, b) => a - b)); } },
                                                 ]}
                                                 step={0.01}
-                                                onAddRow={(val) => { handleElecZoneChange("peninsula", "ivaOptions", [...new Set([...config.electricityTaxConfig.peninsula.ivaOptions, val])].sort((a, b) => a - b)); handleElecZoneChange("baleares", "ivaOptions", [...new Set([...config.electricityTaxConfig.baleares.ivaOptions, val])].sort((a, b) => a - b)); }}
-                                                onRemoveRow={(val) => { handleElecZoneChange("peninsula", "ivaOptions", config.electricityTaxConfig.peninsula.ivaOptions.filter(v => v !== val)); handleElecZoneChange("baleares", "ivaOptions", config.electricityTaxConfig.baleares.ivaOptions.filter(v => v !== val)); }}
+                                                onAddRow={(val) => { handleElecZoneChange("peninsula", "ivaOptions", sortUniqueNumbers([...config.electricityTaxConfig.peninsula.ivaOptions, val])); handleElecZoneChange("baleares", "ivaOptions", sortUniqueNumbers([...config.electricityTaxConfig.baleares.ivaOptions, val])); }}
+                                                onUpdateRow={(oldVal, newVal) => { handleElecZoneChange("peninsula", "ivaOptions", replaceNumberValue(config.electricityTaxConfig.peninsula.ivaOptions, oldVal, newVal)); handleElecZoneChange("peninsula", "ivaRates", replaceNumberValue(config.electricityTaxConfig.peninsula.ivaRates, oldVal, newVal)); handleElecZoneChange("baleares", "ivaOptions", replaceNumberValue(config.electricityTaxConfig.baleares.ivaOptions, oldVal, newVal)); handleElecZoneChange("baleares", "ivaRates", replaceNumberValue(config.electricityTaxConfig.baleares.ivaRates, oldVal, newVal)); }}
+                                                onRemoveRow={(val) => { handleElecZoneChange("peninsula", "ivaOptions", removeNumberValue(config.electricityTaxConfig.peninsula.ivaOptions, val)); handleElecZoneChange("peninsula", "ivaRates", removeNumberValue(config.electricityTaxConfig.peninsula.ivaRates, val)); handleElecZoneChange("baleares", "ivaOptions", removeNumberValue(config.electricityTaxConfig.baleares.ivaOptions, val)); handleElecZoneChange("baleares", "ivaRates", removeNumberValue(config.electricityTaxConfig.baleares.ivaRates, val)); }}
                                             />
                                             <TaxRateTable
                                                 title={`${t("systemSettings", "fieldIgicRate")} — ${t("systemSettings", "calcCanarias")}`}
@@ -606,8 +665,9 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                                                     { key: "canarias", label: t("systemSettings", "calcCanarias"), activeValues: config.electricityTaxConfig.canarias.igicRates, onToggle: (val) => { const cur = config.electricityTaxConfig.canarias.igicRates; const next = cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val]; handleElecZoneChange("canarias", "igicRates", next); if (!config.electricityTaxConfig.canarias.igicOptions.includes(val)) handleElecZoneChange("canarias", "igicOptions", [...config.electricityTaxConfig.canarias.igicOptions, val].sort((a, b) => a - b)); } },
                                                 ]}
                                                 step={0.01}
-                                                onAddRow={(val) => handleElecZoneChange("canarias", "igicOptions", [...new Set([...config.electricityTaxConfig.canarias.igicOptions, val])].sort((a, b) => a - b))}
-                                                onRemoveRow={(val) => handleElecZoneChange("canarias", "igicOptions", config.electricityTaxConfig.canarias.igicOptions.filter(v => v !== val))}
+                                                onAddRow={(val) => handleElecZoneChange("canarias", "igicOptions", sortUniqueNumbers([...config.electricityTaxConfig.canarias.igicOptions, val]))}
+                                                onUpdateRow={(oldVal, newVal) => { handleElecZoneChange("canarias", "igicOptions", replaceNumberValue(config.electricityTaxConfig.canarias.igicOptions, oldVal, newVal)); handleElecZoneChange("canarias", "igicRates", replaceNumberValue(config.electricityTaxConfig.canarias.igicRates, oldVal, newVal)); }}
+                                                onRemoveRow={(val) => { handleElecZoneChange("canarias", "igicOptions", removeNumberValue(config.electricityTaxConfig.canarias.igicOptions, val)); handleElecZoneChange("canarias", "igicRates", removeNumberValue(config.electricityTaxConfig.canarias.igicRates, val)); }}
                                             />
                                             <TaxRateTable
                                                 title={t("systemSettings", "fieldElectricityTaxRate")}
@@ -618,8 +678,9 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                                                     { key: "canarias", label: t("systemSettings", "calcCanarias"), activeValues: config.electricityTaxConfig.canarias.elecTaxRates, onToggle: (val) => { const cur = config.electricityTaxConfig.canarias.elecTaxRates; const next = cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val]; handleElecZoneChange("canarias", "elecTaxRates", next); if (!config.electricityTaxConfig.canarias.elecTaxOptions.includes(val)) handleElecZoneChange("canarias", "elecTaxOptions", [...config.electricityTaxConfig.canarias.elecTaxOptions, val].sort((a, b) => a - b)); } },
                                                 ]}
                                                 step={0.000001}
-                                                onAddRow={(val) => { handleElecZoneChange("peninsula", "elecTaxOptions", [...new Set([...config.electricityTaxConfig.peninsula.elecTaxOptions, val])].sort((a, b) => a - b)); handleElecZoneChange("baleares", "elecTaxOptions", [...new Set([...config.electricityTaxConfig.baleares.elecTaxOptions, val])].sort((a, b) => a - b)); handleElecZoneChange("canarias", "elecTaxOptions", [...new Set([...config.electricityTaxConfig.canarias.elecTaxOptions, val])].sort((a, b) => a - b)); }}
-                                                onRemoveRow={(val) => { handleElecZoneChange("peninsula", "elecTaxOptions", config.electricityTaxConfig.peninsula.elecTaxOptions.filter(v => v !== val)); handleElecZoneChange("baleares", "elecTaxOptions", config.electricityTaxConfig.baleares.elecTaxOptions.filter(v => v !== val)); handleElecZoneChange("canarias", "elecTaxOptions", config.electricityTaxConfig.canarias.elecTaxOptions.filter(v => v !== val)); }}
+                                                onAddRow={(val) => { handleElecZoneChange("peninsula", "elecTaxOptions", sortUniqueNumbers([...config.electricityTaxConfig.peninsula.elecTaxOptions, val])); handleElecZoneChange("baleares", "elecTaxOptions", sortUniqueNumbers([...config.electricityTaxConfig.baleares.elecTaxOptions, val])); handleElecZoneChange("canarias", "elecTaxOptions", sortUniqueNumbers([...config.electricityTaxConfig.canarias.elecTaxOptions, val])); }}
+                                                onUpdateRow={(oldVal, newVal) => { handleElecZoneChange("peninsula", "elecTaxOptions", replaceNumberValue(config.electricityTaxConfig.peninsula.elecTaxOptions, oldVal, newVal)); handleElecZoneChange("peninsula", "elecTaxRates", replaceNumberValue(config.electricityTaxConfig.peninsula.elecTaxRates, oldVal, newVal)); handleElecZoneChange("baleares", "elecTaxOptions", replaceNumberValue(config.electricityTaxConfig.baleares.elecTaxOptions, oldVal, newVal)); handleElecZoneChange("baleares", "elecTaxRates", replaceNumberValue(config.electricityTaxConfig.baleares.elecTaxRates, oldVal, newVal)); handleElecZoneChange("canarias", "elecTaxOptions", replaceNumberValue(config.electricityTaxConfig.canarias.elecTaxOptions, oldVal, newVal)); handleElecZoneChange("canarias", "elecTaxRates", replaceNumberValue(config.electricityTaxConfig.canarias.elecTaxRates, oldVal, newVal)); }}
+                                                onRemoveRow={(val) => { handleElecZoneChange("peninsula", "elecTaxOptions", removeNumberValue(config.electricityTaxConfig.peninsula.elecTaxOptions, val)); handleElecZoneChange("peninsula", "elecTaxRates", removeNumberValue(config.electricityTaxConfig.peninsula.elecTaxRates, val)); handleElecZoneChange("baleares", "elecTaxOptions", removeNumberValue(config.electricityTaxConfig.baleares.elecTaxOptions, val)); handleElecZoneChange("baleares", "elecTaxRates", removeNumberValue(config.electricityTaxConfig.baleares.elecTaxRates, val)); handleElecZoneChange("canarias", "elecTaxOptions", removeNumberValue(config.electricityTaxConfig.canarias.elecTaxOptions, val)); handleElecZoneChange("canarias", "elecTaxRates", removeNumberValue(config.electricityTaxConfig.canarias.elecTaxRates, val)); }}
                                             />
                                         </Stack>
                                     );
@@ -639,18 +700,20 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                                                     { key: "baleares", label: t("systemSettings", "calcBaleares"), activeValues: config.gasTaxConfig.baleares.ivaRates, onToggle: (val) => { const cur = config.gasTaxConfig.baleares.ivaRates; const next = cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val]; handleGasZoneChange("baleares", "ivaRates", next); if (!config.gasTaxConfig.baleares.ivaOptions.includes(val)) handleGasZoneChange("baleares", "ivaOptions", [...config.gasTaxConfig.baleares.ivaOptions, val].sort((a, b) => a - b)); } },
                                                 ]}
                                                 step={0.01}
-                                                onAddRow={(val) => { handleGasZoneChange("peninsula", "ivaOptions", [...new Set([...config.gasTaxConfig.peninsula.ivaOptions, val])].sort((a, b) => a - b)); handleGasZoneChange("baleares", "ivaOptions", [...new Set([...config.gasTaxConfig.baleares.ivaOptions, val])].sort((a, b) => a - b)); }}
-                                                onRemoveRow={(val) => { handleGasZoneChange("peninsula", "ivaOptions", config.gasTaxConfig.peninsula.ivaOptions.filter(v => v !== val)); handleGasZoneChange("baleares", "ivaOptions", config.gasTaxConfig.baleares.ivaOptions.filter(v => v !== val)); }}
+                                                onAddRow={(val) => { handleGasZoneChange("peninsula", "ivaOptions", sortUniqueNumbers([...config.gasTaxConfig.peninsula.ivaOptions, val])); handleGasZoneChange("baleares", "ivaOptions", sortUniqueNumbers([...config.gasTaxConfig.baleares.ivaOptions, val])); }}
+                                                onUpdateRow={(oldVal, newVal) => { handleGasZoneChange("peninsula", "ivaOptions", replaceNumberValue(config.gasTaxConfig.peninsula.ivaOptions, oldVal, newVal)); handleGasZoneChange("peninsula", "ivaRates", replaceNumberValue(config.gasTaxConfig.peninsula.ivaRates, oldVal, newVal)); handleGasZoneChange("baleares", "ivaOptions", replaceNumberValue(config.gasTaxConfig.baleares.ivaOptions, oldVal, newVal)); handleGasZoneChange("baleares", "ivaRates", replaceNumberValue(config.gasTaxConfig.baleares.ivaRates, oldVal, newVal)); }}
+                                                onRemoveRow={(val) => { handleGasZoneChange("peninsula", "ivaOptions", removeNumberValue(config.gasTaxConfig.peninsula.ivaOptions, val)); handleGasZoneChange("peninsula", "ivaRates", removeNumberValue(config.gasTaxConfig.peninsula.ivaRates, val)); handleGasZoneChange("baleares", "ivaOptions", removeNumberValue(config.gasTaxConfig.baleares.ivaOptions, val)); handleGasZoneChange("baleares", "ivaRates", removeNumberValue(config.gasTaxConfig.baleares.ivaRates, val)); }}
                                             />
                                             <TaxRateTable
                                                 title={t("systemSettings", "fieldHydrocarbonTaxRate")}
                                                 rows={hydroRows}
                                                 columns={[
-                                                    { key: "global", label: "Global", activeValues: config.gasTaxConfig.hydrocarbonTaxRates, onToggle: (val) => { const cur = config.gasTaxConfig.hydrocarbonTaxRates; const next = cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val]; handleGasHydroChange("hydrocarbonTaxRates", next); if (!config.gasTaxConfig.hydrocarbonTaxOptions.includes(val)) handleGasHydroChange("hydrocarbonTaxOptions", [...config.gasTaxConfig.hydrocarbonTaxOptions, val].sort((a, b) => a - b)); } },
+                                                    { key: "global", label: t("excelParserConfig", "scopeGlobal"), activeValues: config.gasTaxConfig.hydrocarbonTaxRates, onToggle: (val) => { const cur = config.gasTaxConfig.hydrocarbonTaxRates; const next = cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val]; handleGasHydroChange("hydrocarbonTaxRates", next); if (!config.gasTaxConfig.hydrocarbonTaxOptions.includes(val)) handleGasHydroChange("hydrocarbonTaxOptions", [...config.gasTaxConfig.hydrocarbonTaxOptions, val].sort((a, b) => a - b)); } },
                                                 ]}
                                                 step={0.000001}
-                                                onAddRow={(val) => handleGasHydroChange("hydrocarbonTaxOptions", [...new Set([...config.gasTaxConfig.hydrocarbonTaxOptions, val])].sort((a, b) => a - b))}
-                                                onRemoveRow={(val) => handleGasHydroChange("hydrocarbonTaxOptions", config.gasTaxConfig.hydrocarbonTaxOptions.filter(v => v !== val))}
+                                                onAddRow={(val) => handleGasHydroChange("hydrocarbonTaxOptions", sortUniqueNumbers([...config.gasTaxConfig.hydrocarbonTaxOptions, val]))}
+                                                onUpdateRow={(oldVal, newVal) => { handleGasHydroChange("hydrocarbonTaxOptions", replaceNumberValue(config.gasTaxConfig.hydrocarbonTaxOptions, oldVal, newVal)); handleGasHydroChange("hydrocarbonTaxRates", replaceNumberValue(config.gasTaxConfig.hydrocarbonTaxRates, oldVal, newVal)); }}
+                                                onRemoveRow={(val) => { handleGasHydroChange("hydrocarbonTaxOptions", removeNumberValue(config.gasTaxConfig.hydrocarbonTaxOptions, val)); handleGasHydroChange("hydrocarbonTaxRates", removeNumberValue(config.gasTaxConfig.hydrocarbonTaxRates, val)); }}
                                             />
                                         </Stack>
                                     );
@@ -660,10 +723,7 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
 
                         {resolvedBusinessTab === "pdf-defaults" && (
                             <div className="settings-panel">
-                                <h3 className="settings-panel-title">{t("systemSettings", "titlePdfDefaults")}</h3>
-                                <p className="settings-panel-description">{t("systemSettings", "titlePdfDefaultsDesc")}</p>
-
-                                <Stack spacing={3}>
+                                <Box className="pdf-defaults-grid">
                                     <FormSelect
                                         label={t("systemSettings", "fieldDefaultPdfGas")}
                                         helperText={t("systemSettings", "fieldDefaultPdfGasDesc")}
@@ -692,10 +752,10 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                                                 .map((template) => ({
                                                     value: template.id,
                                                     label: template.name
-                                                }))
+                                            }))
                                         ]}
                                     />
-                                </Stack>
+                                </Box>
                             </div>
                         )}
 
@@ -704,7 +764,7 @@ export function SystemBusinessSettings({ session, onNotify, role }: SystemBusine
                         )}
 
                         {resolvedBusinessTab !== "cron" && (
-                            <Box sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                            <Box className="configuration-page-actions" sx={{ mt: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                                 <Button
                                     variant="contained"
                                     onClick={handleSave}

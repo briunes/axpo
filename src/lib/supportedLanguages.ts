@@ -1,5 +1,5 @@
 /**
- * Supported languages for email and PDF templates.
+ * Supported languages for email, PDF templates, business preferences, and language switchers.
  *
  * To add a new language, simply add a new entry to this array.
  * The `code` must match the language codes used in UserPreferences.language
@@ -14,9 +14,31 @@ export interface SupportedLanguage {
 export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
   { code: "en", label: "English", flag: "🇬🇧" },
   { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "pt", label: "Português", flag: "🇵🇹" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
 ];
 
 export const DEFAULT_LANGUAGE = "en";
+
+export function getLanguageOptions(): Array<{ value: string; label: string }> {
+  return SUPPORTED_LANGUAGES.map((language) => ({
+    value: language.code,
+    label: `${language.flag} ${language.label}`,
+  }));
+}
+
+export function getSupportedLanguage(code: string): SupportedLanguage | undefined {
+  return SUPPORTED_LANGUAGES.find((language) => language.code === code);
+}
+
+export function isSupportedLanguage(
+  code: string | null | undefined,
+): code is string {
+  return (
+    typeof code === "string" &&
+    SUPPORTED_LANGUAGES.some((language) => language.code === code)
+  );
+}
 
 export function getLanguageLabel(code: string): string {
   return (

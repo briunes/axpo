@@ -9,7 +9,10 @@ import {
   OCR_MAX_PDF_PAGES,
   OCR_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
-import { getConfiguredAiProviders } from "@/application/lib/aiConfig";
+import {
+  getConfiguredAiProviders,
+  isOpenAiCompatibleProvider,
+} from "@/application/lib/aiConfig";
 
 const isAnthropicBedrockRuntime = (provider: string, baseUrl: string): boolean =>
   provider === "aws-bedrock-anthropic" ||
@@ -290,11 +293,7 @@ async function callLlmForBenchmark(
 ): Promise<LlmCallResult> {
   let llmResponse: Response;
 
-  if (
-    provider === "ollama-cloud" ||
-    provider === "openai" ||
-    provider === "azure-openai"
-  ) {
+  if (isOpenAiCompatibleProvider(provider)) {
     const content: any[] = [{ type: "text", text: prompt }];
     if (images.length > 0) {
       for (const img of images) {
@@ -1081,7 +1080,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // Providers that need image input receive rendered invoice pages.
     let detectionImages: Array<{ base64: string; mimeType: string }> = [];
     if (
-      llmProvider === "ollama-cloud" ||
+      isOpenAiCompatibleProvider(llmProvider) ||
       isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
       isNvidiaBedrockRuntime(llmProvider)
     ) {
@@ -1156,7 +1155,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // Providers that need image input receive rendered invoice pages.
     let extractionImages: Array<{ base64: string; mimeType: string }> = [];
     if (
-      llmProvider === "ollama-cloud" ||
+      isOpenAiCompatibleProvider(llmProvider) ||
       isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
       isNvidiaBedrockRuntime(llmProvider)
     ) {

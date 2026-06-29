@@ -1,8 +1,8 @@
-import type { Locale } from "../../../src/lib/translations";
-
-const DATE_LOCALE_MAP: Record<Locale, string> = {
+const DATE_LOCALE_MAP: Record<string, string> = {
   en: "en-US",
   es: "es-ES",
+  fr: "fr-FR",
+  pt: "pt-PT",
 };
 
 function capitalizeLabel(value: string): string {
@@ -10,11 +10,11 @@ function capitalizeLabel(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-export function getDatePickerLocale(locale: Locale): string {
+export function getDatePickerLocale(locale: string): string {
   return DATE_LOCALE_MAP[locale] ?? DATE_LOCALE_MAP.en;
 }
 
-export function getLocalizedMonthNames(locale: Locale): string[] {
+export function getLocalizedMonthNames(locale: string): string[] {
   const formatter = new Intl.DateTimeFormat(getDatePickerLocale(locale), {
     month: "long",
   });
@@ -25,7 +25,7 @@ export function getLocalizedMonthNames(locale: Locale): string[] {
   });
 }
 
-export function getLocalizedDayNames(locale: Locale): string[] {
+export function getLocalizedDayNames(locale: string): string[] {
   const formatter = new Intl.DateTimeFormat(getDatePickerLocale(locale), {
     weekday: "short",
   });

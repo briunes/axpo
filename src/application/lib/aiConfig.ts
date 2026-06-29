@@ -81,6 +81,15 @@ export function getAiTaskConfigs(config: Record<string, any>): Record<string, st
   return asRecord(config.aiTaskConfigs) as Record<string, string>;
 }
 
+export function isOpenAiCompatibleProvider(provider: string): boolean {
+  return (
+    provider === "openai" ||
+    provider === "azure-openai" ||
+    provider === "ollama-cloud" ||
+    provider === "aws-bedrock-mantle"
+  );
+}
+
 export function resolveAiConfigFromSystemConfig(
   config: Record<string, any> | null | undefined,
   task: AiTaskKey,

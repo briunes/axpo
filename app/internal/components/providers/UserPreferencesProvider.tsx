@@ -10,7 +10,7 @@ import {
 } from "react";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import type { Locale } from "../../../../src/lib/translations";
+import { isSupportedLanguage } from "../../../../src/lib/supportedLanguages";
 
 export interface UserPreferences {
     language: string | null;
@@ -95,8 +95,8 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
             const hasLocalLocale =
                 typeof window !== "undefined" &&
                 !!localStorage.getItem(LOCALE_STORAGE_KEY);
-            if (!hasLocalLocale && (updated.language === "en" || updated.language === "es")) {
-                setLocale(updated.language as Locale);
+            if (!hasLocalLocale && isSupportedLanguage(updated.language)) {
+                setLocale(updated.language);
             }
             setPreferences(updated);
             try { localStorage.setItem(PREFS_CACHE_KEY, JSON.stringify(updated)); } catch { /* ignore */ }

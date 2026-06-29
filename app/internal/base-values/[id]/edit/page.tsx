@@ -17,7 +17,7 @@ import {
 import {
     CrudFormContainer,
     CrudPageLayout,
-    LoadingState,
+    FormSkeleton,
     useAlerts,
 } from "../../../components/shared";
 import { BaseValueItemBuilder } from "../../../components/ui/BaseValueItemBuilder";
@@ -117,8 +117,8 @@ export default function EditBaseValueSetPage({
 
     if (!session || !set) {
         return (
-            <CrudPageLayout title={t("baseValuesModule", "editTitle")} backHref="/internal/base-values">
-                <LoadingState message={t("baseValuesModule", "loading")} size={100} />
+            <CrudPageLayout title={t("baseValuesModule", "editTitle")} backHref="/internal/base-values" hideHeader>
+                <FormSkeleton variant="base-values" />
             </CrudPageLayout>
         );
     }

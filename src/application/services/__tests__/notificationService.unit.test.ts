@@ -43,6 +43,92 @@ jest.mock("@/infrastructure/database/prisma", () => ({
 import { UserRole } from "@/domain/types";
 import { NotificationService } from "../notificationService";
 
+describe("NotificationService simulation lifecycle notifications", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    notificationUpsertMock.mockResolvedValue({});
+  });
+
+  it("creates an owner notification when a client first views a simulation", async () => {
+    await NotificationService.notifySimulationViewed({
+      simulationId: "sim-1",
+      referenceNumber: "SIM-2026-0001",
+      ownerUserId: "owner-1",
+      clientName: "ACME Energia",
+      viewedAt: new Date("2026-06-26T10:00:00.000Z"),
+    });
+
+    expect(notificationUpsertMock).toHaveBeenCalledWith({
+      where: { dedupeKey: "user:owner-1:simulation.client_viewed:sim-1" },
+      create: expect.objectContaining({
+        type: "simulation.client_viewed",
+        category: "simulations",
+        severity: "SUCCESS",
+        title: "Simulation SIM-2026-0001 was viewed by ACME Energia",
+        audienceUserId: "owner-1",
+        sourceType: "simulation",
+        sourceId: "sim-1",
+        actionUrl: "/internal/simulations/sim-1",
+        metadata: {
+          clientName: "ACME Energia",
+          viewedAt: "2026-06-26T10:00:00.000Z",
+        },
+      }),
+      update: expect.objectContaining({
+        type: "simulation.client_viewed",
+        title: "Simulation SIM-2026-0001 was viewed by ACME Energia",
+        audienceUserId: "owner-1",
+      }),
+    });
+  });
+
+  it("creates expiring and expired notifications for the simulation owner", async () => {
+    await NotificationService.notifySimulationExpiringSoon({
+      simulationId: "sim-2",
+      referenceNumber: "SIM-2026-0002",
+      ownerUserId: "owner-2",
+      clientName: "Client SL",
+      expiresAt: new Date("2026-06-28T10:00:00.000Z"),
+      daysRemaining: 2,
+    });
+    await NotificationService.notifySimulationExpired({
+      simulationId: "sim-2",
+      referenceNumber: "SIM-2026-0002",
+      ownerUserId: "owner-2",
+      clientName: "Client SL",
+      expiresAt: new Date("2026-06-28T10:00:00.000Z"),
+    });
+
+    expect(notificationUpsertMock).toHaveBeenNthCalledWith(1, {
+      where: { dedupeKey: "user:owner-2:simulation.expiring_soon:sim-2" },
+      create: expect.objectContaining({
+        type: "simulation.expiring_soon",
+        severity: "INFO",
+        title: "Simulation SIM-2026-0002 for Client SL expires in 2 days",
+        audienceUserId: "owner-2",
+        expiresAt: new Date("2026-06-28T10:00:00.000Z"),
+      }),
+      update: expect.objectContaining({
+        type: "simulation.expiring_soon",
+        title: "Simulation SIM-2026-0002 for Client SL expires in 2 days",
+      }),
+    });
+    expect(notificationUpsertMock).toHaveBeenNthCalledWith(2, {
+      where: { dedupeKey: "user:owner-2:simulation.expired:sim-2" },
+      create: expect.objectContaining({
+        type: "simulation.expired",
+        severity: "WARNING",
+        title: "Simulation SIM-2026-0002 for Client SL has expired",
+        audienceUserId: "owner-2",
+      }),
+      update: expect.objectContaining({
+        type: "simulation.expired",
+        title: "Simulation SIM-2026-0002 for Client SL has expired",
+      }),
+    });
+  });
+});
+
 describe("NotificationService.markForUser", () => {
   beforeEach(() => {
     jest.clearAllMocks();
