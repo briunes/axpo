@@ -14,8 +14,8 @@ export interface SupportedLanguage {
 export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
   { code: "en", label: "English", flag: "🇬🇧" },
   { code: "es", label: "Español", flag: "🇪🇸" },
-  { code: "pt", label: "Português", flag: "🇵🇹" },
-  { code: "fr", label: "Français", flag: "🇫🇷" },
+  // { code: "pt", label: "Português", flag: "🇵🇹" },
+  // { code: "fr", label: "Français", flag: "🇫🇷" },
 ];
 
 export const DEFAULT_LANGUAGE = "en";
@@ -27,7 +27,9 @@ export function getLanguageOptions(): Array<{ value: string; label: string }> {
   }));
 }
 
-export function getSupportedLanguage(code: string): SupportedLanguage | undefined {
+export function getSupportedLanguage(
+  code: string,
+): SupportedLanguage | undefined {
   return SUPPORTED_LANGUAGES.find((language) => language.code === code);
 }
 
