@@ -389,7 +389,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
         ]}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
           <>
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ width: { xs: "100%", sm: 280 } }}>
               <FormInput
                 label=""
                 placeholder={searchPlaceholder}
@@ -413,7 +413,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
                 }}
               />
             </Box>
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ width: { xs: "100%", sm: 280 } }}>
               <FormSelect
                 label=""
                 options={[
@@ -433,7 +433,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
               />
             </Box>
             {isAdmin(role) && (
-              <Box sx={{ width: 280 }}>
+              <Box sx={{ width: { xs: "100%", sm: 280 } }}>
                 <FormSelect
                   label=""
                   options={[

@@ -322,7 +322,7 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
         emptyMessage={t("search", "emptyClients")}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
           <>
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ width: { xs: "100%", sm: 280 } }}>
               <FormInput
                 label=""
                 placeholder={searchPlaceholder}

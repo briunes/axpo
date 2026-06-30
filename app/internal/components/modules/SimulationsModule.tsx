@@ -28,7 +28,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import EditIcon from "@mui/icons-material/Edit";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ShareIcon from "@mui/icons-material/Share";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -217,6 +216,68 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     const payload = sim.payloadJson as { selectedOffer?: { productKey?: string } } | null;
     return Boolean(payload?.selectedOffer?.productKey);
   }, []);
+
+  const getSimulationActions = useCallback((sim: SimulationItem) => {
+    const isShared = sim.status === "SHARED";
+    const canDelete =
+      (!sim.isDeleted && canArchiveSimulation) ||
+      (Boolean(sim.isDeleted) && isAdminRole);
+    const canDraftShare = !sim.isDeleted && sim.status === "DRAFT" && canShareSimulation && hasSelectedProduct(sim);
+
+    const secondaryItems: Array<{
+      label: string;
+      onClick: () => void;
+      icon?: React.ReactNode;
+      warning?: boolean;
+      danger?: boolean;
+      disabled?: boolean;
+    }> = [];
+
+    if (canDraftShare) {
+      secondaryItems.push({
+        label: t("actions", "share"),
+        warning: true,
+        icon: <ShareIcon fontSize="small" />,
+        onClick: () => handleShareAction(sim),
+      });
+    }
+    if (canDuplicateSimulation) {
+      secondaryItems.push({
+        label: t("actions", "duplicate"),
+        icon: <ContentCopyIcon fontSize="small" />,
+        onClick: () => handleClone(sim),
+        disabled: busyAction === `clone-${sim.id}`,
+      });
+    }
+    if (canDelete) {
+      secondaryItems.push({
+        label: t("actions", "delete"),
+        icon: <DeleteIcon fontSize="small" />,
+        onClick: () => setConfirmDeleteSim(sim),
+        danger: true,
+      });
+    }
+
+    return {
+      primaryLabel: isShared ? t("actions", "view") : t("actions", "simulate"),
+      primaryIcon: isShared ? <VisibilityIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />,
+      primaryOnClick: () => router.push(
+        isShared ? `/internal/simulations/${sim.id}/view` : `/internal/simulations/${sim.id}`,
+      ),
+      secondaryItems,
+    };
+  }, [
+    busyAction,
+    canArchiveSimulation,
+    canDuplicateSimulation,
+    canShareSimulation,
+    handleClone,
+    handleShareAction,
+    hasSelectedProduct,
+    isAdminRole,
+    router,
+    t,
+  ]);
 
   const getSimulationReference = (sim: SimulationItem) =>
     sim.referenceNumber || sim.id.slice(0, 8) + "…";
@@ -473,41 +534,13 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       key: "actions",
       label: t("columns", "actions"),
       renderCell: (s) => {
-        const isShared = s.status === "SHARED";
-        const canDelete =
-          (!s.isDeleted && canArchiveSimulation) ||
-          (Boolean(s.isDeleted) && isAdminRole);
-        const canDraftShare = !s.isDeleted && s.status === "DRAFT" && canShareSimulation && hasSelectedProduct(s);
-
-        const primaryLabel = isShared ? t("actions", "view") : t("actions", "simulate");
-        const primaryVariant = isShared ? "outlined" : "outlined";
-        const primaryOnClick = () => router.push(
-          isShared ? `/internal/simulations/${s.id}/view` : `/internal/simulations/${s.id}`
-        );
-
-        const secondaryItems: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; warning?: boolean; danger?: boolean; disabled?: boolean }> = [];
-        if (canDraftShare) {
-          secondaryItems.push({
-            label: t("actions", "share"),
-            warning: true,
-            icon: <ShareIcon fontSize="small" />,
-            onClick: () => handleShareAction(s),
-          });
-        }
-        if (canDuplicateSimulation) {
-          secondaryItems.push({ label: t("actions", "duplicate"), icon: <ContentCopyIcon fontSize="small" />, onClick: () => handleClone(s), disabled: busyAction === `clone-${s.id}` });
-        }
-        if (canDelete) {
-          secondaryItems.push({ label: t("actions", "delete"), icon: <DeleteIcon fontSize="small" />, onClick: () => setConfirmDeleteSim(s), danger: true });
-        }
+        const { primaryLabel, primaryIcon, primaryOnClick, secondaryItems } = getSimulationActions(s);
 
         const hasDropdown = secondaryItems.length > 0;
 
-        const primaryIcon = isShared ? <VisibilityIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />;
-
         return (
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
-            <ButtonGroup variant={primaryVariant} size="small">
+            <ButtonGroup variant="outlined" size="small">
               <Button
                 onClick={primaryOnClick}
                 startIcon={primaryIcon}
@@ -536,15 +569,8 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       },
     },
   ], [
-    busyAction,
-    canArchiveSimulation,
-    canDuplicateSimulation,
-    canShareSimulation,
     formatDateTime,
-    handleClone,
-    handleShareAction,
-    hasSelectedProduct,
-    isAdminRole,
+    getSimulationActions,
     router,
     session.user.role,
     t,
@@ -700,41 +726,40 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             },
           ],
           actions: (sim) => {
-            const canDelete =
-              (!sim.isDeleted && canDo(session.user.role, "simulations.archive")) ||
-              (Boolean(sim.isDeleted) && isAdmin(session.user.role));
+            const { primaryLabel, primaryIcon, primaryOnClick, secondaryItems } = getSimulationActions(sim);
+            const actionCount = 1 + secondaryItems.length;
+
             return (
-              <Box sx={{ display: 'grid', gridTemplateColumns: canDelete ? '1fr 1fr 1fr' : '1fr 1fr', gap: 0.75 }}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: actionCount > 2 ? 'repeat(2, minmax(0, 1fr))' : `repeat(${actionCount}, minmax(0, 1fr))`,
+                  gap: 0.75,
+                }}
+              >
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => router.push(`/internal/simulations/${sim.id}/view`)}
-                  startIcon={<VisibilityIcon fontSize="small" />}
-                  sx={{ minWidth: 0 }}
+                  onClick={primaryOnClick}
+                  startIcon={primaryIcon}
+                  sx={{ minWidth: 0, whiteSpace: "normal", lineHeight: 1.15 }}
                 >
-                  {t("actions", "view")}
+                  {primaryLabel}
                 </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => router.push(`/internal/simulations/${sim.id}`)}
-                  startIcon={<EditIcon fontSize="small" />}
-                  sx={{ minWidth: 0 }}
-                >
-                  {t("actions", "edit")}
-                </Button>
-                {canDelete && (
+                {secondaryItems.map((item) => (
                   <Button
+                    key={item.label}
                     variant="outlined"
-                    color="error"
+                    color={item.danger ? "error" : item.warning ? "warning" : "primary"}
                     size="small"
-                    onClick={() => setConfirmDeleteSim(sim)}
-                    startIcon={<DeleteIcon fontSize="small" />}
-                    sx={{ minWidth: 0 }}
+                    onClick={item.onClick}
+                    disabled={item.disabled}
+                    startIcon={item.icon}
+                    sx={{ minWidth: 0, whiteSpace: "normal", lineHeight: 1.15 }}
                   >
-                    {t("actions", "delete")}
+                    {item.label}
                   </Button>
-                )}
+                ))}
               </Box>
             );
           },

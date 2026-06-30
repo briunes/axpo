@@ -32,14 +32,14 @@ const getBedrockImageFormat = (mimeType: string): "png" | "jpeg" | "gif" | "webp
 // Expected results for the benchmark invoice (Serigrafia arrigorriaga.pdf)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const BENCHMARK_EXPECTED_DETECTION = {
+const BENCHMARK_EXPECTED_DETECTION = {
   providerName: "IBERDROLA CLIENTES, S.A.U.",
   matchedSlug: "iberdrola-clientes-s-a-u",
   confidence: "high",
   invoiceType: "ELECTRICITY",
 };
 
-export const BENCHMARK_EXPECTED_EXTRACTION = {
+const BENCHMARK_EXPECTED_EXTRACTION = {
   cups: "ES00210001674304GE",
   nombreTitular: "SERIGRAFIA INDUSTRIAL ARRIGORRIAGA S.L.L.",
   personaContacto: "",

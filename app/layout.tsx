@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { I18nProvider } from "../src/lib/i18n-context";
@@ -23,12 +24,20 @@ if (typeof window === "undefined") {
   });
 }
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "AXPO Simulator",
   description: "AXPO Simulador",
+  applicationName: "AXPO Simulator",
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: "/axpo-mark.svg",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#ff3254",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

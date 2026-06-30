@@ -14,6 +14,7 @@ import {
   resolveSimulationProductName,
 } from "@/infrastructure/pdf/pdfFilename";
 import { installPdfResourceGuard } from "@/infrastructure/pdf/pdfResourceGuard";
+import { normalizeLanguageCode } from "@/lib/supportedLanguages";
 
 interface PublicSessionPayload {
   typ?: string;
@@ -185,10 +186,9 @@ export async function GET(
         : null;
 
     // Resolve preferred language: client > owner preferences > null
-    const preferredLanguage =
-      simulation.client?.language ??
-      simulation.ownerUser?.preferences?.language ??
-      null;
+    const preferredLanguage = normalizeLanguageCode(
+      simulation.client?.language ?? simulation.ownerUser?.preferences?.language,
+    );
 
     // Determine commodity from merged payload to select the right template
     const commodity = mergedPayload?.type as "ELECTRICITY" | "GAS" | undefined;
@@ -252,10 +252,9 @@ export async function GET(
 
     // Pick the translation for the preferred language, fall back to default htmlContent
     const resolvedTemplateContent =
-      (preferredLanguage &&
-        pdfTemplate.translations.find(
-          (t) => t.languageCode === preferredLanguage,
-        )?.htmlContent) ??
+      pdfTemplate.translations.find(
+        (t) => t.languageCode.trim().toLowerCase() === preferredLanguage,
+      )?.htmlContent ??
       pdfTemplate.htmlContent;
 
     // Extract variable values from simulation data

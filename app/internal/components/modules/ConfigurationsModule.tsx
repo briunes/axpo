@@ -321,62 +321,64 @@ export function ConfigurationsModule({ session, onNotify, role }: Configurations
                 </header>
 
                 <div className="configurations-content">
-                    <div className="configuration-content-frame">
-                        {resolvedPage === "pdf-templates" && (
-                            <PdfTemplatesNew session={session} onNotify={onNotify} />
-                        )}
-                        {resolvedPage === "email-templates" && (
-                            <EmailTemplatesNew session={session} onNotify={onNotify} />
-                        )}
-                        {resolvedPage === "pdf-defaults" && (
-                            <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="pdf-defaults" hideNavigation />
-                        )}
-                        {resolvedPage === "automated-emails" && (
-                            <AutomatedEmailsSettings session={session} onNotify={onNotify} />
-                        )}
-                        {resolvedPage === "simulation" && (
-                            <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="simulation" hideNavigation />
-                        )}
-                        {resolvedPage === "clients" && (
-                            <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="clients" hideNavigation />
-                        )}
-                        {resolvedPage === "calculation" && (
-                            <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="calculation" hideNavigation />
-                        )}
-                        {resolvedPage === "excel-parser" && (
-                            <ExcelParserConfigSettings session={session} onNotify={onNotify} />
-                        )}
-                        {resolvedPage === "smtp" && (
-                            <SmtpSettings session={session} onNotify={onNotify} />
-                        )}
-                        {resolvedPage === "general" && (
-                            <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="general" hideNavigation />
-                        )}
-                        {resolvedPage === "sessions" && (
-                            <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="sessions" hideNavigation />
-                        )}
-                        {resolvedPage === "cache" && (
-                            <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="cache" hideNavigation />
-                        )}
-                        {resolvedPage === "cron" && (
-                            <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="cron" hideNavigation />
-                        )}
-                        {resolvedPage === "llm" && (
-                            <LLMSettings session={session} onNotify={onNotify} />
-                        )}
-                        {resolvedPage === "invoice-providers" && (
-                            <InvoiceProviderPromptsSettings session={session} onNotify={onNotify} />
-                        )}
-                        {resolvedPage === "ocr-usage" && (
-                            <OcrUsageDashboard session={session} onNotify={onNotify} />
-                        )}
-                        {resolvedPage === "preferences" && (
-                            <UserPreferencesSettings session={session} onNotify={onNotify} />
-                        )}
-                        {resolvedPage === "permissions" && (
-                            <RolePermissionsEditor session={session} onNotify={onNotify} />
-                        )}
-                    </div>
+                    {resolvedPage === "pdf-templates" && (
+                        <PdfTemplatesNew session={session} onNotify={onNotify} />
+                    )}
+                    {resolvedPage === "email-templates" && (
+                        <EmailTemplatesNew session={session} onNotify={onNotify} />
+                    )}
+                    {resolvedPage !== "pdf-templates" && resolvedPage !== "email-templates" && (
+                        <div className="configuration-content-frame">
+                            {resolvedPage === "pdf-defaults" && (
+                                <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="pdf-defaults" hideNavigation />
+                            )}
+                            {resolvedPage === "automated-emails" && (
+                                <AutomatedEmailsSettings session={session} onNotify={onNotify} />
+                            )}
+                            {resolvedPage === "simulation" && (
+                                <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="simulation" hideNavigation />
+                            )}
+                            {resolvedPage === "clients" && (
+                                <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="clients" hideNavigation />
+                            )}
+                            {resolvedPage === "calculation" && (
+                                <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="calculation" hideNavigation />
+                            )}
+                            {resolvedPage === "excel-parser" && (
+                                <ExcelParserConfigSettings session={session} onNotify={onNotify} />
+                            )}
+                            {resolvedPage === "smtp" && (
+                                <SmtpSettings session={session} onNotify={onNotify} />
+                            )}
+                            {resolvedPage === "general" && (
+                                <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="general" hideNavigation />
+                            )}
+                            {resolvedPage === "sessions" && (
+                                <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="sessions" hideNavigation />
+                            )}
+                            {resolvedPage === "cache" && (
+                                <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="cache" hideNavigation />
+                            )}
+                            {resolvedPage === "cron" && (
+                                <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="cron" hideNavigation />
+                            )}
+                            {resolvedPage === "llm" && (
+                                <LLMSettings session={session} onNotify={onNotify} />
+                            )}
+                            {resolvedPage === "invoice-providers" && (
+                                <InvoiceProviderPromptsSettings session={session} onNotify={onNotify} />
+                            )}
+                            {resolvedPage === "ocr-usage" && (
+                                <OcrUsageDashboard session={session} onNotify={onNotify} />
+                            )}
+                            {resolvedPage === "preferences" && (
+                                <UserPreferencesSettings session={session} onNotify={onNotify} />
+                            )}
+                            {resolvedPage === "permissions" && (
+                                <RolePermissionsEditor session={session} onNotify={onNotify} />
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

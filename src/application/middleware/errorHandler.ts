@@ -29,6 +29,20 @@ const ERROR_LOG_EXCLUDED_PATHS = new Set([
   "/api/v1/internal/auth/redirect-report",
 ]);
 
+type HandlerContext = {
+  params?: Record<string, string>;
+};
+
+type NextRouteContext = {
+  params: Promise<Record<string, string>>;
+};
+
+type RouteHandlerWithErrorHandling = {
+  (req: NextRequest): Promise<NextResponse>;
+  (req: NextRequest, context: HandlerContext): Promise<NextResponse>;
+  (req: NextRequest, context: NextRouteContext): Promise<NextResponse>;
+};
+
 class ApiResponseError extends Error {
   constructor(
     message: string,
@@ -154,19 +168,12 @@ export const errorHandler = (
 export const withErrorHandler = (
   handler: (
     req: NextRequest,
-    context?: { params?: Record<string, string> },
+    context?: HandlerContext,
   ) => Promise<NextResponse>,
-): ((
-  req: NextRequest,
-  context?: {
-    params?: Promise<Record<string, string>> | Record<string, string>;
-  },
-) => Promise<NextResponse>) => {
+): RouteHandlerWithErrorHandling => {
   return async (
     req: NextRequest,
-    context?: {
-      params?: Promise<Record<string, string>> | Record<string, string>;
-    },
+    context?: HandlerContext | NextRouteContext,
   ) => {
     try {
       return await withRequestContext(async () => {

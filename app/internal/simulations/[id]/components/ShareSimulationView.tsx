@@ -15,7 +15,7 @@ import { extractVariableValues, replaceVariables as replaceVars } from "@/infras
 import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
 import type { EditableSectionOverrides, EditableSectionsConfig } from "@/infrastructure/templates/editableSections";
 import { mergeEditableSections } from "@/infrastructure/templates/editableSections";
-import { resolveTranslation, getLanguageFromCountry } from "@/lib/supportedLanguages";
+import { normalizeLanguageCode, resolveTranslation, getLanguageFromCountry } from "@/lib/supportedLanguages";
 import {
     Box,
     Button,
@@ -99,18 +99,17 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 setEmailTemplates(init.emailTemplates);
                 setTemplateVariables(init.templateVariables);
 
-                // Determine client language from language preference (falls back to country detection)
-                let detectedLanguage = "en";
-                if (!isTestingMode) {
-                    const clientDefaults = init.clientDefaults ?? simulation.client;
-                    if (clientDefaults?.contactEmail) {
-                        setRecipientEmail(clientDefaults.contactEmail);
-                    }
-                    detectedLanguage = clientDefaults?.language
-                        ? clientDefaults.language
-                        : getLanguageFromCountry(clientDefaults?.country);
-                } else if (isTestingMode && loggedUserEmail) {
+                // Determine client language from language preference (falls back to country detection).
+                // Testing mode still renders the client-facing PDF in the client's language;
+                // it only redirects email delivery to the logged-in user.
+                const clientDefaults = init.clientDefaults ?? simulation.client;
+                const detectedLanguage = normalizeLanguageCode(clientDefaults?.language
+                    ? clientDefaults.language
+                    : getLanguageFromCountry(clientDefaults?.country));
+                if (isTestingMode && loggedUserEmail) {
                     setRecipientEmail(loggedUserEmail);
+                } else if (clientDefaults?.contactEmail) {
+                    setRecipientEmail(clientDefaults.contactEmail);
                 }
                 setClientLanguage(detectedLanguage);
 
@@ -557,7 +556,14 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                                     const templateId = e.target.value;
                                                     setSelectedEmailPdfTemplate(templateId);
                                                     const template = pdfTemplates.find((t) => t.id === templateId);
-                                                    if (template) setEditedEmailPdfContent(template.htmlContent);
+                                                    if (template) {
+                                                        const translation = resolveTranslation(template.translations ?? [], clientLanguage);
+                                                        setEditedEmailPdfContent(translation?.htmlContent ?? template.htmlContent);
+                                                        const defaults = template.editableSections
+                                                            ? Object.fromEntries(Object.entries(template.editableSections).map(([k, v]) => [k, v.default]))
+                                                            : {};
+                                                        setEmailPdfEditableOverrides(defaults);
+                                                    }
                                                 }}
                                                 label={t("shareSimulation", "selectPdfTemplate")}
                                             >
@@ -641,7 +647,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                                         onChange={(e) => setEditedSubject(e.target.value)}
                                                         sx={{ mb: 2 }}
                                                     />
-                                                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 2 }}>
+                                                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 280px" }, gap: 2 }}>
                                                         <HtmlEditor
                                                             key={`email-${selectedEmailTemplate}`}
                                                             initialHtml={editedEmailContent}
@@ -708,7 +714,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                                 </Box>
 
                                                 {pdfTemplateViewMode === "edit" ? (
-                                                    <Box sx={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 2 }}>
+                                                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 280px" }, gap: 2 }}>
                                                         <HtmlEditor
                                                             key={`email-pdf-${selectedEmailPdfTemplate}`}
                                                             initialHtml={editedEmailPdfContent}
@@ -780,7 +786,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                     </Box>
 
                                     {templateViewMode === "edit" ? (
-                                        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 2 }}>
+                                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 280px" }, gap: 2 }}>
                                             <HtmlEditor
                                                 key={`pdf-${selectedPdfTemplate}`}
                                                 initialHtml={editedPdfContent}

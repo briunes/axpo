@@ -301,8 +301,8 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                 onApplyFilters={handleSearch}
                 onClearFilters={resetFilters}
                 renderCustomSearch={() => (
-                    <Box sx={{ display: 'flex', gap: 1, flex: "0 1 auto", minWidth: 0 }}>
-                        <Box sx={{ width: 230, flex: "0 0 auto" }}>
+                    <Box sx={{ display: 'flex', gap: 1, flex: "1 1 auto", minWidth: 0, flexWrap: "wrap" }}>
+                        <Box sx={{ width: { xs: "100%", sm: 230 }, flex: { xs: "1 1 100%", sm: "0 0 auto" } }}>
                             <FormSelect
                                 label=""
                                 options={[
@@ -316,7 +316,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
-                        <Box sx={{ width: 230, flex: "0 0 auto" }}>
+                        <Box sx={{ width: { xs: "100%", sm: 230 }, flex: { xs: "1 1 100%", sm: "0 0 auto" } }}>
                             <FormSelect
                                 label=""
                                 options={[
@@ -329,7 +329,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 textFieldProps={{ size: "small" }}
                             />
                         </Box>
-                        <Box sx={{ width: 310, flex: "0 0 auto" }}>
+                        <Box sx={{ width: { xs: "100%", sm: 310 }, flex: { xs: "1 1 100%", sm: "0 0 auto" } }}>
                             <TextField
                                 size="small"
                                 fullWidth
@@ -340,7 +340,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                 sx={{ "& .MuiInputBase-root": { } }}
                             />
                         </Box>
-                        <Box sx={{ width: 430, flex: "0 0 auto" }}>
+                        <Box sx={{ width: { xs: "100%", md: 430 }, flex: { xs: "1 1 100%", md: "0 0 auto" } }}>
                             <DateRangePicker
                                 variant="inline"
                                 label={t("logs", "date")}
@@ -386,7 +386,7 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                 <DialogContent dividers>
                     {selectedLog && (
                         <Stack spacing={3}>
-                            <Box sx={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 2 }}>
+                            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "180px minmax(0, 1fr)" }, gap: 2 }}>
                                 <Typography variant="body2" color="text.secondary">
                                     {t("logs", "sentAt")}
                                 </Typography>

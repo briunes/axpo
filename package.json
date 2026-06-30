@@ -43,7 +43,7 @@
     "@opendataloader/pdf": "2.4.7",
     "@prisma/client": "5.22.0",
     "@sentry/nextjs": "^10.59.0",
-    "@sparticuz/chromium": "147.0.0",
+    "@sparticuz/chromium-min": "147.0.0",
     "@tanstack/react-query": "^5.100.5",
     "@tanstack/react-query-devtools": "^5.100.5",
     "@vercel/blob": "^2.4.0",
@@ -70,6 +70,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
     "@next/eslint-plugin-next": "16.2.9",
     "@types/jest": "^29.5.11",
     "@types/jsonwebtoken": "^9.0.7",
@@ -92,7 +93,7 @@
   },
   "pnpm": {
     "overrides": {
-      "@babel/core": ">=7.29.6",
+      "@babel/core": "^7.29.7",
       "@opentelemetry/core": ">=2.8.0",
       "brace-expansion": ">=5.0.6",
       "dompurify": ">=3.4.11",

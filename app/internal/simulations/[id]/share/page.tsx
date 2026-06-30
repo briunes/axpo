@@ -15,7 +15,7 @@ import { HtmlEditor } from "../../../components/modules/HtmlEditor";
 import { DraggableVariables } from "../../../components/modules/DraggableVariables";
 import { extractVariableValues, replaceVariables as replaceVars } from "@/infrastructure/pdf/variableReplacer";
 import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
-import { resolveTranslation, getLanguageFromCountry } from "@/lib/supportedLanguages";
+import { normalizeLanguageCode, resolveTranslation, getLanguageFromCountry } from "@/lib/supportedLanguages";
 import {
     Box,
     Button,
@@ -116,9 +116,9 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                 if (clientDefaults?.contactEmail) {
                     setRecipientEmail(clientDefaults.contactEmail);
                 }
-                detectedLanguage = clientDefaults?.language
+                detectedLanguage = normalizeLanguageCode(clientDefaults?.language
                     ? clientDefaults.language
-                    : getLanguageFromCountry(clientDefaults?.country);
+                    : getLanguageFromCountry(clientDefaults?.country));
                 setClientLanguage(detectedLanguage);
 
                 // Set default selections
@@ -418,7 +418,7 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                                                 sx={{ mb: 2 }}
                                             />
                                         )}
-                                        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 2 }}>
+                                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 280px" }, gap: 2 }}>
                                             <HtmlEditor
                                                 key={`${shareMode}-${shareMode === "pdf" ? selectedPdfTemplate : selectedEmailTemplate}`}
                                                 initialHtml={shareMode === "pdf" ? editedPdfContent : editedEmailContent}
