@@ -97,11 +97,13 @@
   border: 1px solid var(--neutral-alpha-weak);
   border-radius: var(--radius-l);
   padding: var(--static-space-32);
+  min-width: 0;
 }
 
 /* Form container */
 .crud-form {
   width: 100%;
+  min-width: 0;
 }
 
 .crud-form-panel,
@@ -112,6 +114,7 @@
   border-radius: 12px;
   box-shadow: var(--scheme-shadow-soft);
   padding: clamp(18px, 2vw, 24px);
+  min-width: 0;
 }
 
 .crud-tab-panel .MuiTabs-root {
@@ -530,6 +533,7 @@
 /* Form row */
 .crud-form-row {
   width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 768px) {
@@ -602,19 +606,23 @@
 
   .crud-page-shell {
     padding: var(--static-space-20);
+    border-radius: 10px;
   }
 
   .crud-page-content {
     padding: var(--static-space-20);
+    border-radius: 10px;
   }
 
   .crud-form-panel,
   .crud-tab-panel {
     padding: var(--static-space-20);
+    border-radius: 10px;
   }
 
   .crud-page-title-section {
     flex-direction: column;
+    gap: var(--static-space-12);
   }
 
   .crud-page-actions {
@@ -637,6 +645,13 @@
     width: 100%;
   }
 
+  .crud-tab-panel__tabs {
+    margin-left: -4px;
+    margin-right: -4px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
   .new-simulation-stepper,
   .new-simulation-skeleton__stepper {
     grid-template-columns: 1fr;
@@ -648,5 +663,53 @@
 
   .new-simulation-card--setup {
     padding: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .crud-page-shell,
+  .crud-form-panel,
+  .crud-tab-panel,
+  .crud-page-content {
+    padding: 16px;
+  }
+
+  .crud-page-divider {
+    margin: 16px 0;
+  }
+
+  .crud-page-title-copy {
+    flex-basis: auto;
+    width: 100%;
+  }
+
+  .crud-form-footer {
+    gap: 8px;
+    padding-top: 18px;
+  }
+
+  .crud-callout {
+    padding: 16px;
+  }
+
+  .crud-callout-value {
+    font-size: 18px;
+    overflow-wrap: anywhere;
+  }
+
+  .new-simulation-card__header,
+  .new-simulation-extracted__header {
+    align-items: flex-start;
+  }
+
+  .new-simulation-extracted {
+    padding: 16px;
+  }
+
+  .new-simulation-extracted__actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }

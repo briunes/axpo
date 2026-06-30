@@ -1,4 +1,74 @@
 import { withSentryConfig } from "@sentry/nextjs";
+import withPWAInit from "@ducanh2912/next-pwa";
+
+const withPWA = withPWAInit({
+  dest: "public",
+  register: true,
+  reloadOnOnline: true,
+  cacheStartUrl: false,
+  dynamicStartUrl: true,
+  disable: process.env.NODE_ENV === "development",
+  publicExcludes: ["!benchmark/**/*", "!postman/**/*"],
+  workboxOptions: {
+    runtimeCaching: [
+      {
+        urlPattern: /^https:\/\/fonts\.(?:gstatic)\.com\/.*/i,
+        handler: "CacheFirst",
+        options: {
+          cacheName: "google-fonts-webfonts",
+          expiration: {
+            maxEntries: 4,
+            maxAgeSeconds: 31536000,
+          },
+        },
+      },
+      {
+        urlPattern: /^https:\/\/fonts\.(?:googleapis)\.com\/.*/i,
+        handler: "StaleWhileRevalidate",
+        options: {
+          cacheName: "google-fonts-stylesheets",
+          expiration: {
+            maxEntries: 4,
+            maxAgeSeconds: 604800,
+          },
+        },
+      },
+      {
+        urlPattern: /\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i,
+        handler: "StaleWhileRevalidate",
+        options: {
+          cacheName: "static-font-assets",
+          expiration: {
+            maxEntries: 8,
+            maxAgeSeconds: 604800,
+          },
+        },
+      },
+      {
+        urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,
+        handler: "StaleWhileRevalidate",
+        options: {
+          cacheName: "static-image-assets",
+          expiration: {
+            maxEntries: 64,
+            maxAgeSeconds: 2592000,
+          },
+        },
+      },
+      {
+        urlPattern: /\/_next\/static\/.+\.(?:js|css)$/i,
+        handler: "CacheFirst",
+        options: {
+          cacheName: "next-static-assets",
+          expiration: {
+            maxEntries: 128,
+            maxAgeSeconds: 604800,
+          },
+        },
+      },
+    ],
+  },
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -67,7 +137,7 @@ const nextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withPWA(nextConfig), {
   // Sentry organization and project (set in environment or here)
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,

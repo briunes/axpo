@@ -36,16 +36,25 @@ export function getSupportedLanguage(
 export function isSupportedLanguage(
   code: string | null | undefined,
 ): code is string {
+  const normalized = code?.trim().toLowerCase();
   return (
-    typeof code === "string" &&
-    SUPPORTED_LANGUAGES.some((language) => language.code === code)
+    typeof normalized === "string" &&
+    SUPPORTED_LANGUAGES.some((language) => language.code === normalized)
   );
 }
 
+export function normalizeLanguageCode(
+  code: string | null | undefined,
+): string {
+  const normalized = code?.trim().toLowerCase();
+  return isSupportedLanguage(normalized) ? normalized : DEFAULT_LANGUAGE;
+}
+
 export function getLanguageLabel(code: string): string {
+  const normalized = normalizeLanguageCode(code);
   return (
-    SUPPORTED_LANGUAGES.find((l) => l.code === code)?.label ??
-    code.toUpperCase()
+    SUPPORTED_LANGUAGES.find((l) => l.code === normalized)?.label ??
+    normalized.toUpperCase()
   );
 }
 
@@ -99,14 +108,17 @@ export function resolveTranslation<T extends { languageCode: string }>(
   preferredLanguage: string,
 ): T | undefined {
   if (!translations || translations.length === 0) return undefined;
+  const normalizedPreferredLanguage = normalizeLanguageCode(preferredLanguage);
 
   // Try exact match
-  const exact = translations.find((t) => t.languageCode === preferredLanguage);
+  const exact = translations.find(
+    (t) => t.languageCode.trim().toLowerCase() === normalizedPreferredLanguage,
+  );
   if (exact) return exact;
 
   // Try default language
   const defaultLang = translations.find(
-    (t) => t.languageCode === DEFAULT_LANGUAGE,
+    (t) => t.languageCode.trim().toLowerCase() === DEFAULT_LANGUAGE,
   );
   if (defaultLang) return defaultLang;
 

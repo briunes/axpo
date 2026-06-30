@@ -556,6 +556,7 @@ export default function SimulationDetailPage({
       backHref="/internal/simulations"
       hideHeader
     >
+      <div className="simulation-detail-page">
       <SimulationMeta
         sim={simulation}
         token={session.token}
@@ -566,6 +567,7 @@ export default function SimulationDetailPage({
 
       {simulation.status === "SHARED" && (
         <div
+          className="simulation-readonly-banner"
           style={{
             display: "flex",
             alignItems: "center",
@@ -625,6 +627,7 @@ export default function SimulationDetailPage({
         readOnly={simulation.status === "SHARED"}
         baseValueSetId={selectedBaseValueSetId}
       />
+      </div>
 
       {/* Share Dialog */}
       <Dialog

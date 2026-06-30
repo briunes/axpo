@@ -322,6 +322,7 @@
 
 @media (max-width: 520px) {
   .shell {
+    align-items: stretch;
     padding: 56px 16px max(20px, env(safe-area-inset-bottom));
   }
 
@@ -344,8 +345,17 @@
 
 @media (max-width: 380px) {
   .shell {
-    padding-left: 20px;
-    padding-right: 20px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
+  .grid {
+    width: 100%;
+  }
+
+  .langBtn {
+    min-width: 36px;
+    height: 32px;
+    font-size: 16px;
+  }
 }

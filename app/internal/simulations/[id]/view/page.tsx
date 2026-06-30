@@ -322,7 +322,7 @@ export default function SimulationViewPage({ params }: { params: Promise<{ id: s
             backHref="/internal/simulations"
             hideHeader
         >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 0 }}>
+            <div className="simulation-view-page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 0 }}>
                 <div style={{ flex: 1 }}>
                     <SimulationMeta sim={simulation} token={session.token} />
                 </div>

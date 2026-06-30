@@ -394,7 +394,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
         ]}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
           <>
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ width: { xs: "100%", sm: 280 } }}>
               <FormInput
                 label=""
                 placeholder={searchPlaceholder}
@@ -418,7 +418,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
                 }}
               />
             </Box>
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ width: { xs: "100%", sm: 280 } }}>
               <FormSelect
                 label=""
                 options={[
@@ -435,7 +435,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
                 textFieldProps={{ size: "small" }}
               />
             </Box>
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ width: { xs: "100%", sm: 280 } }}>
               <FormSelect
                 label=""
                 options={[

@@ -8,7 +8,7 @@
     "dev": "rm -f .env.local && cp .env.local.example .env.local && next dev",
     "dev:dev": "rm -f .env.local && cp .env.dev .env.local && next dev",
     "dev:preview": "rm -f .env.local && cp .env.preview .env.local && next dev",
-    "build": "node scripts/sync-postman-artifacts.js && node scripts/generate-openapi.js && prisma generate && next build",
+    "build": "node scripts/sync-postman-artifacts.js && node scripts/generate-openapi.js && prisma generate && next build --webpack",
     "sync:postman": "node scripts/sync-postman-artifacts.js",
     "openapi:generate": "node scripts/generate-openapi.js",
     "start": "next start",
@@ -28,6 +28,7 @@
     "test:security": "jest --testPathPattern=security"
   },
   "dependencies": {
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
@@ -70,6 +71,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
     "@next/eslint-plugin-next": "16.2.9",
     "@types/jest": "^29.5.11",
     "@types/jsonwebtoken": "^9.0.7",
@@ -92,7 +94,7 @@
   },
   "pnpm": {
     "overrides": {
-      "@babel/core": ">=7.29.6",
+      "@babel/core": "^7.29.6",
       "@opentelemetry/core": ">=2.8.0",
       "brace-expansion": ">=5.0.6",
       "dompurify": ">=3.4.11",
