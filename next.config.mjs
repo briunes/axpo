@@ -10,6 +10,8 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === "development",
   publicExcludes: ["!benchmark/**/*", "!postman/**/*"],
   workboxOptions: {
+    sourcemap: false,
+    exclude: [/\.map$/, /^manifest.*\.js$/],
     runtimeCaching: [
       {
         urlPattern: /^https:\/\/fonts\.(?:gstatic)\.com\/.*/i,
