@@ -28,18 +28,11 @@ export const metadata: Metadata = {
   title: "AXPO Simulator",
   description: "AXPO Simulador",
   applicationName: "AXPO Simulator",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    title: "AXPO Simulator",
-    statusBarStyle: "default",
-  },
   formatDetection: {
     telephone: false,
   },
   icons: {
     icon: "/axpo-mark.svg",
-    apple: "/icons/apple-touch-icon.png",
   },
 };
 
