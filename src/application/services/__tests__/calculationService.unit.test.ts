@@ -305,6 +305,243 @@ describe("CalculationService Personalizada OMIE + B", () => {
   });
 });
 
+describe("CalculationService Personalizada Index", () => {
+  it("matches the TRITURADOS Excel personalized totals for May 2026", () => {
+    const inputs = buildInputs(1175566);
+    inputs.tarifaAcceso = "6.1TD";
+    inputs.periodo = {
+      fechaInicio: "2026-04-30",
+      fechaFin: "2026-05-31",
+      dias: 32,
+    };
+    inputs.billingMonth = "2026-05";
+    inputs.facturaActual = 16876.9;
+    inputs.extras = {
+      otrosCargos: 0.59,
+      ivaTasa: 21,
+      impuestoElectricoTasa: 5.11,
+    };
+    inputs.consumo = {
+      P1: 0,
+      P2: 0,
+      P3: 0,
+      P4: 20293,
+      P5: 15108,
+      P6: 103598,
+    };
+    inputs.potenciaContratada = {
+      P1: 410,
+      P2: 410,
+      P3: 410,
+      P4: 410,
+      P5: 410,
+      P6: 1000,
+    };
+    inputs.omieEstimado = {
+      P1: 0,
+      P2: 0,
+      P3: 0,
+      P4: 0,
+      P5: 0,
+      P6: 0,
+    };
+    inputs.personalizadaIndex = {
+      margenEnergia: { P1: 12, P2: 12, P3: 12, P4: 12, P5: 12, P6: 12 },
+      margenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+    };
+    inputs.personalizadaOmieB = {
+      terminoB: {
+        P1: 25.024,
+        P2: 25.852,
+        P3: 26.621,
+        P4: 27.786,
+        P5: 28.866,
+        P6: 27.079,
+      },
+      margenPotencia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
+    };
+
+    const powerPrices = {
+      P1: 29.595368,
+      P2: 15.514709,
+      P3: 6.801881,
+      P4: 5.393829,
+      P5: 2.125113,
+      P6: 1.004181,
+    };
+    const indexPrices = {
+      P1: 0,
+      P2: 0,
+      P3: 0.0821337598,
+      P4: 0.0635630841,
+      P5: 0.0591062127,
+      P6: 0.0647711093,
+    };
+    const omieBBasePrices = {
+      P1: 0,
+      P2: 0,
+      P3: 0.0529599404,
+      P4: 0.0243378218,
+      P5: 0.0202027352,
+      P6: 0.025253433,
+    };
+    const omieBFactors = {
+      P1: 1,
+      P2: 1,
+      P3: 1,
+      P4: 1.0758561394,
+      P5: 1.0630540058,
+      P6: 1.0928812936,
+    };
+
+    const entries: Array<{ key: string; valueNumeric: number }> = [];
+    for (const period of ["P1", "P2", "P3", "P4", "P5", "P6"] as const) {
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_INDEX::6.1TD:${period}:MARGEN:2026-05`,
+        valueNumeric: indexPrices[period],
+      });
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_INDEX::6.1TD:${period}:POTENCIA`,
+        valueNumeric: powerPrices[period],
+      });
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_OMIE_B::6.1TD:${period}:MARGEN:2026-05`,
+        valueNumeric: omieBBasePrices[period],
+      });
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_OMIE_B::6.1TD:${period}:POTENCIA`,
+        valueNumeric: powerPrices[period],
+      });
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_OMIE_B::6.1TD:${period}:B_FACTOR:2026-05`,
+        valueNumeric: omieBFactors[period],
+      });
+    }
+
+    const results = CalculationService.calculateElectricity(
+      inputs,
+      CalculationService.buildPriceMap(entries),
+    );
+    const index = results.find(
+      (item) => item.productKey === "PERSONALIZADA_INDEX",
+    );
+    const omieB = results.find(
+      (item) => item.productKey === "PERSONALIZADA_OMIE_B",
+    );
+
+    expect(index).toBeDefined();
+    expect(index!.desglose?.terminoEnergia).toBe(8893.02);
+    expect(index!.desglose?.terminoPotencia).toBe(2224.29);
+    expect(index!.totalFactura).toBe(14140.09);
+
+    expect(omieB).toBeDefined();
+    expect(omieB!.desglose?.terminoEnergia).toBe(7551.45);
+    expect(omieB!.desglose?.terminoPotencia).toBe(2224.29);
+    expect(omieB!.totalFactura).toBe(12433.84);
+  });
+
+  it("uses imported monthly Precio TE when OMIE input is zero", () => {
+    const inputs = buildInputs(62000);
+    inputs.tarifaAcceso = "6.1TD";
+    inputs.periodo = {
+      fechaInicio: "2026-04-30",
+      fechaFin: "2026-05-31",
+      dias: 32,
+    };
+    inputs.billingMonth = "2026-05";
+    inputs.consumo = {
+      P1: 0,
+      P2: 0,
+      P3: 0,
+      P4: 20293,
+      P5: 15108,
+      P6: 103598,
+    };
+    inputs.potenciaContratada = {
+      P1: 410,
+      P2: 410,
+      P3: 410,
+      P4: 410,
+      P5: 410,
+      P6: 1000,
+    };
+    inputs.omieEstimado = {
+      P1: 0,
+      P2: 0,
+      P3: 0,
+      P4: 0,
+      P5: 0,
+      P6: 0,
+    };
+    inputs.personalizadaIndex = {
+      margenEnergia: { P1: 12, P2: 12, P3: 12, P4: 12, P5: 12, P6: 12 },
+      margenPotencia: {},
+    };
+
+    const entries: Array<{ key: string; valueNumeric: number }> = [];
+    for (const period of ["P1", "P2", "P3", "P4", "P5", "P6"] as const) {
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_INDEX::6.1TD:${period}:MARGEN:2026-05`,
+        valueNumeric: 0.05,
+      });
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_INDEX::6.1TD:${period}:POTENCIA`,
+        valueNumeric: 0,
+      });
+    }
+
+    const results = CalculationService.calculateElectricity(
+      inputs,
+      CalculationService.buildPriceMap(entries),
+    );
+    const offer = results.find(
+      (item) => item.productKey === "PERSONALIZADA_INDEX",
+    );
+
+    expect(offer).toBeDefined();
+    expect(offer!.desglose?.terminoEnergia).toBe(6949.95);
+  });
+
+  it("keeps explicit OMIE plus margin behavior when OMIE is provided", () => {
+    const inputs = buildInputs(62000);
+    inputs.personalizadaIndex = {
+      margenEnergia: { P1: 12, P2: 12, P3: 12, P4: 12, P5: 12, P6: 12 },
+      margenPotencia: {},
+    };
+    inputs.omieEstimado = {
+      P1: 0.04,
+      P2: 0.04,
+      P3: 0.04,
+      P4: 0.04,
+      P5: 0.04,
+      P6: 0.04,
+    };
+
+    const entries: Array<{ key: string; valueNumeric: number }> = [];
+    for (const period of ["P1", "P2", "P3", "P4", "P5", "P6"] as const) {
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_INDEX::3.0TD:${period}:MARGEN:2026-03`,
+        valueNumeric: 0.5,
+      });
+      entries.push({
+        key: `ELEC:INDEX:PERSONALIZADA_INDEX::3.0TD:${period}:POTENCIA`,
+        valueNumeric: 0,
+      });
+    }
+
+    const results = CalculationService.calculateElectricity(
+      inputs,
+      CalculationService.buildPriceMap(entries),
+    );
+    const offer = results.find(
+      (item) => item.productKey === "PERSONALIZADA_INDEX",
+    );
+
+    expect(offer).toBeDefined();
+    expect(offer!.desglose?.terminoEnergia).toBe(31.2);
+  });
+});
+
 describe("CalculationService gas product configuration", () => {
   it("uses configured gas product definitions when provided", () => {
     const inputs: GasInputs = {

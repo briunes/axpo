@@ -373,7 +373,7 @@ export default function SimulationDetailPage({
   ) => {
     setSelectedBaseValueSetId(id);
     if (meta?.userInitiated) {
-      formRef.current?.calculate();
+      formRef.current?.calculate(id);
     }
   }, []);
 

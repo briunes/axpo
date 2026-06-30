@@ -66,10 +66,6 @@ function r2(v: number): number {
   return Math.round(v * 100) / 100;
 }
 
-function ceilCents(v: number): number {
-  return Math.ceil((v - 1e-9) * 100) / 100;
-}
-
 function pv(map: Record<string, number | undefined>, period: string): number {
   return map[period] ?? 0;
 }
@@ -251,7 +247,7 @@ function calcElecFijo(
   // alquilerEquipoMedida is outside the impuesto base but inside the IVA base
   const baseIva = baseImponible + impuestoElectricoRaw + alquiler;
   const ivaRaw = baseIva * ivaRate;
-  const total = ceilCents(baseIva + ivaRaw);
+  const total = r2(baseIva + ivaRaw);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
   const ahorroAnual =
@@ -297,19 +293,13 @@ function calcElecIndex(
     extras,
     omieEstimado,
   } = inputs;
-  // Indexed offers use the selected billing month's days (not the full billing
-  // period days). Fixed offers use periodo.dias.
+  // Indexed offers use the selected billing month for price lookup, while Excel
+  // still uses the invoice period days for power and annualized savings.
   // Use fechaFin (not fechaInicio) to derive the default billing month — a billing
   // period like "2026-01-31 → 2026-02-28" is a February bill, not a January bill.
   // fechaInicio may fall on the last day of the previous month (common in Spain).
   const billingMonthKey = inputs.billingMonth ?? periodo.fechaFin.slice(0, 7); // "YYYY-MM"
-  const dias = (() => {
-    if (inputs.billingMonth) {
-      const [y, m] = inputs.billingMonth.split("-").map(Number);
-      return new Date(y, m, 0).getDate();
-    }
-    return periodo.dias;
-  })();
+  const dias = periodo.dias;
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
@@ -372,7 +362,7 @@ function calcElecIndex(
   const impuestoElectricoRaw = baseImponible * ieRate;
   const baseIva = baseImponible + impuestoElectricoRaw + alquiler;
   const ivaRaw = baseIva * ivaRate;
-  const total = ceilCents(baseIva + ivaRaw);
+  const total = r2(baseIva + ivaRaw);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
   const ahorroAnual =
@@ -471,7 +461,7 @@ function calcElecPersonalizadaFijo(
   const impuestoElectricoRaw = baseImponible * ieRate;
   const baseIva = baseImponible + impuestoElectricoRaw + alquiler;
   const ivaRaw = baseIva * ivaRate;
-  const total = ceilCents(baseIva + ivaRaw);
+  const total = r2(baseIva + ivaRaw);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
   const ahorroAnual =
@@ -536,6 +526,9 @@ function calcPersonalizadaIndex(
     },
   );
   if (!hasAnyUserValue && !hasImportedDefaults) return null;
+  const hasExplicitOmie = Object.values(inputs.omieEstimado ?? {}).some(
+    (v) => v != null && v !== 0,
+  );
 
   const {
     tarifaAcceso,
@@ -546,13 +539,7 @@ function calcPersonalizadaIndex(
     facturaActual,
     extras,
   } = inputs;
-  const dias = (() => {
-    if (inputs.billingMonth) {
-      const [y, m] = inputs.billingMonth.split("-").map(Number);
-      return new Date(y, m, 0).getDate();
-    }
-    return periodo.dias;
-  })();
+  const dias = periodo.dias;
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
@@ -573,10 +560,12 @@ function calcPersonalizadaIndex(
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
     const baseKey = `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}`;
-    const precioEnergia = hasAnyUserValue
-      ? (pv(omieMapIdx, p) ?? 0) + (margenEnergiaMap[p] ?? 0) / 1000
-      : (priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) ??
-        priceOf(map, `${baseKey}:MARGEN`));
+    const storedPrice =
+      priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) ??
+      priceOf(map, `${baseKey}:MARGEN`);
+    const precioEnergia = hasExplicitOmie
+      ? pv(omieMapIdx, p) + (margenEnergiaMap[p] ?? 0) / 1000
+      : storedPrice ?? (margenEnergiaMap[p] ?? 0) / 1000;
     if (precioEnergia === undefined) return null;
     terminoEnergia += precioEnergia * pv(consumoMap, p);
   }
@@ -609,7 +598,7 @@ function calcPersonalizadaIndex(
   const impuestoElectricoRaw = baseImponible * ieRate;
   const baseIva = baseImponible + impuestoElectricoRaw + alquiler;
   const ivaRaw = baseIva * ivaRate;
-  const total = ceilCents(baseIva + ivaRaw);
+  const total = r2(baseIva + ivaRaw);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
   const ahorroAnual =
@@ -672,13 +661,7 @@ function calcPersonalizadaOmieB(
     extras,
   } = inputs;
   const billingMonthKey = inputs.billingMonth ?? periodo.fechaFin.slice(0, 7);
-  const dias = (() => {
-    if (inputs.billingMonth) {
-      const [y, m] = inputs.billingMonth.split("-").map(Number);
-      return new Date(y, m, 0).getDate();
-    }
-    return periodo.dias;
-  })();
+  const dias = periodo.dias;
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
@@ -739,7 +722,7 @@ function calcPersonalizadaOmieB(
   const impuestoElectricoRaw = baseImponible * ieRate;
   const baseIva = baseImponible + impuestoElectricoRaw + alquiler;
   const ivaRaw = baseIva * ivaRate;
-  const total = ceilCents(baseIva + ivaRaw);
+  const total = r2(baseIva + ivaRaw);
   const ahorro = r2(facturaActual - total);
   const pctAhorro = facturaActual > 0 ? r2((ahorro / facturaActual) * 100) : 0;
   const ahorroAnual =
