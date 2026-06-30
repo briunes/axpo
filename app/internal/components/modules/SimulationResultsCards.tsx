@@ -531,6 +531,7 @@ function EditableInputPanel({
 }) {
     const { t } = useI18n();
     const { preferences: { numberFormat } } = useUserPreferences();
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
     const handleInputChange = (type: "energy" | "power" | "omie", period: string, value: string) => {
         const numValue = parseFloat(value);
@@ -540,45 +541,54 @@ function EditableInputPanel({
     };
 
     const AccordionSection = ({
+        id,
         title,
         children,
     }: {
+        id: string;
         title: React.ReactNode;
         children: React.ReactNode;
-    }) => (
-        <Accordion
-            disableGutters
-            elevation={0}
-            sx={{
-                mt: 1,
-                border: "1px solid",
-                borderColor: "color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent)",
-                borderRadius: "9px !important",
-                bgcolor: "color-mix(in srgb, var(--scheme-surface-raised) 70%, var(--scheme-surface-raised-subtle))",
-                "&::before": { display: "none" },
-                overflow: "hidden",
-            }}
-        >
-            <AccordionSummary
-                expandIcon={<ExpandMoreIcon fontSize="small" />}
+    }) => {
+        const expanded = Boolean(expandedSections[id]);
+        return (
+            <Accordion
+                disableGutters
+                elevation={0}
+                expanded={expanded}
+                onChange={(_, nextExpanded) =>
+                    setExpandedSections((prev) => ({ ...prev, [id]: nextExpanded }))
+                }
                 sx={{
-                    minHeight: 36,
-                    px: 1.25,
-                    "&.Mui-expanded": { minHeight: 36 },
-                    "& .MuiAccordionSummary-content": {
-                        my: 0.75,
-                        fontSize: 12,
-                        fontWeight: 700,
-                    },
+                    mt: 1,
+                    border: "1px solid",
+                    borderColor: "color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent)",
+                    borderRadius: "9px !important",
+                    bgcolor: "color-mix(in srgb, var(--scheme-surface-raised) 70%, var(--scheme-surface-raised-subtle))",
+                    "&::before": { display: "none" },
+                    overflow: "hidden",
                 }}
             >
-                {title}
-            </AccordionSummary>
-            <AccordionDetails sx={{ px: 1.25, pt: 0, pb: 1.25 }}>
-                {children}
-            </AccordionDetails>
-        </Accordion>
-    );
+                <AccordionSummary
+                    expandIcon={<ExpandMoreIcon fontSize="small" />}
+                    sx={{
+                        minHeight: 36,
+                        px: 1.25,
+                        "&.Mui-expanded": { minHeight: 36 },
+                        "& .MuiAccordionSummary-content": {
+                            my: 0.75,
+                            fontSize: 12,
+                            fontWeight: 700,
+                        },
+                    }}
+                >
+                    {title}
+                </AccordionSummary>
+                <AccordionDetails sx={{ px: 1.25, pt: 0, pb: 1.25 }}>
+                    {children}
+                </AccordionDetails>
+            </Accordion>
+        );
+    };
 
     return (
         <div className="simulation-results-input-panel" style={{
@@ -673,9 +683,32 @@ function EditableInputPanel({
             </div>
 
             {!readOnly && (<>
+                {selectedMonth && availableMonths && availableMonths.length > 0 && onMonthChange && (
+                    <Box sx={{ mt: 1.5 }}>
+                        <FormSelect
+                            label={t("simulationOffersCards", "monthSelectorLabel")}
+                            value={selectedMonth}
+                            options={availableMonths.map((month) => ({
+                                value: month,
+                                label: fmtMonth(month, locale),
+                            }))}
+                            onChange={(value) => {
+                                if (typeof value === "string") onMonthChange(value);
+                            }}
+                            disabled={calculating}
+                            textFieldProps={{
+                                size: "small",
+                                placeholder: calculating
+                                    ? t("simulationOffersCards", "monthSelectorRecalculating")
+                                    : undefined,
+                            }}
+                        />
+                    </Box>
+                )}
+
                 {/* Editable periods */}
                 {energyPeriods && Object.keys(energyPeriods).length > 0 && (
-                    <AccordionSection title={t("simulationOffersCards", "btnConsumption")}>
+                    <AccordionSection id="consumption" title={t("simulationOffersCards", "btnConsumption")}>
                         <div>
                             {Object.entries(energyPeriods).map(([period, value]) => (
                                 <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -695,7 +728,7 @@ function EditableInputPanel({
                 )}
 
                 {powerPeriods && Object.keys(powerPeriods).length > 0 && (
-                    <AccordionSection title={t("simulationOffersCards", "btnPower")}>
+                    <AccordionSection id="power" title={t("simulationOffersCards", "btnPower")}>
                         <div>
                             {Object.entries(powerPeriods).map(([period, value]) => (
                                 <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -706,7 +739,7 @@ function EditableInputPanel({
                                         value={value}
                                         onChange={(v) => { if (!isNaN(v)) onUpdatePeriod?.("power", period, v); }}
                                         currencySymbol=""
-                                        decimals={2}
+                                        decimals={3}
                                     />
                                 </div>
                             ))}
@@ -715,7 +748,7 @@ function EditableInputPanel({
                 )}
 
                 {personalizadaIndexPeriods && (Object.keys(personalizadaIndexPeriods.margenEnergia).length > 0 || Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0) && (
-                    <AccordionSection title={t("simulationForm", "sectionPersonalizadaIndex")}>
+                    <AccordionSection id="personalizada-index" title={t("simulationForm", "sectionPersonalizadaIndex")}>
                         <div>
                             {Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0 && (
                                 <>
@@ -727,7 +760,7 @@ function EditableInputPanel({
                                                 value={value}
                                                 onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenPotencia", period, v); }}
                                                 currencySymbol=""
-                                                decimals={2}
+                                                decimals={3}
                                             />
                                         </div>
                                     ))}
@@ -743,7 +776,7 @@ function EditableInputPanel({
                                                 value={value}
                                                 onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaIndex?.("margenEnergia", period, v); }}
                                                 currencySymbol=""
-                                                decimals={2}
+                                                decimals={3}
                                             />
                                         </div>
                                     ))}
@@ -754,7 +787,7 @@ function EditableInputPanel({
                 )}
 
                 {personalizadaOmieBPeriods && (Object.keys(personalizadaOmieBPeriods.terminoB).length > 0 || Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0) && (
-                    <AccordionSection title={t("simulationForm", "sectionPersonalizadaOmieB")}>
+                    <AccordionSection id="personalizada-omie-b" title={t("simulationForm", "sectionPersonalizadaOmieB")}>
                         <div>
                             {Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0 && (
                                 <>
@@ -766,7 +799,7 @@ function EditableInputPanel({
                                                 value={value}
                                                 onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("margenPotencia", period, v); }}
                                                 currencySymbol=""
-                                                decimals={2}
+                                                decimals={3}
                                             />
                                         </div>
                                     ))}
@@ -782,7 +815,7 @@ function EditableInputPanel({
                                                 value={value}
                                                 onChange={(v) => { if (!isNaN(v)) onUpdatePersonalizadaOmieB?.("terminoB", period, v); }}
                                                 currencySymbol=""
-                                                decimals={2}
+                                                decimals={3}
                                             />
                                         </div>
                                     ))}
@@ -793,7 +826,7 @@ function EditableInputPanel({
                 )}
 
                 {gasPersonalizadaIndexMargen !== undefined && (
-                    <AccordionSection title={t("simulationForm", "sectionGasPersonalizadaIndex")}>
+                    <AccordionSection id="gas-personalizada-index" title={t("simulationForm", "sectionGasPersonalizadaIndex")}>
                         <div>
                             <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, textTransform: "uppercase" }}>{t("simulationForm", "gasPersonalizadaIndexMargenLabel")}</Typography>
                             <CurrencyInput
@@ -809,7 +842,7 @@ function EditableInputPanel({
                 )}
 
                 {elecPersonalizadaFijoPeriods && (
-                    <AccordionSection title="Personalized Fixed (custom)">
+                    <AccordionSection id="elec-personalizada-fijo" title="Personalized Fixed (custom)">
                         <div>
                             <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, textTransform: "uppercase" }}>Término Potencia (€/kWdia)</Typography>
                             {Object.entries(elecPersonalizadaFijoPeriods.preciosPotencia).map(([period, value]) => (
@@ -840,7 +873,7 @@ function EditableInputPanel({
                 )}
 
                 {gasPersonalizadaFijo !== undefined && (
-                    <AccordionSection title="Personalized Fixed (custom)">
+                    <AccordionSection id="gas-personalizada-fijo" title="Personalized Fixed (custom)">
                         <div>
                             <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, textTransform: "uppercase" }}>Término Fijo (€/día)</Typography>
                             <CurrencyInput

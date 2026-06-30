@@ -1270,7 +1270,7 @@ function TypeButton({ active, onClick, children }: { active: boolean; onClick: (
 // ─── Main export ───────────────────────────────────────────────────────────────
 
 export interface SimulationFormHandle {
-    calculate: () => void;
+    calculate: (baseValueSetIdOverride?: string) => void;
 }
 
 export interface SimulationFormProps {
@@ -1507,7 +1507,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         onNotify?.(t("simulationForm", "testDataFilled"), "success");
     }, [simType, onNotify]);
 
-    const handleCalculate = useCallback(async () => {
+    const handleCalculate = useCallback(async (baseValueSetIdOverride?: string) => {
         setHasValidated(true);
         const eErrs = simType !== "GAS" ? validateElec(elecState) : {};
         const gErrs = simType !== "ELECTRICITY" ? validateGas(gasState) : {};
@@ -1518,12 +1518,18 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             const payload: SimulationPayload = {
                 schemaVersion: "1",
                 type: simType,
-                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
+                electricity: simType !== "GAS"
+                    ? {
+                        ...buildElecInputs(elecState),
+                        ...(billingMonthOverride ? { billingMonth: billingMonthOverride } : {}),
+                    }
+                    : undefined,
                 gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
                 ...(selectedOffer ? { selectedOffer } : {}),
             };
+            const effectiveBaseValueSetId = baseValueSetIdOverride ?? baseValueSetId;
             const calcResult = await calculateSimulation(token, simulation.id, {
-                ...(baseValueSetId ? { baseValueSetId } : {}),
+                ...(effectiveBaseValueSetId ? { baseValueSetId: effectiveBaseValueSetId } : {}),
                 payloadJson: payload,
             });
             const updatedPayload: SimulationPayload = {
@@ -1541,7 +1547,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         } finally {
             setCalculating(false);
         }
-    }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify, baseValueSetId]);
+    }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify, baseValueSetId, billingMonthOverride]);
 
     const calculateWithMonth = useCallback(async (month: string) => {
         // Do NOT change fechaInicio/fechaFin — the billing period must stay as-is.
@@ -1555,7 +1561,12 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             const payload: SimulationPayload = {
                 schemaVersion: "1",
                 type: simType,
-                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
+                electricity: simType !== "GAS"
+                    ? {
+                        ...buildElecInputs(elecState),
+                        billingMonth: month,
+                    }
+                    : undefined,
                 gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
                 ...(selectedOffer ? { selectedOffer } : {}),
             };
@@ -1833,7 +1844,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                             )}
                             <Button
                                 variant="contained"
-                                onClick={handleCalculate}
+                                onClick={() => void handleCalculate()}
                                 disabled={calculating}
                             >
                                 {calculating ? t("simulationForm", "btnCalculating") : t("simulationForm", "btnCalculate")}
@@ -1908,7 +1919,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                             onUpdateGasPersonalizadaFijo={readOnly || simType !== "GAS" ? undefined : (field, value) => {
                                 setGasState(prev => ({ ...prev, [field === "terminoDia" ? "personalizadaFijoTerminoDia" : "personalizadaFijoTerminoVariable"]: value }));
                             }}
-                            onRecalculate={readOnly ? undefined : handleCalculate}
+                            onRecalculate={readOnly ? undefined : () => void handleCalculate()}
                             calculating={calculating}
                             selectedOffer={selectedOffer ?? undefined}
                             onSelectOffer={readOnly ? undefined : handleSelectOffer}

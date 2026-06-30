@@ -113,8 +113,9 @@ export interface ElectricityInputs {
 
   /**
    * Optional billing month override (YYYY-MM).
-   * When set, indexed calculations use the prices and days for this specific
-   * month instead of deriving them from the billing period dates.
+   * When set, indexed calculations use the prices for this specific month
+   * instead of deriving them from the billing period dates. The invoice period
+   * days are still used for power and annualized savings, matching Excel.
    * Fixed calculations always use periodo.dias regardless of this field.
    */
   billingMonth?: string;
