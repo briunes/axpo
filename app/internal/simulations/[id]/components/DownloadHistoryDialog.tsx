@@ -24,6 +24,7 @@ import { getPdfTemplates, type PdfTemplate } from "../../../lib/configApi";
 import { LoadingState } from "../../../components/shared";
 import { FormSelect } from "../../../components/ui/FormSelect";
 import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
+import { normalizeLanguageCode, resolveTranslation } from "@/lib/supportedLanguages";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -105,7 +106,7 @@ const GAS_TARIFF_ORDER = [
 function buildGasHistoryHtml(
     data: HistoryData,
     product: HistoryProduct,
-    template: PdfTemplate | null,
+    templateHtml: string | null,
     axpoPrimary: string,
     simulation?: any,
 ): string {
@@ -149,12 +150,12 @@ function buildGasHistoryHtml(
         <tbody>${tariffRows}</tbody>
       </table>`;
 
-    if (template?.htmlContent) {
+    if (templateHtml) {
         const createdAt = simulation?.createdAt
             ? new Date(simulation.createdAt).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
             : "";
 
-        return template.htmlContent
+        return templateHtml
             .replace(/\{\{HISTORY_TABLES_GAS\}\}/g, gasTableHtml)
             .replace(/\{\{HISTORY_TABLE_GAS\}\}/g, gasTableHtml)
             .replace(/\{\{GAS_PRODUCT_LABEL\}\}/g, product.productLabel)
@@ -221,7 +222,7 @@ function fmtMargin(val: number | null | undefined): string {
 function buildHistoryHtml(
     data: HistoryData,
     product: HistoryProduct,
-    template: PdfTemplate | null,
+    templateHtml: string | null,
     axpoPrimary: string,
     simulation?: any,
 ): string {
@@ -323,12 +324,12 @@ function buildHistoryHtml(
     const block6TD = buildTariffBlock("6.1TD");
 
     // If a price-history template is selected, inject the tables and all variables
-    if (template?.htmlContent) {
+    if (templateHtml) {
         const createdAt = simulation?.createdAt
             ? new Date(simulation.createdAt).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
             : "";
 
-        return template.htmlContent
+        return templateHtml
             .replace(/\{\{HISTORY_TABLES\}\}/g, tariffBlocks)
             .replace(/\{\{HISTORY_TABLE_2TD\}\}/g, block2TD)
             .replace(/\{\{HISTORY_TABLE_3TD\}\}/g, block3TD)
@@ -493,13 +494,23 @@ export function DownloadHistoryDialog({
         [selectedTemplateId, historyTemplates],
     );
 
+    const selectedTemplateHtml = useMemo(() => {
+        if (!selectedTemplate) return null;
+        const clientLanguage = normalizeLanguageCode(simulation?.client?.language);
+        const translation = resolveTranslation(
+            selectedTemplate.translations ?? [],
+            clientLanguage,
+        );
+        return translation?.htmlContent ?? selectedTemplate.htmlContent;
+    }, [selectedTemplate, simulation?.client?.language]);
+
     const previewHtml = useMemo(() => {
         if (!historyData || !selectedProduct) return "";
         if (selectedProduct.type === "GAS" || historyData.isGas) {
-            return buildGasHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation);
+            return buildGasHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation);
         }
-        return buildHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation);
-    }, [historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation]);
+        return buildHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation);
+    }, [historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation]);
 
     const handleDownload = async () => {
         if (!historyData || !selectedProduct) return;
@@ -507,8 +518,8 @@ export function DownloadHistoryDialog({
         setIsDownloading(true);
         try {
             const html = (selectedProduct.type === "GAS" || historyData.isGas)
-                ? buildGasHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation)
-                : buildHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation);
+                ? buildGasHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation)
+                : buildHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation);
 
             const response = await fetch(
                 `/api/v1/internal/simulations/${simulation.id}/generate-pdf`,
