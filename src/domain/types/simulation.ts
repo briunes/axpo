@@ -187,6 +187,14 @@ export interface ElectricityInputs {
     reactiva?: number; // €  reactive energy charge
     alquilerEquipoMedida?: number; // €  meter rental
     otrosCargos?: number; // €  other charges
+    /** Current supplier power term amount in €, copied from invoice detail when available. */
+    terminoPotenciaActual?: number;
+    /** Current supplier energy term amount in €, copied from invoice detail when available. */
+    terminoEnergiaActual?: number;
+    /** Electricity tax amount in €, copied from invoice detail when available. */
+    impuestoElectricoActual?: number;
+    /** IVA/IGIC amount in €, copied from invoice detail when available. */
+    ivaActual?: number;
     /** IVA rate as a percentage (e.g. 21 means 21%). Falls back to 21% if not set. */
     ivaTasa?: number;
     /** Impuesto Eléctrico rate as a percentage (e.g. 5.11269 means 5.11%). Falls back to 5.11269% if not set. */

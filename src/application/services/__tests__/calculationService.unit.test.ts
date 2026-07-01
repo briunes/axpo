@@ -398,7 +398,7 @@ describe("CalculationService Personalizada Index", () => {
     for (const period of ["P1", "P2", "P3", "P4", "P5", "P6"] as const) {
       entries.push({
         key: `ELEC:INDEX:PERSONALIZADA_INDEX::6.1TD:${period}:MARGEN:2026-05`,
-        valueNumeric: indexPrices[period],
+        valueNumeric: indexPrices[period] - (12 * 1.01528) / 1000,
       });
       entries.push({
         key: `ELEC:INDEX:PERSONALIZADA_INDEX::6.1TD:${period}:POTENCIA`,
@@ -440,7 +440,7 @@ describe("CalculationService Personalizada Index", () => {
     expect(omieB!.totalFactura).toBe(12433.84);
   });
 
-  it("uses imported monthly Precio TE when OMIE input is zero", () => {
+  it("applies the Excel energy-margin factor on imported monthly Precio TE", () => {
     const inputs = buildInputs(62000);
     inputs.tarifaAcceso = "6.1TD";
     inputs.periodo = {
@@ -499,10 +499,10 @@ describe("CalculationService Personalizada Index", () => {
     );
 
     expect(offer).toBeDefined();
-    expect(offer!.desglose?.terminoEnergia).toBe(6949.95);
+    expect(offer!.desglose?.terminoEnergia).toBe(8643.42);
   });
 
-  it("keeps explicit OMIE plus margin behavior when OMIE is provided", () => {
+  it("falls back to explicit OMIE plus margin when no imported Precio TE exists", () => {
     const inputs = buildInputs(62000);
     inputs.personalizadaIndex = {
       margenEnergia: { P1: 12, P2: 12, P3: 12, P4: 12, P5: 12, P6: 12 },
@@ -517,17 +517,69 @@ describe("CalculationService Personalizada Index", () => {
       P6: 0.04,
     };
 
-    const entries: Array<{ key: string; valueNumeric: number }> = [];
-    for (const period of ["P1", "P2", "P3", "P4", "P5", "P6"] as const) {
-      entries.push({
-        key: `ELEC:INDEX:PERSONALIZADA_INDEX::3.0TD:${period}:MARGEN:2026-03`,
-        valueNumeric: 0.5,
-      });
-      entries.push({
-        key: `ELEC:INDEX:PERSONALIZADA_INDEX::3.0TD:${period}:POTENCIA`,
-        valueNumeric: 0,
-      });
-    }
+    const results = CalculationService.calculateElectricity(
+      inputs,
+      CalculationService.buildPriceMap([]),
+    );
+    const offer = results.find(
+      (item) => item.productKey === "PERSONALIZADA_INDEX",
+    );
+
+    expect(offer).toBeDefined();
+    expect(offer!.desglose?.terminoEnergia).toBe(31.31);
+  });
+
+  it("matches 00321.2026 Excel Personalized Index total with P1/P2/P3 energy margin 10", () => {
+    const inputs = buildInputs(62000);
+    inputs.tarifaAcceso = "2.0TD";
+    inputs.periodo = {
+      fechaInicio: "2026-03-07",
+      fechaFin: "2026-05-09",
+      dias: 64,
+    };
+    inputs.billingMonth = "2026-04";
+    inputs.facturaActual = 705.91;
+    inputs.extras = {
+      alquilerEquipoMedida: 4.27,
+      ivaTasa: 21,
+      impuestoElectricoTasa: 5.11,
+    };
+    inputs.consumo = {
+      P1: 558.97,
+      P2: 583.701,
+      P3: 1549.008,
+    };
+    inputs.potenciaContratada = {
+      P1: 11.42,
+      P2: 11.42,
+    };
+    inputs.personalizadaIndex = {
+      margenEnergia: { P1: 10, P2: 10, P3: 10 },
+      margenPotencia: {},
+    };
+
+    const entries: Array<{ key: string; valueNumeric: number }> = [
+      {
+        key: "ELEC:INDEX:PERSONALIZADA_INDEX::2.0TD:P1:MARGEN:2026-04",
+        valueNumeric: 0.15095191151363588,
+      },
+      {
+        key: "ELEC:INDEX:PERSONALIZADA_INDEX::2.0TD:P2:MARGEN:2026-04",
+        valueNumeric: 0.10279850935377012,
+      },
+      {
+        key: "ELEC:INDEX:PERSONALIZADA_INDEX::2.0TD:P3:MARGEN:2026-04",
+        valueNumeric: 0.09161960107635181,
+      },
+      {
+        key: "ELEC:INDEX:PERSONALIZADA_INDEX::2.0TD:P1:POTENCIA",
+        valueNumeric: 27.704413,
+      },
+      {
+        key: "ELEC:INDEX:PERSONALIZADA_INDEX::2.0TD:P2:POTENCIA",
+        valueNumeric: 0.725423,
+      },
+    ];
 
     const results = CalculationService.calculateElectricity(
       inputs,
@@ -538,7 +590,9 @@ describe("CalculationService Personalizada Index", () => {
     );
 
     expect(offer).toBeDefined();
-    expect(offer!.desglose?.terminoEnergia).toBe(31.2);
+    expect(offer!.desglose?.terminoEnergia).toBe(313.63);
+    expect(offer!.desglose?.terminoPotencia).toBe(56.93);
+    expect(offer!.totalFactura).toBe(476.45);
   });
 });
 

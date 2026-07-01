@@ -1005,6 +1005,37 @@ const OMIE_B_FACTOR_REFS: Record<
   },
 };
 
+const PERSONALIZADA_INDEX_MARGIN_FACTOR = 1.01528;
+
+function personalizadaIndexEnergyMarginMwh(
+  sheet: WorksheetLike,
+  tariff: string,
+  periodIndex: number,
+): number {
+  let primaryRef: { r: number; c: number } | null = null;
+  let secondaryRef: { r: number; c: number } | null = null;
+
+  if (tariff === "6.1TD") {
+    primaryRef = { r: 44, c: 15 + periodIndex }; // P45:U45
+    secondaryRef = { r: 47, c: 15 + periodIndex }; // P48:U48
+  } else if (tariff === "3.0TD") {
+    primaryRef = { r: 44, c: 34 + periodIndex }; // AI45:AN45
+    secondaryRef = { r: 47, c: 34 + periodIndex }; // AI48:AN48
+  } else if (tariff === "2.0TD") {
+    primaryRef = { r: 45, c: 51 + periodIndex }; // AZ46:BB46
+    secondaryRef = { r: 48, c: 51 + periodIndex }; // AZ49:BB49
+  }
+
+  if (!primaryRef) return 0;
+
+  const primary = safeFloat(sheet[encodeCell(primaryRef)]?.v) ?? 0;
+  const secondary = secondaryRef
+    ? (safeFloat(sheet[encodeCell(secondaryRef)]?.v) ?? 0)
+    : 0;
+
+  return primary + secondary;
+}
+
 function computeOmieBFactor(
   sheet: WorksheetLike,
   row: number,
@@ -1157,7 +1188,19 @@ function parseDinamicaSheet(
         let bFactor: number | null = null;
         const factorKey = `ELEC:INDEX:${product}:${tier}:${tariff}:${periods[i]}:B_FACTOR`;
 
-        if (product === "PERSONALIZADA_OMIE_B") {
+        if (product === "PERSONALIZADA_INDEX") {
+          const embeddedMargin = personalizadaIndexEnergyMarginMwh(
+            sheet,
+            tariff,
+            i,
+          );
+          if (embeddedMargin !== 0) {
+            adjustedMwh = Math.max(
+              0,
+              adjustedMwh - embeddedMargin * PERSONALIZADA_INDEX_MARGIN_FACTOR,
+            );
+          }
+        } else if (product === "PERSONALIZADA_OMIE_B") {
           if (isPromedio) {
             const factors = averageRefsFromFormula(cell.f, zone)
               .map((ref) =>

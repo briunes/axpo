@@ -31,6 +31,10 @@ import { useActionButtons, useTopBarBreadcrumbs } from "../../components/Interna
 import WarningIcon from '@mui/icons-material/Warning';
 type SimType = "ELECTRICITY" | "GAS";
 
+function finiteOrUndefined(value: unknown): number | undefined {
+    return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
 function addDays(n: number): string {
     const d = new Date();
     d.setDate(d.getDate() + n);
@@ -125,6 +129,10 @@ function buildElecPayloadFromOcr(data: import("../../components/modules").Extrac
             reactiva: data.reactiva || undefined,
             alquilerEquipoMedida: data.alquiler || undefined,
             otrosCargos: data.otrosCargos || undefined,
+            terminoPotenciaActual: finiteOrUndefined(data.importePotencia),
+            terminoEnergiaActual: finiteOrUndefined(data.importeEnergia),
+            impuestoElectricoActual: finiteOrUndefined(data.importeImpuestoElectrico),
+            ivaActual: finiteOrUndefined(data.importeIva),
             ivaTasa: data.ivaTasa,
             impuestoElectricoTasa: data.impuestoElectricoTasa,
         },
@@ -539,6 +547,10 @@ export default function NewSimulationPage() {
                     excesoPotencia: extractedData.excesoPotencia,
                     alquiler: extractedData.alquiler,
                     otrosCargos: extractedData.otrosCargos,
+                    importePotencia: extractedData.importePotencia,
+                    importeEnergia: extractedData.importeEnergia,
+                    importeImpuestoElectrico: extractedData.importeImpuestoElectrico,
+                    importeIva: extractedData.importeIva,
                     reactiva: extractedData.reactiva,
                     ivaTasa: extractedData.ivaTasa,
                     impuestoElectricoTasa: extractedData.impuestoElectricoTasa,
@@ -975,6 +987,18 @@ export default function NewSimulationPage() {
                                                     <CurrencyInput value={extractedData.excesoPotencia ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, excesoPotencia: isNaN(v) ? undefined : v } : prev)} />
                                                 </div>
                                             )}
+                                            {simType === "ELECTRICITY" && (
+                                                <>
+                                                    <div>
+                                                        <div style={labelStyle}>Power cost</div>
+                                                        <CurrencyInput value={extractedData.importePotencia ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, importePotencia: isNaN(v) ? undefined : v } : prev)} />
+                                                    </div>
+                                                    <div>
+                                                        <div style={labelStyle}>Energy cost</div>
+                                                        <CurrencyInput value={extractedData.importeEnergia ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, importeEnergia: isNaN(v) ? undefined : v } : prev)} />
+                                                    </div>
+                                                </>
+                                            )}
                                             {/* REACTIVE ENERGY - ELECTRICITY ONLY */}
                                             {simType === "ELECTRICITY" && (
                                                 <div>
@@ -1060,9 +1084,9 @@ export default function NewSimulationPage() {
                                                     />
                                                 </div>
                                                 {/* Electricity Tax - ELECTRICITY ONLY */}
-                                                {simType === "ELECTRICITY" && (
-                                                    <div>
-                                                        <div style={labelStyle2}>{elecTaxLabel}</div>
+                                            {simType === "ELECTRICITY" && (
+                                                <div>
+                                                    <div style={labelStyle2}>{elecTaxLabel}</div>
                                                         <FormSelect
                                                             label=""
                                                             size="small"
@@ -1071,8 +1095,20 @@ export default function NewSimulationPage() {
                                                             options={[...new Set([...elecTaxOptions, extractedData.impuestoElectricoTasa ?? elecTaxOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: o + "%" }))}
                                                         />
 
+                                                </div>
+                                            )}
+                                            {simType === "ELECTRICITY" && (
+                                                <>
+                                                    <div>
+                                                        <div style={labelStyle2}>Electricity tax amount</div>
+                                                        <CurrencyInput value={extractedData.importeImpuestoElectrico ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, importeImpuestoElectrico: isNaN(v) ? undefined : v } : prev)} />
                                                     </div>
-                                                )}
+                                                    <div>
+                                                        <div style={labelStyle2}>IVA amount</div>
+                                                        <CurrencyInput value={extractedData.importeIva ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, importeIva: isNaN(v) ? undefined : v } : prev)} />
+                                                    </div>
+                                                </>
+                                            )}
                                                 {/* Gas Hydrocarbon Tax - GAS ONLY */}
                                                 {simType === "GAS" && (
                                                     <div>

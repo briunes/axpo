@@ -86,6 +86,10 @@ interface ElecFormState {
     reactiva: number;
     alquiler: number;
     otrosCargos: number;
+    importePotencia: number;
+    importeEnergia: number;
+    importeImpuestoElectrico: number;
+    importeIva: number;
     ivaTasa: number;
     impuestoElectricoTasa: number;
 }
@@ -211,6 +215,10 @@ function defaultElecState(): ElecFormState {
         reactiva: 0,
         alquiler: 0,
         otrosCargos: 0,
+        importePotencia: 0,
+        importeEnergia: 0,
+        importeImpuestoElectrico: 0,
+        importeIva: 0,
         ivaTasa: 21,
         impuestoElectricoTasa: 5.11269,
     };
@@ -282,6 +290,10 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
             reactiva: s.reactiva || undefined,
             alquilerEquipoMedida: s.alquiler || undefined,
             otrosCargos: s.otrosCargos || undefined,
+            terminoPotenciaActual: s.importePotencia || undefined,
+            terminoEnergiaActual: s.importeEnergia || undefined,
+            impuestoElectricoActual: s.importeImpuestoElectrico || undefined,
+            ivaActual: s.importeIva || undefined,
             ivaTasa: s.ivaTasa,
             impuestoElectricoTasa: s.impuestoElectricoTasa,
         },
@@ -398,6 +410,10 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
             reactiva: invoiceData.reactiva ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
             otrosCargos: invoiceData.otrosCargos ?? 0,
+            importePotencia: invoiceData.importePotencia ?? 0,
+            importeEnergia: invoiceData.importeEnergia ?? 0,
+            importeImpuestoElectrico: invoiceData.importeImpuestoElectrico ?? 0,
+            importeIva: invoiceData.importeIva ?? 0,
             ivaTasa: invoiceData.ivaTasa ?? 21,
             impuestoElectricoTasa: invoiceData.impuestoElectricoTasa ?? 5.11269,
         };
@@ -437,6 +453,10 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
         reactiva: e.extras?.reactiva ?? 0,
         alquiler: e.extras?.alquilerEquipoMedida ?? 0,
         otrosCargos: e.extras?.otrosCargos ?? 0,
+        importePotencia: (e.extras as any)?.terminoPotenciaActual ?? 0,
+        importeEnergia: (e.extras as any)?.terminoEnergiaActual ?? 0,
+        importeImpuestoElectrico: (e.extras as any)?.impuestoElectricoActual ?? 0,
+        importeIva: (e.extras as any)?.ivaActual ?? 0,
         ivaTasa: e.extras?.ivaTasa ?? 21,
         impuestoElectricoTasa: e.extras?.impuestoElectricoTasa ?? 5.11269,
     };
@@ -1011,6 +1031,20 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                         <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
                     </Field>
                 </Row>
+                <Row>
+                    <Field label="Current power cost" flex="1 1 0">
+                        <CurrencyInput value={state.importePotencia} onChange={(v) => up("importePotencia", isNaN(v) ? 0 : v)} />
+                    </Field>
+                    <Field label="Current energy cost" flex="1 1 0">
+                        <CurrencyInput value={state.importeEnergia} onChange={(v) => up("importeEnergia", isNaN(v) ? 0 : v)} />
+                    </Field>
+                    <Field label="Current electricity tax" flex="1 1 0">
+                        <CurrencyInput value={state.importeImpuestoElectrico} onChange={(v) => up("importeImpuestoElectrico", isNaN(v) ? 0 : v)} />
+                    </Field>
+                    <Field label="Current IVA amount" flex="1 1 0">
+                        <CurrencyInput value={state.importeIva} onChange={(v) => up("importeIva", isNaN(v) ? 0 : v)} />
+                    </Field>
+                </Row>
                 <Divider sx={{ my: 2 }} />
                 <Row>
                     <Field label={state.zonaGeografica === "Canarias" ? t("simulationForm", "fieldIgic") : t("simulationForm", "fieldVat")} hint={state.zonaGeografica === "Canarias" ? t("simulationForm", "fieldIgicHint") : t("simulationForm", "fieldVatHint")} flex="1 1 0">
@@ -1467,6 +1501,10 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 reactiva: 0,
                 alquiler: 1.3,
                 otrosCargos: 0,
+                importePotencia: 0,
+                importeEnergia: 0,
+                importeImpuestoElectrico: 0,
+                importeIva: 0,
                 ivaTasa: 21,
                 impuestoElectricoTasa: 5.11269,
                 personalizadaIndexMargenEnergia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
@@ -1515,13 +1553,18 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         setError(null);
         setCalculating(true);
         try {
+            const effectiveBillingMonth =
+                billingMonthOverride ??
+                (simType !== "GAS"
+                    ? getDominantBillingMonth(elecState.fechaInicio, elecState.fechaFin)
+                    : undefined);
             const payload: SimulationPayload = {
                 schemaVersion: "1",
                 type: simType,
                 electricity: simType !== "GAS"
                     ? {
                         ...buildElecInputs(elecState),
-                        ...(billingMonthOverride ? { billingMonth: billingMonthOverride } : {}),
+                        ...(effectiveBillingMonth ? { billingMonth: effectiveBillingMonth } : {}),
                     }
                     : undefined,
                 gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
@@ -1531,6 +1574,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             const calcResult = await calculateSimulation(token, simulation.id, {
                 ...(effectiveBaseValueSetId ? { baseValueSetId: effectiveBaseValueSetId } : {}),
                 payloadJson: payload,
+                ...(effectiveBillingMonth ? { selectedMonth: effectiveBillingMonth } : {}),
             });
             const updatedPayload: SimulationPayload = {
                 ...payload,

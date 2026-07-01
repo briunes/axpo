@@ -193,9 +193,16 @@ export function extractTemplateVariables(
   const ivaR = currentIvaTasa / 100;
   const currentTaxCost = currentTotal * (ieR / ((1 + ieR) * (1 + ivaR)));
   const currentVat = (currentTotal - currentTaxCost - currentRentalCost) * ivaR;
+  const explicitCurrentTax = (electricity?.extras as any)
+    ?.impuestoElectricoActual;
+  const explicitCurrentVat = (electricity?.extras as any)?.ivaActual;
+  const displayedCurrentTax =
+    explicitCurrentTax != null ? Number(explicitCurrentTax) : currentTaxCost;
+  const displayedCurrentVat =
+    explicitCurrentVat != null ? Number(explicitCurrentVat) : currentVat;
   const currentPowerEnergyBase = Math.max(
     0,
-    currentTotal - currentTaxCost - currentVat - currentKnownBase,
+    currentTotal - displayedCurrentTax - displayedCurrentVat - currentKnownBase,
   );
   const explicitCurrentPower = (electricity?.extras as any)
     ?.terminoPotenciaActual;
@@ -253,10 +260,10 @@ export function extractTemplateVariables(
     CURRENT_POWER_COST: formatCurrency(currentPowerCost),
     CURRENT_ENERGY_COST: formatCurrency(currentEnergyCost),
     CURRENT_EXCESS_COST: formatCurrency(currentExcessCost),
-    CURRENT_TAX_COST: formatCurrency(currentTaxCost),
+    CURRENT_TAX_COST: formatCurrency(displayedCurrentTax),
     CURRENT_OTHER_COST: formatCurrency(currentOtherCost),
     CURRENT_RENTAL_COST: formatCurrency(currentRentalCost),
-    CURRENT_VAT: formatCurrency(currentVat),
+    CURRENT_VAT: formatCurrency(displayedCurrentVat),
     CURRENT_TOTAL: formatCurrency(currentTotal),
 
     // AXPO plan - Power contracted (same as current)

@@ -348,6 +348,10 @@ CRITICAL FIELDS TO EXTRACT:
    - reactiva: Reactive energy charges (€)
    - alquiler: Equipment rental charges (€)
    - otrosCargos: Other charges/concepts (€)
+   - importePotencia: Total billed amount for the power term / "Potencia" in € (sum all power rows, do NOT return unit prices here)
+   - importeEnergia: Total billed amount for the energy term / "Energía" in € (sum all energy rows, do NOT return unit prices here)
+   - importeImpuestoElectrico: Total electricity tax amount in € ("Impuesto electricidad", "Impuesto especial electricidad")
+   - importeIva: Total VAT/IVA/IGIC amount in €
 
 7. CURRENT SUPPLIER POWER UNIT PRICES:
    - precioPotenciaP1
@@ -457,6 +461,10 @@ You MUST always return a JSON that exactly matches this structure (all keys pres
   "reactiva": null,
   "alquiler": null,
   "otrosCargos": null,
+  "importePotencia": null,
+  "importeEnergia": null,
+  "importeImpuestoElectrico": null,
+  "importeIva": null,
   "ivaTasa": null,
   "impuestoElectricoTasa": null,
   "telemedida": "",
