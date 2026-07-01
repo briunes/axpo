@@ -211,9 +211,13 @@ CRITICAL FIELDS TO EXTRACT:
 6. FINANCIAL INFORMATION:
    - facturaActual: Total invoice amount including taxes (€)
    - excesoPotencia: Total excess power charge (€)
-   - reactiva: Reactive energy charges (€)
-   - alquiler: Equipment rental charges (€)
-   - otrosCargos: Other charges (€)
+  - reactiva: Reactive energy charges (€)
+  - alquiler: Equipment rental charges (€)
+  - otrosCargos: Other charges (€)
+  - importePotencia: Total billed amount for the power term / "Potencia" in €
+  - importeEnergia: Total billed amount for the energy term / "Energía" in €
+  - importeImpuestoElectrico: Total electricity tax amount in €
+  - importeIva: Total VAT/IVA/IGIC amount in €
 
 7. UNIT PRICES:
    - precioPotenciaP1..P6: Unit prices for power per period. Map to explicit period labels only.
@@ -255,6 +259,7 @@ You MUST always return a JSON that exactly matches this structure (all keys pres
   "precioPotenciaP1": null, "precioPotenciaP2": null, "precioPotenciaP3": null, "precioPotenciaP4": null, "precioPotenciaP5": null, "precioPotenciaP6": null,
   "precioEnergiaP1": null, "precioEnergiaP2": null, "precioEnergiaP3": null, "precioEnergiaP4": null, "precioEnergiaP5": null, "precioEnergiaP6": null,
   "facturaActual": null, "excesoPotencia": null, "reactiva": null, "alquiler": null, "otrosCargos": null,
+  "importePotencia": null, "importeEnergia": null, "importeImpuestoElectrico": null, "importeIva": null,
   "ivaTasa": null, "impuestoElectricoTasa": null,
   "telemedida": "",
   "invoiceType": "ELECTRICITY"
@@ -579,6 +584,10 @@ function scoreExtraction(actual: any) {
     "reactiva",
     "alquiler",
     "otrosCargos",
+    "importePotencia",
+    "importeEnergia",
+    "importeImpuestoElectrico",
+    "importeIva",
     "ivaTasa",
     "impuestoElectricoTasa",
     "telemedida",

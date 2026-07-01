@@ -40,6 +40,10 @@ const COMMON_CORRECTION_FIELDS = new Set([
   "facturaActual",
   "alquiler",
   "otrosCargos",
+  "importePotencia",
+  "importeEnergia",
+  "importeImpuestoElectrico",
+  "importeIva",
   "ivaTasa",
   "invoiceType",
 ]);
@@ -548,7 +552,7 @@ Therefore:
 - NEVER instruct the extraction AI to return a fixed/hardcoded value for any field (e.g., do NOT write 'always return telemedida: ""' or 'zonaGeografica is not applicable — return ""').
 - NEVER instruct the AI to skip or omit a field just because it is absent from this particular sample invoice.
 - For every field in the JSON schema, the prompt must tell the AI WHERE to look for it on any invoice of this template, and to return null only if genuinely absent after a thorough search.
-- Fields like zonaGeografica, telemedida, perfilCarga, alquiler, otrosCargos, consumoAnual, etc. may be present on other invoices from this provider even if they are absent from the sample. Always try to extract them dynamically.
+- Fields like zonaGeografica, telemedida, perfilCarga, alquiler, otrosCargos, importePotencia, importeEnergia, importeImpuestoElectrico, importeIva, consumoAnual, etc. may be present on other invoices from this provider even if they are absent from the sample. Always try to extract them dynamically.
 
 Return ONLY the complete new prompt text — no commentary, no markdown fences, no preamble.`;
     } else {
@@ -614,7 +618,7 @@ Therefore:
 - NEVER instruct the extraction AI to return a fixed/hardcoded value for any field (e.g., do NOT write 'always return telemedida: ""' or 'zonaGeografica is not applicable — return ""').
 - NEVER instruct the AI to skip or omit a field just because it is absent from this particular sample invoice.
 - For every field in the JSON schema, the prompt must tell the AI WHERE to look for it on any invoice of this template, and to return null only if genuinely absent after a thorough search.
-- Fields like zonaGeografica, telemedida, perfilCarga, alquiler, otrosCargos, consumoAnual, etc. may be present on other invoices from this provider even if they are absent from the sample. Always try to extract them dynamically.
+- Fields like zonaGeografica, telemedida, perfilCarga, alquiler, otrosCargos, importePotencia, importeEnergia, importeImpuestoElectrico, importeIva, consumoAnual, etc. may be present on other invoices from this provider even if they are absent from the sample. Always try to extract them dynamically.
 
 Return ONLY the complete new prompt text — no commentary, no markdown fences, no preamble.`;
     }

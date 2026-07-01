@@ -39,6 +39,7 @@ export type PriceMap = Map<string, number>;
 const IMPUESTO_ELECTRICO = 0.0511; // matches Excel E51 default (5.11%)
 const IVA_RATE = 0.21;
 const IMPUESTO_HIDROCARBURO = 0.00234; // €/kWh — Ley de Hidrocarburos
+const PERSONALIZADA_INDEX_ENERGY_MARGIN_FACTOR = 1.01528;
 
 /** Energy periods consumed per access tariff. */
 const ENERGY_PERIODS: Record<string, string[]> = {
@@ -494,7 +495,7 @@ function calcElecPersonalizadaFijo(
  * Personalizada Index product.
  * Uses user-supplied energy margins (€/MWh) and power margins (€/kW/year).
  * Only computed when at least one energy margin period is > 0.
- * Formula: energyCost = (omie[p] + margenEnergia[p]/1000) × consumo[p]
+ * Formula: energyCost = (precioExcel[p] + margenEnergia[p] × 1.01528/1000) × consumo[p]
  *          powerCost  = (atrPower[p] + margenPotencia[p]) × potencia[p] × dias/365
  */
 function calcPersonalizadaIndex(
@@ -563,9 +564,15 @@ function calcPersonalizadaIndex(
     const storedPrice =
       priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) ??
       priceOf(map, `${baseKey}:MARGEN`);
-    const precioEnergia = hasExplicitOmie
-      ? pv(omieMapIdx, p) + (margenEnergiaMap[p] ?? 0) / 1000
-      : storedPrice ?? (margenEnergiaMap[p] ?? 0) / 1000;
+    const margenEnergiaP =
+      ((margenEnergiaMap[p] ?? 0) * PERSONALIZADA_INDEX_ENERGY_MARGIN_FACTOR) /
+      1000;
+    const precioEnergia =
+      storedPrice !== undefined
+        ? storedPrice + margenEnergiaP
+        : hasExplicitOmie
+          ? pv(omieMapIdx, p) + margenEnergiaP
+          : margenEnergiaP;
     if (precioEnergia === undefined) return null;
     terminoEnergia += precioEnergia * pv(consumoMap, p);
   }

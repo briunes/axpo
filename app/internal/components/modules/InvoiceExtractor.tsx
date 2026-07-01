@@ -56,6 +56,10 @@ export interface ExtractedInvoiceData {
     reactiva?: number;
     alquiler?: number;
     otrosCargos?: number;
+    importePotencia?: number;
+    importeEnergia?: number;
+    importeImpuestoElectrico?: number;
+    importeIva?: number;
     ivaTasa?: number;
     impuestoElectricoTasa?: number;
     impuestoHidrocarburo?: number;
