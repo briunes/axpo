@@ -450,8 +450,26 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                     )}
 
                     {/* Actions */}
-                    <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-                        <Box sx={{ display: "flex", gap: 2 }}>
+                    <Box
+                        sx={{
+                            display: "flex",
+                            flexDirection: { xs: "column", sm: "row" },
+                            justifyContent: "space-between",
+                            gap: 2,
+                            minWidth: 0,
+                        }}
+                    >
+                        <Box
+                            sx={{
+                                display: "flex",
+                                flexDirection: { xs: "column", sm: "row" },
+                                gap: 2,
+                                minWidth: 0,
+                                "& .MuiButton-root": {
+                                    width: { xs: "100%", sm: "auto" },
+                                },
+                            }}
+                        >
                             <Button
                                 variant="outlined"
                                 onClick={() => router.push("/internal/simulations")}
@@ -468,7 +486,17 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                                 </Button>
                             )}
                         </Box>
-                        <Box sx={{ display: "flex", gap: 2 }}>
+                        <Box
+                            sx={{
+                                display: "flex",
+                                flexDirection: { xs: "column", sm: "row" },
+                                gap: 2,
+                                minWidth: 0,
+                                "& .MuiButton-root": {
+                                    width: { xs: "100%", sm: "auto" },
+                                },
+                            }}
+                        >
                             {shareMode === "pdf" && (
                                 <Button
                                     variant="outlined"

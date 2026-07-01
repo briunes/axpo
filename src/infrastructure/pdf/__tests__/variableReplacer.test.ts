@@ -19,6 +19,41 @@ describe("extractVariableValues", () => {
     expect(variables.SIMULATION_REFERENCE).toBe("simulation-id");
   });
 
+  it("exposes the user agency from owner or simulation context", () => {
+    expect(
+      extractVariableValues({
+        id: "simulation-id",
+        ownerUser: { agency: { name: "Owner Agency" } },
+        agency: { name: "Simulation Agency" },
+      }).USER_AGENCY,
+    ).toBe("Owner Agency");
+
+    expect(
+      extractVariableValues({
+        id: "simulation-id",
+        ownerUser: {},
+        agency: { name: "Simulation Agency" },
+      }).USER_AGENCY,
+    ).toBe("Simulation Agency");
+  });
+
+  it("exposes the timestamp from the last calculation run", () => {
+    const calculatedAt = "2026-02-01T00:00:00.000Z";
+    const variables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        results: {
+          calculatedAt,
+          baseValueSetId: "base-values",
+        },
+      },
+    );
+
+    expect(variables.SIMULATION_GENERATED_AT).toBe(
+      new Date(calculatedAt).toLocaleString("es-ES"),
+    );
+  });
+
   it("exposes gas simulation variables", () => {
     const variables = extractVariableValues(
       {

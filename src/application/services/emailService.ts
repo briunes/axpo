@@ -10,6 +10,17 @@ const debugEmailLog = (...args: unknown[]) => {
   if (EMAIL_DEBUG_LOGS) console.log(...args);
 };
 
+async function getUserAgencyName(userId?: string): Promise<string> {
+  if (!userId) return "N/A";
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { agency: { select: { name: true } } },
+  });
+
+  return user?.agency?.name || "N/A";
+}
+
 interface EmailOptions {
   to: string;
   subject: string;
@@ -374,10 +385,12 @@ export class EmailService {
         : "";
       const setupPasswordValidityHours =
         config.setupTokenValidityHours ?? 72;
+      const userAgency = await getUserAgencyName(options.userId);
 
       const variables = {
         USER_NAME: options.userName,
         USER_EMAIL: options.userEmail,
+        USER_AGENCY: userAgency,
         USER_PIN: options.userPin,
         USER_PASSWORD:
           options.userPassword || "Please check with your administrator",
@@ -441,10 +454,12 @@ export class EmailService {
         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
         "http://localhost:3000";
       const resetPasswordUrl = `${baseUrl}/internal/reset-password?token=${options.resetToken}`;
+      const userAgency = await getUserAgencyName(options.userId);
 
       const variables = {
         USER_NAME: options.userName,
         USER_EMAIL: options.userEmail,
+        USER_AGENCY: userAgency,
         RESET_PASSWORD_URL: resetPasswordUrl,
       };
 
@@ -508,10 +523,12 @@ export class EmailService {
 
       const magicLinkUrl = `${baseUrl}/internal/login/magic?token=${options.magicLinkToken}`;
       const validityMinutes = config.magicLinkTokenValidityMinutes ?? 15;
+      const userAgency = await getUserAgencyName(options.userId);
 
       const variables = {
         USER_NAME: options.userName,
         USER_EMAIL: options.userEmail,
+        USER_AGENCY: userAgency,
         MAGIC_LINK: magicLinkUrl,
         MAGIC_LINK_VALIDITY_MINUTES: String(validityMinutes),
       };
@@ -558,10 +575,12 @@ export class EmailService {
       }
 
       const validityMinutes = config.otpCodeValidityMinutes ?? 10;
+      const userAgency = await getUserAgencyName(options.userId);
 
       const variables = {
         USER_NAME: options.userName,
         USER_EMAIL: options.userEmail,
+        USER_AGENCY: userAgency,
         OTP_CODE: options.otpCode,
         OTP_VALIDITY_MINUTES: String(validityMinutes),
       };

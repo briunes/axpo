@@ -197,9 +197,12 @@ const TARIFF_PERIODS: Record<string, string[]> = {
 
 const TARIFF_ORDER = ["2.0TD", "3.0TD", "6.1TD"];
 
-/** Excel-matching palette for the price-history table. */
-const HISTORY_HEADER_RED = "#FD5D66"; // tariff label / month row
-const HISTORY_PERIOD_YELLOW = "#EE57"; // P1..Pn column header (yellow)
+/** Visual palette for generated price-history tables. */
+const HISTORY_TABLE_BLUE = "#4946D6";
+const HISTORY_TABLE_BLUE_DARK = "#3E3BC7";
+const HISTORY_TABLE_STRIPE = "#E8E7F7";
+const HISTORY_TABLE_TEXT = "#2F2F37";
+const HISTORY_TABLE_RADIUS = "10px";
 
 // ─── HTML generator ──────────────────────────────────────────────────────────
 
@@ -239,11 +242,7 @@ function buildHistoryHtml(
     // Build one <table> block per tariff.
     // Each cell shows the full all-in Precio TE (€/kWh) for that month+period,
     // taken from the per-month MARGEN key stored in the base value set.
-    // Visually mirrors the Excel sheet "COMPARATIVA LUZ" panel (R1:Y53):
-    //   - red header (#FD5D66) for tariff label and month rows
-    //   - yellow period header (#EE57) for P1..Pn
-    //   - 6-decimal €/kWh values with comma decimal separator
-    //   - Media row = AVERAGEIF of monthly values > 0 (matches Excel AVERAGEIF)
+    // Media row = AVERAGEIF of monthly values > 0 (matches Excel AVERAGEIF).
     const buildTariffBlock = (tariff: string): string => {
         const tariffData = product.tariffs[tariff];
         if (!tariffData) return "";
@@ -256,19 +255,19 @@ function buildHistoryHtml(
         const headerCells = activePeriods
             .map(
                 (p) =>
-                    `<th style="background:${HISTORY_PERIOD_YELLOW};color:#3A3C39;padding:5px 10px;text-align:center;font-weight:bold;font-size:11px;border:1px solid #f0f0f0;">${p}</th>`,
+                    `<th style="background:${HISTORY_TABLE_BLUE};color:#fff;padding:9px 14px;text-align:center;font-weight:700;font-size:13px;border-left:1px solid rgba(255,255,255,0.75);border-bottom:1px solid rgba(255,255,255,0.75);">${p}</th>`,
             )
             .join("");
 
         const monthRows = sortedMonths
             .map(
-                (month) =>
+                (month, monthIndex) =>
                     `<tr>
-              <td style="background:${HISTORY_HEADER_RED};color:#fff;font-weight:bold;padding:5px 10px;font-size:11px;border:1px solid rgba(255,255,255,0.15);white-space:nowrap;">${month.label}</td>
+              <td style="background:${HISTORY_TABLE_BLUE};color:#fff;font-weight:400;padding:8px 20px;font-size:13px;border-top:1px solid rgba(255,255,255,0.75);white-space:nowrap;">${month.label}</td>
               ${activePeriods
                         .map(
                             (p) =>
-                                `<td style="padding:5px 10px;text-align:center;font-size:11px;border:1px solid #f0f0f0;background:#fff;">${fmtMargin(periodMonthly(tariffData[p], month.key))}</td>`,
+                                `<td style="padding:8px 14px;text-align:center;font-size:13px;border-left:1px solid rgba(255,255,255,0.85);border-top:1px solid rgba(255,255,255,0.85);background:${monthIndex % 2 === 0 ? HISTORY_TABLE_STRIPE : "#fff"};color:${HISTORY_TABLE_TEXT};">${fmtMargin(periodMonthly(tariffData[p], month.key))}</td>`,
                         )
                         .join("")}
             </tr>`,
@@ -286,28 +285,30 @@ function buildHistoryHtml(
                     vals.length > 0
                         ? vals.reduce((a, b) => a + b, 0) / vals.length
                         : 0;
-                return `<td style="padding:5px 10px;text-align:center;font-size:11px;border:1px solid #e8e8e8;font-weight:bold;background:#f5f5f5;">${fmtMargin(mean)}</td>`;
+                return `<td style="padding:8px 14px;text-align:center;font-size:13px;border-left:1px solid rgba(255,255,255,0.85);border-top:1px solid rgba(255,255,255,0.85);font-weight:700;background:${HISTORY_TABLE_STRIPE};color:${HISTORY_TABLE_TEXT};">${fmtMargin(mean)}</td>`;
             })
             .join("");
 
         return `
-          <div class="asim-history-block" style="margin-bottom:28px;break-inside:avoid;page-break-inside:avoid;">
-            <div class="asim-history-title" style="text-align:center;color:${HISTORY_HEADER_RED};font-weight:bold;margin-bottom:6px;break-after:avoid;page-break-after:avoid;">${tariff}</div>
-            <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
+          <div class="asim-history-block" style="margin-bottom:34px;break-inside:avoid;page-break-inside:avoid;">
+            <div class="asim-history-title" style="text-align:center;color:${HISTORY_TABLE_BLUE};font-weight:700;margin-bottom:10px;break-after:avoid;page-break-after:avoid;">${tariff}</div>
+            <div style="overflow:hidden;border-radius:${HISTORY_TABLE_RADIUS};width:100%;max-width:${activePeriods.length <= 3 ? "620px" : "100%"};">
+            <table style="width:100%;border-collapse:separate;border-spacing:0;font-family:Arial,sans-serif;">
               <thead>
                 <tr>
-                  <th style="background:${HISTORY_HEADER_RED};color:#fff;padding:5px 10px;text-align:center;font-weight:bold;font-size:11px;border:1px solid rgba(255,255,255,0.15);">—</th>
+                  <th style="background:${HISTORY_TABLE_BLUE};color:#fff;padding:9px 14px;text-align:center;font-weight:700;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.75);width:25%;">-</th>
                   ${headerCells}
                 </tr>
               </thead>
               <tbody>
                 ${monthRows}
                 <tr>
-                  <td style="padding:5px 10px;font-weight:bold;font-size:11px;border:1px solid #e8e8e8;background:#f5f5f5;">Media</td>
+                  <td style="background:${HISTORY_TABLE_BLUE_DARK};color:#fff;font-weight:700;padding:8px 20px;font-size:13px;border-top:1px solid rgba(255,255,255,0.75);white-space:nowrap;">Media</td>
                   ${avgCells}
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>`;
     };
 

@@ -59,6 +59,20 @@ const SIMULATION_REFERENCE_VARIABLE = {
     example: "00123/2026",
 };
 
+const SIMULATION_GENERATED_AT_VARIABLE = {
+    name: "SIMULATION_GENERATED_AT",
+    label: "Simulation Generated At",
+    description: "Date and time when the simulation offers were last calculated",
+    example: "01/02/2026, 01:00:00",
+};
+
+const USER_AGENCY_VARIABLE = {
+    name: "USER_AGENCY",
+    label: "User Agency",
+    description: "Agency name associated with the user",
+    example: "Axpo Madrid",
+};
+
 /** Common metadata variables shared across all price-history templates (injected by DownloadHistoryDialog — NOT in the DB). */
 const PRICE_HISTORY_COMMON_VARIABLES = [
     {
@@ -184,19 +198,22 @@ function getVariablesForTemplate(
     t: ReturnType<typeof useI18n>["t"],
 ): Array<{ name: string; label: string; description: string }> {
     const c = commodity || "ELECTRICITY";
-    const ensureSimulationReference = (
+    const ensureBuiltInVariables = (
         templateVariables: Array<{ name: string; label: string; description: string }>,
     ) => {
-        if (templateVariables.some((variable) => variable.name === SIMULATION_REFERENCE_VARIABLE.name)) {
-            return templateVariables;
-        }
+        const existingNames = new Set(templateVariables.map((variable) => variable.name));
+        const missingBuiltIns = [
+            SIMULATION_REFERENCE_VARIABLE,
+            SIMULATION_GENERATED_AT_VARIABLE,
+            USER_AGENCY_VARIABLE,
+        ].filter((variable) => !existingNames.has(variable.name));
 
         return [
-            {
-                name: SIMULATION_REFERENCE_VARIABLE.name,
-                label: SIMULATION_REFERENCE_VARIABLE.label,
-                description: SIMULATION_REFERENCE_VARIABLE.description,
-            },
+            ...missingBuiltIns.map((variable) => ({
+                name: variable.name,
+                label: variable.label,
+                description: variable.description,
+            })),
             ...templateVariables,
         ];
     };
@@ -226,7 +243,7 @@ function getVariablesForTemplate(
             }));
 
         // Prepend the Comparativa chart variable
-        return ensureSimulationReference([
+        return ensureBuiltInVariables([
             {
                 name: "CHART_COMPARATIVA",
                 label: t("pdfTemplateVariables", "CHART_COMPARATIVA_label"),
@@ -237,7 +254,7 @@ function getVariablesForTemplate(
     }
 
     // For contract, invoice, report, etc. — show only generic (client/user/simulation) vars
-    return ensureSimulationReference(dbVariables
+    return ensureBuiltInVariables(dbVariables
         .filter((v) => !v.templateTypes && !v.commodity)
         .map((v) => ({
             name: v.key,
@@ -473,6 +490,14 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
         sampleData = sampleData.replace(
             /\{\{SIMULATION_REFERENCE\}\}/g,
             SIMULATION_REFERENCE_VARIABLE.example,
+        );
+        sampleData = sampleData.replace(
+            /\{\{SIMULATION_GENERATED_AT\}\}/g,
+            SIMULATION_GENERATED_AT_VARIABLE.example,
+        );
+        sampleData = sampleData.replace(
+            /\{\{USER_AGENCY\}\}/g,
+            USER_AGENCY_VARIABLE.example,
         );
 
         return sampleData;
