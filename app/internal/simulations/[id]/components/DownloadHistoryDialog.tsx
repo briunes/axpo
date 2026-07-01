@@ -85,6 +85,10 @@ function periodMonthly(v: PeriodData | number | undefined, monthKey: string): nu
     return null;
 }
 
+function resolveUserAgency(simulation?: any): string {
+    return simulation?.ownerUser?.agency?.name || simulation?.agency?.name || "N/A";
+}
+
 export interface DownloadHistoryDialogProps {
     open: boolean;
     onClose: () => void;
@@ -165,7 +169,9 @@ function buildGasHistoryHtml(
             .replace(/\{\{SIMULATION_REFERENCE\}\}/g, simulation?.referenceNumber ?? simulation?.id ?? "")
             .replace(/\{\{CREATED_AT\}\}/g, createdAt)
             .replace(/\{\{OWNER_NAME\}\}/g, simulation?.ownerUser?.fullName ?? "")
-            .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "");
+            .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "")
+            .replace(/\{\{USER_AGENCY\}\}/g, resolveUserAgency(simulation))
+            .replace(/\{\{OWNER_AGENCY\}\}/g, resolveUserAgency(simulation));
     }
 
     // Built-in default template for gas
@@ -343,7 +349,9 @@ function buildHistoryHtml(
             .replace(/\{\{SIMULATION_REFERENCE\}\}/g, simulation?.referenceNumber ?? simulation?.id ?? "")
             .replace(/\{\{CREATED_AT\}\}/g, createdAt)
             .replace(/\{\{OWNER_NAME\}\}/g, simulation?.ownerUser?.fullName ?? "")
-            .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "");
+            .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "")
+            .replace(/\{\{USER_AGENCY\}\}/g, resolveUserAgency(simulation))
+            .replace(/\{\{OWNER_AGENCY\}\}/g, resolveUserAgency(simulation));
     }
 
     // Built-in default template
