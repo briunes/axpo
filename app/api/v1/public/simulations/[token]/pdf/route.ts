@@ -187,7 +187,8 @@ export async function GET(
 
     // Resolve preferred language: client > owner preferences > null
     const preferredLanguage = normalizeLanguageCode(
-      simulation.client?.language ?? simulation.ownerUser?.preferences?.language,
+      simulation.client?.language ??
+        simulation.ownerUser?.preferences?.language,
     );
 
     // Determine commodity from merged payload to select the right template
@@ -254,14 +255,17 @@ export async function GET(
     const resolvedTemplateContent =
       pdfTemplate.translations.find(
         (t) => t.languageCode.trim().toLowerCase() === preferredLanguage,
-      )?.htmlContent ??
-      pdfTemplate.htmlContent;
+      )?.htmlContent ?? pdfTemplate.htmlContent;
 
     // Extract variable values from simulation data
     const simulationPayload = mergedPayload as SimulationPayload | null;
     const variableValues = extractVariableValues(
       simulation,
       simulationPayload ?? undefined,
+      undefined,
+      undefined,
+      undefined,
+      preferredLanguage,
     );
 
     // Replace variables in template

@@ -20,6 +20,7 @@ import {
 import type { SimulationPayload } from "@/domain/types/simulation";
 import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
 import { keyedDigest } from "@/application/lib/sensitiveData";
+import { normalizeLanguageCode } from "@/lib/supportedLanguages";
 
 const accessSchema = z.object({
   token: z.string().min(16),
@@ -87,6 +88,11 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           id: true,
           fullName: true,
           email: true,
+          preferences: {
+            select: {
+              language: true,
+            },
+          },
           agency: {
             select: {
               id: true,
@@ -98,6 +104,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       client: {
         select: {
           name: true,
+          language: true,
         },
       },
     },
@@ -172,7 +179,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       ownerUserId: simulation.ownerUserId,
       clientName: simulation.client?.name,
     }).catch((error) => {
-      console.error("[Notifications] Failed to create simulation viewed notification:", error);
+      console.error(
+        "[Notifications] Failed to create simulation viewed notification:",
+        error,
+      );
     });
   }
 
@@ -202,7 +212,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     ) ?? recentVersions[0];
   const latestOfferPayload = recentVersions.find((v) => {
     const payload = v.payloadJson as Record<string, unknown> | null;
-    return payload !== null && Object.prototype.hasOwnProperty.call(payload, "selectedOffer");
+    return (
+      payload !== null &&
+      Object.prototype.hasOwnProperty.call(payload, "selectedOffer")
+    );
   })?.payloadJson as Record<string, unknown> | null;
   const mergedPayload: Record<string, unknown> | null = baseVersion?.payloadJson
     ? {
@@ -248,11 +261,20 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         const editableSections = template.editableSections as
           | import("@/infrastructure/templates/editableSections").EditableSectionsConfig
           | null;
+
+        // Resolve preferred language: client > owner preferences > default (es)
+        const preferredLanguage = normalizeLanguageCode(
+          simulation.client?.language ??
+            simulation.ownerUser?.preferences?.language,
+        );
+
         const variableValues = extractVariableValues(
           simulation,
           mergedPayload as SimulationPayload | undefined,
           undefined,
           editableSections ?? undefined,
+          undefined,
+          preferredLanguage,
         );
         defaultPdfTemplate = {
           id: template.id,
