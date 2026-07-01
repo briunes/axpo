@@ -31,6 +31,13 @@ function formatNumber(value: number | undefined, decimals: number = 4): string {
   return value.toFixed(decimals).replace(".", ",");
 }
 
+function formatDateTime(value: string | Date | undefined | null): string {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString("es-ES");
+}
+
 /**
  * Gets value from period map or returns default
  */
@@ -310,6 +317,7 @@ export function extractVariableValues(
     // Simulation metadata
     SIMULATION_ID: simulation.id,
     SIMULATION_REFERENCE: simulation.referenceNumber || simulation.id || "N/A",
+    SIMULATION_GENERATED_AT: formatDateTime(payload?.results?.calculatedAt),
     SIMULATION_PERIOD: isGas ? gasSimulationPeriod : simulationPeriod,
     ANNUAL_CONSUMPTION: formatNumber(annualConsumption, 0),
     PRODUCT_NAME: isGas ? gasProductName : productName,
@@ -354,6 +362,8 @@ export function extractVariableValues(
       simulation.ownerUser?.commercialPhone ||
       simulation.ownerUser?.mobilePhone ||
       "N/A",
+    USER_AGENCY:
+      simulation.ownerUser?.agency?.name || simulation.agency?.name || "N/A",
 
     // Current plan - Power contracted (kW)
     CURRENT_POWER_P1: getPeriodValue(electricity?.potenciaContratada, "P1"),

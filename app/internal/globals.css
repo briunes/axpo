@@ -2548,16 +2548,25 @@ textarea {
 
   .simulation-results-offers-pane {
     padding-right: 0 !important;
+    align-items: center;
+    width: 100%;
   }
 
   .simulation-results-offer-section {
     margin-bottom: 28px !important;
+    width: 100%;
+    align-items: stretch;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
   }
 
   .simulation-results-offer-heading {
     align-items: flex-start !important;
     flex-wrap: wrap;
+    justify-content: center !important;
     gap: 8px !important;
+    width: 100%;
+    text-align: center;
   }
 
   .simulation-results-offer-tabs .MuiTabs-scroller {
@@ -2585,7 +2594,14 @@ textarea {
   .simulation-offer-card-list {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 10px;
+    width: 100%;
+  }
+
+  .simulation-offer-card {
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .simulation-results-footer {

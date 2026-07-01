@@ -3,181 +3,541 @@
     font-family: Helvetica, Arial, sans-serif;
     font-size: 10pt;
     line-height: 1.4;
-    color: #333;
-    padding: 20px;
+    color: #111827;
+    padding: 28px 36px;
     background: #ffffff;
     box-sizing: border-box;
   }
-  #axpo-gas-sim-tpl * { box-sizing: border-box; margin: 0; padding: 0; }
-  #axpo-gas-sim-tpl .asim-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e0e0e0; }
-  #axpo-gas-sim-tpl .asim-logo { max-width: 150px; height: auto; }
-  #axpo-gas-sim-tpl .asim-greeting { font-size: 24pt; font-weight: bold; color: #4545CF; margin-bottom: 10px; }
-  #axpo-gas-sim-tpl .asim-intro { font-size: 9pt; color: #666; line-height: 1.6; max-width: 560px; margin-top: 15px; margin-bottom: 30px; }
-  #axpo-gas-sim-tpl .asim-basic-data { margin-bottom: 26px; }
-  #axpo-gas-sim-tpl .asim-section-title { font-size: 12pt; font-weight: bold; color: #4545CF; margin-bottom: 15px; }
-  #axpo-gas-sim-tpl .asim-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
-  #axpo-gas-sim-tpl .asim-info-item { display: flex; flex-direction: column; min-width: 0; }
-  #axpo-gas-sim-tpl .asim-info-label { font-size: 8pt; color: #999; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
-  #axpo-gas-sim-tpl .asim-info-value { font-size: 10pt; color: #333; font-weight: 500; overflow-wrap: anywhere; }
-  #axpo-gas-sim-tpl .asim-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0 24px; }
-  #axpo-gas-sim-tpl .asim-metric { background: #F4F4F5; border-radius: 12px; padding: 11px 12px; }
-  #axpo-gas-sim-tpl .asim-metric-label { font-size: 7.5pt; color: #6B7280; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
-  #axpo-gas-sim-tpl .asim-metric-value { font-size: 11pt; font-weight: 700; color: #1f2937; }
-  #axpo-gas-sim-tpl .asim-chart { margin: 8px 0 24px; }
-  #axpo-gas-sim-tpl .asim-comparison { display: flex; gap: 20px; margin-bottom: 30px; align-items: stretch; }
-  #axpo-gas-sim-tpl .asim-plan-card { flex: 1; border: 2px solid transparent; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
-  #axpo-gas-sim-tpl .asim-plan-card--axpo { border-color: #4545CF; }
-  #axpo-gas-sim-tpl .asim-plan-header { padding: 10px 16px; font-weight: 600; font-size: 10pt; text-align: center; }
-  #axpo-gas-sim-tpl .asim-plan-header--current { display: none; }
-  #axpo-gas-sim-tpl .asim-plan-header--axpo { background-color: #4545CF; color: white; }
-  #axpo-gas-sim-tpl .asim-plan-body { padding: 16px; flex: 1; }
-  #axpo-gas-sim-tpl .asim-plan-card:not(.asim-plan-card--axpo) .asim-plan-body { background-color: #F4F4F5; }
-  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-plan-body { background-color: #ECEEFF; }
-  #axpo-gas-sim-tpl .asim-plan-title { font-weight: bold; font-size: 11pt; color: #1f2937; margin-bottom: 2px; }
-  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-plan-title { color: #3640C8; }
-  #axpo-gas-sim-tpl .asim-plan-tariff { font-size: 8pt; color: #9CA3AF; margin-bottom: 14px; }
-  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-plan-tariff { color: #6B72E8; }
-  #axpo-gas-sim-tpl .asim-data-section { margin-bottom: 16px; }
-  #axpo-gas-sim-tpl .asim-data-section-title { font-size: 8pt; font-weight: 700; color: #6B7280; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #E5E7EB; }
-  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-data-section-title { color: #6B72E8; border-bottom-color: rgba(70,75,216,0.2); }
-  #axpo-gas-sim-tpl .asim-mini-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 8px; }
-  #axpo-gas-sim-tpl .asim-mini-item { text-align: center; padding: 8px 4px; background: #D9D9D9; border-radius: 20px; }
-  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-mini-item { background: #ffffff; }
-  #axpo-gas-sim-tpl .asim-mini-label { font-size: 8pt; color: #9CA3AF; font-weight: bold; }
-  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-mini-label { color: #4545CF; }
-  #axpo-gas-sim-tpl .asim-mini-value { font-size: 9pt; color: #374151; margin-top: 2px; overflow-wrap: anywhere; }
-  #axpo-gas-sim-tpl .asim-cost-breakdown { margin-top: 12px; }
-  #axpo-gas-sim-tpl .asim-cost-item { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid #E5E7EB; }
-  #axpo-gas-sim-tpl .asim-cost-item:last-child { border-bottom: none; }
-  #axpo-gas-sim-tpl .asim-cost-label { font-size: 9pt; color: #3D3D3D; }
-  #axpo-gas-sim-tpl .asim-cost-value { font-size: 9pt; color: #3D3D3D; font-weight: 500; white-space: nowrap; }
-  #axpo-gas-sim-tpl .asim-total-section { margin-top: 14px; }
-  #axpo-gas-sim-tpl .asim-total-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 12px; background: #D9D9D9; }
-  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-total-item { background: #ffffff; }
-  #axpo-gas-sim-tpl .asim-total-label { font-size: 11pt; font-weight: bold; color: #1f2937; }
-  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-total-label { color: #4545CF; }
-  #axpo-gas-sim-tpl .asim-total-value { font-size: 13pt; font-weight: bold; color: #1f2937; white-space: nowrap; }
-  #axpo-gas-sim-tpl .asim-total-value--savings { color: #4545CF; }
-  #axpo-gas-sim-tpl .asim-notice { font-size: 8.5pt; color: #666; margin-top: 12px; }
-  #axpo-gas-sim-tpl .asim-footer { margin-top: 34px; padding-top: 20px; border-top: 2px solid #e0e0e0; font-size: 8pt; color: #999; line-height: 1.6; }
-  #axpo-gas-sim-tpl .asim-footer-title { font-weight: bold; margin-bottom: 5px; color: #666; }
+  #axpo-gas-sim-tpl * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  #axpo-gas-sim-tpl .asim-page {
+    min-height: 0 !important;
+  }
+  #axpo-gas-sim-tpl .asim-page--comparison {
+    page-break-before: always;
+    break-before: page;
+    padding-top: 12px;
+  }
+  #axpo-gas-sim-tpl .asim-header {
+    display: grid;
+    grid-template-columns: 1fr 150px;
+    gap: 24px;
+    align-items: center;
+    min-height: 150px;
+    margin-bottom: 30px;
+    padding: 26px 30px;
+    border: 1.6px solid #4545cf;
+    border-radius: 12px;
+  }
+  #axpo-gas-sim-tpl .asim-logo {
+    display: block;
+    max-width: 116px;
+    height: auto;
+    justify-self: center;
+  }
+  #axpo-gas-sim-tpl .asim-greeting {
+    font-size: 20pt;
+    line-height: 1.05;
+    font-weight: 400;
+    color: #2f35e8;
+    margin-bottom: 8px;
+  }
+  #axpo-gas-sim-tpl .asim-client-name {
+    display: block;
+    margin-top: 3px;
+    font-size: 11pt;
+    line-height: 1.2;
+    font-weight: 700;
+    color: #777777;
+  }
+  #axpo-gas-sim-tpl .asim-intro {
+    max-width: 360px;
+    margin-top: 34px;
+    font-size: 7.5pt;
+    line-height: 1.35;
+    color: #777777;
+  }
+  #axpo-gas-sim-tpl .asim-section-title {
+    font-size: 15pt;
+    line-height: 1.15;
+    font-weight: 400;
+    color: #1e2cf4;
+    margin-bottom: 20px;
+  }
+  #axpo-gas-sim-tpl .asim-basic-data {
+    margin-bottom: 34px;
+  }
+  #axpo-gas-sim-tpl .asim-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    column-gap: 24px;
+    row-gap: 20px;
+  }
+  #axpo-gas-sim-tpl .asim-info-item {
+    min-width: 0;
+  }
+  #axpo-gas-sim-tpl .asim-info-item--full {
+    grid-column: 1 / -1;
+  }
+  #axpo-gas-sim-tpl .asim-info-label {
+    font-size: 8pt;
+    line-height: 1.2;
+    color: #6b7280;
+    margin-bottom: 5px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #9ca3af;
+  }
+  #axpo-gas-sim-tpl .asim-info-value {
+    font-size: 9pt;
+    line-height: 1.25;
+    color: #111111;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  #axpo-gas-sim-tpl .asim-chart {
+    margin: 2px 0 16px;
+  }
+  #axpo-gas-sim-tpl .asim-chart > div {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+  #axpo-gas-sim-tpl .asim-chart > div > div:first-child {
+    font-size: 15pt !important;
+    line-height: 1.15 !important;
+    font-weight: 400 !important;
+    color: #1e2cf4 !important;
+    margin-bottom: 12px !important;
+  }
+  #axpo-gas-sim-tpl .asim-chart > div > div:nth-child(2) {
+    gap: 28px !important;
+    align-items: flex-end !important;
+  }
+  #axpo-gas-sim-tpl .asim-chart svg {
+    max-width: 300px !important;
+  }
+  #axpo-gas-sim-tpl .asim-chart > div > div:nth-child(2) > div:first-child {
+    flex: 0 0 50% !important;
+  }
+  #axpo-gas-sim-tpl .asim-chart > div > div:nth-child(2) > div:nth-child(2) {
+    flex: 1 1 auto !important;
+    gap: 9px !important;
+    padding-left: 0 !important;
+    padding-bottom: 8px !important;
+  }
+  #axpo-gas-sim-tpl .asim-chart > div > div:nth-child(2) > div:nth-child(2) > div {
+    min-height: 58px !important;
+    border-radius: 8px !important;
+    background: #3f43d4 !important;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  }
+  #axpo-gas-sim-tpl .asim-comparison {
+    display: flex;
+    gap: 22px;
+    margin-bottom: 34px;
+    align-items: stretch;
+  }
+  #axpo-gas-sim-tpl .asim-plan-card {
+    flex: 1;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #axpo-gas-sim-tpl .asim-plan-card:not(.asim-plan-card--axpo) {
+    margin-top: 33px;
+  }
+  #axpo-gas-sim-tpl .asim-plan-card--axpo {
+    border-color: #4545cf;
+  }
+  #axpo-gas-sim-tpl .asim-plan-header {
+    padding: 10px 16px;
+    font-weight: 700;
+    font-size: 8.5pt;
+    text-align: center;
+  }
+  #axpo-gas-sim-tpl .asim-plan-header--current {
+    display: none;
+  }
+  #axpo-gas-sim-tpl .asim-plan-header--axpo {
+    background-color: #4545cf;
+    color: #ffffff;
+  }
+  #axpo-gas-sim-tpl .asim-plan-body {
+    padding: 16px;
+    flex: 1;
+  }
+  #axpo-gas-sim-tpl .asim-plan-card:not(.asim-plan-card--axpo) .asim-plan-body {
+    background-color: #f4f4f5;
+  }
+  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-plan-body {
+    background-color: #eceeff;
+  }
+  #axpo-gas-sim-tpl .asim-plan-title {
+    font-weight: 700;
+    font-size: 11pt;
+    color: #1f2937;
+    margin-bottom: 2px;
+  }
+  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-plan-title {
+    color: #3640c8;
+  }
+  #axpo-gas-sim-tpl .asim-plan-tariff {
+    font-size: 8pt;
+    color: #9ca3af;
+    margin-bottom: 14px;
+  }
+  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-plan-tariff {
+    color: #6b72e8;
+  }
+  #axpo-gas-sim-tpl .asim-data-section {
+    margin-bottom: 16px;
+  }
+  #axpo-gas-sim-tpl .asim-data-section-title {
+    font-size: 8pt;
+    font-weight: 700;
+    color: #6b7280;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-data-section-title {
+    color: #6b72e8;
+    border-bottom-color: rgba(70, 75, 216, 0.2);
+  }
+  #axpo-gas-sim-tpl .asim-period-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  #axpo-gas-sim-tpl .asim-period-item {
+    text-align: center;
+    padding: 8px 4px;
+    background: #d9d9d9;
+    border-radius: 18px;
+  }
+  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-period-item {
+    background: #ffffff;
+  }
+  #axpo-gas-sim-tpl .asim-period-label {
+    font-size: 8pt;
+    color: #9ca3af;
+    font-weight: 700;
+  }
+  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-period-label {
+    color: #4545cf;
+  }
+  #axpo-gas-sim-tpl .asim-period-value {
+    font-size: 8.5pt;
+    color: #374151;
+    margin-top: 2px;
+    overflow-wrap: anywhere;
+  }
+  #axpo-gas-sim-tpl .asim-cost-breakdown {
+    margin-top: 12px;
+  }
+  #axpo-gas-sim-tpl .asim-cost-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  #axpo-gas-sim-tpl .asim-cost-item:last-child {
+    border-bottom: none;
+  }
+  #axpo-gas-sim-tpl .asim-cost-label {
+    font-size: 8.5pt;
+    color: #3d3d3d;
+  }
+  #axpo-gas-sim-tpl .asim-cost-value {
+    font-size: 8.5pt;
+    color: #3d3d3d;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  #axpo-gas-sim-tpl .asim-total-section {
+    margin-top: 14px;
+  }
+  #axpo-gas-sim-tpl .asim-total-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    background: #d9d9d9;
+  }
+  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-total-item {
+    background: #ffffff;
+  }
+  #axpo-gas-sim-tpl .asim-total-label {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #1f2937;
+  }
+  #axpo-gas-sim-tpl .asim-plan-card--axpo .asim-total-label {
+    color: #4545cf;
+  }
+  #axpo-gas-sim-tpl .asim-total-value {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #1f2937;
+    white-space: nowrap;
+  }
+  #axpo-gas-sim-tpl .asim-total-value--savings {
+    color: #4545cf;
+  }
+  #axpo-gas-sim-tpl .asim-notice {
+    font-size: 8.5pt;
+    color: #333333;
+    margin-top: 20px;
+  }
+  #axpo-gas-sim-tpl .asim-footer {
+    margin-top: 34px;
+    padding-top: 20px;
+    border-top: 2px solid #e0e0e0;
+    font-size: 8pt;
+    color: #999999;
+    line-height: 1.55;
+  }
+  #axpo-gas-sim-tpl .asim-footer-title {
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #666666;
+  }
   @media print {
     #axpo-gas-sim-tpl .asim-header,
     #axpo-gas-sim-tpl .asim-basic-data,
-    #axpo-gas-sim-tpl .asim-metrics,
+    #axpo-gas-sim-tpl .asim-chart,
     #axpo-gas-sim-tpl .asim-plan-card,
     #axpo-gas-sim-tpl .asim-data-section,
+    #axpo-gas-sim-tpl .asim-period-grid,
+    #axpo-gas-sim-tpl .asim-period-item,
     #axpo-gas-sim-tpl .asim-cost-breakdown,
     #axpo-gas-sim-tpl .asim-cost-item,
-    #axpo-gas-sim-tpl .asim-total-section { break-inside: avoid; page-break-inside: avoid; }
+    #axpo-gas-sim-tpl .asim-total-section {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
     #axpo-gas-sim-tpl .asim-section-title,
     #axpo-gas-sim-tpl .asim-data-section-title,
-    #axpo-gas-sim-tpl .asim-plan-header { break-after: avoid; page-break-after: avoid; }
+    #axpo-gas-sim-tpl .asim-plan-header {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
   }
 </style>
 
 <div id="axpo-gas-sim-tpl">
-  <div class="asim-header">
-    <div>
-      <div class="asim-greeting">Hello,<br>{{CLIENT_NAME}}</div>
-    </div>
-    <img class="asim-logo" src="https://tuenergia.axpo.com/wp-content/uploads/2025/12/Axpo_logo.png" alt="Axpo">
-  </div>
-
-  <div class="asim-intro">{{COMMERCIALTEXT}}</div>
-
-  <div class="asim-basic-data">
-    <div class="asim-section-title">Basic Gas Simulation Data</div>
-    <div class="asim-info-grid">
-      <div class="asim-info-item"><div class="asim-info-label">Client</div><div class="asim-info-value">{{CLIENT_NAME}}</div></div>
-      <div class="asim-info-item"><div class="asim-info-label">Address</div><div class="asim-info-value">{{CLIENT_ADDRESS}}</div></div>
-      <div class="asim-info-item"><div class="asim-info-label">Product</div><div class="asim-info-value">{{PRODUCT_NAME}}</div></div>
-      <div class="asim-info-item"><div class="asim-info-label">CUPS</div><div class="asim-info-value">{{CUPS_NUMBER}}</div></div>
-      <div class="asim-info-item"><div class="asim-info-label">Reference</div><div class="asim-info-value">{{SIMULATION_REFERENCE}}</div></div>
-      <div class="asim-info-item"><div class="asim-info-label">Simulation Period</div><div class="asim-info-value">{{SIMULATION_PERIOD}}</div></div>
-      <div class="asim-info-item"><div class="asim-info-label">Access Tariff</div><div class="asim-info-value">{{GAS_TARIFF}}</div></div>
-      <div class="asim-info-item"><div class="asim-info-label">Zone</div><div class="asim-info-value">{{GAS_ZONE}}</div></div>
-      <div class="asim-info-item"><div class="asim-info-label">Telemetered</div><div class="asim-info-value">{{GAS_TELEMEASURED}}</div></div>
-    </div>
-  </div>
-
-  <div class="asim-metrics">
-    <div class="asim-metric"><div class="asim-metric-label">Period kWh</div><div class="asim-metric-value">{{GAS_CONSUMPTION_KWH}}</div></div>
-    <div class="asim-metric"><div class="asim-metric-label">Annual kWh</div><div class="asim-metric-value">{{GAS_ANNUAL_CONSUMPTION_KWH}}</div></div>
-    <div class="asim-metric"><div class="asim-metric-label">Annual m3</div><div class="asim-metric-value">{{GAS_ANNUAL_CONSUMPTION_M3}}</div></div>
-    <div class="asim-metric"><div class="asim-metric-label">Billing Days</div><div class="asim-metric-value">{{GAS_BILLING_DAYS}}</div></div>
-  </div>
-
-  <div class="asim-chart">{{CHART_COMPARATIVA}}</div>
-
-  <div class="asim-comparison">
-    <div class="asim-plan-card">
-      <div class="asim-plan-header asim-plan-header--current">Current Gas Plan</div>
-      <div class="asim-plan-body">
-        <div class="asim-plan-title">Current Gas Plan</div>
-        <div class="asim-plan-tariff">Current CUPS tariff {{GAS_TARIFF}}</div>
-
-        <div class="asim-data-section">
-          <div class="asim-data-section-title">Supply and Taxes</div>
-          <div class="asim-mini-grid">
-            <div class="asim-mini-item"><div class="asim-mini-label">Tariff</div><div class="asim-mini-value">{{GAS_TARIFF}}</div></div>
-            <div class="asim-mini-item"><div class="asim-mini-label">Zone</div><div class="asim-mini-value">{{GAS_ZONE}}</div></div>
-            <div class="asim-mini-item"><div class="asim-mini-label">VAT</div><div class="asim-mini-value">{{GAS_IVA_RATE}}%</div></div>
-            <div class="asim-mini-item"><div class="asim-mini-label">Tax EUR/kWh</div><div class="asim-mini-value">{{GAS_HYDROCARBON_TAX_RATE}}</div></div>
-          </div>
+  <div class="asim-page">
+    <div class="asim-header">
+      <div>
+        <div class="asim-greeting">
+          Hello,<span class="asim-client-name">{{CLIENT_NAME}}</span>
         </div>
+        <div class="asim-intro">{{COMMERCIALTEXT}}</div>
+      </div>
+      <img class="asim-logo" src="https://tuenergia.axpo.com/wp-content/uploads/2025/12/Axpo_logo.png" alt="Axpo">
+    </div>
 
-        <div class="asim-cost-breakdown">
-          <div class="asim-cost-item"><div class="asim-cost-label">Fixed Term</div><div class="asim-cost-value">{{CURRENT_GAS_FIXED_COST}} &euro;</div></div>
-          <div class="asim-cost-item"><div class="asim-cost-label">Variable Energy Term</div><div class="asim-cost-value">{{CURRENT_GAS_VARIABLE_COST}} &euro;</div></div>
-          <div class="asim-cost-item"><div class="asim-cost-label">Hydrocarbon Tax</div><div class="asim-cost-value">{{CURRENT_GAS_TAX}} &euro;</div></div>
-          <div class="asim-cost-item"><div class="asim-cost-label">Meter Rental</div><div class="asim-cost-value">{{CURRENT_GAS_RENTAL_COST}} &euro;</div></div>
-          <div class="asim-cost-item"><div class="asim-cost-label">Other Charges</div><div class="asim-cost-value">{{CURRENT_GAS_OTHER_COST}} &euro;</div></div>
-          <div class="asim-cost-item"><div class="asim-cost-label">VAT</div><div class="asim-cost-value">{{CURRENT_GAS_VAT}} &euro;</div></div>
+    <div class="asim-basic-data">
+      <div class="asim-section-title">Basic simulation data</div>
+      <div class="asim-info-grid">
+        <div class="asim-info-item">
+          <div class="asim-info-label">Type of business</div>
+          <div class="asim-info-value">Gas</div>
         </div>
-
-        <div class="asim-total-section">
-          <div class="asim-total-item"><div class="asim-total-label">Total</div><div class="asim-total-value">{{CURRENT_GAS_TOTAL}} &euro;</div></div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Tarif</div>
+          <div class="asim-info-value">{{GAS_TARIFF}}</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Client</div>
+          <div class="asim-info-value">{{CLIENT_NAME}}</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Address</div>
+          <div class="asim-info-value">{{CLIENT_ADDRESS}}</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Product</div>
+          <div class="asim-info-value">{{PRODUCT_NAME}}</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">CUPS</div>
+          <div class="asim-info-value">{{CUPS_NUMBER}}</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Simulation period</div>
+          <div class="asim-info-value">{{SIMULATION_PERIOD}}</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Annual consumption (kWh)</div>
+          <div class="asim-info-value">{{GAS_ANNUAL_CONSUMPTION_KWH}}</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Simulation Date</div>
+          <div class="asim-info-value">{{SIMULATION_GENERATED_AT}}</div>
+        </div>
+        <div class="asim-info-item asim-info-item--full">
+          <div class="asim-info-label">Simulation reference</div>
+          <div class="asim-info-value">{{SIMULATION_REFERENCE}}</div>
         </div>
       </div>
     </div>
 
-    <div class="asim-plan-card asim-plan-card--axpo">
-      <div class="asim-plan-header asim-plan-header--axpo">Savings of {{SAVINGS_AMOUNT}} &euro;</div>
-      <div class="asim-plan-body">
-        <div class="asim-plan-title">Axpo Gas Plan</div>
-        <div class="asim-plan-tariff">{{PRODUCT_NAME}}</div>
+    <div class="asim-chart">{{CHART_COMPARATIVA}}</div>
+  </div>
 
-        <div class="asim-data-section">
-          <div class="asim-data-section-title">Supply and Taxes</div>
-          <div class="asim-mini-grid">
-            <div class="asim-mini-item"><div class="asim-mini-label">Tariff</div><div class="asim-mini-value">{{GAS_TARIFF}}</div></div>
-            <div class="asim-mini-item"><div class="asim-mini-label">Zone</div><div class="asim-mini-value">{{GAS_ZONE}}</div></div>
-            <div class="asim-mini-item"><div class="asim-mini-label">VAT</div><div class="asim-mini-value">{{GAS_IVA_RATE}}%</div></div>
-            <div class="asim-mini-item"><div class="asim-mini-label">Tax EUR/kWh</div><div class="asim-mini-value">{{GAS_HYDROCARBON_TAX_RATE}}</div></div>
+  <div class="asim-page asim-page--comparison">
+    <div class="asim-section-title">Invoice comparison</div>
+
+    <div class="asim-comparison">
+      <div class="asim-plan-card">
+        <div class="asim-plan-header asim-plan-header--current">
+          Current Gas Plan
+        </div>
+        <div class="asim-plan-body">
+          <div class="asim-plan-title">Current Gas Plan</div>
+          <div class="asim-plan-tariff">Current CUPS tariff {{GAS_TARIFF}}</div>
+
+          <div class="asim-data-section">
+            <div class="asim-data-section-title">Supply and taxes</div>
+            <div class="asim-period-grid">
+              <div class="asim-period-item">
+                <div class="asim-period-label">Tariff</div>
+                <div class="asim-period-value">{{GAS_TARIFF}}</div>
+              </div>
+              <div class="asim-period-item">
+                <div class="asim-period-label">Zone</div>
+                <div class="asim-period-value">{{GAS_ZONE}}</div>
+              </div>
+              <div class="asim-period-item">
+                <div class="asim-period-label">VAT</div>
+                <div class="asim-period-value">{{GAS_IVA_RATE}}%</div>
+              </div>
+              <div class="asim-period-item">
+                <div class="asim-period-label">Tax EUR/kWh</div>
+                <div class="asim-period-value">{{GAS_HYDROCARBON_TAX_RATE}}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="asim-cost-breakdown">
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Fixed term</div>
+              <div class="asim-cost-value">{{CURRENT_GAS_FIXED_COST}} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Variable energy term</div>
+              <div class="asim-cost-value">{{CURRENT_GAS_VARIABLE_COST}} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Hydrocarbon tax</div>
+              <div class="asim-cost-value">{{CURRENT_GAS_TAX}} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Meter rental</div>
+              <div class="asim-cost-value">{{CURRENT_GAS_RENTAL_COST}} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Other charges</div>
+              <div class="asim-cost-value">{{CURRENT_GAS_OTHER_COST}} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">IVA</div>
+              <div class="asim-cost-value">{{CURRENT_GAS_VAT}} €</div>
+            </div>
+          </div>
+
+          <div class="asim-total-section">
+            <div class="asim-total-item">
+              <div class="asim-total-label">Total</div>
+              <div class="asim-total-value">{{CURRENT_GAS_TOTAL}} €</div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div class="asim-cost-breakdown">
-          <div class="asim-cost-item"><div class="asim-cost-label">Fixed Term</div><div class="asim-cost-value">{{AXPO_GAS_FIXED_COST}} &euro;</div></div>
-          <div class="asim-cost-item"><div class="asim-cost-label">Variable Energy Term</div><div class="asim-cost-value">{{AXPO_GAS_VARIABLE_COST}} &euro;</div></div>
-          <div class="asim-cost-item"><div class="asim-cost-label">Hydrocarbon Tax</div><div class="asim-cost-value">{{AXPO_GAS_TAX}} &euro;</div></div>
-          <div class="asim-cost-item"><div class="asim-cost-label">Meter Rental</div><div class="asim-cost-value">{{AXPO_GAS_RENTAL_COST}} &euro;</div></div>
-          <div class="asim-cost-item"><div class="asim-cost-label">Other Charges</div><div class="asim-cost-value">{{AXPO_GAS_OTHER_COST}} &euro;</div></div>
-          <div class="asim-cost-item"><div class="asim-cost-label">VAT</div><div class="asim-cost-value">{{AXPO_GAS_VAT}} &euro;</div></div>
+      <div class="asim-plan-card asim-plan-card--axpo">
+        <div class="asim-plan-header asim-plan-header--axpo">
+          Savings of {{SAVINGS_AMOUNT}} €
         </div>
+        <div class="asim-plan-body">
+          <div class="asim-plan-title">Axpo Gas Plan</div>
+          <div class="asim-plan-tariff">{{PRODUCT_NAME}}</div>
 
-        <div class="asim-total-section">
-          <div class="asim-total-item"><div class="asim-total-label">Total</div><div class="asim-total-value asim-total-value--savings">{{AXPO_GAS_TOTAL}} &euro;</div></div>
+          <div class="asim-data-section">
+            <div class="asim-data-section-title">Supply and taxes</div>
+            <div class="asim-period-grid">
+              <div class="asim-period-item">
+                <div class="asim-period-label">Tariff</div>
+                <div class="asim-period-value">{{GAS_TARIFF}}</div>
+              </div>
+              <div class="asim-period-item">
+                <div class="asim-period-label">Zone</div>
+                <div class="asim-period-value">{{GAS_ZONE}}</div>
+              </div>
+              <div class="asim-period-item">
+                <div class="asim-period-label">VAT</div>
+                <div class="asim-period-value">{{GAS_IVA_RATE}}%</div>
+              </div>
+              <div class="asim-period-item">
+                <div class="asim-period-label">Tax EUR/kWh</div>
+                <div class="asim-period-value">{{GAS_HYDROCARBON_TAX_RATE}}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="asim-cost-breakdown">
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Fixed term</div>
+              <div class="asim-cost-value">{{AXPO_GAS_FIXED_COST}} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Variable energy term</div>
+              <div class="asim-cost-value">{{AXPO_GAS_VARIABLE_COST}} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Hydrocarbon tax</div>
+              <div class="asim-cost-value">{{AXPO_GAS_TAX}} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Meter rental</div>
+              <div class="asim-cost-value">{{AXPO_GAS_RENTAL_COST}} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Other charges</div>
+              <div class="asim-cost-value">{{AXPO_GAS_OTHER_COST}} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">IVA</div>
+              <div class="asim-cost-value">{{AXPO_GAS_VAT}} €</div>
+            </div>
+          </div>
+
+          <div class="asim-total-section">
+            <div class="asim-total-item">
+              <div class="asim-total-label">Total</div>
+              <div class="asim-total-value asim-total-value--savings">
+                {{AXPO_GAS_TOTAL}} €
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="asim-notice">These prices are not guaranteed.</div>
+    <div class="asim-notice">These prices are indicative and not guaranteed.</div>
 
-  <div class="asim-footer">
-    <div class="asim-footer-title">Simulation presented by FIVA ENERGIA</div>
-    <p>The proposal calculations are based on the gas consumption, access tariff, billing period, applicable tax configuration and selected Axpo product available for this simulation. The prices shown do not include future updates due to changes in market conditions, regulated charges, taxes, access tariffs, meter rental rules or any unforeseen modifications. Contract conditions are those defined in the signed agreement and by the market operator.</p>
+    <div class="asim-footer">
+      <div class="asim-footer-title"><div class="asim-footer-title" style="font-size: 10.6667px;">Simulation presented by {{USER_AGENCY}}</div><p style="color: rgb(153, 153, 153); font-size: 10.6667px; font-weight: 400;">The calculations were performed based on consumption profiles during business hours. The prices shown do not include updates resulting from wholesale market fluctuations; tariff changes; regulated tolls, charges, or taxes; contributions to the National Energy Efficiency Fund; costs associated with the social bonus financing mechanism; adjustments by market or system operators; regulatory changes; or other unforeseen circumstances that may affect the cost of supply. This simulation is merely an estimate and does not constitute an offer or contractual commitment; only the conditions agreed upon in writing and signed by the parties will be binding. The supplier will not be liable for any discrepancies between this simulation and the actual billing resulting from the final contract.</p></div>
+    </div>
   </div>
 </div>

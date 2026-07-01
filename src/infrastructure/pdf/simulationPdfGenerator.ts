@@ -16,9 +16,13 @@ export interface PdfTemplateVariables {
 
   // Simulation metadata
   SIMULATION_REFERENCE: string;
+  SIMULATION_GENERATED_AT: string;
   SIMULATION_PERIOD: string;
   ANNUAL_CONSUMPTION: string;
   PRODUCT_NAME: string;
+
+  // User info
+  USER_AGENCY: string;
 
   // Current plan - Power contracted (kW)
   CURRENT_POWER_P1: string;
@@ -90,6 +94,13 @@ function formatCurrency(value: number | undefined): string {
 function formatNumber(value: number | undefined, decimals: number = 4): string {
   if (value === undefined || value === null) return "—";
   return value.toFixed(decimals).replace(".", ",");
+}
+
+function formatDateTime(value: string | Date | undefined | null): string {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString("es-ES");
 }
 
 /**
@@ -213,9 +224,14 @@ export function extractTemplateVariables(
     // Simulation metadata
     SIMULATION_REFERENCE:
       simulation.referenceNumber || simulation.id || "N/A",
+    SIMULATION_GENERATED_AT: formatDateTime(payload.results?.calculatedAt),
     SIMULATION_PERIOD: simulationPeriod,
     ANNUAL_CONSUMPTION: formatNumber(annualConsumption, 0),
     PRODUCT_NAME: productName,
+
+    // User info
+    USER_AGENCY:
+      simulation.ownerUser?.agency?.name || simulation.agency?.name || "N/A",
 
     // Current plan - Power contracted (kW)
     CURRENT_POWER_P1: getPeriodValue(electricity?.potenciaContratada, "P1"),
