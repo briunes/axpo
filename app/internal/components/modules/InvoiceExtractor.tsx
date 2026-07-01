@@ -257,7 +257,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     const token = localStorage.getItem("axpo.internal.auth.token");
                     if (!token) {
                         setDetectionStatus("failed");
-                        onError?.(new Error("Authentication token missing. Please log in again."));
+                        onError?.("Authentication token missing. Please log in again.");
                         return;
                     }
 
@@ -408,7 +408,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 setExtractionStatus("idle");
                 setStatusMessage("Authentication failed. Please log in again.");
                 clearInterval(rafId);
-                onError?.(new Error("Authentication token missing. Please log in again."));
+                onError?.("Authentication token missing. Please log in again.");
                 return;
             }
 
