@@ -56,6 +56,11 @@ const nextConfig = {
       },
     ];
   },
+  api: {
+    bodyParser: {
+      sizeLimit: "15mb",
+    },
+  },
 };
 
 export default withSentryConfig(nextConfig, {

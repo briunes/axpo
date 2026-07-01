@@ -214,10 +214,28 @@ CRITICAL FIELDS TO EXTRACT:
   - reactiva: Reactive energy charges (€)
   - alquiler: Equipment rental charges (€)
   - otrosCargos: Other charges (€)
-  - importePotencia: Total billed amount for the power term / "Potencia" in €
-  - importeEnergia: Total billed amount for the energy term / "Energía" in €
-  - importeImpuestoElectrico: Total electricity tax amount in €
-  - importeIva: Total VAT/IVA/IGIC amount in €
+  CURRENT INVOICE BREAKDOWN AMOUNTS — REQUIRED WHEN VISIBLE:
+  These are euro totals from "Detalle de la factura", "Detalle factura",
+  "Conceptos facturados", or equivalent sections. They are NOT unit prices.
+  - importePotencia: the subtotal/total shown for the "Potencia" group in €.
+    If there are multiple Potencia rows, return the printed group total if visible;
+    otherwise sum only the Potencia row amounts. Do NOT use €/kW unit prices here.
+  - importeEnergia: the subtotal/total shown for the "Energía" group in €.
+    If there are multiple energy rows, return the printed group total if visible;
+    otherwise sum only the Energía row amounts. Do NOT use €/kWh unit prices here.
+  - importeImpuestoElectrico: euro amount from the electricity tax row, usually
+    labeled "Impuesto electricidad", "Impuesto especial electricidad", or similar.
+    Do NOT return the tax rate here.
+  - importeIva: euro amount from the IVA/IGIC row, usually labeled "IVA normal",
+    "IVA", "IGIC", or similar. Do NOT return the IVA rate here.
+  - For Endesa-style detail blocks where the left label has a bold subtotal at the
+    far right (for example "Potencia ... 78,36 €", "Energía ... 497,88 €",
+    "Impuestos ... 125,40 €", then rows "Impuesto electricidad ... 2,89 €"
+    and "IVA normal 21% ... 122,51 €"), return:
+    importePotencia = 78.36, importeEnergia = 497.88,
+    importeImpuestoElectrico = 2.89, importeIva = 122.51.
+  - If the invoice image/text does not show one of these amounts, return null for
+    that field instead of estimating it.
 
 7. UNIT PRICES:
    - precioPotenciaP1..P6: Unit prices for power per period. Map to explicit period labels only.

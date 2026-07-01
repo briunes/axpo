@@ -13,7 +13,7 @@ import { createSimulation, createClient, listAllClients, getAgency, type ClientI
 import { CrudPageLayout, FormSkeleton, useAlerts } from "../../components/shared";
 import { CrudFormContainer } from "../../components/shared/CrudFormContainer";
 import { getSystemConfig } from "../../lib/configApi";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem, FormControl, Box, Paper } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem, FormControl, Box, Paper, FormControlLabel, Switch } from "@mui/material";
 import { ClientForm, type ClientFormData } from "../../components/modules/ClientForm";
 import { InvoiceExtractor, type ExtractedInvoiceData, type InvoiceExtractionContext } from "../../components/modules";
 import { FormSelect } from "../../components/ui/FormSelect";
@@ -33,6 +33,112 @@ type SimType = "ELECTRICITY" | "GAS";
 
 function finiteOrUndefined(value: unknown): number | undefined {
     return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function roundMoney(value: number): number {
+    return Math.round(value * 100) / 100;
+}
+
+const ELEC_PERIOD_LABELS = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+
+function activePowerPeriodsForTariff(tariff?: string | null): readonly string[] {
+    return tariff === "2.0TD" ? ["P1", "P2"] : ELEC_PERIOD_LABELS;
+}
+
+function nonInclusiveDaysBetween(from?: string, to?: string): number | undefined {
+    if (!from || !to) return undefined;
+    const days = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+    return Number.isFinite(days) && days > 0 ? days : undefined;
+}
+
+function normalizeOcrElectricityConsumption(data: ExtractedInvoiceData): ExtractedInvoiceData {
+    const factura = data.facturaActual ?? 0;
+    if (!factura || factura > 10000) return data;
+
+    const rawEnergyCost = ELEC_PERIOD_LABELS.reduce((sum, period) => {
+        const consumo = finiteOrUndefined((data as any)[`consumo${period}`]) ?? 0;
+        const precio = finiteOrUndefined((data as any)[`precioEnergia${period}`]) ?? 0;
+        return sum + consumo * precio;
+    }, 0);
+    const scaledEnergyCost = rawEnergyCost / 1000;
+    if (!(rawEnergyCost > factura * 5 && scaledEnergyCost < factura * 2)) return data;
+
+    const normalized: ExtractedInvoiceData = { ...data };
+    ELEC_PERIOD_LABELS.forEach((period) => {
+        const key = `consumo${period}` as keyof ExtractedInvoiceData;
+        const value = finiteOrUndefined((normalized as any)[key]);
+        if (value != null) (normalized as any)[key] = roundMoney(value / 1000);
+    });
+    return normalized;
+}
+
+function deriveCurrentInvoiceBreakdown(
+    data: ExtractedInvoiceData,
+    ivaTasa?: number,
+    impuestoElectricoTasa?: number,
+): ExtractedInvoiceData {
+    const next = normalizeOcrElectricityConsumption(data);
+    const factura = finiteOrUndefined(next.facturaActual);
+    const billingDays = nonInclusiveDaysBetween(next.fechaInicio, next.fechaFin);
+
+    if (next.importePotencia == null && billingDays) {
+        const powerCost = activePowerPeriodsForTariff(next.tarifaAcceso).reduce((sum, period) => {
+            const potencia = finiteOrUndefined((next as any)[`potencia${period}`]) ?? 0;
+            const precio = finiteOrUndefined((next as any)[`precioPotencia${period}`]) ?? 0;
+            return sum + potencia * precio * billingDays;
+        }, 0);
+        if (powerCost > 0) next.importePotencia = roundMoney(powerCost);
+    }
+
+    if (next.importeIva == null && factura != null && ivaTasa != null && Number.isFinite(ivaTasa)) {
+        next.importeIva = roundMoney(factura * (ivaTasa / (100 + ivaTasa)));
+    }
+
+    if (
+        next.importeImpuestoElectrico == null &&
+        factura != null &&
+        ivaTasa != null &&
+        impuestoElectricoTasa != null &&
+        Number.isFinite(ivaTasa) &&
+        Number.isFinite(impuestoElectricoTasa)
+    ) {
+        const ieR = impuestoElectricoTasa / 100;
+        const ivaR = ivaTasa / 100;
+        next.importeImpuestoElectrico = roundMoney(factura * (ieR / ((1 + ieR) * (1 + ivaR))));
+    }
+
+    if (next.importeEnergia == null && factura != null) {
+        const rentalOrOther = Math.max(next.alquiler ?? 0, next.otrosCargos ?? 0);
+        const known =
+            (next.importePotencia ?? 0) +
+            (next.importeImpuestoElectrico ?? 0) +
+            (next.importeIva ?? 0) +
+            (next.excesoPotencia ?? 0) +
+            (next.reactiva ?? 0) +
+            rentalOrOther;
+        const residual = factura - known;
+        if (known > 0 && residual > 0) {
+            next.importeEnergia = roundMoney(residual);
+        }
+    }
+
+    if (next.importeEnergia == null && factura != null) {
+        const hasPricesForAllConsumedPeriods = ELEC_PERIOD_LABELS.every((period) => {
+            const consumo = finiteOrUndefined((next as any)[`consumo${period}`]) ?? 0;
+            const precio = finiteOrUndefined((next as any)[`precioEnergia${period}`]);
+            return consumo <= 0 || (precio != null && precio > 0);
+        });
+        const energyFromPrices = ELEC_PERIOD_LABELS.reduce((sum, period) => {
+            const consumo = finiteOrUndefined((next as any)[`consumo${period}`]) ?? 0;
+            const precio = finiteOrUndefined((next as any)[`precioEnergia${period}`]) ?? 0;
+            return sum + consumo * precio;
+        }, 0);
+        if (hasPricesForAllConsumedPeriods && energyFromPrices > 0 && energyFromPrices < factura) {
+            next.importeEnergia = roundMoney(energyFromPrices);
+        }
+    }
+
+    return next;
 }
 
 function addDays(n: number): string {
@@ -129,6 +235,7 @@ function buildElecPayloadFromOcr(data: import("../../components/modules").Extrac
             reactiva: data.reactiva || undefined,
             alquilerEquipoMedida: data.alquiler || undefined,
             otrosCargos: data.otrosCargos || undefined,
+            useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown === true,
             terminoPotenciaActual: finiteOrUndefined(data.importePotencia),
             terminoEnergiaActual: finiteOrUndefined(data.importeEnergia),
             impuestoElectricoActual: finiteOrUndefined(data.importeImpuestoElectrico),
@@ -319,7 +426,15 @@ export default function NewSimulationPage() {
                 ? data.impuestoElectricoTasa
                 : defaultElecTax;
 
-        setExtractedData({ ...data, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax });
+        const preparedData = isGas
+            ? { ...data, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax }
+            : deriveCurrentInvoiceBreakdown(
+                { ...data, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax },
+                resolvedIva,
+                resolvedElecTax,
+            );
+
+        setExtractedData(preparedData);
         setOcrLogIds([
             context?.providerDetectionLogId,
             context?.extractionLogId,
@@ -551,6 +666,7 @@ export default function NewSimulationPage() {
                     importeEnergia: extractedData.importeEnergia,
                     importeImpuestoElectrico: extractedData.importeImpuestoElectrico,
                     importeIva: extractedData.importeIva,
+                    useCurrentInvoiceBreakdown: extractedData.useCurrentInvoiceBreakdown,
                     reactiva: extractedData.reactiva,
                     ivaTasa: extractedData.ivaTasa,
                     impuestoElectricoTasa: extractedData.impuestoElectricoTasa,
@@ -988,6 +1104,36 @@ export default function NewSimulationPage() {
                                                 </div>
                                             )}
                                             {simType === "ELECTRICITY" && (
+                                                <div
+                                                    style={{
+                                                        gridColumn: "span 2",
+                                                        border: `1px solid ${extractedData.useCurrentInvoiceBreakdown === true ? "#10b981" : "#cbd5e1"}`,
+                                                        borderRadius: 8,
+                                                        padding: "10px 12px",
+                                                        background: extractedData.useCurrentInvoiceBreakdown === true
+                                                            ? (isDarkMode ? "rgba(16,185,129,.12)" : "rgba(16,185,129,.08)")
+                                                            : (isDarkMode ? "rgba(148,163,184,.10)" : "rgba(248,250,252,.9)"),
+                                                    }}
+                                                >
+                                                    <FormControlLabel
+                                                        control={
+                                                            <Switch
+                                                                size="small"
+                                                                checked={extractedData.useCurrentInvoiceBreakdown === true}
+                                                                onChange={(_, checked) => setExtractedData(prev => prev ? { ...prev, useCurrentInvoiceBreakdown: checked } : prev)}
+                                                            />
+                                                        }
+                                                        label={`Current-plan breakdown: ${extractedData.useCurrentInvoiceBreakdown === true ? "enabled" : "disabled"}`}
+                                                        sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: 12, fontWeight: 800, color: extractedData.useCurrentInvoiceBreakdown === true ? (isDarkMode ? "#d1fae5" : "#047857") : (isDarkMode ? "#cbd5e1" : "#475569") } }}
+                                                    />
+                                                    <div style={{ fontSize: 11, color: isDarkMode ? "#94a3b8" : "#64748b", marginLeft: 43, lineHeight: 1.35 }}>
+                                                        {extractedData.useCurrentInvoiceBreakdown === true
+                                                            ? "These invoice line amounts will be used in the Current Plan comparison."
+                                                            : "Current Plan comparison will use the calculated fallback. Enable to validate and use invoice line amounts."}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {simType === "ELECTRICITY" && extractedData.useCurrentInvoiceBreakdown === true && (
                                                 <>
                                                     <div>
                                                         <div style={labelStyle}>Power cost</div>
@@ -1097,7 +1243,7 @@ export default function NewSimulationPage() {
 
                                                 </div>
                                             )}
-                                            {simType === "ELECTRICITY" && (
+                                            {simType === "ELECTRICITY" && extractedData.useCurrentInvoiceBreakdown === true && (
                                                 <>
                                                     <div>
                                                         <div style={labelStyle2}>Electricity tax amount</div>

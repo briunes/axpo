@@ -1,5 +1,6 @@
 "use client";
 
+import { uploadPresigned } from "@vercel/blob/client";
 import { useState, useEffect, useRef } from "react";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -60,6 +61,7 @@ export interface ExtractedInvoiceData {
     importeEnergia?: number;
     importeImpuestoElectrico?: number;
     importeIva?: number;
+    useCurrentInvoiceBreakdown?: boolean;
     ivaTasa?: number;
     impuestoElectricoTasa?: number;
     impuestoHidrocarburo?: number;
@@ -108,8 +110,56 @@ type InvoiceProviderOption = {
     needsPromptConfig: boolean;
 };
 
+type UploadedInvoiceBlob = {
+    blobUrl: string;
+    fileName: string;
+    fileType: string;
+    fileSizeBytes: number;
+};
+
 let invoiceProvidersCache: InvoiceProviderOption[] | null = null;
 let invoiceProvidersPromise: Promise<InvoiceProviderOption[]> | null = null;
+
+function isLocalUploadEnvironment(): boolean {
+    return typeof window !== "undefined" &&
+        ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+
+function invoiceContentType(file: File): string {
+    if (file.type) return file.type;
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".pdf")) return "application/pdf";
+    if (name.endsWith(".png")) return "image/png";
+    if (name.endsWith(".webp")) return "image/webp";
+    return "image/jpeg";
+}
+
+async function uploadInvoiceFilesToBlob(files: File[], token: string): Promise<UploadedInvoiceBlob[]> {
+    if (!token) {
+        throw new Error("Authentication token is missing. Please log in again.");
+    }
+
+    return Promise.all(files.map(async (file) => {
+        const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const blob = await uploadPresigned(
+            `invoices/${Date.now()}-${crypto.randomUUID()}-${safeFileName}`,
+            file,
+            {
+                access: "private",
+                contentType: invoiceContentType(file),
+                handleUploadUrl: `/api/v1/internal/invoices/upload/blob?token=${encodeURIComponent(token)}`,
+                multipart: file.size > 20 * 1024 * 1024,
+            },
+        );
+
+        return {
+            blobUrl: blob.url,
+            fileName: file.name,
+            fileType: invoiceContentType(file),
+            fileSizeBytes: file.size,
+        };
+    }));
+}
 
 async function loadInvoiceProviders(token: string | null): Promise<InvoiceProviderOption[]> {
     if (invoiceProvidersCache) return invoiceProvidersCache;
@@ -204,16 +254,41 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
             const run = async () => {
                 try {
-                    const formData = new FormData();
-                    // Only send the first file for detection — all images are from the same invoice
-                    formData.append("file", files[0]);
+                    const token = localStorage.getItem("axpo.internal.auth.token");
+                    if (!token) {
+                        setDetectionStatus("failed");
+                        onError?.(new Error("Authentication token missing. Please log in again."));
+                        return;
+                    }
+
+                    const useLocalMultipart = isLocalUploadEnvironment();
+                    let body: BodyInit;
+                    let headers: HeadersInit = {
+                        Authorization: `Bearer ${token}`,
+                    };
+
+                    // For large files (>5MB), always use blob upload even in local environments
+                    // This avoids hitting request body size limits
+                    const fileSizeIsTooLarge = files[0].size > 5 * 1024 * 1024;
+
+                    if (useLocalMultipart && !fileSizeIsTooLarge) {
+                        const formData = new FormData();
+                        // Only send the first file for detection — all images are from the same invoice
+                        formData.append("file", files[0]);
+                        body = formData;
+                    } else {
+                        const uploadedFiles = await uploadInvoiceFilesToBlob([files[0]], token);
+                        headers = {
+                            ...headers,
+                            "Content-Type": "application/json",
+                        };
+                        body = JSON.stringify({ files: uploadedFiles });
+                    }
 
                     const response = await fetch("/api/v1/internal/invoices/detect-provider", {
                         method: "POST",
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem("axpo.internal.auth.token")}`,
-                        },
-                        body: formData,
+                        headers,
+                        body,
                         signal: controller.signal,
                     });
 
@@ -328,27 +403,69 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         }, 200);
 
         try {
-            const formData = new FormData();
-            files.forEach(f => formData.append("file", f));
+            const token = localStorage.getItem("axpo.internal.auth.token");
+            if (!token) {
+                setExtractionStatus("idle");
+                setStatusMessage("Authentication failed. Please log in again.");
+                clearInterval(rafId);
+                onError?.(new Error("Authentication token missing. Please log in again."));
+                return;
+            }
+
+            const useLocalMultipart = isLocalUploadEnvironment();
+
+            // For large files (>5MB), always use blob upload even in local environments
+            // This avoids hitting request body size limits
+            const hasLargeFiles = files.some(f => f.size > 5 * 1024 * 1024);
+
+            let requestBody: BodyInit | undefined;
+            let requestHeaders: HeadersInit = {
+                Authorization: `Bearer ${token}`,
+            };
+            const jsonPayload: Record<string, unknown> = {};
+
+            let formData: FormData | null = null;
+            if (useLocalMultipart && !hasLargeFiles) {
+                formData = new FormData();
+                files.forEach(f => formData!.append("file", f));
+                requestBody = formData;
+            } else {
+                jsonPayload.files = await uploadInvoiceFilesToBlob(files, token);
+                requestHeaders = {
+                    ...requestHeaders,
+                    "Content-Type": "application/json",
+                };
+            }
+
             if (selectedProviderId) {
                 // Only pass the providerId if the provider has an actual configured prompt
                 const selectedProvider = allProviders.find(p => p.id === selectedProviderId);
                 if (selectedProvider && !selectedProvider.needsPromptConfig) {
-                    formData.append("providerId", selectedProviderId);
+                    if (formData) {
+                        formData.append("providerId", selectedProviderId);
+                    } else {
+                        jsonPayload.providerId = selectedProviderId;
+                    }
                 }
             }
             // Pass the detected invoice type so the extract route picks the correct prompt
             const invoiceType = detectedProvider?.invoiceType;
             if (invoiceType === "ELECTRICITY" || invoiceType === "GAS") {
-                formData.append("invoiceType", invoiceType);
+                if (formData) {
+                    formData.append("invoiceType", invoiceType);
+                } else {
+                    jsonPayload.invoiceType = invoiceType;
+                }
+            }
+
+            if (!formData) {
+                requestBody = JSON.stringify(jsonPayload);
             }
 
             const response = await fetch("/api/v1/internal/invoices/extract", {
                 method: "POST",
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("axpo.internal.auth.token")}`,
-                },
-                body: formData,
+                headers: requestHeaders,
+                body: requestBody ?? JSON.stringify(jsonPayload),
             });
 
             const result = await response.json().catch(() => null);
@@ -706,7 +823,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                 },
                             }}
                         />
-                        <span style={{color: "var(--scheme-neutral-400, #9ca3af)" }}>
+                        <span style={{ color: "var(--scheme-neutral-400, #9ca3af)" }}>
                             {t("invoiceExtractor", "extracting")}
                         </span>
                     </div>

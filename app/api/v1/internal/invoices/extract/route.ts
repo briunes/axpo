@@ -1,4 +1,5 @@
 import { after, NextRequest, NextResponse } from "next/server";
+import { del, get } from "@vercel/blob";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
@@ -13,6 +14,12 @@ import {
   isOpenAiCompatibleProvider,
   resolveAiConfigFromSystemConfig,
 } from "@/application/lib/aiConfig";
+import {
+  getInvoiceContentType,
+  isInvoiceFileName,
+  isVercelBlobUrl,
+  MAX_INVOICE_UPLOAD_SIZE,
+} from "@/infrastructure/invoices/invoiceUpload";
 
 const OCR_DEBUG_LOGS =
   process.env.NODE_ENV !== "production" ||
@@ -348,10 +355,29 @@ CRITICAL FIELDS TO EXTRACT:
    - reactiva: Reactive energy charges (€)
    - alquiler: Equipment rental charges (€)
    - otrosCargos: Other charges/concepts (€)
-   - importePotencia: Total billed amount for the power term / "Potencia" in € (sum all power rows, do NOT return unit prices here)
-   - importeEnergia: Total billed amount for the energy term / "Energía" in € (sum all energy rows, do NOT return unit prices here)
-   - importeImpuestoElectrico: Total electricity tax amount in € ("Impuesto electricidad", "Impuesto especial electricidad")
-   - importeIva: Total VAT/IVA/IGIC amount in €
+
+   CURRENT INVOICE BREAKDOWN AMOUNTS — REQUIRED WHEN VISIBLE:
+   These are euro totals from "Detalle de la factura", "Detalle factura",
+   "Conceptos facturados", or equivalent sections. They are NOT unit prices.
+   - importePotencia: the subtotal/total shown for the "Potencia" group in €.
+     If there are multiple Potencia rows, return the printed group total if visible;
+     otherwise sum only the Potencia row amounts. Do NOT use €/kW unit prices here.
+   - importeEnergia: the subtotal/total shown for the "Energía" group in €.
+     If there are multiple energy rows, return the printed group total if visible;
+     otherwise sum only the Energía row amounts. Do NOT use €/kWh unit prices here.
+   - importeImpuestoElectrico: euro amount from the electricity tax row, usually
+     labeled "Impuesto electricidad", "Impuesto especial electricidad", or similar.
+     Do NOT return the tax rate here.
+   - importeIva: euro amount from the IVA/IGIC row, usually labeled "IVA normal",
+     "IVA", "IGIC", or similar. Do NOT return the IVA rate here.
+   - For Endesa-style detail blocks where the left label has a bold subtotal at the
+     far right (for example "Potencia ... 78,36 €", "Energía ... 497,88 €",
+     "Impuestos ... 125,40 €", then rows "Impuesto electricidad ... 2,89 €"
+     and "IVA normal 21% ... 122,51 €"), return:
+     importePotencia = 78.36, importeEnergia = 497.88,
+     importeImpuestoElectrico = 2.89, importeIva = 122.51.
+   - If the invoice image/text does not show one of these amounts, return null for
+     that field instead of estimating it.
 
 7. CURRENT SUPPLIER POWER UNIT PRICES:
    - precioPotenciaP1
@@ -656,6 +682,107 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     fileSizeBytes?: number;
     fileData: Buffer;
   };
+  type LoadedInvoiceFile = OcrPersistedFile & {
+    name: string;
+    type: string;
+    size: number;
+  };
+
+  type ParsedInvoiceRequest = {
+    files: LoadedInvoiceFile[];
+    providerId: string | null;
+    invoiceTypeParam: string | null;
+    temporaryBlobUrls: string[];
+  };
+
+  const loadInvoiceRequest = async (): Promise<ParsedInvoiceRequest> => {
+    if (req.headers.get("content-type")?.includes("application/json")) {
+      const payload = (await timed("jsonBodyMs", () =>
+        req.json().catch(() => ({})),
+      )) as {
+        files?: Array<{
+          blobUrl?: string;
+          fileName?: string;
+          fileType?: string;
+          fileSizeBytes?: number;
+        }>;
+        providerId?: string | null;
+        invoiceType?: string | null;
+      };
+      const inputFiles = Array.isArray(payload.files) ? payload.files : [];
+      const files: LoadedInvoiceFile[] = [];
+      const temporaryBlobUrls: string[] = [];
+
+      for (const input of inputFiles) {
+        if (!input.blobUrl || !isVercelBlobUrl(input.blobUrl)) {
+          throw new Error("Invalid invoice blob URL");
+        }
+        const fileName = (input.fileName || "invoice").replace(/[\r\n"]/g, "_");
+        if (!isInvoiceFileName(fileName)) {
+          throw new Error("Invoice must be a PDF, JPEG, PNG, or WebP file");
+        }
+
+        const blob = await timed("blobGetMs", () =>
+          get(input.blobUrl!, {
+            access: "private",
+            useCache: false,
+          }),
+        );
+        if (!blob || blob.statusCode !== 200) {
+          throw new Error("Uploaded invoice file could not be retrieved");
+        }
+        if (blob.blob.size > MAX_INVOICE_UPLOAD_SIZE) {
+          throw new Error("Invoice file exceeds the 15 MB upload limit");
+        }
+
+        const buffer = Buffer.from(await new Response(blob.stream).arrayBuffer());
+        const fileType = input.fileType || getInvoiceContentType({ name: fileName });
+        files.push({
+          name: fileName,
+          type: fileType,
+          size: input.fileSizeBytes ?? buffer.length,
+          fileName,
+          fileType,
+          fileSizeBytes: input.fileSizeBytes ?? buffer.length,
+          fileData: buffer,
+        });
+        temporaryBlobUrls.push(input.blobUrl);
+      }
+
+      return {
+        files,
+        providerId: payload.providerId ?? null,
+        invoiceTypeParam: payload.invoiceType ?? null,
+        temporaryBlobUrls,
+      };
+    }
+
+    const formData = await timed("formDataMs", () => req.formData());
+    const requestFiles = formData
+      .getAll("file")
+      .filter((entry): entry is File => entry instanceof File);
+    const files = await Promise.all(
+      requestFiles.map(async (file) => {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        return {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          fileName: file.name,
+          fileType: file.type || null,
+          fileSizeBytes: file.size,
+          fileData: buffer,
+        };
+      }),
+    );
+
+    return {
+      files,
+      providerId: formData.get("providerId") as string | null,
+      invoiceTypeParam: formData.get("invoiceType") as string | null,
+      temporaryBlobUrls: [],
+    };
+  };
 
   const persistOcrLogFiles = async (
     ocrLogId: string,
@@ -896,18 +1023,23 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     );
   }
 
-  // Parse multipart form data
-  const formData = await timed("formDataMs", () => req.formData());
-  const requestFiles = formData
-    .getAll("file")
-    .filter((entry): entry is File => entry instanceof File);
+  const {
+    files: requestFiles,
+    providerId,
+    invoiceTypeParam,
+    temporaryBlobUrls,
+  } = await loadInvoiceRequest();
   const file = requestFiles[0];
-  const providerId = formData.get("providerId") as string | null;
-  const invoiceTypeParam = formData.get("invoiceType") as string | null;
   const invoiceType: "ELECTRICITY" | "GAS" | null =
     invoiceTypeParam === "ELECTRICITY" || invoiceTypeParam === "GAS"
       ? invoiceTypeParam
       : null;
+
+  const cleanupTemporaryBlobs = () => {
+    for (const url of temporaryBlobUrls) {
+      del(url).catch(() => {});
+    }
+  };
 
   // Select the appropriate default prompt based on invoice type
   const defaultPrompt =
@@ -1069,11 +1201,11 @@ SYSTEM ALLOWED OPTIONS (MUST FOLLOW)
 - tarifaAcceso: return ONLY one of: ${allowedTariffs.join(", ")}
 ${
   effectiveInvoiceType === "ELECTRICITY"
-    ? `- ivaTasa (for Electricity): return ONLY one of: ${formatTaxOptionsForPrompt(electricityIvaOptions)}
-- impuestoElectricoTasa (Electricity Tax): return ONLY one of: ${formatTaxOptionsForPrompt(
+    ? `- ivaTasa (for Electricity): prefer one of ${formatTaxOptionsForPrompt(electricityIvaOptions)}, but if the invoice explicitly prints another IVA/IGIC rate, return the printed rate.
+- impuestoElectricoTasa (Electricity Tax): prefer one of ${formatTaxOptionsForPrompt(
         electricityTaxRateOptions,
-      )} (these are the electricity tax rates, NOT VAT totals)`
-    : `- ivaTasa (for Gas): return ONLY one of: ${formatTaxOptionsForPrompt(gasIvaOptions)}
+      )}, but if the invoice explicitly prints another electricity tax rate, return the printed rate. These are rates, NOT VAT totals.`
+    : `- ivaTasa (for Gas): prefer one of ${formatTaxOptionsForPrompt(gasIvaOptions)}, but if the invoice explicitly prints another IVA/IGIC rate, return the printed rate.
 - impuestoHidrocarburo (Hydrocarbon Tax €/kWh): return ONLY one of: ${formatRateOptionsForPrompt(
         hydrocarbonTaxRateOptions,
       )} (this is the unit rate, NOT the euro total/import amount)`
@@ -1098,7 +1230,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       provider: llmProvider,
       model: llmModelName,
       baseUrl: llmBaseUrl,
-      files: requestFiles,
+      persistedFiles: requestFiles,
       errorMessage: "No file provided",
       errorType: "VALIDATION_ERROR",
       httpStatusCode: 400,
@@ -1130,7 +1262,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       fileName: file.name,
       fileType: file.type,
       fileSizeBytes: file.size,
-      files: requestFiles,
+      persistedFiles: requestFiles,
       errorMessage: `Invalid file type: ${file.type}`,
       errorType: "VALIDATION_ERROR",
       httpStatusCode: 400,
@@ -1148,9 +1280,8 @@ If invoice text uses a different format, map it to the closest allowed value abo
   let uploadedLogFiles: OcrPersistedFile[] = [];
 
   try {
-    // Convert file to buffer
-    const bytes = await timed("fileArrayBufferMs", () => file.arrayBuffer());
-    const buffer = Buffer.from(bytes);
+    const buffer = file.fileData;
+    recordPhase("fileArrayBufferMs", Date.now(), undefined);
     uploadedLogFiles = [
       {
         fileName: file.name,
@@ -1307,8 +1438,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
         fileName: file.name,
         fileType: file.type,
         fileSizeBytes: file.size,
-        files: requestFiles,
-        persistedFiles: convertedPdfLogFiles,
+        persistedFiles: [...uploadedLogFiles, ...convertedPdfLogFiles],
         errorMessage: "Invoice extraction with local Ollama is not supported.",
         errorType: "UNSUPPORTED_PROVIDER",
         httpStatusCode: 400,
@@ -1602,8 +1732,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
         fileName: file.name,
         fileType: file.type,
         fileSizeBytes: file.size,
-        files: requestFiles,
-        persistedFiles: convertedPdfLogFiles,
+        persistedFiles: [...uploadedLogFiles, ...convertedPdfLogFiles],
         errorMessage: `Provider ${llmProvider} is not supported for invoice extraction`,
         errorType: "UNSUPPORTED_PROVIDER",
         httpStatusCode: 400,
@@ -1633,8 +1762,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
         fileName: file.name,
         fileType: file.type,
         fileSizeBytes: file.size,
-        files: requestFiles,
-        persistedFiles: convertedPdfLogFiles,
+        persistedFiles: [...uploadedLogFiles, ...convertedPdfLogFiles],
         errorMessage: `LLM API error: ${llmResponse.status} ${llmResponse.statusText}`,
         errorType: "LLM_API_ERROR",
         httpStatusCode: llmResponse.status,
@@ -1698,8 +1826,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
           fileName: file.name,
           fileType: file.type,
           fileSizeBytes: file.size,
-          files: requestFiles,
-          persistedFiles: convertedPdfLogFiles,
+        persistedFiles: [...uploadedLogFiles, ...convertedPdfLogFiles],
           errorMessage: "Failed to parse extracted data from LLM response",
           errorType: "JSON_PARSE_ERROR",
           httpStatusCode: 500,
@@ -1726,8 +1853,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
         fileName: file.name,
         fileType: file.type,
         fileSizeBytes: file.size,
-        files: requestFiles,
-        persistedFiles: convertedPdfLogFiles,
+        persistedFiles: [...uploadedLogFiles, ...convertedPdfLogFiles],
         errorMessage: "No valid JSON data found in LLM response",
         errorType: "NO_JSON_FOUND",
         httpStatusCode: 500,
@@ -1845,17 +1971,25 @@ If invoice text uses a different format, map it to the closest allowed value abo
         return null;
       }
 
-      // Convert OCR value (as percentage) to decimal for matching
-      // OCR may return values in percentage format (e.g. 5.11269 for 5.11269%)
-      // or as already-parsed decimals (e.g. 0.051127)
-      // We normalize by checking if the value is reasonable for a percentage:
-      // - If > 1, assume it's a percentage (e.g. 5.11269 = 5.11269%)
-      // - If < 1, assume it's already a decimal (e.g. 0.051127 = 5.1127%)
-      const normalizedValue = ocrValue > 1 ? ocrValue / 100 : ocrValue;
+      const numericValue = Number(ocrValue);
+      if (!Number.isFinite(numericValue) || numericValue < 0) {
+        return null;
+      }
+
+      // OCR may return rates as percentage points (21, 5.11269, 0.5) or
+      // decimals (0.21, 0.0511269, 0.005). Try both interpretations when the
+      // value is ambiguous so "0.5%" does not become 50%.
+      const candidateValues = Array.from(
+        new Set(
+          numericValue > 1
+            ? [numericValue / 100]
+            : [numericValue, numericValue / 100],
+        ),
+      ).filter((value) => Number.isFinite(value));
 
       // Try to find an exact match in configured options
-      const exactMatch = availableOptions.find(
-        (opt) => Math.abs(opt - normalizedValue) < 0.000001,
+      const exactMatch = availableOptions.find((opt) =>
+        candidateValues.some((candidate) => Math.abs(opt - candidate) < 0.000001),
       );
       if (exactMatch !== undefined) {
         debugOcrLog(
@@ -1869,27 +2003,41 @@ If invoice text uses a different format, map it to the closest allowed value abo
       const toleranceThreshold = 0.005;
       let closestMatch: number | undefined;
       let closestDistance = Infinity;
+      let closestCandidate = candidateValues[0] ?? numericValue;
 
-      for (const option of availableOptions) {
-        const distance = Math.abs(option - normalizedValue);
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestMatch = option;
+      for (const candidate of candidateValues) {
+        for (const option of availableOptions) {
+          const distance = Math.abs(option - candidate);
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestMatch = option;
+            closestCandidate = candidate;
+          }
         }
       }
 
       if (closestMatch !== undefined && closestDistance <= toleranceThreshold) {
         debugOcrLog(
-          `[Tax Validation] Field "${fieldName}": OCR value ${ocrValue} (${(normalizedValue * 100).toFixed(5)}%) corrected to closest configured option ${(closestMatch * 100).toFixed(5)}% (distance: ${(closestDistance * 100).toFixed(5)}%)`,
+          `[Tax Validation] Field "${fieldName}": OCR value ${ocrValue} (${(closestCandidate * 100).toFixed(5)}%) corrected to closest configured option ${(closestMatch * 100).toFixed(5)}% (distance: ${(closestDistance * 100).toFixed(5)}%)`,
         );
         return closestMatch;
       }
 
-      // No match found within tolerance — reject the value
+      // No match found within tolerance. Keep the explicit invoice value instead
+      // of silently falling back to the configured default; some invoices print
+      // temporarily reduced tax rates such as 0.5%.
+      const normalizedValue =
+        fieldName.includes("impuestoElectrico") &&
+        numericValue > 0.2 &&
+        numericValue <= 1
+          ? numericValue / 100
+          : numericValue > 1
+            ? numericValue / 100
+            : numericValue;
       console.warn(
-        `⚠️  [Tax Validation] Field "${fieldName}": OCR value ${ocrValue} (${(normalizedValue * 100).toFixed(5)}%) does NOT match any configured option. Available options: ${availableOptions.map((opt) => `${(opt * 100).toFixed(5)}%`).join(", ")}. Discarding value.`,
+        `⚠️  [Tax Validation] Field "${fieldName}": OCR value ${ocrValue} (${(normalizedValue * 100).toFixed(5)}%) does NOT match any configured option. Available options: ${availableOptions.map((opt) => `${(opt * 100).toFixed(5)}%`).join(", ")}. Keeping explicit invoice value.`,
       );
-      return null;
+      return normalizedValue;
     };
 
     const matchUnitRateToOption = (
@@ -2114,7 +2262,6 @@ If invoice text uses a different format, map it to the closest allowed value abo
       provider: llmProvider ?? "unknown",
       model: llmModelName ?? "unknown",
       baseUrl: llmBaseUrl,
-      files: uploadedLogFiles.length > 0 ? undefined : requestFiles,
       persistedFiles: [...uploadedLogFiles, ...convertedPdfLogFiles],
       errorMessage: error.message || "Unknown error",
       errorType: error.constructor?.name || "UnknownError",
@@ -2131,5 +2278,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       },
       { status: 500 },
     );
+  } finally {
+    cleanupTemporaryBlobs();
   }
 });

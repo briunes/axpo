@@ -224,9 +224,14 @@ export function extractVariableValues(
   const ivaR = currentIvaTasa / 100;
   const currentTaxCost = currentTotal * (ieR / ((1 + ieR) * (1 + ivaR)));
   const currentVat = (currentTotal - currentTaxCost - currentRentalCost) * ivaR;
-  const explicitCurrentTax = (electricity?.extras as any)
-    ?.impuestoElectricoActual;
-  const explicitCurrentVat = (electricity?.extras as any)?.ivaActual;
+  const useCurrentInvoiceBreakdown =
+    (electricity?.extras as any)?.useCurrentInvoiceBreakdown === true;
+  const explicitCurrentTax = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.impuestoElectricoActual
+    : undefined;
+  const explicitCurrentVat = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.ivaActual
+    : undefined;
   const displayedCurrentTax =
     explicitCurrentTax != null ? Number(explicitCurrentTax) : currentTaxCost;
   const displayedCurrentVat =
@@ -238,10 +243,12 @@ export function extractVariableValues(
     currentTotal - displayedCurrentTax - displayedCurrentVat - currentKnownBase,
   );
   // If the OCR or the form captured the real split, prefer it.
-  const explicitCurrentPower = (electricity?.extras as any)
-    ?.terminoPotenciaActual;
-  const explicitCurrentEnergy = (electricity?.extras as any)
-    ?.terminoEnergiaActual;
+  const explicitCurrentPower = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.terminoPotenciaActual
+    : undefined;
+  const explicitCurrentEnergy = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.terminoEnergiaActual
+    : undefined;
   // Otherwise, mirror the Axpo plan's power/energy ratio - a much
   // better estimate than fixed 35%/40% because it adapts to the
   // access tariff, period mix and consumption profile of THIS simulation.

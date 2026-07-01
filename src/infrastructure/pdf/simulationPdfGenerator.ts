@@ -193,9 +193,14 @@ export function extractTemplateVariables(
   const ivaR = currentIvaTasa / 100;
   const currentTaxCost = currentTotal * (ieR / ((1 + ieR) * (1 + ivaR)));
   const currentVat = (currentTotal - currentTaxCost - currentRentalCost) * ivaR;
-  const explicitCurrentTax = (electricity?.extras as any)
-    ?.impuestoElectricoActual;
-  const explicitCurrentVat = (electricity?.extras as any)?.ivaActual;
+  const useCurrentInvoiceBreakdown =
+    (electricity?.extras as any)?.useCurrentInvoiceBreakdown === true;
+  const explicitCurrentTax = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.impuestoElectricoActual
+    : undefined;
+  const explicitCurrentVat = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.ivaActual
+    : undefined;
   const displayedCurrentTax =
     explicitCurrentTax != null ? Number(explicitCurrentTax) : currentTaxCost;
   const displayedCurrentVat =
@@ -204,10 +209,12 @@ export function extractTemplateVariables(
     0,
     currentTotal - displayedCurrentTax - displayedCurrentVat - currentKnownBase,
   );
-  const explicitCurrentPower = (electricity?.extras as any)
-    ?.terminoPotenciaActual;
-  const explicitCurrentEnergy = (electricity?.extras as any)
-    ?.terminoEnergiaActual;
+  const explicitCurrentPower = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.terminoPotenciaActual
+    : undefined;
+  const explicitCurrentEnergy = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.terminoEnergiaActual
+    : undefined;
   const axpoPeSum = axpoPowerCost + axpoEnergyCost || 1;
   const currentPowerCost =
     explicitCurrentPower != null
