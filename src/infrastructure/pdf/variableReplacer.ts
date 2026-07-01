@@ -65,6 +65,13 @@ export interface ShareContext {
 /**
  * Extracts all template variable values from simulation data
  * Returns a map of variable keys to their actual values
+ *
+ * @param simulation - The simulation object
+ * @param payload - Optional simulation payload with results
+ * @param shareContext - Optional context for shared/email links
+ * @param editableSections - Optional editable sections config
+ * @param editableOverrides - Optional overrides for editable sections
+ * @param language - Language code for chart labels (es, en, fr, de, it, pt) - defaults to es
  */
 export function extractVariableValues(
   simulation: any,
@@ -72,6 +79,7 @@ export function extractVariableValues(
   shareContext?: ShareContext,
   editableSections?: EditableSectionsConfig,
   editableOverrides?: EditableSectionOverrides,
+  language: string = "es",
 ): Record<string, string> {
   // Debug logging
   console.log(
@@ -429,6 +437,7 @@ export function extractVariableValues(
       isGas
         ? (selectedGasResult?.ahorroAnual ?? null)
         : (selectedResult?.ahorroAnual ?? null),
+      language,
     ),
 
     // ─── Gas-specific variables ──────────────────────────────────────────────
@@ -486,12 +495,73 @@ export function extractVariableValues(
 }
 
 /**
+ * Chart label translations for different languages
+ */
+const chartLabels = {
+  es: {
+    title: "Comparativa",
+    currentLabel: "Competencia",
+    axpoLabel: "Axpo",
+    annualSavings: "Ahorro Anual",
+    monthlySavings: "Ahorro Mensual",
+    savingsPercent: "% Ahorrado",
+  },
+  en: {
+    title: "Comparison",
+    currentLabel: "Current",
+    axpoLabel: "Axpo",
+    annualSavings: "Annual Savings",
+    monthlySavings: "Monthly Savings",
+    savingsPercent: "% Saved",
+  },
+  fr: {
+    title: "Comparaison",
+    currentLabel: "Courant",
+    axpoLabel: "Axpo",
+    annualSavings: "Économies Annuelles",
+    monthlySavings: "Économies Mensuelles",
+    savingsPercent: "% Économisé",
+  },
+  de: {
+    title: "Vergleich",
+    currentLabel: "Aktuell",
+    axpoLabel: "Axpo",
+    annualSavings: "Jährliche Ersparnisse",
+    monthlySavings: "Monatliche Ersparnisse",
+    savingsPercent: "% Gespart",
+  },
+  it: {
+    title: "Confronto",
+    currentLabel: "Attuale",
+    axpoLabel: "Axpo",
+    annualSavings: "Risparmio Annuale",
+    monthlySavings: "Risparmio Mensile",
+    savingsPercent: "% Risparmiato",
+  },
+  pt: {
+    title: "Comparação",
+    currentLabel: "Atual",
+    axpoLabel: "Axpo",
+    annualSavings: "Economia Anual",
+    monthlySavings: "Economia Mensal",
+    savingsPercent: "% Economizado",
+  },
+};
+
+/**
  * Builds a self-contained HTML snippet for the Comparativa bar chart.
  * Uses pure SVG + inline CSS - no JavaScript - so it renders in Puppeteer PDFs.
  *
  * Both currentTotal and axpoTotal are period figures (€).
  * The chart displays annual totals using (value / dias) × 365 extrapolation.
  * If dias = 365, uses the direct annual difference.
+ *
+ * @param currentTotal - Current plan total for the billing period
+ * @param axpoTotal - Axpo plan total for the billing period
+ * @param savingsAmount - Savings for the billing period
+ * @param dias - Days in billing period (default 30)
+ * @param ahorroAnualOverride - Override for annual savings calculation
+ * @param language - Language code (es, en, fr, de, it, pt) - defaults to es
  */
 function buildComparativaChart(
   currentTotal: number,
@@ -499,6 +569,7 @@ function buildComparativaChart(
   savingsAmount: number,
   dias: number = 30,
   ahorroAnualOverride: number | null = null,
+  language: string = "es",
 ): string {
   const annualCurrent =
     dias === 365 ? currentTotal : (currentTotal / dias) * 365;
@@ -513,8 +584,23 @@ function buildComparativaChart(
   const savingsPct =
     currentTotal > 0 ? (savingsAmount / currentTotal) * 100 : 0;
 
+  // Get labels for the specified language (default to Spanish if not found)
+  const labels =
+    chartLabels[language as keyof typeof chartLabels] || chartLabels.es;
+
+  // Determine locale for number formatting
+  const localeMap: Record<string, string> = {
+    es: "es-ES",
+    en: "en-US",
+    fr: "fr-FR",
+    de: "de-DE",
+    it: "it-IT",
+    pt: "pt-PT",
+  };
+  const locale = localeMap[language] || "es-ES";
+
   const fmt = (n: number) =>
-    n.toLocaleString("es-ES", {
+    n.toLocaleString(locale, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
@@ -557,7 +643,7 @@ function buildComparativaChart(
   return `
 <div style="display:block;width:100%;box-sizing:border-box;padding:0;font-family:Arial,sans-serif;page-break-inside:avoid">
 
-  <div style="font-size:20px;line-height:1.15;font-weight:400;color:#1E2CF4;margin-bottom:12px">Comparativa</div>
+  <div style="font-size:20px;line-height:1.15;font-weight:400;color:#1E2CF4;margin-bottom:12px">${labels.title}</div>
 
   <div style="display:flex;width:100%;gap:20px;align-items:flex-end">
 
@@ -583,8 +669,8 @@ function buildComparativaChart(
         <rect x="${xAxpo}" y="${(barY0 - hAxpo).toFixed(1)}" width="${barW}" height="${hAxpo.toFixed(1)}" fill="url(#axpoGrad)" rx="4"/>
 
         <!-- X labels -->
-        <text x="${xCurrent + barW / 2}" y="${barY0 + 18}" text-anchor="middle" font-size="9" fill="#374151">Competencia</text>
-        <text x="${xAxpo + barW / 2}" y="${barY0 + 18}" text-anchor="middle" font-size="9" fill="#374151">Axpo</text>
+        <text x="${xCurrent + barW / 2}" y="${barY0 + 18}" text-anchor="middle" font-size="9" fill="#374151">${labels.currentLabel}</text>
+        <text x="${xAxpo + barW / 2}" y="${barY0 + 18}" text-anchor="middle" font-size="9" fill="#374151">${labels.axpoLabel}</text>
 
         <!-- Value labels on top of bars -->
         <text x="${xCurrent + barW / 2}" y="${(barY0 - hCurrent - 5).toFixed(1)}" text-anchor="middle" font-size="8" fill="#374151">${fmt(annualCurrent)} €</text>
@@ -594,15 +680,15 @@ function buildComparativaChart(
 
     <div style="flex:1 1 0;display:flex;flex-direction:column;gap:10px;box-sizing:border-box">
       <div style="background:#3F43D4;border-radius:8px;padding:10px 16px;color:white;min-height:64px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.25)">
-        <div style="font-size:10px;font-weight:700;margin-bottom:7px">Ahorro Anual</div>
+        <div style="font-size:10px;font-weight:700;margin-bottom:7px">${labels.annualSavings}</div>
         <div style="border-top:1px solid rgba(255,255,255,0.34);padding-top:4px;font-size:22px;line-height:1.05;font-weight:700;text-align:right">${fmt(annualSavings)} €</div>
       </div>
       <div style="background:#3F43D4;border-radius:8px;padding:10px 16px;color:white;min-height:64px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.25)">
-        <div style="font-size:10px;font-weight:700;margin-bottom:7px">Ahorro Mensual</div>
+        <div style="font-size:10px;font-weight:700;margin-bottom:7px">${labels.monthlySavings}</div>
         <div style="border-top:1px solid rgba(255,255,255,0.34);padding-top:4px;font-size:22px;line-height:1.05;font-weight:700;text-align:right">${fmt(monthlySavings)} €</div>
       </div>
       <div style="background:#3F43D4;border-radius:8px;padding:10px 16px;color:white;min-height:64px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.25)">
-        <div style="font-size:10px;font-weight:700;margin-bottom:7px">% Ahorrado</div>
+        <div style="font-size:10px;font-weight:700;margin-bottom:7px">${labels.savingsPercent}</div>
         <div style="border-top:1px solid rgba(255,255,255,0.34);padding-top:4px;font-size:22px;line-height:1.05;font-weight:700;text-align:right">${savingsPct.toFixed(2).replace(".", ",")} %</div>
       </div>
     </div>
