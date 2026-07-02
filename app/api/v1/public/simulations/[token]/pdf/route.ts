@@ -216,7 +216,7 @@ export async function GET(
 
       if (templateId) {
         pdfTemplate = await prisma.pdfTemplate.findFirst({
-          where: { id: templateId, isDeleted: false, active: true },
+          where: { id: templateId, isDeleted: false, active: true, commodity },
           select: {
             id: true,
             active: true,

@@ -457,7 +457,7 @@ export function DownloadHistoryDialog({
                     (tpl) =>
                         tpl.active &&
                         tpl.type === "price-history" &&
-                        (tpl.commodity || "ELECTRICITY") === commodity,
+                        tpl.commodity === commodity,
                 );
                 setHistoryTemplates(historyTpls);
 

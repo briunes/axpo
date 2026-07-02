@@ -63,9 +63,7 @@ export const GET = withErrorHandler(
             active: true,
             isDeleted: false,
             type: { in: SIMULATION_PDF_TYPES },
-            ...(commodity === "ELECTRICITY"
-              ? { OR: [{ commodity: null }, { commodity }] }
-              : { commodity }),
+            commodity,
           },
           include: { translations: true },
           orderBy: { createdAt: "desc" },
