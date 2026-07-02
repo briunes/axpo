@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { extractVariableValues } from "../variableReplacer";
 
 describe("extractVariableValues", () => {
@@ -113,6 +115,10 @@ describe("extractVariableValues", () => {
           selectedAt: "2026-02-01T00:00:00.000Z",
         },
       },
+      undefined,
+      undefined,
+      undefined,
+      "en",
     );
 
     expect(variables.PRODUCT_NAME).toBe("Gas Fijo N1");
@@ -126,6 +132,79 @@ describe("extractVariableValues", () => {
     expect(variables.GAS_HYDROCARBON_TAX_RATE).toBe("0,00234");
     expect(variables.CURRENT_GAS_RENTAL_COST).toBe("1.00");
     expect(variables.AXPO_GAS_TOTAL).toBe("90.00");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("Fixed term");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("Variable energy term");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("Hydrocarbon tax");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("1.00 €");
+    expect(variables.CURRENT_BREAKDOWN_HTML).not.toContain(
+      "{{CURRENT_GAS_FIXED_COST}}",
+    );
+  });
+
+  it("uses the shared current breakdown placeholder in gas templates", () => {
+    const pdfDir = path.resolve(__dirname, "..");
+    const enTemplate = fs.readFileSync(
+      path.join(pdfDir, "gas-simulation-template.html"),
+      "utf8",
+    );
+    const esTemplate = fs.readFileSync(
+      path.join(pdfDir, "gas-simulation-template-es.html"),
+      "utf8",
+    );
+
+    expect(enTemplate).toContain("{{CURRENT_BREAKDOWN_HTML}}");
+    expect(esTemplate).toContain("{{CURRENT_BREAKDOWN_HTML}}");
+    expect(enTemplate).not.toContain("{{CURRENT_GAS_FIXED_COST}}");
+    expect(esTemplate).not.toContain("{{CURRENT_GAS_FIXED_COST}}");
+  });
+
+  it("uses explicit gas current invoice breakdown amounts when present", () => {
+    const variables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "GAS",
+        gas: {
+          cups: "ES0230901000023635SW",
+          tarifaAcceso: "RL02",
+          zonaGeografica: "Peninsula",
+          consumo: 5646,
+          telemedida: "NO",
+          periodo: {
+            fechaInicio: "2025-11-27",
+            fechaFin: "2026-01-27",
+            dias: 61,
+          },
+          facturaActual: 568.98,
+          extras: {
+            alquilerEquipoMedida: 1.18,
+            otrosCargos: 0,
+            terminoFijoActual: 12.34,
+            terminoVariableActual: 440.56,
+            impuestoHidrocarburoActual: 13.21,
+            ivaActual: 101.69,
+            useCurrentInvoiceBreakdown: true,
+          },
+          ivaTasa: 21,
+          impuestoHidrocarburo: 0.00234,
+        },
+        results: {
+          calculatedAt: "2026-02-01T00:00:00.000Z",
+          baseValueSetId: "base-values",
+          gas: [],
+        },
+      },
+      undefined,
+      undefined,
+      undefined,
+      "en",
+    );
+
+    expect(variables.CURRENT_GAS_FIXED_COST).toBe("12.34");
+    expect(variables.CURRENT_GAS_VARIABLE_COST).toBe("440.56");
+    expect(variables.CURRENT_GAS_TAX).toBe("13.21");
+    expect(variables.CURRENT_GAS_VAT).toBe("101.69");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("12.34 €");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("440.56 €");
   });
 
   it("exposes electricity simulation variables", () => {

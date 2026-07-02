@@ -60,6 +60,9 @@ export interface ExtractedInvoiceData {
     importePotencia?: number;
     importeEnergia?: number;
     importeImpuestoElectrico?: number;
+    importeTerminoFijo?: number;
+    importeTerminoVariable?: number;
+    importeImpuestoHidrocarburos?: number;
     importeIva?: number;
     useCurrentInvoiceBreakdown?: boolean;
     ivaTasa?: number;

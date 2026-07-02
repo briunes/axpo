@@ -114,6 +114,11 @@ interface GasFormState {
     facturaActual: number;
     alquiler: number;
     otrosCargos: number;
+    useCurrentInvoiceBreakdown: boolean;
+    importeTerminoFijo: number;
+    importeTerminoVariable: number;
+    importeImpuestoHidrocarburos: number;
+    importeIva: number;
     ivaTasa: number;
     impuestoHidrocarburo: number;
     /** Personalizada Indexada margin over MIBGAS in €/kWh */
@@ -301,6 +306,38 @@ function deriveCurrentBreakdown(source: Record<string, any>): {
     return result;
 }
 
+function deriveGasCurrentBreakdown(source: Record<string, any>): {
+    importeTerminoFijo?: number;
+    importeTerminoVariable?: number;
+    importeImpuestoHidrocarburos?: number;
+    importeIva?: number;
+} {
+    const factura = finiteNumber(source.facturaActual);
+    if (factura == null) return {};
+
+    const ivaTasa = finiteNumber(source.ivaTasa) ?? 21;
+    const consumo = finiteNumber(source.consumoTotal) ?? finiteNumber(source.consumo) ?? 0;
+    const impuestoHidrocarburo = finiteNumber(source.impuestoHidrocarburo) ?? 0.00234;
+    const alquiler = finiteNumber(source.alquiler) ?? finiteNumber(source.alquilerEquipoMedida) ?? 0;
+    const otrosCargos = finiteNumber(source.otrosCargos) ?? 0;
+
+    const importeIva = roundMoney(factura * (ivaTasa / (100 + ivaTasa)));
+    const importeImpuestoHidrocarburos = roundMoney(impuestoHidrocarburo * consumo);
+    const known =
+        importeIva +
+        importeImpuestoHidrocarburos +
+        alquiler +
+        otrosCargos;
+    const residual = Math.max(0, factura - known);
+
+    return {
+        importeTerminoFijo: 0,
+        importeTerminoVariable: roundMoney(residual),
+        importeImpuestoHidrocarburos,
+        importeIva,
+    };
+}
+
 function defaultElecState(): ElecFormState {
     const { fechaInicio, fechaFin } = prevMonthRange();
     return {
@@ -330,7 +367,7 @@ function defaultElecState(): ElecFormState {
         reactiva: 0,
         alquiler: 0,
         otrosCargos: 0,
-        useCurrentInvoiceBreakdown: false,
+        useCurrentInvoiceBreakdown: true,
         importePotencia: 0,
         importeEnergia: 0,
         importeImpuestoElectrico: 0,
@@ -359,6 +396,11 @@ function defaultGasState(): GasFormState {
         facturaActual: 0,
         alquiler: 0,
         otrosCargos: 0,
+        useCurrentInvoiceBreakdown: true,
+        importeTerminoFijo: 0,
+        importeTerminoVariable: 0,
+        importeImpuestoHidrocarburos: 0,
+        importeIva: 0,
         ivaTasa: 21,
         impuestoHidrocarburo: 0.00234,
         personalizadaIndexMargen: 0,
@@ -436,6 +478,11 @@ function buildGasInputs(s: GasFormState): GasInputs {
         extras: {
             alquilerEquipoMedida: s.alquiler || undefined,
             otrosCargos: s.otrosCargos || undefined,
+            useCurrentInvoiceBreakdown: s.useCurrentInvoiceBreakdown,
+            terminoFijoActual: s.importeTerminoFijo || undefined,
+            terminoVariableActual: s.importeTerminoVariable || undefined,
+            impuestoHidrocarburoActual: s.importeImpuestoHidrocarburos || undefined,
+            ivaActual: s.importeIva || undefined,
         },
         ivaTasa: s.ivaTasa || undefined,
         impuestoHidrocarburo: s.impuestoHidrocarburo || undefined,
@@ -626,6 +673,7 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
         const { fechaInicio, fechaFin } = invoiceData.fechaInicio && invoiceData.fechaFin
             ? { fechaInicio: invoiceData.fechaInicio, fechaFin: invoiceData.fechaFin }
             : prevMonthRange();
+        const derivedBreakdown = deriveGasCurrentBreakdown(invoiceData);
 
         return {
             cups: invoiceData.cups || "",
@@ -644,6 +692,11 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
             facturaActual: invoiceData.facturaActual ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
             otrosCargos: invoiceData.otrosCargos ?? 0,
+            useCurrentInvoiceBreakdown: invoiceData.useCurrentInvoiceBreakdown === true,
+            importeTerminoFijo: invoiceData.importeTerminoFijo ?? derivedBreakdown.importeTerminoFijo ?? 0,
+            importeTerminoVariable: invoiceData.importeTerminoVariable ?? derivedBreakdown.importeTerminoVariable ?? 0,
+            importeImpuestoHidrocarburos: invoiceData.importeImpuestoHidrocarburos ?? derivedBreakdown.importeImpuestoHidrocarburos ?? 0,
+            importeIva: invoiceData.importeIva ?? derivedBreakdown.importeIva ?? 0,
             ivaTasa: invoiceData.ivaTasa ?? 21,
             impuestoHidrocarburo: invoiceData.impuestoHidrocarburo ?? 0.00234,
             personalizadaIndexMargen: 0,
@@ -653,6 +706,16 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
     }
 
     if (!g) return null;
+    const derivedBreakdown = deriveGasCurrentBreakdown({
+        ...(invoiceData ?? {}),
+        facturaActual: g.facturaActual,
+        consumo: g.consumo,
+        alquilerEquipoMedida: g.extras?.alquilerEquipoMedida,
+        alquiler: g.extras?.alquilerEquipoMedida,
+        otrosCargos: g.extras?.otrosCargos,
+        ivaTasa: g.ivaTasa,
+        impuestoHidrocarburo: g.impuestoHidrocarburo,
+    });
     return {
         cups: g.cups || "",
         consumoAnual: g.consumoAnual || 0,
@@ -670,6 +733,11 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
         facturaActual: g.facturaActual,
         alquiler: g.extras?.alquilerEquipoMedida ?? 0,
         otrosCargos: g.extras?.otrosCargos ?? 0,
+        useCurrentInvoiceBreakdown: (g.extras as any)?.useCurrentInvoiceBreakdown === true,
+        importeTerminoFijo: (g.extras as any)?.terminoFijoActual ?? (invoiceData as any)?.importeTerminoFijo ?? derivedBreakdown.importeTerminoFijo ?? 0,
+        importeTerminoVariable: (g.extras as any)?.terminoVariableActual ?? (invoiceData as any)?.importeTerminoVariable ?? derivedBreakdown.importeTerminoVariable ?? 0,
+        importeImpuestoHidrocarburos: (g.extras as any)?.impuestoHidrocarburoActual ?? (invoiceData as any)?.importeImpuestoHidrocarburos ?? derivedBreakdown.importeImpuestoHidrocarburos ?? 0,
+        importeIva: (g.extras as any)?.ivaActual ?? (invoiceData as any)?.importeIva ?? derivedBreakdown.importeIva ?? 0,
         ivaTasa: g.ivaTasa ?? 21,
         impuestoHidrocarburo: g.impuestoHidrocarburo ?? 0.00234,
         personalizadaIndexMargen: g.personalizadaIndex?.margenEnergia ?? 0,
@@ -926,7 +994,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                 borderRadius: 8,
             }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
+                    <span style={{ fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
                         {t("simulationForm", "formCompletion", { completed: completedCount, total: totalSteps })}
                     </span>
                     <span style={{ fontSize: 12, color: "var(--scheme-neutral-400)" }}>{Math.round(progressPercent)}%</span>
@@ -1189,29 +1257,29 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                                         onChange={(_, checked) => up("useCurrentInvoiceBreakdown", checked)}
                                     />
                                 }
-                                label={`Current-plan breakdown: ${state.useCurrentInvoiceBreakdown ? "enabled" : "disabled"}`}
+                                label={t("simulationForm", "currentPlanBreakdownLabel")}
                                 sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: 12, fontWeight: 800 } }}
                             />
-                            <Typography variant="caption" sx={{ display: "block", ml: 5.25, color: "text.secondary", lineHeight: 1.35 }}>
-                                {state.useCurrentInvoiceBreakdown
-                                    ? "These invoice line amounts will be used in the Current Plan comparison."
-                                    : "Current Plan comparison will use the calculated fallback. Enable to validate and use invoice line amounts."}
-                            </Typography>
+                            {state.useCurrentInvoiceBreakdown ? (
+                                <Typography variant="caption" sx={{ display: "block", ml: 5.25, color: "text.secondary", lineHeight: 1.35 }}>
+                                    {t("simulationForm", "currentPlanBreakdownEnabledHint")}
+                                </Typography>
+                            ) : null}
                         </Box>
                     </Field>
                 </Row>
                 <Collapse in={state.useCurrentInvoiceBreakdown} timeout={200} unmountOnExit>
                     <Row>
-                        <Field label="Current power cost" flex="1 1 0">
+                        <Field label={t("simulationForm", "currentPowerCostLabel")} flex="1 1 0">
                             <CurrencyInput value={state.importePotencia} onChange={(v) => up("importePotencia", isNaN(v) ? 0 : v)} />
                         </Field>
-                        <Field label="Current energy cost" flex="1 1 0">
+                        <Field label={t("simulationForm", "currentEnergyCostLabel")} flex="1 1 0">
                             <CurrencyInput value={state.importeEnergia} onChange={(v) => up("importeEnergia", isNaN(v) ? 0 : v)} />
                         </Field>
-                        <Field label="Current electricity tax" flex="1 1 0">
+                        <Field label={t("simulationForm", "currentElectricityTaxLabel")} flex="1 1 0">
                             <CurrencyInput value={state.importeImpuestoElectrico} onChange={(v) => up("importeImpuestoElectrico", isNaN(v) ? 0 : v)} />
                         </Field>
-                        <Field label="Current IVA amount" flex="1 1 0">
+                        <Field label={t("simulationForm", "currentIvaAmountLabel")} flex="1 1 0">
                             <CurrencyInput value={state.importeIva} onChange={(v) => up("importeIva", isNaN(v) ? 0 : v)} />
                         </Field>
                     </Row>
@@ -1274,7 +1342,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                 borderRadius: 8,
             }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
+                    <span style={{ fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
                         {t("simulationForm", "formCompletion", { completed: completedCount, total: totalSteps })}
                     </span>
                     <span style={{ fontSize: 12, color: "var(--scheme-neutral-400)" }}>{Math.round(progressPercent)}%</span>
@@ -1417,6 +1485,52 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                         <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
                     </Field>
                 </Row>
+                <Row>
+                    <Field label="" flex="1 1 100%">
+                        <Box
+                            sx={{
+                                border: "1px solid",
+                                borderColor: state.useCurrentInvoiceBreakdown ? "success.main" : "divider",
+                                borderRadius: 1,
+                                p: 1.25,
+                                bgcolor: state.useCurrentInvoiceBreakdown ? "rgba(16,185,129,.08)" : "transparent",
+                            }}
+                        >
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        size="small"
+                                        checked={state.useCurrentInvoiceBreakdown}
+                                        onChange={(_, checked) => up("useCurrentInvoiceBreakdown", checked)}
+                                    />
+                                }
+                                label={t("simulationForm", "currentPlanBreakdownLabel")}
+                                sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: 12, fontWeight: 800 } }}
+                            />
+                            {state.useCurrentInvoiceBreakdown ? (
+                                <Typography variant="caption" sx={{ display: "block", ml: 5.25, color: "text.secondary", lineHeight: 1.35 }}>
+                                    {t("simulationForm", "currentPlanBreakdownEnabledHint")}
+                                </Typography>
+                            ) : null}
+                        </Box>
+                    </Field>
+                </Row>
+                <Collapse in={state.useCurrentInvoiceBreakdown} timeout={200} unmountOnExit>
+                    <Row>
+                        <Field label="Fixed term" flex="1 1 0">
+                            <CurrencyInput value={state.importeTerminoFijo} onChange={(v) => up("importeTerminoFijo", isNaN(v) ? 0 : v)} />
+                        </Field>
+                        <Field label="Variable energy term" flex="1 1 0">
+                            <CurrencyInput value={state.importeTerminoVariable} onChange={(v) => up("importeTerminoVariable", isNaN(v) ? 0 : v)} />
+                        </Field>
+                        <Field label="Hydrocarbon tax amount" flex="1 1 0">
+                            <CurrencyInput value={state.importeImpuestoHidrocarburos} onChange={(v) => up("importeImpuestoHidrocarburos", isNaN(v) ? 0 : v)} />
+                        </Field>
+                        <Field label={t("simulationForm", "currentIvaAmountLabel")} flex="1 1 0">
+                            <CurrencyInput value={state.importeIva} onChange={(v) => up("importeIva", isNaN(v) ? 0 : v)} />
+                        </Field>
+                    </Row>
+                </Collapse>
                 <Divider sx={{ my: 2 }} />
                 <Row>
                     <Field label={t("simulationForm", "fieldIVA")} hint={t("simulationForm", "fieldIVAHint")} flex="1 1 0">
@@ -1672,7 +1786,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 reactiva: 0,
                 alquiler: 1.3,
                 otrosCargos: 0,
-                useCurrentInvoiceBreakdown: false,
+                useCurrentInvoiceBreakdown: true,
                 importePotencia: 0,
                 importeEnergia: 0,
                 importeImpuestoElectrico: 0,
@@ -1706,6 +1820,11 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 facturaActual: 285.50,
                 alquiler: 1.5,
                 otrosCargos: 0,
+                useCurrentInvoiceBreakdown: true,
+                importeTerminoFijo: 0,
+                importeTerminoVariable: 223.80,
+                importeImpuestoHidrocarburos: 11.70,
+                importeIva: 50.00,
                 ivaTasa: 21,
                 impuestoHidrocarburo: 0.00234,
                 personalizadaIndexMargen: 0,

@@ -280,6 +280,16 @@ export interface GasInputs {
   extras: {
     alquilerEquipoMedida?: number; // €
     otrosCargos?: number; // €
+    /** Current supplier fixed term amount in €, copied from invoice detail when available. */
+    terminoFijoActual?: number;
+    /** Current supplier variable energy term amount in €, copied from invoice detail when available. */
+    terminoVariableActual?: number;
+    /** Hydrocarbon tax amount in €, copied from invoice detail when available. */
+    impuestoHidrocarburoActual?: number;
+    /** IVA/IGIC amount in €, copied from invoice detail when available. */
+    ivaActual?: number;
+    /** Whether the simulation output should use the explicit current invoice breakdown. */
+    useCurrentInvoiceBreakdown?: boolean;
   };
 
   /** VAT rate as percentage (e.g., 21 for 21%) */

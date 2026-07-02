@@ -868,8 +868,7 @@ export const translations = {
       requirePin: "Require PIN for Simulation Access",
       requirePinDesc: "Clients must enter a PIN to view their simulation",
       pinLength: "PIN Length",
-      pinLengthDesc:
-        "Number of digits in the generated PIN (recommended: 4-6)",
+      pinLengthDesc: "Number of digits in the generated PIN (recommended: 4-6)",
       clientManagementTitle: "Client Management Settings",
       clientManagementDesc:
         "Configure automatic client creation and profile management",
@@ -1023,8 +1022,7 @@ export const translations = {
       ofProducts: "of {count} products",
       noSavings: "NO SAVINGS",
       costMoreThanCurrent: "Cost more than current",
-      empty:
-        "No results were obtained. Check that the input data is correct.",
+      empty: "No results were obtained. Check that the input data is correct.",
       simulationResult: "SIMULATION RESULT",
       accessTariff: "ACCESS TARIFF:",
       annualConsumption: "ANNUAL CONSUMPTION:",
@@ -1045,8 +1043,7 @@ export const translations = {
       title: "Access Denied",
       withSection:
         'Your role does not have permission to access the "{section}" section.',
-      generic:
-        "Your role does not have permission to access this section.",
+      generic: "Your role does not have permission to access this section.",
     },
     internalError: {
       description:
@@ -1072,7 +1069,8 @@ export const translations = {
       loading: "Loading notifications...",
       emptyActive: "No active notifications",
       emptyFiltered: "No notifications match the current filters.",
-      migrationPending: "Notifications will be available after the database migration is applied.",
+      migrationPending:
+        "Notifications will be available after the database migration is applied.",
       loadFailed: "Failed to load notifications",
       filters: "Filters",
       triageFilters: "Triage filters",
@@ -1666,6 +1664,13 @@ export const translations = {
       fieldInvoiceTotal: "Invoice total (€)",
       helpInvoiceTotal:
         "The total amount on your current bill including all taxes",
+      currentPlanBreakdownLabel: "Current-plan breakdown",
+      currentPlanBreakdownEnabledHint:
+        "These invoice line amounts will be used in the Current Plan comparison.",
+      currentPowerCostLabel: "Current power cost",
+      currentEnergyCostLabel: "Current energy cost",
+      currentElectricityTaxLabel: "Current electricity tax",
+      currentIvaAmountLabel: "Current IVA amount",
       // Load profile section
       loadProfileDescription:
         "Distribution pattern of your electricity consumption throughout the day",
@@ -3666,10 +3671,10 @@ export const translations = {
       userAuthDesc:
         "Configura autenticación de usuarios, requisitos de PIN y control de acceso",
       requirePin: "Requerir PIN para acceder a simulaciones",
-      requirePinDesc: "Los clientes deben introducir un PIN para ver su simulación",
+      requirePinDesc:
+        "Los clientes deben introducir un PIN para ver su simulación",
       pinLength: "Longitud del PIN",
-      pinLengthDesc:
-        "Número de dígitos del PIN generado (recomendado: 4-6)",
+      pinLengthDesc: "Número de dígitos del PIN generado (recomendado: 4-6)",
       clientManagementTitle: "Configuración de gestión de clientes",
       clientManagementDesc:
         "Configura la creación automática de clientes y la gestión de perfiles",
@@ -3689,7 +3694,8 @@ export const translations = {
       masterView: "Vista Máster",
       commercialView: "Vista Comercial",
       realtimeRefresh: "Activar actualización de informes en tiempo real",
-      realtimeRefreshDesc: "Actualizar informes automáticamente al cambiar filtros",
+      realtimeRefreshDesc:
+        "Actualizar informes automáticamente al cambiar filtros",
       resetDefaults: "Restablecer valores predeterminados",
     },
     requestCache: {
@@ -3786,7 +3792,8 @@ export const translations = {
       historyNotReady:
         "El almacenamiento del historial de benchmark aún no está listo. Aplica la migración pendiente para habilitar promedios e historial guardado.",
       loadPdfError: "Error al cargar el PDF de benchmark: {message}",
-      resultNotSaved: "El resultado del benchmark no se guardó en el historial.",
+      resultNotSaved:
+        "El resultado del benchmark no se guardó en el historial.",
       unknownError: "Error desconocido",
       requestFailed: "La solicitud falló",
       complete: "Benchmark completado",
@@ -3845,8 +3852,7 @@ export const translations = {
       title: "Acceso denegado",
       withSection:
         'Tu rol no tiene permiso para acceder a la sección "{section}".',
-      generic:
-        "Tu rol no tiene permiso para acceder a esta sección.",
+      generic: "Tu rol no tiene permiso para acceder a esta sección.",
     },
     internalError: {
       description:
@@ -3872,7 +3878,8 @@ export const translations = {
       loading: "Cargando notificaciones...",
       emptyActive: "No hay notificaciones activas",
       emptyFiltered: "Ninguna notificación coincide con los filtros actuales.",
-      migrationPending: "Las notificaciones estarán disponibles después de aplicar la migración de base de datos.",
+      migrationPending:
+        "Las notificaciones estarán disponibles después de aplicar la migración de base de datos.",
       loadFailed: "No se pudieron cargar las notificaciones",
       filters: "Filtros",
       triageFilters: "Filtros de revisión",
@@ -4057,8 +4064,7 @@ export const translations = {
       labelAnnualSavings: "Ahorro Anual",
       selectedAt: "Seleccionado el {date}",
       allOffersTitle: "Todas las Ofertas Calculadas",
-      readOnlyHint:
-        'Esta es una vista de solo lectura.',
+      readOnlyHint: "Esta es una vista de solo lectura.",
       noDataTitle: "Sin Datos de Simulación",
       noDataMessage:
         "Esta simulación aún no ha sido configurada. Usa el botón 'Abrir y Editar' arriba para añadir datos y calcular ofertas.",
@@ -4474,6 +4480,13 @@ export const translations = {
       fieldInvoiceTotal: "Total factura (€)",
       helpInvoiceTotal:
         "El importe total de tu factura actual con todos los impuestos",
+      currentPlanBreakdownLabel: "Desglose del plan actual",
+      currentPlanBreakdownEnabledHint:
+        "Estos importes de la factura se usarán en la comparación del Plan Actual.",
+      currentPowerCostLabel: "Coste actual de potencia",
+      currentEnergyCostLabel: "Coste actual de energía",
+      currentElectricityTaxLabel: "Impuesto eléctrico actual",
+      currentIvaAmountLabel: "Importe actual de IVA",
       // Load profile section
       loadProfileDescription:
         "Distribución del consumo eléctrico a lo largo del día",
@@ -4706,8 +4719,7 @@ export const translations = {
       groupBusinessSummary:
         "Comportamiento de simulación y parámetros de cálculo.",
       groupPlatform: "Plataforma",
-      groupPlatformSummary:
-        "Runtime, sesiones, caché y entrega de mensajes.",
+      groupPlatformSummary: "Runtime, sesiones, caché y entrega de mensajes.",
       groupAiOcr: "IA y OCR",
       groupAiOcrSummary: "Enrutado LLM, prompts de facturas y costes de uso.",
       groupAccess: "Acceso y experiencia",
@@ -5670,7 +5682,8 @@ export const translations = {
       ofProducts: "de {count} produits",
       noSavings: "AUCUNE ÉCONOMIE",
       costMoreThanCurrent: "Coût plus élevé que l'actuel",
-      empty: "Aucun résultat n'a été obtenu. Vérifiez que les données saisies sont correctes.",
+      empty:
+        "Aucun résultat n'a été obtenu. Vérifiez que les données saisies sont correctes.",
       simulationResult: "RÉSULTAT DE LA SIMULATION",
       accessTariff: "TARIF D'ACCÈS :",
       annualConsumption: "CONSOMMATION ANNUELLE :",
@@ -5695,7 +5708,8 @@ export const translations = {
       metaCreated: "Créé",
       invoiceFile: "Facture",
       shareTitle: "Partager la simulation",
-      readOnlySharedMessage: "Cette simulation a été partagée et est désormais en lecture seule. Aucune modification ne peut être apportée.",
+      readOnlySharedMessage:
+        "Cette simulation a été partagée et est désormais en lecture seule. Aucune modification ne peut être apportée.",
     },
     simulationView: {
       fieldCups: "CUPS",
@@ -5736,9 +5750,11 @@ export const translations = {
       labelAnnualSavings: "Économies annuelles",
       selectedAt: "Sélectionné le {date}",
       allOffersTitle: "Toutes les offres calculées",
-      readOnlyHint: "Ceci est une vue en lecture seule. Pour recalculer ou sélectionner une autre offre, utilisez le bouton \"Ouvrir et modifier\" ci-dessus.",
+      readOnlyHint:
+        'Ceci est une vue en lecture seule. Pour recalculer ou sélectionner une autre offre, utilisez le bouton "Ouvrir et modifier" ci-dessus.',
       noDataTitle: "Aucune donnée de simulation",
-      noDataMessage: "Cette simulation n'a pas encore été configurée. Utilisez le bouton « Ouvrir et modifier » ci-dessus pour ajouter des entrées et calculer les offres.",
+      noDataMessage:
+        "Cette simulation n'a pas encore été configurée. Utilisez le bouton « Ouvrir et modifier » ci-dessus pour ajouter des entrées et calculer les offres.",
       sectionPersonalizadaFijo: "Personnalisé Fixe (personnalisé)",
       personalizadaFijoPotenciaLabel: "Durée de puissance (€/kWjour)",
       personalizadaFijoEnergiaLabel: "Durée énergétique (€/kWh)",
@@ -5752,7 +5768,8 @@ export const translations = {
       subtitle: "Créez une nouvelle simulation pour un client.",
       clientLabel: "Client",
       selectClient: "— Sélectionnez un client —",
-      clientHint: "Les informations client seront pré-remplies dans le formulaire de simulation.",
+      clientHint:
+        "Les informations client seront pré-remplies dans le formulaire de simulation.",
       selectExisting: "Sélectionnez un client existant",
       createNew: "+ Créer un nouveau client",
       quickClientName: "Nom de l'entreprise",
@@ -5770,7 +5787,8 @@ export const translations = {
       creating: "Création...",
       clientCreated: "Client créé et sélectionné.",
       commodityLabel: "Type de marchandise",
-      commodityHint: "Vous pouvez modifier les données de consommation à l'étape suivante.",
+      commodityHint:
+        "Vous pouvez modifier les données de consommation à l'étape suivante.",
       expirationLabel: "Date d'expiration",
       expirationHint: "Par défaut {{days}} jours.",
       electricity: "Électricité",
@@ -5779,21 +5797,24 @@ export const translations = {
       selectClientError: "Veuillez sélectionner un client.",
       clientNameRequired: "Le nom du client est requis.",
       clientFound: "Client trouvé et sélectionné automatiquement.",
-      validateExtractedData: "Veuillez examiner et valider les données de facture extraites avant de les enregistrer.",
+      validateExtractedData:
+        "Veuillez examiner et valider les données de facture extraites avant de les enregistrer.",
       created: "Simulation créée avec succès.",
       submitLabel: "Créer une simulation",
     },
     userFormPage: {
       pinLabel: "PIN",
       newTitle: "Nouvel utilisateur",
-      newSubtitle: "Créez un nouveau compte utilisateur avec des informations d'identification et des autorisations",
+      newSubtitle:
+        "Créez un nouveau compte utilisateur avec des informations d'identification et des autorisations",
       editTitle: "Modifier l'utilisateur",
       editSubtitle: "Mettre à jour les informations utilisateur pour {name}",
       loading: "Chargement des données utilisateur...",
       notFound: "Utilisateur introuvable",
       pinCallout: "Utilisateur créé — PIN généré",
       userLabel: "Utilisateur",
-      createdWithPin: "Utilisateur créé avec succès. Le PIN est affiché ci-dessous.",
+      createdWithPin:
+        "Utilisateur créé avec succès. Le PIN est affiché ci-dessous.",
       created: "Utilisateur créé avec succès",
       submitLabel: "Enregistrer les modifications",
       createSubmitLabel: "Créer un utilisateur",
@@ -5803,13 +5824,17 @@ export const translations = {
       fieldCommercialPhone: "Téléphone commercial",
       fieldCommercialEmail: "Courriel commercial",
       fieldOtherDetails: "Autres détails",
-      fieldOtherDetailsHint: "Notes facultatives et informations supplémentaires",
+      fieldOtherDetailsHint:
+        "Notes facultatives et informations supplémentaires",
       fieldCurrentPassword: "Mot de passe actuel",
-      fieldCurrentPasswordHint: "Requis lors de la modification de votre propre mot de passe",
+      fieldCurrentPasswordHint:
+        "Requis lors de la modification de votre propre mot de passe",
       fieldPassword: "Mot de passe",
       fieldNewPassword: "Nouveau mot de passe",
-      fieldPasswordHintCreate: "Min 12 caractères, majuscules, minuscules, chiffres, caractères spéciaux",
-      fieldPasswordHintEdit: "Laisser vide pour conserver le mot de passe actuel",
+      fieldPasswordHintCreate:
+        "Min 12 caractères, majuscules, minuscules, chiffres, caractères spéciaux",
+      fieldPasswordHintEdit:
+        "Laisser vide pour conserver le mot de passe actuel",
       fieldRole: "Rôle",
       fieldAgency: "Agence",
       selectAgencyPlaceholder: "— sélectionnez —",
@@ -5823,18 +5848,26 @@ export const translations = {
       validMobilePhoneRequired: "Un téléphone portable est requis",
       validCommercialPhoneRequired: "Un téléphone commercial est requis",
       validCommercialEmailRequired: "Un e-mail commercial est requis",
-      validCommercialEmailInvalid: "Veuillez saisir une adresse e-mail commerciale valide",
+      validCommercialEmailInvalid:
+        "Veuillez saisir une adresse e-mail commerciale valide",
       validPasswordRequired: "Le mot de passe est requis",
-      validPasswordMinLength: "Le mot de passe doit contenir au moins 12 caractères",
-      validPasswordLowercase: "Le mot de passe doit contenir au moins une lettre minuscule",
-      validPasswordUppercase: "Le mot de passe doit contenir au moins une lettre majuscule",
+      validPasswordMinLength:
+        "Le mot de passe doit contenir au moins 12 caractères",
+      validPasswordLowercase:
+        "Le mot de passe doit contenir au moins une lettre minuscule",
+      validPasswordUppercase:
+        "Le mot de passe doit contenir au moins une lettre majuscule",
       validPasswordNumber: "Le mot de passe doit contenir au moins un chiffre",
-      validPasswordSpecial: "Le mot de passe doit contenir au moins un caractère spécial (@$!%*?&#)",
-      validCurrentPasswordRequired: "Le mot de passe actuel est requis lors de la modification de votre mot de passe",
+      validPasswordSpecial:
+        "Le mot de passe doit contenir au moins un caractère spécial (@$!%*?&#)",
+      validCurrentPasswordRequired:
+        "Le mot de passe actuel est requis lors de la modification de votre mot de passe",
       validRoleRequired: "Le rôle est requis",
       validAgencyRequired: "L'agence est requise",
-      adminRoleCannotBeChanged: "Le rôle d'administrateur ne peut pas être modifié",
-      sysAdminRoleCannotBeChanged: "Le rôle d'administrateur système ne peut pas être modifié",
+      adminRoleCannotBeChanged:
+        "Le rôle d'administrateur ne peut pas être modifié",
+      sysAdminRoleCannotBeChanged:
+        "Le rôle d'administrateur système ne peut pas être modifié",
       generatePassword: "Générer un mot de passe",
       passwordStrengthWeak: "Faible",
       passwordStrengthFair: "Foire",
@@ -5849,7 +5882,8 @@ export const translations = {
       tabDetails: "Détails",
       tabPreferences: "Préférences",
       tabSessions: "Séances",
-      mustVisitPreferences: "Veuillez consulter l'onglet Préférences avant d'enregistrer.",
+      mustVisitPreferences:
+        "Veuillez consulter l'onglet Préférences avant d'enregistrer.",
     },
     simulationForm: {
       electricityLabel: "ELECTRICITY",
@@ -5866,7 +5900,8 @@ export const translations = {
       btnCalculating: "Calcul…",
       btnCalculate: "Calculer l'offre",
       errorCalculating: "Erreur de calcul",
-      noResultsPrompt: "Entrez les données et appuyez sur \"Calculer l'offre\" pour voir les résultats.",
+      noResultsPrompt:
+        'Entrez les données et appuyez sur "Calculer l\'offre" pour voir les résultats.',
       simTypeSection: "Type de simulation",
       electricity: "Électricité",
       gas: "Gaz",
@@ -5902,7 +5937,8 @@ export const translations = {
       excessPowerLabel: "Surpuissance (€, en option)",
       excessPowerHint: "Frais excédentaires totaux indiqués sur la facture (€)",
       omieLabel: "Prix spot OMIE estimé par période",
-      omieHint: "Affecte les produits INDEXÉS et les calculs Personalizada OMIE+B / Index. Pour les produits Personalizada, saisissez le prix tout compris par kWh que le client paiera (y compris les composants du tarif d'accès). Laissez à 0 pour voir le coût sur marge uniquement.",
+      omieHint:
+        "Affecte les produits INDEXÉS et les calculs Personalizada OMIE+B / Index. Pour les produits Personalizada, saisissez le prix tout compris par kWh que le client paiera (y compris les composants du tarif d'accès). Laissez à 0 pour voir le coût sur marge uniquement.",
       peninsula: "Péninsule",
       peninsulaYBaleares: "Péninsule et Îles Baléares",
       balearics: "Baléares",
@@ -5913,8 +5949,10 @@ export const translations = {
       no: "Non",
       optional: "facultatif",
       sectionClientInfo: "Informations client",
-      helpCups: "Code du point de ravitaillement — trouvé en haut de votre facture d'électricité",
-      cupsLookupHint: "{count} connu CUPS — sélectionnez pour remplir automatiquement les détails du client",
+      helpCups:
+        "Code du point de ravitaillement — trouvé en haut de votre facture d'électricité",
+      cupsLookupHint:
+        "{count} connu CUPS — sélectionnez pour remplir automatiquement les détails du client",
       fieldAnnualConsumption: "Consommation annuelle (kWh)",
       helpAnnualConsumption: "Votre consommation annuelle totale d'électricité",
       clientDetailsSubtitle: "Détails du client",
@@ -5927,18 +5965,22 @@ export const translations = {
       fieldAddress: "Adresse",
       placeholderAddress: "Adresse complète",
       fieldCurrentSupplier: "Fournisseur actuel",
-      helpCurrentSupplier: "L'entreprise qui fournit actuellement votre électricité",
+      helpCurrentSupplier:
+        "L'entreprise qui fournit actuellement votre électricité",
       placeholderCurrentSupplier: "Compagnie d'électricité actuelle",
       sectionInvoiceData: "Données de facture",
-      helpAccessTariff: "Le type de raccordement électrique détermine la structure tarifaire",
+      helpAccessTariff:
+        "Le type de raccordement électrique détermine la structure tarifaire",
       optionLowVoltage15: "2.0TD — Basse tension ≤15 kW",
       optionLowVoltage15Plus: "3.0TD — Basse tension >15 kW",
       optionHighVoltage: "6.1TD — Haute tension",
       helpStartDate: "Premier jour de la période de facturation",
       helpEndDate: "Dernier jour de la période de facturation",
-      powerPeriodsHintInvoice: "kW contractés pour chaque période — trouvés dans la section « Puissance » de votre facture",
+      powerPeriodsHintInvoice:
+        "kW contractés pour chaque période — trouvés dans la section « Puissance » de votre facture",
       excessPowerNote: "Excès de puissance — en option, P1–P3 uniquement",
-      energyPeriodsHintInvoice: "Total kWh consommé par période — indiqué dans la section « Énergie » de votre facture",
+      energyPeriodsHintInvoice:
+        "Total kWh consommé par période — indiqué dans la section « Énergie » de votre facture",
       sectionInvoiceBreakdown: "Détail des factures et frais",
       fieldReactiveHint: "Supplément de puissance réactive",
       fieldMeterRentalHint: "Frais de location du compteur",
@@ -5950,37 +5992,61 @@ export const translations = {
       fieldElecTax: "Taxe d'électricité (%)",
       fieldElecTaxHint: "Taxe d'électricité {tax}",
       fieldInvoiceTotal: "Total de la facture (€)",
-      helpInvoiceTotal: "Le montant total de votre facture actuelle toutes taxes comprises",
-      loadProfileDescription: "Schéma de répartition de votre consommation électrique tout au long de la journée",
+      helpInvoiceTotal:
+        "Le montant total de votre facture actuelle toutes taxes comprises",
+      currentPlanBreakdownLabel: "Détail du plan actuel",
+      currentPlanBreakdownEnabledHint:
+        "Ces montants de facture seront utilisés dans la comparaison du Plan Actuel.",
+      currentPowerCostLabel: "Coût actuel de puissance",
+      currentEnergyCostLabel: "Coût actuel d'énergie",
+      currentElectricityTaxLabel: "Taxe électricité actuelle",
+      currentIvaAmountLabel: "Montant TVA actuel",
+      loadProfileDescription:
+        "Schéma de répartition de votre consommation électrique tout au long de la journée",
       fieldProfile: "Profil",
       sectionIndexedPricing: "Tarification indexée (avancé)",
-      omieDescription: "Pour les produits indexés — prix OMIE estimé par période. Laissez à 0 pour voir uniquement la marge.",
+      omieDescription:
+        "Pour les produits indexés — prix OMIE estimé par période. Laissez à 0 pour voir uniquement la marge.",
       omieSpotLabel: "Prix spot OMIE (€/kWh) par période",
-      omieSpotHint: "Prix spot OMIE estimé — pertinent uniquement pour les produits indexés",
+      omieSpotHint:
+        "Prix spot OMIE estimé — pertinent uniquement pour les produits indexés",
       sectionPersonalizadaIndex: "Index personnalisé (personnalisé)",
-      personalizadaIndexDescription: "Offre indexée personnalisée : remplit la ligne de résultats \"Index personnalisé\". Renseignez la marge énergétique (€/MWh) et éventuellement la marge électrique (€/kW/an) par période. Laissez all à 0 pour omettre cette ligne des résultats.",
-      personalizadaIndexMargenEnergiaLabel: "Marge énergétique (€/MWh) par période",
-      personalizadaIndexMargenEnergiaHint: "Marge énergétique personnalisée ajoutée au prix spot OMIE — €/MWh (Margen Venta Energía)",
-      personalizadaIndexMargenPotenciaLabel: "Marge électrique (€/kW/an) par période",
-      personalizadaIndexMargenPotenciaHint: "Marge de puissance personnalisée — €/kW/an (Margen Venta Potencia)",
+      personalizadaIndexDescription:
+        'Offre indexée personnalisée : remplit la ligne de résultats "Index personnalisé". Renseignez la marge énergétique (€/MWh) et éventuellement la marge électrique (€/kW/an) par période. Laissez all à 0 pour omettre cette ligne des résultats.',
+      personalizadaIndexMargenEnergiaLabel:
+        "Marge énergétique (€/MWh) par période",
+      personalizadaIndexMargenEnergiaHint:
+        "Marge énergétique personnalisée ajoutée au prix spot OMIE — €/MWh (Margen Venta Energía)",
+      personalizadaIndexMargenPotenciaLabel:
+        "Marge électrique (€/kW/an) par période",
+      personalizadaIndexMargenPotenciaHint:
+        "Marge de puissance personnalisée — €/kW/an (Margen Venta Potencia)",
       sectionPersonalizadaOmieB: "Personnalisé OMIE + B (personnalisé)",
-      personalizadaOmieBDescription: "Offre OMIE + B personnalisée — remplit la ligne de résultats « OMIE + B personnalisée ». Remplissez le terme B (€/MWh) par période. Laissez all à 0 pour omettre cette ligne des résultats.",
+      personalizadaOmieBDescription:
+        "Offre OMIE + B personnalisée — remplit la ligne de résultats « OMIE + B personnalisée ». Remplissez le terme B (€/MWh) par période. Laissez all à 0 pour omettre cette ligne des résultats.",
       personalizadaOmieBTerminoBLabel: "Terme B (€/MWh) par période",
-      personalizadaOmieBTerminoBHint: "Terme B personnalisé ajouté en plus du prix spot OMIE — €/MWh (Término Bi Oferta Personalizada)",
-      personalizadaOmieBMargenPotenciaLabel: "Marge électrique (€/kW/an) par période",
-      personalizadaOmieBMargenPotenciaHint: "Marge de puissance personnalisée — €/kW/an (Margen Venta Potencia)",
-      formCompletion: "Remplissage du formulaire : {completed} des {total} sections requises",
+      personalizadaOmieBTerminoBHint:
+        "Terme B personnalisé ajouté en plus du prix spot OMIE — €/MWh (Término Bi Oferta Personalizada)",
+      personalizadaOmieBMargenPotenciaLabel:
+        "Marge électrique (€/kW/an) par période",
+      personalizadaOmieBMargenPotenciaHint:
+        "Marge de puissance personnalisée — €/kW/an (Margen Venta Potencia)",
+      formCompletion:
+        "Remplissage du formulaire : {completed} des {total} sections requises",
       allPeriodsFilled: "Toutes les périodes doivent être remplies",
       sectionGasPersonalizadaIndex: "Indexé personnalisé (personnalisé)",
-      gasPersonalizadaIndexDescription: "Offre de gaz indexée personnalisée — remplit la ligne « Index personnalisé » dans les résultats. Saisissez la marge énergétique (€/kWh) en plus de MIBGAS. Laisser à 0 pour omettre.",
+      gasPersonalizadaIndexDescription:
+        "Offre de gaz indexée personnalisée — remplit la ligne « Index personnalisé » dans les résultats. Saisissez la marge énergétique (€/kWh) en plus de MIBGAS. Laisser à 0 pour omettre.",
       gasPersonalizadaIndexMargenLabel: "Prix final de l'énergie (€/kWh)",
-      gasPersonalizadaIndexMargenHint: "Marge plate ajoutée au prix de référence MIBGAS — €/kWh (Precio Término Energía oferta)",
+      gasPersonalizadaIndexMargenHint:
+        "Marge plate ajoutée au prix de référence MIBGAS — €/kWh (Precio Término Energía oferta)",
       sectionGasContractDetails: "Détails du contrat",
       fieldGasFrom: "De",
       fieldGasTo: "À",
       fieldGasCurrentInvoiceHint: "Montant total TTC",
       sectionGasConsumption: "Consommation de gaz",
-      fieldTotalConsumptionHint: "Total kWh consommé pendant la période de facturation",
+      fieldTotalConsumptionHint:
+        "Total kWh consommé pendant la période de facturation",
       sectionExtraCharges: "Frais supplémentaires",
       fieldMeterRentalMonthlyHint: "Frais mensuels de location de compteur",
       fieldOtherChargesLineHint: "Tout élément de campagne supplémentaire",
@@ -5992,16 +6058,19 @@ export const translations = {
       fieldIVA: "TVA (%)",
       fieldIVAHint: "Taux de TVA (par défaut : 21%)",
       fieldHydrocarbonTax: "Taxe sur les hydrocarbures (€/kWh)",
-      fieldHydrocarbonTaxHint: "Taux de taxe sur les hydrocarbures (par défaut : 0,00234 €/kWh)",
+      fieldHydrocarbonTaxHint:
+        "Taux de taxe sur les hydrocarbures (par défaut : 0,00234 €/kWh)",
       commodityType: "Type de marchandise :",
       electricityAndGasLabel: "Électricité + Gaz",
       tabInputs: "Entrées",
       tabResultsWithCount: "Résultats ({count} produits)",
-      fieldsRequireAttention: "{count} les champs nécessitent une attention particulière – vérifiez les champs en surbrillance ci-dessus",
+      fieldsRequireAttention:
+        "{count} les champs nécessitent une attention particulière – vérifiez les champs en surbrillance ci-dessus",
       fillTestData: "🧪 Remplissez les données de test",
       viewPreviousResults: "Voir les résultats précédents →",
       noResultsYet: "Aucun résultat pour l'instant",
-      noResultsInstructions: "Accédez à Entrées et cliquez sur Calculer l'offre.",
+      noResultsInstructions:
+        "Accédez à Entrées et cliquez sur Calculer l'offre.",
       goToInputs: "← Aller aux entrées",
       testDataFilled: "Données de test remplies avec succès",
       calculationComplete: "Calcul terminé — {count} produits évalués",
@@ -6023,7 +6092,8 @@ export const translations = {
       colAnnualSavings: "Économies annuelles",
       currentInvoice: "Facture actuelle :",
       bestOffer: "Meilleure offre : {product} — permet d'économiser {amount} €",
-      noResults: "Aucun résultat obtenu. Vérifiez que les données saisies sont correctes.",
+      noResults:
+        "Aucun résultat obtenu. Vérifiez que les données saisies sont correctes.",
       calculatedAt: "Calculé :",
       electricity: "Électricité",
       gas: "Gaz",
@@ -6038,9 +6108,11 @@ export const translations = {
       indexed: "Indexé",
       scopeGlobal: "Mondial",
       loading: "Chargement de la configuration de l'analyseur...",
-      validationRequired: "L'étiquette source, la clé de produit et le nom d'affichage sont requis",
+      validationRequired:
+        "L'étiquette source, la clé de produit et le nom d'affichage sont requis",
       saveSuccess: "Excel configuration de l'analyseur enregistrée",
-      saveError: "Échec de l'enregistrement de la configuration de l'analyseur Excel",
+      saveError:
+        "Échec de l'enregistrement de la configuration de l'analyseur Excel",
       enabledCount: "{enabled} sur {total} activé",
       addPricingType: "Ajouter {type}",
       emptyPricingType: "Aucune ligne d'analyseur {type} configurée.",
@@ -6060,7 +6132,8 @@ export const translations = {
     invoiceExtractor: {
       fieldCUPS: "CUPS",
       title: "Extraction des données de facture",
-      description: "Téléchargez une facture d'énergie (PDF ou image) pour extraire automatiquement les données de simulation",
+      description:
+        "Téléchargez une facture d'énergie (PDF ou image) pour extraire automatiquement les données de simulation",
       uploadPrompt: "Sélectionnez le fichier de facture",
       uploadHint: "Pris en charge : PDF, JPG, PNG, WEBP (max 10 Mo).",
       addMoreImages: "Ajouter plus d'images",
@@ -6072,8 +6145,10 @@ export const translations = {
       noFile: "Veuillez d'abord sélectionner un fichier",
       fileTooLarge: "La taille du fichier dépasse la limite de 10 Mo.",
       invalidFormat: "Format de fichier invalide",
-      llmNotConfigured: "LLM n'est pas configuré. Veuillez le configurer dans Paramètres.",
-      llmNotEnabled: "Les fonctionnalités LLM ne sont pas activées. Veuillez les activer dans Paramètres.",
+      llmNotConfigured:
+        "LLM n'est pas configuré. Veuillez le configurer dans Paramètres.",
+      llmNotEnabled:
+        "Les fonctionnalités LLM ne sont pas activées. Veuillez les activer dans Paramètres.",
       extractedDataTitle: "Données extraites",
       fieldClient: "Client",
       fieldCIF: "CIF / TVA",
@@ -6089,24 +6164,31 @@ export const translations = {
       fieldCurrentPrices: "Prix unitaires actuels des fournisseurs",
       fieldPricePower: "Puissance",
       fieldPriceEnergy: "Énergie",
-      ocrDisclaimer: "OCR peut contenir des erreurs. Veuillez valider les données renseignées avant de continuer.",
+      ocrDisclaimer:
+        "OCR peut contenir des erreurs. Veuillez valider les données renseignées avant de continuer.",
       detectingProvider: "Fournisseur de détection...",
       detectedProvider: "Fournisseur détecté :",
       unknownProvider: "Fournisseur absent de la liste :",
       couldNotDetect: "Impossible de déterminer",
-      lowConfidenceHint: "Faible confiance : le modèle n'était pas sûr de ce fournisseur",
+      lowConfidenceHint:
+        "Faible confiance : le modèle n'était pas sûr de ce fournisseur",
       providerCustomPrompt: "Invite personnalisée active",
       addProvider: "Ajouter un fournisseur",
-      addProviderHint: "Accédez à Configurations → Intégrations → Fournisseurs de factures pour ajouter ce fournisseur et configurer une invite personnalisée.",
+      addProviderHint:
+        "Accédez à Configurations → Intégrations → Fournisseurs de factures pour ajouter ce fournisseur et configurer une invite personnalisée.",
       addToList: "Ajouter à la liste",
       selectProvider: "Sélectionner le fournisseur",
       defaultPrompt: "Invite par défaut",
       needsPromptConfig: "Nécessite une configuration rapide",
-      needsPromptConfigHint: "Ce fournisseur a été ajouté automatiquement et son invite personnalisée n'a pas encore été configurée",
-      providerDetectionFailed: "Impossible de détecter le fournisseur — l'invite par défaut sera utilisée",
-      reportIssueTitle: "Les données extraites semblent pour la plupart vides. La facture n'a peut-être pas été lue correctement.",
+      needsPromptConfigHint:
+        "Ce fournisseur a été ajouté automatiquement et son invite personnalisée n'a pas encore été configurée",
+      providerDetectionFailed:
+        "Impossible de détecter le fournisseur — l'invite par défaut sera utilisée",
+      reportIssueTitle:
+        "Les données extraites semblent pour la plupart vides. La facture n'a peut-être pas été lue correctement.",
       reportIssueButton: "Signaler ce problème",
-      reportIssuePlaceholder: "Décrivez le problème (par exemple, mauvais fournisseur détecté, analyse illisible, mauvais champs remplis…)",
+      reportIssuePlaceholder:
+        "Décrivez le problème (par exemple, mauvais fournisseur détecté, analyse illisible, mauvais champs remplis…)",
       reportIssueCancel: "Annuler",
       reportIssueSubmit: "Soumettre le rapport",
       reportIssueSubmitting: "Envoi…",
@@ -6116,7 +6198,8 @@ export const translations = {
       reportIssueFlagButton: "⚑ Signaler un problème",
     },
     login: {
-      brandDesc: "Gestion centralisée de l'offre énergétique pour les agents et les commerciaux.",
+      brandDesc:
+        "Gestion centralisée de l'offre énergétique pour les agents et les commerciaux.",
       title: "Connectez-vous",
       subtitle: "Authentifiez-vous avec vos identifiants internes AXPO.",
       email: "E-mail",
@@ -6129,55 +6212,68 @@ export const translations = {
     },
     forgotPassword: {
       title: "Réinitialisez votre mot de passe",
-      subtitle: "Entrez votre email et nous vous enverrons un lien pour réinitialiser votre mot de passe.",
+      subtitle:
+        "Entrez votre email et nous vous enverrons un lien pour réinitialiser votre mot de passe.",
       emailLabel: "E-mail",
       emailPlaceholder: "votre@email.com",
       emailHint: "Saisissez l'e-mail associé à votre compte.",
       invalidEmail: "Veuillez saisir une adresse e-mail valide.",
       submitting: "Envoi du lien de réinitialisation…",
       submit: "Envoyer le lien de réinitialisation",
-      requestFailed: "Échec de l'envoi du lien de réinitialisation. Veuillez réessayer.",
-      successMessage: "Si un compte existe avec cet e-mail, vous recevrez sous peu un lien de réinitialisation du mot de passe. Veuillez vérifier votre boîte de réception.",
+      requestFailed:
+        "Échec de l'envoi du lien de réinitialisation. Veuillez réessayer.",
+      successMessage:
+        "Si un compte existe avec cet e-mail, vous recevrez sous peu un lien de réinitialisation du mot de passe. Veuillez vérifier votre boîte de réception.",
       backToLogin: "Retour à la connexion",
     },
     resetPassword: {
       title: "Réinitialisez votre mot de passe",
-      subtitle: "Choisissez un nouveau mot de passe sécurisé pour votre compte.",
+      subtitle:
+        "Choisissez un nouveau mot de passe sécurisé pour votre compte.",
       newPassword: "Nouveau mot de passe",
       confirmPassword: "Confirmer le mot de passe",
-      passwordHint: "Min. 12 caractères avec majuscules, minuscules, chiffres et caractères spéciaux.",
+      passwordHint:
+        "Min. 12 caractères avec majuscules, minuscules, chiffres et caractères spéciaux.",
       passwordMismatch: "Les mots de passe ne correspondent pas.",
       submitting: "Réinitialisation du mot de passe…",
       submit: "Réinitialiser le mot de passe et se connecter",
-      invalidToken: "Ce lien de réinitialisation n'est pas valide ou a déjà été utilisé.",
-      expiredToken: "Ce lien de réinitialisation a expiré. Veuillez en demander un nouveau.",
+      invalidToken:
+        "Ce lien de réinitialisation n'est pas valide ou a déjà été utilisé.",
+      expiredToken:
+        "Ce lien de réinitialisation a expiré. Veuillez en demander un nouveau.",
       success: "Réinitialisation du mot de passe réussie. Redirection…",
       missingToken: "Aucun jeton de réinitialisation trouvé dans le lien.",
     },
     setupPassword: {
       title: "Définissez votre mot de passe",
-      subtitle: "Choisissez un mot de passe sécurisé pour activer votre compte.",
+      subtitle:
+        "Choisissez un mot de passe sécurisé pour activer votre compte.",
       newPassword: "Nouveau mot de passe",
       confirmPassword: "Confirmer le mot de passe",
-      passwordHint: "Min. 12 caractères avec majuscules, minuscules, chiffres et caractères spéciaux.",
+      passwordHint:
+        "Min. 12 caractères avec majuscules, minuscules, chiffres et caractères spéciaux.",
       passwordMismatch: "Les mots de passe ne correspondent pas.",
       submitting: "Définition du mot de passe…",
       submit: "Définir le mot de passe et se connecter",
-      invalidToken: "Ce lien de configuration n'est pas valide ou a déjà été utilisé.",
-      expiredToken: "Ce lien de configuration a expiré. Demandez à votre administrateur de le renvoyer.",
+      invalidToken:
+        "Ce lien de configuration n'est pas valide ou a déjà été utilisé.",
+      expiredToken:
+        "Ce lien de configuration a expiré. Demandez à votre administrateur de le renvoyer.",
       success: "Mot de passe défini avec succès. Redirection…",
       missingToken: "Aucun jeton de configuration trouvé dans le lien.",
     },
     magicLink: {
       title: "Connectez-vous avec Magic Link",
-      subtitle: "Entrez votre email et nous vous enverrons un lien de connexion en un clic.",
+      subtitle:
+        "Entrez votre email et nous vous enverrons un lien de connexion en un clic.",
       emailLabel: "E-mail",
       emailPlaceholder: "votre@email.com",
       submitting: "Envoi du lien magique…",
       submit: "Envoyer un lien magique",
       requestFailed: "Échec de l'envoi du lien magique. Veuillez réessayer.",
       successTitle: "Connexion réussie",
-      successDesc: "Un lien magique a été envoyé sur votre email. Il expire dans quelques minutes.",
+      successDesc:
+        "Un lien magique a été envoyé sur votre email. Il expire dans quelques minutes.",
       successSubtitle: "Vous êtes maintenant connecté. Redirection…",
       backToPassword: "Connectez-vous plutôt avec un mot de passe",
       verifyingTitle: "Vérification de votre lien magique…",
@@ -6193,11 +6289,13 @@ export const translations = {
     otp: {
       title: "Authentification à deux facteurs",
       subtitle: "Entrez le code de vérification envoyé à votre adresse e-mail",
-      description: "Un code à 6 chiffres a été envoyé à votre adresse e-mail. Saisissez-le ci-dessous pour terminer la connexion.",
+      description:
+        "Un code à 6 chiffres a été envoyé à votre adresse e-mail. Saisissez-le ci-dessous pour terminer la connexion.",
       codeLabel: "Code de vérification",
       verify: "Vérifier le code",
       verifying: "Vérification…",
-      verifyFailed: "Code de vérification invalide ou expiré. Veuillez réessayer.",
+      verifyFailed:
+        "Code de vérification invalide ou expiré. Veuillez réessayer.",
       backToLogin: "Retour à la connexion",
       attemptsRemaining: "{{n}} tentative(s) restante(s)",
       noAttemptsLeft: "Aucune tentative restante. Demandez un nouveau code.",
@@ -6207,21 +6305,32 @@ export const translations = {
     },
     maintenance: {
       title: "En panne pour maintenance",
-      subtitle: "Nous effectuons une maintenance programmée pour améliorer votre expérience. Nous reviendrons sous peu.",
+      subtitle:
+        "Nous effectuons une maintenance programmée pour améliorer votre expérience. Nous reviendrons sous peu.",
       expectedOnline: "Retour en ligne attendu",
-      footerNote: "Si vous avez besoin d'une assistance immédiate, veuillez contacter votre responsable de compte.",
+      footerNote:
+        "Si vous avez besoin d'une assistance immédiate, veuillez contacter votre responsable de compte.",
       brand: "AXPO Simulateur",
     },
     sectionDescriptions: {
-      simulations: "Créez, mettez à jour, partagez et archivez des enregistrements de simulation avec contrôle d'expiration.",
-      users: "Gérez les identités des utilisateurs, les rôles et la rotation PIN dans des limites strictes du RBAC.",
-      agencies: "Activation de l'agence de contrôle et périmètre d'appropriation pour les équipes opérationnelles.",
-      clients: "Gérer les comptes clients liés aux agences pour les missions de simulation.",
-      baseValues: "Gérez les ensembles de valeurs de base, les charges utiles d'éléments et les versions actives utilisées dans les calculs de simulation.",
-      auditLogs: "Examinez les événements immuables et accédez aux traces pour la surveillance de la gouvernance et de la conformité.",
-      emailLogs: "Suivez tous les e-mails envoyés par le système, y compris leur statut, leurs destinataires et leur contenu.",
-      analytics: "Suivez les performances de simulation et accédez aux métriques pour les décisions opérationnelles.",
-      configurations: "Gérez les paramètres système, les modèles PDF, les modèles d'e-mail et d'autres définitions configurables.",
+      simulations:
+        "Créez, mettez à jour, partagez et archivez des enregistrements de simulation avec contrôle d'expiration.",
+      users:
+        "Gérez les identités des utilisateurs, les rôles et la rotation PIN dans des limites strictes du RBAC.",
+      agencies:
+        "Activation de l'agence de contrôle et périmètre d'appropriation pour les équipes opérationnelles.",
+      clients:
+        "Gérer les comptes clients liés aux agences pour les missions de simulation.",
+      baseValues:
+        "Gérez les ensembles de valeurs de base, les charges utiles d'éléments et les versions actives utilisées dans les calculs de simulation.",
+      auditLogs:
+        "Examinez les événements immuables et accédez aux traces pour la surveillance de la gouvernance et de la conformité.",
+      emailLogs:
+        "Suivez tous les e-mails envoyés par le système, y compris leur statut, leurs destinataires et leur contenu.",
+      analytics:
+        "Suivez les performances de simulation et accédez aux métriques pour les décisions opérationnelles.",
+      configurations:
+        "Gérez les paramètres système, les modèles PDF, les modèles d'e-mail et d'autres définitions configurables.",
     },
     actions: {
       refresh: "Actualiser",
@@ -6307,23 +6416,30 @@ export const translations = {
       to: "à",
     },
     simulationsModule: {
-      subtitle: "Gérez toutes les simulations, partagez-les et surveillez les accès.",
+      subtitle:
+        "Gérez toutes les simulations, partagez-les et surveillez les accès.",
       editPayloadTitle: "Modifier la charge utile de simulation",
       payloadJson: "Charge utile JSON",
       shareTitle: "Partager la simulation",
       publicUrl: "Public URL",
       notShared: "Cette simulation n'a pas encore été partagée.",
       archiveTitle: "Simulation d'archives",
-      archiveConfirm: "Simulation d'archives {id} ? Il sera masqué mais pas supprimé.",
+      archiveConfirm:
+        "Simulation d'archives {id} ? Il sera masqué mais pas supprimé.",
       deleteTitle: "Supprimer la simulation",
-      deleteConfirm: "Êtes-vous sûr de vouloir supprimer la simulation {id} ? Cette action supprimera la simulation.",
-      deletePermanentConfirm: "Êtes-vous sûr de vouloir SUPPRIMER définitivement la simulation {id} ? Cette action supprimera la simulation.",
+      deleteConfirm:
+        "Êtes-vous sûr de vouloir supprimer la simulation {id} ? Cette action supprimera la simulation.",
+      deletePermanentConfirm:
+        "Êtes-vous sûr de vouloir SUPPRIMER définitivement la simulation {id} ? Cette action supprimera la simulation.",
       bulkDeleteTitle: "Supprimer les simulations",
-      bulkDeleteConfirm: "Êtes-vous sûr de vouloir supprimer la ou les simulations {count} ? Cette action supprimera les simulations.",
-      bulkDeletePermanentConfirm: "Êtes-vous sûr de vouloir SUPPRIMER définitivement la ou les simulation(s) {count} ? Les simulations archivées n’apparaîtront plus jamais dans les réponses.",
+      bulkDeleteConfirm:
+        "Êtes-vous sûr de vouloir supprimer la ou les simulations {count} ? Cette action supprimera les simulations.",
+      bulkDeletePermanentConfirm:
+        "Êtes-vous sûr de vouloir SUPPRIMER définitivement la ou les simulation(s) {count} ? Les simulations archivées n’apparaîtront plus jamais dans les réponses.",
       bulkDeleteConfirmLabel: "Supprimer tout",
       bulkArchiveTitle: "Simulations d'archives",
-      bulkArchiveConfirm: "Êtes-vous sûr de vouloir archiver la ou les simulation(s) {count} ? Ils seront masqués mais pas supprimés.",
+      bulkArchiveConfirm:
+        "Êtes-vous sûr de vouloir archiver la ou les simulation(s) {count} ? Ils seront masqués mais pas supprimés.",
       bulkArchiveConfirmLabel: "Archiver tout",
       expiresLabel: "Expire : {date}",
       clientViewed: "Consulté",
@@ -6337,7 +6453,8 @@ export const translations = {
       editUser: "Modifier l'utilisateur",
       fullName: "Nom complet",
       currentPassword: "Mot de passe actuel",
-      currentPasswordHint: "Requis lors de la modification de votre propre mot de passe",
+      currentPasswordHint:
+        "Requis lors de la modification de votre propre mot de passe",
       newPassword: "Nouveau mot de passe (facultatif)",
       newPasswordHint: "Laisser vide pour conserver le mot de passe actuel",
       editUser_tooltip: "Modifier l'utilisateur",
@@ -6347,22 +6464,30 @@ export const translations = {
       toggleTitle: "Basculer le statut de l'utilisateur",
       toggleConfirm: "Êtes-vous sûr de vouloir {action} {name} ?",
       rotateTitle: "Rotation de l'utilisateur PIN",
-      rotateConfirm: "Générer un nouveau PIN pour {name} ? L'ancien PIN cessera immédiatement de fonctionner.",
+      rotateConfirm:
+        "Générer un nouveau PIN pour {name} ? L'ancien PIN cessera immédiatement de fonctionner.",
       deleteTitle: "Supprimer l'utilisateur",
-      deleteConfirm: "Êtes-vous sûr de vouloir supprimer {name} ? Cette action supprimera l'utilisateur.",
-      deletePermanentConfirm: "Êtes-vous sûr de vouloir SUPPRIMER définitivement {name} ? Cette action supprimera définitivement l'utilisateur.",
+      deleteConfirm:
+        "Êtes-vous sûr de vouloir supprimer {name} ? Cette action supprimera l'utilisateur.",
+      deletePermanentConfirm:
+        "Êtes-vous sûr de vouloir SUPPRIMER définitivement {name} ? Cette action supprimera définitivement l'utilisateur.",
       bulkDeleteTitle: "Supprimer des utilisateurs",
-      bulkDeleteConfirm: "Supprimer {count} utilisateur sélectionné{count, plural, one {} autre {s}} ? Cette action désactivera les utilisateurs.",
-      bulkDeletePermanentConfirm: "SUPPRIMER définitivement {count} utilisateur sélectionné{count, plural, one {} autre {s}} ? Les utilisateurs archivés n'apparaîtront plus jamais dans les réponses.",
+      bulkDeleteConfirm:
+        "Supprimer {count} utilisateur sélectionné{count, plural, one {} autre {s}} ? Cette action désactivera les utilisateurs.",
+      bulkDeletePermanentConfirm:
+        "SUPPRIMER définitivement {count} utilisateur sélectionné{count, plural, one {} autre {s}} ? Les utilisateurs archivés n'apparaîtront plus jamais dans les réponses.",
     },
     userSessions: {
       title: "Séances",
       subtitle: "Sessions de connexion actives et historiques",
       openSessionsPage: "Séances",
       maxAllowedActiveSessions: "Nombre maximum de sessions actives autorisées",
-      maxAllowedActiveSessionsHint: "Limite configurée : {count}. En cas de dépassement, la session la plus ancienne est automatiquement révoquée lors de la connexion.",
-      maxAllowedActiveSessionsCreateHint: "Cet utilisateur peut être créé avec jusqu'à {count} sessions actives.",
-      historyAvailableAfterFirstLogin: "L'historique de la session apparaîtra après la première connexion de l'utilisateur.",
+      maxAllowedActiveSessionsHint:
+        "Limite configurée : {count}. En cas de dépassement, la session la plus ancienne est automatiquement révoquée lors de la connexion.",
+      maxAllowedActiveSessionsCreateHint:
+        "Cet utilisateur peut être créé avec jusqu'à {count} sessions actives.",
+      historyAvailableAfterFirstLogin:
+        "L'historique de la session apparaîtra après la première connexion de l'utilisateur.",
       activeOnly: "Sessions actives uniquement",
       activeUsersCount: "{count} utilisateur(s) connecté(s)",
       activeSessions: "Sessions actives",
@@ -6371,7 +6496,8 @@ export const translations = {
       expandSessions: "Afficher les sessions passées",
       collapseSessions: "Masquer les sessions passées",
       processing: "Traitement...",
-      logoutAllUserSessions: "Déconnectez-vous de toutes les sessions utilisateur",
+      logoutAllUserSessions:
+        "Déconnectez-vous de toutes les sessions utilisateur",
       emergencyLogoutAllUsers: "Déconnexion d'urgence de tous les utilisateurs",
       login: "Connexion",
       lastActivity: "Dernière activité",
@@ -6393,8 +6519,10 @@ export const translations = {
       failedToLoad: "Échec du chargement des sessions",
       failedToTerminateSession: "Échec de la fin de la session",
       terminatedActiveSessions: "Sessions actives {count} terminées",
-      failedToTerminateUserSessions: "Impossible de terminer les sessions utilisateur",
-      emergencyLogoutCompleted: "Déconnexion d'urgence terminée ({count} sessions)",
+      failedToTerminateUserSessions:
+        "Impossible de terminer les sessions utilisateur",
+      emergencyLogoutCompleted:
+        "Déconnexion d'urgence terminée ({count} sessions)",
       failedEmergencyLogout: "Échec de la déconnexion d'urgence",
     },
     agenciesModule: {
@@ -6406,11 +6534,15 @@ export const translations = {
       toggleTitle: "agence",
       toggleConfirm: "Êtes-vous sûr de vouloir {action} {name} ?",
       deleteTitle: "Supprimer l'agence",
-      deleteConfirm: "Êtes-vous sûr de vouloir supprimer {name} ? Cette action désactivera l'agence.",
-      deletePermanentConfirm: "Êtes-vous sûr de vouloir SUPPRIMER définitivement {name} ? Cette action supprimera définitivement l’agence.",
+      deleteConfirm:
+        "Êtes-vous sûr de vouloir supprimer {name} ? Cette action désactivera l'agence.",
+      deletePermanentConfirm:
+        "Êtes-vous sûr de vouloir SUPPRIMER définitivement {name} ? Cette action supprimera définitivement l’agence.",
       bulkDeleteTitle: "Supprimer les agences",
-      bulkDeleteConfirm: "Supprimer {count} agence sélectionnée{count, plural, one {y} autre {ies}} ? Cette action désactivera les agences.",
-      bulkDeletePermanentConfirm: "SUPPRIMER définitivement {count} agence sélectionnée{count, plural, one {y} autre {ies}} ? Les agences archivées n'apparaîtront plus jamais dans les réponses.",
+      bulkDeleteConfirm:
+        "Supprimer {count} agence sélectionnée{count, plural, one {y} autre {ies}} ? Cette action désactivera les agences.",
+      bulkDeletePermanentConfirm:
+        "SUPPRIMER définitivement {count} agence sélectionnée{count, plural, one {y} autre {ies}} ? Les agences archivées n'apparaîtront plus jamais dans les réponses.",
     },
     clientsModule: {
       subtitle: "Gérer les clients de l'entreprise liés aux simulations.",
@@ -6421,14 +6553,19 @@ export const translations = {
       deleteClient_tooltip: "Supprimer le client",
       toggleConfirm: "Êtes-vous sûr de vouloir {action} {name} ?",
       deleteTitle: "Supprimer le client",
-      deleteConfirm: "Êtes-vous sûr de vouloir supprimer {name} ? Cette action supprimera le client.",
-      deletePermanentConfirm: "Êtes-vous sûr de vouloir SUPPRIMER définitivement {name} ? Cette action supprimera le client.",
+      deleteConfirm:
+        "Êtes-vous sûr de vouloir supprimer {name} ? Cette action supprimera le client.",
+      deletePermanentConfirm:
+        "Êtes-vous sûr de vouloir SUPPRIMER définitivement {name} ? Cette action supprimera le client.",
       bulkDeleteTitle: "Supprimer les clients",
-      bulkDeleteConfirm: "Supprimer {count} client(s) sélectionné(s) ? Cette action supprimera les clients.",
-      bulkDeletePermanentConfirm: "SUPPRIMER définitivement {count} client(s) sélectionné(s) ? Les clients archivés n'apparaîtront plus jamais dans les réponses.",
+      bulkDeleteConfirm:
+        "Supprimer {count} client(s) sélectionné(s) ? Cette action supprimera les clients.",
+      bulkDeletePermanentConfirm:
+        "SUPPRIMER définitivement {count} client(s) sélectionné(s) ? Les clients archivés n'apparaîtront plus jamais dans les réponses.",
     },
     auditLogsModule: {
-      subtitle: "Suivez tous les événements système et les actions des utilisateurs.",
+      subtitle:
+        "Suivez tous les événements système et les actions des utilisateurs.",
       exportCsv: "Exporter CSV",
       noEntries: "Aucune entrée du journal d'audit trouvée.",
       allEvents: "Tous les événements",
@@ -6542,7 +6679,8 @@ export const translations = {
       fixed: "Corrigé",
       saveResolution: "Enregistrer la résolution",
       dismissIssue: "Ignorer le problème",
-      feedbackPlaceholder: "par ex. alquiler n'est pas renvoyé, precioEnergiaP1 est toujours 0...",
+      feedbackPlaceholder:
+        "par ex. alquiler n'est pas renvoyé, precioEnergiaP1 est toujours 0...",
       rawTextReturned: "Texte brut renvoyé par le modèle",
       noResponseText: "Aucun texte de réponse enregistré pour cette demande.",
       fullPrompt: "Invite complète envoyée au LLM",
@@ -6554,7 +6692,8 @@ export const translations = {
       reImproveFailed: "Échec de la réamélioration",
       reImproving: "Ré-amélioration et tests…",
       reImproveSubmit: "Ré-améliorer avec ces commentaires",
-      feedbackDescription: "Décrivez ce qui ne va toujours pas avec l'invite ci-dessus. L'IA itérera sur l'invite améliorée en utilisant vos commentaires et les fichiers de facture originaux.",
+      feedbackDescription:
+        "Décrivez ce qui ne va toujours pas avec l'invite ci-dessus. L'IA itérera sur l'invite améliorée en utilisant vos commentaires et les fichiers de facture originaux.",
       noTestResults: "Aucun résultat de test disponible pour l'instant.",
       field: "Champ",
       oldPromptResult: "Ancien résultat de l'invite",
@@ -6564,19 +6703,24 @@ export const translations = {
       noEmailLogs: "Aucun journal de courrier électronique trouvé",
       noCronLogs: "Aucune exécution de tâche cron trouvée",
       noOcrLogs: "Aucune demande OCR trouvée",
-      loadAppErrorsFailed: "Échec du chargement des journaux d'erreurs d'application",
-      loadEmailLogsFailed: "Échec du chargement des journaux de courrier électronique",
+      loadAppErrorsFailed:
+        "Échec du chargement des journaux d'erreurs d'application",
+      loadEmailLogsFailed:
+        "Échec du chargement des journaux de courrier électronique",
       loadEmailDetailsFailed: "Échec du chargement des détails de l'e-mail",
       loadCronLogsFailed: "Échec du chargement des journaux cron",
       loadOcrLogsFailed: "Échec du chargement des journaux OCR",
       deleteAppError: "Supprimer l'erreur d'application",
-      deleteAppErrorConfirm: "Supprimer cette erreur d'application ? Il sera masqué dans les journaux mais conservé dans la base de données.",
+      deleteAppErrorConfirm:
+        "Supprimer cette erreur d'application ? Il sera masqué dans les journaux mais conservé dans la base de données.",
       appErrorDeleted: "Erreur d'application supprimée",
       deleteAppErrorFailed: "Échec de la suppression de l'erreur d'application",
       deleteAppErrors: "Supprimer les erreurs d'application",
-      deleteAppErrorsConfirm: "Supprimer les erreurs d'application {count} ? Ils seront masqués des journaux mais conservés dans la base de données.",
+      deleteAppErrorsConfirm:
+        "Supprimer les erreurs d'application {count} ? Ils seront masqués des journaux mais conservés dans la base de données.",
       appErrorsDeleted: "{count} erreurs d'application supprimées",
-      deleteAppErrorsFailed: "Échec de la suppression des erreurs d'application",
+      deleteAppErrorsFailed:
+        "Échec de la suppression des erreurs d'application",
       success: "Succès",
       failed: "Échec",
       sent: "Envoyé",
@@ -6609,10 +6753,12 @@ export const translations = {
     },
     analyticsModule: {
       titleAdmin: "Plateforme d'analyse",
-      subtitleAdmin: "Aperçu de toutes les agences et performances de la plateforme",
+      subtitleAdmin:
+        "Aperçu de toutes les agences et performances de la plateforme",
       titleAgent: "Analyses de l'agence",
       subtitleAgent: "Performance de votre agence et activité de votre équipe",
-      subtitle: "📊 Mesures de simulation en temps réel et informations sur les performances",
+      subtitle:
+        "📊 Mesures de simulation en temps réel et informations sur les performances",
       noData: "Aucune donnée analytique disponible.",
       noSimTrend: "Aucune simulation créée dans cette période",
       noAccessTrend: "Aucune tentative d'accès pendant cette période",
@@ -6681,7 +6827,8 @@ export const translations = {
       accessFailed: "Échec",
       accessSuccessRate: "Taux de réussite",
       tableAgencyPerformance: "Classement des performances de l'agence",
-      tableAgencyPerformanceSub: "Quelles agences génèrent des simulations et incitent les clients à les ouvrir",
+      tableAgencyPerformanceSub:
+        "Quelles agences génèrent des simulations et incitent les clients à les ouvrir",
       colAgencyName: "Nom de l'agence",
       colCreated: "Créé",
       colSent: "Envoyé",
@@ -6690,7 +6837,8 @@ export const translations = {
       emptyAgencyData: "Aucune donnée d'agence disponible",
       pillAgencies: "{count} agences",
       tableCommercialPerformance: "Performances Commerciales",
-      tableCommercialPerformanceSub: "Répartition des activités des publicités de votre agence",
+      tableCommercialPerformanceSub:
+        "Répartition des activités des publicités de votre agence",
       colCommercialName: "Nom commercial",
       emptyCommercialData: "Aucune donnée commerciale disponible",
       pillCommercials: "{count} publicités",
@@ -6707,7 +6855,8 @@ export const translations = {
       alertLowOpenRate: "⚠️ Faible taux d'ouverture",
       alertLowOpenRateAction: "Action requise",
       alertLowOpenRateGood: "Ça a l'air bien",
-      alertLowOpenRateMsgBad: "De nombreuses simulations envoyées ne sont pas ouvertes",
+      alertLowOpenRateMsgBad:
+        "De nombreuses simulations envoyées ne sont pas ouvertes",
       alertLowOpenRateMsgGood: "Le taux d'ouverture est sain",
       alertSentRate: "🎯 Taux envoyé",
       alertSentRateMsgLow: "De nombreux brouillons ne sont pas envoyés",
@@ -6715,24 +6864,28 @@ export const translations = {
       alertPendingOpens: "📊 Ouvertures en attente",
       alertPendingOpensSub: "Envoyé mais pas encore ouvert",
       followUpsRequired: "Suivis requis",
-      followUpsRequiredSub: "Simulations envoyées mais pas encore ouvertes - action nécessaire",
+      followUpsRequiredSub:
+        "Simulations envoyées mais pas encore ouvertes - action nécessaire",
       followUpsTotalPending: "Total en attente",
       followUpsTotalPendingSub: "Besoin d'un suivi",
       followUpsRecentlySent: "Envoyé récemment",
       followUpsRecentlySentSub: "7 derniers jours",
       followUpsDeadLeads: "Pistes probablement mortes",
       followUpsDeadLeadsSub: "> 30 jours",
-      followUpsActionItems: "💡 Actions : Appeler les clients avec des ouvertures en attente • Renvoyer les simulations aux anciens prospects • Coacher les publicités avec de faibles taux d'ouverture",
+      followUpsActionItems:
+        "💡 Actions : Appeler les clients avec des ouvertures en attente • Renvoyer les simulations aux anciens prospects • Coacher les publicités avec de faibles taux d'ouverture",
       allAgencies: "Toutes les agences",
       sectionSimContent: "Contenu de simulation",
-      sectionSimContentSub: "Type d'énergie, répartition des tarifs et taille moyenne des transactions dans toutes les simulations",
+      sectionSimContentSub:
+        "Type d'énergie, répartition des tarifs et taille moyenne des transactions dans toutes les simulations",
       chartEnergyType: "Électricité vs Gaz",
       chartEnergyTypeSub: "Simulations par type d'énergie",
       chartTariffBreakdown: "Répartition des tarifs",
       chartTariffBreakdownSub: "Tarifs d'accès les plus simulés",
       kpiAvgConsumption: "Moy. Consommation annuelle",
       kpiAvgConsumptionSub: "Moyenne sur toutes les simulations",
-      kpiAvgConsumptionContext: "Taille moyenne des transactions (consumoAnual)",
+      kpiAvgConsumptionContext:
+        "Taille moyenne des transactions (consumoAnual)",
       labelElectricity: "Électricité",
       labelGas: "Gaz",
       labelSimulations: "Simulations",
@@ -6742,7 +6895,8 @@ export const translations = {
       funnelSentEmail: "Envoyé (e-mail)",
     },
     baseValuesModule: {
-      subtitle: "Configurer les valeurs de référence économiques utilisées dans les simulations.",
+      subtitle:
+        "Configurer les valeurs de référence économiques utilisées dans les simulations.",
       newSet: "Nouvel ensemble de valeurs de base",
       editSet_tooltip: "Modifier l'ensemble de valeurs de base",
       download_tooltip: "Télécharger le fichier source Excel",
@@ -6750,13 +6904,16 @@ export const translations = {
       activateTitle: "Activer le jeu de valeurs de base",
       archiveTitle: "Ensemble de valeurs de base d'archive",
       restoreTitle: "Restaurer l'ensemble de valeurs de base",
-      activateConfirm: "Activer \"{name}\" ? Il remplacera l'ensemble actif actuel pour sa portée.",
-      archiveConfirm: "Archiver \"{name}\" ? Il sera masqué des simulations.",
-      restoreConfirm: "Restaurer \"{name}\" ?",
+      activateConfirm:
+        'Activer "{name}" ? Il remplacera l\'ensemble actif actuel pour sa portée.',
+      archiveConfirm: 'Archiver "{name}" ? Il sera masqué des simulations.',
+      restoreConfirm: 'Restaurer "{name}" ?',
       bulkArchiveTitle: "Archiver les ensembles de valeurs de base",
-      bulkArchiveConfirm: "Archiver {count} brouillon sélectionné, ensemble(s) de valeurs de base hors production ? Les ensembles actifs et de production ne peuvent pas être archivés.",
+      bulkArchiveConfirm:
+        "Archiver {count} brouillon sélectionné, ensemble(s) de valeurs de base hors production ? Les ensembles actifs et de production ne peuvent pas être archivés.",
       bulkArchiveLabel: "Archive sélectionnée",
-      archiveNotAllowed: "Seuls les brouillons et les ensembles de valeurs de base hors production peuvent être archivés.",
+      archiveNotAllowed:
+        "Seuls les brouillons et les ensembles de valeurs de base hors production peuvent être archivés.",
       colName: "Nom",
       colScope: "Portée",
       colVersion: "Version",
@@ -6774,19 +6931,24 @@ export const translations = {
       statusActive: "Actif",
       statusDraft: "Brouillon",
       uploadTitle: "Téléchargez les valeurs de base Excel",
-      uploadSubtitle: "Importez un classeur en tant que nouvelle version brouillon.",
+      uploadSubtitle:
+        "Importez un classeur en tant que nouvelle version brouillon.",
       uploadVersionScope: "Portée de la version",
-      uploadNeverReplace: "Les téléchargements créent toujours une nouvelle version brouillon. La dernière version n'est jamais remplacée.",
+      uploadNeverReplace:
+        "Les téléchargements créent toujours une nouvelle version brouillon. La dernière version n'est jamais remplacée.",
       uploadAs: "Télécharger en tant que {scope}",
       activate_tooltip: "Activer",
       archive_tooltip: "Archives",
       restore_tooltip: "Restaurer",
-      production_tooltip_on: "Version de production active (ne peut pas être supprimée)",
-      production_tooltip_off: "Définir comme version de production (définira les autres comme brouillon)",
+      production_tooltip_on:
+        "Version de production active (ne peut pas être supprimée)",
+      production_tooltip_off:
+        "Définir comme version de production (définira les autres comme brouillon)",
       newTitle: "Nouvel ensemble de valeurs de base",
-      newSubtitle: "Créez un nouvel ensemble de valeurs de référence économiques pour les simulations.",
+      newSubtitle:
+        "Créez un nouvel ensemble de valeurs de référence économiques pour les simulations.",
       editTitle: "Modifier l'ensemble de valeurs de base",
-      editSubtitle: "Mise à jour \"{name}\" — {scope} · v{version}",
+      editSubtitle: 'Mise à jour "{name}" — {scope} · v{version}',
       scopeAgencyLabel: "Périmètre de l'agence",
       scopeGlobalLabel: "Périmètre mondial",
       loading: "Chargement de l'ensemble de valeurs de base...",
@@ -6804,11 +6966,13 @@ export const translations = {
       updated: "Ensemble de valeurs de base mis à jour.",
       notFound: "Ensemble de valeurs de base introuvable.",
       createFailed: "Impossible de créer un ensemble de valeurs de base.",
-      updateFailed: "Impossible de mettre à jour l'ensemble de valeurs de base.",
+      updateFailed:
+        "Impossible de mettre à jour l'ensemble de valeurs de base.",
       validNameRequired: "Le nom est requis.",
       validAgencyRequired: "L'agence est requise pour la portée de l'agence.",
       validRowKeyRequired: "Ligne {row} : la clé est requise.",
-      validRowValueRequired: "Ligne {row} : une valeur numérique ou textuelle est requise.",
+      validRowValueRequired:
+        "Ligne {row} : une valeur numérique ou textuelle est requise.",
     },
     common: {
       welcome: "Bienvenue",
@@ -6868,34 +7032,45 @@ export const translations = {
       saveSuccess: "Paramètres système enregistrés avec succès",
       saveError: "Échec de l'enregistrement des paramètres système",
       simulationTitle: "Paramètres de simulation",
-      simulationDesc: "Configurer le comportement de simulation, l'expiration et les paramètres de partage",
+      simulationDesc:
+        "Configurer le comportement de simulation, l'expiration et les paramètres de partage",
       defaultShareText: "Modèle de texte de partage par défaut",
-      defaultShareTextDesc: "Modèle de texte utilisé lors du partage de simulations. Utilisez {pin} pour l'insertion dynamique de PIN.",
+      defaultShareTextDesc:
+        "Modèle de texte utilisé lors du partage de simulations. Utilisez {pin} pour l'insertion dynamique de PIN.",
       defaultShareTextPlaceholder: "Saisissez le modèle de texte de partage...",
       enablePixelTracking: "Activer le suivi des pixels",
-      enablePixelTrackingDesc: "Suivez le moment où les clients consultent leurs simulations (suivi de type newsletter)",
+      enablePixelTrackingDesc:
+        "Suivez le moment où les clients consultent leurs simulations (suivi de type newsletter)",
       userAuthTitle: "Paramètres utilisateur et d'authentification",
-      userAuthDesc: "Configurer l'authentification des utilisateurs, les exigences PIN et le contrôle d'accès",
+      userAuthDesc:
+        "Configurer l'authentification des utilisateurs, les exigences PIN et le contrôle d'accès",
       requirePin: "Nécessite PIN pour l'accès à la simulation",
-      requirePinDesc: "Les clients doivent saisir un PIN pour visualiser leur simulation",
+      requirePinDesc:
+        "Les clients doivent saisir un PIN pour visualiser leur simulation",
       pinLength: "PIN Longueur",
       pinLengthDesc: "Nombre de chiffres dans le PIN généré (recommandé : 4-6)",
       clientManagementTitle: "Paramètres de gestion des clients",
-      clientManagementDesc: "Configurer la création automatique de clients et la gestion des profils",
-      autoCreateClient: "Créer automatiquement un client sur une nouvelle simulation",
+      clientManagementDesc:
+        "Configurer la création automatique de clients et la gestion des profils",
+      autoCreateClient:
+        "Créer automatiquement un client sur une nouvelle simulation",
       moduleVisibilityTitle: "Visibilité des modules",
-      moduleVisibilityDesc: "Activer ou désactiver des modules spécifiques dans l'application",
+      moduleVisibilityDesc:
+        "Activer ou désactiver des modules spécifiques dans l'application",
       enableAnalytics: "Activer le module d'analyse",
       enableAuditLogs: "Activer le module de journaux d'audit",
       dashboardReportsTitle: "Tableau de bord et rapports",
-      dashboardReportsDesc: "Configurer les vues du tableau de bord par défaut et le comportement des rapports",
+      dashboardReportsDesc:
+        "Configurer les vues du tableau de bord par défaut et le comportement des rapports",
       defaultDashboardView: "Vue du tableau de bord par défaut",
-      defaultDashboardViewDesc: "Vue par défaut pour les utilisateurs lorsqu'ils accèdent au tableau de bord",
+      defaultDashboardViewDesc:
+        "Vue par défaut pour les utilisateurs lorsqu'ils accèdent au tableau de bord",
       adminView: "Vue administrateur",
       masterView: "Vue principale",
       commercialView: "Vue commerciale",
       realtimeRefresh: "Activer l'actualisation du rapport en temps réel",
-      realtimeRefreshDesc: "Actualiser automatiquement les rapports à mesure que les filtres changent",
+      realtimeRefreshDesc:
+        "Actualiser automatiquement les rapports à mesure que les filtres changent",
       resetDefaults: "Réinitialiser les paramètres par défaut",
     },
     requestCache: {
@@ -6904,8 +7079,10 @@ export const translations = {
       saveError: "Échec de l'enregistrement de la configuration du cache",
       loading: "Chargement de la configuration du cache...",
       title: "Cache de requête",
-      description: "Configurez la fraîcheur des requêtes TanStack par module. La récupération automatique utilise la durée du cache comme intervalle d'actualisation.",
-      moduleDescription: "Les données de requête restent à jour pendant la durée configurée.",
+      description:
+        "Configurez la fraîcheur des requêtes TanStack par module. La récupération automatique utilise la durée du cache comme intervalle d'actualisation.",
+      moduleDescription:
+        "Les données de requête restent à jour pendant la durée configurée.",
       cacheMinutes: "Minutes de cache",
       refetchOnExpiry: "Récupérer à l'expiration",
       resetDefaults: "Réinitialiser les paramètres par défaut",
@@ -6948,9 +7125,11 @@ export const translations = {
     editableSectionsEditor: {
       title: "Sections modifiables",
       addSection: "+ Ajouter une section",
-      description: "Définissez les parties de ce modèle que les utilisateurs peuvent modifier lorsqu'ils l'utilisent. Chaque section apparaîtra dans la liste des variables déplaçables et pourra être utilisée comme",
+      description:
+        "Définissez les parties de ce modèle que les utilisateurs peuvent modifier lorsqu'ils l'utilisent. Chaque section apparaîtra dans la liste des variables déplaçables et pourra être utilisée comme",
       sectionKeyPlaceholder: "SECTION_KEY (par exemple, INTRO_TEXT)",
-      empty: "Aucune section modifiable définie. Ajoutez des sections pour permettre aux utilisateurs de personnaliser des parties spécifiques de ce modèle.",
+      empty:
+        "Aucune section modifiable définie. Ajoutez des sections pour permettre aux utilisateurs de personnaliser des parties spécifiques de ce modèle.",
       removeSection: "Supprimer la section",
       label: "Étiquette :",
       labelPlaceholder: "Nom d'affichage",
@@ -6985,15 +7164,19 @@ export const translations = {
       openDetails: "Ouvrir les détails",
       closeDetails: "Fermer les détails",
       loadHistoryError: "Échec du chargement de l'historique de référence",
-      historyNotReady: "Le stockage de l'historique de référence n'est pas encore prêt. Appliquez la migration de base de données en attente pour activer les moyennes et l'historique enregistré.",
+      historyNotReady:
+        "Le stockage de l'historique de référence n'est pas encore prêt. Appliquez la migration de base de données en attente pour activer les moyennes et l'historique enregistré.",
       loadPdfError: "Échec du chargement du test de référence PDF : {message}",
-      resultNotSaved: "Le résultat du benchmark n'a pas été enregistré dans l'historique.",
+      resultNotSaved:
+        "Le résultat du benchmark n'a pas été enregistré dans l'historique.",
       unknownError: "Erreur inconnue",
       requestFailed: "Échec de la demande",
       complete: "Benchmark terminé",
       title: "LLM Référence",
-      description: "Testez chaque LLM par rapport à une facture connue ({file}) et comparez la précision de la détection du fournisseur et de l'extraction des données, la latence et l'utilisation des jetons.",
-      noActiveProviders: "Aucun fournisseur LLM actif configuré. Activez d'abord les fournisseurs dans l'onglet {tab}.",
+      description:
+        "Testez chaque LLM par rapport à une facture connue ({file}) et comparez la précision de la détection du fournisseur et de l'extraction des données, la latence et l'utilisation des jetons.",
+      noActiveProviders:
+        "Aucun fournisseur LLM actif configuré. Activez d'abord les fournisseurs dans l'onglet {tab}.",
       availableLlms: "LLM disponibles",
       selectLlms: "Sélectionnez les LLM à comparer ({selected}/{total})",
       runBenchmark: "Exécuter l'analyse comparative",
@@ -7005,23 +7188,28 @@ export const translations = {
       previousResults: "Résultats de référence précédents",
       llmsTestedCurrent: "{count} LLM{plural} testé dans cette exécution",
       llmsTested: "{date} · {count} LLM{plural} testé",
-      sortedFooter: "Triés par score global. Les scores comparent le résultat à la réponse correcte connue pour Serigrafia arrigorriaga.pdf.",
+      sortedFooter:
+        "Triés par score global. Les scores comparent le résultat à la réponse correcte connue pour Serigrafia arrigorriaga.pdf.",
       noRuns: "Aucune exécution de référence n'a encore été enregistrée.",
       history: "Historique de référence",
       runCount: "{count} LLM{plural} testé",
       noOlderRuns: "Aucune exécution de référence plus ancienne à afficher.",
-      couldNotLoadPdf: "Impossible de charger le test de référence PDF ({status})",
+      couldNotLoadPdf:
+        "Impossible de charger le test de référence PDF ({status})",
     },
     forbiddenState: {
       title: "Accès refusé",
-      withSection: "Votre rôle n'est pas autorisé à accéder à la section \"{section}\".",
+      withSection:
+        'Votre rôle n\'est pas autorisé à accéder à la section "{section}".',
       generic: "Votre rôle n'est pas autorisé à accéder à cette section.",
     },
     internalError: {
-      description: "Une erreur inattendue s'est produite sur cette page. Il a été signalé automatiquement.",
+      description:
+        "Une erreur inattendue s'est produite sur cette page. Il a été signalé automatiquement.",
       errorId: "Erreur ID :",
       tryAgain: "Réessayez",
-      boundaryDescription: "L'espace de travail interne n'a pas pu être rendu. Vous pouvez réessayer maintenant sans perdre votre session.",
+      boundaryDescription:
+        "L'espace de travail interne n'a pas pu être rendu. Vous pouvez réessayer maintenant sans perdre votre session.",
     },
     theme: {
       darkMode: "Mode sombre",
@@ -7039,7 +7227,8 @@ export const translations = {
       loading: "Chargement des notifications...",
       emptyActive: "Aucune notification active",
       emptyFiltered: "Aucune notification ne correspond aux filtres actuels.",
-      migrationPending: "Les notifications seront disponibles une fois la migration de la base de données appliquée.",
+      migrationPending:
+        "Les notifications seront disponibles une fois la migration de la base de données appliquée.",
       loadFailed: "��chec du chargement des notifications",
       filters: "Filtres",
       triageFilters: "Filtres de tri",
@@ -7050,7 +7239,8 @@ export const translations = {
       clearAll: "Tout effacer",
       clearFilters: "Effacer les filtres",
       selectedCount: "{count} sélectionné",
-      emptyHint: "Essayez une autre combinaison de gravité, de catégorie ou de statut.",
+      emptyHint:
+        "Essayez une autre combinaison de gravité, de catégorie ou de statut.",
       markRead: "Marquer comme lu",
       dismiss: "Ignorer",
       openTarget: "Cible de notification ouverte",
@@ -7136,7 +7326,8 @@ export const translations = {
     },
     agencyTariffs: {
       title: "Disponibilité des tarifs",
-      description: "Configurer les tarifs disponibles pour les simulations de cette agence",
+      description:
+        "Configurer les tarifs disponibles pour les simulations de cette agence",
       electricity: "Tarifs de l'électricité",
       gas: "Tarifs du gaz",
       loading: "Chargement de la configuration tarifaire...",
@@ -7171,7 +7362,8 @@ export const translations = {
     },
     shareSimulation: {
       title: "Partager la simulation",
-      subtitle: "Choisissez comment partager cette simulation avec votre client.",
+      subtitle:
+        "Choisissez comment partager cette simulation avec votre client.",
       selectMode: "Sélectionnez la méthode de partage",
       downloadPdf: "Télécharger PDF",
       downloadPdfAndShare: "Téléchargez PDF et partagez",
@@ -7206,14 +7398,17 @@ export const translations = {
       btnEditPdfTemplate: "Modifier",
       btnPreviewPdfTemplate: "Aperçu",
       previewUnavailableMobileTitle: "Aperçu non disponible sur mobile",
-      previewUnavailableMobile: "Les aperçus et l'édition des modèles sont disponibles sur les écrans moyens et supérieurs.",
+      previewUnavailableMobile:
+        "Les aperçus et l'édition des modèles sont disponibles sur les écrans moyens et supérieurs.",
       loading: "Chargement...",
       loadTemplatesFailed: "Échec du chargement des modèles",
       generatePdfFailed: "Échec de la génération de PDF",
       sendEmailFailed: "Échec de l'envoi de l'e-mail",
-      testingModeEmailHint: "Mode test : l'e-mail sera envoyé à votre compte uniquement",
+      testingModeEmailHint:
+        "Mode test : l'e-mail sera envoyé à votre compte uniquement",
       editableSection: "Section modifiable",
-      clickHighlightedSections: "Cliquez sur les sections en surbrillance pour les modifier",
+      clickHighlightedSections:
+        "Cliquez sur les sections en surbrillance pour les modifier",
       editSectionTitle: "Modifier : {label}",
     },
     agencyFormPage: {
@@ -7247,7 +7442,8 @@ export const translations = {
     },
     agencyTlvProducts: {
       title: "Produits TLV",
-      description: "Configurez les produits TLV actifs que cette agence est autorisée à proposer.",
+      description:
+        "Configurez les produits TLV actifs que cette agence est autorisée à proposer.",
       loading: "Chargement de la configuration du produit TLV...",
       loadError: "Échec du chargement de la configuration du produit TLV",
       saveError: "Échec de l'enregistrement de la configuration du produit TLV",
@@ -7274,7 +7470,8 @@ export const translations = {
     },
     userPreferences: {
       title: "Préférences utilisateur",
-      description: "Personnalisez vos préférences d'affichage et de formatage. Ces paramètres remplaceront les paramètres par défaut du système.",
+      description:
+        "Personnalisez vos préférences d'affichage et de formatage. Ces paramètres remplaceront les paramètres par défaut du système.",
       loading: "Chargement des préférences...",
       saveSuccess: "Préférences enregistrées avec succès",
       saveError: "Échec de l'enregistrement des préférences",
@@ -7286,7 +7483,8 @@ export const translations = {
     },
     profilePage: {
       title: "Mon profil",
-      subtitle: "Afficher et modifier vos informations personnelles et vos paramètres de sécurité",
+      subtitle:
+        "Afficher et modifier vos informations personnelles et vos paramètres de sécurité",
       loading: "Chargement du profil...",
       loadFailed: "Échec du chargement du profil.",
       updated: "Profil mis à jour avec succès.",
@@ -7362,7 +7560,8 @@ export const translations = {
       btnRecalculate: "Recalculer les offres",
       recalculateHint: "Modifiez les valeurs ci-dessus et recalculez",
       noResults: "Aucun résultat disponible",
-      noResultsHint: "Complétez les données saisies et cliquez sur \"Calculer l'offre\"",
+      noResultsHint:
+        'Complétez les données saisies et cliquez sur "Calculer l\'offre"',
       electricityOffers: "Offres d'électricité",
       gasOffers: "Offres de gaz",
       productsCount: "{count} produits",
@@ -7378,7 +7577,8 @@ export const translations = {
       confirmGas: "Gaz",
       confirmFixed: "Corrigé",
       confirmIndexed: "Indexé",
-      confirmDescription: "Cette offre sera marquée comme sélectionnée et pourra être partagée avec le client. Vous pouvez modifier cette sélection à tout moment.",
+      confirmDescription:
+        "Cette offre sera marquée comme sélectionnée et pourra être partagée avec le client. Vous pouvez modifier cette sélection à tout moment.",
       confirmCancel: "Annuler",
       confirmSaving: "Enregistrement...",
       confirmButton: "Confirmer la sélection",
@@ -7399,19 +7599,22 @@ export const translations = {
       downloading: "Génération…",
       loading: "Chargement des données de l'historique…",
       success: "L'historique PDF a été téléchargé avec succès.",
-      noData: "Aucun produit d'historique de prix n'est disponible pour cette simulation.",
+      noData:
+        "Aucun produit d'historique de prix n'est disponible pour cette simulation.",
       previewUnavailableMobileTitle: "Aperçu non disponible sur mobile",
-      previewUnavailableMobile: "L'aperçu PDF est disponible sur les écrans moyens et supérieurs.",
+      previewUnavailableMobile:
+        "L'aperçu PDF est disponible sur les écrans moyens et supérieurs.",
     },
     draggableVariables: {
       title: "Variables disponibles",
       subtitle: "Faites glisser les variables dans l'éditeur",
       searchPlaceholder: "Rechercher des variables…",
-      noMatches: "Aucune variable ne correspond à \"{search}\"",
+      noMatches: 'Aucune variable ne correspond à "{search}"',
     },
     configurationsModule: {
       title: "Configurations",
-      subtitle: "Gérer les modèles, les paramètres système, l'expérience utilisateur et les intégrations",
+      subtitle:
+        "Gérer les modèles, les paramètres système, l'expérience utilisateur et les intégrations",
       tabTemplatesCommunications: "Modèles et communications",
       tabSystemBusiness: "Logique système et métier",
       tabUserExperience: "Expérience utilisateur",
@@ -7480,16 +7683,20 @@ export const translations = {
       saveSuccess: "Configuration Cron mise à jour avec succès",
       loading: "Chargement de la configuration cron...",
       title: "Configuration des tâches Cron",
-      description: "Configurez les tâches planifiées automatiques pour le système, telles que les simulations expirant.",
+      description:
+        "Configurez les tâches planifiées automatiques pour le système, telles que les simulations expirant.",
       enableExpiration: "Activer l'expiration automatique de la simulation",
-      enableExpirationDesc: "Lorsqu'elles sont activées, les simulations expireront automatiquement en fonction du calendrier ci-dessous.",
+      enableExpirationDesc:
+        "Lorsqu'elles sont activées, les simulations expireront automatiquement en fonction du calendrier ci-dessous.",
       schedule: "Calendrier",
       scheduleDesc: "Choisissez quand la tâche d'expiration doit être exécutée",
       customExpression: "Expression Cron personnalisée",
-      customExpressionDesc: "Format : minute heure jour mois jour de la semaine (par exemple, \"0 2 * * *\" pour tous les jours à 2 heures du matin)",
+      customExpressionDesc:
+        'Format : minute heure jour mois jour de la semaine (par exemple, "0 2 * * *" pour tous les jours à 2 heures du matin)',
       crontabGuru: "Utilisez crontab.guru pour créer votre expression",
       timezone: "Fuseau horaire",
-      timezoneDesc: "Fuseau horaire dans lequel la planification doit s'exécuter",
+      timezoneDesc:
+        "Fuseau horaire dans lequel la planification doit s'exécuter",
       currentSchedule: "Calendrier actuel :",
       saving: "Enregistrement...",
       saveChanges: "Enregistrer les modifications",
@@ -7497,7 +7704,8 @@ export const translations = {
     },
     ocrUsage: {
       title: "OCR Utilisation et facturation",
-      subtitle: "Suivez la consommation de jetons, les coûts et les instantanés de factures pour vos pipelines OCR.",
+      subtitle:
+        "Suivez la consommation de jetons, les coûts et les instantanés de factures pour vos pipelines OCR.",
       configurePricing: "Configurer les tarifs",
       createInvoice: "Facture instantanée",
       exportCsv: "Exporter CSV",
@@ -7530,39 +7738,50 @@ export const translations = {
       inputHint: "Invite/jetons d'entrée",
       outputHint: "Jetons d'achèvement/sortie",
       perSuccessfulCall: "par appel réussi",
-      unpricedWarningTitle: "Certains modèles de cette période ne sont pas tarifés",
-      unpricedWarningDesc: "Ces modèles sont en cours d'exécution mais n'ont aucun prix actif configuré : {models} {more}. Leurs appels affichent un coût nul.",
+      unpricedWarningTitle:
+        "Certains modèles de cette période ne sont pas tarifés",
+      unpricedWarningDesc:
+        "Ces modèles sont en cours d'exécution mais n'ont aucun prix actif configuré : {models} {more}. Leurs appels affichent un coût nul.",
       billingDisabledTitle: "OCR la facturation est actuellement désactivée",
-      billingDisabledDesc: "Les calculs de coûts sont inactifs. Activez la facturation dans la configuration de tarification pour commencer à suivre les coûts.",
+      billingDisabledDesc:
+        "Les calculs de coûts sont inactifs. Activez la facturation dans la configuration de tarification pour commencer à suivre les coûts.",
       billingPanelTitle: "Paramètres de facturation",
       billingEnabledLabel: "Activer la facturation OCR",
-      billingEnabledHint: "Activez cette option pour marquer les calculs de coûts OCR comme actifs sur le tableau de bord.",
+      billingEnabledHint:
+        "Activez cette option pour marquer les calculs de coûts OCR comme actifs sur le tableau de bord.",
       markupPercent: "% de majoration",
       fixedFeePerCall: "Forfait / appel",
       includeFailedCalls: "Facturation des appels ayant échoué",
-      includeFailedCallsHint: "Lorsqu'il est désactivé, seuls les appels réussis sont pris en compte dans le coût total.",
+      includeFailedCallsHint:
+        "Lorsqu'il est désactivé, seuls les appels réussis sont pris en compte dans le coût total.",
       billingSaved: "Paramètres de facturation enregistrés",
-      billingSaveFailed: "Échec de l'enregistrement des paramètres de facturation",
+      billingSaveFailed:
+        "Échec de l'enregistrement des paramètres de facturation",
       billingLoading: "Chargement des paramètres de facturation...",
       andMore: "(+{n} plus)",
       chartCostOverTime: "Coût dans le temps",
-      chartCostHint: "Somme de tous les OCR appels facturables par période. Calculé à partir des prix configurés par modèle plus votre majoration/frais fixes.",
+      chartCostHint:
+        "Somme de tous les OCR appels facturables par période. Calculé à partir des prix configurés par modèle plus votre majoration/frais fixes.",
       chartTokensOverTime: "Jetons au fil du temps",
       chartTokensHint: "Somme des jetons d'entrée + sortie par période.",
       chartCallsOverTime: "OCR appels par période",
       chartCostByModel: "Coût par modèle",
-      chartModelHint: "Meilleurs modèles par coût total sur la période sélectionnée.",
+      chartModelHint:
+        "Meilleurs modèles par coût total sur la période sélectionnée.",
       topUsers: "Meilleurs utilisateurs",
       topProviders: "Principaux fournisseurs",
       topModels: "Hauts modèles",
       recentCalls: "Appels récents",
-      recentCallsHint: "Derniers appels OCR avec coût (utilise la tarification actuelle).",
+      recentCallsHint:
+        "Derniers appels OCR avec coût (utilise la tarification actuelle).",
       savedInvoices: "Instantanés de facture enregistrés",
-      savedInvoicesHint: "Les instantanés sont immuables – utiles pour facturer les clients.",
+      savedInvoicesHint:
+        "Les instantanés sont immuables – utiles pour facturer les clients.",
       invoiceLabel: "Étiquette",
       invoicePeriod: "Période",
       invoiceNote: "Remarque",
-      invoiceSnapshotHint: "L'instantané gèle les prix, les totaux et la répartition par modèle pour le moment. Vous pourrez ensuite le marquer comme ÉMIS ou PAYÉ.",
+      invoiceSnapshotHint:
+        "L'instantané gèle les prix, les totaux et la répartition par modèle pour le moment. Vous pourrez ensuite le marquer comme ÉMIS ou PAYÉ.",
       defaultInvoiceLabel: "Utilisation de OCR — {period}",
       noDataInRange: "Aucune donnée pour les filtres sélectionnés.",
       noInvoicesYet: "Aucun instantané de facture pour l'instant.",
@@ -7591,7 +7810,8 @@ export const translations = {
       per1M: "Par 1 million de jetons",
       tokens: "jetons",
       configTitle: "OCR tarification du modèle",
-      configIntro: "Configurez le coût de chaque modèle pour 1 000 (ou 1 000 000) de jetons. Les appels sans prix actif correspondant s'affichent comme un coût nul dans le tableau de bord.",
+      configIntro:
+        "Configurez le coût de chaque modèle pour 1 000 (ou 1 000 000) de jetons. Les appels sans prix actif correspondant s'affichent comme un coût nul dans le tableau de bord.",
       modelsToPrice: "Modèles vus dans les journaux OCR sans prix actif",
       addPriceFor: "Ajoutez un prix pour {model}",
       addPrice: "Ajouter un prix",
@@ -7649,85 +7869,119 @@ export const translations = {
         "Nombre maximal de sessions actives par utilisateur par défaut",
       fieldDefaultMaxActiveDevicesDesc:
         "Utilisé comme valeur par défaut et limite maximale lors de la création d'utilisateurs ou lorsqu'un utilisateur n'a pas de valeur explicite.",
-      preferencesDescription: "Définissez les valeurs par défaut du système pour les préférences utilisateur. Les utilisateurs peuvent les remplacer dans leurs paramètres personnels.",
+      preferencesDescription:
+        "Définissez les valeurs par défaut du système pour les préférences utilisateur. Les utilisateurs peuvent les remplacer dans leurs paramètres personnels.",
       fieldExpirationDays: "Expiration de la simulation (jours)",
-      fieldExpirationDesc: "Nombre de jours avant qu'une simulation n'expire et ne devienne en lecture seule",
-      fieldAutoCreate: "Autoriser un nouveau client lors de la création d'une simulation",
-      fieldAutoCreateDesc: "Créer automatiquement une nouvelle fiche client lors de la création d'une simulation sans sélectionner de client existant",
+      fieldExpirationDesc:
+        "Nombre de jours avant qu'une simulation n'expire et ne devienne en lecture seule",
+      fieldAutoCreate:
+        "Autoriser un nouveau client lors de la création d'une simulation",
+      fieldAutoCreateDesc:
+        "Créer automatiquement une nouvelle fiche client lors de la création d'une simulation sans sélectionner de client existant",
       fieldIvaRate: "IVA Tarif (TVA)",
-      fieldIvaRateDesc: "Taux de taxe sur la valeur ajoutée sous forme décimale (par exemple, 0,21 pour 21 %)",
+      fieldIvaRateDesc:
+        "Taux de taxe sur la valeur ajoutée sous forme décimale (par exemple, 0,21 pour 21 %)",
       fieldElectricityTaxRate: "Taux de taxe sur l'électricité",
-      fieldElectricityTaxRateDesc: "Taux de taxe sur l'électricité sous forme décimale (par exemple, 0,051127 pour 5,1127 %)",
+      fieldElectricityTaxRateDesc:
+        "Taux de taxe sur l'électricité sous forme décimale (par exemple, 0,051127 pour 5,1127 %)",
       fieldHydrocarbonTaxRate: "Taux de taxe sur les hydrocarbures (gaz)",
-      fieldHydrocarbonTaxRateDesc: "Taux de taxe sur les hydrocarbures pour le gaz en €/kWh (ex. 0,00234 pour 0,00234 €/kWh)",
+      fieldHydrocarbonTaxRateDesc:
+        "Taux de taxe sur les hydrocarbures pour le gaz en €/kWh (ex. 0,00234 pour 0,00234 €/kWh)",
       calcElectricity: "Électricité",
       calcGas: "Gaz",
       calcPeninsula: "Espagne péninsulaire",
       calcBaleares: "Îles Baléares",
       calcCanarias: "Îles Canaries",
       fieldIgicRate: "IGIC Tarif (Canaries)",
-      fieldIgicRateDesc: "IGIC taux pour l'approvisionnement des îles Canaries sous forme décimale (par exemple 0,03 pour 3 %)",
+      fieldIgicRateDesc:
+        "IGIC taux pour l'approvisionnement des îles Canaries sous forme décimale (par exemple 0,03 pour 3 %)",
       fieldDateFormat: "Format des dates",
       fieldDateFormatDesc: "Format par défaut pour l'affichage des dates",
       fieldTimeFormat: "Format de l'heure",
       fieldTimeFormatDesc: "Format par défaut pour l'affichage de l'heure",
       fieldTimezone: "Fuseau horaire",
-      fieldTimezoneDesc: "Fuseau horaire par défaut pour l'affichage de la date/heure",
+      fieldTimezoneDesc:
+        "Fuseau horaire par défaut pour l'affichage de la date/heure",
       fieldNumberFormat: "Format numérique",
-      fieldNumberFormatDesc: "Format par défaut pour l'affichage des nombres et des décimales",
+      fieldNumberFormatDesc:
+        "Format par défaut pour l'affichage des nombres et des décimales",
       fieldItemsPerPage: "Éléments par page",
-      fieldItemsPerPageDesc: "Nombre par défaut de lignes à afficher dans les tableaux",
+      fieldItemsPerPageDesc:
+        "Nombre par défaut de lignes à afficher dans les tableaux",
       fieldLanguage: "Langue par défaut",
-      fieldLanguageDesc: "Langue d'application par défaut pour les nouveaux utilisateurs",
+      fieldLanguageDesc:
+        "Langue d'application par défaut pour les nouveaux utilisateurs",
       fieldSmtpHost: "SMTP Hôte",
-      fieldSmtpHostDesc: "SMTP nom d'hôte du serveur (par exemple, smtp.gmail.com)",
+      fieldSmtpHostDesc:
+        "SMTP nom d'hôte du serveur (par exemple, smtp.gmail.com)",
       fieldSmtpPort: "SMTP Port",
-      fieldSmtpPortDesc: "Port du serveur SMTP (587 pour TLS, 465 pour SSL, 25 pour non sécurisé)",
+      fieldSmtpPortDesc:
+        "Port du serveur SMTP (587 pour TLS, 465 pour SSL, 25 pour non sécurisé)",
       fieldSmtpSecure: "Utiliser une connexion sécurisée (SSL/TLS)",
-      fieldSmtpSecureDesc: "Activer le cryptage SSL/TLS pour une transmission sécurisée des e-mails",
+      fieldSmtpSecureDesc:
+        "Activer le cryptage SSL/TLS pour une transmission sécurisée des e-mails",
       fieldSmtpUser: "SMTP Nom d'utilisateur",
-      fieldSmtpUserDesc: "Nom d'utilisateur d'authentification pour le serveur SMTP",
+      fieldSmtpUserDesc:
+        "Nom d'utilisateur d'authentification pour le serveur SMTP",
       fieldSmtpPassword: "SMTP Mot de passe",
-      fieldSmtpPasswordDesc: "Mot de passe d'authentification pour le serveur SMTP",
+      fieldSmtpPasswordDesc:
+        "Mot de passe d'authentification pour le serveur SMTP",
       fieldFromEmail: "De l'adresse e-mail",
       fieldFromEmailDesc: "Adresse e-mail qui apparaîtra comme expéditeur",
       fieldFromName: "Du nom",
       fieldFromNameDesc: "Nom d'affichage qui apparaîtra en tant qu'expéditeur",
       fieldFromNamePlaceholder: "Axpo Simulator",
       fieldUserCreationTemplate: "Modèle d'e-mail de création d'utilisateur",
-      fieldUserCreationTemplateDesc: "Modèle d'e-mail à envoyer lors de la création d'un nouvel utilisateur (laisser vide pour désactiver)",
-      fieldPasswordResetTemplate: "Modèle d'e-mail de réinitialisation de mot de passe",
-      fieldPasswordResetTemplateDesc: "Modèle d'e-mail à envoyer lorsqu'un utilisateur demande une réinitialisation de mot de passe (laisser vide pour désactiver)",
+      fieldUserCreationTemplateDesc:
+        "Modèle d'e-mail à envoyer lors de la création d'un nouvel utilisateur (laisser vide pour désactiver)",
+      fieldPasswordResetTemplate:
+        "Modèle d'e-mail de réinitialisation de mot de passe",
+      fieldPasswordResetTemplateDesc:
+        "Modèle d'e-mail à envoyer lorsqu'un utilisateur demande une réinitialisation de mot de passe (laisser vide pour désactiver)",
       titleMagicLink: "Connexion au lien magique",
-      titleMagicLinkDesc: "Autoriser les utilisateurs à se connecter via un lien unique envoyé à leur adresse e-mail au lieu d'un mot de passe",
+      titleMagicLinkDesc:
+        "Autoriser les utilisateurs à se connecter via un lien unique envoyé à leur adresse e-mail au lieu d'un mot de passe",
       fieldMagicLinkEnabled: "Activer la connexion Magic Link",
-      fieldMagicLinkEnabledDesc: "Lorsqu'il est activé, les utilisateurs peuvent demander un lien magique depuis la page de connexion",
+      fieldMagicLinkEnabledDesc:
+        "Lorsqu'il est activé, les utilisateurs peuvent demander un lien magique depuis la page de connexion",
       fieldMagicLinkTemplate: "Modèle d'e-mail Magic Link",
-      fieldMagicLinkTemplateDesc: "Modèle d'e-mail utilisé pour envoyer le lien de connexion magique (obligatoire lorsque le lien magique est activé)",
+      fieldMagicLinkTemplateDesc:
+        "Modèle d'e-mail utilisé pour envoyer le lien de connexion magique (obligatoire lorsque le lien magique est activé)",
       fieldMagicLinkValidity: "Validité du lien magique",
-      fieldMagicLinkValidityDesc: "Combien de temps les liens magiques restent valides après avoir été envoyés",
+      fieldMagicLinkValidityDesc:
+        "Combien de temps les liens magiques restent valides après avoir été envoyés",
       titleOtp: "Authentification à deux facteurs (OTP)",
-      titleOtpDesc: "Demander aux utilisateurs de vérifier leur identité avec un code à usage unique envoyé à leur adresse e-mail après avoir saisi leur mot de passe",
+      titleOtpDesc:
+        "Demander aux utilisateurs de vérifier leur identité avec un code à usage unique envoyé à leur adresse e-mail après avoir saisi leur mot de passe",
       fieldOtpEnabled: "Activer l'authentification à deux facteurs",
-      fieldOtpEnabledDesc: "Lorsqu'il est activé, les utilisateurs devront saisir un code e-mail après avoir saisi leur mot de passe.",
+      fieldOtpEnabledDesc:
+        "Lorsqu'il est activé, les utilisateurs devront saisir un code e-mail après avoir saisi leur mot de passe.",
       fieldOtpTemplate: "Modèle d'e-mail OTP",
-      fieldOtpTemplateDesc: "Modèle d'e-mail utilisé pour envoyer le code de vérification unique",
+      fieldOtpTemplateDesc:
+        "Modèle d'e-mail utilisé pour envoyer le code de vérification unique",
       fieldOtpValidity: "Validité du code OTP",
-      fieldOtpValidityDesc: "Combien de temps les codes OTP restent valides après avoir été envoyés",
+      fieldOtpValidityDesc:
+        "Combien de temps les codes OTP restent valides après avoir été envoyés",
       titlePdfDefaults: "Modèles PDF par défaut",
-      titlePdfDefaultsDesc: "Configurer les modèles PDF utilisés par défaut lors du partage de simulations",
+      titlePdfDefaultsDesc:
+        "Configurer les modèles PDF utilisés par défaut lors du partage de simulations",
       fieldDefaultPdfGas: "Modèle de gaz par défaut",
-      fieldDefaultPdfGasDesc: "PDF modèle utilisé par défaut pour les simulations de gaz",
+      fieldDefaultPdfGasDesc:
+        "PDF modèle utilisé par défaut pour les simulations de gaz",
       fieldDefaultPdfElectricity: "Modèle d'électricité par défaut",
-      fieldDefaultPdfElectricityDesc: "PDF modèle utilisé par défaut pour les simulations électriques",
-      fieldSetupTokenValidity: "Validité du jeton de configuration du mot de passe",
-      fieldSetupTokenValidityDesc: "Combien de temps les liens de mot de passe de configuration restent valides avant d'expirer",
+      fieldDefaultPdfElectricityDesc:
+        "PDF modèle utilisé par défaut pour les simulations électriques",
+      fieldSetupTokenValidity:
+        "Validité du jeton de configuration du mot de passe",
+      fieldSetupTokenValidityDesc:
+        "Combien de temps les liens de mot de passe de configuration restent valides avant d'expirer",
       noTemplateSelected: "— Aucun modèle sélectionné (désactivé) —",
       btnSave: "Enregistrer les modifications",
       btnReset: "Réinitialiser les paramètres par défaut",
       btnTestConnection: "Tester la connexion",
       smtpTestTitle: "Testez la connexion SMTP",
-      smtpTestDesc: "Vérifiez que vos paramètres SMTP sont corrects en testant la connexion au serveur de messagerie",
+      smtpTestDesc:
+        "Vérifiez que vos paramètres SMTP sont corrects en testant la connexion au serveur de messagerie",
       smtpTesting: "Test...",
       smtpTestSuccess: "SMTP connexion réussie",
       smtpTestError: "Échec de la connexion SMTP",
@@ -7742,10 +7996,12 @@ export const translations = {
     },
     llmSettings: {
       title: "LLM Configuration",
-      description: "Configurer les paramètres AI/LLM pour l'extraction et le traitement des données de simulation",
+      description:
+        "Configurer les paramètres AI/LLM pour l'extraction et le traitement des données de simulation",
       generalSettings: "Paramètres généraux",
       enableLlm: "Activer les fonctionnalités LLM",
-      enableLlmDesc: "Activer les fonctionnalités basées sur l'IA pour lire et extraire des données lors de la création de simulations",
+      enableLlmDesc:
+        "Activer les fonctionnalités basées sur l'IA pour lire et extraire des données lors de la création de simulations",
       provider: "LLM Fournisseur",
       providerDesc: "Sélectionnez le fournisseur de services AI/LLM",
       apiKey: "API Clé",
@@ -7756,18 +8012,25 @@ export const translations = {
       modelName: "Nom du modèle",
       modelNameDesc: "Nom du modèle IA à utiliser pour le traitement",
       customModel: "Nom du modèle personnalisé",
-      customModelDesc: "Entrez un nom de modèle personnalisé s'il n'est pas répertorié ci-dessus",
+      customModelDesc:
+        "Entrez un nom de modèle personnalisé s'il n'est pas répertorié ci-dessus",
       temperature: "Température",
-      temperatureDesc: "Contrôle le caractère aléatoire : les valeurs inférieures (0,0 à 0,3) sont plus précises, les valeurs élevées (0,7 à 2,0) sont plus créatives.",
+      temperatureDesc:
+        "Contrôle le caractère aléatoire : les valeurs inférieures (0,0 à 0,3) sont plus précises, les valeurs élevées (0,7 à 2,0) sont plus créatives.",
       maxTokens: "Nombre maximum de jetons",
-      maxTokensDesc: "Nombre maximum de jetons dans la réponse (plus élevé = réponses plus longues mais plus coûteuses)",
+      maxTokensDesc:
+        "Nombre maximum de jetons dans la réponse (plus élevé = réponses plus longues mais plus coûteuses)",
       usageInfo: "Informations d'utilisation\nLes fonctionnalités",
       usageInfoDesc: "LLM seront utilisées dans les scénarios suivants :",
-      usageExample1: "Extraction des données des documents téléchargés lors de la création de simulations",
-      usageExample2: "Traitement et compréhension d'informations complexes sur les tarifs de l'énergie",
-      usageExample3: "Aide à la validation des données et à la détection des erreurs",
+      usageExample1:
+        "Extraction des données des documents téléchargés lors de la création de simulations",
+      usageExample2:
+        "Traitement et compréhension d'informations complexes sur les tarifs de l'énergie",
+      usageExample3:
+        "Aide à la validation des données et à la détection des erreurs",
       testConnection: "Tester la connexion",
-      testConnectionDesc: "Vérifiez votre configuration LLM en testant la connexion",
+      testConnectionDesc:
+        "Vérifiez votre configuration LLM en testant la connexion",
       btnTest: "Tester la connexion",
       testing: "Test...",
       testSuccess: "Connexion réussie",
@@ -7785,12 +8048,16 @@ export const translations = {
       tabTaskRouting: "Routage des tâches",
       tabAvailableLlms: "LLM disponibles",
       taskRoutingTitle: "LLM configuré pour chaque tâche",
-      taskRoutingDesc: "Sélectionnez lequel LLM configuré alimente chaque fonctionnalité IA.",
-      enableRoutingHint: "Activez les fonctionnalités LLM pour activer le routage des tâches.",
-      noLlmsConfiguredHint: "Aucun LLM n'est encore configuré. Ajoutez-en un dans les LLM disponibles.",
+      taskRoutingDesc:
+        "Sélectionnez lequel LLM configuré alimente chaque fonctionnalité IA.",
+      enableRoutingHint:
+        "Activez les fonctionnalités LLM pour activer le routage des tâches.",
+      noLlmsConfiguredHint:
+        "Aucun LLM n'est encore configuré. Ajoutez-en un dans les LLM disponibles.",
       noLlmSelected: "Non LLM sélectionné",
       providersTitle: "LLM configurés disponibles",
-      providersDesc: "Ajoutez et gérez les combinaisons fournisseur/modèle que les tâches peuvent utiliser.",
+      providersDesc:
+        "Ajoutez et gérez les combinaisons fournisseur/modèle que les tâches peuvent utiliser.",
       addLlm: "Ajouter LLM",
       enabled: "Activé",
       disabled: "Désactivé",
@@ -7802,11 +8069,13 @@ export const translations = {
       editLlm: "Modifier LLM",
       removeLlm: "Supprimer LLM",
       connected: "Connecté",
-      noConfiguredLlms: "Aucun LLM configuré pour l'instant. Ajoutez-en un pour le rendre disponible pour le routage des tâches.",
+      noConfiguredLlms:
+        "Aucun LLM configuré pour l'instant. Ajoutez-en un pour le rendre disponible pour le routage des tâches.",
       addLlmTitle: "Ajouter LLM",
       editLlmTitle: "Modifier LLM",
       configurationName: "Nom de la configuration",
-      apiKeySavedHint: "Une clé est enregistrée. Laissez vide pour le conserver.",
+      apiKeySavedHint:
+        "Une clé est enregistrée. Laissez vide pour le conserver.",
       apiKeyRequiredHint: "Requis pour ce fournisseur.",
       savedApiKeyPlaceholder: "Clé API enregistrée",
       saveLlm: "Enregistrer LLM",
@@ -7825,9 +8094,11 @@ export const translations = {
       edit: "Modifier",
       delete: "Supprimer",
       selectProvider: "Sélectionnez un fournisseur",
-      selectProviderDesc: "Sélectionnez un fournisseur dans la liste pour afficher ou modifier son invite d'extraction personnalisée, ou cliquez sur Ajouter pour en créer un nouveau.",
+      selectProviderDesc:
+        "Sélectionnez un fournisseur dans la liste pour afficher ou modifier son invite d'extraction personnalisée, ou cliquez sur Ajouter pour en créer un nouveau.",
       promptNotConfiguredTitle: "Invite pas encore configurée.",
-      promptNotConfiguredDesc: "Ce fournisseur a été ajouté automatiquement à partir d'une page de simulation. Veuillez modifier ce fournisseur et ajouter une invite d'extraction personnalisée afin que l'IA sache comment lire les factures de {name}.",
+      promptNotConfiguredDesc:
+        "Ce fournisseur a été ajouté automatiquement à partir d'une page de simulation. Veuillez modifier ce fournisseur et ajouter une invite d'extraction personnalisée afin que l'IA sache comment lire les factures de {name}.",
       configureNow: "Configurer maintenant",
       newProvider: "Nouveau fournisseur",
       editingProvider: "Édition : {name}",
@@ -7836,23 +8107,32 @@ export const translations = {
       disabled: "Désactivé",
       providerName: "Nom du fournisseur *",
       providerNamePlaceholder: "par ex. Repsol, NEON, Iberdrola...",
-      providerNameHint: "Le slug sera généré automatiquement à partir de ce nom et est utilisé par l'IA pour faire correspondre les factures.",
+      providerNameHint:
+        "Le slug sera généré automatiquement à partir de ce nom et est utilisé par l'IA pour faire correspondre les factures.",
       status: "Statut",
-      statusHint: "Les fournisseurs désactivés n'apparaîtront pas dans la liste de détection envoyée à l'IA.",
+      statusHint:
+        "Les fournisseurs désactivés n'apparaîtront pas dans la liste de détection envoyée à l'IA.",
       electricity: "Électricité",
       gas: "Gaz",
-      electricityPromptHint: "Envoyé à l'IA lorsqu'une facture d'électricité de ce fournisseur est détectée. Laissez vide pour utiliser l’invite d’électricité par défaut du système.",
-      gasPromptHint: "Envoyé à l'IA lorsqu'une facture de gaz de ce fournisseur est détectée. Laissez vide pour utiliser l’invite de gaz par défaut du système.",
-      electricityPromptPlaceholder: "Entrez une invite d'extraction d'électricité personnalisée pour ce fournisseur...",
-      gasPromptPlaceholder: "Entrez une invite d'extraction de gaz personnalisée pour ce fournisseur...",
+      electricityPromptHint:
+        "Envoyé à l'IA lorsqu'une facture d'électricité de ce fournisseur est détectée. Laissez vide pour utiliser l’invite d’électricité par défaut du système.",
+      gasPromptHint:
+        "Envoyé à l'IA lorsqu'une facture de gaz de ce fournisseur est détectée. Laissez vide pour utiliser l’invite de gaz par défaut du système.",
+      electricityPromptPlaceholder:
+        "Entrez une invite d'extraction d'électricité personnalisée pour ce fournisseur...",
+      gasPromptPlaceholder:
+        "Entrez une invite d'extraction de gaz personnalisée pour ce fournisseur...",
       saveProvider: "Enregistrer le fournisseur",
       saving: "Enregistrement...",
       cancel: "Annuler",
-      noElectricityPrompt: "Aucune invite d'électricité personnalisée — la valeur par défaut du système sera utilisée.",
-      noGasPrompt: "Aucune invite de gaz personnalisée — la valeur par défaut du système sera utilisée.",
+      noElectricityPrompt:
+        "Aucune invite d'électricité personnalisée — la valeur par défaut du système sera utilisée.",
+      noGasPrompt:
+        "Aucune invite de gaz personnalisée — la valeur par défaut du système sera utilisée.",
       configurePrompts: "Configurer les invites",
       deleteTitle: "Supprimer le fournisseur",
-      deleteConfirm: "Êtes-vous sûr de vouloir supprimer {name} ? Cette action ne peut pas être annulée.",
+      deleteConfirm:
+        "Êtes-vous sûr de vouloir supprimer {name} ? Cette action ne peut pas être annulée.",
       deleting: "Suppression...",
       loadError: "Échec du chargement des fournisseurs de factures",
       nameRequired: "Le nom du fournisseur est requis",
@@ -7861,20 +8141,25 @@ export const translations = {
       saveError: "Échec de l'enregistrement du fournisseur",
       toggleError: "Échec du changement de statut du fournisseur",
       deleteError: "Échec de la suppression du fournisseur",
-      createdSuccess: "Fournisseur \"{name}\" créé avec succès",
-      updatedSuccess: "Le fournisseur \"{name}\" a été mis à jour avec succès",
-      deletedSuccess: "Fournisseur \"{name}\" supprimé",
+      createdSuccess: 'Fournisseur "{name}" créé avec succès',
+      updatedSuccess: 'Le fournisseur "{name}" a été mis à jour avec succès',
+      deletedSuccess: 'Fournisseur "{name}" supprimé',
     },
     aiTemplateBuilder: {
       title: "Générateur de modèles d'IA",
       beta: "Bêta",
-      promptRequired: "Veuillez décrire à quoi vous souhaitez que le modèle ressemble.",
+      promptRequired:
+        "Veuillez décrire à quoi vous souhaitez que le modèle ressemble.",
       generateError: "Échec de la génération du modèle",
-      appliedSuccess: "Modèle IA appliqué ! Vérifiez le contenu et enregistrez-le lorsque vous êtes prêt.",
+      appliedSuccess:
+        "Modèle IA appliqué ! Vérifiez le contenu et enregistrez-le lorsque vous êtes prêt.",
       describeLabel: "Décrivez ce que vous voulez",
-      pdfPlaceholder: "par ex. Créez une simulation d'électricité professionnelle PDF avec une mise en page à deux colonnes, un tableau de comparaison des économies, la marque AXPO et une section d'en-tête sombre…",
-      emailPlaceholder: "par ex. Créez un e-mail de bienvenue pour les nouveaux utilisateurs : ton convivial, marque AXPO, bouton rouge « Configurer le mot de passe », instructions étape par étape…",
-      useExistingBase: "Utiliser le modèle actuel comme base – l'IA le modifiera au lieu de repartir de zéro",
+      pdfPlaceholder:
+        "par ex. Créez une simulation d'électricité professionnelle PDF avec une mise en page à deux colonnes, un tableau de comparaison des économies, la marque AXPO et une section d'en-tête sombre…",
+      emailPlaceholder:
+        "par ex. Créez un e-mail de bienvenue pour les nouveaux utilisateurs : ton convivial, marque AXPO, bouton rouge « Configurer le mot de passe », instructions étape par étape…",
+      useExistingBase:
+        "Utiliser le modèle actuel comme base – l'IA le modifiera au lieu de repartir de zéro",
       generating: "Génération…",
       generateTemplate: "Générer un modèle",
       generatingHint: "Cela peut prendre quelques minutes...",
@@ -7888,45 +8173,66 @@ export const translations = {
     },
     pdfTemplateVariables: {
       CLIENT_NAME_label: "Nom du client",
-      CLIENT_NAME_description: "Nom de l'entreprise ou du client lié à la simulation",
+      CLIENT_NAME_description:
+        "Nom de l'entreprise ou du client lié à la simulation",
       SIMULATION_ID_label: "Simulation ID",
       SIMULATION_ID_description: "Identifiant unique de la simulation",
       SIMULATION_REFERENCE_label: "Référence de simulation",
-      SIMULATION_REFERENCE_description: "Numéro de référence de simulation lisible par l'homme",
+      SIMULATION_REFERENCE_description:
+        "Numéro de référence de simulation lisible par l'homme",
       CREATED_AT_label: "Date de création",
       CREATED_AT_description: "Date de création de la simulation",
       OWNER_NAME_label: "Nom du propriétaire",
-      OWNER_NAME_description: "Nom de l'utilisateur commercial propriétaire de la simulation",
+      OWNER_NAME_description:
+        "Nom de l'utilisateur commercial propriétaire de la simulation",
       OWNER_EMAIL_label: "E-mail du propriétaire",
-      OWNER_EMAIL_description: "Email commercial du propriétaire de la simulation",
+      OWNER_EMAIL_description:
+        "Email commercial du propriétaire de la simulation",
       CHART_COMPARATIVA_label: "Tableau comparatif",
-      CHART_COMPARATIVA_description: "Graphique à barres comparant les totaux annuels Competencia et Axpo + statistiques d'épargne",
-      HISTORY_TABLES_label: "Tableaux d'historique (tous les tarifs d'électricité)",
-      HISTORY_TABLES_description: "Tous les tableaux d'historique de prix générés (2.0TD + 3.0TD + 6.1TD). Placez-le là où les tableaux devraient apparaître.",
+      CHART_COMPARATIVA_description:
+        "Graphique à barres comparant les totaux annuels Competencia et Axpo + statistiques d'épargne",
+      HISTORY_TABLES_label:
+        "Tableaux d'historique (tous les tarifs d'électricité)",
+      HISTORY_TABLES_description:
+        "Tous les tableaux d'historique de prix générés (2.0TD + 3.0TD + 6.1TD). Placez-le là où les tableaux devraient apparaître.",
       HISTORY_TABLE_2TD_label: "Tableau d'historique — 2.0 TD",
-      HISTORY_TABLE_2TD_description: "Tableau historique des prix pour le tarif de l'électricité 2.0TD uniquement (P1-P3).",
+      HISTORY_TABLE_2TD_description:
+        "Tableau historique des prix pour le tarif de l'électricité 2.0TD uniquement (P1-P3).",
       HISTORY_TABLE_3TD_label: "Tableau d'historique — 3.0 TD",
-      HISTORY_TABLE_3TD_description: "Tableau historique des prix pour le tarif de l'électricité 3.0TD uniquement (P1-P6).",
+      HISTORY_TABLE_3TD_description:
+        "Tableau historique des prix pour le tarif de l'électricité 3.0TD uniquement (P1-P6).",
       HISTORY_TABLE_6TD_label: "Table d'historique — 6.1 TD",
-      HISTORY_TABLE_6TD_description: "Tableau historique des prix pour le tarif de l'électricité 6.1TD uniquement (P1-P6).",
+      HISTORY_TABLE_6TD_description:
+        "Tableau historique des prix pour le tarif de l'électricité 6.1TD uniquement (P1-P6).",
       PRODUCT_LABEL_label: "Étiquette du produit",
-      PRODUCT_LABEL_description: "Nom du produit, par ex. \"Dinámica N1 - Profil Normal\"",
+      PRODUCT_LABEL_description:
+        'Nom du produit, par ex. "Dinámica N1 - Profil Normal"',
       PERFIL_label: "Charger le profil",
       PERFIL_description: "Perfil Normal ou Perfil Diurno",
       TARIFA_label: "Tarif d'accès",
-      TARIFA_description: "Code tarifaire d'accès à l'électricité, par ex. 2.0TD",
+      TARIFA_description:
+        "Code tarifaire d'accès à l'électricité, par ex. 2.0TD",
       HISTORY_TABLES_GAS_label: "Tableaux d'historique des gaz (tous tarifs)",
-      HISTORY_TABLES_GAS_description: "Tous les tableaux d'historique des prix du gaz générés. Placez-le là où les tableaux devraient apparaître.",
+      HISTORY_TABLES_GAS_description:
+        "Tous les tableaux d'historique des prix du gaz générés. Placez-le là où les tableaux devraient apparaître.",
       HISTORY_TABLE_GAS_label: "Tableau d'historique des gaz",
-      HISTORY_TABLE_GAS_description: "Tableau historique des prix du gaz (toutes tranches de consommation).",
-      HISTORY_TABLE_GAS_R1_label: "Tableau d'historique des gaz — R1 (basse consommation)",
-      HISTORY_TABLE_GAS_R1_description: "Historique des prix du gaz pour la bande TUR R1 — basse consommation résidentielle.",
-      HISTORY_TABLE_GAS_R2_label: "Tableau d'historique des gaz — R2 (consommation moyenne)",
-      HISTORY_TABLE_GAS_R2_description: "Historique des prix du gaz pour la bande TUR R2 — consommation moyenne résidentielle.",
-      HISTORY_TABLE_GAS_R3_label: "Tableau d'historique des gaz — R3 (forte consommation)",
-      HISTORY_TABLE_GAS_R3_description: "Historique des prix du gaz pour la bande TUR R3 — consommation résidentielle élevée.",
+      HISTORY_TABLE_GAS_description:
+        "Tableau historique des prix du gaz (toutes tranches de consommation).",
+      HISTORY_TABLE_GAS_R1_label:
+        "Tableau d'historique des gaz — R1 (basse consommation)",
+      HISTORY_TABLE_GAS_R1_description:
+        "Historique des prix du gaz pour la bande TUR R1 — basse consommation résidentielle.",
+      HISTORY_TABLE_GAS_R2_label:
+        "Tableau d'historique des gaz — R2 (consommation moyenne)",
+      HISTORY_TABLE_GAS_R2_description:
+        "Historique des prix du gaz pour la bande TUR R2 — consommation moyenne résidentielle.",
+      HISTORY_TABLE_GAS_R3_label:
+        "Tableau d'historique des gaz — R3 (forte consommation)",
+      HISTORY_TABLE_GAS_R3_description:
+        "Historique des prix du gaz pour la bande TUR R3 — consommation résidentielle élevée.",
       GAS_PRODUCT_LABEL_label: "Étiquette du produit gazeux",
-      GAS_PRODUCT_LABEL_description: "Nom du produit gazeux, par ex. \"Gaz Estable N1\"",
+      GAS_PRODUCT_LABEL_description:
+        'Nom du produit gazeux, par ex. "Gaz Estable N1"',
       GAS_TARIFA_label: "Tarif d'accès au gaz",
       GAS_TARIFA_description: "Code tarifaire du gaz, par ex. TUR ou RL3",
       editableSection: "Section modifiable",
@@ -7991,9 +8297,11 @@ export const translations = {
       aiBuilderRegenerate: "Régénérer",
       aiBuilderDiscard: "Rejeter",
       aiBuilderUseBase: "Utiliser le modèle actuel comme base",
-      aiBuilderApplied: "✨ Modèle IA appliqué ! Vérifiez et enregistrez lorsque vous êtes prêt.",
+      aiBuilderApplied:
+        "✨ Modèle IA appliqué ! Vérifiez et enregistrez lorsque vous êtes prêt.",
       aiBuilderError: "Échec de la génération du modèle",
-      aiBuilderNotEnabled: "Les fonctionnalités LLM ne sont pas activées. Activez-les dans Paramètres système → Configuration LLM.",
+      aiBuilderNotEnabled:
+        "Les fonctionnalités LLM ne sont pas activées. Activez-les dans Paramètres système → Configuration LLM.",
       defaultHtmlTitle: "Nouveau modèle PDF",
     },
     emailTemplatesModule: {
@@ -8034,7 +8342,8 @@ export const translations = {
       sending: "Envoi en cours...",
       testEmailPlaceholder: "Entrez l'adresse e-mail",
       errorNoEmail: "Veuillez fournir une adresse e-mail",
-      errorNotSaved: "Veuillez d'abord enregistrer le modèle avant d'envoyer un test.",
+      errorNotSaved:
+        "Veuillez d'abord enregistrer le modèle avant d'envoyer un test.",
       testEmailError: "Échec de l'envoi de l'e-mail de test.",
       testEmailSent: "E-mail de test envoyé avec succès",
       confirmDelete: "Êtes-vous sûr de vouloir supprimer ce modèle ?",
@@ -8082,7 +8391,8 @@ export const translations = {
         "Nombre de minutes configuré pendant lesquelles le code OTP reste valide",
     },
     rolePermissionsModule: {
-      description: "Contrôlez quelles sections et actions sont disponibles par rôle. {adminRole} a toujours un accès complet. Les modifications prennent effet lors du prochain chargement de la page de l'utilisateur.",
+      description:
+        "Contrôlez quelles sections et actions sont disponibles par rôle. {adminRole} a toujours un accès complet. Les modifications prennent effet lors du prochain chargement de la page de l'utilisateur.",
       btnSave: "Enregistrer les modifications",
       btnSaving: "Enregistrement…",
       btnSaved: "Enregistré",
@@ -8090,12 +8400,14 @@ export const translations = {
       alwaysGranted: "Toujours accordé",
       adminLogsConfigurable: "Journaux configurables",
       adminOnlyBadge: "Administrateur uniquement",
-      adminOnlyTooltip: "Cette autorisation est réservée à l'administrateur et ne peut pas être accordée à d'autres rôles.",
+      adminOnlyTooltip:
+        "Cette autorisation est réservée à l'administrateur et ne peut pas être accordée à d'autres rôles.",
       roleLabelAdmin: "Administrateur",
       roleLabelSysAdmin: "Administrateur système",
       roleLabelAgent: "Agent Maître",
       roleLabelCommercial: "Agent",
-      savedSuccess: "Autorisations de rôle enregistrées. Les modifications s’appliquent au prochain chargement de la page.",
+      savedSuccess:
+        "Autorisations de rôle enregistrées. Les modifications s’appliquent au prochain chargement de la page.",
       savedError: "Échec de l'enregistrement des autorisations de rôle",
       loadError: "Échec du chargement des autorisations de rôle",
       groupSections: "Accès aux sections",
@@ -8104,7 +8416,8 @@ export const translations = {
       groupUsers: "Gestion des utilisateurs",
       groupAgencies: "Gestion d'agence",
       groupLogs: "Journaux",
-      noLogPermissions: "Vous n'êtes pas autorisé à afficher les journaux système.",
+      noLogPermissions:
+        "Vous n'êtes pas autorisé à afficher les journaux système.",
       perm_label_section_simulations: "Simulations",
       perm_label_section_users: "Utilisateurs",
       perm_label_section_agencies: "Agences",
@@ -8138,37 +8451,64 @@ export const translations = {
       perm_label_agencies_edit: "Modifier les agences",
       perm_label_agencies_deactivate: "Désactiver les agences",
       perm_desc_section_simulations: "Accéder à la section simulations",
-      perm_desc_section_users: "Gestion des utilisateurs d'accès (administrateur uniquement)",
-      perm_desc_section_agencies: "Gestion des agences d'accès (administrateur uniquement)",
+      perm_desc_section_users:
+        "Gestion des utilisateurs d'accès (administrateur uniquement)",
+      perm_desc_section_agencies:
+        "Gestion des agences d'accès (administrateur uniquement)",
       perm_desc_section_clients: "Accéder à la section gestion des clients",
-      perm_desc_section_base_values: "Accéder aux ensembles de valeurs de base du prix",
-      perm_desc_section_audit_logs: "Afficher les entrées du journal d'audit du système",
-      perm_desc_section_email_logs: "Afficher les journaux et l'état de livraison des e-mails (administrateur uniquement)",
-      perm_desc_section_cron_logs: "Afficher les journaux d'exécution des tâches cron (administrateur uniquement)",
-      perm_desc_section_ocr_logs: "Afficher les journaux d'extraction et de diagnostic rapide de OCR (administrateur uniquement)",
-      perm_desc_section_app_error_logs: "Afficher les journaux d'erreurs des applications (administrateur uniquement)",
-      perm_desc_section_analytics: "Accéder au tableau de bord et aux rapports d'analyse",
-      perm_desc_section_configurations: "Accéder aux configurations du système (administrateur uniquement)",
-      perm_desc_section_ocr_usage: "Accédez à l'utilisation du jeton OCR, au tableau de bord des coûts et aux exportations de factures (administrateur uniquement)",
-      perm_desc_simulations_create: "Créez de nouvelles simulations à partir de zéro ou via OCR",
-      perm_desc_simulations_share: "Générer et partager des liens de simulation publics",
+      perm_desc_section_base_values:
+        "Accéder aux ensembles de valeurs de base du prix",
+      perm_desc_section_audit_logs:
+        "Afficher les entrées du journal d'audit du système",
+      perm_desc_section_email_logs:
+        "Afficher les journaux et l'état de livraison des e-mails (administrateur uniquement)",
+      perm_desc_section_cron_logs:
+        "Afficher les journaux d'exécution des tâches cron (administrateur uniquement)",
+      perm_desc_section_ocr_logs:
+        "Afficher les journaux d'extraction et de diagnostic rapide de OCR (administrateur uniquement)",
+      perm_desc_section_app_error_logs:
+        "Afficher les journaux d'erreurs des applications (administrateur uniquement)",
+      perm_desc_section_analytics:
+        "Accéder au tableau de bord et aux rapports d'analyse",
+      perm_desc_section_configurations:
+        "Accéder aux configurations du système (administrateur uniquement)",
+      perm_desc_section_ocr_usage:
+        "Accédez à l'utilisation du jeton OCR, au tableau de bord des coûts et aux exportations de factures (administrateur uniquement)",
+      perm_desc_simulations_create:
+        "Créez de nouvelles simulations à partir de zéro ou via OCR",
+      perm_desc_simulations_share:
+        "Générer et partager des liens de simulation publics",
       perm_desc_simulations_duplicate: "Cloner des simulations existantes",
-      perm_desc_simulations_archive: "Simulations d'archives logicielles (masquer)",
-      perm_desc_simulations_edit_payload: "Modifier la charge utile de simulation et les entrées de calcul",
-      perm_desc_simulations_delete: "Supprimer définitivement les simulations (administrateur uniquement)",
-      perm_desc_clients_view: "Afficher la liste des clients et les détails des clients",
+      perm_desc_simulations_archive:
+        "Simulations d'archives logicielles (masquer)",
+      perm_desc_simulations_edit_payload:
+        "Modifier la charge utile de simulation et les entrées de calcul",
+      perm_desc_simulations_delete:
+        "Supprimer définitivement les simulations (administrateur uniquement)",
+      perm_desc_clients_view:
+        "Afficher la liste des clients et les détails des clients",
       perm_desc_clients_create: "Créer de nouveaux enregistrements client",
       perm_desc_clients_edit: "Modifier les détails du client existant",
-      perm_desc_clients_delete: "Supprimer définitivement les enregistrements client",
-      perm_desc_users_view: "Afficher la liste des utilisateurs et les profils utilisateur (administrateur uniquement)",
-      perm_desc_users_create: "Créer de nouveaux comptes utilisateur (administrateur uniquement)",
-      perm_desc_users_edit: "Modifier les détails de l'utilisateur et les mots de passe (administrateur uniquement)",
-      perm_desc_users_deactivate: "Activer ou désactiver les comptes utilisateurs (administrateur uniquement)",
-      perm_desc_users_sessions_manage: "Afficher les sessions utilisateur et forcer la déconnexion par session, utilisateur ou globalement",
-      perm_desc_agencies_view: "Afficher la liste des agences et les détails de l'agence (administrateur uniquement)",
-      perm_desc_agencies_create: "Créer de nouveaux enregistrements d'agence (administrateur uniquement)",
-      perm_desc_agencies_edit: "Modifier les détails de l'agence existante (administrateur uniquement)",
-      perm_desc_agencies_deactivate: "Activer ou désactiver des agences (administrateur uniquement)",
+      perm_desc_clients_delete:
+        "Supprimer définitivement les enregistrements client",
+      perm_desc_users_view:
+        "Afficher la liste des utilisateurs et les profils utilisateur (administrateur uniquement)",
+      perm_desc_users_create:
+        "Créer de nouveaux comptes utilisateur (administrateur uniquement)",
+      perm_desc_users_edit:
+        "Modifier les détails de l'utilisateur et les mots de passe (administrateur uniquement)",
+      perm_desc_users_deactivate:
+        "Activer ou désactiver les comptes utilisateurs (administrateur uniquement)",
+      perm_desc_users_sessions_manage:
+        "Afficher les sessions utilisateur et forcer la déconnexion par session, utilisateur ou globalement",
+      perm_desc_agencies_view:
+        "Afficher la liste des agences et les détails de l'agence (administrateur uniquement)",
+      perm_desc_agencies_create:
+        "Créer de nouveaux enregistrements d'agence (administrateur uniquement)",
+      perm_desc_agencies_edit:
+        "Modifier les détails de l'agence existante (administrateur uniquement)",
+      perm_desc_agencies_deactivate:
+        "Activer ou désactiver des agences (administrateur uniquement)",
     },
   },
   pt: {
@@ -8212,7 +8552,8 @@ export const translations = {
       ofProducts: "de {count} produtos",
       noSavings: "SEM ECONOMIA",
       costMoreThanCurrent: "Custa mais que o atual",
-      empty: "Nenhum resultado foi obtido. Verifique se os dados de entrada estão corretos.",
+      empty:
+        "Nenhum resultado foi obtido. Verifique se os dados de entrada estão corretos.",
       simulationResult: "RESULTADO DA SIMULAÇÃO",
       accessTariff: "TARIFAS DE ACESSO:",
       annualConsumption: "CONSUMO ANUAL:",
@@ -8237,7 +8578,8 @@ export const translations = {
       metaCreated: "Criado",
       invoiceFile: "Fatura",
       shareTitle: "Simulação de compartilhamento",
-      readOnlySharedMessage: "Esta simulação foi compartilhada e agora é somente leitura. Nenhuma alteração pode ser feita.",
+      readOnlySharedMessage:
+        "Esta simulação foi compartilhada e agora é somente leitura. Nenhuma alteração pode ser feita.",
     },
     simulationView: {
       fieldCups: "CUPS",
@@ -8278,9 +8620,11 @@ export const translations = {
       labelAnnualSavings: "Economia Anual",
       selectedAt: "Selecionado em {date}",
       allOffersTitle: "Todas as ofertas calculadas",
-      readOnlyHint: "Esta é uma visualização somente leitura. Para recalcular ou selecionar outra oferta, use o botão \"Abrir e Editar\" acima.",
+      readOnlyHint:
+        'Esta é uma visualização somente leitura. Para recalcular ou selecionar outra oferta, use o botão "Abrir e Editar" acima.',
       noDataTitle: "Sem dados de simulação",
-      noDataMessage: "Esta simulação ainda não foi configurada. Use o botão 'Abrir e Editar' acima para adicionar entradas e calcular ofertas.",
+      noDataMessage:
+        "Esta simulação ainda não foi configurada. Use o botão 'Abrir e Editar' acima para adicionar entradas e calcular ofertas.",
       sectionPersonalizadaFijo: "Fixo Personalizado (personalizado)",
       personalizadaFijoPotenciaLabel: "Prazo de potência (€/kWdia)",
       personalizadaFijoEnergiaLabel: "Prazo de energia (€/kWh)",
@@ -8294,7 +8638,8 @@ export const translations = {
       subtitle: "Crie uma nova simulação para um cliente.",
       clientLabel: "Cliente",
       selectClient: "— Selecione um cliente —",
-      clientHint: "Os dados do cliente serão pré-preenchidos no formulário de simulação.",
+      clientHint:
+        "Os dados do cliente serão pré-preenchidos no formulário de simulação.",
       selectExisting: "Selecione o cliente existente",
       createNew: "+ Criar novo cliente",
       quickClientName: "Nome da empresa",
@@ -8306,7 +8651,8 @@ export const translations = {
       quickClientEmailPlaceholder: "por exemplo. contato@empresa.com",
       quickClientPhone: "Telefone",
       quickClientPhonePlaceholder: "por exemplo. +34 600 000 000",
-      quickClientHint: "Um novo cliente será criado e vinculado a esta simulação.",
+      quickClientHint:
+        "Um novo cliente será criado e vinculado a esta simulação.",
       createNewClientTitle: "Criar novo cliente",
       saveClient: "Salvar cliente",
       creating: "Criando...",
@@ -8321,14 +8667,16 @@ export const translations = {
       selectClientError: "Selecione um cliente.",
       clientNameRequired: "O nome do cliente é obrigatório.",
       clientFound: "Cliente encontrado e selecionado automaticamente.",
-      validateExtractedData: "Revise e valide os dados extraídos da fatura antes de salvar.",
+      validateExtractedData:
+        "Revise e valide os dados extraídos da fatura antes de salvar.",
       created: "Simulação criada com sucesso.",
       submitLabel: "Criar simulação",
     },
     userFormPage: {
       pinLabel: "PIN",
       newTitle: "Novo usuário",
-      newSubtitle: "Crie uma nova conta de usuário com credenciais e permissões",
+      newSubtitle:
+        "Crie uma nova conta de usuário com credenciais e permissões",
       editTitle: "Editar usuário",
       editSubtitle: "Atualizar informações do usuário para {name}",
       loading: "Carregando dados do usuário...",
@@ -8350,7 +8698,8 @@ export const translations = {
       fieldCurrentPasswordHint: "Obrigatório ao alterar sua própria senha",
       fieldPassword: "Senha",
       fieldNewPassword: "Nova senha",
-      fieldPasswordHintCreate: "Min 12 caracteres, maiúsculas, minúsculas, número, caractere especial",
+      fieldPasswordHintCreate:
+        "Min 12 caracteres, maiúsculas, minúsculas, número, caractere especial",
       fieldPasswordHintEdit: "Deixe em branco para manter a senha atual",
       fieldRole: "Função",
       fieldAgency: "Agência",
@@ -8365,18 +8714,25 @@ export const translations = {
       validMobilePhoneRequired: "É necessário ter celular",
       validCommercialPhoneRequired: "É necessário um telefone comercial",
       validCommercialEmailRequired: "E-mail comercial é obrigatório",
-      validCommercialEmailInvalid: "Insira um endereço de e-mail comercial válido",
+      validCommercialEmailInvalid:
+        "Insira um endereço de e-mail comercial válido",
       validPasswordRequired: "Senha necessária",
       validPasswordMinLength: "A senha deve ter pelo menos 12 caracteres",
-      validPasswordLowercase: "A senha deve conter pelo menos uma letra minúscula",
-      validPasswordUppercase: "A senha deve conter pelo menos uma letra maiúscula",
+      validPasswordLowercase:
+        "A senha deve conter pelo menos uma letra minúscula",
+      validPasswordUppercase:
+        "A senha deve conter pelo menos uma letra maiúscula",
       validPasswordNumber: "A senha deve conter pelo menos um número",
-      validPasswordSpecial: "A senha deve conter pelo menos um caractere especial (@$!%*?&#)",
-      validCurrentPasswordRequired: "A senha atual é necessária ao alterar sua senha",
+      validPasswordSpecial:
+        "A senha deve conter pelo menos um caractere especial (@$!%*?&#)",
+      validCurrentPasswordRequired:
+        "A senha atual é necessária ao alterar sua senha",
       validRoleRequired: "A função é obrigatória",
       validAgencyRequired: "Agência necessária",
-      adminRoleCannotBeChanged: "A função de administrador não pode ser alterada",
-      sysAdminRoleCannotBeChanged: "A função de administrador do sistema não pode ser alterada",
+      adminRoleCannotBeChanged:
+        "A função de administrador não pode ser alterada",
+      sysAdminRoleCannotBeChanged:
+        "A função de administrador do sistema não pode ser alterada",
       generatePassword: "Gerar senha",
       passwordStrengthWeak: "Fraco",
       passwordStrengthFair: "Feira",
@@ -8408,7 +8764,8 @@ export const translations = {
       btnCalculating: "Calculando…",
       btnCalculate: "Calcular oferta",
       errorCalculating: "Erro ao calcular",
-      noResultsPrompt: "Insira os dados e pressione \"Calcular oferta\" para ver os resultados.",
+      noResultsPrompt:
+        'Insira os dados e pressione "Calcular oferta" para ver os resultados.',
       simTypeSection: "Tipo de simulação",
       electricity: "Eletricidade",
       gas: "Gás",
@@ -8444,7 +8801,8 @@ export const translations = {
       excessPowerLabel: "Excesso de potência (€, opcional)",
       excessPowerHint: "Custo total de energia excedente da fatura (€)",
       omieLabel: "Preço spot OMIE estimado por período",
-      omieHint: "Afeta os produtos INDEXED e os cálculos do Índice Personalizado OMIE+B. Para produtos Personalizada, inserir o preço all-in por kWh que o cliente irá pagar (incluindo componentes da tarifa de acesso). Deixe em 0 para ver o custo apenas da margem.",
+      omieHint:
+        "Afeta os produtos INDEXED e os cálculos do Índice Personalizado OMIE+B. Para produtos Personalizada, inserir o preço all-in por kWh que o cliente irá pagar (incluindo componentes da tarifa de acesso). Deixe em 0 para ver o custo apenas da margem.",
       peninsula: "Península",
       peninsulaYBaleares: "Península e Ilhas Baleares",
       balearics: "Baleares",
@@ -8455,8 +8813,10 @@ export const translations = {
       no: "Não",
       optional: "opcional",
       sectionClientInfo: "Informações do cliente",
-      helpCups: "Código do Ponto de Fornecimento — encontrado no topo da sua conta de luz",
-      cupsLookupHint: "{count} conhecido CUPS – selecione para preencher automaticamente os detalhes do cliente",
+      helpCups:
+        "Código do Ponto de Fornecimento — encontrado no topo da sua conta de luz",
+      cupsLookupHint:
+        "{count} conhecido CUPS – selecione para preencher automaticamente os detalhes do cliente",
       fieldAnnualConsumption: "Consumo anual (kWh)",
       helpAnnualConsumption: "Seu uso total anual de eletricidade",
       clientDetailsSubtitle: "Detalhes do cliente",
@@ -8472,15 +8832,18 @@ export const translations = {
       helpCurrentSupplier: "A empresa que atualmente fornece sua eletricidade",
       placeholderCurrentSupplier: "Atual empresa de eletricidade",
       sectionInvoiceData: "Dados da fatura",
-      helpAccessTariff: "O tipo de conexão elétrica determina a estrutura de preços",
+      helpAccessTariff:
+        "O tipo de conexão elétrica determina a estrutura de preços",
       optionLowVoltage15: "2.0TD — Baixa tensão ≤15 kW",
       optionLowVoltage15Plus: "3.0TD — Baixa tensão >15 kW",
       optionHighVoltage: "6.1TD — Alta tensão",
       helpStartDate: "Primeiro dia do período de faturamento",
       helpEndDate: "Último dia do período de faturamento",
-      powerPeriodsHintInvoice: "kW contratado para cada período — encontrado na seção 'Energia' da sua fatura",
+      powerPeriodsHintInvoice:
+        "kW contratado para cada período — encontrado na seção 'Energia' da sua fatura",
       excessPowerNote: "Excesso de potência — opcional, somente P1–P3",
-      energyPeriodsHintInvoice: "Total kWh consumido por período — encontrado na seção 'Energia' da sua fatura",
+      energyPeriodsHintInvoice:
+        "Total kWh consumido por período — encontrado na seção 'Energia' da sua fatura",
       sectionInvoiceBreakdown: "Detalhamento e cobranças da fatura",
       fieldReactiveHint: "Sobretaxa de energia reativa",
       fieldMeterRentalHint: "Taxa de aluguel do medidor",
@@ -8492,37 +8855,61 @@ export const translations = {
       fieldElecTax: "Imposto sobre eletricidade (%)",
       fieldElecTaxHint: "Imposto sobre eletricidade {tax}",
       fieldInvoiceTotal: "Total da fatura (€)",
-      helpInvoiceTotal: "O valor total da sua fatura atual, incluindo todos os impostos",
-      loadProfileDescription: "Padrão de distribuição do seu consumo de eletricidade ao longo do dia",
+      helpInvoiceTotal:
+        "O valor total da sua fatura atual, incluindo todos os impostos",
+      currentPlanBreakdownLabel: "Detalhe do plano atual",
+      currentPlanBreakdownEnabledHint:
+        "Estes valores da fatura serão usados na comparação do Plano Atual.",
+      currentPowerCostLabel: "Custo atual de potência",
+      currentEnergyCostLabel: "Custo atual de energia",
+      currentElectricityTaxLabel: "Imposto elétrico atual",
+      currentIvaAmountLabel: "Valor atual de IVA",
+      loadProfileDescription:
+        "Padrão de distribuição do seu consumo de eletricidade ao longo do dia",
       fieldProfile: "Perfil",
       sectionIndexedPricing: "Preços indexados (avançado)",
-      omieDescription: "Para produtos indexados — preço estimado do OMIE por período. Deixe em 0 para ver apenas a margem.",
+      omieDescription:
+        "Para produtos indexados — preço estimado do OMIE por período. Deixe em 0 para ver apenas a margem.",
       omieSpotLabel: "Preço spot OMIE (€/kWh) por período",
-      omieSpotHint: "Preço spot estimado do OMIE — relevante apenas para produtos indexados",
+      omieSpotHint:
+        "Preço spot estimado do OMIE — relevante apenas para produtos indexados",
       sectionPersonalizadaIndex: "Índice personalizado (personalizado)",
-      personalizadaIndexDescription: "Oferta indexada personalizada — preenche a linha de resultados 'Índice personalizado'. Preencha a margem de energia (€/MWh) e opcionalmente a margem de potência (€/kW/ano) por período. Deixe tudo em 0 para omitir esta linha dos resultados.",
-      personalizadaIndexMargenEnergiaLabel: "Margem energética (€/MWh) por período",
-      personalizadaIndexMargenEnergiaHint: "Margem de energia personalizada adicionada ao preço spot OMIE — €/MWh (Margen Venta Energía)",
-      personalizadaIndexMargenPotenciaLabel: "Margem de potência (€/kW/ano) por período",
-      personalizadaIndexMargenPotenciaHint: "Margem de potência personalizada — €/kW/ano (Margen Venta Potencia)",
+      personalizadaIndexDescription:
+        "Oferta indexada personalizada — preenche a linha de resultados 'Índice personalizado'. Preencha a margem de energia (€/MWh) e opcionalmente a margem de potência (€/kW/ano) por período. Deixe tudo em 0 para omitir esta linha dos resultados.",
+      personalizadaIndexMargenEnergiaLabel:
+        "Margem energética (€/MWh) por período",
+      personalizadaIndexMargenEnergiaHint:
+        "Margem de energia personalizada adicionada ao preço spot OMIE — €/MWh (Margen Venta Energía)",
+      personalizadaIndexMargenPotenciaLabel:
+        "Margem de potência (€/kW/ano) por período",
+      personalizadaIndexMargenPotenciaHint:
+        "Margem de potência personalizada — €/kW/ano (Margen Venta Potencia)",
       sectionPersonalizadaOmieB: "OMIE + B personalizado (personalizado)",
-      personalizadaOmieBDescription: "Oferta OMIE + B personalizada — preenche a linha de resultados 'OMIE + B personalizado'. Preencha o termo B (€/MWh) por período. Deixe tudo em 0 para omitir esta linha dos resultados.",
+      personalizadaOmieBDescription:
+        "Oferta OMIE + B personalizada — preenche a linha de resultados 'OMIE + B personalizado'. Preencha o termo B (€/MWh) por período. Deixe tudo em 0 para omitir esta linha dos resultados.",
       personalizadaOmieBTerminoBLabel: "Prazo B (€/MWh) por período",
-      personalizadaOmieBTerminoBHint: "Termo B personalizado adicionado ao preço spot OMIE — €/MWh (Término Bi Oferta Personalizada)",
-      personalizadaOmieBMargenPotenciaLabel: "Margem de potência (€/kW/ano) por período",
-      personalizadaOmieBMargenPotenciaHint: "Margem de potência personalizada — €/kW/ano (Margen Venta Potencia)",
-      formCompletion: "Preenchimento do formulário: {completed} das seções obrigatórias de {total}",
+      personalizadaOmieBTerminoBHint:
+        "Termo B personalizado adicionado ao preço spot OMIE — €/MWh (Término Bi Oferta Personalizada)",
+      personalizadaOmieBMargenPotenciaLabel:
+        "Margem de potência (€/kW/ano) por período",
+      personalizadaOmieBMargenPotenciaHint:
+        "Margem de potência personalizada — €/kW/ano (Margen Venta Potencia)",
+      formCompletion:
+        "Preenchimento do formulário: {completed} das seções obrigatórias de {total}",
       allPeriodsFilled: "Todos os períodos devem ser preenchidos",
       sectionGasPersonalizadaIndex: "Indexado personalizado (personalizado)",
-      gasPersonalizadaIndexDescription: "Oferta de gás indexada personalizada — preenche a linha 'Índice Personalizado' nos resultados. Insira a margem de energia (€/kWh) em cima do MIBGAS. Deixe em 0 para omitir.",
+      gasPersonalizadaIndexDescription:
+        "Oferta de gás indexada personalizada — preenche a linha 'Índice Personalizado' nos resultados. Insira a margem de energia (€/kWh) em cima do MIBGAS. Deixe em 0 para omitir.",
       gasPersonalizadaIndexMargenLabel: "Preço de energia (€/kWh)",
-      gasPersonalizadaIndexMargenHint: "Margem fixa adicionada ao preço de referência MIBGAS — €/kWh (Precio Término Energía oferta)",
+      gasPersonalizadaIndexMargenHint:
+        "Margem fixa adicionada ao preço de referência MIBGAS — €/kWh (Precio Término Energía oferta)",
       sectionGasContractDetails: "Detalhes do contrato",
       fieldGasFrom: "De",
       fieldGasTo: "Para",
       fieldGasCurrentInvoiceHint: "Valor total incluindo IVA",
       sectionGasConsumption: "Consumo de gás",
-      fieldTotalConsumptionHint: "Total kWh consumido durante o período de faturamento",
+      fieldTotalConsumptionHint:
+        "Total kWh consumido durante o período de faturamento",
       sectionExtraCharges: "Custos extras",
       fieldMeterRentalMonthlyHint: "Taxa mensal de aluguel do medidor",
       fieldOtherChargesLineHint: "Quaisquer itens de linha adicionais",
@@ -8534,12 +8921,14 @@ export const translations = {
       fieldIVA: "IVA (%)",
       fieldIVAHint: "Taxa de IVA (padrão: 21%)",
       fieldHydrocarbonTax: "Imposto sobre Hidrocarbonetos (€/kWh)",
-      fieldHydrocarbonTaxHint: "Taxa de imposto sobre hidrocarbonetos (padrão: 0,00234 €/kWh)",
+      fieldHydrocarbonTaxHint:
+        "Taxa de imposto sobre hidrocarbonetos (padrão: 0,00234 €/kWh)",
       commodityType: "Tipo de mercadoria:",
       electricityAndGasLabel: "Eletricidade + Gás",
       tabInputs: "Entradas",
       tabResultsWithCount: "Resultados ({count} produtos)",
-      fieldsRequireAttention: "{count} campos requerem atenção - verifique os campos destacados acima",
+      fieldsRequireAttention:
+        "{count} campos requerem atenção - verifique os campos destacados acima",
       fillTestData: "🧪 Preencha os dados de teste",
       viewPreviousResults: "Ver resultados anteriores →",
       noResultsYet: "Nenhum resultado ainda",
@@ -8565,7 +8954,8 @@ export const translations = {
       colAnnualSavings: "Economia anual",
       currentInvoice: "Fatura atual:",
       bestOffer: "Melhor oferta: {product} — economiza {amount} €",
-      noResults: "Nenhum resultado obtido. Verifique se os dados de entrada estão corretos.",
+      noResults:
+        "Nenhum resultado obtido. Verifique se os dados de entrada estão corretos.",
       calculatedAt: "Calculado:",
       electricity: "Eletricidade",
       gas: "Gás",
@@ -8580,7 +8970,8 @@ export const translations = {
       indexed: "Indexado",
       scopeGlobal: "Global",
       loading: "Carregando configuração do analisador...",
-      validationRequired: "Rótulo de origem, chave do produto e nome de exibição são obrigatórios",
+      validationRequired:
+        "Rótulo de origem, chave do produto e nome de exibição são obrigatórios",
       saveSuccess: "Excel configuração do analisador salva",
       saveError: "Falha ao salvar a configuração do analisador Excel",
       enabledCount: "{enabled} de {total} ativado",
@@ -8602,7 +8993,8 @@ export const translations = {
     invoiceExtractor: {
       fieldCUPS: "CUPS",
       title: "Extração de dados de fatura",
-      description: "Carregue uma fatura de energia (PDF ou imagem) para extrair automaticamente os dados da simulação",
+      description:
+        "Carregue uma fatura de energia (PDF ou imagem) para extrair automaticamente os dados da simulação",
       uploadPrompt: "Selecionar arquivo de fatura",
       uploadHint: "Suportado: PDF, JPG, PNG, WEBP (máx. 10 MB).",
       addMoreImages: "Adicione mais imagens",
@@ -8614,8 +9006,10 @@ export const translations = {
       noFile: "Selecione um arquivo primeiro",
       fileTooLarge: "O tamanho do arquivo excede o limite de 10 MB",
       invalidFormat: "Formato de arquivo inválido",
-      llmNotConfigured: "LLM não está configurado. Por favor configure-o em Configurações.",
-      llmNotEnabled: "LLM recursos não estão habilitados. Ative-os em Configurações.",
+      llmNotConfigured:
+        "LLM não está configurado. Por favor configure-o em Configurações.",
+      llmNotEnabled:
+        "LLM recursos não estão habilitados. Ative-os em Configurações.",
       extractedDataTitle: "Dados extraídos",
       fieldClient: "Cliente",
       fieldCIF: "CIF / IVA",
@@ -8631,24 +9025,31 @@ export const translations = {
       fieldCurrentPrices: "Preços unitários atuais do fornecedor",
       fieldPricePower: "Potência",
       fieldPriceEnergy: "Energia",
-      ocrDisclaimer: "OCR pode conter erros. Valide os dados preenchidos antes de continuar.",
+      ocrDisclaimer:
+        "OCR pode conter erros. Valide os dados preenchidos antes de continuar.",
       detectingProvider: "Detectando provedor...",
       detectedProvider: "Provedor detectado:",
       unknownProvider: "Provedor não listado:",
       couldNotDetect: "Não foi possível determinar",
-      lowConfidenceHint: "Baixa confiança — o modelo não tinha certeza sobre este provedor",
+      lowConfidenceHint:
+        "Baixa confiança — o modelo não tinha certeza sobre este provedor",
       providerCustomPrompt: "Prompt personalizado ativo",
       addProvider: "Adicionar provedor",
-      addProviderHint: "Vá para Configurações → Integrações → Provedores de fatura para adicionar este provedor e configurar um prompt personalizado",
+      addProviderHint:
+        "Vá para Configurações → Integrações → Provedores de fatura para adicionar este provedor e configurar um prompt personalizado",
       addToList: "Adicionar à lista",
       selectProvider: "Selecionar provedor",
       defaultPrompt: "Prompt padrão",
       needsPromptConfig: "Precisa de configuração imediata",
-      needsPromptConfigHint: "Este provedor foi adicionado automaticamente e seu prompt personalizado ainda não foi configurado",
-      providerDetectionFailed: "Não foi possível detectar o provedor – o prompt padrão será usado",
-      reportIssueTitle: "Os dados extraídos parecem estar quase vazios. A fatura pode não ter sido lida corretamente.",
+      needsPromptConfigHint:
+        "Este provedor foi adicionado automaticamente e seu prompt personalizado ainda não foi configurado",
+      providerDetectionFailed:
+        "Não foi possível detectar o provedor – o prompt padrão será usado",
+      reportIssueTitle:
+        "Os dados extraídos parecem estar quase vazios. A fatura pode não ter sido lida corretamente.",
       reportIssueButton: "Relate este problema",
-      reportIssuePlaceholder: "Descreva o problema (por exemplo, provedor errado detectado, verificação ilegível, campos errados preenchidos…)",
+      reportIssuePlaceholder:
+        "Descreva o problema (por exemplo, provedor errado detectado, verificação ilegível, campos errados preenchidos…)",
       reportIssueCancel: "Cancelar",
       reportIssueSubmit: "Enviar relatório",
       reportIssueSubmitting: "Enviando…",
@@ -8658,7 +9059,8 @@ export const translations = {
       reportIssueFlagButton: "⚑ Relatar problema",
     },
     login: {
-      brandDesc: "Gestão centralizada da oferta de energia para agentes e comerciais.",
+      brandDesc:
+        "Gestão centralizada da oferta de energia para agentes e comerciais.",
       title: "Entrar",
       subtitle: "Autentique com suas credenciais internas AXPO.",
       email: "E-mail",
@@ -8671,15 +9073,18 @@ export const translations = {
     },
     forgotPassword: {
       title: "Redefinir sua senha",
-      subtitle: "Digite seu e-mail e enviaremos um link para redefinir sua senha.",
+      subtitle:
+        "Digite seu e-mail e enviaremos um link para redefinir sua senha.",
       emailLabel: "E-mail",
       emailPlaceholder: "seu@email.com",
       emailHint: "Digite o e-mail associado à sua conta.",
       invalidEmail: "Insira um endereço de e-mail válido.",
       submitting: "Enviando link de redefinição…",
       submit: "Enviar link de redefinição",
-      requestFailed: "Falha ao enviar link de redefinição. Por favor, tente novamente.",
-      successMessage: "Se existir uma conta com este e-mail, você receberá um link de redefinição de senha em breve. Por favor, verifique sua caixa de entrada.",
+      requestFailed:
+        "Falha ao enviar link de redefinição. Por favor, tente novamente.",
+      successMessage:
+        "Se existir uma conta com este e-mail, você receberá um link de redefinição de senha em breve. Por favor, verifique sua caixa de entrada.",
       backToLogin: "Voltar ao login",
     },
     resetPassword: {
@@ -8687,7 +9092,8 @@ export const translations = {
       subtitle: "Escolha uma nova senha segura para sua conta.",
       newPassword: "Nova senha",
       confirmPassword: "Confirmar senha",
-      passwordHint: "Min. 12 caracteres com letras maiúsculas, minúsculas, números e caracteres especiais.",
+      passwordHint:
+        "Min. 12 caracteres com letras maiúsculas, minúsculas, números e caracteres especiais.",
       passwordMismatch: "As senhas não coincidem.",
       submitting: "Redefinindo senha…",
       submit: "Redefinir senha e fazer login",
@@ -8701,25 +9107,29 @@ export const translations = {
       subtitle: "Escolha uma senha segura para ativar sua conta.",
       newPassword: "Nova senha",
       confirmPassword: "Confirmar senha",
-      passwordHint: "Min. 12 caracteres com letras maiúsculas, minúsculas, números e caracteres especiais.",
+      passwordHint:
+        "Min. 12 caracteres com letras maiúsculas, minúsculas, números e caracteres especiais.",
       passwordMismatch: "As senhas não coincidem.",
       submitting: "Configurando senha…",
       submit: "Defina a senha e faça login",
       invalidToken: "Este link de configuração é inválido ou já foi usado.",
-      expiredToken: "Este link de configuração expirou. Peça ao seu administrador para reenviá-lo.",
+      expiredToken:
+        "Este link de configuração expirou. Peça ao seu administrador para reenviá-lo.",
       success: "Senha definida com sucesso. Redirecionando…",
       missingToken: "Nenhum token de configuração encontrado no link.",
     },
     magicLink: {
       title: "Faça login com Magic Link",
-      subtitle: "Digite seu e-mail e enviaremos um link de login com um clique.",
+      subtitle:
+        "Digite seu e-mail e enviaremos um link de login com um clique.",
       emailLabel: "E-mail",
       emailPlaceholder: "seu@email.com",
       submitting: "Enviando link mágico…",
       submit: "Enviar link mágico",
       requestFailed: "Falha ao enviar link mágico. Por favor, tente novamente.",
       successTitle: "Login bem-sucedido",
-      successDesc: "Um link mágico foi enviado para seu e-mail. Ele expira em alguns minutos.",
+      successDesc:
+        "Um link mágico foi enviado para seu e-mail. Ele expira em alguns minutos.",
       successSubtitle: "Agora você está logado. Redirecionando…",
       backToPassword: "Faça login com senha",
       verifyingTitle: "Verificando seu link mágico…",
@@ -8735,11 +9145,13 @@ export const translations = {
     otp: {
       title: "Autenticação de dois fatores",
       subtitle: "Digite o código de verificação enviado para seu e-mail",
-      description: "Um código de 6 dígitos foi enviado para seu endereço de e-mail. Digite-o abaixo para concluir o login.",
+      description:
+        "Um código de 6 dígitos foi enviado para seu endereço de e-mail. Digite-o abaixo para concluir o login.",
       codeLabel: "Código de verificação",
       verify: "Verificar código",
       verifying: "Verificando…",
-      verifyFailed: "Código de verificação inválido ou expirado. Por favor, tente novamente.",
+      verifyFailed:
+        "Código de verificação inválido ou expirado. Por favor, tente novamente.",
       backToLogin: "Voltar ao login",
       attemptsRemaining: "{{n}} tentativa(s) restantes",
       noAttemptsLeft: "Nenhuma tentativa restante. Solicite um novo código.",
@@ -8749,21 +9161,32 @@ export const translations = {
     },
     maintenance: {
       title: "Inativo para manutenção",
-      subtitle: "Estamos realizando manutenção programada para melhorar sua experiência. Estaremos de volta em breve.",
+      subtitle:
+        "Estamos realizando manutenção programada para melhorar sua experiência. Estaremos de volta em breve.",
       expectedOnline: "Espera-se que volte a ficar on-line",
-      footerNote: "Se precisar de assistência imediata, entre em contato com seu gerente de conta.",
+      footerNote:
+        "Se precisar de assistência imediata, entre em contato com seu gerente de conta.",
       brand: "AXPO Simulador",
     },
     sectionDescriptions: {
-      simulations: "Crie, atualize, compartilhe e arquive registros de simulação com controle de expiração.",
-      users: "Gerencie identidades de usuários, funções e rotação de PIN sob limites rígidos de RBAC.",
-      agencies: "Controle de ativação de agência e escopo de propriedade para equipes operacionais.",
-      clients: "Gerencie contas de clientes vinculadas a agências para atribuição de simulação.",
-      baseValues: "Gerencie conjuntos de valores básicos, cargas úteis de itens e versões ativas usadas em cálculos de simulação.",
-      auditLogs: "Revise eventos imutáveis ​​e rastreios de acesso para governança e monitoramento de conformidade.",
-      emailLogs: "Rastreie todos os e-mails enviados pelo sistema, incluindo status, destinatários e conteúdo.",
-      analytics: "Acompanhe o desempenho da simulação e métricas de acesso para decisões operacionais.",
-      configurations: "Gerencie configurações do sistema, modelos PDF, modelos de e-mail e outras definições configuráveis.",
+      simulations:
+        "Crie, atualize, compartilhe e arquive registros de simulação com controle de expiração.",
+      users:
+        "Gerencie identidades de usuários, funções e rotação de PIN sob limites rígidos de RBAC.",
+      agencies:
+        "Controle de ativação de agência e escopo de propriedade para equipes operacionais.",
+      clients:
+        "Gerencie contas de clientes vinculadas a agências para atribuição de simulação.",
+      baseValues:
+        "Gerencie conjuntos de valores básicos, cargas úteis de itens e versões ativas usadas em cálculos de simulação.",
+      auditLogs:
+        "Revise eventos imutáveis ​​e rastreios de acesso para governança e monitoramento de conformidade.",
+      emailLogs:
+        "Rastreie todos os e-mails enviados pelo sistema, incluindo status, destinatários e conteúdo.",
+      analytics:
+        "Acompanhe o desempenho da simulação e métricas de acesso para decisões operacionais.",
+      configurations:
+        "Gerencie configurações do sistema, modelos PDF, modelos de e-mail e outras definições configuráveis.",
     },
     actions: {
       refresh: "Atualizar",
@@ -8849,23 +9272,30 @@ export const translations = {
       to: "para",
     },
     simulationsModule: {
-      subtitle: "Gerencie todas as simulações, compartilhe-as e monitore o acesso.",
+      subtitle:
+        "Gerencie todas as simulações, compartilhe-as e monitore o acesso.",
       editPayloadTitle: "Editar carga útil da simulação",
       payloadJson: "Carga útil JSON",
       shareTitle: "Simulação de compartilhamento",
       publicUrl: "Público URL",
       notShared: "Esta simulação ainda não foi compartilhada.",
       archiveTitle: "Simulação de arquivo",
-      archiveConfirm: "Simulação de arquivo {id}? Ele ficará oculto, mas não será excluído.",
+      archiveConfirm:
+        "Simulação de arquivo {id}? Ele ficará oculto, mas não será excluído.",
       deleteTitle: "Excluir simulação",
-      deleteConfirm: "Tem certeza de que deseja excluir a simulação {id}? Esta ação excluirá a simulação.",
-      deletePermanentConfirm: "Tem certeza de que deseja DELETE permanentemente a simulação {id}? Esta ação excluirá a simulação.",
+      deleteConfirm:
+        "Tem certeza de que deseja excluir a simulação {id}? Esta ação excluirá a simulação.",
+      deletePermanentConfirm:
+        "Tem certeza de que deseja DELETE permanentemente a simulação {id}? Esta ação excluirá a simulação.",
       bulkDeleteTitle: "Excluir simulações",
-      bulkDeleteConfirm: "Tem certeza de que deseja excluir {count} simulação(s)? Esta ação excluirá as simulações.",
-      bulkDeletePermanentConfirm: "Tem certeza de que deseja DELETE permanentemente {count} simulação(s)? As simulações arquivadas nunca mais serão exibidas nas respostas.",
+      bulkDeleteConfirm:
+        "Tem certeza de que deseja excluir {count} simulação(s)? Esta ação excluirá as simulações.",
+      bulkDeletePermanentConfirm:
+        "Tem certeza de que deseja DELETE permanentemente {count} simulação(s)? As simulações arquivadas nunca mais serão exibidas nas respostas.",
       bulkDeleteConfirmLabel: "Excluir tudo",
       bulkArchiveTitle: "Arquivar simulações",
-      bulkArchiveConfirm: "Tem certeza de que deseja arquivar {count} simulação(s)? Eles ficarão ocultos, mas não serão excluídos.",
+      bulkArchiveConfirm:
+        "Tem certeza de que deseja arquivar {count} simulação(s)? Eles ficarão ocultos, mas não serão excluídos.",
       bulkArchiveConfirmLabel: "Arquivar tudo",
       expiresLabel: "Expira em: {date}",
       clientViewed: "Visualizado",
@@ -8889,22 +9319,30 @@ export const translations = {
       toggleTitle: "Alternar status do usuário",
       toggleConfirm: "Tem certeza de que deseja {action} {name}?",
       rotateTitle: "Girar usuário PIN",
-      rotateConfirm: "Gerar um novo PIN para {name}? O antigo PIN irá parar de funcionar imediatamente.",
+      rotateConfirm:
+        "Gerar um novo PIN para {name}? O antigo PIN irá parar de funcionar imediatamente.",
       deleteTitle: "Excluir usuário",
-      deleteConfirm: "Tem certeza de que deseja excluir {name}? Esta ação excluirá o usuário.",
-      deletePermanentConfirm: "Tem certeza de que deseja EXCLUIR permanentemente {name}? Esta ação excluirá o usuário permanentemente.",
+      deleteConfirm:
+        "Tem certeza de que deseja excluir {name}? Esta ação excluirá o usuário.",
+      deletePermanentConfirm:
+        "Tem certeza de que deseja EXCLUIR permanentemente {name}? Esta ação excluirá o usuário permanentemente.",
       bulkDeleteTitle: "Excluir usuários",
-      bulkDeleteConfirm: "Excluir {count} usuário selecionado{count, plural, one {} outro {s}}? Esta ação desativará os usuários.",
-      bulkDeletePermanentConfirm: "DELETE permanentemente {count} usuário selecionado{count, plural, one {} outro {s}}? Os usuários arquivados nunca mais aparecerão nas respostas.",
+      bulkDeleteConfirm:
+        "Excluir {count} usuário selecionado{count, plural, one {} outro {s}}? Esta ação desativará os usuários.",
+      bulkDeletePermanentConfirm:
+        "DELETE permanentemente {count} usuário selecionado{count, plural, one {} outro {s}}? Os usuários arquivados nunca mais aparecerão nas respostas.",
     },
     userSessions: {
       title: "Sessões",
       subtitle: "Sessões de login ativas e históricas",
       openSessionsPage: "Sessões",
       maxAllowedActiveSessions: "Máximo de sessões ativas permitidas",
-      maxAllowedActiveSessionsHint: "Limite configurado: {count}. Quando excedido, a sessão mais antiga é automaticamente revogada no login.",
-      maxAllowedActiveSessionsCreateHint: "Este usuário pode ser criado com até {count} sessões ativas.",
-      historyAvailableAfterFirstLogin: "O histórico da sessão aparecerá depois que o usuário fizer login pela primeira vez.",
+      maxAllowedActiveSessionsHint:
+        "Limite configurado: {count}. Quando excedido, a sessão mais antiga é automaticamente revogada no login.",
+      maxAllowedActiveSessionsCreateHint:
+        "Este usuário pode ser criado com até {count} sessões ativas.",
+      historyAvailableAfterFirstLogin:
+        "O histórico da sessão aparecerá depois que o usuário fizer login pela primeira vez.",
       activeOnly: "Somente sessões ativas",
       activeUsersCount: "{count} usuários logados",
       activeSessions: "Sessões ativas",
@@ -8936,7 +9374,8 @@ export const translations = {
       failedToTerminateSession: "Falha ao encerrar a sessão",
       terminatedActiveSessions: "{count} sessões ativas encerradas",
       failedToTerminateUserSessions: "Falha ao encerrar sessões do usuário",
-      emergencyLogoutCompleted: "Logout de emergência concluído (sessões {count})",
+      emergencyLogoutCompleted:
+        "Logout de emergência concluído (sessões {count})",
       failedEmergencyLogout: "Falha ao realizar logout de emergência",
     },
     agenciesModule: {
@@ -8948,11 +9387,15 @@ export const translations = {
       toggleTitle: "agência",
       toggleConfirm: "Tem certeza de que deseja {action} {name}?",
       deleteTitle: "Excluir agência",
-      deleteConfirm: "Tem certeza de que deseja excluir {name}? Esta ação desativará a agência.",
-      deletePermanentConfirm: "Tem certeza de que deseja EXCLUIR permanentemente {name}? Esta ação excluirá a agência permanentemente.",
+      deleteConfirm:
+        "Tem certeza de que deseja excluir {name}? Esta ação desativará a agência.",
+      deletePermanentConfirm:
+        "Tem certeza de que deseja EXCLUIR permanentemente {name}? Esta ação excluirá a agência permanentemente.",
       bulkDeleteTitle: "Excluir agências",
-      bulkDeleteConfirm: "Excluir {count} agência selecionada{count, plural, one {y} outro {ies}}? Esta ação desativará as agências.",
-      bulkDeletePermanentConfirm: "DELETE permanentemente {count} agência selecionada{count, plural, one {y} outro {ies}}? As agências arquivadas nunca mais aparecerão nas respostas.",
+      bulkDeleteConfirm:
+        "Excluir {count} agência selecionada{count, plural, one {y} outro {ies}}? Esta ação desativará as agências.",
+      bulkDeletePermanentConfirm:
+        "DELETE permanentemente {count} agência selecionada{count, plural, one {y} outro {ies}}? As agências arquivadas nunca mais aparecerão nas respostas.",
     },
     clientsModule: {
       subtitle: "Gerencie clientes da empresa vinculados a simulações.",
@@ -8963,11 +9406,15 @@ export const translations = {
       deleteClient_tooltip: "Excluir cliente",
       toggleConfirm: "Tem certeza de que deseja {action} {name}?",
       deleteTitle: "Excluir cliente",
-      deleteConfirm: "Tem certeza de que deseja excluir {name}? Esta ação excluirá o cliente.",
-      deletePermanentConfirm: "Tem certeza de que deseja EXCLUIR permanentemente {name}? Esta ação excluirá o cliente.",
+      deleteConfirm:
+        "Tem certeza de que deseja excluir {name}? Esta ação excluirá o cliente.",
+      deletePermanentConfirm:
+        "Tem certeza de que deseja EXCLUIR permanentemente {name}? Esta ação excluirá o cliente.",
       bulkDeleteTitle: "Excluir clientes",
-      bulkDeleteConfirm: "Excluir {count} cliente(s) selecionado(s)? Esta ação excluirá os clientes.",
-      bulkDeletePermanentConfirm: "DELETE permanentemente {count} cliente(s) selecionado(s)? Os clientes arquivados nunca mais aparecerão nas respostas.",
+      bulkDeleteConfirm:
+        "Excluir {count} cliente(s) selecionado(s)? Esta ação excluirá os clientes.",
+      bulkDeletePermanentConfirm:
+        "DELETE permanentemente {count} cliente(s) selecionado(s)? Os clientes arquivados nunca mais aparecerão nas respostas.",
     },
     auditLogsModule: {
       subtitle: "Rastreie todos os eventos do sistema e ações do usuário.",
@@ -9084,9 +9531,11 @@ export const translations = {
       fixed: "Corrigido",
       saveResolution: "Salvar resolução",
       dismissIssue: "Ignorar problema",
-      feedbackPlaceholder: "por exemplo. alquiler não está sendo retornado, precioEnergiaP1 é sempre 0...",
+      feedbackPlaceholder:
+        "por exemplo. alquiler não está sendo retornado, precioEnergiaP1 é sempre 0...",
       rawTextReturned: "Texto bruto retornado pelo modelo",
-      noResponseText: "Nenhum texto de resposta registrado para esta solicitação.",
+      noResponseText:
+        "Nenhum texto de resposta registrado para esta solicitação.",
       fullPrompt: "Prompt completo enviado para LLM",
       persistedFiles: "Arquivos persistidos para esta solicitação OCR",
       extractedJson: "Campos extraídos e pós-processados (JSON)",
@@ -9096,7 +9545,8 @@ export const translations = {
       reImproveFailed: "Falha na nova melhoria",
       reImproving: "Melhorando e testando…",
       reImproveSubmit: "Melhore novamente com este feedback",
-      feedbackDescription: "Descreva o que ainda está errado com o prompt acima. A IA irá iterar no prompt aprimorado usando seu feedback e os arquivos de fatura originais.",
+      feedbackDescription:
+        "Descreva o que ainda está errado com o prompt acima. A IA irá iterar no prompt aprimorado usando seu feedback e os arquivos de fatura originais.",
       noTestResults: "Nenhum resultado de teste disponível ainda.",
       field: "Campo",
       oldPromptResult: "Resultado do prompt antigo",
@@ -9112,11 +9562,13 @@ export const translations = {
       loadCronLogsFailed: "Falha ao carregar logs cron",
       loadOcrLogsFailed: "Falha ao carregar registros OCR",
       deleteAppError: "Excluir erro de aplicativo",
-      deleteAppErrorConfirm: "Excluir este erro de aplicativo? Ele ficará oculto nos logs, mas será mantido no banco de dados.",
+      deleteAppErrorConfirm:
+        "Excluir este erro de aplicativo? Ele ficará oculto nos logs, mas será mantido no banco de dados.",
       appErrorDeleted: "Erro de aplicativo excluído",
       deleteAppErrorFailed: "Falha ao excluir erro do aplicativo",
       deleteAppErrors: "Excluir erros de aplicativo",
-      deleteAppErrorsConfirm: "Excluir erros de aplicativo {count}? Eles ficarão ocultos nos logs, mas serão retidos no banco de dados.",
+      deleteAppErrorsConfirm:
+        "Excluir erros de aplicativo {count}? Eles ficarão ocultos nos logs, mas serão retidos no banco de dados.",
       appErrorsDeleted: "{count} erros de aplicativo excluídos",
       deleteAppErrorsFailed: "Falha ao excluir erros do aplicativo",
       success: "Sucesso",
@@ -9151,10 +9603,12 @@ export const translations = {
     },
     analyticsModule: {
       titleAdmin: "Análise da plataforma",
-      subtitleAdmin: "Visão geral de todas as agências e desempenho da plataforma",
+      subtitleAdmin:
+        "Visão geral de todas as agências e desempenho da plataforma",
       titleAgent: "Análise da agência",
       subtitleAgent: "Desempenho da sua agência e atividade da equipe",
-      subtitle: "📊 Métricas de simulação em tempo real e insights de desempenho",
+      subtitle:
+        "📊 Métricas de simulação em tempo real e insights de desempenho",
       noData: "Nenhum dado analítico disponível.",
       noSimTrend: "Nenhuma simulação criada neste período",
       noAccessTrend: "Nenhuma tentativa de acesso neste período",
@@ -9223,7 +9677,8 @@ export const translations = {
       accessFailed: "Falha",
       accessSuccessRate: "Taxa de sucesso",
       tableAgencyPerformance: "Classificação de desempenho da agência",
-      tableAgencyPerformanceSub: "Quais agências estão gerando simulações e conseguindo clientes para abri-las",
+      tableAgencyPerformanceSub:
+        "Quais agências estão gerando simulações e conseguindo clientes para abri-las",
       colAgencyName: "Nome da agência",
       colCreated: "Criado",
       colSent: "Enviado",
@@ -9232,7 +9687,8 @@ export const translations = {
       emptyAgencyData: "Nenhum dado de agência disponível",
       pillAgencies: "{count} agências",
       tableCommercialPerformance: "Desempenho Comercial",
-      tableCommercialPerformanceSub: "Detalhamento das atividades dos comerciais da sua agência",
+      tableCommercialPerformanceSub:
+        "Detalhamento das atividades dos comerciais da sua agência",
       colCommercialName: "Nome Comercial",
       emptyCommercialData: "Nenhum dado comercial disponível",
       pillCommercials: "{count} comerciais",
@@ -9257,17 +9713,20 @@ export const translations = {
       alertPendingOpens: "📊 Aberturas pendentes",
       alertPendingOpensSub: "Enviado mas ainda não aberto",
       followUpsRequired: "Acompanhamentos necessários",
-      followUpsRequiredSub: "Simulações enviadas mas ainda não abertas - ação necessária",
+      followUpsRequiredSub:
+        "Simulações enviadas mas ainda não abertas - ação necessária",
       followUpsTotalPending: "Total Pendente",
       followUpsTotalPendingSub: "Precisa de acompanhamento",
       followUpsRecentlySent: "enviado recentemente",
       followUpsRecentlySentSub: "Últimos 7 dias",
       followUpsDeadLeads: "Leads provavelmente mortos",
       followUpsDeadLeadsSub: "> 30 dias",
-      followUpsActionItems: "💡 Itens de ação: Ligue para clientes com aberturas pendentes • Reenvie simulações para leads antigos • Treine comerciais com baixas taxas de abertura",
+      followUpsActionItems:
+        "💡 Itens de ação: Ligue para clientes com aberturas pendentes • Reenvie simulações para leads antigos • Treine comerciais com baixas taxas de abertura",
       allAgencies: "Todas as agências",
       sectionSimContent: "Conteúdo de simulação",
-      sectionSimContentSub: "Tipo de energia, distribuição tarifária e tamanho médio do negócio em todas as simulações",
+      sectionSimContentSub:
+        "Tipo de energia, distribuição tarifária e tamanho médio do negócio em todas as simulações",
       chartEnergyType: "Eletricidade vs Gás",
       chartEnergyTypeSub: "Simulações por tipo de energia",
       chartTariffBreakdown: "Discriminação Tarifária",
@@ -9284,7 +9743,8 @@ export const translations = {
       funnelSentEmail: "Enviado (E-mail)",
     },
     baseValuesModule: {
-      subtitle: "Configure os valores de referência econômica utilizados nas simulações.",
+      subtitle:
+        "Configure os valores de referência econômica utilizados nas simulações.",
       newSet: "Novo conjunto de valores base",
       editSet_tooltip: "Editar conjunto de valores base",
       download_tooltip: "Baixe o arquivo fonte Excel",
@@ -9292,13 +9752,16 @@ export const translations = {
       activateTitle: "Ativar conjunto de valores base",
       archiveTitle: "Conjunto de valores base de arquivo",
       restoreTitle: "Restaurar conjunto de valores base",
-      activateConfirm: "Ativar \"{name}\"? Ele substituirá o conjunto ativo atual em seu escopo.",
-      archiveConfirm: "Arquivo \"{name}\"? Ele ficará oculto nas simulações.",
-      restoreConfirm: "Restaurar \"{name}\"?",
+      activateConfirm:
+        'Ativar "{name}"? Ele substituirá o conjunto ativo atual em seu escopo.',
+      archiveConfirm: 'Arquivo "{name}"? Ele ficará oculto nas simulações.',
+      restoreConfirm: 'Restaurar "{name}"?',
       bulkArchiveTitle: "Arquivar conjuntos de valores base",
-      bulkArchiveConfirm: "Arquivar {count} rascunho selecionado, conjunto(s) de valores base de não produção? Conjuntos ativos e de produção não podem ser arquivados.",
+      bulkArchiveConfirm:
+        "Arquivar {count} rascunho selecionado, conjunto(s) de valores base de não produção? Conjuntos ativos e de produção não podem ser arquivados.",
       bulkArchiveLabel: "Arquivo selecionado",
-      archiveNotAllowed: "Somente conjuntos de valores base de rascunho e que não sejam de produção podem ser arquivados.",
+      archiveNotAllowed:
+        "Somente conjuntos de valores base de rascunho e que não sejam de produção podem ser arquivados.",
       colName: "Nome",
       colScope: "Escopo",
       colVersion: "Versão",
@@ -9316,24 +9779,29 @@ export const translations = {
       statusActive: "Ativo",
       statusDraft: "Rascunho",
       uploadTitle: "Carregar valores base Excel",
-      uploadSubtitle: "Importe uma pasta de trabalho como uma nova versão de rascunho.",
+      uploadSubtitle:
+        "Importe uma pasta de trabalho como uma nova versão de rascunho.",
       uploadVersionScope: "Escopo da versão",
-      uploadNeverReplace: "Os uploads sempre criam uma nova versão de rascunho. A versão mais recente nunca é substituída.",
+      uploadNeverReplace:
+        "Os uploads sempre criam uma nova versão de rascunho. A versão mais recente nunca é substituída.",
       uploadAs: "Carregar como {scope}",
       activate_tooltip: "Ativar",
       archive_tooltip: "Arquivo",
       restore_tooltip: "Restaurar",
       production_tooltip_on: "Versão de produção ativa (não pode ser removida)",
-      production_tooltip_off: "Definir como versão de produção (definirá outros para rascunho)",
+      production_tooltip_off:
+        "Definir como versão de produção (definirá outros para rascunho)",
       newTitle: "Novo conjunto de valores base",
-      newSubtitle: "Crie um novo conjunto de valores de referência econômica para simulações.",
+      newSubtitle:
+        "Crie um novo conjunto de valores de referência econômica para simulações.",
       editTitle: "Editar conjunto de valores base",
-      editSubtitle: "Atualização \"{name}\" — {scope} · v{version}",
+      editSubtitle: 'Atualização "{name}" — {scope} · v{version}',
       scopeAgencyLabel: "Escopo da agência",
       scopeGlobalLabel: "Escopo global",
       loading: "Carregando conjunto de valores base...",
       fieldName: "Nome",
-      fieldNamePlaceholder: "por exemplo. Valores do gás no primeiro trimestre de 2026",
+      fieldNamePlaceholder:
+        "por exemplo. Valores do gás no primeiro trimestre de 2026",
       fieldScope: "Escopo",
       fieldAgency: "Agência",
       selectAgencyPlaceholder: "— selecione —",
@@ -9350,7 +9818,8 @@ export const translations = {
       validNameRequired: "O nome é obrigatório.",
       validAgencyRequired: "Agência é necessária para o escopo da agência.",
       validRowKeyRequired: "Linha {row}: A chave é obrigatória.",
-      validRowValueRequired: "Linha {row}: é necessário um valor numérico ou de texto.",
+      validRowValueRequired:
+        "Linha {row}: é necessário um valor numérico ou de texto.",
     },
     common: {
       welcome: "Bem vindo",
@@ -9410,34 +9879,45 @@ export const translations = {
       saveSuccess: "Configurações do sistema salvas com sucesso",
       saveError: "Falha ao salvar as configurações do sistema",
       simulationTitle: "Configurações de simulação",
-      simulationDesc: "Definir comportamento de simulação, expiração e configurações de compartilhamento",
+      simulationDesc:
+        "Definir comportamento de simulação, expiração e configurações de compartilhamento",
       defaultShareText: "Modelo de texto de compartilhamento padrão",
-      defaultShareTextDesc: "Modelo de texto usado ao compartilhar simulações. Use {pin} para inserção dinâmica de PIN.",
-      defaultShareTextPlaceholder: "Insira o modelo de texto de compartilhamento...",
+      defaultShareTextDesc:
+        "Modelo de texto usado ao compartilhar simulações. Use {pin} para inserção dinâmica de PIN.",
+      defaultShareTextPlaceholder:
+        "Insira o modelo de texto de compartilhamento...",
       enablePixelTracking: "Ativar rastreamento de pixels",
-      enablePixelTrackingDesc: "Acompanhe quando os clientes visualizam suas simulações (rastreamento estilo boletim informativo)",
+      enablePixelTrackingDesc:
+        "Acompanhe quando os clientes visualizam suas simulações (rastreamento estilo boletim informativo)",
       userAuthTitle: "Configurações de usuário e autenticação",
-      userAuthDesc: "Configurar autenticação de usuário, requisitos PIN e controle de acesso",
+      userAuthDesc:
+        "Configurar autenticação de usuário, requisitos PIN e controle de acesso",
       requirePin: "Requer PIN para acesso à simulação",
-      requirePinDesc: "Os clientes devem inserir um PIN para visualizar sua simulação",
+      requirePinDesc:
+        "Os clientes devem inserir um PIN para visualizar sua simulação",
       pinLength: "PIN Comprimento",
       pinLengthDesc: "Número de dígitos no PIN gerado (recomendado: 4-6)",
       clientManagementTitle: "Configurações de gerenciamento de cliente",
-      clientManagementDesc: "Configure a criação automática de clientes e gerenciamento de perfis",
+      clientManagementDesc:
+        "Configure a criação automática de clientes e gerenciamento de perfis",
       autoCreateClient: "Criação automática de cliente em nova simulação",
       moduleVisibilityTitle: "Visibilidade do Módulo",
-      moduleVisibilityDesc: "Habilite ou desabilite módulos específicos no aplicativo",
+      moduleVisibilityDesc:
+        "Habilite ou desabilite módulos específicos no aplicativo",
       enableAnalytics: "Habilitar módulo analítico",
       enableAuditLogs: "Ativar módulo de registros de auditoria",
       dashboardReportsTitle: "Painel e relatórios",
-      dashboardReportsDesc: "Configurar visualizações de painel padrão e comportamento de relatórios",
+      dashboardReportsDesc:
+        "Configurar visualizações de painel padrão e comportamento de relatórios",
       defaultDashboardView: "Visualização padrão do painel",
-      defaultDashboardViewDesc: "Visualização padrão para usuários quando acessam o dashboard",
+      defaultDashboardViewDesc:
+        "Visualização padrão para usuários quando acessam o dashboard",
       adminView: "Visualização do administrador",
       masterView: "Visualização mestre",
       commercialView: "Visão Comercial",
       realtimeRefresh: "Habilitar atualização de relatório em tempo real",
-      realtimeRefreshDesc: "Atualizar relatórios automaticamente conforme os filtros mudam",
+      realtimeRefreshDesc:
+        "Atualizar relatórios automaticamente conforme os filtros mudam",
       resetDefaults: "Redefinir para os padrões",
     },
     requestCache: {
@@ -9446,8 +9926,10 @@ export const translations = {
       saveError: "Falha ao salvar a configuração do cache",
       loading: "Carregando configuração de cache...",
       title: "Solicitar Cache",
-      description: "Configure a atualização da consulta TanStack por módulo. A nova busca automática usa a duração do cache como intervalo de atualização.",
-      moduleDescription: "Os dados da consulta permanecem atualizados durante o período configurado.",
+      description:
+        "Configure a atualização da consulta TanStack por módulo. A nova busca automática usa a duração do cache como intervalo de atualização.",
+      moduleDescription:
+        "Os dados da consulta permanecem atualizados durante o período configurado.",
       cacheMinutes: "Minutos de cache",
       refetchOnExpiry: "Buscar novamente no vencimento",
       resetDefaults: "Redefinir padrões",
@@ -9490,9 +9972,11 @@ export const translations = {
     editableSectionsEditor: {
       title: "Seções editáveis",
       addSection: "+ Adicionar seção",
-      description: "Defina quais partes deste modelo os usuários podem editar ao usá-lo. Cada seção aparecerá na lista de variáveis arrastáveis e pode ser usada como",
+      description:
+        "Defina quais partes deste modelo os usuários podem editar ao usá-lo. Cada seção aparecerá na lista de variáveis arrastáveis e pode ser usada como",
       sectionKeyPlaceholder: "SECTION_KEY (por exemplo, INTRO_TEXT)",
-      empty: "Nenhuma seção editável definida. Adicione seções para permitir que os usuários personalizem partes específicas deste modelo.",
+      empty:
+        "Nenhuma seção editável definida. Adicione seções para permitir que os usuários personalizem partes específicas deste modelo.",
       removeSection: "Remover seção",
       label: "Etiqueta:",
       labelPlaceholder: "Nome de exibição",
@@ -9527,15 +10011,18 @@ export const translations = {
       openDetails: "Abrir detalhes",
       closeDetails: "Fechar detalhes",
       loadHistoryError: "Falha ao carregar o histórico de benchmark",
-      historyNotReady: "O armazenamento do histórico de benchmark ainda não está pronto. Aplique a migração pendente do banco de dados para ativar médias e histórico salvo.",
+      historyNotReady:
+        "O armazenamento do histórico de benchmark ainda não está pronto. Aplique a migração pendente do banco de dados para ativar médias e histórico salvo.",
       loadPdfError: "Falha ao carregar o benchmark PDF: {message}",
       resultNotSaved: "O resultado do benchmark não foi salvo no histórico.",
       unknownError: "Erro desconhecido",
       requestFailed: "Falha na solicitação",
       complete: "Referência concluída",
       title: "LLM Referência",
-      description: "Teste cada LLM em relação a uma fatura conhecida ({file}) e compare a precisão da detecção do provedor e da extração de dados, a latência e o uso de token.",
-      noActiveProviders: "Nenhum provedor LLM ativo configurado. Habilite os provedores primeiro na guia {tab}.",
+      description:
+        "Teste cada LLM em relação a uma fatura conhecida ({file}) e compare a precisão da detecção do provedor e da extração de dados, a latência e o uso de token.",
+      noActiveProviders:
+        "Nenhum provedor LLM ativo configurado. Habilite os provedores primeiro na guia {tab}.",
       availableLlms: "LLMs disponíveis",
       selectLlms: "Selecione LLMs para comparar ({selected}/{total})",
       runBenchmark: "Executar referência",
@@ -9547,7 +10034,8 @@ export const translations = {
       previousResults: "Resultados de benchmark anteriores",
       llmsTestedCurrent: "{count} LLM{plural} testado nesta execução",
       llmsTested: "{date} · {count} LLM{plural} testado",
-      sortedFooter: "Classificado por pontuação geral. As pontuações comparam os resultados com a resposta correta conhecida para Serigrafia arrigorriaga.pdf.",
+      sortedFooter:
+        "Classificado por pontuação geral. As pontuações comparam os resultados com a resposta correta conhecida para Serigrafia arrigorriaga.pdf.",
       noRuns: "Nenhuma execução de benchmark foi salva ainda.",
       history: "Histórico de referência",
       runCount: "{count} LLM{plural} testado",
@@ -9556,14 +10044,17 @@ export const translations = {
     },
     forbiddenState: {
       title: "Acesso negado",
-      withSection: "Sua função não tem permissão para acessar a seção \"{section}\".",
+      withSection:
+        'Sua função não tem permissão para acessar a seção "{section}".',
       generic: "Sua função não tem permissão para acessar esta seção.",
     },
     internalError: {
-      description: "Ocorreu um erro inesperado nesta página. Foi relatado automaticamente.",
+      description:
+        "Ocorreu um erro inesperado nesta página. Foi relatado automaticamente.",
       errorId: "Erro ID:",
       tryAgain: "Tente novamente",
-      boundaryDescription: "Falha na renderização do espaço de trabalho interno. Você pode tentar novamente agora sem perder sua sessão.",
+      boundaryDescription:
+        "Falha na renderização do espaço de trabalho interno. Você pode tentar novamente agora sem perder sua sessão.",
     },
     theme: {
       darkMode: "Modo escuro",
@@ -9581,7 +10072,8 @@ export const translations = {
       loading: "Carregando notificações...",
       emptyActive: "Nenhuma notificação ativa",
       emptyFiltered: "Nenhuma notificação corresponde aos filtros atuais.",
-      migrationPending: "As notificações estarão disponíveis após a aplicação da migração do banco de dados.",
+      migrationPending:
+        "As notificações estarão disponíveis após a aplicação da migração do banco de dados.",
       loadFailed: "Falha ao carregar notificações",
       filters: "Filtros",
       triageFilters: "Filtros de triagem",
@@ -9678,7 +10170,8 @@ export const translations = {
     },
     agencyTariffs: {
       title: "Disponibilidade Tarifária",
-      description: "Configure quais tarifas estão disponíveis para as simulações desta agência",
+      description:
+        "Configure quais tarifas estão disponíveis para as simulações desta agência",
       electricity: "Tarifas de Energia Elétrica",
       gas: "Tarifas de Gás",
       loading: "Carregando configuração tarifária...",
@@ -9747,13 +10240,16 @@ export const translations = {
       btnPreviewEmailTemplate: "Visualização",
       btnEditPdfTemplate: "Editar",
       btnPreviewPdfTemplate: "Visualização",
-      previewUnavailableMobileTitle: "Visualização não disponível em dispositivos móveis",
-      previewUnavailableMobile: "As visualizações e edição de modelos estão disponíveis em telas médias e superiores.",
+      previewUnavailableMobileTitle:
+        "Visualização não disponível em dispositivos móveis",
+      previewUnavailableMobile:
+        "As visualizações e edição de modelos estão disponíveis em telas médias e superiores.",
       loading: "Carregando...",
       loadTemplatesFailed: "Falha ao carregar modelos",
       generatePdfFailed: "Falha ao gerar PDF",
       sendEmailFailed: "Falha ao enviar e-mail",
-      testingModeEmailHint: "Modo de teste: o e-mail será enviado apenas para sua conta",
+      testingModeEmailHint:
+        "Modo de teste: o e-mail será enviado apenas para sua conta",
       editableSection: "Seção editável",
       clickHighlightedSections: "Clique nas seções destacadas para editá-las",
       editSectionTitle: "Editar: {label}",
@@ -9789,7 +10285,8 @@ export const translations = {
     },
     agencyTlvProducts: {
       title: "Produtos TLV",
-      description: "Configure quais produtos TLV ativos esta agência pode oferecer.",
+      description:
+        "Configure quais produtos TLV ativos esta agência pode oferecer.",
       loading: "Carregando configuração do produto TLV...",
       loadError: "Falha ao carregar a configuração do produto TLV",
       saveError: "Falha ao salvar a configuração do produto TLV",
@@ -9816,7 +10313,8 @@ export const translations = {
     },
     userPreferences: {
       title: "Preferências do usuário",
-      description: "Personalize suas preferências de exibição e formatação. Essas configurações substituirão os padrões do sistema.",
+      description:
+        "Personalize suas preferências de exibição e formatação. Essas configurações substituirão os padrões do sistema.",
       loading: "Carregando preferências...",
       saveSuccess: "Preferências salvas com sucesso",
       saveError: "Falha ao salvar preferências",
@@ -9828,7 +10326,8 @@ export const translations = {
     },
     profilePage: {
       title: "Meu perfil",
-      subtitle: "Visualize e edite seus dados pessoais e configurações de segurança",
+      subtitle:
+        "Visualize e edite seus dados pessoais e configurações de segurança",
       loading: "Carregando perfil...",
       loadFailed: "Falha ao carregar o perfil.",
       updated: "Perfil atualizado com sucesso.",
@@ -9904,7 +10403,8 @@ export const translations = {
       btnRecalculate: "Recalcular ofertas",
       recalculateHint: "Edite os valores acima e recalcule",
       noResults: "Nenhum resultado disponível",
-      noResultsHint: "Preencha os dados de entrada e clique em \"Calcular oferta\"",
+      noResultsHint:
+        'Preencha os dados de entrada e clique em "Calcular oferta"',
       electricityOffers: "Ofertas de eletricidade",
       gasOffers: "Ofertas de Gás",
       productsCount: "{count} produtos",
@@ -9920,7 +10420,8 @@ export const translations = {
       confirmGas: "Gás",
       confirmFixed: "Corrigido",
       confirmIndexed: "Indexado",
-      confirmDescription: "Esta oferta será marcada como selecionada e poderá ser compartilhada com o cliente. Você pode alterar esta seleção a qualquer momento.",
+      confirmDescription:
+        "Esta oferta será marcada como selecionada e poderá ser compartilhada com o cliente. Você pode alterar esta seleção a qualquer momento.",
       confirmCancel: "Cancelar",
       confirmSaving: "Salvando...",
       confirmButton: "Confirmar seleção",
@@ -9941,19 +10442,23 @@ export const translations = {
       downloading: "Gerando…",
       loading: "Carregando dados do histórico…",
       success: "Histórico PDF baixado com sucesso.",
-      noData: "Nenhum produto com histórico de preços está disponível para esta simulação.",
-      previewUnavailableMobileTitle: "Visualização não disponível em dispositivos móveis",
-      previewUnavailableMobile: "A visualização de PDF está disponível em telas médias e superiores.",
+      noData:
+        "Nenhum produto com histórico de preços está disponível para esta simulação.",
+      previewUnavailableMobileTitle:
+        "Visualização não disponível em dispositivos móveis",
+      previewUnavailableMobile:
+        "A visualização de PDF está disponível em telas médias e superiores.",
     },
     draggableVariables: {
       title: "Variáveis Disponíveis",
       subtitle: "Arraste variáveis para o editor",
       searchPlaceholder: "Variáveis de pesquisa…",
-      noMatches: "Nenhuma variável corresponde a \"{search}\"",
+      noMatches: 'Nenhuma variável corresponde a "{search}"',
     },
     configurationsModule: {
       title: "Configurações",
-      subtitle: "Gerencie modelos, configurações do sistema, experiência do usuário e integrações",
+      subtitle:
+        "Gerencie modelos, configurações do sistema, experiência do usuário e integrações",
       tabTemplatesCommunications: "Modelos e comunicações",
       tabSystemBusiness: "Sistema e Lógica de Negócios",
       tabUserExperience: "Experiência do usuário",
@@ -9970,20 +10475,16 @@ export const translations = {
       tabCache: "Cache",
       tabCronJobs: "Tarefas cron",
       groupDocuments: "Documentos e mensagens",
-      groupDocumentsSummary:
-        "Modelos, padrões e automação de mensagens.",
+      groupDocumentsSummary: "Modelos, padrões e automação de mensagens.",
       groupBusiness: "Regras de negócio",
       groupBusinessSummary:
         "Comportamento de simulação e parâmetros de cálculo.",
       groupPlatform: "Plataforma",
-      groupPlatformSummary:
-        "Runtime, sessões, cache e entrega de mensagens.",
+      groupPlatformSummary: "Runtime, sessões, cache e entrega de mensagens.",
       groupAiOcr: "IA e OCR",
-      groupAiOcrSummary:
-        "Roteamento LLM, prompts de fatura e custos de uso.",
+      groupAiOcrSummary: "Roteamento LLM, prompts de fatura e custos de uso.",
       groupAccess: "Acesso e experiência",
-      groupAccessSummary:
-        "Padrões para pessoas que usam o simulador.",
+      groupAccessSummary: "Padrões para pessoas que usam o simulador.",
       descPdfTemplates: "Documentos de simulação voltados ao cliente.",
       descEmailTemplates: "Texto de e-mail reutilizável e variáveis.",
       descPdfDefaults: "Modelos padrão por commodity.",
@@ -9992,15 +10493,13 @@ export const translations = {
       descClients: "Comportamento de criação de clientes.",
       descCalculation: "Impostos e opções de cálculo por commodity.",
       descExcelParser: "Mapeamento de campos da planilha de origem.",
-      descGeneralMaintenance:
-        "Versão do aplicativo e controles de manutenção.",
+      descGeneralMaintenance: "Versão do aplicativo e controles de manutenção.",
       descSmtp: "Conexão do servidor de e-mail de saída.",
       descSessions: "Limites padrão de dispositivos ativos.",
       descCache: "Controles da política de cache de requisições.",
       descCronJobs: "Configuração de tarefas agendadas.",
       descLlmSettings: "Roteamento de provedores e testes de modelos.",
-      descInvoiceProviders:
-        "Prompts de extração específicos por provedor.",
+      descInvoiceProviders: "Prompts de extração específicos por provedor.",
       descOcrUsage: "Volume, custo e faturamento OCR.",
       descPreferences: "Padrões visíveis para usuários.",
       descPermissions: "Capacidades de função e regras de acesso.",
@@ -10022,13 +10521,16 @@ export const translations = {
       saveSuccess: "Configuração do Cron atualizada com sucesso",
       loading: "Carregando configuração do cron...",
       title: "Configuração de cron jobs",
-      description: "Configure tarefas agendadas automáticas para o sistema, como simulações expiradas.",
+      description:
+        "Configure tarefas agendadas automáticas para o sistema, como simulações expiradas.",
       enableExpiration: "Ativar expiraç��o automática de simulação",
-      enableExpirationDesc: "Quando ativado, as simulações expirarão automaticamente com base no cronograma abaixo.",
+      enableExpirationDesc:
+        "Quando ativado, as simulações expirarão automaticamente com base no cronograma abaixo.",
       schedule: "Programação",
       scheduleDesc: "Escolha quando o trabalho de expiração deve ser executado",
       customExpression: "Expressão Cron personalizada",
-      customExpressionDesc: "Formato: minuto hora dia mês dia da semana (por exemplo, \"0 2 * * *\" para diariamente às 2h)",
+      customExpressionDesc:
+        'Formato: minuto hora dia mês dia da semana (por exemplo, "0 2 * * *" para diariamente às 2h)',
       crontabGuru: "Use crontab.guru para construir sua expressão",
       timezone: "Fuso horário",
       timezoneDesc: "Fuso horário em que o agendamento deve ser executado",
@@ -10039,7 +10541,8 @@ export const translations = {
     },
     ocrUsage: {
       title: "OCR Uso e cobrança",
-      subtitle: "Acompanhe o consumo de tokens, custos e instantâneos de faturas para seus pipelines OCR.",
+      subtitle:
+        "Acompanhe o consumo de tokens, custos e instantâneos de faturas para seus pipelines OCR.",
       configurePricing: "Configurar preços",
       createInvoice: "Fatura instantânea",
       exportCsv: "Exportar CSV",
@@ -10073,38 +10576,46 @@ export const translations = {
       outputHint: "Tokens de conclusão/saída",
       perSuccessfulCall: "por chamada bem-sucedida",
       unpricedWarningTitle: "Alguns modelos neste período não têm preço",
-      unpricedWarningDesc: "Estes modelos estão em execução, mas não têm preço ativo configurado: {models} {more}. Suas chamadas são mostradas como custo 0.",
+      unpricedWarningDesc:
+        "Estes modelos estão em execução, mas não têm preço ativo configurado: {models} {more}. Suas chamadas são mostradas como custo 0.",
       billingDisabledTitle: "OCR o faturamento está desativado no momento",
-      billingDisabledDesc: "Os cálculos de custo estão inativos. Ative o faturamento na configuração de preços para começar a monitorar os custos.",
+      billingDisabledDesc:
+        "Os cálculos de custo estão inativos. Ative o faturamento na configuração de preços para começar a monitorar os custos.",
       billingPanelTitle: "Configurações de faturamento",
       billingEnabledLabel: "Ativar faturamento OCR",
-      billingEnabledHint: "Ative para marcar os cálculos de custo OCR como ativos no painel.",
+      billingEnabledHint:
+        "Ative para marcar os cálculos de custo OCR como ativos no painel.",
       markupPercent: "% de marcação",
       fixedFeePerCall: "Taxa fixa/chamada",
       includeFailedCalls: "Bill falhou nas chamadas",
-      includeFailedCallsHint: "Quando desativado, apenas as chamadas bem-sucedidas são contabilizadas no custo total.",
+      includeFailedCallsHint:
+        "Quando desativado, apenas as chamadas bem-sucedidas são contabilizadas no custo total.",
       billingSaved: "Configurações de faturamento salvas",
       billingSaveFailed: "Falha ao salvar as configurações de faturamento",
       billingLoading: "Carregando configurações de faturamento...",
       andMore: "(+{n} mais)",
       chartCostOverTime: "Custo ao longo do tempo",
-      chartCostHint: "Soma de todas as chamadas OCR faturáveis por período. Calculado a partir de preços configurados por modelo mais sua margem de lucro/taxa fixa.",
+      chartCostHint:
+        "Soma de todas as chamadas OCR faturáveis por período. Calculado a partir de preços configurados por modelo mais sua margem de lucro/taxa fixa.",
       chartTokensOverTime: "Tokens ao longo do tempo",
       chartTokensHint: "Soma dos tokens de entrada + saída por período.",
       chartCallsOverTime: "OCR chamadas por período",
       chartCostByModel: "Custo por modelo",
-      chartModelHint: "Principais modelos por custo total no período selecionado.",
+      chartModelHint:
+        "Principais modelos por custo total no período selecionado.",
       topUsers: "Principais usuários",
       topProviders: "Principais fornecedores",
       topModels: "Principais modelos",
       recentCalls: "Chamadas recentes",
       recentCallsHint: "Últimas chamadas OCR com custo (usa o preço atual).",
       savedInvoices: "Instantâneos de faturas salvas",
-      savedInvoicesHint: "Os instantâneos são imutáveis – úteis para clientes de cobrança.",
+      savedInvoicesHint:
+        "Os instantâneos são imutáveis – úteis para clientes de cobrança.",
       invoiceLabel: "Etiqueta",
       invoicePeriod: "Período",
       invoiceNote: "Nota",
-      invoiceSnapshotHint: "O instantâneo congela preços, totais e detalhamento por modelo neste momento. Posteriormente, você poderá marcá-lo como EMITIDO ou PAGO.",
+      invoiceSnapshotHint:
+        "O instantâneo congela preços, totais e detalhamento por modelo neste momento. Posteriormente, você poderá marcá-lo como EMITIDO ou PAGO.",
       defaultInvoiceLabel: "OCR uso — {period}",
       noDataInRange: "Nenhum dado para os filtros selecionados.",
       noInvoicesYet: "Ainda não há instantâneos de fatura.",
@@ -10133,7 +10644,8 @@ export const translations = {
       per1M: "Por 1 milhão de tokens",
       tokens: "fichas",
       configTitle: "OCR preço do modelo",
-      configIntro: "Configure quanto custa cada modelo por 1.000 (ou 1.000.000) tokens. Chamadas sem preço ativo correspondente são exibidas como custo 0 no painel.",
+      configIntro:
+        "Configure quanto custa cada modelo por 1.000 (ou 1.000.000) tokens. Chamadas sem preço ativo correspondente são exibidas como custo 0 no painel.",
       modelsToPrice: "Modelos vistos em registros OCR sem preço ativo",
       addPriceFor: "Adicione um preço para {model}",
       addPrice: "Adicionar preço",
@@ -10191,24 +10703,31 @@ export const translations = {
         "Máximo padrão de sessões ativas por usuário",
       fieldDefaultMaxActiveDevicesDesc:
         "Usado como valor padrão e limite máximo ao criar usuários ou quando um usuário não tem um valor explícito.",
-      preferencesDescription: "Defina padrões de todo o sistema para preferências do usuário. Os usuários podem substituí-los em suas configurações pessoais.",
+      preferencesDescription:
+        "Defina padrões de todo o sistema para preferências do usuário. Os usuários podem substituí-los em suas configurações pessoais.",
       fieldExpirationDays: "Expiração da simulação (dias)",
-      fieldExpirationDesc: "Número de dias antes que uma simulação expire e se torne somente leitura",
+      fieldExpirationDesc:
+        "Número de dias antes que uma simulação expire e se torne somente leitura",
       fieldAutoCreate: "Permitir novo cliente na criação de simulação",
-      fieldAutoCreateDesc: "Criar automaticamente um novo registro de cliente ao criar uma simulação sem selecionar um cliente existente",
+      fieldAutoCreateDesc:
+        "Criar automaticamente um novo registro de cliente ao criar uma simulação sem selecionar um cliente existente",
       fieldIvaRate: "IVA Taxa (IVA)",
-      fieldIvaRateDesc: "Taxa de Imposto sobre Valor Agregado como decimal (por exemplo, 0,21 para 21%)",
+      fieldIvaRateDesc:
+        "Taxa de Imposto sobre Valor Agregado como decimal (por exemplo, 0,21 para 21%)",
       fieldElectricityTaxRate: "Taxa de imposto sobre eletricidade",
-      fieldElectricityTaxRateDesc: "Taxa de imposto de eletricidade como decimal (por exemplo, 0,051127 para 5,1127%)",
+      fieldElectricityTaxRateDesc:
+        "Taxa de imposto de eletricidade como decimal (por exemplo, 0,051127 para 5,1127%)",
       fieldHydrocarbonTaxRate: "Taxa de imposto sobre hidrocarbonetos (gás)",
-      fieldHydrocarbonTaxRateDesc: "Taxa de imposto sobre hidrocarbonetos para gás em €/kWh (por exemplo, 0,00234 para €0,00234/kWh)",
+      fieldHydrocarbonTaxRateDesc:
+        "Taxa de imposto sobre hidrocarbonetos para gás em €/kWh (por exemplo, 0,00234 para €0,00234/kWh)",
       calcElectricity: "Eletricidade",
       calcGas: "Gás",
       calcPeninsula: "Espanha Peninsular",
       calcBaleares: "Ilhas Baleares",
       calcCanarias: "Ilhas Canárias",
       fieldIgicRate: "IGIC Taxa (Canárias)",
-      fieldIgicRateDesc: "IGIC taxa para fornecimento nas Ilhas Canárias como decimal (por exemplo, 0,03 para 3%)",
+      fieldIgicRateDesc:
+        "IGIC taxa para fornecimento nas Ilhas Canárias como decimal (por exemplo, 0,03 para 3%)",
       fieldDateFormat: "Formato de data",
       fieldDateFormatDesc: "Formato padrão para exibição de datas",
       fieldTimeFormat: "Formato de hora",
@@ -10216,17 +10735,21 @@ export const translations = {
       fieldTimezone: "Fuso horário",
       fieldTimezoneDesc: "Fuso horário padrão para exibição de data/hora",
       fieldNumberFormat: "Formato numérico",
-      fieldNumberFormatDesc: "Formato padrão para exibição de números e decimais",
+      fieldNumberFormatDesc:
+        "Formato padrão para exibição de números e decimais",
       fieldItemsPerPage: "Itens por página",
       fieldItemsPerPageDesc: "Número padrão de linhas para mostrar nas tabelas",
       fieldLanguage: "Idioma padrão",
       fieldLanguageDesc: "Idioma padrão do aplicativo para novos usuários",
       fieldSmtpHost: "SMTP Anfitrião",
-      fieldSmtpHostDesc: "SMTP nome do host do servidor (por exemplo, smtp.gmail.com)",
+      fieldSmtpHostDesc:
+        "SMTP nome do host do servidor (por exemplo, smtp.gmail.com)",
       fieldSmtpPort: "SMTP Porta",
-      fieldSmtpPortDesc: "SMTP porta do servidor (587 para TLS, 465 para SSL, 25 para não seguro)",
+      fieldSmtpPortDesc:
+        "SMTP porta do servidor (587 para TLS, 465 para SSL, 25 para não seguro)",
       fieldSmtpSecure: "Use conexão segura (SSL/TLS)",
-      fieldSmtpSecureDesc: "Ative a criptografia SSL/TLS para transmissão segura de e-mail",
+      fieldSmtpSecureDesc:
+        "Ative a criptografia SSL/TLS para transmissão segura de e-mail",
       fieldSmtpUser: "SMTP Nome de usuário",
       fieldSmtpUserDesc: "Nome de usuário de autenticação para servidor SMTP",
       fieldSmtpPassword: "SMTP Senha",
@@ -10237,39 +10760,54 @@ export const translations = {
       fieldFromNameDesc: "Nome de exibição que aparecerá como remetente",
       fieldFromNamePlaceholder: "Axpo Simulator",
       fieldUserCreationTemplate: "Modelo de e-mail de criação de usuário",
-      fieldUserCreationTemplateDesc: "Modelo de e-mail para enviar quando um novo usuário for criado (deixe em branco para desabilitar)",
+      fieldUserCreationTemplateDesc:
+        "Modelo de e-mail para enviar quando um novo usuário for criado (deixe em branco para desabilitar)",
       fieldPasswordResetTemplate: "Modelo de e-mail de redefinição de senha",
-      fieldPasswordResetTemplateDesc: "Modelo de e-mail para enviar quando um usuário solicitar uma redefinição de senha (deixe em branco para desativar)",
+      fieldPasswordResetTemplateDesc:
+        "Modelo de e-mail para enviar quando um usuário solicitar uma redefinição de senha (deixe em branco para desativar)",
       titleMagicLink: "Login do link mágico",
-      titleMagicLinkDesc: "Permitir que os usuários façam login por meio de um link único enviado para seu e-mail em vez de uma senha",
+      titleMagicLinkDesc:
+        "Permitir que os usuários façam login por meio de um link único enviado para seu e-mail em vez de uma senha",
       fieldMagicLinkEnabled: "Ativar login do Magic Link",
-      fieldMagicLinkEnabledDesc: "Quando ativado, os usuários podem solicitar um link mágico na página de login",
+      fieldMagicLinkEnabledDesc:
+        "Quando ativado, os usuários podem solicitar um link mágico na página de login",
       fieldMagicLinkTemplate: "Modelo de e-mail de link mágico",
-      fieldMagicLinkTemplateDesc: "Modelo de e-mail usado para enviar o link mágico de login (obrigatório quando o link mágico está ativado)",
+      fieldMagicLinkTemplateDesc:
+        "Modelo de e-mail usado para enviar o link mágico de login (obrigatório quando o link mágico está ativado)",
       fieldMagicLinkValidity: "Validade do link mágico",
-      fieldMagicLinkValidityDesc: "Quanto tempo os links mágicos permanecem válidos após serem enviados",
+      fieldMagicLinkValidityDesc:
+        "Quanto tempo os links mágicos permanecem válidos após serem enviados",
       titleOtp: "Autenticação de dois fatores (OTP)",
-      titleOtpDesc: "Exija que os usuários verifiquem sua identidade com um código único enviado para seu e-mail após inserir sua senha",
+      titleOtpDesc:
+        "Exija que os usuários verifiquem sua identidade com um código único enviado para seu e-mail após inserir sua senha",
       fieldOtpEnabled: "Habilitar autenticação de dois fatores",
-      fieldOtpEnabledDesc: "Quando ativado, os usuários serão solicitados a inserir um código de e-mail após inserir sua senha",
+      fieldOtpEnabledDesc:
+        "Quando ativado, os usuários serão solicitados a inserir um código de e-mail após inserir sua senha",
       fieldOtpTemplate: "Modelo de e-mail OTP",
-      fieldOtpTemplateDesc: "Modelo de e-mail usado para enviar o código de verificação único",
+      fieldOtpTemplateDesc:
+        "Modelo de e-mail usado para enviar o código de verificação único",
       fieldOtpValidity: "Validade do código OTP",
-      fieldOtpValidityDesc: "Quanto tempo os códigos OTP permanecem válidos após serem enviados",
+      fieldOtpValidityDesc:
+        "Quanto tempo os códigos OTP permanecem válidos após serem enviados",
       titlePdfDefaults: "Modelos PDF padrão",
-      titlePdfDefaultsDesc: "Configure quais modelos PDF são usados por padrão ao compartilhar simulações",
+      titlePdfDefaultsDesc:
+        "Configure quais modelos PDF são usados por padrão ao compartilhar simulações",
       fieldDefaultPdfGas: "Modelo de gás padrão",
-      fieldDefaultPdfGasDesc: "PDF modelo usado por padrão para simulações de gás",
+      fieldDefaultPdfGasDesc:
+        "PDF modelo usado por padrão para simulações de gás",
       fieldDefaultPdfElectricity: "Modelo de eletricidade padrão",
-      fieldDefaultPdfElectricityDesc: "PDF modelo usado por padrão para simulações de eletricidade",
+      fieldDefaultPdfElectricityDesc:
+        "PDF modelo usado por padrão para simulações de eletricidade",
       fieldSetupTokenValidity: "Validade do token de configuração de senha",
-      fieldSetupTokenValidityDesc: "Por quanto tempo os links de senha de configuração permanecem válidos antes de expirarem",
+      fieldSetupTokenValidityDesc:
+        "Por quanto tempo os links de senha de configuração permanecem válidos antes de expirarem",
       noTemplateSelected: "— Nenhum modelo selecionado (desabilitado) —",
       btnSave: "Salvar alterações",
       btnReset: "Redefinir para os padrões",
       btnTestConnection: "Testar conexão",
       smtpTestTitle: "Teste SMTP Conexão",
-      smtpTestDesc: "Verifique se suas configurações de SMTP estão corretas testando a conexão com o servidor de e-mail",
+      smtpTestDesc:
+        "Verifique se suas configurações de SMTP estão corretas testando a conexão com o servidor de e-mail",
       smtpTesting: "Testando...",
       smtpTestSuccess: "SMTP conexão bem-sucedida",
       smtpTestError: "SMTP conexão falhou",
@@ -10284,10 +10822,12 @@ export const translations = {
     },
     llmSettings: {
       title: "LLM Configuração",
-      description: "Definir configurações de AI/LLM para extração e processamento de dados de simulação",
+      description:
+        "Definir configurações de AI/LLM para extração e processamento de dados de simulação",
       generalSettings: "Configurações Gerais",
       enableLlm: "Habilitar recursos LLM",
-      enableLlmDesc: "Habilite recursos alimentados por IA para leitura e extração de dados ao criar simulações",
+      enableLlmDesc:
+        "Habilite recursos alimentados por IA para leitura e extração de dados ao criar simulações",
       provider: "LLM Provedor",
       providerDesc: "Selecione o provedor de serviços AI/LLM",
       apiKey: "API Chave",
@@ -10298,15 +10838,20 @@ export const translations = {
       modelName: "Nome do modelo",
       modelNameDesc: "Nome do modelo de IA a ser usado para processamento",
       customModel: "Nome do modelo personalizado",
-      customModelDesc: "Insira um nome de modelo personalizado se não estiver listado acima",
+      customModelDesc:
+        "Insira um nome de modelo personalizado se não estiver listado acima",
       temperature: "Temperatura",
-      temperatureDesc: "Controla a aleatoriedade: valores mais baixos (0,0-0,3) são mais precisos, valores mais altos (0,7-2,0) são mais criativos",
+      temperatureDesc:
+        "Controla a aleatoriedade: valores mais baixos (0,0-0,3) são mais precisos, valores mais altos (0,7-2,0) são mais criativos",
       maxTokens: "Máximo de tokens",
-      maxTokensDesc: "Número máximo de tokens na resposta (maior = respostas mais longas, mas com maior custo)",
+      maxTokensDesc:
+        "Número máximo de tokens na resposta (maior = respostas mais longas, mas com maior custo)",
       usageInfo: "Informações de uso\nOs recursos",
       usageInfoDesc: "LLM serão usados nos seguintes cenários:",
-      usageExample1: "Extração de dados de documentos carregados ao criar simulações",
-      usageExample2: "Processamento e compreensão de informações complexas sobre tarifas de energia",
+      usageExample1:
+        "Extração de dados de documentos carregados ao criar simulações",
+      usageExample2:
+        "Processamento e compreensão de informações complexas sobre tarifas de energia",
       usageExample3: "Assistência na validação de dados e detecção de erros",
       testConnection: "Testar conexão",
       testConnectionDesc: "Verifique sua configuração LLM testando a conexão",
@@ -10327,12 +10872,16 @@ export const translations = {
       tabTaskRouting: "Roteamento de tarefas",
       tabAvailableLlms: "LLMs disponíveis",
       taskRoutingTitle: "LLM configurado para cada tarefa",
-      taskRoutingDesc: "Selecione qual LLM configurado alimenta cada recurso de IA.",
-      enableRoutingHint: "Habilite recursos LLM para ativar o roteamento de tarefas.",
-      noLlmsConfiguredHint: "Nenhum LLM configurado ainda. Adicione um em LLMs disponíveis.",
+      taskRoutingDesc:
+        "Selecione qual LLM configurado alimenta cada recurso de IA.",
+      enableRoutingHint:
+        "Habilite recursos LLM para ativar o roteamento de tarefas.",
+      noLlmsConfiguredHint:
+        "Nenhum LLM configurado ainda. Adicione um em LLMs disponíveis.",
       noLlmSelected: "Nenhum LLM selecionado",
       providersTitle: "LLMs configurados disponíveis",
-      providersDesc: "Adicione e gerencie as combinações de provedor/modelo que as tarefas podem usar.",
+      providersDesc:
+        "Adicione e gerencie as combinações de provedor/modelo que as tarefas podem usar.",
       addLlm: "Adicionar LLM",
       enabled: "Habilitado",
       disabled: "Desativado",
@@ -10344,7 +10893,8 @@ export const translations = {
       editLlm: "Editar LLM",
       removeLlm: "Remover LLM",
       connected: "Conectado",
-      noConfiguredLlms: "Nenhum LLM configurado ainda. Adicione um para disponibilizá-lo para roteamento de tarefas.",
+      noConfiguredLlms:
+        "Nenhum LLM configurado ainda. Adicione um para disponibilizá-lo para roteamento de tarefas.",
       addLlmTitle: "Adicionar LLM",
       editLlmTitle: "Editar LLM",
       configurationName: "Nome da configuração",
@@ -10367,9 +10917,11 @@ export const translations = {
       edit: "Editar",
       delete: "Excluir",
       selectProvider: "Selecione um provedor",
-      selectProviderDesc: "Selecione um provedor na lista para visualizar ou editar seu prompt de extração personalizado ou clique em Adicionar para criar um novo.",
+      selectProviderDesc:
+        "Selecione um provedor na lista para visualizar ou editar seu prompt de extração personalizado ou clique em Adicionar para criar um novo.",
       promptNotConfiguredTitle: "Prompt ainda não configurado.",
-      promptNotConfiguredDesc: "Este provedor foi adicionado automaticamente a partir de uma página de simulação. Edite este provedor e adicione um prompt de extração personalizado para que a IA saiba como ler as faturas de {name}.",
+      promptNotConfiguredDesc:
+        "Este provedor foi adicionado automaticamente a partir de uma página de simulação. Edite este provedor e adicione um prompt de extração personalizado para que a IA saiba como ler as faturas de {name}.",
       configureNow: "Configurar agora",
       newProvider: "Novo Provedor",
       editingProvider: "Edição: {name}",
@@ -10378,23 +10930,32 @@ export const translations = {
       disabled: "Desativado",
       providerName: "Nome do provedor *",
       providerNamePlaceholder: "por exemplo. Repsol, NEON, Iberdrola...",
-      providerNameHint: "O slug será gerado automaticamente a partir deste nome e é usado pela IA para combinar faturas.",
+      providerNameHint:
+        "O slug será gerado automaticamente a partir deste nome e é usado pela IA para combinar faturas.",
       status: "Status",
-      statusHint: "Provedores desabilitados não aparecerão na lista de detecção enviada à IA.",
+      statusHint:
+        "Provedores desabilitados não aparecerão na lista de detecção enviada à IA.",
       electricity: "Eletricidade",
       gas: "Gás",
-      electricityPromptHint: "Enviado para a IA quando é detetada uma fatura de eletricidade deste fornecedor. Deixe em branco para usar o prompt de eletricidade padrão do sistema.",
-      gasPromptHint: "Enviado para a IA quando é detetada uma fatura de gás deste fornecedor. Deixe em branco para usar o prompt de gás padrão do sistema.",
-      electricityPromptPlaceholder: "Insira um prompt personalizado de extração de eletricidade para este provedor...",
-      gasPromptPlaceholder: "Insira um prompt de extração de gás personalizado para este fornecedor...",
+      electricityPromptHint:
+        "Enviado para a IA quando é detetada uma fatura de eletricidade deste fornecedor. Deixe em branco para usar o prompt de eletricidade padrão do sistema.",
+      gasPromptHint:
+        "Enviado para a IA quando é detetada uma fatura de gás deste fornecedor. Deixe em branco para usar o prompt de gás padrão do sistema.",
+      electricityPromptPlaceholder:
+        "Insira um prompt personalizado de extração de eletricidade para este provedor...",
+      gasPromptPlaceholder:
+        "Insira um prompt de extração de gás personalizado para este fornecedor...",
       saveProvider: "Salvar Provedor",
       saving: "Salvando...",
       cancel: "Cancelar",
-      noElectricityPrompt: "Nenhum aviso de eletricidade personalizado - o padrão do sistema será usado.",
-      noGasPrompt: "Nenhum prompt de gás personalizado – o padrão do sistema será usado.",
+      noElectricityPrompt:
+        "Nenhum aviso de eletricidade personalizado - o padrão do sistema será usado.",
+      noGasPrompt:
+        "Nenhum prompt de gás personalizado – o padrão do sistema será usado.",
       configurePrompts: "Configurar prompts",
       deleteTitle: "Excluir provedor",
-      deleteConfirm: "Tem certeza de que deseja excluir {name}? Esta ação não pode ser desfeita.",
+      deleteConfirm:
+        "Tem certeza de que deseja excluir {name}? Esta ação não pode ser desfeita.",
       deleting: "Excluindo...",
       loadError: "Falha ao carregar provedores de fatura",
       nameRequired: "O nome do provedor é obrigatório",
@@ -10403,20 +10964,24 @@ export const translations = {
       saveError: "Falha ao salvar provedor",
       toggleError: "Falha ao alternar o status do provedor",
       deleteError: "Falha ao excluir provedor",
-      createdSuccess: "Provedor \"{name}\" criado com sucesso",
-      updatedSuccess: "Provedor \"{name}\" atualizado com sucesso",
-      deletedSuccess: "Provedor \"{name}\" excluído",
+      createdSuccess: 'Provedor "{name}" criado com sucesso',
+      updatedSuccess: 'Provedor "{name}" atualizado com sucesso',
+      deletedSuccess: 'Provedor "{name}" excluído',
     },
     aiTemplateBuilder: {
       title: "Construtor de modelos de IA",
       beta: "Beta",
       promptRequired: "Descreva como você deseja que o modelo seja.",
       generateError: "Falha ao gerar modelo",
-      appliedSuccess: "Modelo de IA aplicado! Revise o conteúdo e salve quando estiver pronto.",
+      appliedSuccess:
+        "Modelo de IA aplicado! Revise o conteúdo e salve quando estiver pronto.",
       describeLabel: "Descreva o que você deseja",
-      pdfPlaceholder: "por exemplo. Crie uma simulação de eletricidade profissional PDF com um layout de duas colunas, tabela de comparação de economia, marca AXPO e uma seção de cabeçalho escura…",
-      emailPlaceholder: "por exemplo. Crie um e-mail de boas-vindas para novos usuários - tom amigável, marca AXPO, botão vermelho 'Configurar senha', instruções passo a passo…",
-      useExistingBase: "Use o modelo atual como base - a IA irá modificá-lo em vez de começar do zero",
+      pdfPlaceholder:
+        "por exemplo. Crie uma simulação de eletricidade profissional PDF com um layout de duas colunas, tabela de comparação de economia, marca AXPO e uma seção de cabeçalho escura…",
+      emailPlaceholder:
+        "por exemplo. Crie um e-mail de boas-vindas para novos usuários - tom amigável, marca AXPO, botão vermelho 'Configurar senha', instruções passo a passo…",
+      useExistingBase:
+        "Use o modelo atual como base - a IA irá modificá-lo em vez de começar do zero",
       generating: "Gerando…",
       generateTemplate: "Gerar modelo",
       generatingHint: "Isso pode levar alguns minutos...",
@@ -10430,45 +10995,65 @@ export const translations = {
     },
     pdfTemplateVariables: {
       CLIENT_NAME_label: "Nome do cliente",
-      CLIENT_NAME_description: "Nome da empresa ou cliente vinculado à simulação",
+      CLIENT_NAME_description:
+        "Nome da empresa ou cliente vinculado à simulação",
       SIMULATION_ID_label: "Simulação ID",
       SIMULATION_ID_description: "Identificador exclusivo de simulação",
       SIMULATION_REFERENCE_label: "Referência de simulação",
-      SIMULATION_REFERENCE_description: "Número de referência de simulação legível por humanos",
+      SIMULATION_REFERENCE_description:
+        "Número de referência de simulação legível por humanos",
       CREATED_AT_label: "Data de criação",
       CREATED_AT_description: "Data em que a simulação foi criada",
       OWNER_NAME_label: "Nome do proprietário",
-      OWNER_NAME_description: "Nome do usuário comercial proprietário da simulação",
+      OWNER_NAME_description:
+        "Nome do usuário comercial proprietário da simulação",
       OWNER_EMAIL_label: "E-mail do proprietário",
       OWNER_EMAIL_description: "E-mail comercial do proprietário da simulação",
       CHART_COMPARATIVA_label: "Gráfico Comparativo",
-      CHART_COMPARATIVA_description: "Gráfico de barras comparando os totais anuais de Competencia vs Axpo + estatísticas de poupança",
-      HISTORY_TABLES_label: "Tabelas históricas (todas as tarifas de eletricidade)",
-      HISTORY_TABLES_description: "Todas as tabelas de histórico de preços geradas (2,0TD + 3,0TD + 6,1TD). Coloque isto onde as tabelas devem aparecer.",
+      CHART_COMPARATIVA_description:
+        "Gráfico de barras comparando os totais anuais de Competencia vs Axpo + estatísticas de poupança",
+      HISTORY_TABLES_label:
+        "Tabelas históricas (todas as tarifas de eletricidade)",
+      HISTORY_TABLES_description:
+        "Todas as tabelas de histórico de preços geradas (2,0TD + 3,0TD + 6,1TD). Coloque isto onde as tabelas devem aparecer.",
       HISTORY_TABLE_2TD_label: "Tabela de histórico - 2.0 TD",
-      HISTORY_TABLE_2TD_description: "Tabela histórico de preços apenas para tarifa de energia elétrica 2.0TD (P1-P3).",
+      HISTORY_TABLE_2TD_description:
+        "Tabela histórico de preços apenas para tarifa de energia elétrica 2.0TD (P1-P3).",
       HISTORY_TABLE_3TD_label: "Tabela de histórico - 3.0 TD",
-      HISTORY_TABLE_3TD_description: "Tabela histórico de preços apenas para tarifa de energia elétrica 3.0TD (P1-P6).",
+      HISTORY_TABLE_3TD_description:
+        "Tabela histórico de preços apenas para tarifa de energia elétrica 3.0TD (P1-P6).",
       HISTORY_TABLE_6TD_label: "Tabela de histórico - 6.1 TD",
-      HISTORY_TABLE_6TD_description: "Tabela histórico de preços apenas para tarifa de energia elétrica 6.1TD (P1-P6).",
+      HISTORY_TABLE_6TD_description:
+        "Tabela histórico de preços apenas para tarifa de energia elétrica 6.1TD (P1-P6).",
       PRODUCT_LABEL_label: "Etiqueta do produto",
-      PRODUCT_LABEL_description: "Nome do produto, por ex. \"Dinâmica N1 - Perfil Normal\"",
+      PRODUCT_LABEL_description:
+        'Nome do produto, por ex. "Dinâmica N1 - Perfil Normal"',
       PERFIL_label: "Carregar perfil",
       PERFIL_description: "Perfil Normal ou Perfil Diurno",
       TARIFA_label: "Tarifa de Acesso",
-      TARIFA_description: "Código tarifário de acesso à eletricidade, ex. 2.0TD",
-      HISTORY_TABLES_GAS_label: "Tabelas de histórico de gás (todas as tarifas)",
-      HISTORY_TABLES_GAS_description: "Todas as tabelas de histórico de preços de gás geradas. Coloque isto onde as tabelas devem aparecer.",
+      TARIFA_description:
+        "Código tarifário de acesso à eletricidade, ex. 2.0TD",
+      HISTORY_TABLES_GAS_label:
+        "Tabelas de histórico de gás (todas as tarifas)",
+      HISTORY_TABLES_GAS_description:
+        "Todas as tabelas de histórico de preços de gás geradas. Coloque isto onde as tabelas devem aparecer.",
       HISTORY_TABLE_GAS_label: "Tabela de histórico de gás",
-      HISTORY_TABLE_GAS_description: "Tabela histórico de preços do gás (todas as faixas de consumo).",
-      HISTORY_TABLE_GAS_R1_label: "Tabela Histórico de Gás — R1 (baixo consumo)",
-      HISTORY_TABLE_GAS_R1_description: "Histórico de preços do gás para a faixa R1 da TUR — baixo consumo residencial.",
-      HISTORY_TABLE_GAS_R2_label: "Tabela Histórico de Gás — R2 (consumo médio)",
-      HISTORY_TABLE_GAS_R2_description: "Histórico de preços do gás para a faixa R2 da TUR — consumo médio residencial.",
+      HISTORY_TABLE_GAS_description:
+        "Tabela histórico de preços do gás (todas as faixas de consumo).",
+      HISTORY_TABLE_GAS_R1_label:
+        "Tabela Histórico de Gás — R1 (baixo consumo)",
+      HISTORY_TABLE_GAS_R1_description:
+        "Histórico de preços do gás para a faixa R1 da TUR — baixo consumo residencial.",
+      HISTORY_TABLE_GAS_R2_label:
+        "Tabela Histórico de Gás — R2 (consumo médio)",
+      HISTORY_TABLE_GAS_R2_description:
+        "Histórico de preços do gás para a faixa R2 da TUR — consumo médio residencial.",
       HISTORY_TABLE_GAS_R3_label: "Tabela Histórico de Gás — R3 (alto consumo)",
-      HISTORY_TABLE_GAS_R3_description: "Histórico de preços do gás para a banda R3 da TUR — alto consumo residencial.",
+      HISTORY_TABLE_GAS_R3_description:
+        "Histórico de preços do gás para a banda R3 da TUR — alto consumo residencial.",
       GAS_PRODUCT_LABEL_label: "Etiqueta de produto de gás",
-      GAS_PRODUCT_LABEL_description: "Nome do produto de gás, por ex. \"Gás Estavel N1\"",
+      GAS_PRODUCT_LABEL_description:
+        'Nome do produto de gás, por ex. "Gás Estavel N1"',
       GAS_TARIFA_label: "Tarifa de Acesso ao Gás",
       GAS_TARIFA_description: "Código da tarifa de gás, por ex. TUR ou RL3",
       editableSection: "Seção editável",
@@ -10533,9 +11118,11 @@ export const translations = {
       aiBuilderRegenerate: "Regenerar",
       aiBuilderDiscard: "Descartar",
       aiBuilderUseBase: "Use o modelo atual como base",
-      aiBuilderApplied: "✨ Modelo de IA aplicado! Revise e salve quando estiver pronto.",
+      aiBuilderApplied:
+        "✨ Modelo de IA aplicado! Revise e salve quando estiver pronto.",
       aiBuilderError: "Falha ao gerar modelo",
-      aiBuilderNotEnabled: "LLM recursos não estão habilitados. Habilite-os em Configurações do sistema → Configuração LLM.",
+      aiBuilderNotEnabled:
+        "LLM recursos não estão habilitados. Habilite-os em Configurações do sistema → Configuração LLM.",
       defaultHtmlTitle: "Novo modelo PDF",
     },
     emailTemplatesModule: {
@@ -10624,7 +11211,8 @@ export const translations = {
         "Número configurado de minutos em que o código OTP permanece válido",
     },
     rolePermissionsModule: {
-      description: "Controle quais seções e ações estão disponíveis por função. {adminRole} sempre tem acesso total. As alterações entrarão em vigor no próximo carregamento de página do usuário.",
+      description:
+        "Controle quais seções e ações estão disponíveis por função. {adminRole} sempre tem acesso total. As alterações entrarão em vigor no próximo carregamento de página do usuário.",
       btnSave: "Salvar alterações",
       btnSaving: "Salvando…",
       btnSaved: "Salvo",
@@ -10632,12 +11220,14 @@ export const translations = {
       alwaysGranted: "Sempre concedido",
       adminLogsConfigurable: "Registros configuráveis",
       adminOnlyBadge: "Somente administrador",
-      adminOnlyTooltip: "Esta permissão é apenas de administrador e não pode ser concedida a outras funções",
+      adminOnlyTooltip:
+        "Esta permissão é apenas de administrador e não pode ser concedida a outras funções",
       roleLabelAdmin: "Administrador",
       roleLabelSysAdmin: "Administrador de sistema",
       roleLabelAgent: "Agente Mestre",
       roleLabelCommercial: "Agente",
-      savedSuccess: "Permissões de função salvas. As alterações se aplicam no carregamento da próxima página.",
+      savedSuccess:
+        "Permissões de função salvas. As alterações se aplicam no carregamento da próxima página.",
       savedError: "Falha ao salvar permissões de função",
       loadError: "Falha ao carregar permissões de função",
       groupSections: "Acesso à seção",
@@ -10646,7 +11236,8 @@ export const translations = {
       groupUsers: "Gerenciamento de usuários",
       groupAgencies: "Gestão de Agência",
       groupLogs: "Registros",
-      noLogPermissions: "Você não tem permissão para visualizar os logs do sistema.",
+      noLogPermissions:
+        "Você não tem permissão para visualizar os logs do sistema.",
       perm_label_section_simulations: "Simulações",
       perm_label_section_users: "Usuários",
       perm_label_section_agencies: "Agências",
@@ -10680,39 +11271,62 @@ export const translations = {
       perm_label_agencies_edit: "Editar agências",
       perm_label_agencies_deactivate: "Desativar agências",
       perm_desc_section_simulations: "Acesse a seção de simulações",
-      perm_desc_section_users: "Acesse o gerenciamento de usuários (somente administrador)",
-      perm_desc_section_agencies: "Acesse gerenciamento de agências (somente administrador)",
+      perm_desc_section_users:
+        "Acesse o gerenciamento de usuários (somente administrador)",
+      perm_desc_section_agencies:
+        "Acesse gerenciamento de agências (somente administrador)",
       perm_desc_section_clients: "Acesse a seção de gerenciamento de clientes",
-      perm_desc_section_base_values: "Acesse conjuntos de valores base de preços",
-      perm_desc_section_audit_logs: "Ver entradas do log de auditoria do sistema",
-      perm_desc_section_email_logs: "Visualize registros e status de entrega de e-mail (somente administrador)",
-      perm_desc_section_cron_logs: "Ver logs de execução de tarefas cron (somente administrador)",
-      perm_desc_section_ocr_logs: "Visualizar extração de OCR e solicitar logs de diagnóstico (somente administrador)",
-      perm_desc_section_app_error_logs: "Ver logs de erros do aplicativo (somente administrador)",
+      perm_desc_section_base_values:
+        "Acesse conjuntos de valores base de preços",
+      perm_desc_section_audit_logs:
+        "Ver entradas do log de auditoria do sistema",
+      perm_desc_section_email_logs:
+        "Visualize registros e status de entrega de e-mail (somente administrador)",
+      perm_desc_section_cron_logs:
+        "Ver logs de execução de tarefas cron (somente administrador)",
+      perm_desc_section_ocr_logs:
+        "Visualizar extração de OCR e solicitar logs de diagnóstico (somente administrador)",
+      perm_desc_section_app_error_logs:
+        "Ver logs de erros do aplicativo (somente administrador)",
       perm_desc_section_analytics: "Acesse painel de análise e relatórios",
-      perm_desc_section_configurations: "Acesse as configurações do sistema (somente administrador)",
-      perm_desc_section_ocr_usage: "Acesse o uso do token OCR, painel de custos e exportações de faturas (somente administrador)",
+      perm_desc_section_configurations:
+        "Acesse as configurações do sistema (somente administrador)",
+      perm_desc_section_ocr_usage:
+        "Acesse o uso do token OCR, painel de custos e exportações de faturas (somente administrador)",
       perm_desc_simulations_create: "Crie novas simulações do zero ou via OCR",
-      perm_desc_simulations_share: "Gere e compartilhe links públicos de simulação",
+      perm_desc_simulations_share:
+        "Gere e compartilhe links públicos de simulação",
       perm_desc_simulations_duplicate: "Clonar simulações existentes",
-      perm_desc_simulations_archive: "Simulações de arquivamento suave (ocultar)",
-      perm_desc_simulations_edit_payload: "Modificar carga útil de simulação e entradas de cálculo",
-      perm_desc_simulations_delete: "Excluir simulações permanentemente (somente administrador)",
+      perm_desc_simulations_archive:
+        "Simulações de arquivamento suave (ocultar)",
+      perm_desc_simulations_edit_payload:
+        "Modificar carga útil de simulação e entradas de cálculo",
+      perm_desc_simulations_delete:
+        "Excluir simulações permanentemente (somente administrador)",
       perm_desc_clients_view: "Veja a lista de clientes e detalhes do cliente",
       perm_desc_clients_create: "Criar novos registros de cliente",
       perm_desc_clients_edit: "Editar detalhes do cliente existente",
       perm_desc_clients_delete: "Excluir permanentemente registros de clientes",
-      perm_desc_users_view: "Visualize a lista de usuários e perfis de usuários (somente administrador)",
-      perm_desc_users_create: "Crie novas contas de usuário (somente administrador)",
-      perm_desc_users_edit: "Edite detalhes de usuário e senhas (somente administrador)",
-      perm_desc_users_deactivate: "Ativar ou desativar contas de usuário (somente administrador)",
-      perm_desc_users_sessions_manage: "Visualize sessões de usuários e force o logout por sessão, usuário ou globalmente",
-      perm_desc_agencies_view: "Veja a lista de agências e os detalhes da agência (somente administrador)",
-      perm_desc_agencies_create: "Criar novos registros de agência (somente administrador)",
-      perm_desc_agencies_edit: "Editar detalhes da agência existente (somente administrador)",
-      perm_desc_agencies_deactivate: "Ativar ou desativar agências (somente administrador)",
+      perm_desc_users_view:
+        "Visualize a lista de usuários e perfis de usuários (somente administrador)",
+      perm_desc_users_create:
+        "Crie novas contas de usuário (somente administrador)",
+      perm_desc_users_edit:
+        "Edite detalhes de usuário e senhas (somente administrador)",
+      perm_desc_users_deactivate:
+        "Ativar ou desativar contas de usuário (somente administrador)",
+      perm_desc_users_sessions_manage:
+        "Visualize sessões de usuários e force o logout por sessão, usuário ou globalmente",
+      perm_desc_agencies_view:
+        "Veja a lista de agências e os detalhes da agência (somente administrador)",
+      perm_desc_agencies_create:
+        "Criar novos registros de agência (somente administrador)",
+      perm_desc_agencies_edit:
+        "Editar detalhes da agência existente (somente administrador)",
+      perm_desc_agencies_deactivate:
+        "Ativar ou desativar agências (somente administrador)",
     },
-  }
+  },
 };
 
 export type Locale = keyof typeof translations;

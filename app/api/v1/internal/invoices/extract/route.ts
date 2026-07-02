@@ -606,6 +606,17 @@ CRITICAL FIELDS TO EXTRACT:
    - alquiler: Equipment/meter rental charges (€)
    - otrosCargos: Other charges (€)
 
+   CURRENT GAS INVOICE BREAKDOWN AMOUNTS — REQUIRED WHEN VISIBLE:
+   These are euro totals from "Detalle de la factura", "Conceptos facturados",
+   or equivalent gas invoice detail sections. They are NOT unit prices.
+   - importeTerminoFijo: subtotal/total shown for the fixed term / "Término fijo" group in €.
+   - importeTerminoVariable: subtotal/total shown for the gas energy / variable term group in €.
+   - importeImpuestoHidrocarburos: euro amount from the hydrocarbon tax row in €.
+     Do NOT return the hydrocarbon unit rate here.
+   - importeIva: euro amount from the IVA/IGIC row in €.
+   - If the invoice image/text does not show one of these amounts, return null for
+     that field instead of estimating it.
+
 6. GAS-SPECIFIC:
    - telemedida: Remote metering ("SI" or "NO")
    - impuestoHidrocarburo: Hydrocarbon tax UNIT RATE in €/kWh, if shown.
@@ -679,6 +690,10 @@ You MUST always return a JSON that exactly matches this structure (all keys pres
   "reactiva": null,
   "alquiler": null,
   "otrosCargos": null,
+  "importeTerminoFijo": null,
+  "importeTerminoVariable": null,
+  "importeImpuestoHidrocarburos": null,
+  "importeIva": null,
   "ivaTasa": null,
   "impuestoElectricoTasa": null,
   "impuestoHidrocarburo": null,
