@@ -1327,6 +1327,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
 
   if (invoiceCountParam !== null && invoiceCountParam > 1) {
     const normalizedInvoiceCount = Math.round(invoiceCountParam);
+    const messageKey = "multipleInvoicesNotAllowed";
     const message = `Only 1 invoice can be uploaded at once. This file appears to contain ${normalizedInvoiceCount} invoices. Please upload a new file with a single invoice.`;
     await saveOcrLog({
       status: "FAILED",
@@ -1349,7 +1350,9 @@ If invoice text uses a different format, map it to the closest allowed value abo
       {
         success: false,
         code: "MULTIPLE_INVOICES_NOT_ALLOWED",
-        message,
+        message: messageKey,
+        messageKey,
+        messageParams: { count: normalizedInvoiceCount },
         invoiceCount: normalizedInvoiceCount,
       },
       { status: 400 },

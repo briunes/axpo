@@ -2476,6 +2476,8 @@ export const translations = {
       remove: "Remove File",
       success: "Invoice data extracted successfully",
       error: "Failed to extract invoice data",
+      multipleInvoicesNotAllowed:
+        "Only 1 invoice can be uploaded at once. This file appears to contain {count} invoices. Please upload a new file with a single invoice.",
       noFile: "Please select a file first",
       fileTooLarge: "File size exceeds 10MB limit",
       invalidFormat: "Invalid file format",
@@ -5317,6 +5319,8 @@ export const translations = {
       remove: "Eliminar Archivo",
       success: "Datos de factura extraídos correctamente",
       error: "Error al extraer datos de la factura",
+      multipleInvoicesNotAllowed:
+        "Solo se puede subir 1 factura a la vez. Este archivo parece contener {count} facturas. Por favor, sube un archivo nuevo con una sola factura.",
       noFile: "Por favor selecciona un archivo primero",
       fileTooLarge: "El tamaño del archivo excede el límite de 10MB",
       invalidFormat: "Formato de archivo no válido",
@@ -6142,6 +6146,8 @@ export const translations = {
       remove: "Supprimer le fichier",
       success: "Données de facture extraites avec succès",
       error: "Échec de l'extraction des données de facture",
+      multipleInvoicesNotAllowed:
+        "Une seule facture peut être téléversée à la fois. Ce fichier semble contenir {count} factures. Veuillez téléverser un nouveau fichier avec une seule facture.",
       noFile: "Veuillez d'abord sélectionner un fichier",
       fileTooLarge: "La taille du fichier dépasse la limite de 10 Mo.",
       invalidFormat: "Format de fichier invalide",
@@ -9003,6 +9009,8 @@ export const translations = {
       remove: "Remover arquivo",
       success: "Dados da fatura extraídos com sucesso",
       error: "Falha ao extrair dados da fatura",
+      multipleInvoicesNotAllowed:
+        "Apenas 1 fatura pode ser carregada de cada vez. Este arquivo parece conter {count} faturas. Carregue um novo arquivo com uma única fatura.",
       noFile: "Selecione um arquivo primeiro",
       fileTooLarge: "O tamanho do arquivo excede o limite de 10 MB",
       invalidFormat: "Formato de arquivo inválido",

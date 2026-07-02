@@ -120,6 +120,15 @@ type UploadedInvoiceBlob = {
     fileSizeBytes: number;
 };
 
+type ApiErrorPayload = {
+    message?: string;
+    messageKey?: string;
+    messageParams?: Record<string, string | number>;
+    details?: string;
+    provider?: string;
+    model?: string;
+};
+
 let invoiceProvidersCache: InvoiceProviderOption[] | null = null;
 let invoiceProvidersPromise: Promise<InvoiceProviderOption[]> | null = null;
 
@@ -232,6 +241,12 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
     const isPdf = (f: File) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
     const currentType: "pdf" | "image" | null = files.length === 0 ? null : isPdf(files[0]) ? "pdf" : "image";
+    const translateApiMessage = (payload: ApiErrorPayload | null | undefined, fallback: string) => {
+        if (payload?.messageKey) {
+            return t("invoiceExtractor", payload.messageKey, payload.messageParams);
+        }
+        return payload?.message || fallback;
+    };
 
     // Auto-detect provider whenever files change (debounced to avoid multiple rapid requests)
     useEffect(() => {
@@ -304,7 +319,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     setProviderDetectionLogId(result?.ocrLogId ?? null);
 
                     if (!response.ok) {
-                        const message = result?.message || "Provider detection failed";
+                        const message = translateApiMessage(result, t("invoiceExtractor", "providerDetectionFailed"));
                         if (result?.code === "MULTIPLE_INVOICES_NOT_ALLOWED") {
                             setMultiInvoiceError(message);
                             setExtractionStatus("error");
@@ -504,10 +519,11 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             setExtractionLogId(result?.ocrLogId ?? null);
 
             if (!response.ok) {
-                const error = result ?? { message: "Extraction failed" };
+                const error = (result ?? { message: "Extraction failed" }) as ApiErrorPayload;
                 const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
                 const providerInfo = error.provider && error.model ? `\n\nProvider: ${error.provider}, Model: ${error.model}` : '';
-                throw new Error(error.message + errorDetails + providerInfo || "Failed to extract data from invoice");
+                const message = translateApiMessage(error, t("invoiceExtractor", "error"));
+                throw new Error(message + errorDetails + providerInfo || t("invoiceExtractor", "error"));
             }
 
             if (result?.success && result.data) {
