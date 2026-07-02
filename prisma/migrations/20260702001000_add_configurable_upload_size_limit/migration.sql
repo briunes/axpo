@@ -1,0 +1,2 @@
+ALTER TABLE "system_config"
+ADD COLUMN "maxUploadFileSizeMb" INTEGER NOT NULL DEFAULT 15;

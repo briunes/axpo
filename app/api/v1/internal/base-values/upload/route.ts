@@ -25,8 +25,8 @@ import {
 import {
   isBaseValueWorkbookFileName,
   isVercelBlobUrl,
-  MAX_BASE_VALUE_WORKBOOK_SIZE,
 } from "@/infrastructure/excel/baseValueUpload";
+import { getConfiguredMaxUploadFileSizeMb } from "@/application/config/uploadLimits";
 
 const blobUploadSchema = z.object({
   blobUrl: z.string().url().refine(isVercelBlobUrl),
@@ -77,6 +77,8 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   let scopeType: ExcelParserConfigScope | undefined;
   let buffer: Buffer;
   let temporaryBlobUrl: string | null = null;
+  const maxUploadFileSizeMb = await getConfiguredMaxUploadFileSizeMb();
+  const maxUploadFileSizeBytes = maxUploadFileSizeMb * 1024 * 1024;
 
   try {
     if (request.headers.get("content-type")?.includes("application/json")) {
@@ -96,8 +98,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       if (!blob || blob.statusCode !== 200) {
         throw new ValidationError("Uploaded Excel file could not be retrieved");
       }
-      if (blob.blob.size > MAX_BASE_VALUE_WORKBOOK_SIZE) {
-        throw new ValidationError("Excel file exceeds the 50 MB upload limit");
+      if (blob.blob.size > maxUploadFileSizeBytes) {
+        throw new ValidationError(
+          `Excel file exceeds the ${maxUploadFileSizeMb} MB upload limit`,
+        );
       }
 
       buffer = Buffer.from(await new Response(blob.stream).arrayBuffer());
@@ -115,8 +119,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         formScopeType === "GLOBAL" || formScopeType === "TLV"
           ? formScopeType
           : undefined;
-      if (file.size > MAX_BASE_VALUE_WORKBOOK_SIZE) {
-        throw new ValidationError("Excel file exceeds the 50 MB upload limit");
+      if (file.size > maxUploadFileSizeBytes) {
+        throw new ValidationError(
+          `Excel file exceeds the ${maxUploadFileSizeMb} MB upload limit`,
+        );
       }
       buffer = Buffer.from(await file.arrayBuffer());
     }

@@ -1,6 +1,8 @@
 import { getBrowserFingerprint } from "./browserFingerprint";
 import { uploadPresigned } from "@vercel/blob/client";
 import { getBaseValueWorkbookContentType } from "@/infrastructure/excel/baseValueUpload";
+import { formatUploadSizeLimit, uploadSizeMbToBytes } from "@/infrastructure/uploads/uploadLimits";
+import { getSystemConfig } from "./configApi";
 import type {
   EmailTemplate,
   PdfTemplate,
@@ -2057,6 +2059,12 @@ export async function uploadBaseValueFile(
     isActive: boolean;
   };
 }> {
+  const systemConfig = await getSystemConfig({ view: "runtime" });
+  const uploadSizeLimitLabel = formatUploadSizeLimit(systemConfig.maxUploadFileSizeMb);
+  if (file.size > uploadSizeMbToBytes(systemConfig.maxUploadFileSizeMb)) {
+    throw new Error(`File size exceeds ${uploadSizeLimitLabel} limit`);
+  }
+
   const isLocalUpload =
     typeof window !== "undefined" &&
     ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);

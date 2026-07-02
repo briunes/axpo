@@ -1,5 +1,3 @@
-export const MAX_INVOICE_UPLOAD_SIZE = 15 * 1024 * 1024;
-
 export const INVOICE_UPLOAD_CONTENT_TYPES = [
   "application/pdf",
   "image/jpeg",

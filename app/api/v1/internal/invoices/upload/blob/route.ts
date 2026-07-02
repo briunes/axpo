@@ -11,8 +11,8 @@ import { SessionService } from "@/application/services/sessionService";
 import {
   INVOICE_UPLOAD_CONTENT_TYPES,
   isInvoiceFileName,
-  MAX_INVOICE_UPLOAD_SIZE,
 } from "@/infrastructure/invoices/invoiceUpload";
+import { getConfiguredMaxUploadFileSizeBytes } from "@/application/config/uploadLimits";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -61,18 +61,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         if (!pathname.startsWith("invoices/") || !isInvoiceFileName(pathname)) {
           throw new Error("Only PDF, JPEG, PNG, and WebP invoices are allowed");
         }
+        const maximumSizeInBytes = await getConfiguredMaxUploadFileSizeBytes();
 
         return {
           token: await issueSignedToken({
             pathname,
             operations: ["put"],
             allowedContentTypes: INVOICE_UPLOAD_CONTENT_TYPES,
-            maximumSizeInBytes: MAX_INVOICE_UPLOAD_SIZE,
+            maximumSizeInBytes,
             validUntil: Date.now() + 5 * 60 * 1000,
           }),
           urlOptions: {
             allowedContentTypes: INVOICE_UPLOAD_CONTENT_TYPES,
-            maximumSizeInBytes: MAX_INVOICE_UPLOAD_SIZE,
+            maximumSizeInBytes,
             tokenPayload: JSON.stringify({ userId: auth.userId }),
           },
         };
