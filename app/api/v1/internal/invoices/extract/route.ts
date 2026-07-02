@@ -41,7 +41,10 @@ const perfOcrLog = (...args: unknown[]) => {
 const ocrDebugSnippet = (value: string, length = 500): string | undefined =>
   OCR_DEBUG_LOGS ? value.substring(0, length) : undefined;
 
-const isAnthropicBedrockRuntime = (provider: string, baseUrl?: string | null): boolean =>
+const isAnthropicBedrockRuntime = (
+  provider: string,
+  baseUrl?: string | null,
+): boolean =>
   provider === "aws-bedrock-anthropic" ||
   (provider === "anthropic" &&
     typeof baseUrl === "string" &&
@@ -50,12 +53,60 @@ const isAnthropicBedrockRuntime = (provider: string, baseUrl?: string | null): b
 const isNvidiaBedrockRuntime = (provider: string): boolean =>
   provider === "aws-bedrock-nvidia";
 
-const getBedrockImageFormat = (mimeType: string): "png" | "jpeg" | "gif" | "webp" => {
+const getBedrockImageFormat = (
+  mimeType: string,
+): "png" | "jpeg" | "gif" | "webp" => {
   if (mimeType.includes("png")) return "png";
   if (mimeType.includes("gif")) return "gif";
   if (mimeType.includes("webp")) return "webp";
   return "jpeg";
 };
+
+const OCR_BEDROCK_MULTI_IMAGE_MAX_DIMENSION_PX = 2000;
+const OCR_BEDROCK_MULTI_IMAGE_MAX_COUNT = 20;
+const OCR_BEDROCK_RESIZED_IMAGE_QUALITY = 82;
+
+async function constrainImageForBedrock(image: {
+  base64: string;
+  mimeType: string;
+}): Promise<{ base64: string; mimeType: string }> {
+  try {
+    const { createCanvas, loadImage } = await import("@napi-rs/canvas");
+    const sourceBuffer = Buffer.from(image.base64, "base64");
+    const source = await loadImage(sourceBuffer);
+
+    const originalWidth = Math.max(1, Math.round(source.width));
+    const originalHeight = Math.max(1, Math.round(source.height));
+    const currentMaxDimension = Math.max(originalWidth, originalHeight);
+
+    if (currentMaxDimension <= OCR_BEDROCK_MULTI_IMAGE_MAX_DIMENSION_PX) {
+      return image;
+    }
+
+    const scale =
+      OCR_BEDROCK_MULTI_IMAGE_MAX_DIMENSION_PX / currentMaxDimension;
+    const targetWidth = Math.max(1, Math.round(originalWidth * scale));
+    const targetHeight = Math.max(1, Math.round(originalHeight * scale));
+
+    const canvas = createCanvas(targetWidth, targetHeight);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+    ctx.drawImage(source as any, 0, 0, targetWidth, targetHeight);
+
+    const resizedBase64 = (
+      await canvas.encode("webp", OCR_BEDROCK_RESIZED_IMAGE_QUALITY)
+    ).toString("base64");
+
+    return { base64: resizedBase64, mimeType: "image/webp" };
+  } catch (error) {
+    console.warn(
+      "Invoice extraction image resize skipped:",
+      error instanceof Error ? error.message : error,
+    );
+    return image;
+  }
+}
 
 /**
  * LLM Prompts for Invoice Data Extraction
@@ -735,8 +786,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           throw new Error("Invoice file exceeds the 15 MB upload limit");
         }
 
-        const buffer = Buffer.from(await new Response(blob.stream).arrayBuffer());
-        const fileType = input.fileType || getInvoiceContentType({ name: fileName });
+        const buffer = Buffer.from(
+          await new Response(blob.stream).arrayBuffer(),
+        );
+        const fileType =
+          input.fileType || getInvoiceContentType({ name: fileName });
         files.push({
           name: fileName,
           type: fileType,
@@ -947,7 +1001,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
               durationMs: Date.now() - debugFieldsStartedAt,
             });
           } catch (err) {
-            console.error("[OCR Log] Failed to save deferred debug fields:", err);
+            console.error(
+              "[OCR Log] Failed to save deferred debug fields:",
+              err,
+            );
           }
         });
       }
@@ -1342,14 +1399,8 @@ If invoice text uses a different format, map it to the closest allowed value abo
       }
 
       try {
-        const openDataLoaderExtraction = await timed(
-          "openDataLoaderMs",
-          () =>
-            extractPdfWithOpenDataLoader(
-              buffer,
-              file.name,
-              OCR_MAX_PDF_PAGES,
-            ),
+        const openDataLoaderExtraction = await timed("openDataLoaderMs", () =>
+          extractPdfWithOpenDataLoader(buffer, file.name, OCR_MAX_PDF_PAGES),
         );
 
         if (openDataLoaderExtraction?.skippedReason) {
@@ -1389,11 +1440,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
         isNvidiaBedrockRuntime(llmProvider)
       ) {
         const pdfImages = await timed("pdfRenderMs", () =>
-          convertPdfToImages(
-            buffer,
-            OCR_MAX_PDF_PAGES,
-            OCR_PDF_RENDER_SCALE,
-          ),
+          convertPdfToImages(buffer, OCR_MAX_PDF_PAGES, OCR_PDF_RENDER_SCALE),
         );
         const fileNameWithoutExt = file.name.replace(/\.[^.]+$/, "");
 
@@ -1422,6 +1469,28 @@ If invoice text uses a different format, map it to the closest allowed value abo
           mimeType: file.type,
         },
       ];
+    }
+
+    if (
+      (isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
+        isNvidiaBedrockRuntime(llmProvider)) &&
+      imagesToProcess.length > 1
+    ) {
+      if (imagesToProcess.length > OCR_BEDROCK_MULTI_IMAGE_MAX_COUNT) {
+        console.warn(
+          `[OCR] Limiting Bedrock image count from ${imagesToProcess.length} to ${OCR_BEDROCK_MULTI_IMAGE_MAX_COUNT}`,
+        );
+        imagesToProcess = imagesToProcess.slice(
+          0,
+          OCR_BEDROCK_MULTI_IMAGE_MAX_COUNT,
+        );
+      }
+
+      const constrainedImages: Array<{ base64: string; mimeType: string }> = [];
+      for (const image of imagesToProcess) {
+        constrainedImages.push(await constrainImageForBedrock(image));
+      }
+      imagesToProcess = constrainedImages;
     }
 
     // Prepare LLM request based on provider
@@ -1693,34 +1762,32 @@ If invoice text uses a different format, map it to the closest allowed value abo
       );
     } else if (llmProvider === "google") {
       // Google Gemini Vision API supports PDFs and images
-      llmResponse = await timed(
-        "llmFetchMs",
-        () =>
-          fetch(
-            `${llmBaseUrl}/models/${llmModelName}:generateContent?key=${llmApiKey}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                contents: [
-                  {
-                    parts: [
-                      { text: activePrompt },
-                      {
-                        inline_data: {
-                          mime_type: file.type,
-                          data: base64File,
-                        },
-                      },
-                    ],
-                  },
-                ],
-              }),
-              signal: AbortSignal.timeout(30000),
+      llmResponse = await timed("llmFetchMs", () =>
+        fetch(
+          `${llmBaseUrl}/models/${llmModelName}:generateContent?key=${llmApiKey}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
-          ),
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    { text: activePrompt },
+                    {
+                      inline_data: {
+                        mime_type: file.type,
+                        data: base64File,
+                      },
+                    },
+                  ],
+                },
+              ],
+            }),
+            signal: AbortSignal.timeout(30000),
+          },
+        ),
       );
     } else {
       await saveOcrLog({
@@ -1748,10 +1815,15 @@ If invoice text uses a different format, map it to the closest allowed value abo
 
     if (!llmResponse.ok) {
       const errorText = await llmResponse.text();
+      const providerError = errorText?.trim();
+      const compactProviderError = providerError
+        ? providerError.replace(/\s+/g, " ").slice(0, 1000)
+        : null;
       console.error("LLM API error", {
         status: llmResponse.status,
         provider: llmProvider,
         model: llmModelName,
+        providerError: compactProviderError,
       });
       await saveOcrLog({
         status: "ERROR",
@@ -1763,7 +1835,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
         fileType: file.type,
         fileSizeBytes: file.size,
         persistedFiles: [...uploadedLogFiles, ...convertedPdfLogFiles],
-        errorMessage: `LLM API error: ${llmResponse.status} ${llmResponse.statusText}`,
+        errorMessage: `LLM API error: ${llmResponse.status} ${llmResponse.statusText}${compactProviderError ? ` - ${compactProviderError}` : ""}`,
         errorType: "LLM_API_ERROR",
         httpStatusCode: llmResponse.status,
         rawResponseSnippet: ocrDebugSnippet(errorText),
@@ -1771,7 +1843,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       return NextResponse.json(
         {
           success: false,
-          message: `LLM API error: ${llmResponse.status} ${llmResponse.statusText}`,
+          message: `LLM API error: ${llmResponse.status}${compactProviderError ? ` ${compactProviderError}` : ` ${llmResponse.statusText}`}`,
           provider: llmProvider,
           model: llmModelName,
         },
@@ -1783,9 +1855,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
 
     // Extract the response text based on provider
     let extractedText = "";
-    if (
-      isOpenAiCompatibleProvider(llmProvider)
-    ) {
+    if (isOpenAiCompatibleProvider(llmProvider)) {
       const msg = llmData.choices?.[0]?.message;
       // qwen3 thinking models put the answer in `reasoning` when `content` is empty
       extractedText = msg?.content || msg?.reasoning || "";
@@ -1826,7 +1896,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
           fileName: file.name,
           fileType: file.type,
           fileSizeBytes: file.size,
-        persistedFiles: [...uploadedLogFiles, ...convertedPdfLogFiles],
+          persistedFiles: [...uploadedLogFiles, ...convertedPdfLogFiles],
           errorMessage: "Failed to parse extracted data from LLM response",
           errorType: "JSON_PARSE_ERROR",
           httpStatusCode: 500,
@@ -1989,7 +2059,9 @@ If invoice text uses a different format, map it to the closest allowed value abo
 
       // Try to find an exact match in configured options
       const exactMatch = availableOptions.find((opt) =>
-        candidateValues.some((candidate) => Math.abs(opt - candidate) < 0.000001),
+        candidateValues.some(
+          (candidate) => Math.abs(opt - candidate) < 0.000001,
+        ),
       );
       if (exactMatch !== undefined) {
         debugOcrLog(
@@ -2176,9 +2248,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
     let promptTokens: number | undefined;
     let completionTokens: number | undefined;
     let totalTokens: number | undefined;
-    if (
-      isOpenAiCompatibleProvider(llmProvider)
-    ) {
+    if (isOpenAiCompatibleProvider(llmProvider)) {
       promptTokens = llmData.usage?.prompt_tokens;
       completionTokens = llmData.usage?.completion_tokens;
       totalTokens = llmData.usage?.total_tokens;
