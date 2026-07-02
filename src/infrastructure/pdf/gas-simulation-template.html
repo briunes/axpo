@@ -170,6 +170,8 @@
   #axpo-gas-sim-tpl .asim-plan-body {
     padding: 16px;
     flex: 1;
+    display: flex;
+    flex-direction: column;
   }
   #axpo-gas-sim-tpl .asim-plan-card:not(.asim-plan-card--axpo) .asim-plan-body {
     background-color: #f4f4f5;
@@ -262,7 +264,7 @@
     white-space: nowrap;
   }
   #axpo-gas-sim-tpl .asim-total-section {
-    margin-top: 14px;
+    margin-top: auto;
   }
   #axpo-gas-sim-tpl .asim-total-item {
     display: flex;
@@ -429,32 +431,7 @@
             </div>
           </div>
 
-          <div class="asim-cost-breakdown">
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">Fixed term</div>
-              <div class="asim-cost-value">{{CURRENT_GAS_FIXED_COST}} €</div>
-            </div>
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">Variable energy term</div>
-              <div class="asim-cost-value">{{CURRENT_GAS_VARIABLE_COST}} €</div>
-            </div>
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">Hydrocarbon tax</div>
-              <div class="asim-cost-value">{{CURRENT_GAS_TAX}} €</div>
-            </div>
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">Meter rental</div>
-              <div class="asim-cost-value">{{CURRENT_GAS_RENTAL_COST}} €</div>
-            </div>
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">Other charges</div>
-              <div class="asim-cost-value">{{CURRENT_GAS_OTHER_COST}} €</div>
-            </div>
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">IVA</div>
-              <div class="asim-cost-value">{{CURRENT_GAS_VAT}} €</div>
-            </div>
-          </div>
+          {{CURRENT_BREAKDOWN_HTML}}
 
           <div class="asim-total-section">
             <div class="asim-total-item">

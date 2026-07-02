@@ -22,7 +22,7 @@
     },
     "app/api/v1/internal/invoices/detect-provider/route.ts": {
       "memory": 1024,
-      "maxDuration": 60
+      "maxDuration": 300
     }
   },
   "crons": [

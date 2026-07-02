@@ -49,6 +49,7 @@ export interface PdfTemplateVariables {
   CURRENT_RENTAL_COST: string;
   CURRENT_VAT: string;
   CURRENT_TOTAL: string;
+  CURRENT_BREAKDOWN_HTML: string;
 
   // AXPO plan - Power contracted (kW)
   AXPO_POWER_P1: string;
@@ -193,9 +194,14 @@ export function extractTemplateVariables(
   const ivaR = currentIvaTasa / 100;
   const currentTaxCost = currentTotal * (ieR / ((1 + ieR) * (1 + ivaR)));
   const currentVat = (currentTotal - currentTaxCost - currentRentalCost) * ivaR;
-  const explicitCurrentTax = (electricity?.extras as any)
-    ?.impuestoElectricoActual;
-  const explicitCurrentVat = (electricity?.extras as any)?.ivaActual;
+  const useCurrentInvoiceBreakdown =
+    (electricity?.extras as any)?.useCurrentInvoiceBreakdown === true;
+  const explicitCurrentTax = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.impuestoElectricoActual
+    : undefined;
+  const explicitCurrentVat = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.ivaActual
+    : undefined;
   const displayedCurrentTax =
     explicitCurrentTax != null ? Number(explicitCurrentTax) : currentTaxCost;
   const displayedCurrentVat =
@@ -204,10 +210,12 @@ export function extractTemplateVariables(
     0,
     currentTotal - displayedCurrentTax - displayedCurrentVat - currentKnownBase,
   );
-  const explicitCurrentPower = (electricity?.extras as any)
-    ?.terminoPotenciaActual;
-  const explicitCurrentEnergy = (electricity?.extras as any)
-    ?.terminoEnergiaActual;
+  const explicitCurrentPower = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.terminoPotenciaActual
+    : undefined;
+  const explicitCurrentEnergy = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.terminoEnergiaActual
+    : undefined;
   const axpoPeSum = axpoPowerCost + axpoEnergyCost || 1;
   const currentPowerCost =
     explicitCurrentPower != null
@@ -218,6 +226,40 @@ export function extractTemplateVariables(
       ? Number(explicitCurrentEnergy)
       : currentPowerEnergyBase * (axpoEnergyCost / axpoPeSum);
   const currentOtherCost = currentReactiveCost + currentOtherChargeCost;
+  const currentBreakdownHtml = useCurrentInvoiceBreakdown
+    ? `
+          <div class="asim-cost-breakdown">
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Costo de potencia</div>
+              <div class="asim-cost-value">${formatCurrency(currentPowerCost)} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Costo de energía</div>
+              <div class="asim-cost-value">${formatCurrency(currentEnergyCost)} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Cargos por exceso</div>
+              <div class="asim-cost-value">${formatCurrency(currentExcessCost)} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Impuestos</div>
+              <div class="asim-cost-value">${formatCurrency(displayedCurrentTax)} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Otros cargos</div>
+              <div class="asim-cost-value">${formatCurrency(currentOtherCost)} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">Alquiler</div>
+              <div class="asim-cost-value">${formatCurrency(currentRentalCost)} €</div>
+            </div>
+            <div class="asim-cost-item">
+              <div class="asim-cost-label">IVA</div>
+              <div class="asim-cost-value">${formatCurrency(displayedCurrentVat)} €</div>
+            </div>
+          </div>
+        `
+    : "";
 
   // Savings
   const savingsAmount = selectedResult?.ahorro || 0;
@@ -229,8 +271,7 @@ export function extractTemplateVariables(
     CUPS_NUMBER: simulation.cupsNumber || "ES0031352682800001VB",
 
     // Simulation metadata
-    SIMULATION_REFERENCE:
-      simulation.referenceNumber || simulation.id || "N/A",
+    SIMULATION_REFERENCE: simulation.referenceNumber || simulation.id || "N/A",
     SIMULATION_GENERATED_AT: formatDateTime(payload.results?.calculatedAt),
     SIMULATION_PERIOD: simulationPeriod,
     ANNUAL_CONSUMPTION: formatNumber(annualConsumption, 0),
@@ -265,6 +306,7 @@ export function extractTemplateVariables(
     CURRENT_RENTAL_COST: formatCurrency(currentRentalCost),
     CURRENT_VAT: formatCurrency(displayedCurrentVat),
     CURRENT_TOTAL: formatCurrency(currentTotal),
+    CURRENT_BREAKDOWN_HTML: currentBreakdownHtml,
 
     // AXPO plan - Power contracted (same as current)
     AXPO_POWER_P1: getPeriodValue(electricity?.potenciaContratada, "P1"),

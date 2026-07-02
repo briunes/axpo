@@ -168,6 +168,8 @@
   #axpo-sim-tpl .asim-plan-body {
     padding: 16px;
     flex: 1;
+    display: flex;
+    flex-direction: column;
   }
   #axpo-sim-tpl .asim-plan-card:not(.asim-plan-card--axpo) .asim-plan-body {
     background-color: #f4f4f5;
@@ -260,7 +262,7 @@
     white-space: nowrap;
   }
   #axpo-sim-tpl .asim-total-section {
-    margin-top: 14px;
+    margin-top: auto;
   }
   #axpo-sim-tpl .asim-total-item {
     display: flex;
@@ -465,36 +467,7 @@
             </div>
           </div>
 
-          <div class="asim-cost-breakdown">
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">Costo de potencia</div>
-              <div class="asim-cost-value">{{CURRENT_POWER_COST}} €</div>
-            </div>
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">Costo de energía</div>
-              <div class="asim-cost-value">{{CURRENT_ENERGY_COST}} €</div>
-            </div>
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">Cargos por exceso</div>
-              <div class="asim-cost-value">{{CURRENT_EXCESS_COST}} €</div>
-            </div>
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">Impuestos</div>
-              <div class="asim-cost-value">{{CURRENT_TAX_COST}} €</div>
-            </div>
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">Otros cargos</div>
-              <div class="asim-cost-value">{{CURRENT_OTHER_COST}} €</div>
-            </div>
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">Alquiler</div>
-              <div class="asim-cost-value">{{CURRENT_RENTAL_COST}} €</div>
-            </div>
-            <div class="asim-cost-item">
-              <div class="asim-cost-label">IVA</div>
-              <div class="asim-cost-value">{{CURRENT_VAT}} €</div>
-            </div>
-          </div>
+          {{CURRENT_BREAKDOWN_HTML}}
 
           <div class="asim-total-section">
             <div class="asim-total-item">

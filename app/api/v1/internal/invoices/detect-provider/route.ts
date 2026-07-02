@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { del, get } from "@vercel/blob";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
@@ -10,20 +11,79 @@ import {
   isOpenAiCompatibleProvider,
   resolveAiConfigFromSystemConfig,
 } from "@/application/lib/aiConfig";
+import {
+  getInvoiceContentType,
+  isInvoiceFileName,
+  isVercelBlobUrl,
+  MAX_INVOICE_UPLOAD_SIZE,
+} from "@/infrastructure/invoices/invoiceUpload";
 
-const isAnthropicBedrockRuntime = (provider: string, baseUrl: string): boolean =>
+const isAnthropicBedrockRuntime = (
+  provider: string,
+  baseUrl: string,
+): boolean =>
   provider === "aws-bedrock-anthropic" ||
-  (provider === "anthropic" && /bedrock-runtime\.[^.]+\.amazonaws\.com/.test(baseUrl));
+  (provider === "anthropic" &&
+    /bedrock-runtime\.[^.]+\.amazonaws\.com/.test(baseUrl));
 
 const isNvidiaBedrockRuntime = (provider: string): boolean =>
   provider === "aws-bedrock-nvidia";
 
-const getBedrockImageFormat = (mimeType: string): "png" | "jpeg" | "gif" | "webp" => {
+const getBedrockImageFormat = (
+  mimeType: string,
+): "png" | "jpeg" | "gif" | "webp" => {
   if (mimeType.includes("png")) return "png";
   if (mimeType.includes("gif")) return "gif";
   if (mimeType.includes("webp")) return "webp";
   return "jpeg";
 };
+
+const PROVIDER_DETECTION_MULTI_IMAGE_MAX_DIMENSION_PX = 2000;
+const PROVIDER_DETECTION_RESIZED_IMAGE_QUALITY = 82;
+
+async function constrainImageForProviderDetection(image: {
+  base64: string;
+  mimeType: string;
+}): Promise<{ base64: string; mimeType: string }> {
+  try {
+    const { createCanvas, loadImage } = await import("@napi-rs/canvas");
+    const sourceBuffer = Buffer.from(image.base64, "base64");
+    const source = await loadImage(sourceBuffer);
+
+    const originalWidth = Math.max(1, Math.round(source.width));
+    const originalHeight = Math.max(1, Math.round(source.height));
+    const currentMaxDimension = Math.max(originalWidth, originalHeight);
+
+    if (
+      currentMaxDimension <= PROVIDER_DETECTION_MULTI_IMAGE_MAX_DIMENSION_PX
+    ) {
+      return image;
+    }
+
+    const scale =
+      PROVIDER_DETECTION_MULTI_IMAGE_MAX_DIMENSION_PX / currentMaxDimension;
+    const targetWidth = Math.max(1, Math.round(originalWidth * scale));
+    const targetHeight = Math.max(1, Math.round(originalHeight * scale));
+
+    const canvas = createCanvas(targetWidth, targetHeight);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+    ctx.drawImage(source as any, 0, 0, targetWidth, targetHeight);
+
+    const resizedBase64 = (
+      await canvas.encode("webp", PROVIDER_DETECTION_RESIZED_IMAGE_QUALITY)
+    ).toString("base64");
+
+    return { base64: resizedBase64, mimeType: "image/webp" };
+  } catch (error) {
+    console.warn(
+      "Provider detection image resize skipped:",
+      error instanceof Error ? error.message : error,
+    );
+    return image;
+  }
+}
 
 /**
  * Sends images to the configured LLM and returns the raw text response.
@@ -185,10 +245,7 @@ async function callLlmWithImages(
   let completionTokens: number | undefined;
   let totalTokens: number | undefined;
 
-  if (
-    llmProvider === "anthropic" ||
-    llmProvider === "aws-bedrock-anthropic"
-  ) {
+  if (llmProvider === "anthropic" || llmProvider === "aws-bedrock-anthropic") {
     text = llmData.content?.[0]?.text || "";
     promptTokens = llmData.usage?.input_tokens;
     completionTokens = llmData.usage?.output_tokens;
@@ -216,6 +273,36 @@ async function callLlmWithImages(
 }
 
 /**
+ * Parse multipart FormData
+ * For large files (>5MB), the client should upload to Vercel Blob first
+ * and send a JSON payload with the blobUrl instead of FormData
+ */
+async function parseMultipartFormData(req: NextRequest): Promise<File[]> {
+  try {
+    const formData = await req.formData();
+    const fileEntries = Array.from(formData.getAll("file")).filter(
+      (entry): entry is File => entry instanceof File,
+    );
+    return fileEntries;
+  } catch (error: any) {
+    const message = error?.message || "Unknown error";
+    // If it's a size limit error, suggest using blob upload
+    if (
+      message.includes("413") ||
+      message.includes("size") ||
+      message.includes("large")
+    ) {
+      throw new Error(
+        `Request body too large for direct FormData. ` +
+          `For files larger than 5MB, upload to Vercel Blob first ` +
+          `and send a JSON payload with the blobUrl instead.`,
+      );
+    }
+    throw new Error(`Failed to parse FormData: ${message}`);
+  }
+}
+
+/**
  * POST /api/v1/internal/invoices/detect-provider
  *
  * Accepts a file (PDF or images), sends the first page (PDF) or all images (images)
@@ -238,6 +325,103 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     fileType?: string | null;
     fileSizeBytes?: number;
     fileData: Buffer;
+  };
+  type LoadedInvoiceFile = OcrPersistedFile & {
+    name: string;
+    type: string;
+    size: number;
+  };
+
+  const loadRequestFiles = async (): Promise<{
+    files: LoadedInvoiceFile[];
+    temporaryBlobUrls: string[];
+  }> => {
+    if (req.headers.get("content-type")?.includes("application/json")) {
+      const payload = (await req.json().catch(() => ({}))) as {
+        files?: Array<{
+          blobUrl?: string;
+          fileName?: string;
+          fileType?: string;
+          fileSizeBytes?: number;
+        }>;
+      };
+      const inputFiles = Array.isArray(payload.files) ? payload.files : [];
+      const files: LoadedInvoiceFile[] = [];
+      const temporaryBlobUrls: string[] = [];
+
+      for (const input of inputFiles) {
+        if (!input.blobUrl || !isVercelBlobUrl(input.blobUrl)) {
+          throw new Error("Invalid invoice blob URL");
+        }
+        const fileName = (input.fileName || "invoice").replace(/[\r\n"]/g, "_");
+        if (!isInvoiceFileName(fileName)) {
+          throw new Error("Invoice must be a PDF, JPEG, PNG, or WebP file");
+        }
+
+        const blob = await get(input.blobUrl, {
+          access: "private",
+          useCache: false,
+        });
+        if (!blob || blob.statusCode !== 200) {
+          throw new Error("Uploaded invoice file could not be retrieved");
+        }
+        if (blob.blob.size > MAX_INVOICE_UPLOAD_SIZE) {
+          throw new Error("Invoice file exceeds the 15 MB upload limit");
+        }
+
+        const buffer = Buffer.from(
+          await new Response(blob.stream).arrayBuffer(),
+        );
+        const fileType =
+          input.fileType || getInvoiceContentType({ name: fileName });
+        files.push({
+          name: fileName,
+          type: fileType,
+          size: input.fileSizeBytes ?? buffer.length,
+          fileName,
+          fileType,
+          fileSizeBytes: input.fileSizeBytes ?? buffer.length,
+          fileData: buffer,
+        });
+        temporaryBlobUrls.push(input.blobUrl);
+      }
+
+      return { files, temporaryBlobUrls };
+    }
+
+    // Use busboy to parse multipart data to handle files larger than default limits
+    let fileEntries: File[];
+    try {
+      fileEntries = await parseMultipartFormData(req);
+    } catch (error: any) {
+      throw new Error(
+        `Failed to parse multipart FormData: ${error?.message || "Unknown error"}. ${
+          error?.message?.includes("exceeds")
+            ? ""
+            : "This often indicates the request body is malformed."
+        }`,
+      );
+    }
+
+    if (!fileEntries || fileEntries.length === 0) {
+      throw new Error("No files provided");
+    }
+
+    const files = await Promise.all(
+      fileEntries.map(async (file) => {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        return {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          fileName: file.name,
+          fileType: file.type || null,
+          fileSizeBytes: file.size,
+          fileData: buffer,
+        };
+      }),
+    );
+    return { files, temporaryBlobUrls: [] };
   };
 
   // Get LLM config
@@ -377,9 +561,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     );
   }
 
-  // Parse multipart form data — may have multiple files (images)
-  const formData = await req.formData();
-  const fileEntries = formData.getAll("file") as File[];
+  const { files: fileEntries, temporaryBlobUrls } = await loadRequestFiles();
 
   if (!fileEntries || fileEntries.length === 0) {
     const createdLog = await saveOcrLog({
@@ -398,6 +580,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       { status: 400 },
     );
   }
+
+  const cleanupTemporaryBlobs = () => {
+    for (const url of temporaryBlobUrls) {
+      del(url).catch(() => {});
+    }
+  };
 
   // Load known providers from DB
   const dbProviders = (await (prisma as any).invoiceProviderPrompt.findMany({
@@ -476,8 +664,7 @@ If you cannot determine the provider at all, return providerName as null.`;
 
     if (fileEntries.length === 1 && fileEntries[0].type === "application/pdf") {
       // Provider details may appear on any page, so inspect the full PDF.
-      const bytes = await fileEntries[0].arrayBuffer();
-      const buffer = Buffer.from(bytes);
+      const buffer = fileEntries[0].fileData;
       const fileNameWithoutExt = fileEntries[0].name.replace(/\.[^.]+$/, "");
       const pdfImages = await convertAllPdfPagesToImages(
         buffer,
@@ -502,13 +689,20 @@ If you cannot determine the provider at all, return providerName as null.`;
     } else {
       // Images: send all of them
       for (const file of fileEntries) {
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
+        const buffer = file.fileData;
         imagesToProcess.push({
           base64: buffer.toString("base64"),
           mimeType: file.type,
         });
       }
+    }
+
+    if (imagesToProcess.length > 1) {
+      const constrainedImages: Array<{ base64: string; mimeType: string }> = [];
+      for (const image of imagesToProcess) {
+        constrainedImages.push(await constrainImageForProviderDetection(image));
+      }
+      imagesToProcess = constrainedImages;
     }
 
     const {
@@ -542,8 +736,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         fileType: fileEntries[0]?.type,
         fileSizeBytes: fileEntries[0]?.size,
         pageCount: processedPdfPageCount,
-        files: fileEntries,
-        persistedFiles: convertedPdfLogFiles,
+        persistedFiles: [...fileEntries, ...convertedPdfLogFiles],
         promptTokens,
         completionTokens,
         totalTokens,
@@ -575,8 +768,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         fileType: fileEntries[0]?.type,
         fileSizeBytes: fileEntries[0]?.size,
         pageCount: processedPdfPageCount,
-        files: fileEntries,
-        persistedFiles: convertedPdfLogFiles,
+        persistedFiles: [...fileEntries, ...convertedPdfLogFiles],
         promptTokens,
         completionTokens,
         totalTokens,
@@ -623,8 +815,7 @@ If you cannot determine the provider at all, return providerName as null.`;
       fileType: firstFile?.type,
       fileSizeBytes: firstFile?.size,
       pageCount: processedPdfPageCount,
-      files: fileEntries,
-      persistedFiles: convertedPdfLogFiles,
+      persistedFiles: [...fileEntries, ...convertedPdfLogFiles],
       promptTokens,
       completionTokens,
       totalTokens,
@@ -656,8 +847,7 @@ If you cannot determine the provider at all, return providerName as null.`;
       fileType: fileEntries[0]?.type,
       fileSizeBytes: fileEntries[0]?.size,
       pageCount: processedPdfPageCount,
-      files: fileEntries,
-      persistedFiles: convertedPdfLogFiles,
+      persistedFiles: [...fileEntries, ...convertedPdfLogFiles],
       errorMessage: error.message || "Failed to detect provider",
       errorType: "DETECTION_ERROR",
       httpStatusCode: 500,
@@ -670,5 +860,17 @@ If you cannot determine the provider at all, return providerName as null.`;
       },
       { status: 500 },
     );
+  } finally {
+    cleanupTemporaryBlobs();
   }
 });
+
+/**
+ * Route configuration for detect-provider endpoint
+ *
+ * Note: App Router doesn't support bodyParser size limits like Pages Router.
+ * Instead, we extend maxDuration to allow more time for processing large files.
+ * The actual body size limit is handled by Vercel infrastructure (default 5MB)
+ * or can be set in vercel.json
+ */
+export const maxDuration = 300;

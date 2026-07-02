@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { extractVariableValues } from "../variableReplacer";
 
 describe("extractVariableValues", () => {
@@ -113,6 +115,10 @@ describe("extractVariableValues", () => {
           selectedAt: "2026-02-01T00:00:00.000Z",
         },
       },
+      undefined,
+      undefined,
+      undefined,
+      "en",
     );
 
     expect(variables.PRODUCT_NAME).toBe("Gas Fijo N1");
@@ -126,6 +132,79 @@ describe("extractVariableValues", () => {
     expect(variables.GAS_HYDROCARBON_TAX_RATE).toBe("0,00234");
     expect(variables.CURRENT_GAS_RENTAL_COST).toBe("1.00");
     expect(variables.AXPO_GAS_TOTAL).toBe("90.00");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("Fixed term");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("Variable energy term");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("Hydrocarbon tax");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("1.00 €");
+    expect(variables.CURRENT_BREAKDOWN_HTML).not.toContain(
+      "{{CURRENT_GAS_FIXED_COST}}",
+    );
+  });
+
+  it("uses the shared current breakdown placeholder in gas templates", () => {
+    const pdfDir = path.resolve(__dirname, "..");
+    const enTemplate = fs.readFileSync(
+      path.join(pdfDir, "gas-simulation-template.html"),
+      "utf8",
+    );
+    const esTemplate = fs.readFileSync(
+      path.join(pdfDir, "gas-simulation-template-es.html"),
+      "utf8",
+    );
+
+    expect(enTemplate).toContain("{{CURRENT_BREAKDOWN_HTML}}");
+    expect(esTemplate).toContain("{{CURRENT_BREAKDOWN_HTML}}");
+    expect(enTemplate).not.toContain("{{CURRENT_GAS_FIXED_COST}}");
+    expect(esTemplate).not.toContain("{{CURRENT_GAS_FIXED_COST}}");
+  });
+
+  it("uses explicit gas current invoice breakdown amounts when present", () => {
+    const variables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "GAS",
+        gas: {
+          cups: "ES0230901000023635SW",
+          tarifaAcceso: "RL02",
+          zonaGeografica: "Peninsula",
+          consumo: 5646,
+          telemedida: "NO",
+          periodo: {
+            fechaInicio: "2025-11-27",
+            fechaFin: "2026-01-27",
+            dias: 61,
+          },
+          facturaActual: 568.98,
+          extras: {
+            alquilerEquipoMedida: 1.18,
+            otrosCargos: 0,
+            terminoFijoActual: 12.34,
+            terminoVariableActual: 440.56,
+            impuestoHidrocarburoActual: 13.21,
+            ivaActual: 101.69,
+            useCurrentInvoiceBreakdown: true,
+          },
+          ivaTasa: 21,
+          impuestoHidrocarburo: 0.00234,
+        },
+        results: {
+          calculatedAt: "2026-02-01T00:00:00.000Z",
+          baseValueSetId: "base-values",
+          gas: [],
+        },
+      },
+      undefined,
+      undefined,
+      undefined,
+      "en",
+    );
+
+    expect(variables.CURRENT_GAS_FIXED_COST).toBe("12.34");
+    expect(variables.CURRENT_GAS_VARIABLE_COST).toBe("440.56");
+    expect(variables.CURRENT_GAS_TAX).toBe("13.21");
+    expect(variables.CURRENT_GAS_VAT).toBe("101.69");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("12.34 €");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("440.56 €");
   });
 
   it("exposes electricity simulation variables", () => {
@@ -256,6 +335,7 @@ describe("extractVariableValues", () => {
             terminoEnergiaActual: 497.88,
             impuestoElectricoActual: 2.89,
             ivaActual: 122.51,
+            useCurrentInvoiceBreakdown: true,
             ivaTasa: 21,
             impuestoElectricoTasa: 5.11269,
           },
@@ -298,5 +378,74 @@ describe("extractVariableValues", () => {
     expect(variables.CURRENT_ENERGY_COST).toBe("497.88");
     expect(variables.CURRENT_TAX_COST).toBe("2.89");
     expect(variables.CURRENT_VAT).toBe("122.51");
+  });
+
+  it("ignores explicit current invoice breakdown amounts when disabled", () => {
+    const variables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "ELECTRICITY",
+        electricity: {
+          tarifaAcceso: "2.0TD",
+          zonaGeografica: "Peninsula",
+          perfilCarga: "NORMAL",
+          potenciaContratada: { P1: 11.42, P2: 11.42 },
+          consumo: { P1: 558.97, P2: 583.701, P3: 1549.008 },
+          periodo: {
+            fechaInicio: "2026-03-07",
+            fechaFin: "2026-05-09",
+            dias: 64,
+          },
+          facturaActual: 705.91,
+          excesoPotencia: 0,
+          extras: {
+            alquilerEquipoMedida: 4.27,
+            terminoPotenciaActual: 78.36,
+            terminoEnergiaActual: 497.88,
+            impuestoElectricoActual: 2.89,
+            ivaActual: 122.51,
+            useCurrentInvoiceBreakdown: false,
+            ivaTasa: 21,
+            impuestoElectricoTasa: 5.11269,
+          },
+        },
+        results: {
+          calculatedAt: "2026-02-01T00:00:00.000Z",
+          baseValueSetId: "base-values",
+          electricity: [
+            {
+              productKey: "DINAMICA_PLUS:N2",
+              productLabel: "Dinámica Plus N2",
+              commodity: "ELECTRICITY",
+              pricingType: "INDEXED",
+              totalFactura: 581.58,
+              ahorro: 124.33,
+              pctAhorro: 17.61,
+              ahorroAnual: 709.07,
+              desglose: {
+                terminoPotencia: 99.38,
+                terminoEnergia: 353.83,
+                excesoPotencia: 0,
+                impuestoElectrico: 23.17,
+                alquiler: 4.27,
+                otrosCargos: 0,
+                iva: 100.94,
+              },
+            },
+          ],
+        },
+        selectedOffer: {
+          productKey: "DINAMICA_PLUS:N2",
+          commodity: "ELECTRICITY",
+          pricingType: "INDEXED",
+          selectedAt: "2026-02-01T00:00:00.000Z",
+        },
+      },
+    );
+
+    expect(variables.CURRENT_POWER_COST).toBe("116.63");
+    expect(variables.CURRENT_ENERGY_COST).toBe("415.25");
+    expect(variables.CURRENT_TAX_COST).toBe("28.38");
+    expect(variables.CURRENT_VAT).toBe("141.39");
   });
 });
