@@ -120,6 +120,15 @@ type UploadedInvoiceBlob = {
     fileSizeBytes: number;
 };
 
+type ApiErrorPayload = {
+    message?: string;
+    messageKey?: string;
+    messageParams?: Record<string, string | number>;
+    details?: string;
+    provider?: string;
+    model?: string;
+};
+
 let invoiceProvidersCache: InvoiceProviderOption[] | null = null;
 let invoiceProvidersPromise: Promise<InvoiceProviderOption[]> | null = null;
 
@@ -210,10 +219,12 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         isKnown: boolean;
         confidence: "high" | "low";
         invoiceType: "ELECTRICITY" | "GAS" | "BOTH" | null;
+        invoiceCount: number | null;
     } | null>(null);
     const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
     const [providerDetectionLogId, setProviderDetectionLogId] = useState<string | null>(null);
     const [extractionLogId, setExtractionLogId] = useState<string | null>(null);
+    const [multiInvoiceError, setMultiInvoiceError] = useState<string | null>(null);
     const detectionAbortRef = useRef<AbortController | null>(null);
 
     // Load all providers for the select
@@ -230,6 +241,12 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
     const isPdf = (f: File) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
     const currentType: "pdf" | "image" | null = files.length === 0 ? null : isPdf(files[0]) ? "pdf" : "image";
+    const translateApiMessage = (payload: ApiErrorPayload | null | undefined, fallback: string) => {
+        if (payload?.messageKey) {
+            return t("invoiceExtractor", payload.messageKey, payload.messageParams);
+        }
+        return payload?.message || fallback;
+    };
 
     // Auto-detect provider whenever files change (debounced to avoid multiple rapid requests)
     useEffect(() => {
@@ -239,10 +256,12 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             setSelectedProviderId(null);
             setProviderDetectionLogId(null);
             setExtractionLogId(null);
+            setMultiInvoiceError(null);
             return;
         }
 
         setDetectionStatus("detecting");
+        setMultiInvoiceError(null);
 
         // Debounce: wait 400ms after last file change before sending the request
         const debounceTimer = setTimeout(() => {
@@ -254,6 +273,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             setDetectedProvider(null);
             setSelectedProviderId(null);
             setProviderDetectionLogId(null);
+            setMultiInvoiceError(null);
 
             const run = async () => {
                 try {
@@ -299,6 +319,13 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     setProviderDetectionLogId(result?.ocrLogId ?? null);
 
                     if (!response.ok) {
+                        const message = translateApiMessage(result, t("invoiceExtractor", "providerDetectionFailed"));
+                        if (result?.code === "MULTIPLE_INVOICES_NOT_ALLOWED") {
+                            setMultiInvoiceError(message);
+                            setExtractionStatus("error");
+                            setStatusMessage(message);
+                            onError?.(message);
+                        }
                         setDetectionStatus("failed");
                         return;
                     }
@@ -310,6 +337,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                             isKnown: result.isKnown,
                             confidence: result.confidence,
                             invoiceType: result.invoiceType ?? null,
+                            invoiceCount: typeof result.invoiceCount === "number" ? result.invoiceCount : null,
                         });
                         setSelectedProviderId(result.providerId ?? null);
                         setDetectionStatus("detected");
@@ -371,6 +399,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         setStatusMessage("");
         setProviderDetectionLogId(null);
         setExtractionLogId(null);
+        setMultiInvoiceError(null);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -385,10 +414,17 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         setStatusMessage("");
         setProviderDetectionLogId(null);
         setExtractionLogId(null);
+        setMultiInvoiceError(null);
     };
 
     const handleExtract = async () => {
         if (files.length === 0) return;
+        if (multiInvoiceError) {
+            setExtractionStatus("error");
+            setStatusMessage(multiInvoiceError);
+            onError?.(multiInvoiceError);
+            return;
+        }
 
         onBeforeExtract?.();
         setIsExtracting(true);
@@ -460,6 +496,14 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     jsonPayload.invoiceType = invoiceType;
                 }
             }
+            const invoiceCount = detectedProvider?.invoiceCount;
+            if (typeof invoiceCount === "number") {
+                if (formData) {
+                    formData.append("invoiceCount", String(invoiceCount));
+                } else {
+                    jsonPayload.invoiceCount = invoiceCount;
+                }
+            }
 
             if (!formData) {
                 requestBody = JSON.stringify(jsonPayload);
@@ -475,10 +519,11 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             setExtractionLogId(result?.ocrLogId ?? null);
 
             if (!response.ok) {
-                const error = result ?? { message: "Extraction failed" };
+                const error = (result ?? { message: "Extraction failed" }) as ApiErrorPayload;
                 const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
                 const providerInfo = error.provider && error.model ? `\n\nProvider: ${error.provider}, Model: ${error.model}` : '';
-                throw new Error(error.message + errorDetails + providerInfo || "Failed to extract data from invoice");
+                const message = translateApiMessage(error, t("invoiceExtractor", "error"));
+                throw new Error(message + errorDetails + providerInfo || t("invoiceExtractor", "error"));
             }
 
             if (result?.success && result.data) {
@@ -522,6 +567,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         setStatusMessage("");
         setProviderDetectionLogId(null);
         setExtractionLogId(null);
+        setMultiInvoiceError(null);
     };
 
     const handleAddToProviderList = async () => {
@@ -791,7 +837,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                 type="button"
                                 className="btn-primary"
                                 onClick={handleExtract}
-                                disabled={isExtracting || detectionStatus === "detecting"}
+                                disabled={isExtracting || detectionStatus === "detecting" || Boolean(multiInvoiceError)}
                                 size="small"
                             >
                                 {isExtracting ? (

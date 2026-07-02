@@ -633,7 +633,7 @@ const chartLabels = {
     currentLabel: "Competencia",
     axpoLabel: "Axpo",
     annualSavings: "Ahorro Anual",
-    monthlySavings: "Ahorro Mensual",
+    periodAnalyzedSavings: "Ahorro Periodo Analizado",
     savingsPercent: "% Ahorrado",
   },
   en: {
@@ -641,7 +641,7 @@ const chartLabels = {
     currentLabel: "Current",
     axpoLabel: "Axpo",
     annualSavings: "Annual Savings",
-    monthlySavings: "Monthly Savings",
+    periodAnalyzedSavings: "Period Analyzed Savings",
     savingsPercent: "% Saved",
   },
   fr: {
@@ -649,7 +649,7 @@ const chartLabels = {
     currentLabel: "Courant",
     axpoLabel: "Axpo",
     annualSavings: "Économies Annuelles",
-    monthlySavings: "Économies Mensuelles",
+    periodAnalyzedSavings: "Économies Période Analysée",
     savingsPercent: "% Économisé",
   },
   de: {
@@ -657,7 +657,7 @@ const chartLabels = {
     currentLabel: "Aktuell",
     axpoLabel: "Axpo",
     annualSavings: "Jährliche Ersparnisse",
-    monthlySavings: "Monatliche Ersparnisse",
+    periodAnalyzedSavings: "Ersparnisse im analysierten Zeitraum",
     savingsPercent: "% Gespart",
   },
   it: {
@@ -665,7 +665,7 @@ const chartLabels = {
     currentLabel: "Attuale",
     axpoLabel: "Axpo",
     annualSavings: "Risparmio Annuale",
-    monthlySavings: "Risparmio Mensile",
+    periodAnalyzedSavings: "Risparmio Periodo Analizzato",
     savingsPercent: "% Risparmiato",
   },
   pt: {
@@ -673,7 +673,7 @@ const chartLabels = {
     currentLabel: "Atual",
     axpoLabel: "Axpo",
     annualSavings: "Economia Anual",
-    monthlySavings: "Economia Mensal",
+    periodAnalyzedSavings: "Economia Período Analisado",
     savingsPercent: "% Economizado",
   },
 };
@@ -814,7 +814,7 @@ function buildComparativaChart(
         <div style="border-top:1px solid rgba(255,255,255,0.34);padding-top:4px;font-size:22px;line-height:1.05;font-weight:700;text-align:right">${fmt(annualSavings)} €</div>
       </div>
       <div style="background:#3F43D4;border-radius:8px;padding:10px 16px;color:white;min-height:64px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.25)">
-        <div style="font-size:10px;font-weight:700;margin-bottom:7px">${labels.monthlySavings}</div>
+        <div style="font-size:10px;font-weight:700;margin-bottom:7px">${labels.periodAnalyzedSavings}</div>
         <div style="border-top:1px solid rgba(255,255,255,0.34);padding-top:4px;font-size:22px;line-height:1.05;font-weight:700;text-align:right">${fmt(monthlySavings)} €</div>
       </div>
       <div style="background:#3F43D4;border-radius:8px;padding:10px 16px;color:white;min-height:64px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.25)">
