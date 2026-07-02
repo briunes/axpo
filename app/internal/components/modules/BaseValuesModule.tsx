@@ -32,12 +32,18 @@ import type { SessionState } from "../../lib/authSession";
 import type { BaseValueScopeType, BaseValueSetItem } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
 import { downloadBaseValueFile } from "../../lib/internalApi";
+import { getSystemConfig } from "../../lib/configApi";
 import type { BaseValuesActions } from "../hooks/useBaseValues";
 import { ConfirmDialog } from "../shared";
 import { DataTable, FormInput, FormSelect, StatusBadge } from "../ui";
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import {
+  DEFAULT_MAX_UPLOAD_FILE_SIZE_MB,
+  formatUploadSizeLimit,
+  uploadSizeMbToBytes,
+} from "../../../../src/infrastructure/uploads/uploadLimits";
 
 interface BaseValuesModuleProps {
   session: SessionState;
@@ -67,7 +73,10 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
   const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
   const [uploadScopeType, setUploadScopeType] =
     useState<Extract<BaseValueScopeType, "GLOBAL" | "TLV">>("GLOBAL");
+  const [maxUploadFileSizeMb, setMaxUploadFileSizeMb] = useState(DEFAULT_MAX_UPLOAD_FILE_SIZE_MB);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadSizeLimitLabel = formatUploadSizeLimit(maxUploadFileSizeMb);
+  const maxUploadSizeBytes = uploadSizeMbToBytes(maxUploadFileSizeMb);
 
   useEffect(() => {
     if (successText) { onNotify?.(successText, "success"); clearFeedback(); }
@@ -77,6 +86,22 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
     if (errorText) { onNotify?.(errorText, "error"); clearFeedback(); }
   }, [errorText]);
 
+  useEffect(() => {
+    let cancelled = false;
+    getSystemConfig({ view: "runtime" })
+      .then((systemConfig) => {
+        if (!cancelled) {
+          setMaxUploadFileSizeMb(systemConfig.maxUploadFileSizeMb ?? DEFAULT_MAX_UPLOAD_FILE_SIZE_MB);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMaxUploadFileSizeMb(DEFAULT_MAX_UPLOAD_FILE_SIZE_MB);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const confirmTarget = baseValueSets.find((s) => s.id === confirmAction?.id);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,6 +110,13 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
 
     if (!file.name.endsWith(".xlsm") && !file.name.endsWith(".xlsx")) {
       onNotify?.("Please select an Excel file (.xlsm or .xlsx)", "error");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > maxUploadSizeBytes) {
+      onNotify?.(t("baseValuesModule", "fileTooLarge", { max: uploadSizeLimitLabel }), "error");
+      event.target.value = "";
       return;
     }
 
@@ -632,7 +664,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
             <Box>
               <Typography variant="h6">{t("baseValuesModule", "uploadTitle")}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {t("baseValuesModule", "uploadSubtitle")}
+                {t("baseValuesModule", "uploadSubtitle", { max: uploadSizeLimitLabel })}
               </Typography>
             </Box>
           </Stack>

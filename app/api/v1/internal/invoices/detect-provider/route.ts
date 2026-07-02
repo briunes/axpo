@@ -15,8 +15,11 @@ import {
   getInvoiceContentType,
   isInvoiceFileName,
   isVercelBlobUrl,
-  MAX_INVOICE_UPLOAD_SIZE,
 } from "@/infrastructure/invoices/invoiceUpload";
+import {
+  getConfiguredMaxUploadFileSizeBytes,
+  getConfiguredMaxUploadFileSizeMb,
+} from "@/application/config/uploadLimits";
 
 const isAnthropicBedrockRuntime = (
   provider: string,
@@ -331,6 +334,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     type: string;
     size: number;
   };
+  const maxUploadFileSizeMb = await getConfiguredMaxUploadFileSizeMb();
+  const maxUploadFileSizeBytes = await getConfiguredMaxUploadFileSizeBytes();
 
   const loadRequestFiles = async (): Promise<{
     files: LoadedInvoiceFile[];
@@ -365,8 +370,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         if (!blob || blob.statusCode !== 200) {
           throw new Error("Uploaded invoice file could not be retrieved");
         }
-        if (blob.blob.size > MAX_INVOICE_UPLOAD_SIZE) {
-          throw new Error("Invoice file exceeds the 15 MB upload limit");
+        if (blob.blob.size > maxUploadFileSizeBytes) {
+          throw new Error(
+            `Invoice file exceeds the ${maxUploadFileSizeMb} MB upload limit`,
+          );
         }
 
         const buffer = Buffer.from(
@@ -405,6 +412,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     if (!fileEntries || fileEntries.length === 0) {
       throw new Error("No files provided");
+    }
+    const oversizedFile = fileEntries.find(
+      (file) => file.size > maxUploadFileSizeBytes,
+    );
+    if (oversizedFile) {
+      throw new Error(
+        `Invoice file exceeds the ${maxUploadFileSizeMb} MB upload limit`,
+      );
     }
 
     const files = await Promise.all(

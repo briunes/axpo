@@ -3,6 +3,12 @@
 import { uploadPresigned } from "@vercel/blob/client";
 import { useState, useEffect, useRef } from "react";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { getSystemConfig } from "../../lib/configApi";
+import {
+    DEFAULT_MAX_UPLOAD_FILE_SIZE_MB,
+    formatUploadSizeLimit,
+    uploadSizeMbToBytes,
+} from "../../../../src/infrastructure/uploads/uploadLimits";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -225,7 +231,10 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
     const [providerDetectionLogId, setProviderDetectionLogId] = useState<string | null>(null);
     const [extractionLogId, setExtractionLogId] = useState<string | null>(null);
     const [multiInvoiceError, setMultiInvoiceError] = useState<string | null>(null);
+    const [maxUploadFileSizeMb, setMaxUploadFileSizeMb] = useState(DEFAULT_MAX_UPLOAD_FILE_SIZE_MB);
     const detectionAbortRef = useRef<AbortController | null>(null);
+    const uploadSizeLimitLabel = formatUploadSizeLimit(maxUploadFileSizeMb);
+    const maxUploadSizeBytes = uploadSizeMbToBytes(maxUploadFileSizeMb);
 
     // Load all providers for the select
     useEffect(() => {
@@ -234,6 +243,22 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         loadInvoiceProviders(token).then((providers) => {
             if (!cancelled) setAllProviders(providers);
         });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        getSystemConfig({ view: "runtime" })
+            .then((systemConfig) => {
+                if (!cancelled) {
+                    setMaxUploadFileSizeMb(systemConfig.maxUploadFileSizeMb ?? DEFAULT_MAX_UPLOAD_FILE_SIZE_MB);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setMaxUploadFileSizeMb(DEFAULT_MAX_UPLOAD_FILE_SIZE_MB);
+            });
         return () => {
             cancelled = true;
         };
@@ -382,6 +407,14 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
     const addFiles = (incoming: File[]) => {
         if (incoming.length === 0) return;
+        const oversizedFile = incoming.find(file => file.size > maxUploadSizeBytes);
+        if (oversizedFile) {
+            const message = t("invoiceExtractor", "fileTooLarge", { max: uploadSizeLimitLabel });
+            setExtractionStatus("error");
+            setStatusMessage(message);
+            onError?.(message);
+            return;
+        }
         const firstIncoming = incoming[0];
         if (isPdf(firstIncoming)) {
             setFiles([firstIncoming]);
@@ -634,7 +667,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                         <CloudUploadIcon sx={{ fontSize: files.length > 0 ? 28 : 48, color: "text.disabled", mb: files.length > 0 ? 0.5 : 2 }} />
                         <div className="upload-text">
                             <strong>{files.length > 0 ? t("invoiceExtractor", "addMoreImages") ?? "Add more images" : t("invoiceExtractor", "uploadPrompt")}</strong>
-                            {files.length === 0 && <span>{t("invoiceExtractor", "uploadHint")}</span>}
+                            {files.length === 0 && <span>{t("invoiceExtractor", "uploadHint", { max: uploadSizeLimitLabel })}</span>}
                         </div>
                     </label>
                 )}

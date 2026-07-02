@@ -18,8 +18,11 @@ import {
   getInvoiceContentType,
   isInvoiceFileName,
   isVercelBlobUrl,
-  MAX_INVOICE_UPLOAD_SIZE,
 } from "@/infrastructure/invoices/invoiceUpload";
+import {
+  getConfiguredMaxUploadFileSizeBytes,
+  getConfiguredMaxUploadFileSizeMb,
+} from "@/application/config/uploadLimits";
 
 const OCR_DEBUG_LOGS =
   process.env.NODE_ENV !== "production" ||
@@ -761,6 +764,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     invoiceCountParam: number | null;
     temporaryBlobUrls: string[];
   };
+  const maxUploadFileSizeMb = await getConfiguredMaxUploadFileSizeMb();
+  const maxUploadFileSizeBytes = await getConfiguredMaxUploadFileSizeBytes();
 
   const loadInvoiceRequest = async (): Promise<ParsedInvoiceRequest> => {
     if (req.headers.get("content-type")?.includes("application/json")) {
@@ -799,8 +804,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         if (!blob || blob.statusCode !== 200) {
           throw new Error("Uploaded invoice file could not be retrieved");
         }
-        if (blob.blob.size > MAX_INVOICE_UPLOAD_SIZE) {
-          throw new Error("Invoice file exceeds the 15 MB upload limit");
+        if (blob.blob.size > maxUploadFileSizeBytes) {
+          throw new Error(
+            `Invoice file exceeds the ${maxUploadFileSizeMb} MB upload limit`,
+          );
         }
 
         const buffer = Buffer.from(
@@ -834,6 +841,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const requestFiles = formData
       .getAll("file")
       .filter((entry): entry is File => entry instanceof File);
+    const oversizedFile = requestFiles.find(
+      (file) => file.size > maxUploadFileSizeBytes,
+    );
+    if (oversizedFile) {
+      throw new Error(
+        `Invoice file exceeds the ${maxUploadFileSizeMb} MB upload limit`,
+      );
+    }
     const files = await Promise.all(
       requestFiles.map(async (file) => {
         const buffer = Buffer.from(await file.arrayBuffer());

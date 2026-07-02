@@ -25,6 +25,7 @@ const runtimeSystemConfigCache = new Map<
 export interface SystemConfig {
   id: string;
   simulationExpirationDays: number;
+  maxUploadFileSizeMb?: number;
   simulationShareText: string;
   enablePixelTracking: boolean;
   requirePinForAccess: boolean;

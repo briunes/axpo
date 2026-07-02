@@ -755,7 +755,8 @@ export const translations = {
       statusActive: "Active",
       statusDraft: "Draft",
       uploadTitle: "Upload Excel base values",
-      uploadSubtitle: "Import a workbook as a new draft version.",
+      uploadSubtitle: "Import a workbook as a new draft version. Max {max}.",
+      fileTooLarge: "File size exceeds {max} limit",
       uploadVersionScope: "Version scope",
       uploadNeverReplace:
         "Uploads always create a new draft version. The latest version is never replaced.",
@@ -2125,6 +2126,9 @@ export const translations = {
       fieldExpirationDays: "Simulation Expiration (Days)",
       fieldExpirationDesc:
         "Number of days before a simulation expires and becomes read-only",
+      fieldMaxUploadFileSize: "Maximum upload file size (MB)",
+      fieldMaxUploadFileSizeDesc:
+        "Applies to invoice uploads in new simulations and Excel base value uploads.",
       fieldAutoCreate: "Allow New Client on Simulation Create",
       fieldAutoCreateDesc:
         "Automatically create a new client record when creating a simulation without selecting an existing client",
@@ -2469,7 +2473,7 @@ export const translations = {
       description:
         "Upload an energy invoice (PDF or image) to automatically extract simulation data",
       uploadPrompt: "Select Invoice File",
-      uploadHint: "Supported: PDF, JPG, PNG, WEBP (max 10MB).",
+      uploadHint: "Supported: PDF, JPG, PNG, WEBP (max {max}).",
       addMoreImages: "Add more images",
       extracting: "Extracting data from invoice...",
       extract: "Extract Data",
@@ -2479,7 +2483,7 @@ export const translations = {
       multipleInvoicesNotAllowed:
         "Only 1 invoice can be uploaded at once. This file appears to contain {count} invoices. Please upload a new file with a single invoice.",
       noFile: "Please select a file first",
-      fileTooLarge: "File size exceeds 10MB limit",
+      fileTooLarge: "File size exceeds {max} limit",
       invalidFormat: "Invalid file format",
       llmNotConfigured:
         "LLM is not configured. Please configure it in Settings.",
@@ -3562,7 +3566,9 @@ export const translations = {
       statusActive: "Activo",
       statusDraft: "Borrador",
       uploadTitle: "Subir valores base Excel",
-      uploadSubtitle: "Importa un libro como una nueva versión en borrador.",
+      uploadSubtitle:
+        "Importa un libro como una nueva versión en borrador. Máx. {max}.",
+      fileTooLarge: "El tamaño del archivo excede el límite de {max}",
       uploadVersionScope: "Alcance de la versión",
       uploadNeverReplace:
         "Las subidas siempre crean una nueva versión en borrador. La última versión nunca se reemplaza.",
@@ -4953,6 +4959,9 @@ export const translations = {
       fieldExpirationDays: "Expiración de Simulación (Días)",
       fieldExpirationDesc:
         "Número de días antes de que una simulación expire y quede en modo lectura",
+      fieldMaxUploadFileSize: "Tamaño máximo de subida (MB)",
+      fieldMaxUploadFileSizeDesc:
+        "Se aplica a las facturas en nuevas simulaciones y a los Excel de valores base.",
       fieldAutoCreate: "Crear Cliente Automáticamente al Crear Simulación",
       fieldAutoCreateDesc:
         "Crear automáticamente un registro de cliente cuando se crea una simulación sin seleccionar un cliente existente",
@@ -5313,7 +5322,7 @@ export const translations = {
         "Sube una factura energética (PDF o imagen) para extraer automáticamente datos de simulación",
       uploadPrompt: "Seleccionar Archivo de Factura",
       addMoreImages: "Añadir más imágenes",
-      uploadHint: "Compatibles: PDF, JPG, PNG, WEBP (máx. 10MB).",
+      uploadHint: "Compatibles: PDF, JPG, PNG, WEBP (máx. {max}).",
       extracting: "Extrayendo datos de la factura...",
       extract: "Extraer Datos",
       remove: "Eliminar Archivo",
@@ -5322,7 +5331,7 @@ export const translations = {
       multipleInvoicesNotAllowed:
         "Solo se puede subir 1 factura a la vez. Este archivo parece contener {count} facturas. Por favor, sube un archivo nuevo con una sola factura.",
       noFile: "Por favor selecciona un archivo primero",
-      fileTooLarge: "El tamaño del archivo excede el límite de 10MB",
+      fileTooLarge: "El tamaño del archivo excede el límite de {max}",
       invalidFormat: "Formato de archivo no válido",
       llmNotConfigured:
         "LLM no está configurado. Por favor configúralo en Ajustes.",
@@ -6139,7 +6148,7 @@ export const translations = {
       description:
         "Téléchargez une facture d'énergie (PDF ou image) pour extraire automatiquement les données de simulation",
       uploadPrompt: "Sélectionnez le fichier de facture",
-      uploadHint: "Pris en charge : PDF, JPG, PNG, WEBP (max 10 Mo).",
+      uploadHint: "Pris en charge : PDF, JPG, PNG, WEBP (max {max}).",
       addMoreImages: "Ajouter plus d'images",
       extracting: "Extraction des données de la facture...",
       extract: "Extraire les données",
@@ -6149,7 +6158,7 @@ export const translations = {
       multipleInvoicesNotAllowed:
         "Une seule facture peut être téléversée à la fois. Ce fichier semble contenir {count} factures. Veuillez téléverser un nouveau fichier avec une seule facture.",
       noFile: "Veuillez d'abord sélectionner un fichier",
-      fileTooLarge: "La taille du fichier dépasse la limite de 10 Mo.",
+      fileTooLarge: "La taille du fichier dépasse la limite de {max}.",
       invalidFormat: "Format de fichier invalide",
       llmNotConfigured:
         "LLM n'est pas configuré. Veuillez le configurer dans Paramètres.",
@@ -6938,7 +6947,8 @@ export const translations = {
       statusDraft: "Brouillon",
       uploadTitle: "Téléchargez les valeurs de base Excel",
       uploadSubtitle:
-        "Importez un classeur en tant que nouvelle version brouillon.",
+        "Importez un classeur en tant que nouvelle version brouillon. {max} max.",
+      fileTooLarge: "La taille du fichier dépasse la limite de {max}.",
       uploadVersionScope: "Portée de la version",
       uploadNeverReplace:
         "Les téléchargements créent toujours une nouvelle version brouillon. La dernière version n'est jamais remplacée.",
@@ -7880,6 +7890,9 @@ export const translations = {
       fieldExpirationDays: "Expiration de la simulation (jours)",
       fieldExpirationDesc:
         "Nombre de jours avant qu'une simulation n'expire et ne devienne en lecture seule",
+      fieldMaxUploadFileSize: "Taille maximale de téléversement (Mo)",
+      fieldMaxUploadFileSizeDesc:
+        "S'applique aux factures des nouvelles simulations et aux fichiers Excel de valeurs de base.",
       fieldAutoCreate:
         "Autoriser un nouveau client lors de la création d'une simulation",
       fieldAutoCreateDesc:
@@ -9002,7 +9015,7 @@ export const translations = {
       description:
         "Carregue uma fatura de energia (PDF ou imagem) para extrair automaticamente os dados da simulação",
       uploadPrompt: "Selecionar arquivo de fatura",
-      uploadHint: "Suportado: PDF, JPG, PNG, WEBP (máx. 10 MB).",
+      uploadHint: "Suportado: PDF, JPG, PNG, WEBP (máx. {max}).",
       addMoreImages: "Adicione mais imagens",
       extracting: "Extraindo dados da fatura...",
       extract: "Extrair dados",
@@ -9012,7 +9025,7 @@ export const translations = {
       multipleInvoicesNotAllowed:
         "Apenas 1 fatura pode ser carregada de cada vez. Este arquivo parece conter {count} faturas. Carregue um novo arquivo com uma única fatura.",
       noFile: "Selecione um arquivo primeiro",
-      fileTooLarge: "O tamanho do arquivo excede o limite de 10 MB",
+      fileTooLarge: "O tamanho do arquivo excede o limite de {max}",
       invalidFormat: "Formato de arquivo inválido",
       llmNotConfigured:
         "LLM não está configurado. Por favor configure-o em Configurações.",
@@ -9788,7 +9801,8 @@ export const translations = {
       statusDraft: "Rascunho",
       uploadTitle: "Carregar valores base Excel",
       uploadSubtitle:
-        "Importe uma pasta de trabalho como uma nova versão de rascunho.",
+        "Importe uma pasta de trabalho como uma nova versão de rascunho. Máx. {max}.",
+      fileTooLarge: "O tamanho do arquivo excede o limite de {max}",
       uploadVersionScope: "Escopo da versão",
       uploadNeverReplace:
         "Os uploads sempre criam uma nova versão de rascunho. A versão mais recente nunca é substituída.",
@@ -10716,6 +10730,9 @@ export const translations = {
       fieldExpirationDays: "Expiração da simulação (dias)",
       fieldExpirationDesc:
         "Número de dias antes que uma simulação expire e se torne somente leitura",
+      fieldMaxUploadFileSize: "Tamanho máximo de upload (MB)",
+      fieldMaxUploadFileSizeDesc:
+        "Aplica-se a faturas em novas simulações e uploads Excel de valores base.",
       fieldAutoCreate: "Permitir novo cliente na criação de simulação",
       fieldAutoCreateDesc:
         "Criar automaticamente um novo registro de cliente ao criar uma simulação sem selecionar um cliente existente",

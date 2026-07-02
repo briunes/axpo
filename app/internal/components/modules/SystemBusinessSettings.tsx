@@ -54,6 +54,7 @@ interface GasTaxConfig {
 
 interface BusinessConfig {
     simulationExpirationDays: number;
+    maxUploadFileSizeMb: number;
     autoCreateClientOnSimulation: boolean;
     defaultMaxActiveDevices: number;
     ivaRate: number;
@@ -87,6 +88,7 @@ const DEFAULT_GAS_TAX_CONFIG: GasTaxConfig = {
 
 const DEFAULT_CONFIG: BusinessConfig = {
     simulationExpirationDays: 30,
+    maxUploadFileSizeMb: 15,
     autoCreateClientOnSimulation: true,
     defaultMaxActiveDevices: 3,
     ivaRate: 0.21,
@@ -164,6 +166,7 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
             const hydroVal = (data as any).hydrocarbonTaxRate || 0.00234;
             setConfig({
                 simulationExpirationDays: data.simulationExpirationDays,
+                maxUploadFileSizeMb: (data as any).maxUploadFileSizeMb ?? 15,
                 autoCreateClientOnSimulation: data.autoCreateClientOnSim,
                 defaultMaxActiveDevices: (data as any).defaultMaxActiveDevices ?? 3,
                 ivaRate: ivaRateVal,
@@ -197,6 +200,7 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
         try {
             await updateSystemConfig({
                 simulationExpirationDays: config.simulationExpirationDays,
+                maxUploadFileSizeMb: config.maxUploadFileSizeMb,
                 autoCreateClientOnSim: config.autoCreateClientOnSimulation,
                 defaultMaxActiveDevices: config.defaultMaxActiveDevices,
                 ivaRate: config.ivaRate,
@@ -578,6 +582,21 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
                                         }}
                                         value={config.simulationExpirationDays}
                                         onChange={(e) => handleChange("simulationExpirationDays", parseInt(e.target.value, 10))}
+                                    />
+                                </Box>
+                                <Box sx={{ mb: 3 }}>
+                                    <FormInput
+                                        label={t("systemSettings", "fieldMaxUploadFileSize")}
+                                        helperText={t("systemSettings", "fieldMaxUploadFileSizeDesc")}
+                                        type="number"
+                                        slotProps={{
+                                            htmlInput: { min: 1, step: 1 }
+                                        }}
+                                        value={config.maxUploadFileSizeMb}
+                                        onChange={(e) => {
+                                            const parsed = Number.parseInt(e.target.value, 10);
+                                            handleChange("maxUploadFileSizeMb", Number.isNaN(parsed) ? 1 : parsed);
+                                        }}
                                     />
                                 </Box>
                             </div>

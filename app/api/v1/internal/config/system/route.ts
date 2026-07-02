@@ -4,7 +4,9 @@ import { invalidateAppVersionCache } from "@/application/lib/appVersionCache";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
+import { ValidationError } from "@/domain/errors/errors";
 import { buildLegacyAiProvider, getAiTaskConfigs, getConfiguredAiProviders } from "@/application/lib/aiConfig";
+import { normalizeMaxUploadFileSizeMb } from "@/infrastructure/uploads/uploadLimits";
 
 const redactAiProvider = (provider: Record<string, any>) => ({
   ...provider,
@@ -25,6 +27,7 @@ const toRuntimeConfig = (config: Record<string, any>) => ({
   simulationExpirationDays: config.simulationExpirationDays,
   autoCreateClientOnSim: config.autoCreateClientOnSim,
   defaultMaxActiveDevices: config.defaultMaxActiveDevices,
+  maxUploadFileSizeMb: normalizeMaxUploadFileSizeMb(config.maxUploadFileSizeMb),
   ivaRate: config.ivaRate,
   electricityTaxRate: config.electricityTaxRate,
   hydrocarbonTaxRate: config.hydrocarbonTaxRate,
@@ -119,6 +122,7 @@ async function getOrCreateSystemConfig() {
         defaultDashboardView: "COMMERCIAL",
         enableRealtimeReports: false,
         defaultMaxActiveDevices: 3,
+        maxUploadFileSizeMb: 15,
       },
     });
   }
@@ -183,6 +187,13 @@ const PUT = withErrorHandler(async (req: NextRequest) => {
   }
   if (data.llmApiKey === "") {
     delete data.llmApiKey;
+  }
+  if (data.maxUploadFileSizeMb !== undefined) {
+    const parsed = Number.parseInt(String(data.maxUploadFileSizeMb), 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      throw new ValidationError("Maximum upload file size must be at least 1 MB");
+    }
+    data.maxUploadFileSizeMb = Math.round(parsed);
   }
   if (Array.isArray(data.aiProviderConfigs)) {
     const existingProviders = config

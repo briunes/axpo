@@ -401,6 +401,7 @@ model SystemConfig {
   defaultMaxActiveDevices         Int       @default(3)
   defaultPdfTemplateElectricityId String?
   defaultPdfTemplateGasId         String?
+  maxUploadFileSizeMb             Int       @default(15)
   cronExpirationEnabled           Boolean   @default(true)
   cronExpirationSchedule          String    @default("0 2 * * *")
   cronExpirationTimezone          String    @default("UTC")

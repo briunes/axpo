@@ -5,10 +5,13 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { SimulationService } from "@/application/services/simulationService";
 import { ValidationError } from "@/domain/errors/errors";
+import {
+  getConfiguredMaxUploadFileSizeBytes,
+  getConfiguredMaxUploadFileSizeMb,
+} from "@/application/config/uploadLimits";
 
 export const dynamic = "force-dynamic";
 
-const MAX_INVOICE_SIZE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_INVOICE_TYPES = new Set([
   "application/pdf",
   "image/jpeg",
@@ -37,6 +40,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }
 
     await SimulationService.assertSimulationAccess(auth, simulationId);
+    const maxUploadFileSizeMb = await getConfiguredMaxUploadFileSizeMb();
+    const maxUploadFileSizeBytes = await getConfiguredMaxUploadFileSizeBytes();
 
     if (!ALLOWED_INVOICE_TYPES.has(file.type)) {
       throw new ValidationError(
@@ -44,8 +49,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       );
     }
 
-    if (file.size <= 0 || file.size > MAX_INVOICE_SIZE_BYTES) {
-      throw new ValidationError("Invoice file must be between 1 byte and 15 MB");
+    if (file.size <= 0 || file.size > maxUploadFileSizeBytes) {
+      throw new ValidationError(
+        `Invoice file must be between 1 byte and ${maxUploadFileSizeMb} MB`,
+      );
     }
 
     const bytes = await file.arrayBuffer();
