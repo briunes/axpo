@@ -38,6 +38,53 @@ const getBedrockImageFormat = (
   return "jpeg";
 };
 
+const PROVIDER_DETECTION_MULTI_IMAGE_MAX_DIMENSION_PX = 2000;
+const PROVIDER_DETECTION_RESIZED_IMAGE_QUALITY = 82;
+
+async function constrainImageForProviderDetection(image: {
+  base64: string;
+  mimeType: string;
+}): Promise<{ base64: string; mimeType: string }> {
+  try {
+    const { createCanvas, loadImage } = await import("@napi-rs/canvas");
+    const sourceBuffer = Buffer.from(image.base64, "base64");
+    const source = await loadImage(sourceBuffer);
+
+    const originalWidth = Math.max(1, Math.round(source.width));
+    const originalHeight = Math.max(1, Math.round(source.height));
+    const currentMaxDimension = Math.max(originalWidth, originalHeight);
+
+    if (
+      currentMaxDimension <= PROVIDER_DETECTION_MULTI_IMAGE_MAX_DIMENSION_PX
+    ) {
+      return image;
+    }
+
+    const scale =
+      PROVIDER_DETECTION_MULTI_IMAGE_MAX_DIMENSION_PX / currentMaxDimension;
+    const targetWidth = Math.max(1, Math.round(originalWidth * scale));
+    const targetHeight = Math.max(1, Math.round(originalHeight * scale));
+
+    const canvas = createCanvas(targetWidth, targetHeight);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+    ctx.drawImage(source as any, 0, 0, targetWidth, targetHeight);
+
+    const resizedBase64 = (
+      await canvas.encode("webp", PROVIDER_DETECTION_RESIZED_IMAGE_QUALITY)
+    ).toString("base64");
+
+    return { base64: resizedBase64, mimeType: "image/webp" };
+  } catch (error) {
+    console.warn(
+      "Provider detection image resize skipped:",
+      error instanceof Error ? error.message : error,
+    );
+    return image;
+  }
+}
+
 /**
  * Sends images to the configured LLM and returns the raw text response.
  */
@@ -648,6 +695,14 @@ If you cannot determine the provider at all, return providerName as null.`;
           mimeType: file.type,
         });
       }
+    }
+
+    if (imagesToProcess.length > 1) {
+      const constrainedImages: Array<{ base64: string; mimeType: string }> = [];
+      for (const image of imagesToProcess) {
+        constrainedImages.push(await constrainImageForProviderDetection(image));
+      }
+      imagesToProcess = constrainedImages;
     }
 
     const {
