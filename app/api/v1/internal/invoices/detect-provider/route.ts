@@ -642,13 +642,23 @@ Decision rule:
 - If only neutral terms like "kWh", "CUPS", "consumo", or generic "energía" appear → null.
 - If unclear → null.
 
+TASK 3 — INVOICE COUNT:
+Determine how many separate invoices are present in the uploaded document/images.
+
+Count as separate invoices when you see multiple distinct invoice numbers, multiple full invoice headers, multiple billing documents, or clearly separate invoice sections for different billing periods/customers/supply points.
+
+Do NOT count multiple pages of the same invoice as multiple invoices.
+If the document contains one invoice spread across several pages, return 1.
+If unsure, return 1.
+
 RESPONSE FORMAT:
 Respond with ONLY a JSON object, no markdown, no explanation:
 {
   "providerName": "exact company name as printed on invoice",
   "matchedSlug": "slug from the known providers list if it matches, or null if not in the list",
   "confidence": "high" or "low",
-  "invoiceType": "ELECTRICITY" or "GAS" or "BOTH" or null
+  "invoiceType": "ELECTRICITY" or "GAS" or "BOTH" or null,
+  "invoiceCount": 1
 }
 
 If the provider is in the known list, set matchedSlug to its slug.
@@ -753,6 +763,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         isKnown: false,
         confidence: "low",
         invoiceType: null,
+        invoiceCount: null,
         ocrLogId: createdLog?.id ?? null,
       });
     }
@@ -785,6 +796,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         isKnown: false,
         confidence: "low",
         invoiceType: null,
+        invoiceCount: null,
         ocrLogId: createdLog?.id ?? null,
       });
     }
@@ -799,6 +811,11 @@ If you cannot determine the provider at all, return providerName as null.`;
       parsed.invoiceType === "BOTH"
         ? parsed.invoiceType
         : null;
+    const parsedInvoiceCount = Number(parsed.invoiceCount);
+    const invoiceCount =
+      Number.isFinite(parsedInvoiceCount) && parsedInvoiceCount > 0
+        ? Math.round(parsedInvoiceCount)
+        : 1;
 
     // Find matched provider in DB
     let matchedProvider: { id: string; name: string; slug: string } | null =
@@ -808,6 +825,44 @@ If you cannot determine the provider at all, return providerName as null.`;
     }
 
     const firstFile = fileEntries[0];
+    if (invoiceCount > 1) {
+      const message = `Only 1 invoice can be uploaded at once. This file appears to contain ${invoiceCount} invoices. Please upload a new file with a single invoice.`;
+      const createdLog = await saveOcrLog({
+        status: "FAILED",
+        durationMs: Date.now() - requestStartTime,
+        fileName: firstFile?.name,
+        fileType: firstFile?.type,
+        fileSizeBytes: firstFile?.size,
+        pageCount: processedPdfPageCount,
+        persistedFiles: [...fileEntries, ...convertedPdfLogFiles],
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        rawResponseSnippet: responseText.slice(0, 500),
+        promptText: detectionPrompt,
+        errorMessage: message,
+        errorType: "MULTIPLE_INVOICES_NOT_ALLOWED",
+        httpStatusCode: 400,
+        metadata: {
+          detectedProviderName: matchedProvider?.name ?? detectedName,
+          isKnown: matchedProvider !== null,
+          confidence,
+          invoiceType,
+          invoiceCount,
+        },
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          code: "MULTIPLE_INVOICES_NOT_ALLOWED",
+          message,
+          invoiceCount,
+          ocrLogId: createdLog?.id ?? null,
+        },
+        { status: 400 },
+      );
+    }
+
     const createdLog = await saveOcrLog({
       status: "SUCCESS",
       durationMs: Date.now() - requestStartTime,
@@ -826,6 +881,7 @@ If you cannot determine the provider at all, return providerName as null.`;
         isKnown: matchedProvider !== null,
         confidence,
         invoiceType,
+        invoiceCount,
       },
     });
 
@@ -836,6 +892,7 @@ If you cannot determine the provider at all, return providerName as null.`;
       isKnown: matchedProvider !== null,
       confidence,
       invoiceType,
+      invoiceCount,
       ocrLogId: createdLog?.id ?? null,
     });
   } catch (error: any) {

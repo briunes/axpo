@@ -210,10 +210,12 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         isKnown: boolean;
         confidence: "high" | "low";
         invoiceType: "ELECTRICITY" | "GAS" | "BOTH" | null;
+        invoiceCount: number | null;
     } | null>(null);
     const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
     const [providerDetectionLogId, setProviderDetectionLogId] = useState<string | null>(null);
     const [extractionLogId, setExtractionLogId] = useState<string | null>(null);
+    const [multiInvoiceError, setMultiInvoiceError] = useState<string | null>(null);
     const detectionAbortRef = useRef<AbortController | null>(null);
 
     // Load all providers for the select
@@ -239,10 +241,12 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             setSelectedProviderId(null);
             setProviderDetectionLogId(null);
             setExtractionLogId(null);
+            setMultiInvoiceError(null);
             return;
         }
 
         setDetectionStatus("detecting");
+        setMultiInvoiceError(null);
 
         // Debounce: wait 400ms after last file change before sending the request
         const debounceTimer = setTimeout(() => {
@@ -254,6 +258,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             setDetectedProvider(null);
             setSelectedProviderId(null);
             setProviderDetectionLogId(null);
+            setMultiInvoiceError(null);
 
             const run = async () => {
                 try {
@@ -299,6 +304,13 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     setProviderDetectionLogId(result?.ocrLogId ?? null);
 
                     if (!response.ok) {
+                        const message = result?.message || "Provider detection failed";
+                        if (result?.code === "MULTIPLE_INVOICES_NOT_ALLOWED") {
+                            setMultiInvoiceError(message);
+                            setExtractionStatus("error");
+                            setStatusMessage(message);
+                            onError?.(message);
+                        }
                         setDetectionStatus("failed");
                         return;
                     }
@@ -310,6 +322,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                             isKnown: result.isKnown,
                             confidence: result.confidence,
                             invoiceType: result.invoiceType ?? null,
+                            invoiceCount: typeof result.invoiceCount === "number" ? result.invoiceCount : null,
                         });
                         setSelectedProviderId(result.providerId ?? null);
                         setDetectionStatus("detected");
@@ -371,6 +384,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         setStatusMessage("");
         setProviderDetectionLogId(null);
         setExtractionLogId(null);
+        setMultiInvoiceError(null);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -385,10 +399,17 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         setStatusMessage("");
         setProviderDetectionLogId(null);
         setExtractionLogId(null);
+        setMultiInvoiceError(null);
     };
 
     const handleExtract = async () => {
         if (files.length === 0) return;
+        if (multiInvoiceError) {
+            setExtractionStatus("error");
+            setStatusMessage(multiInvoiceError);
+            onError?.(multiInvoiceError);
+            return;
+        }
 
         onBeforeExtract?.();
         setIsExtracting(true);
@@ -460,6 +481,14 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     jsonPayload.invoiceType = invoiceType;
                 }
             }
+            const invoiceCount = detectedProvider?.invoiceCount;
+            if (typeof invoiceCount === "number") {
+                if (formData) {
+                    formData.append("invoiceCount", String(invoiceCount));
+                } else {
+                    jsonPayload.invoiceCount = invoiceCount;
+                }
+            }
 
             if (!formData) {
                 requestBody = JSON.stringify(jsonPayload);
@@ -522,6 +551,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         setStatusMessage("");
         setProviderDetectionLogId(null);
         setExtractionLogId(null);
+        setMultiInvoiceError(null);
     };
 
     const handleAddToProviderList = async () => {
@@ -791,7 +821,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                 type="button"
                                 className="btn-primary"
                                 onClick={handleExtract}
-                                disabled={isExtracting || detectionStatus === "detecting"}
+                                disabled={isExtracting || detectionStatus === "detecting" || Boolean(multiInvoiceError)}
                                 size="small"
                             >
                                 {isExtracting ? (

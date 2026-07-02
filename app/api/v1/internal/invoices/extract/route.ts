@@ -758,6 +758,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     files: LoadedInvoiceFile[];
     providerId: string | null;
     invoiceTypeParam: string | null;
+    invoiceCountParam: number | null;
     temporaryBlobUrls: string[];
   };
 
@@ -774,6 +775,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         }>;
         providerId?: string | null;
         invoiceType?: string | null;
+        invoiceCount?: number | null;
       };
       const inputFiles = Array.isArray(payload.files) ? payload.files : [];
       const files: LoadedInvoiceFile[] = [];
@@ -822,6 +824,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         files,
         providerId: payload.providerId ?? null,
         invoiceTypeParam: payload.invoiceType ?? null,
+        invoiceCountParam:
+          typeof payload.invoiceCount === "number" ? payload.invoiceCount : null,
         temporaryBlobUrls,
       };
     }
@@ -849,6 +853,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       files,
       providerId: formData.get("providerId") as string | null,
       invoiceTypeParam: formData.get("invoiceType") as string | null,
+      invoiceCountParam:
+        Number(formData.get("invoiceCount")) > 0
+          ? Number(formData.get("invoiceCount"))
+          : null,
       temporaryBlobUrls: [],
     };
   };
@@ -1099,6 +1107,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     files: requestFiles,
     providerId,
     invoiceTypeParam,
+    invoiceCountParam,
     temporaryBlobUrls,
   } = await loadInvoiceRequest();
   const file = requestFiles[0];
@@ -1311,6 +1320,37 @@ If invoice text uses a different format, map it to the closest allowed value abo
       {
         success: false,
         message: "No file provided",
+      },
+      { status: 400 },
+    );
+  }
+
+  if (invoiceCountParam !== null && invoiceCountParam > 1) {
+    const normalizedInvoiceCount = Math.round(invoiceCountParam);
+    const message = `Only 1 invoice can be uploaded at once. This file appears to contain ${normalizedInvoiceCount} invoices. Please upload a new file with a single invoice.`;
+    await saveOcrLog({
+      status: "FAILED",
+      durationMs: Date.now() - requestStartTime,
+      provider: llmProvider,
+      model: llmModelName,
+      baseUrl: llmBaseUrl,
+      fileName: file.name,
+      fileType: file.type,
+      fileSizeBytes: file.size,
+      persistedFiles: requestFiles,
+      errorMessage: message,
+      errorType: "MULTIPLE_INVOICES_NOT_ALLOWED",
+      httpStatusCode: 400,
+      metadata: {
+        invoiceCount: normalizedInvoiceCount,
+      },
+    });
+    return NextResponse.json(
+      {
+        success: false,
+        code: "MULTIPLE_INVOICES_NOT_ALLOWED",
+        message,
+        invoiceCount: normalizedInvoiceCount,
       },
       { status: 400 },
     );
