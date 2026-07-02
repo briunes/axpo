@@ -732,7 +732,7 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
                                         options={[
                                             { value: "", label: t("systemSettings", "noTemplateSelected") },
                                             ...pdfTemplates
-                                                .filter((t) => !t.commodity || t.commodity === "GAS")
+                                                .filter((t) => t.commodity === "GAS")
                                                 .map((template) => ({
                                                     value: template.id,
                                                     label: template.name
@@ -748,7 +748,7 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
                                         options={[
                                             { value: "", label: t("systemSettings", "noTemplateSelected") },
                                             ...pdfTemplates
-                                                .filter((t) => !t.commodity || t.commodity === "ELECTRICITY")
+                                                .filter((t) => t.commodity === "ELECTRICITY")
                                                 .map((template) => ({
                                                     value: template.id,
                                                     label: template.name

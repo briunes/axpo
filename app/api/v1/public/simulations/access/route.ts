@@ -249,7 +249,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
     if (templateId) {
       const template = await prisma.pdfTemplate.findFirst({
-        where: { id: templateId, isDeleted: false, active: true },
+        where: { id: templateId, isDeleted: false, active: true, commodity },
         select: {
           id: true,
           name: true,
