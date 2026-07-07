@@ -6,6 +6,7 @@ import { saveSession } from "../lib/authSession";
 import { resetPassword } from "../lib/internalApi";
 import { useI18n } from "../../../src/lib/i18n-context";
 import { UI_LANGUAGES } from "../../../src/lib/uiLanguages";
+import { LanguageFlag } from "../../../src/lib/LanguageFlag";
 import styles from "../authPages.module.css";
 
 export default function ResetPasswordPage() {
@@ -85,7 +86,7 @@ function ResetPasswordContent() {
                         className={`${styles.langBtn} ${locale === language.code ? styles.active : ""}`}
                         title={language.label}
                     >
-                        {language.flag}
+                        <LanguageFlag code={language.code} label={language.label} />
                     </button>
                 ))}
             </div>
@@ -188,8 +189,15 @@ function ResetPasswordContent() {
 
 /* ── Inline password strength bar ── */
 function PasswordStrengthBar({ password }: { password: string }) {
+    const { t } = useI18n();
     const score = getStrengthScore(password);
-    const labels = ["", "Weak", "Fair", "Good", "Strong"];
+    const labels = [
+        "",
+        t("userFormPage", "passwordStrengthWeak"),
+        t("userFormPage", "passwordStrengthFair"),
+        t("userFormPage", "passwordStrengthGood"),
+        t("userFormPage", "passwordStrengthStrong"),
+    ];
     const colors = ["", "#ef4444", "#f97316", "#eab308", "#22c55e"];
 
     return (

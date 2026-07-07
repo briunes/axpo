@@ -37,11 +37,12 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 interface ClientsModuleProps {
   session: SessionState;
   actions: ClientsActions;
+  agencies?: AgencyItem[];
   onNotify?: (text: string, tone: "success" | "error") => void;
   onActionButtons?: (buttons: React.ReactNode) => void;
 }
 
-export function ClientsModule({ session, actions, onNotify, onActionButtons }: ClientsModuleProps) {
+export function ClientsModule({ session, actions, agencies: initialAgencies, onNotify, onActionButtons }: ClientsModuleProps) {
   const { t } = useI18n();
   const router = useRouter();
   const { canDo } = usePermissions();
@@ -59,7 +60,11 @@ export function ClientsModule({ session, actions, onNotify, onActionButtons }: C
   const [confirmToggle, setConfirmToggle] = useState<ClientItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ClientItem | null>(null);
   const [confirmBulkDeleteIds, setConfirmBulkDeleteIds] = useState<string[] | null>(null);
-  const { agencies } = useAgencies(session, 1000, { queryEnabled: isAdmin(role), minimal: true });
+  const agenciesActions = useAgencies(session, 1000, {
+    queryEnabled: !initialAgencies && isAdmin(role),
+    minimal: true,
+  });
+  const agencies = initialAgencies ?? agenciesActions.agencies;
   const bulkDeleteIncludesArchived = Boolean(
     confirmBulkDeleteIds?.some((id) => clients.find((client) => client.id === id)?.isDeleted),
   );

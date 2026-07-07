@@ -894,6 +894,57 @@ export async function listSimulations(
   return { items: body.items, total: body.total || body.items.length };
 }
 
+export interface SimulationsInitResponse {
+  simulations: { items: SimulationItem[]; total: number };
+  clients: ListClientsResponse;
+  users: ListUsersResponse;
+}
+
+function appendScopedParams(
+  qs: URLSearchParams,
+  scope: string,
+  params: object,
+) {
+  for (const [key, value] of Object.entries(params)) {
+    if (
+      (typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean") &&
+      value !== ""
+    ) {
+      qs.set(scope ? `${scope}.${key}` : key, String(value));
+    }
+  }
+}
+
+export async function getSimulationsInit(
+  token: string,
+  params: {
+    simulations?: ListSimulationsParams;
+    clients?: ListClientsParams;
+    users?: ListUsersParams;
+  },
+): Promise<SimulationsInitResponse> {
+  const qs = new URLSearchParams();
+  appendScopedParams(qs, "simulations", params.simulations ?? {});
+  appendScopedParams(qs, "clients", params.clients ?? {});
+  appendScopedParams(qs, "users", params.users ?? {});
+
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/simulations/init${qs.toString() ? `?${qs}` : ""}`,
+    {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+
+  return parseApiResponse<SimulationsInitResponse>(
+    response,
+    "Simulations init failed",
+  );
+}
+
 export async function getSimulation(
   token: string,
   simulationId: string,
@@ -1417,6 +1468,34 @@ export async function listUsers(
   return parseApiResponse<ListUsersResult>(response, "User list failed");
 }
 
+export interface UsersInitResponse {
+  users: ListUsersResponse;
+  agencies: ListAgenciesResponse;
+}
+
+export async function getUsersInit(
+  token: string,
+  params: {
+    users?: ListUsersParams;
+    agencies?: ListAgenciesParams;
+  },
+): Promise<UsersInitResponse> {
+  const qs = new URLSearchParams();
+  appendScopedParams(qs, "users", params.users ?? {});
+  appendScopedParams(qs, "agencies", params.agencies ?? {});
+
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/users/init${qs.toString() ? `?${qs}` : ""}`,
+    {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+
+  return parseApiResponse<UsersInitResponse>(response, "Users init failed");
+}
+
 export async function getUser(token: string, id: string): Promise<UserItem> {
   const response = await fetch(`${baseUrl}/api/v1/internal/users/${id}`, {
     method: "GET",
@@ -1616,6 +1695,33 @@ export async function listAgencies(
   return parseApiResponse<ListAgenciesResult>(response, "Agency list failed");
 }
 
+export interface AgenciesInitResponse {
+  agencies: ListAgenciesResponse;
+}
+
+export async function getAgenciesInit(
+  token: string,
+  params?: ListAgenciesParams,
+): Promise<AgenciesInitResponse> {
+  const qs = new URLSearchParams();
+  appendScopedParams(qs, "", params ?? {});
+  const query = qs.toString();
+
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/agencies/init${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+
+  return parseApiResponse<AgenciesInitResponse>(
+    response,
+    "Agencies init failed",
+  );
+}
+
 export async function getAgency(
   token: string,
   agencyId: string,
@@ -1708,6 +1814,34 @@ export async function listClients(
     cache: "no-store",
   });
   return parseApiResponse<ListClientsResult>(response, "Client list failed");
+}
+
+export interface ClientsInitResponse {
+  clients: ListClientsResponse;
+  agencies: ListAgenciesResponse;
+}
+
+export async function getClientsInit(
+  token: string,
+  params: {
+    clients?: ListClientsParams;
+    agencies?: ListAgenciesParams;
+  },
+): Promise<ClientsInitResponse> {
+  const qs = new URLSearchParams();
+  appendScopedParams(qs, "clients", params.clients ?? {});
+  appendScopedParams(qs, "agencies", params.agencies ?? {});
+
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/clients/init${qs.toString() ? `?${qs}` : ""}`,
+    {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+
+  return parseApiResponse<ClientsInitResponse>(response, "Clients init failed");
 }
 
 export async function listAllClients(

@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@mui/material";
 import { FormInput } from "../components/ui/FormInput";
 import { useAlerts } from "../components/shared";
-import { loadSession, saveSession } from "../lib/authSession";
+import { saveSession, validateStoredSession } from "../lib/authSession";
 import { login, verifyOtp } from "../lib/internalApi";
 import { useI18n } from "../../../src/lib/i18n-context";
 import { UI_LANGUAGES } from "../../../src/lib/uiLanguages";
+import { LanguageFlag } from "../../../src/lib/LanguageFlag";
 import styles from "../authPages.module.css";
 
 export default function LoginPage() {
@@ -27,10 +28,17 @@ export default function LoginPage() {
   const [otpCooldown, setOtpCooldown] = useState(0);
 
   useEffect(() => {
-    const restored = loadSession();
-    if (restored) {
-      router.replace("/internal/simulations");
-    }
+    let cancelled = false;
+
+    validateStoredSession().then((restored) => {
+      if (!cancelled && restored) {
+        router.replace("/internal/simulations");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   useEffect(() => {
@@ -148,7 +156,7 @@ export default function LoginPage() {
             className={`${styles.langBtn} ${locale === language.code ? styles.active : ""}`}
             title={language.label}
           >
-            {language.flag}
+            <LanguageFlag code={language.code} label={language.label} />
           </button>
         ))}
       </div>

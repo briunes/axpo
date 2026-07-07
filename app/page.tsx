@@ -1,6 +1,24 @@
-import { redirect } from 'next/navigation';
+"use client";
 
-// TODO: delete this page once the redirect is no longer needed
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { validateStoredSession } from "./internal/lib/authSession";
+
 export default function HomePage() {
-  redirect('/internal');
+  const router = useRouter();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    validateStoredSession().then((session) => {
+      if (cancelled) return;
+      router.replace(session ? "/internal/simulations" : "/internal/login");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  return null;
 }

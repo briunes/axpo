@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useI18n } from "../../src/lib/i18n-context";
+import { LanguageFlag } from "../../src/lib/LanguageFlag";
 import { UI_LANGUAGES } from "../../src/lib/uiLanguages";
 import Image from "next/image";
 
@@ -63,10 +64,12 @@ function MaintenanceContent() {
                             fontSize: 12,
                             fontWeight: 600,
                             cursor: "pointer",
-                            letterSpacing: "0.06em",
-                            textTransform: "uppercase",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
                         }}
                     >
+                        <LanguageFlag code={language.code} label={language.label} width={20} height={14} />
                         {t("language", language.code)}
                     </button>
                 ))}

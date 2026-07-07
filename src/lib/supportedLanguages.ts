@@ -9,13 +9,14 @@ export interface SupportedLanguage {
   code: string;
   label: string;
   flag: string;
+  flagSrc: string;
 }
 
 export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
-  { code: "en", label: "English", flag: "🇬🇧" },
-  { code: "es", label: "Español", flag: "🇪🇸" },
-  // { code: "pt", label: "Português", flag: "🇵🇹" },
-  // { code: "fr", label: "Français", flag: "🇫🇷" },
+  { code: "en", label: "English", flag: "🇬🇧", flagSrc: "/flags/en.svg" },
+  { code: "es", label: "Español", flag: "🇪🇸", flagSrc: "/flags/es.svg" },
+  // { code: "pt", label: "Português", flag: "🇵🇹", flagSrc: "/flags/pt.svg" },
+  // { code: "fr", label: "Français", flag: "🇫🇷", flagSrc: "/flags/fr.svg" },
 ];
 
 export const DEFAULT_LANGUAGE = "en";
@@ -23,7 +24,7 @@ export const DEFAULT_LANGUAGE = "en";
 export function getLanguageOptions(): Array<{ value: string; label: string }> {
   return SUPPORTED_LANGUAGES.map((language) => ({
     value: language.code,
-    label: `${language.flag} ${language.label}`,
+    label: `${language.code.toUpperCase()} - ${language.label}`,
   }));
 }
 

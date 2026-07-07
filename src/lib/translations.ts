@@ -2680,6 +2680,10 @@ export const translations = {
       buttonViewSimulationDesc:
         "Drops a styled CTA button linked to {{SIMULATION_LINK}}",
       buttonViewSimulationText: "View Simulation",
+      buttonMagicLinkLabel: "Button - Magic Link Login",
+      buttonMagicLinkDesc:
+        "Drops a styled CTA button linked to {{MAGIC_LINK}}",
+      buttonMagicLinkText: "Log In with Magic Link",
       varSetupPasswordValidityLabel: "Setup Password Validity Hours",
       varSetupPasswordValidityDesc:
         "Configured number of hours the setup-password link remains valid",
@@ -5528,6 +5532,10 @@ export const translations = {
       buttonViewSimulationDesc:
         "Inserta un botón CTA con enlace a {{SIMULATION_LINK}}",
       buttonViewSimulationText: "Ver simulación",
+      buttonMagicLinkLabel: "Botón - Iniciar sesión con Magic Link",
+      buttonMagicLinkDesc:
+        "Inserta un botón CTA con enlace a {{MAGIC_LINK}}",
+      buttonMagicLinkText: "Iniciar sesión con Magic Link",
       varSetupPasswordValidityLabel:
         "Horas de validez de configuración de contraseña",
       varSetupPasswordValidityDesc:
@@ -8398,6 +8406,10 @@ export const translations = {
       buttonViewSimulationDesc:
         "Insère un bouton CTA lié à {{SIMULATION_LINK}}",
       buttonViewSimulationText: "Voir la simulation",
+      buttonMagicLinkLabel: "Bouton - Connexion Magic Link",
+      buttonMagicLinkDesc:
+        "Insère un bouton CTA lié à {{MAGIC_LINK}}",
+      buttonMagicLinkText: "Se connecter avec Magic Link",
       varSetupPasswordValidityLabel:
         "Heures de validité de configuration du mot de passe",
       varSetupPasswordValidityDesc:
@@ -11224,6 +11236,10 @@ export const translations = {
       buttonViewSimulationDesc:
         "Insere um botão CTA vinculado a {{SIMULATION_LINK}}",
       buttonViewSimulationText: "Ver simulação",
+      buttonMagicLinkLabel: "Botão - Login com Magic Link",
+      buttonMagicLinkDesc:
+        "Insere um botão CTA vinculado a {{MAGIC_LINK}}",
+      buttonMagicLinkText: "Entrar com Magic Link",
       varSetupPasswordValidityLabel:
         "Horas de validade da configuração de senha",
       varSetupPasswordValidityDesc:

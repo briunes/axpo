@@ -1,6 +1,7 @@
 'use client';
 
 import { useI18n } from '../../src/lib/i18n-context';
+import { LanguageFlag } from '../../src/lib/LanguageFlag';
 import { UI_LANGUAGES } from '../../src/lib/uiLanguages';
 
 export function LanguageSwitcher() {
@@ -21,9 +22,12 @@ export function LanguageSwitcher() {
                         backgroundColor: locale === language.code ? '#007bff' : '#fff',
                         color: locale === language.code ? '#fff' : '#000',
                         fontWeight: locale === language.code ? 'bold' : 'normal',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
                     }}
                 >
-                    {language.flag} {language.label}
+                    <LanguageFlag code={language.code} label={language.label} /> {language.label}
                 </button>
             ))}
         </div>

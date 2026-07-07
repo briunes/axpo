@@ -26,6 +26,7 @@ const defaultOptions: ErrorHandlerOptions = {
 
 const ERROR_LOG_EXCLUDED_PATHS = new Set([
   "/api/v1/internal/app-error-logs/client",
+  "/api/v1/internal/auth/session",
   "/api/v1/internal/auth/redirect-report",
 ]);
 
