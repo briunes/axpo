@@ -18,6 +18,7 @@ import {
   bulkDeleteSimulations,
   bulkArchiveSimulations,
   type CupsValidationResult,
+  type ListSimulationsParams,
   type SimulationItem,
 } from "../../lib/internalApi";
 import type { SimulationPayload, SimulationResults } from "@/domain/types";
@@ -123,9 +124,16 @@ interface SimulationsFilterPersistentState {
   status: string;
 }
 
+interface UseSimulationsOptions {
+  queryEnabled?: boolean;
+  initialData?: { items: SimulationItem[]; total: number };
+  initialDataParams?: ListSimulationsParams;
+}
+
 export function useSimulations(
   session: SessionState | null,
   initialPageSize = 25,
+  options?: UseSimulationsOptions,
 ): SimulationsActions {
   const queryClient = useQueryClient();
   const cachePolicy = useRequestCachePolicy("simulations");
@@ -266,7 +274,9 @@ export function useSimulations(
   };
 
   // ── TanStack Query ──────────────────────────────────────────────────────
-  const queryParams = {
+  const queryEnabled = options?.queryEnabled ?? true;
+
+  const queryParams: ListSimulationsParams = {
     page,
     pageSize,
     orderBy: sortColumn,
@@ -291,11 +301,31 @@ export function useSimulations(
     cups: appliedCups,
     status: appliedStatus,
   });
+  const initialDataKeyParams = options?.initialDataParams
+    ? normalizeQueryKeyParams({
+        page: options.initialDataParams.page ?? 1,
+        pageSize: options.initialDataParams.pageSize ?? initialPageSize,
+        orderBy: options.initialDataParams.orderBy ?? "updatedAt",
+        sortDir: options.initialDataParams.sortDir ?? "desc",
+        includeDeleted: options.initialDataParams.includeDeleted ?? false,
+        search: options.initialDataParams.search ?? "",
+        ownerUserId: options.initialDataParams.ownerUserId ?? "",
+        clientId: options.initialDataParams.clientId ?? "",
+        cups: options.initialDataParams.cups ?? "",
+        status: options.initialDataParams.status ?? "",
+      })
+    : null;
+  const canUseInitialData =
+    !!options?.initialData &&
+    !!initialDataKeyParams &&
+    JSON.stringify(queryKeyParams) === JSON.stringify(initialDataKeyParams);
 
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["simulations", session?.token ?? "", queryKeyParams],
     queryFn: () => listSimulations(session!.token, queryParams),
-    enabled: !!session,
+    enabled: !!session && queryEnabled,
+    initialData: canUseInitialData ? options.initialData : undefined,
+    initialDataUpdatedAt: canUseInitialData ? Date.now() : undefined,
     placeholderData: keepPreviousData,
     ...cachePolicy,
   });

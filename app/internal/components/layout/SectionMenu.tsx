@@ -32,6 +32,7 @@ import {
   NotificationsNavIcon,
 } from "../ui/icons";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { LanguageFlag } from "../../../../src/lib/LanguageFlag";
 import { UI_LANGUAGES } from "../../../../src/lib/uiLanguages";
 import { useThemeMode } from "../../lib/ThemeModeContext";
 
@@ -124,7 +125,6 @@ const LANGUAGE_OPTIONS = UI_LANGUAGES
     locale: language.code,
     label: language.label,
     shortLabel: language.code.toUpperCase(),
-    flag: language.flag,
   }));
 
 export function SectionMenu({
@@ -401,7 +401,7 @@ export function SectionMenu({
                     justifyContent: "center",
                   }}
                 >
-                  {activeLanguage.flag}
+                  <LanguageFlag code={activeLanguage.locale} label={activeLanguage.label} width={22} height={15} />
                 </Box>
               }
               direction={collapsed ? "right" : "up"}
@@ -458,7 +458,7 @@ export function SectionMenu({
                         justifyContent: "center",
                       }}
                     >
-                      {option.flag}
+                      <LanguageFlag code={option.locale} label={option.label} width={22} height={15} />
                     </Box>
                   }
                   tooltipTitle={option.label}

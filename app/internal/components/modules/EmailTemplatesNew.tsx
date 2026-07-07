@@ -18,7 +18,9 @@ import EditIcon from "@mui/icons-material/Edit";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { LanguageFlag } from "../../../../src/lib/LanguageFlag";
 import { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE } from "../../../../src/lib/supportedLanguages";
+import { isLocale, translations, type TranslationKey } from "../../../../src/lib/translations";
 import { HtmlEditor } from "./HtmlEditor";
 import { AITemplateBuilder, type AIGeneratedTemplate } from "./AITemplateBuilder";
 import { DraggableVariables } from "./DraggableVariables";
@@ -59,7 +61,23 @@ export type EmailTemplateType =
  * based on the selected email template type.
  */
 /** Button snippet variables — dropped as complete HTML blocks instead of {{VAR}} placeholders. */
-const getButtonSnippets = (t: ReturnType<typeof useI18n>["t"]): Array<{ name: string; label: string; description: string; dragContent: string; isButton: true }> => [
+function translateForLocale(
+    languageCode: string,
+    namespace: TranslationKey,
+    key: string,
+): string {
+    const locale = isLocale(languageCode) ? languageCode : DEFAULT_LANGUAGE;
+    const namespaceTranslations = translations[locale][namespace] ?? translations[DEFAULT_LANGUAGE][namespace];
+    return (namespaceTranslations as Record<string, string | undefined>)?.[key] ?? key;
+}
+
+const getButtonSnippets = (
+    t: ReturnType<typeof useI18n>["t"],
+    templateLanguage: string,
+): Array<{ name: string; label: string; description: string; dragContent: string; isButton: true }> => {
+    const buttonText = (key: string) => translateForLocale(templateLanguage, "emailTemplatesModule", key);
+
+    return [
     {
         name: "BTN_SETUP_PASSWORD",
         label: t("emailTemplatesModule", "buttonSetupPasswordLabel"),
@@ -69,7 +87,7 @@ const getButtonSnippets = (t: ReturnType<typeof useI18n>["t"]): Array<{ name: st
   <tbody><tr>
     <td align="center">
       <a href="{{ SETUP_PASSWORD_URL }}" style="display:inline-block; padding:15px 40px; background-color:#FF3254; color:#ffffff; text-decoration:none; font-weight:bold; border-radius:6px; font-size:16px;">
-        ${t("emailTemplatesModule", "buttonSetupPasswordText")}
+        ${buttonText("buttonSetupPasswordText")}
       </a>
     </td>
   </tr></tbody>
@@ -84,7 +102,7 @@ const getButtonSnippets = (t: ReturnType<typeof useI18n>["t"]): Array<{ name: st
   <tbody><tr>
     <td align="center">
       <a href="{{ RESET_PASSWORD_URL }}" style="display:inline-block; padding:15px 40px; background-color:#FF3254; color:#ffffff; text-decoration:none; font-weight:bold; border-radius:6px; font-size:16px;">
-        ${t("emailTemplatesModule", "buttonResetPasswordText")}
+        ${buttonText("buttonResetPasswordText")}
       </a>
     </td>
   </tr></tbody>
@@ -99,13 +117,29 @@ const getButtonSnippets = (t: ReturnType<typeof useI18n>["t"]): Array<{ name: st
   <tbody><tr>
     <td align="center">
       <a href="{{SIMULATION_LINK}}" style="display:inline-block; padding:15px 40px; background-color:#FF3254; color:#ffffff; text-decoration:none; font-weight:bold; border-radius:6px; font-size:16px;">
-        ${t("emailTemplatesModule", "buttonViewSimulationText")}
+        ${buttonText("buttonViewSimulationText")}
       </a>
     </td>
   </tr></tbody>
 </table>`,
     },
-];
+    {
+        name: "BTN_MAGIC_LINK",
+        label: t("emailTemplatesModule", "buttonMagicLinkLabel"),
+        description: t("emailTemplatesModule", "buttonMagicLinkDesc"),
+        isButton: true,
+        dragContent: `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:25px 0;">
+  <tbody><tr>
+    <td align="center">
+      <a href="{{ MAGIC_LINK }}" style="display:inline-block; padding:15px 40px; background-color:#FF3254; color:#ffffff; text-decoration:none; font-weight:bold; border-radius:6px; font-size:16px;">
+        ${buttonText("buttonMagicLinkText")}
+      </a>
+    </td>
+  </tr></tbody>
+</table>`,
+    },
+    ];
+};
 
 /**
  * Email template types that should ONLY show variables explicitly tagged for
@@ -114,7 +148,7 @@ const getButtonSnippets = (t: ReturnType<typeof useI18n>["t"]): Array<{ name: st
 const CLOSED_EMAIL_TYPES = new Set(["user-welcome", "welcome", "password-reset", "magic-link", "otp"]);
 
 /** Types that should include the button snippets panel */
-const BUTTON_SNIPPET_TYPES = new Set(["user-welcome", "welcome", "password-reset", "simulation-share", "expiring-soon", "converted", "notification"]);
+const BUTTON_SNIPPET_TYPES = new Set(["user-welcome", "welcome", "password-reset", "magic-link", "simulation-share", "expiring-soon", "converted", "notification"]);
 
 const getBuiltinEmailVariables = (t: ReturnType<typeof useI18n>["t"]): Record<
     string,
@@ -154,6 +188,7 @@ function getVariablesForEmailTemplate(
     type: string | undefined,
     dbVariables: TemplateVariable[],
     t: ReturnType<typeof useI18n>["t"],
+    templateLanguage: string,
 ): Array<{ name: string; label: string; description: string; dragContent?: string; isButton?: boolean }> {
     let vars: Array<{ name: string; label: string; description: string; dragContent?: string; isButton?: boolean }>;
 
@@ -180,8 +215,9 @@ function getVariablesForEmailTemplate(
 
     // Prepend relevant button snippets
     if (type && BUTTON_SNIPPET_TYPES.has(type)) {
-        const relevantButtons = getButtonSnippets(t).filter((b) => {
+        const relevantButtons = getButtonSnippets(t, templateLanguage).filter((b) => {
             if (type === "password-reset") return b.name === "BTN_RESET_PASSWORD";
+            if (type === "magic-link") return b.name === "BTN_MAGIC_LINK";
             if (type === "simulation-share" || type === "expiring-soon" || type === "converted" || type === "notification") return b.name === "BTN_VIEW_SIMULATION";
             return b.name === "BTN_SETUP_PASSWORD" || b.name === "BTN_RESET_PASSWORD"; // user-welcome / welcome get both password buttons
         });
@@ -504,6 +540,11 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                 /\{\{\s*SETUP_PASSWORD_VALIDITY_HOURS\s*\}\}/g,
                 "72",
             )
+            .replace(
+                /\{\{\s*MAGIC_LINK_VALIDITY_MINUTES\s*\}\}/g,
+                "15",
+            )
+            .replace(/\{\{\s*MAGIC_LINK\s*\}\}/g, "https://axpo.example.com/login/magic/abc123")
             .replace(/\{\{magicLink\}\}/g, "https://axpo.example.com/login/magic/abc123");
         return sampleData;
     };
@@ -822,7 +863,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                                         gap: "6px",
                                                     }}
                                                 >
-                                                    {lang.flag} {lang.label}
+                                                    <LanguageFlag code={lang.code} label={lang.label} width={22} height={15} /> {lang.label}
                                                 </button>
                                             ))}
                                         </div>
@@ -863,7 +904,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
                                                 />
                                                 <DraggableVariables variables={[
                                                     // Variables filtered by email template type
-                                                    ...getVariablesForEmailTemplate(formData.type, variables, t),
+                                                    ...getVariablesForEmailTemplate(formData.type, variables, t, activeLanguage),
                                                     // Editable sections as variables
                                                     ...Object.entries((formData.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
                                                         name: key,

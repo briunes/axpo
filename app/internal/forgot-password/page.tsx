@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { forgotPassword } from "../lib/internalApi";
 import { useI18n } from "../../../src/lib/i18n-context";
 import { UI_LANGUAGES } from "../../../src/lib/uiLanguages";
+import { LanguageFlag } from "../../../src/lib/LanguageFlag";
 import styles from "../authPages.module.css";
 
 export default function ForgotPasswordPage() {
@@ -45,7 +46,7 @@ export default function ForgotPasswordPage() {
                         className={`${styles.langBtn} ${locale === language.code ? styles.active : ""}`}
                         title={language.label}
                     >
-                        {language.flag}
+                        <LanguageFlag code={language.code} label={language.label} />
                     </button>
                 ))}
             </div>

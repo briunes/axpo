@@ -12,6 +12,7 @@ import {
   softDeleteClient,
   type ClientItem,
   type ListClientsParams,
+  type ListClientsResponse,
 } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
 import { useRequestCachePolicy } from "./useRequestCachePolicy";
@@ -51,6 +52,9 @@ export interface ClientsActions {
 interface UseClientsOptions {
   usePersistedState?: boolean;
   minimal?: boolean;
+  queryEnabled?: boolean;
+  initialData?: ListClientsResponse;
+  initialDataParams?: ListClientsParams;
 }
 
 interface ClientsFilterPersistentState {
@@ -69,6 +73,7 @@ export function useClients(
   const [successText, setSuccessText] = useState<string | null>(null);
   const usePersistedState = options?.usePersistedState ?? true;
   const minimal = options?.minimal ?? false;
+  const queryEnabled = options?.queryEnabled ?? true;
 
   // Load persisted state from localStorage
   const getPersistedState = () => {
@@ -165,11 +170,29 @@ export function useClients(
     agencyId,
     minimal,
   });
+  const initialDataKeyParams = options?.initialDataParams
+    ? normalizeQueryKeyParams({
+        page: options.initialDataParams.page ?? 1,
+        pageSize: options.initialDataParams.pageSize ?? initialPageSize,
+        search: options.initialDataParams.search ?? "",
+        orderBy: options.initialDataParams.orderBy ?? "name",
+        sortDir: options.initialDataParams.sortDir ?? "asc",
+        includeDeleted: options.initialDataParams.includeDeleted ?? false,
+        agencyId: options.initialDataParams.agencyId ?? "",
+        minimal: options.initialDataParams.minimal ?? false,
+      })
+    : null;
+  const canUseInitialData =
+    !!options?.initialData &&
+    !!initialDataKeyParams &&
+    JSON.stringify(queryKeyParams) === JSON.stringify(initialDataKeyParams);
 
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["clients", session?.token ?? "", queryKeyParams],
     queryFn: () => listClients(session!.token, queryParams),
-    enabled: !!session,
+    enabled: !!session && queryEnabled,
+    initialData: canUseInitialData ? options.initialData : undefined,
+    initialDataUpdatedAt: canUseInitialData ? Date.now() : undefined,
     placeholderData: keepPreviousData,
     ...cachePolicy,
   });

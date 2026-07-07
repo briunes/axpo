@@ -20,6 +20,7 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { LanguageFlag } from "../../../../src/lib/LanguageFlag";
 import { HtmlEditor } from "./HtmlEditor";
 import { DraggableVariables } from "./DraggableVariables";
 import { EditableSectionsEditor } from "./EditableSectionsEditor";
@@ -850,7 +851,7 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
                                                         gap: "6px",
                                                     }}
                                                 >
-                                                    {lang.flag} {lang.label}
+                                                    <LanguageFlag code={lang.code} label={lang.label} width={22} height={15} /> {lang.label}
                                                 </button>
                                             ))}
                                         </div>

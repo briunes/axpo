@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { TemplateVariable } from "../../lib/configApi";
 import { SUPPORTED_LANGUAGES } from "../../../../src/lib/supportedLanguages";
+import { LanguageFlag } from "../../../../src/lib/LanguageFlag";
 import { useI18n } from "../../../../src/lib/i18n-context";
 
 // ────────────────────────────────────────────────────────────────────────────────
@@ -157,8 +158,8 @@ export function AITemplateBuilder({
         (t) => t.languageCode === previewLanguage,
     );
 
-    const langFlag = (code: string) =>
-        SUPPORTED_LANGUAGES.find((l) => l.code === code)?.flag || "";
+    const langLabel = (code: string) =>
+        SUPPORTED_LANGUAGES.find((l) => l.code === code)?.label || code.toUpperCase();
 
     // ── Render ────────────────────────────────────────────────────────────────────
     return (
@@ -377,9 +378,12 @@ export function AITemplateBuilder({
                                                 fontSize: "12px",
                                                 fontWeight: 600,
                                                 cursor: "pointer",
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: "6px",
                                             }}
                                         >
-                                            {langFlag(tr.languageCode)} {tr.languageCode.toUpperCase()}
+                                            <LanguageFlag code={tr.languageCode} label={langLabel(tr.languageCode)} width={20} height={14} /> {tr.languageCode.toUpperCase()}
                                         </button>
                                     ))}
                                 </div>

@@ -16,6 +16,7 @@ import {
   deleteUser,
   type CreateUserResult,
   type ListUsersParams,
+  type ListUsersResponse,
   type RotatePinResult,
   type UserItem,
   type UserRole,
@@ -132,6 +133,8 @@ interface UseUsersOptions {
   usePersistedState?: boolean;
   minimal?: boolean;
   contextual?: boolean;
+  initialData?: ListUsersResponse;
+  initialDataParams?: ListUsersParams;
 }
 
 interface UsersFilterPersistentState {
@@ -291,6 +294,24 @@ export function useUsers(
     minimal,
     contextual,
   });
+  const initialDataKeyParams = options?.initialDataParams
+    ? normalizeQueryKeyParams({
+        page: options.initialDataParams.page ?? 1,
+        pageSize: options.initialDataParams.pageSize ?? initialPageSize,
+        search: options.initialDataParams.search ?? "",
+        role: options.initialDataParams.role ?? "",
+        agencyId: options.initialDataParams.agencyId ?? "",
+        orderBy: options.initialDataParams.orderBy ?? "createdAt",
+        sortDir: options.initialDataParams.sortDir ?? "desc",
+        includeDeleted: options.initialDataParams.includeDeleted ?? false,
+        minimal: options.initialDataParams.minimal ?? false,
+        contextual: options.initialDataParams.contextual ?? false,
+      })
+    : null;
+  const canUseInitialData =
+    !!options?.initialData &&
+    !!initialDataKeyParams &&
+    JSON.stringify(queryKeyParams) === JSON.stringify(initialDataKeyParams);
 
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["users", session?.token ?? "", queryKeyParams],
@@ -304,6 +325,8 @@ export function useUsers(
       return result;
     },
     enabled: !!session && queryEnabled,
+    initialData: canUseInitialData ? options.initialData : undefined,
+    initialDataUpdatedAt: canUseInitialData ? Date.now() : undefined,
     placeholderData: keepPreviousData,
     ...cachePolicy,
   });

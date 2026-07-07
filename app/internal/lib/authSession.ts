@@ -50,3 +50,35 @@ export function clearSession(): void {
   window.localStorage.removeItem(TOKEN_KEY);
   window.localStorage.removeItem(USER_KEY);
 }
+
+export async function validateStoredSession(): Promise<SessionState | null> {
+  const session = loadSession();
+  if (!session) {
+    return null;
+  }
+
+  try {
+    const response = await fetch("/api/v1/internal/auth/session", {
+      headers: {
+        authorization: `Bearer ${session.token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (response.ok) {
+      const refreshedToken = response.headers.get("x-access-token");
+      if (refreshedToken) {
+        window.localStorage.setItem(TOKEN_KEY, refreshedToken);
+        return { ...session, token: refreshedToken };
+      }
+
+      return session;
+    }
+  } catch {
+    // Network failures are treated as invalid for the entry gate so the app
+    // does not route users into protected screens with an unknown session.
+  }
+
+  clearSession();
+  return null;
+}

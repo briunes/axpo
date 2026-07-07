@@ -14,6 +14,7 @@ import {
   deleteAgency,
   type AgencyItem,
   type ListAgenciesParams,
+  type ListAgenciesResponse,
 } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
 import { useRequestCachePolicy } from "./useRequestCachePolicy";
@@ -66,6 +67,8 @@ interface UseAgenciesOptions {
   queryEnabled?: boolean;
   minimal?: boolean;
   usePersistedState?: boolean;
+  initialData?: ListAgenciesResponse;
+  initialDataParams?: ListAgenciesParams;
 }
 
 interface AgenciesFilterPersistentState {
@@ -199,11 +202,30 @@ export function useAgencies(
     isTlv: queryParams.isTlv,
     status: queryParams.status,
   });
+  const initialDataKeyParams = options?.initialDataParams
+    ? normalizeQueryKeyParams({
+        page: options.initialDataParams.page ?? 1,
+        pageSize: options.initialDataParams.pageSize ?? initialPageSize,
+        search: options.initialDataParams.search ?? "",
+        orderBy: options.initialDataParams.orderBy ?? "createdAt",
+        sortDir: options.initialDataParams.sortDir ?? "desc",
+        includeDeleted: options.initialDataParams.includeDeleted ?? false,
+        minimal: options.initialDataParams.minimal ?? false,
+        isTlv: options.initialDataParams.isTlv,
+        status: options.initialDataParams.status,
+      })
+    : null;
+  const canUseInitialData =
+    !!options?.initialData &&
+    !!initialDataKeyParams &&
+    JSON.stringify(queryKeyParams) === JSON.stringify(initialDataKeyParams);
 
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["agencies", session?.token ?? "", queryKeyParams],
     queryFn: () => listAgencies(session!.token, queryParams),
     enabled: !!session && queryEnabled,
+    initialData: canUseInitialData ? options.initialData : undefined,
+    initialDataUpdatedAt: canUseInitialData ? Date.now() : undefined,
     placeholderData: keepPreviousData,
     ...cachePolicy,
   });
