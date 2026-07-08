@@ -18,7 +18,10 @@ import BusinessIcon from "@mui/icons-material/Business";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { Button, LinearProgress, Chip, Tooltip, CircularProgress } from "@mui/material";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import CloseIcon from "@mui/icons-material/Close";
+import { Button, LinearProgress, Chip, Tooltip, CircularProgress, Dialog, DialogContent, DialogTitle, IconButton } from "@mui/material";
 import { FormSelect } from "../ui/FormSelect";
 import WarningIcon from '@mui/icons-material/Warning';
 export interface ExtractedInvoiceData {
@@ -232,6 +235,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
     const [extractionLogId, setExtractionLogId] = useState<string | null>(null);
     const [multiInvoiceError, setMultiInvoiceError] = useState<string | null>(null);
     const [maxUploadFileSizeMb, setMaxUploadFileSizeMb] = useState(DEFAULT_MAX_UPLOAD_FILE_SIZE_MB);
+    const [preview, setPreview] = useState<{ file: File; url: string; type: "pdf" | "image" } | null>(null);
     const detectionAbortRef = useRef<AbortController | null>(null);
     const uploadSizeLimitLabel = formatUploadSizeLimit(maxUploadFileSizeMb);
     const maxUploadSizeBytes = uploadSizeMbToBytes(maxUploadFileSizeMb);
@@ -266,6 +270,22 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
     const isPdf = (f: File) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
     const currentType: "pdf" | "image" | null = files.length === 0 ? null : isPdf(files[0]) ? "pdf" : "image";
+    const handlePreviewFile = (file: File) => {
+        setPreview(prev => {
+            if (prev) URL.revokeObjectURL(prev.url);
+            return {
+                file,
+                url: URL.createObjectURL(file),
+                type: isPdf(file) ? "pdf" : "image",
+            };
+        });
+    };
+    const handleClosePreview = () => {
+        setPreview(prev => {
+            if (prev) URL.revokeObjectURL(prev.url);
+            return null;
+        });
+    };
     const translateApiMessage = (payload: ApiErrorPayload | null | undefined, fallback: string) => {
         if (payload?.messageKey) {
             return t("invoiceExtractor", payload.messageKey, payload.messageParams);
@@ -383,6 +403,13 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             detectionAbortRef.current?.abort();
         };
     }, [files]);
+
+    useEffect(() => {
+        const previewUrl = preview?.url;
+        return () => {
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+        };
+    }, [preview?.url]);
 
     const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
         e.preventDefault();
@@ -648,10 +675,10 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             </div>
 
             <div className="extractor-content">
-                {/* Upload area — always visible for images so more can be added */}
-                {(files.length === 0 || currentType === "image") && (
+                {/* Upload area */}
+                {files.length === 0 && (
                     <label
-                        className={`file-upload-area${isDragging ? " dragging" : ""}${files.length > 0 ? " compact" : ""}`}
+                        className={`file-upload-area${isDragging ? " dragging" : ""}`}
                         onDragOver={handleDragOver}
                         onDragEnter={handleDragOver}
                         onDragLeave={handleDragLeave}
@@ -664,10 +691,10 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                             onChange={handleFileChange}
                             style={{ display: "none" }}
                         />
-                        <CloudUploadIcon sx={{ fontSize: files.length > 0 ? 28 : 48, color: "text.disabled", mb: files.length > 0 ? 0.5 : 2 }} />
+                        <CloudUploadIcon sx={{ fontSize: 48, color: "text.disabled", mb: 2 }} />
                         <div className="upload-text">
-                            <strong>{files.length > 0 ? t("invoiceExtractor", "addMoreImages") ?? "Add more images" : t("invoiceExtractor", "uploadPrompt")}</strong>
-                            {files.length === 0 && <span>{t("invoiceExtractor", "uploadHint", { max: uploadSizeLimitLabel })}</span>}
+                            <strong>{t("invoiceExtractor", "uploadPrompt")}</strong>
+                            <span>{t("invoiceExtractor", "uploadHint", { max: uploadSizeLimitLabel })}</span>
                         </div>
                     </label>
                 )}
@@ -691,11 +718,42 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                         >
                                             <DeleteIcon fontSize="small" />
                                         </button>
-                                        <div className="image-card-icon">🖼️</div>
+                                        <button
+                                            type="button"
+                                            className="image-card-preview"
+                                            onClick={() => handlePreviewFile(f)}
+                                            title={t("invoiceExtractor", "preview") ?? "Preview"}
+                                            aria-label={t("invoiceExtractor", "preview") ?? "Preview"}
+                                        >
+                                            <VisibilityIcon fontSize="small" />
+                                        </button>
+                                        <div className="image-card-icon">
+                                            <ImageOutlinedIcon sx={{ fontSize: 24 }} />
+                                        </div>
                                         <div className="image-card-name">{f.name}</div>
                                         <div className="image-card-size">{(f.size / 1024 / 1024).toFixed(2)} MB</div>
                                     </div>
                                 ))}
+                                <label
+                                    className={`image-card image-card-add${isDragging ? " dragging" : ""}`}
+                                    onDragOver={handleDragOver}
+                                    onDragEnter={handleDragOver}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={handleDrop}
+                                    title={t("invoiceExtractor", "addMoreImages") ?? "Add more images"}
+                                >
+                                    <input
+                                        type="file"
+                                        accept=".jpg,.jpeg,.png,.webp"
+                                        multiple
+                                        onChange={handleFileChange}
+                                        style={{ display: "none" }}
+                                    />
+                                    <AddCircleOutlineIcon sx={{ fontSize: 30 }} />
+                                    <span className="image-card-add-label">
+                                        {t("invoiceExtractor", "addMoreImages") ?? "Add more images"}
+                                    </span>
+                                </label>
                             </div>
                         ) : (
                             <div className="file-row">
@@ -774,6 +832,15 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                                     </div>
                                                 )}
                                             </div>
+                                            <button
+                                                type="button"
+                                                className="file-preview-btn"
+                                                onClick={() => handlePreviewFile(f)}
+                                                title={t("invoiceExtractor", "preview") ?? "Preview"}
+                                                aria-label={t("invoiceExtractor", "preview") ?? "Preview"}
+                                            >
+                                                <VisibilityIcon sx={{ fontSize: 16 }} />
+                                            </button>
                                             <button
                                                 type="button"
                                                 className="file-remove-btn"
@@ -889,6 +956,60 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
                     </div>
                 )}
+
+                <Dialog
+                    open={Boolean(preview)}
+                    onClose={handleClosePreview}
+                    maxWidth="lg"
+                    fullWidth
+                    PaperProps={{
+                        sx: {
+                            display: "flex",
+                            flexDirection: "column",
+                            height: { xs: "86vh", md: "88vh" },
+                            maxHeight: "88vh",
+                            borderRadius: 2,
+                            overflow: "hidden",
+                        },
+                    }}
+                >
+                    {preview && (
+                        <>
+                            <DialogTitle
+                                sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: 2,
+                                    py: 1.5,
+                                    pr: 1.5,
+                                }}
+                            >
+                                <span className="preview-dialog-title">{preview.file.name}</span>
+                                <IconButton
+                                    onClick={handleClosePreview}
+                                    aria-label={t("actions", "close") ?? "Close"}
+                                    size="small"
+                                >
+                                    <CloseIcon fontSize="small" />
+                                </IconButton>
+                            </DialogTitle>
+                            <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, background: "var(--scheme-neutral-1000, #f4f6f8)" }}>
+                                {preview.type === "pdf" ? (
+                                    <iframe
+                                        src={preview.url}
+                                        title={preview.file.name}
+                                        className="preview-frame"
+                                    />
+                                ) : (
+                                    <div className="preview-image-wrap">
+                                        <img src={preview.url} alt={preview.file.name} className="preview-image" />
+                                    </div>
+                                )}
+                            </DialogContent>
+                        </>
+                    )}
+                </Dialog>
 
                 {isExtracting && (
                     <div style={{ marginTop: 16 }}>
@@ -1009,17 +1130,6 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     font-size: 14px;
                 }
 
-                .file-upload-area.compact {
-                    padding: 14px 20px;
-                    flex-direction: row;
-                    gap: 10px;
-                    margin-bottom: 12px;
-                }
-
-                .file-upload-area.compact .upload-text strong {
-                    font-size: 14px;
-                }
-
                 .file-selected {
                     display: flex;
                     flex-direction: column;
@@ -1085,6 +1195,25 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     flex-shrink: 0;
                     margin-left: 8px;
                     transition: color 0.15s;
+                }
+
+                .file-preview-btn {
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    color: var(--scheme-neutral-500);
+                    display: flex;
+                    align-items: center;
+                    padding: 4px;
+                    border-radius: 4px;
+                    flex-shrink: 0;
+                    margin-left: 8px;
+                    transition: color 0.15s, background 0.15s;
+                }
+
+                .file-preview-btn:hover {
+                    color: var(--scheme-brand-600);
+                    background: var(--scheme-brand-600-10, rgba(255, 51, 87, 0.1));
                 }
 
                 .file-remove-btn:hover:not(:disabled) {
@@ -1187,6 +1316,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     display: flex;
                     flex-wrap: wrap;
                     gap: 8px;
+                    align-items: stretch;
                 }
 
                 .image-card {
@@ -1195,54 +1325,135 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
-                    gap: 3px;
-                    padding: 10px 12px 8px;
-                    background: var(--scheme-neutral-1000);
-                    border: 1px solid var(--scheme-neutral-900);
+                    gap: 7px;
+                    padding: 14px 12px 10px;
+                    background: linear-gradient(180deg, var(--scheme-surface-raised), var(--scheme-surface-raised-muted));
+                    border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 72%, transparent);
                     border-radius: 8px;
-                    min-width: 100px;
-                    max-width: 140px;
-                    flex: 1 1 100px;
+                    width: 140px;
+                    min-height: 104px;
+                    box-sizing: border-box;
+                    flex: 0 0 140px;
                     text-align: center;
+                    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+                    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+                }
+
+                .image-card:not(.image-card-add):hover {
+                    border-color: color-mix(in srgb, var(--scheme-neutral-700) 80%, var(--scheme-brand-600));
+                    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+                    transform: translateY(-1px);
                 }
 
                 .image-card-remove {
                     position: absolute;
-                    top: 4px;
-                    right: 4px;
-                    background: none;
+                    top: 6px;
+                    right: 6px;
+                    background: color-mix(in srgb, var(--scheme-surface-raised) 88%, transparent);
                     border: none;
                     cursor: pointer;
                     color: var(--scheme-neutral-500);
                     display: flex;
                     align-items: center;
-                    padding: 2px;
-                    border-radius: 3px;
-                    transition: color 0.15s;
+                    justify-content: center;
+                    width: 24px;
+                    height: 24px;
+                    padding: 0;
+                    border-radius: 6px;
+                    transition: color 0.15s, background 0.15s;
                     line-height: 1;
+                }
+
+                .image-card-preview {
+                    position: absolute;
+                    top: 6px;
+                    left: 6px;
+                    background: color-mix(in srgb, var(--scheme-surface-raised) 88%, transparent);
+                    border: none;
+                    cursor: pointer;
+                    color: var(--scheme-neutral-500);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 24px;
+                    height: 24px;
+                    padding: 0;
+                    border-radius: 6px;
+                    transition: color 0.15s, background 0.15s;
+                    line-height: 1;
+                }
+
+                .image-card-preview:hover {
+                    color: var(--scheme-brand-600);
+                    background: color-mix(in srgb, var(--scheme-brand-600) 10%, transparent);
                 }
 
                 .image-card-remove:hover:not(:disabled) {
                     color: var(--scheme-error-400, #ef4444);
+                    background: color-mix(in srgb, var(--scheme-error-400, #ef4444) 10%, transparent);
                 }
 
                 .image-card-icon {
-                    font-size: 20px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 8px;
+                    background: color-mix(in srgb, var(--scheme-brand-600) 9%, var(--scheme-surface-raised));
+                    color: var(--scheme-brand-600);
                     line-height: 1;
                 }
 
                 .image-card-name {
+                    display: -webkit-box;
+                    -webkit-box-orient: vertical;
+                    -webkit-line-clamp: 2;
+                    overflow: hidden;
                     font-size: 11px;
-                    font-weight: 600;
+                    font-weight: 700;
                     color: var(--scheme-neutral-200);
-                    word-break: break-all;
-                    line-height: 1.3;
+                    overflow-wrap: anywhere;
+                    line-height: 1.25;
                     max-width: 100%;
                 }
 
                 .image-card-size {
                     font-size: 10px;
+                    font-weight: 600;
                     color: var(--scheme-neutral-500);
+                }
+
+                .image-card-add {
+                    gap: 8px;
+                    background: transparent;
+                    border: 1px dashed color-mix(in srgb, var(--scheme-neutral-700) 85%, var(--scheme-neutral-500));
+                    color: var(--scheme-neutral-500);
+                    cursor: pointer;
+                    transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
+                }
+
+                .image-card-add:hover,
+                .image-card-add.dragging {
+                    border-color: var(--scheme-brand-600);
+                    background: var(--scheme-surface-raised-muted);
+                    color: var(--scheme-brand-600);
+                    box-shadow: 0 0 0 4px var(--scheme-brand-600-15);
+                    transform: translateY(-1px);
+                }
+
+                .image-card-add-label {
+                    max-width: 100%;
+                    color: var(--scheme-neutral-400);
+                    font-size: 11px;
+                    font-weight: 700;
+                    line-height: 1.25;
+                    text-align: center;
+                }
+
+                .image-card-add:hover .image-card-add-label,
+                .image-card-add.dragging .image-card-add-label {
+                    color: var(--scheme-brand-600);
                 }
 
                 /* Provider section — shown once below all files */
@@ -1461,6 +1672,45 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     display: inline-block;
                     margin-right: 8px;
                     animation: spin 0.6s linear infinite;
+                }
+
+                .preview-dialog-title {
+                    min-width: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    font-size: 15px;
+                    font-weight: 700;
+                }
+
+                .preview-frame {
+                    display: block;
+                    width: 100%;
+                    height: 100%;
+                    min-height: 72vh;
+                    border: 0;
+                    background: #fff;
+                }
+
+                .preview-image-wrap {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 100%;
+                    height: 100%;
+                    min-height: 72vh;
+                    padding: 16px;
+                    box-sizing: border-box;
+                    overflow: auto;
+                }
+
+                .preview-image {
+                    display: block;
+                    max-width: 100%;
+                    max-height: 100%;
+                    object-fit: contain;
+                    border-radius: 6px;
+                    box-shadow: 0 10px 34px rgba(15, 23, 42, 0.12);
                 }
 
                 @keyframes spin {

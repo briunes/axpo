@@ -195,6 +195,17 @@ export interface ElectricityInputs {
     impuestoElectricoActual?: number;
     /** IVA/IGIC amount in €, copied from invoice detail when available. */
     ivaActual?: number;
+    /** Full saved current invoice breakdown used for side-by-side comparison. */
+    currentInvoiceBreakdown?: {
+      terminoPotencia?: number;
+      terminoEnergia?: number;
+      excesoPotencia?: number;
+      impuestoElectrico?: number;
+      otrosCargos?: number;
+      alquiler?: number;
+      iva?: number;
+      total?: number;
+    };
     /** Whether the simulation output should use the explicit current invoice breakdown. */
     useCurrentInvoiceBreakdown?: boolean;
     /** IVA rate as a percentage (e.g. 21 means 21%). Falls back to 21% if not set. */
@@ -288,6 +299,16 @@ export interface GasInputs {
     impuestoHidrocarburoActual?: number;
     /** IVA/IGIC amount in €, copied from invoice detail when available. */
     ivaActual?: number;
+    /** Full saved current invoice breakdown used for side-by-side comparison. */
+    currentInvoiceBreakdown?: {
+      terminoFijo?: number;
+      terminoVariable?: number;
+      impuestoHidrocarburo?: number;
+      otrosCargos?: number;
+      alquiler?: number;
+      iva?: number;
+      total?: number;
+    };
     /** Whether the simulation output should use the explicit current invoice breakdown. */
     useCurrentInvoiceBreakdown?: boolean;
   };

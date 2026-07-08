@@ -250,12 +250,16 @@ export function extractVariableValues(
   const currentTaxCost = currentTotal * (ieR / ((1 + ieR) * (1 + ivaR)));
   const currentVat = (currentTotal - currentTaxCost - currentRentalCost) * ivaR;
   const useCurrentInvoiceBreakdown =
-    (electricity?.extras as any)?.useCurrentInvoiceBreakdown === true;
+    (electricity?.extras as any)?.useCurrentInvoiceBreakdown !== false;
+  const currentInvoiceBreakdown = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.currentInvoiceBreakdown
+    : undefined;
   const explicitCurrentTax = useCurrentInvoiceBreakdown
-    ? (electricity?.extras as any)?.impuestoElectricoActual
+    ? currentInvoiceBreakdown?.impuestoElectrico ??
+      (electricity?.extras as any)?.impuestoElectricoActual
     : undefined;
   const explicitCurrentVat = useCurrentInvoiceBreakdown
-    ? (electricity?.extras as any)?.ivaActual
+    ? currentInvoiceBreakdown?.iva ?? (electricity?.extras as any)?.ivaActual
     : undefined;
   const displayedCurrentTax =
     explicitCurrentTax != null ? Number(explicitCurrentTax) : currentTaxCost;
@@ -269,10 +273,12 @@ export function extractVariableValues(
   );
   // If the OCR or the form captured the real split, prefer it.
   const explicitCurrentPower = useCurrentInvoiceBreakdown
-    ? (electricity?.extras as any)?.terminoPotenciaActual
+    ? currentInvoiceBreakdown?.terminoPotencia ??
+      (electricity?.extras as any)?.terminoPotenciaActual
     : undefined;
   const explicitCurrentEnergy = useCurrentInvoiceBreakdown
-    ? (electricity?.extras as any)?.terminoEnergiaActual
+    ? currentInvoiceBreakdown?.terminoEnergia ??
+      (electricity?.extras as any)?.terminoEnergiaActual
     : undefined;
   // Otherwise, mirror the Axpo plan's power/energy ratio - a much
   // better estimate than fixed 35%/40% because it adapts to the
@@ -286,35 +292,59 @@ export function extractVariableValues(
     explicitCurrentEnergy != null
       ? Number(explicitCurrentEnergy)
       : currentPowerEnergyBase * (axpoEnergyCost / axpoPeSum);
-  // CURRENT_OTHER_COST keeps its semantic of "reactiva + otros cargos"
-  // to mirror the Axpo desglose shape so a side-by-side comparison
-  // shows comparable line items.
-  const currentOtherCost = currentReactiveCost + currentOtherChargeCost;
+  const currentOtherCost =
+    currentInvoiceBreakdown?.otrosCargos != null
+      ? Number(currentInvoiceBreakdown.otrosCargos)
+      : currentOtherChargeCost;
+  const displayedCurrentExcess =
+    currentInvoiceBreakdown?.excesoPotencia != null
+      ? Number(currentInvoiceBreakdown.excesoPotencia)
+      : currentExcessCost;
+  const displayedCurrentRental =
+    currentInvoiceBreakdown?.alquiler != null
+      ? Number(currentInvoiceBreakdown.alquiler)
+      : currentRentalCost;
   const electricityCurrentBreakdownHtml = useCurrentInvoiceBreakdown
     ? buildCurrentBreakdownHtml([
         {
-          label: currentBreakdownLabel(language, "Power cost", "Costo de potencia"),
+          label: currentBreakdownLabel(
+            language,
+            "Power cost",
+            "Costo de potencia",
+          ),
           value: currentPowerCost,
         },
         {
-          label: currentBreakdownLabel(language, "Energy cost", "Costo de energía"),
+          label: currentBreakdownLabel(
+            language,
+            "Energy cost",
+            "Costo de energía",
+          ),
           value: currentEnergyCost,
         },
         {
-          label: currentBreakdownLabel(language, "Excess charges", "Cargos por exceso"),
-          value: currentExcessCost,
+          label: currentBreakdownLabel(
+            language,
+            "Excess charges",
+            "Cargos por exceso",
+          ),
+          value: displayedCurrentExcess,
         },
         {
           label: currentBreakdownLabel(language, "Taxes", "Impuestos"),
           value: displayedCurrentTax,
         },
         {
-          label: currentBreakdownLabel(language, "Other charges", "Otros cargos"),
+          label: currentBreakdownLabel(
+            language,
+            "Other charges",
+            "Otros cargos",
+          ),
           value: currentOtherCost,
         },
         {
           label: currentBreakdownLabel(language, "Rental", "Alquiler"),
-          value: currentRentalCost,
+          value: displayedCurrentRental,
         },
         { label: "IVA", value: displayedCurrentVat },
       ])
@@ -358,23 +388,33 @@ export function extractVariableValues(
   );
   // Rough 70/30 split of base into variable/fixed
   const useGasCurrentInvoiceBreakdown =
-    (gas?.extras as any)?.useCurrentInvoiceBreakdown === true;
+    (gas?.extras as any)?.useCurrentInvoiceBreakdown !== false;
+  const gasCurrentInvoiceBreakdown = useGasCurrentInvoiceBreakdown
+    ? (gas?.extras as any)?.currentInvoiceBreakdown
+    : undefined;
   const explicitGasCurrentFixed = useGasCurrentInvoiceBreakdown
-    ? (gas?.extras as any)?.terminoFijoActual
+    ? gasCurrentInvoiceBreakdown?.terminoFijo ??
+      (gas?.extras as any)?.terminoFijoActual
     : undefined;
   const explicitGasCurrentVariable = useGasCurrentInvoiceBreakdown
-    ? (gas?.extras as any)?.terminoVariableActual
+    ? gasCurrentInvoiceBreakdown?.terminoVariable ??
+      (gas?.extras as any)?.terminoVariableActual
     : undefined;
   const explicitGasCurrentTax = useGasCurrentInvoiceBreakdown
-    ? (gas?.extras as any)?.impuestoHidrocarburoActual
+    ? gasCurrentInvoiceBreakdown?.impuestoHidrocarburo ??
+      (gas?.extras as any)?.impuestoHidrocarburoActual
     : undefined;
   const explicitGasCurrentVat = useGasCurrentInvoiceBreakdown
-    ? (gas?.extras as any)?.ivaActual
+    ? gasCurrentInvoiceBreakdown?.iva ?? (gas?.extras as any)?.ivaActual
     : undefined;
   const displayedGasCurrentTax =
-    explicitGasCurrentTax != null ? Number(explicitGasCurrentTax) : gasCurrentTax;
+    explicitGasCurrentTax != null
+      ? Number(explicitGasCurrentTax)
+      : gasCurrentTax;
   const displayedGasCurrentVat =
-    explicitGasCurrentVat != null ? Number(explicitGasCurrentVat) : gasCurrentVat;
+    explicitGasCurrentVat != null
+      ? Number(explicitGasCurrentVat)
+      : gasCurrentVat;
   const gasCurrentVariableCost =
     explicitGasCurrentVariable != null
       ? Number(explicitGasCurrentVariable)
@@ -383,6 +423,14 @@ export function extractVariableValues(
     explicitGasCurrentFixed != null
       ? Number(explicitGasCurrentFixed)
       : gasCurrentBase * 0.3;
+  const displayedGasCurrentRental =
+    gasCurrentInvoiceBreakdown?.alquiler != null
+      ? Number(gasCurrentInvoiceBreakdown.alquiler)
+      : gasCurrentRentalCost;
+  const displayedGasCurrentOther =
+    gasCurrentInvoiceBreakdown?.otrosCargos != null
+      ? Number(gasCurrentInvoiceBreakdown.otrosCargos)
+      : gasCurrentOtherCost;
 
   // AXPO gas costs from selected result desglose
   const gasAxpoDesglose = selectedGasResult?.desglose || {};
@@ -432,11 +480,11 @@ export function extractVariableValues(
         "Meter rental",
         "Alquiler del contador",
       ),
-      value: gasCurrentRentalCost,
+      value: displayedGasCurrentRental,
     },
     {
       label: currentBreakdownLabel(language, "Other charges", "Otros cargos"),
-      value: gasCurrentOtherCost,
+      value: displayedGasCurrentOther,
     },
     { label: "IVA", value: displayedGasCurrentVat },
   ]);
@@ -519,10 +567,10 @@ export function extractVariableValues(
     // Current plan - Cost breakdown
     CURRENT_POWER_COST: formatCurrency(currentPowerCost),
     CURRENT_ENERGY_COST: formatCurrency(currentEnergyCost),
-    CURRENT_EXCESS_COST: formatCurrency(currentExcessCost),
+    CURRENT_EXCESS_COST: formatCurrency(displayedCurrentExcess),
     CURRENT_TAX_COST: formatCurrency(displayedCurrentTax),
     CURRENT_OTHER_COST: formatCurrency(currentOtherCost),
-    CURRENT_RENTAL_COST: formatCurrency(currentRentalCost),
+    CURRENT_RENTAL_COST: formatCurrency(displayedCurrentRental),
     CURRENT_VAT: formatCurrency(displayedCurrentVat),
     CURRENT_TOTAL: formatCurrency(currentTotal),
     CURRENT_BREAKDOWN_HTML: isGas
@@ -598,8 +646,8 @@ export function extractVariableValues(
     CURRENT_GAS_FIXED_COST: formatCurrency(gasCurrentFixedCost),
     CURRENT_GAS_VARIABLE_COST: formatCurrency(gasCurrentVariableCost),
     CURRENT_GAS_TAX: formatCurrency(displayedGasCurrentTax),
-    CURRENT_GAS_RENTAL_COST: formatCurrency(gasCurrentRentalCost),
-    CURRENT_GAS_OTHER_COST: formatCurrency(gasCurrentOtherCost),
+    CURRENT_GAS_RENTAL_COST: formatCurrency(displayedGasCurrentRental),
+    CURRENT_GAS_OTHER_COST: formatCurrency(displayedGasCurrentOther),
     CURRENT_GAS_VAT: formatCurrency(displayedGasCurrentVat),
     CURRENT_GAS_TOTAL: formatCurrency(gasCurrentTotal),
 

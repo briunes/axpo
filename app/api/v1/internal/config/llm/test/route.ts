@@ -4,7 +4,9 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import {
+  getBedrockRuntimeBaseUrl,
   getConfiguredAiProviders,
+  isBedrockMantleProvider,
   isOpenAiCompatibleProvider,
 } from "@/application/lib/aiConfig";
 
@@ -141,6 +143,23 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           model: modelName,
           messages: [{ role: "user", content: testPrompt }],
           max_tokens: 50,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+    } else if (isBedrockMantleProvider(provider)) {
+      const bedrockBaseUrl = getBedrockRuntimeBaseUrl(baseUrl);
+      url = `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/invoke`;
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: testPrompt }],
+          max_tokens: 50,
+          temperature: 0,
         }),
         signal: AbortSignal.timeout(10000),
       });

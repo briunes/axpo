@@ -11,6 +11,8 @@ import {
 } from "@/lib/pdfToImage";
 import {
   getAiUsage,
+  getBedrockRuntimeBaseUrl,
+  isBedrockMantleProvider,
   isOpenAiCompatibleProvider,
   resolveAiConfigFromSystemConfig,
 } from "@/application/lib/aiConfig";
@@ -754,6 +756,48 @@ Return ONLY the complete new prompt text — no commentary, no markdown fences, 
             signal: AbortSignal.timeout(300000),
           },
         );
+      } else if (isBedrockMantleProvider(llmProvider)) {
+        const content: any[] = [{ type: "text", text: metaPrompt }];
+        for (const f of encodedFiles) {
+          if (isPdf(f.mimeType)) {
+            const imgs = await convertPdfToImages(
+              Buffer.from(f.base64, "base64"),
+              OCR_MAX_PDF_PAGES,
+              OCR_PDF_RENDER_SCALE,
+            );
+            for (const img of imgs) {
+              content.push({
+                type: "image_url",
+                image_url: {
+                  url: `data:${img.mimeType};base64,${img.base64}`,
+                },
+              });
+            }
+          } else if (isImage(f.mimeType)) {
+            content.push({
+              type: "image_url",
+              image_url: { url: `data:${f.mimeType};base64,${f.base64}` },
+            });
+          }
+        }
+        const bedrockBaseUrl = getBedrockRuntimeBaseUrl(llmBaseUrl);
+        llmResponse = await fetch(
+          `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/invoke`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+            },
+            body: JSON.stringify({
+              messages: [{ role: "user", content }],
+              temperature: llmTemperature,
+              max_tokens: llmMaxTokens,
+            }),
+            signal: AbortSignal.timeout(300000),
+          },
+        );
       } else if (isOpenAiCompatibleProvider(llmProvider)) {
         const content: any[] = [{ type: "text", text: metaPrompt }];
         for (const f of encodedFiles) {
@@ -866,7 +910,8 @@ Return ONLY the complete new prompt text — no commentary, no markdown fences, 
     // ── 9. Extract text from response ──────────────────────────────────────
     let improvedPrompt = "";
     if (
-      isOpenAiCompatibleProvider(llmProvider)
+      isOpenAiCompatibleProvider(llmProvider) ||
+      isBedrockMantleProvider(llmProvider)
     ) {
       const msg = llmData.choices?.[0]?.message;
       improvedPrompt = msg?.content || msg?.reasoning || "";

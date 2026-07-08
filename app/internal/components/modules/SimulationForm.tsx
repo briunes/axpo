@@ -15,7 +15,7 @@ import { DateInput } from "../ui/DateInput";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { FormInput } from "../ui/FormInput";
 import { CurrencyInput } from "../ui/CurrencyInput";
-import { Autocomplete, TextField, Collapse, Divider, Box, Button, Tabs, Tab, Typography, FormControlLabel, Switch } from "@mui/material";
+import { Autocomplete, TextField, Collapse, Divider, Box, Button, Tabs, Tab, Typography, FormControlLabel, Switch, Backdrop, CircularProgress } from "@mui/material";
 import { Country } from "country-state-city";
 import type {
     SimulationPayload,
@@ -338,6 +338,33 @@ function deriveGasCurrentBreakdown(source: Record<string, any>): {
     };
 }
 
+function currentElecInvoiceBreakdownTotal(s: ElecFormState): number {
+    return roundMoney(
+        (s.importePotencia || 0) +
+        (s.importeEnergia || 0) +
+        (s.exceso || 0) +
+        (s.importeImpuestoElectrico || 0) +
+        (s.otrosCargos || 0) +
+        (s.alquiler || 0) +
+        (s.importeIva || 0),
+    );
+}
+
+function currentGasInvoiceBreakdownTotal(s: GasFormState): number {
+    return roundMoney(
+        (s.importeTerminoFijo || 0) +
+        (s.importeTerminoVariable || 0) +
+        (s.importeImpuestoHidrocarburos || 0) +
+        (s.otrosCargos || 0) +
+        (s.alquiler || 0) +
+        (s.importeIva || 0),
+    );
+}
+
+function invoiceBreakdownMismatch(total: number, invoiceTotal: number): boolean {
+    return invoiceTotal > 0 && Math.abs(roundMoney(total - invoiceTotal)) > 0.02;
+}
+
 function defaultElecState(): ElecFormState {
     const { fechaInicio, fechaFin } = prevMonthRange();
     return {
@@ -453,6 +480,16 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
             terminoEnergiaActual: s.importeEnergia || undefined,
             impuestoElectricoActual: s.importeImpuestoElectrico || undefined,
             ivaActual: s.importeIva || undefined,
+            currentInvoiceBreakdown: {
+                terminoPotencia: s.importePotencia || 0,
+                terminoEnergia: s.importeEnergia || 0,
+                excesoPotencia: s.exceso || 0,
+                impuestoElectrico: s.importeImpuestoElectrico || 0,
+                otrosCargos: s.otrosCargos || 0,
+                alquiler: s.alquiler || 0,
+                iva: s.importeIva || 0,
+                total: currentElecInvoiceBreakdownTotal(s),
+            },
             ivaTasa: s.ivaTasa,
             impuestoElectricoTasa: s.impuestoElectricoTasa,
         },
@@ -483,6 +520,15 @@ function buildGasInputs(s: GasFormState): GasInputs {
             terminoVariableActual: s.importeTerminoVariable || undefined,
             impuestoHidrocarburoActual: s.importeImpuestoHidrocarburos || undefined,
             ivaActual: s.importeIva || undefined,
+            currentInvoiceBreakdown: {
+                terminoFijo: s.importeTerminoFijo || 0,
+                terminoVariable: s.importeTerminoVariable || 0,
+                impuestoHidrocarburo: s.importeImpuestoHidrocarburos || 0,
+                otrosCargos: s.otrosCargos || 0,
+                alquiler: s.alquiler || 0,
+                iva: s.importeIva || 0,
+                total: currentGasInvoiceBreakdownTotal(s),
+            },
         },
         ivaTasa: s.ivaTasa || undefined,
         impuestoHidrocarburo: s.impuestoHidrocarburo || undefined,
@@ -575,7 +621,7 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
             reactiva: invoiceData.reactiva ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
             otrosCargos: invoiceData.otrosCargos ?? 0,
-            useCurrentInvoiceBreakdown: invoiceData.useCurrentInvoiceBreakdown === true,
+            useCurrentInvoiceBreakdown: invoiceData.useCurrentInvoiceBreakdown !== false,
             importePotencia: invoiceData.importePotencia ?? deriveCurrentBreakdown(invoiceData).importePotencia ?? 0,
             importeEnergia: invoiceData.importeEnergia ?? deriveCurrentBreakdown(invoiceData).importeEnergia ?? 0,
             importeImpuestoElectrico: invoiceData.importeImpuestoElectrico ?? deriveCurrentBreakdown(invoiceData).importeImpuestoElectrico ?? 0,
@@ -638,7 +684,7 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
         reactiva: e.extras?.reactiva ?? 0,
         alquiler: e.extras?.alquilerEquipoMedida ?? 0,
         otrosCargos: e.extras?.otrosCargos ?? 0,
-        useCurrentInvoiceBreakdown: (e.extras as any)?.useCurrentInvoiceBreakdown === true,
+        useCurrentInvoiceBreakdown: (e.extras as any)?.useCurrentInvoiceBreakdown !== false,
         importePotencia: (e.extras as any)?.terminoPotenciaActual ?? (invoiceData as any)?.importePotencia ?? derivedBreakdown.importePotencia ?? 0,
         importeEnergia: (e.extras as any)?.terminoEnergiaActual ?? (invoiceData as any)?.importeEnergia ?? derivedBreakdown.importeEnergia ?? 0,
         importeImpuestoElectrico: (e.extras as any)?.impuestoElectricoActual ?? (invoiceData as any)?.importeImpuestoElectrico ?? derivedBreakdown.importeImpuestoElectrico ?? 0,
@@ -692,7 +738,7 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
             facturaActual: invoiceData.facturaActual ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
             otrosCargos: invoiceData.otrosCargos ?? 0,
-            useCurrentInvoiceBreakdown: invoiceData.useCurrentInvoiceBreakdown === true,
+            useCurrentInvoiceBreakdown: invoiceData.useCurrentInvoiceBreakdown !== false,
             importeTerminoFijo: invoiceData.importeTerminoFijo ?? derivedBreakdown.importeTerminoFijo ?? 0,
             importeTerminoVariable: invoiceData.importeTerminoVariable ?? derivedBreakdown.importeTerminoVariable ?? 0,
             importeImpuestoHidrocarburos: invoiceData.importeImpuestoHidrocarburos ?? derivedBreakdown.importeImpuestoHidrocarburos ?? 0,
@@ -733,7 +779,7 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
         facturaActual: g.facturaActual,
         alquiler: g.extras?.alquilerEquipoMedida ?? 0,
         otrosCargos: g.extras?.otrosCargos ?? 0,
-        useCurrentInvoiceBreakdown: (g.extras as any)?.useCurrentInvoiceBreakdown === true,
+        useCurrentInvoiceBreakdown: (g.extras as any)?.useCurrentInvoiceBreakdown !== false,
         importeTerminoFijo: (g.extras as any)?.terminoFijoActual ?? (invoiceData as any)?.importeTerminoFijo ?? derivedBreakdown.importeTerminoFijo ?? 0,
         importeTerminoVariable: (g.extras as any)?.terminoVariableActual ?? (invoiceData as any)?.importeTerminoVariable ?? derivedBreakdown.importeTerminoVariable ?? 0,
         importeImpuestoHidrocarburos: (g.extras as any)?.impuestoHidrocarburoActual ?? (invoiceData as any)?.importeImpuestoHidrocarburos ?? derivedBreakdown.importeImpuestoHidrocarburos ?? 0,
@@ -977,6 +1023,9 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     const invoiceComplete = !!state.fechaInicio && !!state.fechaFin && state.facturaActual > 0;
     const powerComplete = pp.every((p) => (state.potencia[p] ?? 0) > 0);
     const consumptionComplete = ep.some((p) => (state.consumo[p] ?? 0) > 0);
+    const currentBreakdownTotal = currentElecInvoiceBreakdownTotal(state);
+    const currentBreakdownDifference = roundMoney(currentBreakdownTotal - state.facturaActual);
+    const currentBreakdownDoesNotMatch = state.useCurrentInvoiceBreakdown && invoiceBreakdownMismatch(currentBreakdownTotal, state.facturaActual);
 
     const requiredSteps = [clientComplete, invoiceComplete, powerComplete, consumptionComplete];
     const completedCount = requiredSteps.filter(Boolean).length;
@@ -1243,10 +1292,10 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                         <Box
                             sx={{
                                 border: "1px solid",
-                                borderColor: state.useCurrentInvoiceBreakdown ? "success.main" : "divider",
+                                borderColor: currentBreakdownDoesNotMatch ? "warning.main" : state.useCurrentInvoiceBreakdown ? "success.main" : "divider",
                                 borderRadius: 1,
                                 p: 1.25,
-                                bgcolor: state.useCurrentInvoiceBreakdown ? "rgba(16,185,129,.08)" : "transparent",
+                                bgcolor: currentBreakdownDoesNotMatch ? "rgba(245,158,11,.16)" : state.useCurrentInvoiceBreakdown ? "rgba(16,185,129,.08)" : "transparent",
                             }}
                         >
                             <FormControlLabel
@@ -1265,24 +1314,40 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                                     {t("simulationForm", "currentPlanBreakdownEnabledHint")}
                                 </Typography>
                             ) : null}
+                            {currentBreakdownDoesNotMatch ? (
+                                <Typography variant="caption" sx={{ display: "block", ml: 5.25, color: "warning.main", lineHeight: 1.35, fontWeight: 700 }}>
+                                    {t("simulationForm", "currentPlanBreakdownMismatchWarning", { amount: `${formatNumber(Math.abs(currentBreakdownDifference), numberFormat, 2)} €` })}
+                                </Typography>
+                            ) : null}
                         </Box>
                     </Field>
                 </Row>
                 <Collapse in={state.useCurrentInvoiceBreakdown} timeout={200} unmountOnExit>
-                    <Row>
-                        <Field label={t("simulationForm", "currentPowerCostLabel")} flex="1 1 0">
-                            <CurrencyInput value={state.importePotencia} onChange={(v) => up("importePotencia", isNaN(v) ? 0 : v)} />
-                        </Field>
-                        <Field label={t("simulationForm", "currentEnergyCostLabel")} flex="1 1 0">
-                            <CurrencyInput value={state.importeEnergia} onChange={(v) => up("importeEnergia", isNaN(v) ? 0 : v)} />
-                        </Field>
-                        <Field label={t("simulationForm", "currentElectricityTaxLabel")} flex="1 1 0">
-                            <CurrencyInput value={state.importeImpuestoElectrico} onChange={(v) => up("importeImpuestoElectrico", isNaN(v) ? 0 : v)} />
-                        </Field>
-                        <Field label={t("simulationForm", "currentIvaAmountLabel")} flex="1 1 0">
-                            <CurrencyInput value={state.importeIva} onChange={(v) => up("importeIva", isNaN(v) ? 0 : v)} />
-                        </Field>
-                    </Row>
+                    <Box sx={{ p: 1.25, borderRadius: 1, bgcolor: currentBreakdownDoesNotMatch ? "rgba(245,158,11,.12)" : "rgba(16,185,129,.08)" }}>
+                        <Row>
+                            <Field label={t("simulationForm", "currentPowerCostLabel")} flex="1 1 180px">
+                                <CurrencyInput value={state.importePotencia} onChange={(v) => up("importePotencia", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label={t("simulationForm", "currentEnergyCostLabel")} flex="1 1 180px">
+                                <CurrencyInput value={state.importeEnergia} onChange={(v) => up("importeEnergia", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label={t("simulationForm", "excessPowerLabel")} flex="1 1 180px">
+                                <CurrencyInput value={state.exceso} onChange={(v) => up("exceso", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label={t("simulationForm", "currentElectricityTaxLabel")} flex="1 1 180px">
+                                <CurrencyInput value={state.importeImpuestoElectrico} onChange={(v) => up("importeImpuestoElectrico", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label={t("simulationForm", "fieldOtherCharges")} flex="1 1 180px">
+                                <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label={t("simulationForm", "fieldMeterRental")} flex="1 1 180px">
+                                <CurrencyInput value={state.alquiler} onChange={(v) => up("alquiler", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label={t("simulationForm", "currentIvaAmountLabel")} flex="1 1 180px">
+                                <CurrencyInput value={state.importeIva} onChange={(v) => up("importeIva", isNaN(v) ? 0 : v)} />
+                            </Field>
+                        </Row>
+                    </Box>
                 </Collapse>
                 <Divider sx={{ my: 2 }} />
                 <Row>
@@ -1325,6 +1390,9 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
     // Completion checks for gas
     const invoiceComplete = !!state.fechaInicio && !!state.fechaFin && state.facturaActual > 0;
     const consumptionComplete = state.consumo > 0;
+    const currentBreakdownTotal = currentGasInvoiceBreakdownTotal(state);
+    const currentBreakdownDifference = roundMoney(currentBreakdownTotal - state.facturaActual);
+    const currentBreakdownDoesNotMatch = state.useCurrentInvoiceBreakdown && invoiceBreakdownMismatch(currentBreakdownTotal, state.facturaActual);
 
     const requiredSteps = [invoiceComplete, consumptionComplete];
     const completedCount = requiredSteps.filter(Boolean).length;
@@ -1490,10 +1558,10 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                         <Box
                             sx={{
                                 border: "1px solid",
-                                borderColor: state.useCurrentInvoiceBreakdown ? "success.main" : "divider",
+                                borderColor: currentBreakdownDoesNotMatch ? "warning.main" : state.useCurrentInvoiceBreakdown ? "success.main" : "divider",
                                 borderRadius: 1,
                                 p: 1.25,
-                                bgcolor: state.useCurrentInvoiceBreakdown ? "rgba(16,185,129,.08)" : "transparent",
+                                bgcolor: currentBreakdownDoesNotMatch ? "rgba(245,158,11,.16)" : state.useCurrentInvoiceBreakdown ? "rgba(16,185,129,.08)" : "transparent",
                             }}
                         >
                             <FormControlLabel
@@ -1512,24 +1580,37 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                                     {t("simulationForm", "currentPlanBreakdownEnabledHint")}
                                 </Typography>
                             ) : null}
+                            {currentBreakdownDoesNotMatch ? (
+                                <Typography variant="caption" sx={{ display: "block", ml: 5.25, color: "warning.main", lineHeight: 1.35, fontWeight: 700 }}>
+                                    {t("simulationForm", "currentPlanBreakdownMismatchWarning", { amount: `${formatNumber(Math.abs(currentBreakdownDifference), numberFormat, 2)} €` })}
+                                </Typography>
+                            ) : null}
                         </Box>
                     </Field>
                 </Row>
                 <Collapse in={state.useCurrentInvoiceBreakdown} timeout={200} unmountOnExit>
-                    <Row>
-                        <Field label="Fixed term" flex="1 1 0">
-                            <CurrencyInput value={state.importeTerminoFijo} onChange={(v) => up("importeTerminoFijo", isNaN(v) ? 0 : v)} />
-                        </Field>
-                        <Field label="Variable energy term" flex="1 1 0">
-                            <CurrencyInput value={state.importeTerminoVariable} onChange={(v) => up("importeTerminoVariable", isNaN(v) ? 0 : v)} />
-                        </Field>
-                        <Field label="Hydrocarbon tax amount" flex="1 1 0">
-                            <CurrencyInput value={state.importeImpuestoHidrocarburos} onChange={(v) => up("importeImpuestoHidrocarburos", isNaN(v) ? 0 : v)} />
-                        </Field>
-                        <Field label={t("simulationForm", "currentIvaAmountLabel")} flex="1 1 0">
-                            <CurrencyInput value={state.importeIva} onChange={(v) => up("importeIva", isNaN(v) ? 0 : v)} />
-                        </Field>
-                    </Row>
+                    <Box sx={{ p: 1.25, borderRadius: 1, bgcolor: currentBreakdownDoesNotMatch ? "rgba(245,158,11,.12)" : "rgba(16,185,129,.08)" }}>
+                        <Row>
+                            <Field label="Fixed term" flex="1 1 180px">
+                                <CurrencyInput value={state.importeTerminoFijo} onChange={(v) => up("importeTerminoFijo", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label="Variable energy term" flex="1 1 180px">
+                                <CurrencyInput value={state.importeTerminoVariable} onChange={(v) => up("importeTerminoVariable", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label="Hydrocarbon tax amount" flex="1 1 180px">
+                                <CurrencyInput value={state.importeImpuestoHidrocarburos} onChange={(v) => up("importeImpuestoHidrocarburos", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label={t("simulationForm", "fieldOtherCharges")} flex="1 1 180px">
+                                <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label={t("simulationForm", "fieldMeterRental")} flex="1 1 180px">
+                                <CurrencyInput value={state.alquiler} onChange={(v) => up("alquiler", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label={t("simulationForm", "currentIvaAmountLabel")} flex="1 1 180px">
+                                <CurrencyInput value={state.importeIva} onChange={(v) => up("importeIva", isNaN(v) ? 0 : v)} />
+                            </Field>
+                        </Row>
+                    </Box>
                 </Collapse>
                 <Divider sx={{ my: 2 }} />
                 <Row>
@@ -1996,6 +2077,23 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
     return (
         <div>
+            <Backdrop
+                open={calculating}
+                sx={{
+                    color: "#fff",
+                    zIndex: (theme) => theme.zIndex.modal + 1,
+                    backgroundColor: "rgba(15, 23, 42, 0.62)",
+                    backdropFilter: "blur(2px)",
+                }}
+            >
+                <CircularProgress
+                    role="status"
+                    aria-label={t("simulationForm", "btnCalculating")}
+                    color="inherit"
+                    size={44}
+                    thickness={4}
+                />
+            </Backdrop>
             <Box className="simulation-detail-tabs" sx={{ mb: '12px' }}>
                 <Tabs
                     value={activeTab}

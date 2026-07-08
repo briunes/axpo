@@ -12,7 +12,7 @@ import { useUsers } from "../../../components/hooks/useUsers";
 import { usePermissions } from "../../../lib/permissionsContext";
 import { UserForm, type UserFormData } from "../../../components/modules/UserForm";
 import { UserSessionsPanel } from "../../../components/modules/UserSessionsPanel";
-import { CrudPageLayout, FormSkeleton, PinResultDialog, useAlerts } from "../../../components/shared";
+import { BoneyardFormSkeleton, CrudPageLayout, PinResultDialog, useAlerts } from "../../../components/shared";
 import { UserPreferencesForm, type UserPreferences } from "../../../components/ui/UserPreferencesForm";
 import { AuditLogsModal } from "../../../components/ui/AuditLogsModal";
 import { useUserPreferences } from "../../../components/providers/UserPreferencesProvider";
@@ -22,6 +22,7 @@ import { useActionButtons, useTopBarBreadcrumbs } from "../../../components/Inte
 
 export default function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const isBoneyardFixture = id === "boneyard-fixture";
     const router = useRouter();
     const [session] = useState(loadSession());
     const { showSuccess: alertSuccess, showError: alertError } = useAlerts();
@@ -32,7 +33,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const onActionButtons = useActionButtons();
 
     const usersActions = useUsers(session, 25, { queryEnabled: false });
-    const agenciesActions = useAgencies(session, 1000, { minimal: true });
+    const agenciesActions = useAgencies(session, 1000, { minimal: true, queryEnabled: !isBoneyardFixture });
     const { loading: loadingAgencies } = agenciesActions;
 
     const [user, setUser] = useState<UserItem | null>(null);
@@ -64,6 +65,8 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const canManageUserSessions = session ? canDo(session.user.role, "users.sessions.manage") : false;
 
     useEffect(() => {
+        if (isBoneyardFixture) return;
+
         getSystemConfig()
             .then((config) => {
                 setDefaultMaxActiveDevices(config.defaultMaxActiveDevices ?? 3);
@@ -71,7 +74,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
             .catch(() => {
                 // keep fallback
             });
-    }, []);
+    }, [isBoneyardFixture]);
 
     useEffect(() => {
         if (!canManageUserSessions && activeTab === 2) {
@@ -96,7 +99,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     }, [id, queryClient, session]);
 
     useEffect(() => {
-        if (!session) return;
+        if (!session || isBoneyardFixture) return;
 
         const applyUser = (foundUser: UserItem) => {
             setUser(foundUser);
@@ -125,7 +128,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                 alertError(t("userFormPage", "notFound"));
                 router.push("/internal/users");
             });
-    }, [alertError, cachedUser, defaultMaxActiveDevices, id, router, session, t]);
+    }, [alertError, cachedUser, defaultMaxActiveDevices, id, isBoneyardFixture, router, session, t]);
 
     useEffect(() => {
         if (usersActions.successText) {
@@ -261,8 +264,9 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
         user,
         usersActions.busyAction,
     ]);
+    if (!session || !user) {
+        const skeletonTabs = canManageUserSessions ? 3 : 2;
 
-    if (!session || !user || false ) {
         return (
             <CrudPageLayout
                 title={t("userFormPage", "editTitle")}
@@ -270,7 +274,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                 maxWidth={undefined}
                 hideHeader
             >
-                <FormSkeleton variant="user" tabs={canManageUserSessions ? 3 : 2} />
+                <BoneyardFormSkeleton name="edit-user-form" shape="user" tabs={skeletonTabs} />
             </CrudPageLayout>
         );
     }

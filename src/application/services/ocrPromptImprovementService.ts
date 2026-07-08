@@ -1,5 +1,11 @@
 import { Prisma } from "@prisma/client";
-import { getAiUsage, isOpenAiCompatibleProvider, resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
+import {
+  getAiUsage,
+  getBedrockRuntimeBaseUrl,
+  isBedrockMantleProvider,
+  isOpenAiCompatibleProvider,
+  resolveAiConfigFromSystemConfig,
+} from "@/application/lib/aiConfig";
 import { prisma } from "@/infrastructure/database/prisma";
 import {
   convertPdfToImages,
@@ -128,7 +134,11 @@ async function resolveVisionFiles(
   files: EncodedFile[],
   provider: string,
 ): Promise<EncodedFile[]> {
-  if (provider !== "ollama-cloud" && !isNvidiaBedrockRuntime(provider)) {
+  if (
+    provider !== "ollama-cloud" &&
+    !isBedrockMantleProvider(provider) &&
+    !isNvidiaBedrockRuntime(provider)
+  ) {
     return files;
   }
 
@@ -147,7 +157,11 @@ async function resolveVisionFiles(
           fileName: file.fileName,
         });
       }
-    } else if (!isNvidiaBedrockRuntime(provider) || isImage(file.mimeType)) {
+    } else if (
+      (!isNvidiaBedrockRuntime(provider) &&
+        !isBedrockMantleProvider(provider)) ||
+      isImage(file.mimeType)
+    ) {
       resolved.push(file);
     }
   }
@@ -221,6 +235,32 @@ async function callVisionLlm(args: {
       }),
       signal: AbortSignal.timeout(llmProvider === "ollama-cloud" ? 300000 : 60000),
     });
+  } else if (isBedrockMantleProvider(llmProvider)) {
+    const content: any[] = [{ type: "text", text: args.prompt }];
+    for (const file of files) {
+      if (!isImage(file.mimeType)) continue;
+      content.push({
+        type: "image_url",
+        image_url: { url: `data:${file.mimeType};base64,${file.base64}` },
+      });
+    }
+    response = await fetch(
+      `${getBedrockRuntimeBaseUrl(llmBaseUrl)}/model/${encodeURIComponent(llmModelName)}/invoke`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content }],
+          temperature: llmTemperature,
+          max_tokens: llmMaxTokens,
+        }),
+        signal: AbortSignal.timeout(300000),
+      },
+    );
   } else if (isNvidiaBedrockRuntime(llmProvider)) {
     const content: any[] = [{ text: args.prompt }];
     for (const file of files) {
@@ -303,7 +343,9 @@ async function callVisionLlm(args: {
   const text =
     isOpenAiCompatibleProvider(llmProvider) || llmProvider === "ollama-cloud"
       ? data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning || ""
-      : llmProvider === "anthropic"
+      : isBedrockMantleProvider(llmProvider)
+        ? data.choices?.[0]?.message?.content || data.choices?.[0]?.message?.reasoning || ""
+        : llmProvider === "anthropic"
         ? data.content?.[0]?.text || ""
         : isNvidiaBedrockRuntime(llmProvider)
           ? data.output?.message?.content?.[0]?.text || ""

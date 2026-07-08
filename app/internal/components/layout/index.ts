@@ -2,8 +2,7 @@ export { TopBar } from "./TopBar";
 export { SidebarHeader } from "./SidebarHeader";
 export {
   SectionMenu,
-  sectionLabel,
-  sectionDescription,
+  sectionDescriptionKey,
   sectionRoute,
   sectionPrimaryAction,
   sectionIcon,

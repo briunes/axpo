@@ -23,9 +23,9 @@ import {
 } from "../../../lib/internalApi";
 import {
   AddressForm,
+  BoneyardFormSkeleton,
   CrudFormContainer,
   CrudPageLayout,
-  FormSkeleton,
   useAlerts,
   type AddressData,
 } from "../../../components/shared";
@@ -49,6 +49,7 @@ export default function EditAgencyPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const isBoneyardFixture = id === "boneyard-fixture";
   const router = useRouter();
   const [session] = useState(loadSession());
   const { showSuccess, showError } = useAlerts();
@@ -93,7 +94,7 @@ export default function EditAgencyPage({
   }, [activeTab, isTlv]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || isBoneyardFixture) return;
     getAgency(session.token, id)
       .then((a) => {
         setAgency(a);
@@ -119,7 +120,7 @@ export default function EditAgencyPage({
         );
         router.push("/internal/agencies");
       });
-  }, [session, id]);
+  }, [session, id, isBoneyardFixture]);
 
   const clearError = (field: keyof ValidationErrors) => {
     if (validationErrors[field]) {
@@ -206,7 +207,7 @@ export default function EditAgencyPage({
         backHref="/internal/agencies"
         hideHeader
       >
-        <FormSkeleton variant="agency" tabs={2} />
+        <BoneyardFormSkeleton name="edit-agency-form" shape="agency" tabs={2} />
       </CrudPageLayout>
     );
   }

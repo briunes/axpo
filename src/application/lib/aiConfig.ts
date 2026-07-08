@@ -85,9 +85,25 @@ export function isOpenAiCompatibleProvider(provider: string): boolean {
   return (
     provider === "openai" ||
     provider === "azure-openai" ||
-    provider === "ollama-cloud" ||
-    provider === "aws-bedrock-mantle"
+    provider === "ollama-cloud"
   );
+}
+
+export function isBedrockMantleProvider(provider: string): boolean {
+  return provider === "aws-bedrock-mantle";
+}
+
+export function getBedrockRuntimeBaseUrl(baseUrl: string): string {
+  const normalized = baseUrl.trim().replace(/\/+$/, "").replace(/\/v1$/, "");
+  const mantleMatch = normalized.match(
+    /^https:\/\/bedrock-mantle\.([a-z0-9-]+)\.api\.aws$/i,
+  );
+
+  if (mantleMatch) {
+    return `https://bedrock-runtime.${mantleMatch[1]}.amazonaws.com`;
+  }
+
+  return normalized;
 }
 
 export function resolveAiConfigFromSystemConfig(

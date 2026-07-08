@@ -10,7 +10,9 @@ import {
   OCR_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
 import {
+  getBedrockRuntimeBaseUrl,
   getConfiguredAiProviders,
+  isBedrockMantleProvider,
   isOpenAiCompatibleProvider,
 } from "@/application/lib/aiConfig";
 
@@ -345,6 +347,38 @@ async function callLlmForBenchmark(
       }),
       signal: AbortSignal.timeout(300000),
     });
+  } else if (isBedrockMantleProvider(provider)) {
+    const content: any[] = [{ type: "text", text: prompt }];
+    const bedrockImages =
+      images.length > 0
+        ? images
+        : [{ base64: base64File, mimeType: fileMimeType }];
+
+    for (const img of bedrockImages) {
+      content.push({
+        type: "image_url",
+        image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
+      });
+    }
+
+    const bedrockBaseUrl = getBedrockRuntimeBaseUrl(baseUrl);
+    llmResponse = await fetch(
+      `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/invoke`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content }],
+          temperature,
+          max_tokens: maxTokens,
+        }),
+        signal: AbortSignal.timeout(300000),
+      },
+    );
   } else if (isAnthropicBedrockRuntime(provider, baseUrl)) {
     const content: any[] = [{ type: "text", text: prompt }];
     const bedrockImages =
@@ -1108,6 +1142,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     let detectionImages: Array<{ base64: string; mimeType: string }> = [];
     if (
       isOpenAiCompatibleProvider(llmProvider) ||
+      isBedrockMantleProvider(llmProvider) ||
       isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
       isNvidiaBedrockRuntime(llmProvider)
     ) {
@@ -1183,6 +1218,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     let extractionImages: Array<{ base64: string; mimeType: string }> = [];
     if (
       isOpenAiCompatibleProvider(llmProvider) ||
+      isBedrockMantleProvider(llmProvider) ||
       isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
       isNvidiaBedrockRuntime(llmProvider)
     ) {

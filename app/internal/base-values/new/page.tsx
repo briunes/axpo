@@ -6,7 +6,7 @@ import { Divider, MenuItem, Stack } from "@mui/material";
 import { loadSession } from "../../lib/authSession";
 import { createBaseValueSet, isAdmin, type BaseValueItem } from "../../lib/internalApi";
 import { useAgencies } from "../../components/hooks/useAgencies";
-import { CrudFormContainer, CrudPageLayout, useAlerts } from "../../components/shared";
+import { BoneyardFormSkeleton, CrudFormContainer, CrudPageLayout, useAlerts } from "../../components/shared";
 import { BaseValueItemBuilder } from "../../components/ui/BaseValueItemBuilder";
 import { FormInput } from "../../components/ui";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -20,8 +20,11 @@ export default function NewBaseValueSetPage() {
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
     const onActionButtons = useActionButtons();
+    const isBoneyardBuild =
+        typeof window !== "undefined" &&
+        (window as typeof window & { __BONEYARD_BUILD?: boolean }).__BONEYARD_BUILD === true;
 
-    const agenciesActions = useAgencies(session, 1000, { minimal: true });
+    const agenciesActions = useAgencies(session, 1000, { minimal: true, queryEnabled: !isBoneyardBuild });
 
     const [name, setName] = useState("");
     const [scopeType, setScopeType] = useState<"GLOBAL" | "AGENCY">("GLOBAL");
@@ -49,6 +52,19 @@ export default function NewBaseValueSetPage() {
     }, [formActions, onActionButtons]);
 
     if (!session) return null;
+
+    if (agenciesActions.loading) {
+        return (
+            <CrudPageLayout
+                title={t("baseValuesModule", "newTitle")}
+                subtitle={t("baseValuesModule", "newSubtitle")}
+                backHref="/internal/base-values"
+                hideHeader
+            >
+                <BoneyardFormSkeleton name="new-base-values-form" shape="base-values" />
+            </CrudPageLayout>
+        );
+    }
 
     const validateItems = (): string | null => {
         for (let i = 0; i < items.length; i++) {

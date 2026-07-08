@@ -4,6 +4,7 @@ import { Montserrat } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { I18nProvider } from "../src/lib/i18n-context";
 import { initializeCronJobs } from "../src/lib/cron";
+import { BoneyardRegistry } from "./components/BoneyardRegistry";
 import { VersionChecker } from "./components/VersionChecker";
 
 const montserrat = Montserrat({
@@ -92,6 +93,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={`${montserrat.className} notranslate`}>
         <AppRouterCacheProvider>
           <I18nProvider>
+            <BoneyardRegistry />
             <VersionChecker />
             <div
               className={`environment-indicator env-${appEnv}`}

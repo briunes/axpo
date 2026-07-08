@@ -293,6 +293,7 @@ describe("extractVariableValues", () => {
     expect(variables.ELECTRICITY_TAX_RATE).toBe("5,11269");
     expect(variables.CURRENT_REACTIVE_COST).toBe("3.00");
     expect(variables.CURRENT_OTHER_CHARGES).toBe("2.00");
+    expect(variables.CURRENT_OTHER_COST).toBe("2.00");
     expect(variables.CHART_COMPARATIVA).toContain("display:block;width:100%");
     expect(variables.CHART_COMPARATIVA).toContain('width="100%"');
     expect(variables.CHART_COMPARATIVA).toContain("flex:0 0 50%");
@@ -378,6 +379,78 @@ describe("extractVariableValues", () => {
     expect(variables.CURRENT_ENERGY_COST).toBe("497.88");
     expect(variables.CURRENT_TAX_COST).toBe("2.89");
     expect(variables.CURRENT_VAT).toBe("122.51");
+  });
+
+  it("prefers saved current invoice breakdown section values over OCR extras", () => {
+    const variables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "ELECTRICITY",
+        electricity: {
+          tarifaAcceso: "3.0TD",
+          zonaGeografica: "Peninsula",
+          perfilCarga: "NORMAL",
+          potenciaContratada: { P1: 64.7, P2: 64.7, P3: 64.7, P4: 64.7, P5: 64.7, P6: 100 },
+          consumo: { P1: 0, P2: 8858, P3: 6576, P4: 0, P5: 0, P6: 13113 },
+          periodo: {
+            fechaInicio: "2026-04-10",
+            fechaFin: "2026-06-01",
+            dias: 53,
+          },
+          facturaActual: 4144.61,
+          excesoPotencia: 999,
+          extras: {
+            alquilerEquipoMedida: 999,
+            reactiva: 118.3,
+            otrosCargos: 123.3,
+            terminoPotenciaActual: 999,
+            terminoEnergiaActual: 999,
+            impuestoElectricoActual: 999,
+            ivaActual: 999,
+            useCurrentInvoiceBreakdown: true,
+            currentInvoiceBreakdown: {
+              terminoPotencia: 1,
+              terminoEnergia: 2,
+              excesoPotencia: 3,
+              impuestoElectrico: 4,
+              otrosCargos: 5,
+              alquiler: 6,
+              iva: 7,
+              total: 28,
+            },
+            ivaTasa: 21,
+            impuestoElectricoTasa: 5.11269,
+          },
+        },
+        results: {
+          calculatedAt: "2026-02-01T00:00:00.000Z",
+          baseValueSetId: "base-values",
+          electricity: [
+            {
+              productKey: "ESTABLE:N1",
+              productLabel: "Estable N1",
+              commodity: "ELECTRICITY",
+              pricingType: "FIXED",
+              totalFactura: 100,
+              ahorro: 4044.61,
+              pctAhorro: 97.59,
+              ahorroAnual: 27848.73,
+              desglose: {},
+            },
+          ],
+        },
+      },
+    );
+
+    expect(variables.CURRENT_POWER_COST).toBe("1.00");
+    expect(variables.CURRENT_ENERGY_COST).toBe("2.00");
+    expect(variables.CURRENT_EXCESS_COST).toBe("3.00");
+    expect(variables.CURRENT_TAX_COST).toBe("4.00");
+    expect(variables.CURRENT_OTHER_COST).toBe("5.00");
+    expect(variables.CURRENT_RENTAL_COST).toBe("6.00");
+    expect(variables.CURRENT_VAT).toBe("7.00");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("5.00 €");
+    expect(variables.CURRENT_BREAKDOWN_HTML).not.toContain("123.30 €");
   });
 
   it("ignores explicit current invoice breakdown amounts when disabled", () => {

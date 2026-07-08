@@ -330,6 +330,7 @@ export default function SimulationDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const isBoneyardFixture = id === "boneyard-fixture";
   const router = useRouter();
   const searchParams = useSearchParams();
   const [session] = useState(loadSession());
@@ -379,7 +380,7 @@ export default function SimulationDetailPage({
 
   const fetchedRef = useRef(false);
   useEffect(() => {
-    if (!session || fetchedRef.current) return;
+    if (!session || isBoneyardFixture || fetchedRef.current) return;
     fetchedRef.current = true;
     getSimulation(session.token, id)
       .then(({ simulation: sim }) => {
@@ -408,7 +409,7 @@ export default function SimulationDetailPage({
         );
         router.push("/internal/simulations");
       });
-  }, [session, id]);
+  }, [session, id, isBoneyardFixture]);
 
   const handleShare = useCallback(() => {
     if (!session || !simulation) return;
@@ -538,7 +539,7 @@ export default function SimulationDetailPage({
     }
   };
 
-  if (!session || !simulation || false) {
+  if (!session || !simulation) {
     return (
       <CrudPageLayout
         title={t("simulationDetail", "title")}

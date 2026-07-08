@@ -28,7 +28,7 @@ export function TopBar({
   actionButtons,
   breadcrumbs,
 }: {
-  section: AppSection;
+  section: AppSection | null;
   onRefresh: () => void;
   onMobileMenuToggle: () => void;
   actionButtons?: React.ReactNode;
@@ -36,10 +36,13 @@ export function TopBar({
 }) {
   const { t } = useI18n();
   const router = useRouter();
-  const Icon = sectionIcon[section];
-  const sectionLabel = t("nav", sectionNavKey[section]);
+  const Icon = section ? sectionIcon[section] : null;
+  const sectionLabel = section ? t("nav", sectionNavKey[section]) : "";
   const pathItems: TopBarBreadcrumb[] = breadcrumbs?.length
-    ? [{ label: sectionLabel, href: sectionRoute[section] }, ...breadcrumbs]
+    ? [
+        ...(section ? [{ label: sectionLabel, href: sectionRoute[section] }] : []),
+        ...breadcrumbs,
+      ]
     : [];
 
   const handleNavigate = (href?: string) => {
@@ -57,11 +60,13 @@ export function TopBar({
         >
           <MenuIcon />
         </button>
-        <span className="topbar-section-icon">
-          <Icon />
-        </span>
+        {Icon && (
+          <span className="topbar-section-icon">
+            <Icon />
+          </span>
+        )}
         {pathItems.length > 0 ? (
-          <nav className="topbar-breadcrumbs" aria-label="Breadcrumb">
+          <nav className="topbar-breadcrumbs" aria-label={t("nav", "breadcrumb")}>
             {pathItems.map((item, index) => {
               const isLast = index === pathItems.length - 1;
               return (
@@ -83,11 +88,11 @@ export function TopBar({
               );
             })}
           </nav>
-        ) : (
+        ) : sectionLabel ? (
           <Typography component="span" variant="body2" className="topbar-section-title" sx={{ fontWeight: 500 }}>
             {sectionLabel}
           </Typography>
-        )}
+        ) : null}
       </div>
       <div className="topbar-right">
         {actionButtons}

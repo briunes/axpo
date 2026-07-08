@@ -5,6 +5,8 @@ import { prisma } from "@/infrastructure/database/prisma";
 import { SUPPORTED_LANGUAGES } from "@/lib/supportedLanguages";
 import {
   getAiUsage,
+  getBedrockRuntimeBaseUrl,
+  isBedrockMantleProvider,
   isOpenAiCompatibleProvider,
   resolveAiConfigFromSystemConfig,
 } from "@/application/lib/aiConfig";
@@ -169,6 +171,30 @@ async function callLLM(
     });
   }
 
+  if (isBedrockMantleProvider(provider)) {
+    const bedrockBaseUrl = getBedrockRuntimeBaseUrl(baseUrl);
+    return fetch(
+      `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/invoke`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+          temperature,
+          max_tokens: maxTokens,
+        }),
+        signal: timeout,
+      },
+    );
+  }
+
   if (provider === "aws-bedrock-nvidia") {
     const bedrockBaseUrl = baseUrl.replace(/\/+$/, "");
     return fetch(
@@ -234,7 +260,11 @@ async function callLLM(
 }
 
 function extractResponseText(provider: string, llmData: any): string {
-  if (isOpenAiCompatibleProvider(provider) || provider === "custom") {
+  if (
+    isOpenAiCompatibleProvider(provider) ||
+    isBedrockMantleProvider(provider) ||
+    provider === "custom"
+  ) {
     return llmData.choices?.[0]?.message?.content || "";
   }
   if (provider === "ollama") {
