@@ -344,10 +344,14 @@ function currentElecInvoiceBreakdownTotal(s: ElecFormState): number {
         (s.importeEnergia || 0) +
         (s.exceso || 0) +
         (s.importeImpuestoElectrico || 0) +
-        (s.otrosCargos || 0) +
+        currentElecOtherChargesForBreakdown(s) +
         (s.alquiler || 0) +
         (s.importeIva || 0),
     );
+}
+
+function currentElecOtherChargesForBreakdown(s: ElecFormState): number {
+    return roundMoney((s.otrosCargos || 0) + (s.reactiva || 0));
 }
 
 function currentGasInvoiceBreakdownTotal(s: GasFormState): number {
@@ -485,7 +489,7 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
                 terminoEnergia: s.importeEnergia || 0,
                 excesoPotencia: s.exceso || 0,
                 impuestoElectrico: s.importeImpuestoElectrico || 0,
-                otrosCargos: s.otrosCargos || 0,
+                otrosCargos: currentElecOtherChargesForBreakdown(s),
                 alquiler: s.alquiler || 0,
                 iva: s.importeIva || 0,
                 total: currentElecInvoiceBreakdownTotal(s),
@@ -909,6 +913,30 @@ function Field({ label, hint, flex, error, required, help, children }: {
     );
 }
 
+function BreakdownField({ label, hint, children }: {
+    label: string;
+    hint?: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="sp-form-group simulation-form-field" style={{ minWidth: 0 }}>
+            <label
+                className="sp-form-label"
+                style={{
+                    minHeight: 28,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    lineHeight: 1.25,
+                }}
+            >
+                {label}
+            </label>
+            {children}
+            {hint ? <span className="sp-form-hint" style={{ maxWidth: 230 }}>{hint}</span> : null}
+        </div>
+    );
+}
+
 function Sel({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
     return (
         <FormSelect
@@ -1026,6 +1054,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     const currentBreakdownTotal = currentElecInvoiceBreakdownTotal(state);
     const currentBreakdownDifference = roundMoney(currentBreakdownTotal - state.facturaActual);
     const currentBreakdownDoesNotMatch = state.useCurrentInvoiceBreakdown && invoiceBreakdownMismatch(currentBreakdownTotal, state.facturaActual);
+    const currentOtherChargesBreakdown = currentElecOtherChargesForBreakdown(state);
 
     const requiredSteps = [clientComplete, invoiceComplete, powerComplete, consumptionComplete];
     const completedCount = requiredSteps.filter(Boolean).length;
@@ -1324,29 +1353,42 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                 </Row>
                 <Collapse in={state.useCurrentInvoiceBreakdown} timeout={200} unmountOnExit>
                     <Box sx={{ p: 1.25, borderRadius: 1, bgcolor: currentBreakdownDoesNotMatch ? "rgba(245,158,11,.12)" : "rgba(16,185,129,.08)" }}>
-                        <Row>
-                            <Field label={t("simulationForm", "currentPowerCostLabel")} flex="1 1 180px">
+                        <Box
+                            sx={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 210px), 1fr))",
+                                gap: "12px 20px",
+                                alignItems: "start",
+                            }}
+                        >
+                            <BreakdownField label={t("simulationForm", "currentPowerCostLabel")}>
                                 <CurrencyInput value={state.importePotencia} onChange={(v) => up("importePotencia", isNaN(v) ? 0 : v)} />
-                            </Field>
-                            <Field label={t("simulationForm", "currentEnergyCostLabel")} flex="1 1 180px">
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "currentEnergyCostLabel")}>
                                 <CurrencyInput value={state.importeEnergia} onChange={(v) => up("importeEnergia", isNaN(v) ? 0 : v)} />
-                            </Field>
-                            <Field label={t("simulationForm", "excessPowerLabel")} flex="1 1 180px">
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "excessPowerLabel")}>
                                 <CurrencyInput value={state.exceso} onChange={(v) => up("exceso", isNaN(v) ? 0 : v)} />
-                            </Field>
-                            <Field label={t("simulationForm", "currentElectricityTaxLabel")} flex="1 1 180px">
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "currentElectricityTaxLabel")}>
                                 <CurrencyInput value={state.importeImpuestoElectrico} onChange={(v) => up("importeImpuestoElectrico", isNaN(v) ? 0 : v)} />
-                            </Field>
-                            <Field label={t("simulationForm", "fieldOtherCharges")} flex="1 1 180px">
-                                <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
-                            </Field>
-                            <Field label={t("simulationForm", "fieldMeterRental")} flex="1 1 180px">
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "fieldOtherCharges")} hint={t("simulationForm", "currentOtherChargesIncludesReactiveHint")}>
+                                <CurrencyInput
+                                    value={currentOtherChargesBreakdown}
+                                    onChange={(v) => {
+                                        const totalOtherCharges = isNaN(v) ? 0 : v;
+                                        up("otrosCargos", Math.max(0, roundMoney(totalOtherCharges - (state.reactiva || 0))));
+                                    }}
+                                />
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "fieldMeterRental")}>
                                 <CurrencyInput value={state.alquiler} onChange={(v) => up("alquiler", isNaN(v) ? 0 : v)} />
-                            </Field>
-                            <Field label={t("simulationForm", "currentIvaAmountLabel")} flex="1 1 180px">
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "currentIvaAmountLabel")}>
                                 <CurrencyInput value={state.importeIva} onChange={(v) => up("importeIva", isNaN(v) ? 0 : v)} />
-                            </Field>
-                        </Row>
+                            </BreakdownField>
+                        </Box>
                     </Box>
                 </Collapse>
                 <Divider sx={{ my: 2 }} />
