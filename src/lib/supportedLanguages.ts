@@ -5,6 +5,8 @@
  * The `code` must match the language codes used in UserPreferences.language
  * and SystemConfig.defaultLanguage.
  */
+import { createElement, type ReactNode } from "react";
+
 export interface SupportedLanguage {
   code: string;
   label: string;
@@ -21,10 +23,26 @@ export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
 
 export const DEFAULT_LANGUAGE = "en";
 
-export function getLanguageOptions(): Array<{ value: string; label: string }> {
+export function getLanguageOptions(): Array<{
+  value: string;
+  label: string;
+  icon: ReactNode;
+}> {
   return SUPPORTED_LANGUAGES.map((language) => ({
     value: language.code,
-    label: `${language.code.toUpperCase()} - ${language.label}`,
+    label: language.label,
+    icon: createElement("img", {
+      src: language.flagSrc,
+      alt: `${language.code.toUpperCase()} flag`,
+      style: {
+        width: 22,
+        height: 15,
+        objectFit: "cover",
+        borderRadius: 2,
+        boxShadow: "0 0 0 1px rgba(0,0,0,0.12)",
+        display: "inline-block",
+      },
+    }),
   }));
 }
 
@@ -44,9 +62,7 @@ export function isSupportedLanguage(
   );
 }
 
-export function normalizeLanguageCode(
-  code: string | null | undefined,
-): string {
+export function normalizeLanguageCode(code: string | null | undefined): string {
   const normalized = code?.trim().toLowerCase();
   return isSupportedLanguage(normalized) ? normalized : DEFAULT_LANGUAGE;
 }

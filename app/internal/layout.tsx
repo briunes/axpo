@@ -40,7 +40,8 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
     pathname === "/internal/setup-password" ||
     pathname === "/internal/forgot-password" ||
     pathname === "/internal/reset-password" ||
-    pathname === "/internal"
+    pathname === "/internal" ||
+    (process.env.NODE_ENV === "development" && pathname.includes("boneyard-fixture"))
   ) {
     return <>{children}</>;
   }

@@ -7,7 +7,7 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { createClient, isAdmin } from "../../lib/internalApi";
 import { useAgencies } from "../../components/hooks/useAgencies";
 import { ClientForm, type ClientFormData } from "../../components/modules/ClientForm";
-import { CrudPageLayout, useAlerts } from "../../components/shared";
+import { BoneyardFormSkeleton, CrudPageLayout, useAlerts } from "../../components/shared";
 import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 
 export default function NewClientPage() {
@@ -16,8 +16,11 @@ export default function NewClientPage() {
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
     const onActionButtons = useActionButtons();
+    const isBoneyardBuild =
+        typeof window !== "undefined" &&
+        (window as typeof window & { __BONEYARD_BUILD?: boolean }).__BONEYARD_BUILD === true;
 
-    const agenciesActions = useAgencies(session, 1000, { minimal: true });
+    const agenciesActions = useAgencies(session, 1000, { minimal: true, queryEnabled: !isBoneyardBuild });
 
     const [formData, setFormData] = useState<ClientFormData>({
         name: "",
@@ -51,6 +54,19 @@ export default function NewClientPage() {
     }, [formActions, onActionButtons]);
 
     if (!session) return null;
+
+    if (agenciesActions.loading) {
+        return (
+            <CrudPageLayout
+                title={t("clientFormPage", "newTitle")}
+                subtitle={t("clientFormPage", "newSubtitle")}
+                backHref="/internal/clients"
+                hideHeader
+            >
+                <BoneyardFormSkeleton name="new-client-form" shape="client" />
+            </CrudPageLayout>
+        );
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

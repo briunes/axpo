@@ -7,7 +7,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
 import { getClient, isAdmin, listAgencies, updateClient, type ClientItem } from "../../../lib/internalApi";
-import { CrudPageLayout, FormSkeleton, useAlerts } from "../../../components/shared";
+import { BoneyardFormSkeleton, CrudPageLayout, useAlerts } from "../../../components/shared";
 import { ClientForm, type ClientFormData } from "../../../components/modules/ClientForm";
 import { AuditLogsModal } from "../../../components/ui/AuditLogsModal";
 import type { AgencyItem } from "../../../lib/internalApi";
@@ -15,6 +15,7 @@ import { useActionButtons, useTopBarBreadcrumbs } from "../../../components/Inte
 
 export default function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const isBoneyardFixture = id === "boneyard-fixture";
     const router = useRouter();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
@@ -46,7 +47,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
 
     const fetchedRef = useRef(false);
     useEffect(() => {
-        if (!session || fetchedRef.current) return;
+        if (!session || isBoneyardFixture || fetchedRef.current) return;
         fetchedRef.current = true;
 
         getClient(session.token, id)
@@ -78,7 +79,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
         if (isAdmin(session.user.role)) {
             listAgencies(session.token, {}).then((res) => setAgencies(res.items)).catch(() => { });
         }
-    }, [session, id]);
+    }, [session, id, isBoneyardFixture]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -138,10 +139,10 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
         return () => onActionButtons?.(null);
     }, [client, formActions, onActionButtons, session, t]);
 
-    if (!session || !client) {
+    if (!session || !client || false) {
         return (
             <CrudPageLayout title={t("clientFormPage", "editTitle")} backHref="/internal/clients" hideHeader>
-                <FormSkeleton variant="client" />
+                <BoneyardFormSkeleton name="edit-client-form" shape="client" />
             </CrudPageLayout>
         );
     }

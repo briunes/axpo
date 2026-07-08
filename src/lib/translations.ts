@@ -1668,6 +1668,10 @@ export const translations = {
       currentPlanBreakdownLabel: "Current-plan breakdown",
       currentPlanBreakdownEnabledHint:
         "These invoice line amounts will be used in the Current Plan comparison.",
+      currentPlanBreakdownDisabledHint:
+        "Current Plan comparison will use the calculated fallback. Enable to validate and use invoice line amounts.",
+      currentPlanBreakdownMismatchWarning:
+        "The breakdown does not match the total of the invoice. Difference: {amount}. Please pay attention to these inputs.",
       currentPowerCostLabel: "Current power cost",
       currentEnergyCostLabel: "Current energy cost",
       currentElectricityTaxLabel: "Current electricity tax",
@@ -2506,6 +2510,19 @@ export const translations = {
       fieldCurrentPrices: "Current supplier unit prices",
       fieldPricePower: "Power",
       fieldPriceEnergy: "Energy",
+      currentPlanBreakdownLabel: "Current-plan breakdown",
+      currentPlanBreakdownStatusEnabled: "enabled",
+      currentPlanBreakdownStatusDisabled: "disabled",
+      currentPlanBreakdownEnabledHint:
+        "These invoice line amounts will be used in the Current Plan comparison.",
+      currentPlanBreakdownDisabledHint:
+        "Current Plan comparison will use the calculated fallback. Enable to validate and use invoice line amounts.",
+      currentPlanBreakdownMismatchWarning:
+        "The breakdown does not match the total of the invoice. Difference: {amount}. Please pay attention to these inputs.",
+      currentPlanPowerCostLabel: "Power cost",
+      currentPlanEnergyCostLabel: "Energy cost",
+      currentPlanFixedTermLabel: "Fixed term",
+      currentPlanVariableEnergyTermLabel: "Variable energy term",
       ocrDisclaimer:
         "OCR may contain errors. Please validate the filled-in data before continuing.",
       detectingProvider: "Detecting provider...",
@@ -2681,8 +2698,7 @@ export const translations = {
         "Drops a styled CTA button linked to {{SIMULATION_LINK}}",
       buttonViewSimulationText: "View Simulation",
       buttonMagicLinkLabel: "Button - Magic Link Login",
-      buttonMagicLinkDesc:
-        "Drops a styled CTA button linked to {{MAGIC_LINK}}",
+      buttonMagicLinkDesc: "Drops a styled CTA button linked to {{MAGIC_LINK}}",
       buttonMagicLinkText: "Log In with Magic Link",
       varSetupPasswordValidityLabel: "Setup Password Validity Hours",
       varSetupPasswordValidityDesc:
@@ -4495,6 +4511,10 @@ export const translations = {
       currentPlanBreakdownLabel: "Desglose del plan actual",
       currentPlanBreakdownEnabledHint:
         "Estos importes de la factura se usarán en la comparación del Plan Actual.",
+      currentPlanBreakdownDisabledHint:
+        "La comparación del Plan Actual usará el cálculo estimado. Actívalo para validar y usar los importes reales de la factura.",
+      currentPlanBreakdownMismatchWarning:
+        "El desglose no coincide con el total de la factura. Diferencia: {amount}. Presta atención a estos campos.",
       currentPowerCostLabel: "Coste actual de potencia",
       currentEnergyCostLabel: "Coste actual de energía",
       currentElectricityTaxLabel: "Impuesto eléctrico actual",
@@ -4540,7 +4560,7 @@ export const translations = {
       sectionGasPersonalizadaIndex: "Personalizada Indexada (personalizada)",
       gasPersonalizadaIndexDescription:
         "Oferta indexada personalizada de gas — genera la fila 'Personalizada Index' en los resultados. Introduce el margen de energía (€/kWh) sobre MIBGAS. Deja en 0 para no incluir.",
-      gasPersonalizadaIndexMargenLabel: "Margen energía (€/kWh) sobre MIBGAS",
+      gasPersonalizadaIndexMargenLabel: "Precio Indexado Oferta Personalizada (€/kWh)",
       gasPersonalizadaIndexMargenHint:
         "Margen plano sobre el precio de referencia MIBGAS — €/kWh (Precio Término Energía oferta)",
       // Gas contract section
@@ -5358,6 +5378,19 @@ export const translations = {
       fieldCurrentPrices: "Precios unitarios del comercializador actual",
       fieldPricePower: "Potencia",
       fieldPriceEnergy: "Energía",
+      currentPlanBreakdownLabel: "Desglose del plan actual",
+      currentPlanBreakdownStatusEnabled: "activado",
+      currentPlanBreakdownStatusDisabled: "desactivado",
+      currentPlanBreakdownEnabledHint:
+        "Estos importes de factura se usarán en la comparación del Plan Actual.",
+      currentPlanBreakdownDisabledHint:
+        "La comparación del Plan Actual usará el cálculo estimado. Actívalo para validar y usar los importes reales de la factura.",
+      currentPlanBreakdownMismatchWarning:
+        "El desglose no coincide con el total de la factura. Diferencia: {amount}. Presta atención a estos campos.",
+      currentPlanPowerCostLabel: "Coste de potencia",
+      currentPlanEnergyCostLabel: "Coste de energía",
+      currentPlanFixedTermLabel: "Término fijo",
+      currentPlanVariableEnergyTermLabel: "Término variable de energía",
       ocrDisclaimer:
         "El OCR puede contener errores. Por favor, valida los datos rellenados antes de continuar.",
       detectingProvider: "Detectando proveedor...",
@@ -5533,8 +5566,7 @@ export const translations = {
         "Inserta un botón CTA con enlace a {{SIMULATION_LINK}}",
       buttonViewSimulationText: "Ver simulación",
       buttonMagicLinkLabel: "Botón - Iniciar sesión con Magic Link",
-      buttonMagicLinkDesc:
-        "Inserta un botón CTA con enlace a {{MAGIC_LINK}}",
+      buttonMagicLinkDesc: "Inserta un botón CTA con enlace a {{MAGIC_LINK}}",
       buttonMagicLinkText: "Iniciar sesión con Magic Link",
       varSetupPasswordValidityLabel:
         "Horas de validez de configuración de contraseña",
@@ -6018,6 +6050,10 @@ export const translations = {
       currentPlanBreakdownLabel: "Détail du plan actuel",
       currentPlanBreakdownEnabledHint:
         "Ces montants de facture seront utilisés dans la comparaison du Plan Actuel.",
+      currentPlanBreakdownDisabledHint:
+        "La comparaison du Plan Actuel utilisera l’estimation calculée. Activez-la pour valider et utiliser les montants de facture.",
+      currentPlanBreakdownMismatchWarning:
+        "Le détail ne correspond pas au total de la facture. Différence : {amount}. Veuillez vérifier ces champs.",
       currentPowerCostLabel: "Coût actuel de puissance",
       currentEnergyCostLabel: "Coût actuel d'énergie",
       currentElectricityTaxLabel: "Taxe électricité actuelle",
@@ -6187,6 +6223,19 @@ export const translations = {
       fieldCurrentPrices: "Prix unitaires actuels des fournisseurs",
       fieldPricePower: "Puissance",
       fieldPriceEnergy: "Énergie",
+      currentPlanBreakdownLabel: "Détail du plan actuel",
+      currentPlanBreakdownStatusEnabled: "activé",
+      currentPlanBreakdownStatusDisabled: "désactivé",
+      currentPlanBreakdownEnabledHint:
+        "Ces montants de facture seront utilisés dans la comparaison du Plan Actuel.",
+      currentPlanBreakdownDisabledHint:
+        "La comparaison du Plan Actuel utilisera l’estimation calculée. Activez-la pour valider et utiliser les montants de facture.",
+      currentPlanBreakdownMismatchWarning:
+        "Le détail ne correspond pas au total de la facture. Différence : {amount}. Veuillez vérifier ces champs.",
+      currentPlanPowerCostLabel: "Coût de puissance",
+      currentPlanEnergyCostLabel: "Coût d’énergie",
+      currentPlanFixedTermLabel: "Terme fixe",
+      currentPlanVariableEnergyTermLabel: "Terme variable d’énergie",
       ocrDisclaimer:
         "OCR peut contenir des erreurs. Veuillez valider les données renseignées avant de continuer.",
       detectingProvider: "Fournisseur de détection...",
@@ -8407,8 +8456,7 @@ export const translations = {
         "Insère un bouton CTA lié à {{SIMULATION_LINK}}",
       buttonViewSimulationText: "Voir la simulation",
       buttonMagicLinkLabel: "Bouton - Connexion Magic Link",
-      buttonMagicLinkDesc:
-        "Insère un bouton CTA lié à {{MAGIC_LINK}}",
+      buttonMagicLinkDesc: "Insère un bouton CTA lié à {{MAGIC_LINK}}",
       buttonMagicLinkText: "Se connecter avec Magic Link",
       varSetupPasswordValidityLabel:
         "Heures de validité de configuration du mot de passe",
@@ -8891,6 +8939,10 @@ export const translations = {
       currentPlanBreakdownLabel: "Detalhe do plano atual",
       currentPlanBreakdownEnabledHint:
         "Estes valores da fatura serão usados na comparação do Plano Atual.",
+      currentPlanBreakdownDisabledHint:
+        "A comparação do Plano Atual usará o cálculo estimado. Ative para validar e usar os valores da fatura.",
+      currentPlanBreakdownMismatchWarning:
+        "O detalhe não corresponde ao total da fatura. Diferença: {amount}. Preste atenção a estes campos.",
       currentPowerCostLabel: "Custo atual de potência",
       currentEnergyCostLabel: "Custo atual de energia",
       currentElectricityTaxLabel: "Imposto elétrico atual",
@@ -9058,6 +9110,19 @@ export const translations = {
       fieldCurrentPrices: "Preços unitários atuais do fornecedor",
       fieldPricePower: "Potência",
       fieldPriceEnergy: "Energia",
+      currentPlanBreakdownLabel: "Detalhe do plano atual",
+      currentPlanBreakdownStatusEnabled: "ativado",
+      currentPlanBreakdownStatusDisabled: "desativado",
+      currentPlanBreakdownEnabledHint:
+        "Estes valores da fatura serão usados na comparação do Plano Atual.",
+      currentPlanBreakdownDisabledHint:
+        "A comparação do Plano Atual usará o cálculo estimado. Ative para validar e usar os valores da fatura.",
+      currentPlanBreakdownMismatchWarning:
+        "O detalhe não corresponde ao total da fatura. Diferença: {amount}. Preste atenção a estes campos.",
+      currentPlanPowerCostLabel: "Custo de potência",
+      currentPlanEnergyCostLabel: "Custo de energia",
+      currentPlanFixedTermLabel: "Termo fixo",
+      currentPlanVariableEnergyTermLabel: "Termo variável de energia",
       ocrDisclaimer:
         "OCR pode conter erros. Valide os dados preenchidos antes de continuar.",
       detectingProvider: "Detectando provedor...",
@@ -11237,8 +11302,7 @@ export const translations = {
         "Insere um botão CTA vinculado a {{SIMULATION_LINK}}",
       buttonViewSimulationText: "Ver simulação",
       buttonMagicLinkLabel: "Botão - Login com Magic Link",
-      buttonMagicLinkDesc:
-        "Insere um botão CTA vinculado a {{MAGIC_LINK}}",
+      buttonMagicLinkDesc: "Insere um botão CTA vinculado a {{MAGIC_LINK}}",
       buttonMagicLinkText: "Entrar com Magic Link",
       varSetupPasswordValidityLabel:
         "Horas de validade da configuração de senha",

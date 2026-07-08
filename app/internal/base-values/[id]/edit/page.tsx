@@ -15,9 +15,9 @@ import {
     type BaseValueSetItem,
 } from "../../../lib/internalApi";
 import {
+    BoneyardFormSkeleton,
     CrudFormContainer,
     CrudPageLayout,
-    FormSkeleton,
     useAlerts,
 } from "../../../components/shared";
 import { BaseValueItemBuilder } from "../../../components/ui/BaseValueItemBuilder";
@@ -32,6 +32,7 @@ export default function EditBaseValueSetPage({
     params: Promise<{ id: string }>;
 }) {
     const { id } = use(params);
+    const isBoneyardFixture = id === "boneyard-fixture";
     const router = useRouter();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
@@ -52,7 +53,7 @@ export default function EditBaseValueSetPage({
     useTopBarBreadcrumbs(breadcrumbs);
 
     useEffect(() => {
-        if (!session) return;
+        if (!session || isBoneyardFixture) return;
         Promise.all([
             getBaseValueSet(session.token, id),
             listBaseValueItems(session.token, id),
@@ -72,7 +73,7 @@ export default function EditBaseValueSetPage({
                 showError(err instanceof Error ? err.message : t("baseValuesModule", "notFound"));
                 router.push("/internal/base-values");
             });
-    }, [session, id]);
+    }, [session, id, isBoneyardFixture]);
 
     const validateItems = (): string | null => {
         for (let i = 0; i < items.length; i++) {
@@ -118,7 +119,7 @@ export default function EditBaseValueSetPage({
     if (!session || !set) {
         return (
             <CrudPageLayout title={t("baseValuesModule", "editTitle")} backHref="/internal/base-values" hideHeader>
-                <FormSkeleton variant="base-values" />
+                <BoneyardFormSkeleton name="edit-base-values-form" shape="base-values" />
             </CrudPageLayout>
         );
     }

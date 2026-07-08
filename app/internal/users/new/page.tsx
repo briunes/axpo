@@ -11,7 +11,7 @@ import { useAgencies } from "../../components/hooks/useAgencies";
 import { useUsers } from "../../components/hooks/useUsers";
 import { UserForm, type UserFormData } from "../../components/modules/UserForm";
 import { UserSessionsPanel } from "../../components/modules/UserSessionsPanel";
-import { CrudPageLayout, useAlerts } from "../../components/shared";
+import { BoneyardFormSkeleton, CrudPageLayout, useAlerts } from "../../components/shared";
 import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 import type { UserRole } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
@@ -32,11 +32,14 @@ export default function NewUserPage() {
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
     const onActionButtons = useActionButtons();
+    const isBoneyardBuild =
+        typeof window !== "undefined" &&
+        (window as typeof window & { __BONEYARD_BUILD?: boolean }).__BONEYARD_BUILD === true;
     const breadcrumbs = useMemo(() => [{ label: t("userFormPage", "newTitle") }], [t]);
     useTopBarBreadcrumbs(breadcrumbs);
 
     const usersActions = useUsers(session, 25, { queryEnabled: false });
-    const agenciesActions = useAgencies(session, 1000, { minimal: true });
+    const agenciesActions = useAgencies(session, 1000, { minimal: true, queryEnabled: !isBoneyardBuild });
 
     const [activeTab, setActiveTab] = useState(0);
     const [hasVisitedPreferences, setHasVisitedPreferences] = useState(false);
@@ -172,6 +175,19 @@ export default function NewUserPage() {
 
     if (!session) {
         return null;
+    }
+
+    if (agenciesActions.loading) {
+        return (
+            <CrudPageLayout
+                title={t("userFormPage", "newTitle")}
+                subtitle={t("userFormPage", "newSubtitle")}
+                backHref="/internal/users"
+                hideHeader
+            >
+                <BoneyardFormSkeleton name="new-user-form" shape="user" tabs={3} />
+            </CrudPageLayout>
+        );
     }
 
     return (

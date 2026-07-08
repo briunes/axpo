@@ -196,11 +196,15 @@ export function extractTemplateVariables(
   const currentVat = (currentTotal - currentTaxCost - currentRentalCost) * ivaR;
   const useCurrentInvoiceBreakdown =
     (electricity?.extras as any)?.useCurrentInvoiceBreakdown !== false;
+  const currentInvoiceBreakdown = useCurrentInvoiceBreakdown
+    ? (electricity?.extras as any)?.currentInvoiceBreakdown
+    : undefined;
   const explicitCurrentTax = useCurrentInvoiceBreakdown
-    ? (electricity?.extras as any)?.impuestoElectricoActual
+    ? currentInvoiceBreakdown?.impuestoElectrico ??
+      (electricity?.extras as any)?.impuestoElectricoActual
     : undefined;
   const explicitCurrentVat = useCurrentInvoiceBreakdown
-    ? (electricity?.extras as any)?.ivaActual
+    ? currentInvoiceBreakdown?.iva ?? (electricity?.extras as any)?.ivaActual
     : undefined;
   const displayedCurrentTax =
     explicitCurrentTax != null ? Number(explicitCurrentTax) : currentTaxCost;
@@ -211,10 +215,12 @@ export function extractTemplateVariables(
     currentTotal - displayedCurrentTax - displayedCurrentVat - currentKnownBase,
   );
   const explicitCurrentPower = useCurrentInvoiceBreakdown
-    ? (electricity?.extras as any)?.terminoPotenciaActual
+    ? currentInvoiceBreakdown?.terminoPotencia ??
+      (electricity?.extras as any)?.terminoPotenciaActual
     : undefined;
   const explicitCurrentEnergy = useCurrentInvoiceBreakdown
-    ? (electricity?.extras as any)?.terminoEnergiaActual
+    ? currentInvoiceBreakdown?.terminoEnergia ??
+      (electricity?.extras as any)?.terminoEnergiaActual
     : undefined;
   const axpoPeSum = axpoPowerCost + axpoEnergyCost || 1;
   const currentPowerCost =
@@ -225,7 +231,18 @@ export function extractTemplateVariables(
     explicitCurrentEnergy != null
       ? Number(explicitCurrentEnergy)
       : currentPowerEnergyBase * (axpoEnergyCost / axpoPeSum);
-  const currentOtherCost = currentReactiveCost + currentOtherChargeCost;
+  const currentOtherCost =
+    currentInvoiceBreakdown?.otrosCargos != null
+      ? Number(currentInvoiceBreakdown.otrosCargos)
+      : currentOtherChargeCost;
+  const displayedCurrentExcess =
+    currentInvoiceBreakdown?.excesoPotencia != null
+      ? Number(currentInvoiceBreakdown.excesoPotencia)
+      : currentExcessCost;
+  const displayedCurrentRental =
+    currentInvoiceBreakdown?.alquiler != null
+      ? Number(currentInvoiceBreakdown.alquiler)
+      : currentRentalCost;
   const currentBreakdownHtml = useCurrentInvoiceBreakdown
     ? `
           <div class="asim-cost-breakdown">
@@ -239,7 +256,7 @@ export function extractTemplateVariables(
             </div>
             <div class="asim-cost-item">
               <div class="asim-cost-label">Cargos por exceso</div>
-              <div class="asim-cost-value">${formatCurrency(currentExcessCost)} €</div>
+              <div class="asim-cost-value">${formatCurrency(displayedCurrentExcess)} €</div>
             </div>
             <div class="asim-cost-item">
               <div class="asim-cost-label">Impuestos</div>
@@ -251,7 +268,7 @@ export function extractTemplateVariables(
             </div>
             <div class="asim-cost-item">
               <div class="asim-cost-label">Alquiler</div>
-              <div class="asim-cost-value">${formatCurrency(currentRentalCost)} €</div>
+              <div class="asim-cost-value">${formatCurrency(displayedCurrentRental)} €</div>
             </div>
             <div class="asim-cost-item">
               <div class="asim-cost-label">IVA</div>
@@ -300,10 +317,10 @@ export function extractTemplateVariables(
     // Current plan - Cost breakdown
     CURRENT_POWER_COST: formatCurrency(currentPowerCost),
     CURRENT_ENERGY_COST: formatCurrency(currentEnergyCost),
-    CURRENT_EXCESS_COST: formatCurrency(currentExcessCost),
+    CURRENT_EXCESS_COST: formatCurrency(displayedCurrentExcess),
     CURRENT_TAX_COST: formatCurrency(displayedCurrentTax),
     CURRENT_OTHER_COST: formatCurrency(currentOtherCost),
-    CURRENT_RENTAL_COST: formatCurrency(currentRentalCost),
+    CURRENT_RENTAL_COST: formatCurrency(displayedCurrentRental),
     CURRENT_VAT: formatCurrency(displayedCurrentVat),
     CURRENT_TOTAL: formatCurrency(currentTotal),
     CURRENT_BREAKDOWN_HTML: currentBreakdownHtml,

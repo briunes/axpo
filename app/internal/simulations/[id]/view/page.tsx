@@ -271,6 +271,7 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
 
 export default function SimulationViewPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const isBoneyardFixture = id === "boneyard-fixture";
     const router = useRouter();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
@@ -293,7 +294,7 @@ export default function SimulationViewPage({ params }: { params: Promise<{ id: s
 
     const fetchedRef = useRef(false);
     useEffect(() => {
-        if (!session || fetchedRef.current) return;
+        if (!session || isBoneyardFixture || fetchedRef.current) return;
         fetchedRef.current = true;
         getSimulation(session.token, id)
             .then(({ simulation: sim, versions }) => {
@@ -306,7 +307,7 @@ export default function SimulationViewPage({ params }: { params: Promise<{ id: s
                 showError(err instanceof Error ? err.message : t("simulationDetail", "notFound"));
                 router.push("/internal/simulations");
             });
-    }, [session, id]);
+    }, [session, id, isBoneyardFixture]);
 
     if (!session || !simulation) {
         return (

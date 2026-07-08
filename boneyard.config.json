@@ -2,5 +2,13 @@
   "breakpoints": [375, 768, 1280],
   "out": "./src/bones",
   "wait": 800,
-  "routes": ["/internal/users/boneyard-fixture/edit"]
+  "routes": [
+    "/boneyard/forms",
+    "/internal/users/boneyard-fixture/edit",
+    "/internal/agencies/boneyard-fixture/edit",
+    "/internal/clients/boneyard-fixture/edit",
+    "/internal/base-values/boneyard-fixture/edit",
+    "/internal/simulations/boneyard-fixture",
+    "/internal/simulations/boneyard-fixture/view"
+  ]
 }
