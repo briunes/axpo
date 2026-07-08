@@ -15,7 +15,7 @@ import { DateInput } from "../ui/DateInput";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { FormInput } from "../ui/FormInput";
 import { CurrencyInput } from "../ui/CurrencyInput";
-import { Autocomplete, TextField, Collapse, Divider, Box, Button, Tabs, Tab, Typography, FormControlLabel, Switch } from "@mui/material";
+import { Autocomplete, TextField, Collapse, Divider, Box, Button, Tabs, Tab, Typography, FormControlLabel, Switch, Backdrop, CircularProgress } from "@mui/material";
 import { Country } from "country-state-city";
 import type {
     SimulationPayload,
@@ -2077,6 +2077,23 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
     return (
         <div>
+            <Backdrop
+                open={calculating}
+                sx={{
+                    color: "#fff",
+                    zIndex: (theme) => theme.zIndex.modal + 1,
+                    backgroundColor: "rgba(15, 23, 42, 0.62)",
+                    backdropFilter: "blur(2px)",
+                }}
+            >
+                <CircularProgress
+                    role="status"
+                    aria-label={t("simulationForm", "btnCalculating")}
+                    color="inherit"
+                    size={44}
+                    thickness={4}
+                />
+            </Backdrop>
             <Box className="simulation-detail-tabs" sx={{ mb: '12px' }}>
                 <Tabs
                     value={activeTab}

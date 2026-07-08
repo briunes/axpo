@@ -896,7 +896,7 @@ export default function NewSimulationPage() {
                                     </div>
                                     <div className="new-simulation-card__copy">
                                         <h3>{t("invoiceExtractor", "title") || "Invoice Data Extraction"}</h3>
-                                        <p>Upload an invoice, confirm the provider, extract the fields, then validate before creating the simulation.</p>
+                                        <p>{t("invoiceExtractor", "flowDescription")}</p>
                                     </div>
                                 </div>
                                 <InvoiceExtractor

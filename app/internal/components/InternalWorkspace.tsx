@@ -81,7 +81,7 @@ export function useRegisterRefresh(handler: () => void) {
   }, [register]);
 }
 
-export function InternalWorkspace({ section, children }: { section: AppSection; children?: React.ReactNode }) {
+export function InternalWorkspace({ section, children }: { section: AppSection | null; children?: React.ReactNode }) {
   const router = useRouter();
   const [session, setSession] = useState<SessionState | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
@@ -216,7 +216,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
     configurations: canDo(role, "section.configurations"),
     notifications: role === "SYS_ADMIN",
   };
-  if (!sectionAllowed[section]) {
+  if (section && !sectionAllowed[section]) {
     return (
       <div className="app-shell">
         {mobileMenuOpen && (

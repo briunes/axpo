@@ -38,18 +38,17 @@ import { useThemeMode } from "../../lib/ThemeModeContext";
 
 export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "logs" | "analytics" | "configurations" | "notifications";
 
-// Static English labels kept for non-UI uses (routes, test-ids, etc.)
-export const sectionLabel: Record<AppSection, string> = {
-  simulations: "Simulations",
-  users: "Users",
-  agencies: "Agencies",
-  clients: "Clients",
-  "base-values": "Base Values",
-  logs: "System Logs",
-  analytics: "Analytics",
-  configurations: "Configurations",
-  notifications: "Notifications",
-};
+const SECTION_KEYS: AppSection[] = [
+  "simulations",
+  "users",
+  "agencies",
+  "clients",
+  "base-values",
+  "logs",
+  "analytics",
+  "configurations",
+  "notifications",
+];
 
 // Maps kebab-case AppSection keys to camelCase nav translation keys
 const sectionNavKey: Record<AppSection, string> = {
@@ -64,16 +63,16 @@ const sectionNavKey: Record<AppSection, string> = {
   notifications: "notifications",
 };
 
-export const sectionDescription: Record<AppSection, string> = {
-  simulations: "Create, update, share and archive simulation records with expiration control.",
-  users: "Manage user identities, roles and PIN rotation under strict RBAC boundaries.",
-  agencies: "Control agency activation and ownership scope for operational teams.",
-  clients: "Manage client accounts linked to agencies for simulation assignment.",
-  "base-values": "Manage base value sets, item payloads and active versions used in simulation calculations.",
-  logs: "Review audit logs, email logs, and cron job execution logs for governance and compliance monitoring.",
-  analytics: "Track simulation performance and access metrics for operational decisions.",
-  configurations: "Manage system settings, PDF templates, email templates and other configurable definitions.",
-  notifications: "Review and triage system notifications.",
+export const sectionDescriptionKey: Record<AppSection, string> = {
+  simulations: "simulations",
+  users: "users",
+  agencies: "agencies",
+  clients: "clients",
+  "base-values": "baseValues",
+  logs: "auditLogs",
+  analytics: "analytics",
+  configurations: "configurations",
+  notifications: "notifications",
 };
 
 export const sectionRoute: Record<AppSection, string> = {
@@ -88,16 +87,16 @@ export const sectionRoute: Record<AppSection, string> = {
   notifications: "/internal/notifications",
 };
 
-export const sectionPrimaryAction: Record<AppSection, { label: string; targetId: string }> = {
-  simulations: { label: "New Simulation", targetId: "simulations-create-form" },
-  users: { label: "New User", targetId: "users-create-form" },
-  agencies: { label: "New Agency", targetId: "agencies-create-form" },
-  clients: { label: "New Client", targetId: "clients-create-form" },
-  "base-values": { label: "New Base Value Set", targetId: "base-values-create-form" },
-  logs: { label: "View System Logs", targetId: "system-logs-table" },
-  analytics: { label: "Refresh Metrics", targetId: "analytics-panel" },
-  configurations: { label: "System Settings", targetId: "configurations-panel" },
-  notifications: { label: "Refresh Notifications", targetId: "notifications-table" },
+export const sectionPrimaryAction: Record<AppSection, { labelKey: string; targetId: string }> = {
+  simulations: { labelKey: "newSimulation", targetId: "simulations-create-form" },
+  users: { labelKey: "newUser", targetId: "users-create-form" },
+  agencies: { labelKey: "newAgency", targetId: "agencies-create-form" },
+  clients: { labelKey: "newClient", targetId: "clients-create-form" },
+  "base-values": { labelKey: "newBaseValueSet", targetId: "base-values-create-form" },
+  logs: { labelKey: "viewSystemLogs", targetId: "system-logs-table" },
+  analytics: { labelKey: "refreshMetrics", targetId: "analytics-panel" },
+  configurations: { labelKey: "systemSettings", targetId: "configurations-panel" },
+  notifications: { labelKey: "refreshNotifications", targetId: "notifications-table" },
 };
 
 export const sectionIcon: Record<AppSection, React.FC<{ className?: string }>> = {
@@ -142,7 +141,7 @@ export function SectionMenu({
   collapsed,
   notificationBell,
 }: {
-  section: AppSection;
+  section: AppSection | null;
   canSeeUsersSection: boolean;
   canSeeAgenciesSection: boolean;
   canSeeClientsSection: boolean;
@@ -161,7 +160,7 @@ export function SectionMenu({
   const router = useRouter();
   const [languageDialOpen, setLanguageDialOpen] = useState(false);
 
-  const items = (Object.keys(sectionLabel) as AppSection[])
+  const items = SECTION_KEYS
     .filter((item) => item !== "configurations")
     .filter((item) => item !== "notifications")
     .filter((item) => {
@@ -200,7 +199,7 @@ export function SectionMenu({
       <Box
         component="nav"
         role="navigation"
-        aria-label="Internal app sections"
+        aria-label={t("nav", "sectionsLabel")}
         sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}
       >
 
@@ -386,7 +385,7 @@ export function SectionMenu({
             }}
           >
             <SpeedDial
-              ariaLabel="Language selector"
+              ariaLabel={t("nav", "languageSelector")}
               icon={
                 <Box
                   component="span"
@@ -500,7 +499,7 @@ export function SectionMenu({
 
         <Box sx={{ display: "flex", flexDirection: collapsed ? "column" : "row", alignItems: "center", gap: collapsed ? 1 : 0.5, px: collapsed ? 1 : 0 }}>
           <Tooltip
-            title="My Profile"
+            title={t("nav", "myProfile")}
             placement="right"
             disableHoverListener={!collapsed}
             arrow

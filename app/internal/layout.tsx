@@ -15,7 +15,7 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   // Determine section from pathname
-  const getSection = (): AppSection => {
+  const getSection = (): AppSection | null => {
     if (pathname.startsWith("/internal/simulations")) return "simulations";
     if (pathname.startsWith("/internal/users")) return "users";
     if (pathname.startsWith("/internal/agencies")) return "agencies";
@@ -28,7 +28,7 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
     if (pathname.startsWith("/internal/analytics")) return "analytics";
     if (pathname.startsWith("/internal/configurations")) return "configurations";
     if (pathname.startsWith("/internal/ocr-usage")) return "configurations";
-    return "simulations";
+    return null;
   };
 
   const section = getSection();
