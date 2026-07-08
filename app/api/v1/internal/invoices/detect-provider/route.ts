@@ -8,6 +8,8 @@ import {
   OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
 import {
+  getBedrockRuntimeBaseUrl,
+  isBedrockMantleProvider,
   isOpenAiCompatibleProvider,
   resolveAiConfigFromSystemConfig,
 } from "@/application/lib/aiConfig";
@@ -130,6 +132,33 @@ async function callLlmWithImages(
       }),
       signal: AbortSignal.timeout(60000),
     });
+  } else if (isBedrockMantleProvider(llmProvider)) {
+    const content: any[] = [{ type: "text", text: prompt }];
+    for (const img of images) {
+      content.push({
+        type: "image_url",
+        image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
+      });
+    }
+
+    const bedrockBaseUrl = getBedrockRuntimeBaseUrl(llmBaseUrl);
+    llmResponse = await fetch(
+      `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/invoke`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content }],
+          temperature: llmTemperature,
+          max_tokens: llmMaxTokens,
+        }),
+        signal: AbortSignal.timeout(60000),
+      },
+    );
   } else if (isAnthropicBedrockRuntime(llmProvider, llmBaseUrl)) {
     const content: any[] = [];
     for (const img of images) {

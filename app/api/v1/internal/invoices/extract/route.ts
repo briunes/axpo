@@ -11,6 +11,8 @@ import {
 } from "@/lib/pdfToImage";
 import { extractPdfWithOpenDataLoader } from "@/lib/opendataloaderPdfExtraction";
 import {
+  getBedrockRuntimeBaseUrl,
+  isBedrockMantleProvider,
   isOpenAiCompatibleProvider,
   resolveAiConfigFromSystemConfig,
 } from "@/application/lib/aiConfig";
@@ -1509,6 +1511,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
       if (
         llmProvider === "ollama" ||
         isOpenAiCompatibleProvider(llmProvider) ||
+        isBedrockMantleProvider(llmProvider) ||
         isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
         isNvidiaBedrockRuntime(llmProvider)
       ) {
@@ -1546,6 +1549,7 @@ If invoice text uses a different format, map it to the closest allowed value abo
 
     if (
       (isAnthropicBedrockRuntime(llmProvider, llmBaseUrl) ||
+        isBedrockMantleProvider(llmProvider) ||
         isNvidiaBedrockRuntime(llmProvider)) &&
       imagesToProcess.length > 1
     ) {
@@ -1709,6 +1713,42 @@ If invoice text uses a different format, map it to the closest allowed value abo
           }),
           signal: AbortSignal.timeout(30000), // 30 second timeout
         }),
+      );
+    } else if (isBedrockMantleProvider(llmProvider)) {
+      const content: any[] = [{ type: "text", text: activePrompt }];
+      const bedrockImages =
+        imagesToProcess.length > 0
+          ? imagesToProcess
+          : [{ base64: base64File, mimeType: file.type }];
+
+      for (const img of bedrockImages) {
+        content.push({
+          type: "image_url",
+          image_url: {
+            url: `data:${img.mimeType};base64,${img.base64}`,
+          },
+        });
+      }
+
+      const bedrockBaseUrl = getBedrockRuntimeBaseUrl(llmBaseUrl);
+      llmResponse = await timed("llmFetchMs", () =>
+        fetch(
+          `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/invoke`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+            },
+            body: JSON.stringify({
+              messages: [{ role: "user", content }],
+              temperature: llmTemperature,
+              max_tokens: llmMaxTokens,
+            }),
+            signal: AbortSignal.timeout(300000),
+          },
+        ),
       );
     } else if (isAnthropicBedrockRuntime(llmProvider, llmBaseUrl)) {
       const content: any[] = [{ type: "text", text: activePrompt }];
@@ -1928,7 +1968,10 @@ If invoice text uses a different format, map it to the closest allowed value abo
 
     // Extract the response text based on provider
     let extractedText = "";
-    if (isOpenAiCompatibleProvider(llmProvider)) {
+    if (
+      isOpenAiCompatibleProvider(llmProvider) ||
+      isBedrockMantleProvider(llmProvider)
+    ) {
       const msg = llmData.choices?.[0]?.message;
       // qwen3 thinking models put the answer in `reasoning` when `content` is empty
       extractedText = msg?.content || msg?.reasoning || "";
@@ -2321,7 +2364,10 @@ If invoice text uses a different format, map it to the closest allowed value abo
     let promptTokens: number | undefined;
     let completionTokens: number | undefined;
     let totalTokens: number | undefined;
-    if (isOpenAiCompatibleProvider(llmProvider)) {
+    if (
+      isOpenAiCompatibleProvider(llmProvider) ||
+      isBedrockMantleProvider(llmProvider)
+    ) {
       promptTokens = llmData.usage?.prompt_tokens;
       completionTokens = llmData.usage?.completion_tokens;
       totalTokens = llmData.usage?.total_tokens;

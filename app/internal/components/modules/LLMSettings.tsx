@@ -155,13 +155,12 @@ const LLM_PROVIDERS: Record<string, {
         commonModels: ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
     },
     "aws-bedrock-mantle": {
-        name: "AWS Bedrock (Mantle)",
+        name: "AWS Bedrock (Qwen)",
         requiresApiKey: true,
-        defaultBaseUrl: "https://bedrock-mantle.eu-west-1.api.aws/v1",
-        defaultModel: "qwen.qwen3-vl-235b-a22b-instruct",
-        description: "Amazon Bedrock Mantle using OpenAI-compatible Chat Completions.",
+        defaultBaseUrl: "https://bedrock-runtime.eu-west-1.amazonaws.com",
+        defaultModel: "qwen.qwen3-vl-235b-a22b",
+        description: "Qwen through AWS Bedrock Runtime InvokeModel.",
         commonModels: [
-            "qwen.qwen3-vl-235b-a22b-instruct",
             "qwen.qwen3-vl-235b-a22b",
         ],
     },
