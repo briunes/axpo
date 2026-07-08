@@ -78,6 +78,9 @@ importers:
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
+      boneyard-js:
+        specifier: ^1.9.0
+        version: 1.9.0(react@19.2.5)
       country-state-city:
         specifier: ^3.2.1
         version: 3.2.1
@@ -437,6 +440,9 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
+
+  '@chenglou/pretext@0.0.5':
+    resolution: {integrity: sha512-A8GZN10REdFGsyuiUgLV8jjPDDFMg5GmgxGWV0I3igxBOnzj+jgz2VMmVD7g+SFyoctfeqHFxbNatKSzVRWtRg==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -2043,8 +2049,8 @@ packages:
     resolution: {integrity: sha512-f1WO2Lx8a9t8DARmcWAUPJbu0G20bJlj8L4z72K00TMeJAoyLr/tHhI/pzYBLrR4dXWkcxO1cWYZEOX8DKHTqA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@unlayer/types@1.445.0':
-    resolution: {integrity: sha512-RJwiJa6ok3aRvAcWaD7rsNWzk6jJjTmWyTB2Lf2yEqg1HlMjWH+10aj7G6hbH4Rnii8VmzL1tlmfJfDrcJMZkw==}
+  '@unlayer/types@1.449.0':
+    resolution: {integrity: sha512-ZAF/r6km+Bf7yJdiyOX3SloCy+lWp/NUoZTcteYXDd+kfqQAEO3yX+IbegAGyj559rF1sYFtOcoV+E1dPNh1WQ==}
 
   '@unrs/resolver-binding-android-arm-eabi@1.11.1':
     resolution: {integrity: sha512-ppLRUgHVaGRWUx0R0Ut06Mjo9gBaBkg3v/8AxusGLhsIotbBLuRk51rAzqLC8gq6NyyAojEXglNjzf6R948DNw==}
@@ -2481,6 +2487,33 @@ packages:
 
   blueimp-canvas-to-blob@3.29.0:
     resolution: {integrity: sha512-0pcSSGxC0QxT+yVkivxIqW0Y4VlO2XSDPofBAqoJ1qJxgH9eiUDLv50Rixij2cDuEfx4M6DpD9UGZpRhT5Q8qg==}
+
+  boneyard-js@1.9.0:
+    resolution: {integrity: sha512-FlIHm7YyQ6GMBPaNY6um5ESHNyZGONoSZ0IMhayuyemBsCUhhDl4nC/gMTOi/25ojtrlnRInTWKqFKb7hGK6Cg==}
+    hasBin: true
+    peerDependencies:
+      '@angular/core': '>=14'
+      preact: '>=10'
+      react: '>=18'
+      react-native: '>=0.71'
+      svelte: '>=5.29'
+      vite: '>=5'
+      vue: '>=3'
+    peerDependenciesMeta:
+      '@angular/core':
+        optional: true
+      preact:
+        optional: true
+      react:
+        optional: true
+      react-native:
+        optional: true
+      svelte:
+        optional: true
+      vite:
+        optional: true
+      vue:
+        optional: true
 
   brace-expansion@5.0.6:
     resolution: {integrity: sha512-kLpxurY4Z4r9sgMsyG0Z9uzsBlgiU/EFKhj/h91/8yHu0edo7XuixOIH3VcJ8kkxs6/jPzoI6U9Vj3WqbMQ94g==}
@@ -3214,6 +3247,11 @@ packages:
 
   fs.realpath@1.0.0:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
+
+  fsevents@2.3.2:
+    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
+    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
+    os: [darwin]
 
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
@@ -4320,6 +4358,16 @@ packages:
   pkg-dir@4.2.0:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
+
+  playwright-core@1.61.1:
+    resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+  playwright@1.61.1:
+    resolution: {integrity: sha512-DWnY5o3YbLWK4GovuAVwpqL+1VwGNdUGrRr++8j8PtQQzvAVZUIMjKQ90fY689sEJZJBbZVw1rXaOKSTitkzPQ==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
@@ -5663,6 +5711,9 @@ snapshots:
       '@babel/helper-validator-identifier': 7.29.7
 
   '@bcoe/v8-coverage@0.2.3': {}
+
+  '@chenglou/pretext@0.0.5':
+    optional: true
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -7658,7 +7709,7 @@ snapshots:
       '@typescript-eslint/types': 8.58.2
       eslint-visitor-keys: 5.0.1
 
-  '@unlayer/types@1.445.0': {}
+  '@unlayer/types@1.449.0': {}
 
   '@unrs/resolver-binding-android-arm-eabi@1.11.1':
     optional: true
@@ -8153,6 +8204,13 @@ snapshots:
   bluebird@3.4.7: {}
 
   blueimp-canvas-to-blob@3.29.0: {}
+
+  boneyard-js@1.9.0(react@19.2.5):
+    dependencies:
+      playwright: 1.61.1
+    optionalDependencies:
+      '@chenglou/pretext': 0.0.5
+      react: 19.2.5
 
   brace-expansion@5.0.6:
     dependencies:
@@ -8993,6 +9051,9 @@ snapshots:
   fs-constants@1.0.0: {}
 
   fs.realpath@1.0.0: {}
+
+  fsevents@2.3.2:
+    optional: true
 
   fsevents@2.3.3:
     optional: true
@@ -10263,6 +10324,14 @@ snapshots:
     dependencies:
       find-up: 4.1.0
 
+  playwright-core@1.61.1: {}
+
+  playwright@1.61.1:
+    dependencies:
+      playwright-core: 1.61.1
+    optionalDependencies:
+      fsevents: 2.3.2
+
   possible-typed-array-names@1.1.0: {}
 
   postcss@8.5.15:
@@ -10393,7 +10462,7 @@ snapshots:
 
   react-email-editor@1.8.0(react@19.2.5):
     dependencies:
-      '@unlayer/types': 1.445.0
+      '@unlayer/types': 1.449.0
       react: 19.2.5
 
   react-hook-form@7.72.1(react@19.2.5):

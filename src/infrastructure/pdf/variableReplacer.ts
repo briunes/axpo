@@ -250,7 +250,7 @@ export function extractVariableValues(
   const currentTaxCost = currentTotal * (ieR / ((1 + ieR) * (1 + ivaR)));
   const currentVat = (currentTotal - currentTaxCost - currentRentalCost) * ivaR;
   const useCurrentInvoiceBreakdown =
-    (electricity?.extras as any)?.useCurrentInvoiceBreakdown === true;
+    (electricity?.extras as any)?.useCurrentInvoiceBreakdown !== false;
   const explicitCurrentTax = useCurrentInvoiceBreakdown
     ? (electricity?.extras as any)?.impuestoElectricoActual
     : undefined;
@@ -358,7 +358,7 @@ export function extractVariableValues(
   );
   // Rough 70/30 split of base into variable/fixed
   const useGasCurrentInvoiceBreakdown =
-    (gas?.extras as any)?.useCurrentInvoiceBreakdown === true;
+    (gas?.extras as any)?.useCurrentInvoiceBreakdown !== false;
   const explicitGasCurrentFixed = useGasCurrentInvoiceBreakdown
     ? (gas?.extras as any)?.terminoFijoActual
     : undefined;

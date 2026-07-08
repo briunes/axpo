@@ -272,7 +272,7 @@ function buildElecPayloadFromOcr(data: import("../../components/modules").Extrac
             reactiva: data.reactiva || undefined,
             alquilerEquipoMedida: data.alquiler || undefined,
             otrosCargos: data.otrosCargos || undefined,
-            useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown === true,
+            useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown !== false,
             terminoPotenciaActual: finiteOrUndefined(data.importePotencia),
             terminoEnergiaActual: finiteOrUndefined(data.importeEnergia),
             impuestoElectricoActual: finiteOrUndefined(data.importeImpuestoElectrico),
@@ -303,7 +303,7 @@ function buildGasPayloadFromOcr(data: import("../../components/modules").Extract
         extras: {
             alquilerEquipoMedida: data.alquiler || undefined,
             otrosCargos: data.otrosCargos || undefined,
-            useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown === true,
+            useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown !== false,
             terminoFijoActual: finiteOrUndefined(data.importeTerminoFijo),
             terminoVariableActual: finiteOrUndefined(data.importeTerminoVariable),
             impuestoHidrocarburoActual: finiteOrUndefined(data.importeImpuestoHidrocarburos),
@@ -473,7 +473,7 @@ export default function NewSimulationPage() {
                 ...data,
                 ivaTasa: resolvedIva,
                 impuestoElectricoTasa: resolvedElecTax,
-                useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown === true,
+                useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown !== false,
             })
             : deriveCurrentInvoiceBreakdown(
                 { ...data, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax },
@@ -1156,10 +1156,10 @@ export default function NewSimulationPage() {
                                             <div
                                                 style={{
                                                     gridColumn: "span 2",
-                                                    border: `1px solid ${extractedData.useCurrentInvoiceBreakdown === true ? "#10b981" : "#cbd5e1"}`,
+                                                    border: `1px solid ${extractedData.useCurrentInvoiceBreakdown !== false ? "#10b981" : "#cbd5e1"}`,
                                                     borderRadius: 8,
                                                     padding: "10px 12px",
-                                                    background: extractedData.useCurrentInvoiceBreakdown === true
+                                                    background: extractedData.useCurrentInvoiceBreakdown !== false
                                                         ? (isDarkMode ? "rgba(16,185,129,.12)" : "rgba(16,185,129,.08)")
                                                         : (isDarkMode ? "rgba(148,163,184,.10)" : "rgba(248,250,252,.9)"),
                                                 }}
@@ -1168,20 +1168,20 @@ export default function NewSimulationPage() {
                                                     control={
                                                         <Switch
                                                             size="small"
-                                                            checked={extractedData.useCurrentInvoiceBreakdown === true}
+                                                            checked={extractedData.useCurrentInvoiceBreakdown !== false}
                                                             onChange={(_, checked) => setExtractedData(prev => prev ? { ...prev, useCurrentInvoiceBreakdown: checked } : prev)}
                                                         />
                                                     }
-                                                    label={`Current-plan breakdown: ${extractedData.useCurrentInvoiceBreakdown === true ? "enabled" : "disabled"}`}
-                                                    sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: 12, fontWeight: 800, color: extractedData.useCurrentInvoiceBreakdown === true ? (isDarkMode ? "#d1fae5" : "#047857") : (isDarkMode ? "#cbd5e1" : "#475569") } }}
+                                                    label={`Current-plan breakdown: ${extractedData.useCurrentInvoiceBreakdown !== false ? "enabled" : "disabled"}`}
+                                                    sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: 12, fontWeight: 800, color: extractedData.useCurrentInvoiceBreakdown !== false ? (isDarkMode ? "#d1fae5" : "#047857") : (isDarkMode ? "#cbd5e1" : "#475569") } }}
                                                 />
                                                 <div style={{ fontSize: 11, color: isDarkMode ? "#94a3b8" : "#64748b", marginLeft: 43, lineHeight: 1.35 }}>
-                                                    {extractedData.useCurrentInvoiceBreakdown === true
+                                                    {extractedData.useCurrentInvoiceBreakdown !== false
                                                         ? "These invoice line amounts will be used in the Current Plan comparison."
                                                         : "Current Plan comparison will use the calculated fallback. Enable to validate and use invoice line amounts."}
                                                 </div>
                                             </div>
-                                            {simType === "ELECTRICITY" && extractedData.useCurrentInvoiceBreakdown === true && (
+                                            {simType === "ELECTRICITY" && extractedData.useCurrentInvoiceBreakdown !== false && (
                                                 <>
                                                     <div>
                                                         <div style={labelStyle}>Power cost</div>
@@ -1193,7 +1193,7 @@ export default function NewSimulationPage() {
                                                     </div>
                                                 </>
                                             )}
-                                            {simType === "GAS" && extractedData.useCurrentInvoiceBreakdown === true && (
+                                            {simType === "GAS" && extractedData.useCurrentInvoiceBreakdown !== false && (
                                                 <>
                                                     <div>
                                                         <div style={labelStyle}>Fixed term</div>
@@ -1303,7 +1303,7 @@ export default function NewSimulationPage() {
 
                                                 </div>
                                             )}
-                                            {simType === "ELECTRICITY" && extractedData.useCurrentInvoiceBreakdown === true && (
+                                            {simType === "ELECTRICITY" && extractedData.useCurrentInvoiceBreakdown !== false && (
                                                 <>
                                                     <div>
                                                         <div style={labelStyle2}>Electricity tax amount</div>
@@ -1315,7 +1315,7 @@ export default function NewSimulationPage() {
                                                     </div>
                                                 </>
                                             )}
-                                            {simType === "GAS" && extractedData.useCurrentInvoiceBreakdown === true && (
+                                            {simType === "GAS" && extractedData.useCurrentInvoiceBreakdown !== false && (
                                                 <>
                                                     <div>
                                                         <div style={labelStyle2}>Hydrocarbon tax amount</div>

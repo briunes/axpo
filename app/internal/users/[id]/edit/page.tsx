@@ -2,6 +2,7 @@
 
 import { Button, Box, Tabs, Tab } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
+import { Skeleton as BoneyardSkeleton } from "boneyard-js/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
@@ -20,8 +21,76 @@ import { getUser, type ListUsersResponse, type UserItem } from "../../../lib/int
 import { getSystemConfig } from "../../../lib/configApi";
 import { useActionButtons, useTopBarBreadcrumbs } from "../../../components/InternalWorkspace";
 
+const editUserSkeletonAgencies = [
+    {
+        id: "agency-skeleton-primary",
+        name: "AXPO Madrid",
+        isTlv: false,
+        isActive: true,
+        createdAt: "2026-01-10T09:00:00.000Z",
+        updatedAt: "2026-06-20T12:00:00.000Z",
+        createdByUser: { fullName: "System Admin" },
+        updatedByUser: { fullName: "System Admin" },
+    },
+] satisfies Parameters<typeof UserForm>[0]["agencies"];
+
+const editUserSkeletonSession = {
+    token: "boneyard-fixture-token",
+    user: {
+        id: "user-skeleton-admin",
+        agencyId: "agency-skeleton-primary",
+        role: "SYS_ADMIN",
+        fullName: "System Admin",
+        email: "admin@example.com",
+    },
+} satisfies Parameters<typeof UserForm>[0]["session"];
+
+const editUserSkeletonData = {
+    fullName: "Mariana Costa",
+    email: "mariana.costa@example.com",
+    maxActiveDevices: 3,
+    mobilePhone: "+34 600 123 456",
+    commercialPhone: "+34 910 222 333",
+    commercialEmail: "sales.madrid@example.com",
+    otherDetails: "Regional account owner with access to commercial simulations.",
+    role: "ADMIN",
+    agencyId: "agency-skeleton-primary",
+    isActive: true,
+} satisfies UserFormData;
+
+function EditUserFormSkeletonCapture({ tabs }: { tabs: number }) {
+    const { t } = useI18n();
+
+    return (
+        <Box className="crud-tab-panel">
+            <Box className="crud-tab-panel__tabs">
+                <Tabs value={0}>
+                    <Tab label={t("userFormPage", "tabDetails")} />
+                    <Tab label={t("userPreferences", "tabPreferences")} />
+                    {tabs > 2 && <Tab label={t("userFormPage", "tabSessions")} />}
+                </Tabs>
+            </Box>
+            <Box>
+                <UserForm
+                    session={editUserSkeletonSession}
+                    agencies={editUserSkeletonAgencies}
+                    data={editUserSkeletonData}
+                    onChange={() => undefined}
+                    onSubmit={(event) => event.preventDefault()}
+                    submitLabel={t("userFormPage", "submitLabel")}
+                    cancelLabel={t("actions", "cancel")}
+                    onCancel={() => undefined}
+                    mode="edit"
+                    originalRole="ADMIN"
+                />
+            </Box>
+        </Box>
+    );
+}
+
 export default function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const isBoneyardFixture = id === "boneyard-fixture";
     const router = useRouter();
     const [session] = useState(loadSession());
     const { showSuccess: alertSuccess, showError: alertError } = useAlerts();
@@ -32,7 +101,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const onActionButtons = useActionButtons();
 
     const usersActions = useUsers(session, 25, { queryEnabled: false });
-    const agenciesActions = useAgencies(session, 1000, { minimal: true });
+    const agenciesActions = useAgencies(session, 1000, { minimal: true, queryEnabled: !isBoneyardFixture });
     const { loading: loadingAgencies } = agenciesActions;
 
     const [user, setUser] = useState<UserItem | null>(null);
@@ -64,6 +133,8 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const canManageUserSessions = session ? canDo(session.user.role, "users.sessions.manage") : false;
 
     useEffect(() => {
+        if (isBoneyardFixture) return;
+
         getSystemConfig()
             .then((config) => {
                 setDefaultMaxActiveDevices(config.defaultMaxActiveDevices ?? 3);
@@ -71,7 +142,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
             .catch(() => {
                 // keep fallback
             });
-    }, []);
+    }, [isBoneyardFixture]);
 
     useEffect(() => {
         if (!canManageUserSessions && activeTab === 2) {
@@ -96,7 +167,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     }, [id, queryClient, session]);
 
     useEffect(() => {
-        if (!session) return;
+        if (!session || isBoneyardFixture) return;
 
         const applyUser = (foundUser: UserItem) => {
             setUser(foundUser);
@@ -125,7 +196,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                 alertError(t("userFormPage", "notFound"));
                 router.push("/internal/users");
             });
-    }, [alertError, cachedUser, defaultMaxActiveDevices, id, router, session, t]);
+    }, [alertError, cachedUser, defaultMaxActiveDevices, id, isBoneyardFixture, router, session, t]);
 
     useEffect(() => {
         if (usersActions.successText) {
@@ -262,7 +333,10 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
         usersActions.busyAction,
     ]);
 
-    if (!session || !user || false ) {
+    if (!session || !user ) {
+        const skeletonTabs = canManageUserSessions ? 3 : 2;
+        const skeletonFallback = <FormSkeleton variant="user" tabs={skeletonTabs} />;
+
         return (
             <CrudPageLayout
                 title={t("userFormPage", "editTitle")}
@@ -270,7 +344,17 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                 maxWidth={undefined}
                 hideHeader
             >
-                <FormSkeleton variant="user" tabs={canManageUserSessions ? 3 : 2} />
+                <BoneyardSkeleton
+                    name="edit-user-form"
+                    loading
+                    fallback={skeletonFallback}
+                    fixture={<EditUserFormSkeletonCapture tabs={skeletonTabs} />}
+                    select="viewport"
+                    animate="shimmer"
+                    transition
+                >
+                    <EditUserFormSkeletonCapture tabs={skeletonTabs} />
+                </BoneyardSkeleton>
             </CrudPageLayout>
         );
     }

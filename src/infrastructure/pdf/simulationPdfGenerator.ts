@@ -195,7 +195,7 @@ export function extractTemplateVariables(
   const currentTaxCost = currentTotal * (ieR / ((1 + ieR) * (1 + ivaR)));
   const currentVat = (currentTotal - currentTaxCost - currentRentalCost) * ivaR;
   const useCurrentInvoiceBreakdown =
-    (electricity?.extras as any)?.useCurrentInvoiceBreakdown === true;
+    (electricity?.extras as any)?.useCurrentInvoiceBreakdown !== false;
   const explicitCurrentTax = useCurrentInvoiceBreakdown
     ? (electricity?.extras as any)?.impuestoElectricoActual
     : undefined;

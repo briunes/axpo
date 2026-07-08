@@ -23,6 +23,24 @@ import { Toast, useToast } from "./ui";
 export type { AppSection };
 
 const isElevatedRole = (role: string) => role === "ADMIN" || role === "SYS_ADMIN";
+const isBoneyardBuildMode = () =>
+  typeof window !== "undefined" &&
+  ((window as typeof window & { __BONEYARD_BUILD?: boolean }).__BONEYARD_BUILD === true ||
+    (
+      ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) &&
+      window.location.pathname.includes("boneyard-fixture")
+    ));
+
+const createBoneyardSession = (): SessionState => ({
+  token: "boneyard-fixture-token",
+  user: {
+    id: "user-skeleton-admin",
+    agencyId: "agency-skeleton-primary",
+    role: "SYS_ADMIN",
+    fullName: "System Admin",
+    email: "admin@example.com",
+  },
+});
 
 // Context for action buttons
 const ActionButtonsContext = createContext<((buttons: React.ReactNode) => void) | null>(null);
@@ -81,7 +99,11 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
 
   useEffect(() => {
     setMounted(true);
-    const s = loadSession();
+    const s = loadSession() ?? (isBoneyardBuildMode() ? createBoneyardSession() : null);
+    if (s && isBoneyardBuildMode()) {
+      localStorage.setItem("axpo.internal.auth.token", s.token);
+      localStorage.setItem("axpo.internal.auth.user", JSON.stringify(s.user));
+    }
     setSession(s);
     setSessionChecked(true);
     if (!s) router.replace("/internal/login");
