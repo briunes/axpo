@@ -1681,6 +1681,8 @@ export const translations = {
         "Current Plan comparison will use the calculated fallback. Enable to validate and use invoice line amounts.",
       currentPlanBreakdownMismatchWarning:
         "The breakdown does not match the total of the invoice. Difference: {amount}. Please pay attention to these inputs.",
+      currentOtherChargesIncludesReactiveHint:
+        "Includes reactive energy when present on the invoice.",
       currentPowerCostLabel: "Current power cost",
       currentEnergyCostLabel: "Current energy cost",
       currentElectricityTaxLabel: "Current electricity tax",
@@ -4535,6 +4537,8 @@ export const translations = {
         "La comparación del Plan Actual usará el cálculo estimado. Actívalo para validar y usar los importes reales de la factura.",
       currentPlanBreakdownMismatchWarning:
         "El desglose no coincide con el total de la factura. Diferencia: {amount}. Presta atención a estos campos.",
+      currentOtherChargesIncludesReactiveHint:
+        "Incluye energía reactiva cuando exista en la factura.",
       currentPowerCostLabel: "Coste actual de potencia",
       currentEnergyCostLabel: "Coste actual de energía",
       currentElectricityTaxLabel: "Impuesto eléctrico actual",
@@ -6076,6 +6080,8 @@ export const translations = {
         "La comparaison du Plan Actuel utilisera l’estimation calculée. Activez-la pour valider et utiliser les montants de facture.",
       currentPlanBreakdownMismatchWarning:
         "Le détail ne correspond pas au total de la facture. Différence : {amount}. Veuillez vérifier ces champs.",
+      currentOtherChargesIncludesReactiveHint:
+        "Inclut l’énergie réactive lorsqu’elle figure sur la facture.",
       currentPowerCostLabel: "Coût actuel de puissance",
       currentEnergyCostLabel: "Coût actuel d'énergie",
       currentElectricityTaxLabel: "Taxe électricité actuelle",
@@ -8976,6 +8982,8 @@ export const translations = {
         "A comparação do Plano Atual usará o cálculo estimado. Ative para validar e usar os valores da fatura.",
       currentPlanBreakdownMismatchWarning:
         "O detalhe não corresponde ao total da fatura. Diferença: {amount}. Preste atenção a estes campos.",
+      currentOtherChargesIncludesReactiveHint:
+        "Inclui energia reativa quando existir na fatura.",
       currentPowerCostLabel: "Custo atual de potência",
       currentEnergyCostLabel: "Custo atual de energia",
       currentElectricityTaxLabel: "Imposto elétrico atual",
