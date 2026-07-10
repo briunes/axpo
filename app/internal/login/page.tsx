@@ -332,6 +332,8 @@ export default function LoginPage() {
                   size="small"
                 />
 
+
+
                 <FormInput
                   id="login-password"
                   label={t("login", "password")}
