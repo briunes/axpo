@@ -286,21 +286,21 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
 
   const builtInViews = useMemo<Array<{ id: string; name: string; view: ClientsViewState }>>(() => [
     {
-      id: "name",
-      name: "A-Z",
+      id: "my-agency-clients",
+      name: t("viewPresets", "myAgencyClients"),
+      view: { agencyId: session.user.agencyId, showArchived: false, sortColumn: CLIENT_DEFAULT_SORT_COLUMN, sortDir: CLIENT_DEFAULT_SORT_DIR },
+    },
+    {
+      id: "all-clients",
+      name: t("viewPresets", "allClients"),
       view: { agencyId: "", showArchived: false, sortColumn: CLIENT_DEFAULT_SORT_COLUMN, sortDir: CLIENT_DEFAULT_SORT_DIR },
     },
     {
       id: "recent",
-      name: "Recent",
+      name: t("viewPresets", "recent"),
       view: { agencyId: "", showArchived: false, sortColumn: "createdAt", sortDir: "desc" },
     },
-    {
-      id: "archived",
-      name: t("actions", "showArchived"),
-      view: { agencyId: "", showArchived: true, sortColumn: CLIENT_DEFAULT_SORT_COLUMN, sortDir: CLIENT_DEFAULT_SORT_DIR },
-    },
-  ], [t]);
+  ], [session.user.agencyId, t]);
 
   const { savedViews, viewPresets, activeViewPresetId, saveCurrentView, deleteSavedView } =
     useTableViews<ClientsViewState>({ storageKey: CLIENT_VIEWS_STORAGE_KEY, currentView, presets: builtInViews });
@@ -652,7 +652,8 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
             key={i}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
-            sx={{color: item.danger ? "error.main" : "text.primary",
+            sx={{
+              color: item.danger ? "error.main" : "text.primary",
               py: 0.75,
               gap: 1,
             }}

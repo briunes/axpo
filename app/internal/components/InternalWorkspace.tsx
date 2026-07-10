@@ -375,6 +375,8 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
             onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
             actionButtons={null}
             onCommandOpen={() => setCommandOpen(true)}
+            session={session}
+            onLogout={handleLogout}
           />
           <main className="app-content">
             <ForbiddenState section={section} />
@@ -411,51 +413,53 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
                 />
               )}
 
-            <aside className={`app-sidebar${collapsed ? " collapsed" : ""}${mobileMenuOpen ? " mobile-open" : ""}`}>
-              <SidebarHeader
-                collapsed={collapsed}
-                onToggle={handleToggle}
-                mobileOpen={mobileMenuOpen}
-                onMobileClose={() => setMobileMenuOpen(false)}
-              />
-              <SectionMenu
-                section={section}
-                canSeeUsersSection={canDo(role, "section.users")}
-                canSeeAgenciesSection={canDo(role, "section.agencies")}
-                canSeeClientsSection={canDo(role, "section.clients")}
-                canSeeBaseValuesSection={canDo(role, "section.base-values")}
-                canSeeLogsSection={canSeeAnyLogs}
-                canViewAnalytics={canDo(role, "section.analytics")}
-                canSeeConfigurationsSection={canDo(role, "section.configurations")}
-                onNavigate={handleNavigate}
-                onLogout={handleLogout}
-                session={session}
-                collapsed={collapsed}
-                notificationBell={<NotificationBell token={session.token} role={role} surface="sidebar" collapsed={collapsed} />}
-              />
-            </aside>
+              <aside className={`app-sidebar${collapsed ? " collapsed" : ""}${mobileMenuOpen ? " mobile-open" : ""}`}>
+                <SidebarHeader
+                  collapsed={collapsed}
+                  onToggle={handleToggle}
+                  mobileOpen={mobileMenuOpen}
+                  onMobileClose={() => setMobileMenuOpen(false)}
+                />
+                <SectionMenu
+                  section={section}
+                  canSeeUsersSection={canDo(role, "section.users")}
+                  canSeeAgenciesSection={canDo(role, "section.agencies")}
+                  canSeeClientsSection={canDo(role, "section.clients")}
+                  canSeeBaseValuesSection={canDo(role, "section.base-values")}
+                  canSeeLogsSection={canSeeAnyLogs}
+                  canViewAnalytics={canDo(role, "section.analytics")}
+                  canSeeConfigurationsSection={canDo(role, "section.configurations")}
+                  onNavigate={handleNavigate}
+                  onLogout={handleLogout}
+                  session={session}
+                  collapsed={collapsed}
+                  notificationBell={<NotificationBell token={session.token} role={role} surface="sidebar" collapsed={collapsed} />}
+                />
+              </aside>
 
-            <div className="app-main">
-              <TopBar
-                section={section}
-                onRefresh={() => refreshHandler?.()}
-                onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
-                actionButtons={actionButtons}
-                breadcrumbs={breadcrumbs}
-                onCommandOpen={() => setCommandOpen(true)}
+              <div className="app-main">
+                <TopBar
+                  section={section}
+                  onRefresh={() => refreshHandler?.()}
+                  onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
+                  actionButtons={actionButtons}
+                  breadcrumbs={breadcrumbs}
+                  onCommandOpen={() => setCommandOpen(true)}
+                  session={session}
+                  onLogout={handleLogout}
+                />
+                <main className="app-content" style={{ marginBottom: '2.4rem' }}>
+                  {children}
+                </main>
+              </div>
+              <CommandPalette
+                open={commandOpen}
+                onClose={() => setCommandOpen(false)}
+                availableSections={availableSections}
+                token={session.token}
               />
-              <main className="app-content" style={{ marginBottom: '2.4rem' }}>
-                {children}
-              </main>
             </div>
-            <CommandPalette
-              open={commandOpen}
-              onClose={() => setCommandOpen(false)}
-              availableSections={availableSections}
-              token={session.token}
-            />
-          </div>
-        </BreadcrumbsContext.Provider>
+          </BreadcrumbsContext.Provider>
         </ActionButtonsContext.Provider>
       </RefreshContext.Provider>
     </PermissionsContext.Provider>

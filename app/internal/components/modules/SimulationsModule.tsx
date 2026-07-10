@@ -475,47 +475,113 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     sortDir,
   ]);
 
-  const builtInViews = useMemo<Array<{ id: string; name: string; view: SimulationViewState }>>((): Array<{ id: string; name: string; view: SimulationViewState }> => [
-    {
-      id: "recent",
-      name: t("simulationsModule", "presetRecent"),
-      view: { search: "", ownerUserId: "", clientId: "", cups: "", status: "", type: "", createdFrom: "", createdTo: "", expiresFrom: "", expiresTo: "", sortColumn: "updatedAt", sortDir: "desc", showArchived: false },
-    },
-    {
-      id: "my-drafts",
-      name: t("simulationsModule", "presetMyDrafts"),
-      view: { search: "", ownerUserId: session.user.id, clientId: "", cups: "", status: "DRAFT", type: "", createdFrom: "", createdTo: "", expiresFrom: "", expiresTo: "", showArchived: false, sortColumn: "updatedAt", sortDir: "desc" },
-    },
-    {
-      id: "shared-with-me",
-      name: t("simulationsModule", "presetSharedWithMe"),
-      view: { search: "", ownerUserId: session.user.role === "COMMERCIAL" ? session.user.id : "", clientId: "", cups: "", status: "SHARED", type: "", createdFrom: "", createdTo: "", expiresFrom: "", expiresTo: "", showArchived: false, sortColumn: "updatedAt", sortDir: "desc" },
-    },
-    {
-      id: "expiring-soon",
-      name: t("simulationsModule", "presetExpiringSoon"),
-      view: {
-        search: "",
-        ownerUserId: "",
-        clientId: "",
-        cups: "",
-        status: "",
-        type: "",
-        createdFrom: "",
-        createdTo: "",
-        expiresFrom: isoDate(new Date()),
-        expiresTo: isoDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
-        showArchived: false,
-        sortColumn: "expiresAt",
-        sortDir: "asc",
+  const builtInViews = useMemo<Array<{ id: string; name: string; view: SimulationViewState }>>((): Array<{ id: string; name: string; view: SimulationViewState }> => {
+    const now = new Date();
+    const today = isoDate(now);
+    const startOfWeek = new Date(now);
+    const dayOffset = (now.getDay() + 6) % 7;
+    startOfWeek.setDate(now.getDate() - dayOffset);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    return [
+      {
+        id: "this-week",
+        name: t("viewPresets", "thisWeek"),
+        view: {
+          search: "",
+          ownerUserId: "",
+          clientId: "",
+          cups: "",
+          status: "",
+          type: "",
+          createdFrom: isoDate(startOfWeek),
+          createdTo: today,
+          expiresFrom: "",
+          expiresTo: "",
+          sortColumn: "createdAt",
+          sortDir: "desc",
+          showArchived: false,
+        },
       },
-    },
-    {
-      id: "archived",
-      name: t("simulationsModule", "presetArchived"),
-      view: { search: "", ownerUserId: "", clientId: "", cups: "", status: "", type: "", createdFrom: "", createdTo: "", expiresFrom: "", expiresTo: "", showArchived: true, sortColumn: "updatedAt", sortDir: "desc" },
-    },
-  ], [session.user.id, session.user.role, t]);
+      {
+        id: "this-month",
+        name: t("viewPresets", "thisMonth"),
+        view: {
+          search: "",
+          ownerUserId: "",
+          clientId: "",
+          cups: "",
+          status: "",
+          type: "",
+          createdFrom: isoDate(startOfMonth),
+          createdTo: today,
+          expiresFrom: "",
+          expiresTo: "",
+          sortColumn: "createdAt",
+          sortDir: "desc",
+          showArchived: false,
+        },
+      },
+      {
+        id: "this-year",
+        name: t("viewPresets", "thisYear"),
+        view: {
+          search: "",
+          ownerUserId: "",
+          clientId: "",
+          cups: "",
+          status: "",
+          type: "",
+          createdFrom: isoDate(startOfYear),
+          createdTo: today,
+          expiresFrom: "",
+          expiresTo: "",
+          sortColumn: "createdAt",
+          sortDir: "desc",
+          showArchived: false,
+        },
+      },
+      {
+        id: "my-simulations",
+        name: t("viewPresets", "mySimulations"),
+        view: {
+          search: "",
+          ownerUserId: session.user.id,
+          clientId: "",
+          cups: "",
+          status: "",
+          type: "",
+          createdFrom: "",
+          createdTo: "",
+          expiresFrom: "",
+          expiresTo: "",
+          showArchived: false,
+          sortColumn: "updatedAt",
+          sortDir: "desc",
+        },
+      },
+      {
+        id: "about-to-expire",
+        name: t("viewPresets", "aboutToExpire"),
+        view: {
+          search: "",
+          ownerUserId: "",
+          clientId: "",
+          cups: "",
+          status: "",
+          type: "",
+          createdFrom: "",
+          createdTo: "",
+          expiresFrom: isoDate(new Date()),
+          expiresTo: isoDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+          showArchived: false,
+          sortColumn: "expiresAt",
+          sortDir: "asc",
+        },
+      },
+    ];
+  }, [session.user.id, t]);
 
   const viewPresets = useMemo(
     () => [
@@ -1445,7 +1511,8 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             key={i}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
-            sx={{color: item.danger ? "error.main" : item.warning ? "warning.main" : "text.primary",
+            sx={{
+              color: item.danger ? "error.main" : item.warning ? "warning.main" : "text.primary",
               py: 0.75,
               gap: 1,
             }}

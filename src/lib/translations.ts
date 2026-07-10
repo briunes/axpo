@@ -199,6 +199,7 @@ export const translations = {
       users: "Search users…",
       agencies: "Search agencies…",
       clients: "Search clients…",
+      emailLogs: "Search email logs…",
       emptySimulations: "No simulations found.",
       emptyUsers: "No users found.",
       emptyAgencies: "No agencies found.",
@@ -245,6 +246,18 @@ export const translations = {
       clear: "Clear",
       from: "from",
       to: "to",
+    },
+    viewPresets: {
+      thisWeek: "This week",
+      thisMonth: "This month",
+      thisYear: "This year",
+      mySimulations: "My simulations",
+      aboutToExpire: "About to expire",
+      myAgencyClients: "My agency clients",
+      myAgencyUsers: "My agency users",
+      allUsers: "All users",
+      allClients: "All clients",
+      recent: "Recent",
     },
     simulationsModule: {
       subtitle: "Manage all simulations, share them, and monitor access.",
@@ -1176,6 +1189,7 @@ export const translations = {
       sectionsLabel: "Internal app sections",
       languageSelector: "Language selector",
       myProfile: "My profile",
+      whatsNew: "What's new",
       breadcrumb: "Breadcrumb",
     },
     auth: {
@@ -3084,6 +3098,7 @@ export const translations = {
       users: "Buscar usuarios…",
       agencies: "Buscar agencias…",
       clients: "Buscar clientes…",
+      emailLogs: "Buscar registros de correos…",
       emptySimulations: "No se encontraron simulaciones.",
       emptyUsers: "No se encontraron usuarios.",
       emptyAgencies: "No se encontraron agencias.",
@@ -3130,6 +3145,18 @@ export const translations = {
       clear: "Limpiar",
       from: "desde",
       to: "hasta",
+    },
+    viewPresets: {
+      thisWeek: "Esta semana",
+      thisMonth: "Este mes",
+      thisYear: "Este año",
+      mySimulations: "Mis simulaciones",
+      aboutToExpire: "Próximas a caducar",
+      myAgencyClients: "Clientes de mi agencia",
+      myAgencyUsers: "Usuarios de mi agencia",
+      allUsers: "Todos los usuarios",
+      allClients: "Todos los clientes",
+      recent: "Recientes",
     },
     simulationsModule: {
       subtitle:
@@ -4077,6 +4104,7 @@ export const translations = {
       sectionsLabel: "Secciones de la aplicación interna",
       languageSelector: "Selector de idioma",
       myProfile: "Mi perfil",
+      whatsNew: "Novedades",
       breadcrumb: "Ruta de navegación",
     },
     auth: {
@@ -4681,7 +4709,8 @@ export const translations = {
       sectionGasPersonalizadaIndex: "Personalizada Indexada (personalizada)",
       gasPersonalizadaIndexDescription:
         "Oferta indexada personalizada de gas — genera la fila 'Personalizada Index' en los resultados. Introduce el margen de energía (€/kWh) sobre MIBGAS. Deja en 0 para no incluir.",
-      gasPersonalizadaIndexMargenLabel: "Precio Indexado Oferta Personalizada (€/kWh)",
+      gasPersonalizadaIndexMargenLabel:
+        "Precio Indexado Oferta Personalizada (€/kWh)",
       gasPersonalizadaIndexMargenHint:
         "Margen plano sobre el precio de referencia MIBGAS — €/kWh (Precio Término Energía oferta)",
       // Gas contract section
@@ -6583,6 +6612,7 @@ export const translations = {
       users: "Rechercher des utilisateurs…",
       agencies: "Agences de recherche…",
       clients: "Rechercher des clients…",
+      emailLogs: "Rechercher des journaux d'e-mail…",
       emptySimulations: "Aucune simulation trouvée.",
       emptyUsers: "Aucun utilisateur trouvé.",
       emptyAgencies: "Aucune agence trouvée.",
@@ -6629,6 +6659,18 @@ export const translations = {
       clear: "Effacer",
       from: "de",
       to: "à",
+    },
+    viewPresets: {
+      thisWeek: "Cette semaine",
+      thisMonth: "Ce mois-ci",
+      thisYear: "Cette année",
+      mySimulations: "Mes simulations",
+      aboutToExpire: "Bientôt expirées",
+      myAgencyClients: "Clients de mon agence",
+      myAgencyUsers: "Utilisateurs de mon agence",
+      allUsers: "Tous les utilisateurs",
+      allClients: "Tous les clients",
+      recent: "Récents",
     },
     simulationsModule: {
       subtitle:
@@ -7541,6 +7583,7 @@ export const translations = {
       sectionsLabel: "Sections de l'application interne",
       languageSelector: "Sélecteur de langue",
       myProfile: "Mon profil",
+      whatsNew: "Nouveautés",
       breadcrumb: "Fil d'Ariane",
     },
     auth: {
@@ -8119,7 +8162,8 @@ export const translations = {
       fieldAppChangelogNotesPlaceholder:
         "Filtres du tableau de bord améliorés\nValidation des factures ajoutée\nTotaux d'export PDF corrigés",
       appChangelogHistory: "Historique des versions",
-      appChangelogEmpty: "Aucun historique de version n'a encore été enregistré.",
+      appChangelogEmpty:
+        "Aucun historique de version n'a encore été enregistré.",
       fieldMaintenanceMode: "Mode maintenance",
       fieldMaintenanceModeDesc:
         "Lorsqu'il est activé, tous les visiteurs sont redirigés vers une page de maintenance.",
@@ -9530,6 +9574,7 @@ export const translations = {
       users: "Pesquisar usuários…",
       agencies: "Agências de pesquisa…",
       clients: "Pesquisar clientes…",
+      emailLogs: "Pesquisar registros de e-mail…",
       emptySimulations: "Nenhuma simulação encontrada.",
       emptyUsers: "Nenhum usuário encontrado.",
       emptyAgencies: "Nenhuma agência encontrada.",
@@ -9576,6 +9621,18 @@ export const translations = {
       clear: "Limpar",
       from: "de",
       to: "para",
+    },
+    viewPresets: {
+      thisWeek: "Esta semana",
+      thisMonth: "Este mês",
+      thisYear: "Este ano",
+      mySimulations: "Minhas simulações",
+      aboutToExpire: "Perto de expirar",
+      myAgencyClients: "Clientes da minha agência",
+      myAgencyUsers: "Usuários da minha agência",
+      allUsers: "Todos os usuários",
+      allClients: "Todos os clientes",
+      recent: "Recentes",
     },
     simulationsModule: {
       subtitle:
@@ -10476,6 +10533,7 @@ export const translations = {
       sectionsLabel: "Seções da aplicação interna",
       languageSelector: "Seletor de idioma",
       myProfile: "Meu perfil",
+      whatsNew: "Novidades",
       breadcrumb: "Trilha de navegação",
     },
     auth: {

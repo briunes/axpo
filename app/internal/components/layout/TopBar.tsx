@@ -9,7 +9,10 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import SearchIcon from "@mui/icons-material/Search";
 import { useRouter } from "next/navigation";
 import type { TopBarBreadcrumb } from "../InternalWorkspace";
+import type { SessionState } from "../../lib/authSession";
 import { getCommandShortcutLabel } from "./shortcutLabel";
+import { NotificationBell } from "./NotificationBell";
+import { TopBarUserMenu } from "./TopBarUserMenu";
 
 const sectionNavKey: Record<AppSection, string> = {
   simulations: "simulations",
@@ -30,6 +33,8 @@ export function TopBar({
   actionButtons,
   breadcrumbs,
   onCommandOpen,
+  session,
+  onLogout,
 }: {
   section: AppSection | null;
   onRefresh: () => void;
@@ -37,6 +42,8 @@ export function TopBar({
   actionButtons?: React.ReactNode;
   breadcrumbs?: TopBarBreadcrumb[] | null;
   onCommandOpen?: () => void;
+  session?: SessionState | null;
+  onLogout?: () => void;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -45,9 +52,9 @@ export function TopBar({
   const sectionLabel = section ? t("nav", sectionNavKey[section]) : "";
   const pathItems: TopBarBreadcrumb[] = breadcrumbs?.length
     ? [
-        ...(section ? [{ label: sectionLabel, href: sectionRoute[section] }] : []),
-        ...breadcrumbs,
-      ]
+      ...(section ? [{ label: sectionLabel, href: sectionRoute[section] }] : []),
+      ...breadcrumbs,
+    ]
     : [];
 
   const handleNavigate = (href?: string) => {
@@ -85,6 +92,7 @@ export function TopBar({
           <nav className="topbar-breadcrumbs" aria-label={t("nav", "breadcrumb")}>
             {pathItems.map((item, index) => {
               const isLast = index === pathItems.length - 1;
+              const currentWeight = isLast && !section && pathItems.length === 1 ? 500 : isLast ? "inherit" : 500;
               return (
                 <span className="topbar-breadcrumb-item" key={index}>
                   {index > 0 && <ChevronRightIcon className="topbar-breadcrumb-separator" fontSize="small" />}
@@ -96,7 +104,7 @@ export function TopBar({
                     aria-current={isLast ? "page" : undefined}
                     sx={{ color: !isLast ? "primary.main" : 'inherit' }}
                   >
-                    <Typography component="span" variant="body2" sx={{ fontWeight: isLast ? 'inherit' : 500 }}>
+                    <Typography component="span" variant="body2" sx={{ fontWeight: currentWeight }}>
                       {item.label}
                     </Typography>
                   </Box>
@@ -111,7 +119,13 @@ export function TopBar({
         ) : null}
       </div>
       <div className="topbar-right">
-        {actionButtons}
+        <div className="topbar-actions">{actionButtons}</div>
+        {session && onLogout ? (
+          <div className="topbar-user-tools">
+            <NotificationBell token={session.token} role={session.user.role} surface="topbar" />
+            <TopBarUserMenu session={session} onLogout={onLogout} />
+          </div>
+        ) : null}
       </div>
     </div>
   );

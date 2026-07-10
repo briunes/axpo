@@ -155,8 +155,13 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
 
   const builtInViews = useMemo<Array<{ id: string; name: string; view: UsersViewState }>>(() => [
     {
-      id: "recent",
-      name: "Recent",
+      id: "my-agency-users",
+      name: t("viewPresets", "myAgencyUsers"),
+      view: { roleFilter: "", agencyFilter: session.user.agencyId, showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
+    },
+    {
+      id: "all-users",
+      name: t("viewPresets", "allUsers"),
       view: { roleFilter: "", agencyFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
     },
     {
@@ -169,12 +174,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       name: t("userFormPage", "roleAdmin"),
       view: { roleFilter: "ADMIN", agencyFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
     },
-    {
-      id: "archived",
-      name: t("actions", "showArchived"),
-      view: { roleFilter: "", agencyFilter: "", showArchived: true, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
-    },
-  ], [t]);
+  ], [session.user.agencyId, t]);
 
   const {
     savedViews,
@@ -802,7 +802,8 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             key={i}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
-            sx={{color: item.danger ? "error.main" : "text.primary",
+            sx={{
+              color: item.danger ? "error.main" : "text.primary",
               py: 0.75,
               gap: 1,
             }}

@@ -350,11 +350,6 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       name: "TLV",
       view: { tlvFilter: "tlv", statusFilter: "", showArchived: false, sortColumn: AGENCY_DEFAULT_SORT_COLUMN, sortDir: AGENCY_DEFAULT_SORT_DIR },
     },
-    {
-      id: "archived",
-      name: t("actions", "showArchived"),
-      view: { tlvFilter: "", statusFilter: "", showArchived: true, sortColumn: AGENCY_DEFAULT_SORT_COLUMN, sortDir: AGENCY_DEFAULT_SORT_DIR },
-    },
   ], [t]);
 
   const { savedViews, viewPresets, activeViewPresetId, saveCurrentView, deleteSavedView } =
@@ -706,7 +701,8 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
             key={i}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
-            sx={{color: item.danger ? "error.main" : "text.primary",
+            sx={{
+              color: item.danger ? "error.main" : "text.primary",
               py: 0.75,
               gap: 1,
             }}

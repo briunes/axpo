@@ -84,6 +84,11 @@ const EMAIL_TRIGGER_LABELS = Object.fromEntries(
     EMAIL_TRIGGER_OPTIONS.map((option) => [option.value, option.label]),
 ) as Record<string, string>;
 
+function toDateOnly(date: Date | null): string {
+    if (!date) return "";
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function TriggerBadge({ trigger }: { trigger?: string }) {
     if (!trigger) return <Typography component="span" variant="body2" sx={{ color: "#94a3b8" }}>—</Typography>;
 
@@ -138,11 +143,6 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
         } catch { return dateStr; }
     }, [preferences.dateFormat]);
 
-    const toDateOnly = (d: Date | null) => {
-        if (!d) return "";
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    };
-
     const handleSearch = () => {
         setStatusFilter(localStatus);
         setTriggerFilter(localTrigger);
@@ -179,13 +179,45 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
         setPage(1);
     }, []);
 
-    const builtInViews = useMemo<Array<{ id: string; name: string; view: EmailLogsViewState }>>(() => [
-        { id: "recent", name: t("simulationsModule", "presetRecent"), view: { status: "all", trigger: "all", dateFrom: "", dateTo: "" } },
-        { id: "sent", name: t("logs", "sent"), view: { status: "sent", trigger: "all", dateFrom: "", dateTo: "" } },
-        { id: "failed", name: t("logs", "failed"), view: { status: "failed", trigger: "all", dateFrom: "", dateTo: "" } },
-        { id: "simulation-share", name: EMAIL_TRIGGER_LABELS["simulation-share"], view: { status: "all", trigger: "simulation-share", dateFrom: "", dateTo: "" } },
-        { id: "password-reset", name: EMAIL_TRIGGER_LABELS["password-reset-request"], view: { status: "all", trigger: "password-reset-request", dateFrom: "", dateTo: "" } },
-    ], [t]);
+    const builtInViews = useMemo<Array<{ id: string; name: string; view: EmailLogsViewState }>>(() => {
+        const now = new Date();
+        const today = toDateOnly(now);
+        const startOfWeek = new Date(now);
+        const dayOffset = (now.getDay() + 6) % 7;
+        startOfWeek.setDate(now.getDate() - dayOffset);
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+        return [
+            {
+                id: "this-week",
+                name: t("viewPresets", "thisWeek"),
+                view: { status: "all", trigger: "all", dateFrom: toDateOnly(startOfWeek), dateTo: today },
+            },
+            {
+                id: "this-month",
+                name: t("viewPresets", "thisMonth"),
+                view: {
+                    status: "all",
+                    trigger: "all",
+                    dateFrom: toDateOnly(startOfMonth),
+                    dateTo: today,
+                },
+            },
+            {
+                id: "this-year",
+                name: t("viewPresets", "thisYear"),
+                view: {
+                    status: "all",
+                    trigger: "all",
+                    dateFrom: toDateOnly(startOfYear),
+                    dateTo: today,
+                },
+            },
+            { id: "sent", name: t("logs", "sent"), view: { status: "sent", trigger: "all", dateFrom: "", dateTo: "" } },
+            { id: "failed", name: t("logs", "failed"), view: { status: "failed", trigger: "all", dateFrom: "", dateTo: "" } },
+        ];
+    }, [t]);
 
     const {
         activeViewPresetId,

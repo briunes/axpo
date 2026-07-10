@@ -831,6 +831,7 @@ textarea {
 
 /* ─── Top bar ─────────────────────────────────────────────── */
 .app-topbar {
+  height: 56px;
   min-height: 56px;
   padding: 8px 28px;
   display: flex;
@@ -929,7 +930,129 @@ textarea {
   justify-content: flex-end;
   min-width: 0;
   flex: 1 1 auto;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+
+.topbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.topbar-user-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+.topbar-user-trigger {
+  min-width: 0;
+  min-height: 32px;
+  border: 1px solid var(--scheme-neutral-900);
+  border-radius: 10px;
+  background: var(--scheme-neutral-1200);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--scheme-neutral-300);
+  transition: background 150ms, border-color 150ms, box-shadow 150ms;
+  padding: 3px 8px 3px 4px;
+}
+
+.topbar-user-trigger.MuiButton-root {
+  min-width: 0;
+  min-height: 32px;
+  text-transform: none;
+  font-weight: 500;
+  line-height: 1;
+  padding: 3px 8px 3px 4px;
+}
+
+.topbar-user-trigger:hover {
+  background: var(--scheme-neutral-1000);
+  border-color: var(--scheme-neutral-800);
+  box-shadow: var(--scheme-shadow-soft);
+}
+
+.topbar-user-avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+
+.topbar-user-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.topbar-user-name {
+  color: var(--scheme-neutral-200);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.15;
+  max-width: 170px;
+}
+
+.topbar-user-role {
+  color: var(--scheme-neutral-500);
+  white-space: nowrap;
+  line-height: 1.1;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-user-chevron {
+  color: var(--scheme-neutral-500);
+  flex-shrink: 0;
+}
+
+.topbar-user-menu {
+  min-width: 250px;
+  border: 1px solid var(--scheme-neutral-900);
+  background: var(--scheme-neutral-1200);
+}
+
+.topbar-user-menu .MuiMenuItem-root {
+  min-height: 38px;
+  font-size: 13px;
+}
+
+.topbar-user-menu .MuiListItemIcon-root {
+  min-width: 30px;
+  color: var(--scheme-neutral-400);
+}
+
+.topbar-user-submenu {
+  min-width: 230px;
+  border: 1px solid var(--scheme-neutral-900);
+  background: var(--scheme-neutral-1200);
+}
+
+.topbar-user-submenu .MuiMenuItem-root {
+  min-height: 36px;
+  font-size: 13px;
+}
+
+.topbar-user-submenu .MuiListItemIcon-root {
+  min-width: 30px;
+  color: var(--scheme-neutral-400);
+}
+
+.topbar-user-menu-logout {
+  color: var(--scheme-brand-600);
+}
+
+.topbar-user-menu-logout .MuiListItemIcon-root {
+  color: var(--scheme-brand-600);
 }
 
 .topbar-action-wrap {
@@ -1246,7 +1369,16 @@ textarea {
   .topbar-right {
     flex: 1 1 100%;
     justify-content: flex-start;
+    flex-wrap: wrap;
     order: 2;
+  }
+
+  .topbar-actions {
+    flex-wrap: wrap;
+  }
+
+  .topbar-user-tools {
+    margin-left: 0;
   }
 
   .simulation-topbar-base-values {
@@ -1327,6 +1459,16 @@ textarea {
     flex: 1 1 auto;
     justify-content: flex-end;
     order: 0;
+  }
+
+  .topbar-user-trigger {
+    padding: 3px;
+    border-radius: 8px;
+  }
+
+  .topbar-user-meta,
+  .topbar-user-chevron {
+    display: none;
   }
 
   .topbar-action--compact.MuiButton-root {

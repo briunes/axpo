@@ -171,7 +171,7 @@ export function NotificationBell({
         }}
       >
         <Badge color="error" badgeContent={unreadCount} max={9}>
-          <NotificationsIcon color="primary" sx={{ fontSize: 19 }} />
+          <NotificationsIcon color="primary" />
         </Badge>
       </IconButton>
 

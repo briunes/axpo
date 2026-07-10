@@ -206,11 +206,6 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
       name: t("baseValuesModule", "productionFilterOn"),
       view: { scopeFilter: "", statusFilter: "", productionFilter: "production", showArchived: false, sortColumn: BASE_VALUE_DEFAULT_SORT_COLUMN, sortDir: BASE_VALUE_DEFAULT_SORT_DIR },
     },
-    {
-      id: "archived",
-      name: t("actions", "showArchived"),
-      view: { scopeFilter: "", statusFilter: "ARCHIVED", productionFilter: "", showArchived: true, sortColumn: BASE_VALUE_DEFAULT_SORT_COLUMN, sortDir: BASE_VALUE_DEFAULT_SORT_DIR },
-    },
   ], [t]);
 
   const { savedViews, viewPresets, activeViewPresetId, saveCurrentView, deleteSavedView } =
@@ -256,7 +251,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
       renderCell: (s) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, opacity: s.isDeleted ? 0.5 : 1 }}>
           <Typography variant="body1" noWrap title={s.name}>{s.name}</Typography>
-          
+
         </Box>
       ),
     },

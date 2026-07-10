@@ -661,6 +661,41 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
 
                                 <Box sx={{ mb: 3 }}>
                                     <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                                        {t("systemSettings", "fieldAppChangelogNotes")}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                                        Write the notes for the version above. They will be saved when you click Save Changes.
+                                    </Typography>
+                                    <Tabs
+                                        value={activeReleaseNotesLanguage}
+                                        onChange={(_, value) => setActiveReleaseNotesLanguage(value)}
+                                        variant="scrollable"
+                                        scrollButtons="auto"
+                                        sx={{ minHeight: 40, mb: 1.5 }}
+                                    >
+                                        {SUPPORTED_LANGUAGES.map((language) => (
+                                            <Tab
+                                                key={language.code}
+                                                value={language.code}
+                                                label={language.label}
+                                                sx={{ minHeight: 40, textTransform: "none" }}
+                                            />
+                                        ))}
+                                    </Tabs>
+                                    <TextField
+                                        label={SUPPORTED_LANGUAGES.find((language) => language.code === activeReleaseNotesLanguage)?.label}
+                                        helperText={t("systemSettings", "fieldAppChangelogNotesDesc")}
+                                        placeholder={t("systemSettings", "fieldAppChangelogNotesPlaceholder")}
+                                        value={config.appChangelogNotes[activeReleaseNotesLanguage] ?? ""}
+                                        onChange={(e) => handleReleaseNotesChange(activeReleaseNotesLanguage, e.target.value)}
+                                        fullWidth
+                                        multiline
+                                        minRows={5}
+                                    />
+                                </Box>
+
+                                <Box sx={{ mb: 3 }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                                         {t("systemSettings", "appChangelogHistory")}
                                     </Typography>
                                     <Stack spacing={1.5}>
@@ -670,69 +705,9 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
                                             </Typography>
                                         ) : (
                                             config.appChangelog.map((entry) => {
-                                                const isCurrentVersion = entry.version.trim() === config.appVersion.trim();
                                                 const hasTranslatedNotes = SUPPORTED_LANGUAGES.some(
                                                     (language) => notesForLanguage(entry, language.code).length > 0,
                                                 );
-
-                                                if (isCurrentVersion) {
-                                                    return (
-                                                        <Box
-                                                            key={`${entry.version}-${entry.publishedAt}`}
-                                                            sx={{
-                                                                border: "1px solid var(--scheme-neutral-800)",
-                                                                borderRadius: 1,
-                                                                overflow: "hidden",
-                                                            }}
-                                                        >
-                                                            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ px: 1.5, py: 1.25 }}>
-                                                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                                                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                                                                        v{entry.version} · {entry.title}
-                                                                    </Typography>
-                                                                    <Chip size="small" color="primary" variant="outlined" label="Current" />
-                                                                </Stack>
-                                                                <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
-                                                                    {formatChangelogDate(entry.publishedAt)}
-                                                                </Typography>
-                                                            </Stack>
-
-                                                            <Divider />
-
-                                                            <Box sx={{ p: 1.5 }}>
-                                                                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-                                                                    {t("systemSettings", "fieldAppChangelogNotes")}
-                                                                </Typography>
-                                                                <Tabs
-                                                                    value={activeReleaseNotesLanguage}
-                                                                    onChange={(_, value) => setActiveReleaseNotesLanguage(value)}
-                                                                    variant="scrollable"
-                                                                    scrollButtons="auto"
-                                                                    sx={{ minHeight: 40, mb: 1.5 }}
-                                                                >
-                                                                    {SUPPORTED_LANGUAGES.map((language) => (
-                                                                        <Tab
-                                                                            key={language.code}
-                                                                            value={language.code}
-                                                                            label={language.label}
-                                                                            sx={{ minHeight: 40, textTransform: "none" }}
-                                                                        />
-                                                                    ))}
-                                                                </Tabs>
-                                                                <TextField
-                                                                    label={SUPPORTED_LANGUAGES.find((language) => language.code === activeReleaseNotesLanguage)?.label}
-                                                                    helperText={t("systemSettings", "fieldAppChangelogNotesDesc")}
-                                                                    placeholder={t("systemSettings", "fieldAppChangelogNotesPlaceholder")}
-                                                                    value={config.appChangelogNotes[activeReleaseNotesLanguage] ?? ""}
-                                                                    onChange={(e) => handleReleaseNotesChange(activeReleaseNotesLanguage, e.target.value)}
-                                                                    fullWidth
-                                                                    multiline
-                                                                    minRows={5}
-                                                                />
-                                                            </Box>
-                                                        </Box>
-                                                    );
-                                                }
 
                                                 return (
                                                     <Accordion
