@@ -5,6 +5,7 @@ import {
     installVersionedFetch,
     storeInitialAppVersion,
 } from "../lib/appVersionClient";
+import { broadcastAppVersion, type VersionResponse } from "./WhatsNewModal";
 
 /**
  * Installs the version-aware fetch wrapper and establishes the initial version.
@@ -19,8 +20,9 @@ export function VersionChecker() {
             headers: { pragma: "no-cache", "cache-control": "no-cache" },
         })
             .then((res) => res.json())
-            .then(({ version }: { version: string }) => {
-                storeInitialAppVersion(version);
+            .then((data: VersionResponse) => {
+                storeInitialAppVersion(data.version);
+                broadcastAppVersion(data);
             })
             .catch(() => {
                 // Version bootstrapping is best-effort.

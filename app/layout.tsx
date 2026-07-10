@@ -5,6 +5,7 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { I18nProvider } from "../src/lib/i18n-context";
 import { BoneyardRegistry } from "./components/BoneyardRegistry";
 import { VersionChecker } from "./components/VersionChecker";
+import { WhatsNewModal } from "./components/WhatsNewModal";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -84,6 +85,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <I18nProvider>
             <BoneyardRegistry />
             <VersionChecker />
+            <WhatsNewModal />
             <div
               className={`environment-indicator env-${appEnv}`}
               role="status"
