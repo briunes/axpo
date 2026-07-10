@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import {
+  downloadBaseValueFile,
   getSimulation,
   openSimulationInvoice,
   updateClient,
@@ -47,6 +48,7 @@ import LockIcon from "@mui/icons-material/Lock";
 import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import DownloadIcon from "@mui/icons-material/Download";
 import { ShareSimulationView } from "./components/ShareSimulationView";
 import { DownloadHistoryDialog } from "./components/DownloadHistoryDialog";
 import LaunchIcon from "@mui/icons-material/Launch";
@@ -378,6 +380,22 @@ export default function SimulationDetailPage({
     }
   }, []);
 
+  const downloadBaseValueSetId = usedBaseValueSetId ?? selectedBaseValueSetId;
+
+  const handleDownloadBaseValues = useCallback(async () => {
+    if (!session || !downloadBaseValueSetId) return;
+
+    try {
+      await downloadBaseValueFile(session.token, downloadBaseValueSetId);
+    } catch (err) {
+      showError(
+        err instanceof Error
+          ? err.message
+          : t("baseValuesModule", "download_tooltip"),
+      );
+    }
+  }, [downloadBaseValueSetId, session, showError, t]);
+
   const fetchedRef = useRef(false);
   useEffect(() => {
     if (!session || isBoneyardFixture || fetchedRef.current) return;
@@ -448,6 +466,24 @@ export default function SimulationDetailPage({
             />
           </span>
         )}
+        {downloadBaseValueSetId && (
+          <Tooltip title={t("baseValuesModule", "download_tooltip")} arrow>
+            <span className="topbar-action-wrap">
+              <Button
+                className="topbar-action topbar-action--compact"
+                variant="outlined"
+                size="small"
+                startIcon={<DownloadIcon fontSize="small" />}
+                onClick={handleDownloadBaseValues}
+                aria-label={t("baseValuesModule", "download_tooltip")}
+              >
+                <span className="topbar-action-label">
+                  {t("baseValuesModule", "downloadExcel")}
+                </span>
+              </Button>
+            </span>
+          </Tooltip>
+        )}
         <Tooltip title={t("downloadHistory", "buttonLabel") || "Download History"} arrow>
           <span className="topbar-action-wrap">
             <Button
@@ -507,7 +543,9 @@ export default function SimulationDetailPage({
   }, [
     canChooseBaseValues,
     canOpenAuditLogs,
+    downloadBaseValueSetId,
     handleBaseValueSetChange,
+    handleDownloadBaseValues,
     handleShare,
     onActionButtons,
     selectedOfferProductKey,

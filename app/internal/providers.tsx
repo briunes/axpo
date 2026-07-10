@@ -2,7 +2,6 @@
 
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { LayoutProvider } from "@once-ui-system/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createMuiTheme } from "./lib/muiTheme";
@@ -19,13 +18,11 @@ function ThemedProviders({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <LayoutProvider>
-        <AlertProvider>
-          <UserPreferencesProvider>
-            <InternalErrorBoundary>{children}</InternalErrorBoundary>
-          </UserPreferencesProvider>
-        </AlertProvider>
-      </LayoutProvider>
+      <AlertProvider>
+        <UserPreferencesProvider>
+          <InternalErrorBoundary>{children}</InternalErrorBoundary>
+        </UserPreferencesProvider>
+      </AlertProvider>
     </ThemeProvider>
   );
 }
@@ -58,4 +55,3 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </ThemeModeProvider>
   );
 }
-

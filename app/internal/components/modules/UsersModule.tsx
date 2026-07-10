@@ -16,14 +16,23 @@ import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useLayoutEffect } from "react";
+import { useCallback, useEffect, useMemo, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, RotatePinResult } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
 import { usePermissions } from "../../lib/permissionsContext";
 import type { UsersActions } from "../hooks/useUsers";
 import { ConfirmDialog, PinResultDialog } from "../shared";
-import { DataTable, StatusBadge, FormSelect, FormInput } from "../ui";
+import {
+  DataTable,
+  StatusBadge,
+  FormSelect,
+  SaveTableViewDialog,
+  TableFilterButton,
+  TableFiltersDialog,
+  TableViewSearchControls,
+  useTableViews,
+} from "../ui";
 import type { ColumnDef } from "../ui";
 import { RefreshIcon } from "../ui/icons";
 import SyncIcon from '@mui/icons-material/Sync';
@@ -46,6 +55,17 @@ interface UsersModuleProps {
 }
 
 type UserItem = UsersActions["users"] extends (infer T)[] ? T : never;
+type UsersViewState = {
+  roleFilter: string;
+  agencyFilter: string;
+  showArchived: boolean;
+  sortColumn: string;
+  sortDir: "asc" | "desc";
+};
+
+const USER_VIEWS_STORAGE_KEY = "axpo_user_saved_views";
+const USER_DEFAULT_SORT_COLUMN = "createdAt";
+const USER_DEFAULT_SORT_DIR: "asc" | "desc" = "desc";
 
 export function UsersModule({ session, actions, agencies, onNotify, onActionButtons }: UsersModuleProps) {
   const { t } = useI18n();
@@ -78,6 +98,12 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
     items: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
+  const [draftRoleFilter, setDraftRoleFilter] = useState(roleFilter);
+  const [draftAgencyFilter, setDraftAgencyFilter] = useState(agencyFilter);
+  const [draftSortColumn, setDraftSortColumn] = useState(sortColumn);
+  const [draftSortDir, setDraftSortDir] = useState<"asc" | "desc">(sortDir);
 
   // Bubble success up
   useEffect(() => {
@@ -102,6 +128,89 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
   const canCreateUsers = canDo(role, "users.create");
   const isAdminUser = isAdmin(role);
   const canManageUserSessions = canDo(role, "users.sessions.manage");
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    setDraftRoleFilter(roleFilter);
+    setDraftAgencyFilter(agencyFilter);
+    setDraftSortColumn(sortColumn);
+    setDraftSortDir(sortDir);
+  }, [agencyFilter, filtersOpen, roleFilter, sortColumn, sortDir]);
+
+  const currentView = useMemo<UsersViewState>(() => ({
+    roleFilter,
+    agencyFilter,
+    showArchived,
+    sortColumn,
+    sortDir,
+  }), [agencyFilter, roleFilter, showArchived, sortColumn, sortDir]);
+
+  const applyView = useCallback((view: UsersViewState) => {
+    setRoleFilter(view.roleFilter ?? "");
+    setAgencyFilter(view.agencyFilter ?? "");
+    setShowArchived(Boolean(view.showArchived));
+    setSort(view.sortColumn || USER_DEFAULT_SORT_COLUMN, view.sortDir || USER_DEFAULT_SORT_DIR);
+    setPage(1);
+  }, [setAgencyFilter, setPage, setRoleFilter, setShowArchived, setSort]);
+
+  const builtInViews = useMemo<Array<{ id: string; name: string; view: UsersViewState }>>(() => [
+    {
+      id: "my-agency-users",
+      name: t("viewPresets", "myAgencyUsers"),
+      view: { roleFilter: "", agencyFilter: session.user.agencyId, showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
+    },
+    {
+      id: "all-users",
+      name: t("viewPresets", "allUsers"),
+      view: { roleFilter: "", agencyFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
+    },
+    {
+      id: "commercial",
+      name: t("userFormPage", "roleCommercial"),
+      view: { roleFilter: "COMMERCIAL", agencyFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
+    },
+    {
+      id: "admins",
+      name: t("userFormPage", "roleAdmin"),
+      view: { roleFilter: "ADMIN", agencyFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
+    },
+  ], [session.user.agencyId, t]);
+
+  const {
+    savedViews,
+    viewPresets,
+    activeViewPresetId,
+    saveCurrentView,
+    deleteSavedView,
+  } = useTableViews<UsersViewState>({
+    storageKey: USER_VIEWS_STORAGE_KEY,
+    currentView,
+    presets: builtInViews,
+  });
+
+  const activeAdvancedFilterCount = useMemo(() => [
+    !activeViewPresetId && roleFilter,
+    !activeViewPresetId && isAdmin(role) && agencyFilter,
+    !activeViewPresetId && showArchived,
+    !activeViewPresetId && (sortColumn !== USER_DEFAULT_SORT_COLUMN || sortDir !== USER_DEFAULT_SORT_DIR),
+  ].filter(Boolean).length, [activeViewPresetId, agencyFilter, role, roleFilter, showArchived, sortColumn, sortDir]);
+
+  const applyAdvancedFilters = useCallback(() => {
+    setRoleFilter(draftRoleFilter);
+    setAgencyFilter(draftAgencyFilter);
+    setSort(draftSortColumn || USER_DEFAULT_SORT_COLUMN, draftSortDir);
+    setPage(1);
+    setFiltersOpen(false);
+  }, [draftAgencyFilter, draftRoleFilter, draftSortColumn, draftSortDir, setAgencyFilter, setPage, setRoleFilter, setSort]);
+
+  const clearAdvancedFilters = useCallback(() => {
+    setDraftRoleFilter("");
+    setDraftAgencyFilter("");
+    setDraftSortColumn(USER_DEFAULT_SORT_COLUMN);
+    setDraftSortDir(USER_DEFAULT_SORT_DIR);
+    applyView({ roleFilter: "", agencyFilter: "", showArchived, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR });
+    setFiltersOpen(false);
+  }, [applyView, showArchived]);
 
   // Render action buttons for topbar
   useLayoutEffect(() => {
@@ -341,7 +450,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
   ];
 
   return (
-    <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
+    <Stack spacing={2} sx={{ height: '100%', minHeight: 0 }}>
       {lastPinResult && (
         <PinResultDialog
           pin={lastPinResult.newPin}
@@ -356,13 +465,22 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
-        onApplyFilters={(draft) => { setSearch(draft); setPage(1); }}
         onClearFilters={() => {
           setSearch("");
           setRoleFilter("");
           setAgencyFilter("");
           setPage(1);
         }}
+        hasActiveFilters={Boolean(search || activeAdvancedFilterCount)}
+        showFilterSubmitActions={false}
+        showFilterLabel={false}
+        headerRight={(
+          <TableFilterButton
+            title={t("simulationsModule", "filtersTitle")}
+            activeFilterCount={activeAdvancedFilterCount}
+            onClick={() => setFiltersOpen(true)}
+          />
+        )}
         searchPlaceholder={t("search", "users")}
         emptyMessage={t("search", "emptyUsers")}
         sortState={{ column: sortColumn, direction: sortDir }}
@@ -388,72 +506,25 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           },
         ]}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
-          <>
-            <Box sx={{ width: { xs: "100%", sm: 280 } }}>
-              <FormInput
-                label=""
-                placeholder={searchPlaceholder}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
-                size="small"
-                slotProps={{
-                  input: {
-                    endAdornment: draft ? (
-                      <IconButton
-                        size="small"
-                        onClick={() => { setDraft(""); setSearch(""); setPage(1); }}
-                        aria-label="Clear"
-                        edge="end"
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    ) : null,
-                  },
-                }}
-              />
-            </Box>
-            <Box sx={{ width: { xs: "100%", sm: 280 } }}>
-              <FormSelect
-                label=""
-                options={[
-                  { value: "", label: t("search", "allRoles") },
-                  { value: "SYS_ADMIN", label: t("userFormPage", "roleSysAdmin") },
-                  { value: "ADMIN", label: t("userFormPage", "roleAdmin") },
-                  { value: "AGENT", label: t("userFormPage", "roleAgent") },
-                  { value: "COMMERCIAL", label: t("userFormPage", "roleCommercial") },
-                ]}
-                value={roleFilter}
-                onChange={(val) => {
-                  setRoleFilter(val as string);
-                  setPage(1);
-                }}
-                placeholder={t("columns", "role")}
-                textFieldProps={{ size: "small" }}
-              />
-            </Box>
-            {isAdmin(role) && (
-              <Box sx={{ width: { xs: "100%", sm: 280 } }}>
-                <FormSelect
-                  label=""
-                  options={[
-                    { value: "", label: t("search", "allAgencies") },
-                    ...agencies.map((agency) => ({
-                      value: agency.id,
-                      label: agency.name,
-                    })),
-                  ]}
-                  value={agencyFilter}
-                  onChange={(val) => {
-                    setAgencyFilter(val as string);
-                    setPage(1);
-                  }}
-                  placeholder={t("columns", "agency")}
-                  textFieldProps={{ size: "small" }}
-                />
-              </Box>
-            )}
-          </>
+          <TableViewSearchControls
+            activeViewPresetId={activeViewPresetId}
+            viewPresets={viewPresets}
+            savedViews={savedViews}
+            onApplyView={applyView}
+            onDeleteSavedView={deleteSavedView}
+            labels={{
+              customView: t("simulationsModule", "customView"),
+              savedViewsGroup: t("simulationsModule", "savedViewsGroup"),
+              viewPreset: t("simulationsModule", "viewPresetLabel"),
+              clear: t("actions", "clear"),
+            }}
+            draft={draft}
+            setDraft={setDraft}
+            commitSearch={commitSearch}
+            searchPlaceholder={searchPlaceholder}
+            onLiveSearchChange={(value) => { setSearch(value); setPage(1); }}
+            onClearSearch={() => { setSearch(""); setPage(1); }}
+          />
         )}
         mobileCard={{
           title: "fullName",
@@ -521,6 +592,77 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             );
           },
         }}
+      />
+
+      <TableFiltersDialog
+        open={filtersOpen}
+        title={t("simulationsModule", "filtersTitle")}
+        saveViewLabel={t("simulationsModule", "saveView")}
+        clearLabel={t("simulationsModule", "clearFilters")}
+        applyLabel={t("simulationsModule", "applyFilters")}
+        onClose={() => setFiltersOpen(false)}
+        onOpenSaveView={() => setSaveViewOpen(true)}
+        onClear={clearAdvancedFilters}
+        onApply={applyAdvancedFilters}
+      >
+        <FormSelect
+          label={t("columns", "role")}
+          options={[
+            { value: "", label: t("search", "allRoles") },
+            { value: "SYS_ADMIN", label: t("userFormPage", "roleSysAdmin") },
+            { value: "ADMIN", label: t("userFormPage", "roleAdmin") },
+            { value: "AGENT", label: t("userFormPage", "roleAgent") },
+            { value: "COMMERCIAL", label: t("userFormPage", "roleCommercial") },
+          ]}
+          value={draftRoleFilter}
+          onChange={(val) => setDraftRoleFilter((val as string) ?? "")}
+          textFieldProps={{ size: "small" }}
+        />
+        {isAdmin(role) && (
+          <FormSelect
+            label={t("columns", "agency")}
+            options={[
+              { value: "", label: t("search", "allAgencies") },
+              ...agencies.map((agency) => ({ value: agency.id, label: agency.name })),
+            ]}
+            value={draftAgencyFilter}
+            onChange={(val) => setDraftAgencyFilter((val as string) ?? "")}
+            textFieldProps={{ size: "small" }}
+          />
+        )}
+        <FormSelect
+          label={t("simulationsModule", "sortBy")}
+          options={[
+            { value: "createdAt", label: t("columns", "created") },
+            { value: "updatedAt", label: t("columns", "updated") },
+            { value: "fullName", label: t("columns", "name") },
+            { value: "role", label: t("columns", "role") },
+          ]}
+          value={draftSortColumn}
+          onChange={(val) => setDraftSortColumn((val as string) || USER_DEFAULT_SORT_COLUMN)}
+          textFieldProps={{ size: "small" }}
+        />
+        <FormSelect
+          label={t("simulationsModule", "sortDirection")}
+          options={[
+            { value: "desc", label: t("simulationsModule", "directionDescending") },
+            { value: "asc", label: t("simulationsModule", "directionAscending") },
+          ]}
+          value={draftSortDir}
+          onChange={(val) => setDraftSortDir(val === "asc" ? "asc" : "desc")}
+          textFieldProps={{ size: "small" }}
+        />
+      </TableFiltersDialog>
+
+      <SaveTableViewDialog
+        open={saveViewOpen}
+        title={t("simulationsModule", "saveViewTitle")}
+        description={t("simulationsModule", "saveViewDescription")}
+        nameLabel={t("simulationsModule", "viewName")}
+        cancelLabel={t("simulationsModule", "cancel")}
+        saveLabel={t("simulationsModule", "save")}
+        onClose={() => setSaveViewOpen(false)}
+        onSave={saveCurrentView}
       />
 
       {confirmBulkDeleteIds && (
@@ -660,7 +802,8 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             key={i}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
-            sx={{color: item.danger ? "error.main" : "text.primary",
+            sx={{
+              color: item.danger ? "error.main" : "text.primary",
               py: 0.75,
               gap: 1,
             }}

@@ -180,19 +180,26 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     where.targetId = targetIdFilter;
   }
 
+  const actorLookupSearch = actorSearch || search;
+  const matchingActorIds = actorLookupSearch
+    ? (
+        await prisma.user.findMany({
+          where: {
+            OR: [
+              { email: { contains: actorLookupSearch, mode: "insensitive" } },
+              { fullName: { contains: actorLookupSearch, mode: "insensitive" } },
+            ],
+          },
+          select: { id: true },
+          take: 100,
+        })
+      ).map((user) => user.id)
+    : [];
+
   // Actor search filter
   if (actorSearch) {
     const actorConditions = [
-      {
-        actor: {
-          email: { contains: actorSearch, mode: "insensitive" as const },
-        },
-      },
-      {
-        actor: {
-          fullName: { contains: actorSearch, mode: "insensitive" as const },
-        },
-      },
+      { actorUserId: { in: matchingActorIds.length ? matchingActorIds : ["__no_actor_match__"] } },
     ];
     if (where.AND) {
       (where.AND as unknown[]).push({ OR: actorConditions });
@@ -210,10 +217,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       { eventType: { contains: search, mode: "insensitive" as const } },
       { targetType: { contains: search, mode: "insensitive" as const } },
       { targetId: { contains: search, mode: "insensitive" as const } },
-      { actor: { email: { contains: search, mode: "insensitive" as const } } },
-      {
-        actor: { fullName: { contains: search, mode: "insensitive" as const } },
-      },
+      ...(matchingActorIds.length > 0
+        ? [{ actorUserId: { in: matchingActorIds } }]
+        : []),
     ];
 
     if (where.OR) {

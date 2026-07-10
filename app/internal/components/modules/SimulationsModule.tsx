@@ -1,16 +1,13 @@
 "use client";
 
 import {
-  Column,
-  Text,
-} from "@once-ui-system/core";
-import {
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Divider,
   Button,
+  Badge,
   Typography,
   TextField,
   Box,
@@ -18,6 +15,7 @@ import {
   MenuItem,
   ButtonGroup,
   IconButton,
+  Popover,
   Stack,
   Tooltip,
 } from "@mui/material";
@@ -33,6 +31,7 @@ import ShareIcon from "@mui/icons-material/Share";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
+import FilterListIcon from "@mui/icons-material/FilterList";
 import { useCallback, useEffect, useMemo, useState, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -42,9 +41,9 @@ import { getSimulation, isAdmin, simulationStatusTone } from "../../lib/internal
 import { usePermissions } from "../../lib/permissionsContext";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
-import type { SimulationsActions } from "../hooks/useSimulations";
+import type { SimulationsActions, SimulationViewState } from "../hooks/useSimulations";
 import { ConfirmDialog } from "../shared";
-import { DataTable, SlidePanel, StatusBadge, FormInput, FormSelect } from "../ui";
+import { DataTable, SlidePanel, StatusBadge, FormInput, FormSelect, DateInput } from "../ui";
 import type { ColumnDef } from "../ui";
 import { ShareSimulationView } from "../../simulations/[id]/components/ShareSimulationView";
 
@@ -56,6 +55,79 @@ interface SimulationsModuleProps {
   users: UserItem[];
   onNotify?: (text: string, tone: "success" | "error") => void;
   onActionButtons?: (buttons: React.ReactNode) => void;
+}
+
+interface SavedSimulationView {
+  id: string;
+  name: string;
+  view: SimulationViewState;
+}
+
+const SIMULATION_VIEWS_STORAGE_KEY = "axpo_simulation_saved_views";
+const CUSTOM_VIEW_OPTION = "__custom";
+const DEFAULT_SORT_COLUMN = "updatedAt";
+const DEFAULT_SORT_DIR: "asc" | "desc" = "desc";
+
+function normalizeSimulationView(view: SimulationViewState) {
+  return {
+    search: view.search ?? "",
+    ownerUserId: view.ownerUserId ?? "",
+    clientId: view.clientId ?? "",
+    cups: view.cups ?? "",
+    status: view.status ?? "",
+    type: view.type ?? "",
+    createdFrom: view.createdFrom ?? "",
+    createdTo: view.createdTo ?? "",
+    expiresFrom: view.expiresFrom ?? "",
+    expiresTo: view.expiresTo ?? "",
+    showArchived: Boolean(view.showArchived),
+    sortColumn: view.sortColumn ?? DEFAULT_SORT_COLUMN,
+    sortDir: view.sortDir ?? DEFAULT_SORT_DIR,
+  };
+}
+
+function isSameSimulationView(a: SimulationViewState, b: SimulationViewState) {
+  const left = normalizeSimulationView(a);
+  const right = normalizeSimulationView(b);
+  return left.search === right.search
+    && left.ownerUserId === right.ownerUserId
+    && left.clientId === right.clientId
+    && left.cups === right.cups
+    && left.status === right.status
+    && left.type === right.type
+    && left.createdFrom === right.createdFrom
+    && left.createdTo === right.createdTo
+    && left.expiresFrom === right.expiresFrom
+    && left.expiresTo === right.expiresTo
+    && left.showArchived === right.showArchived
+    && left.sortColumn === right.sortColumn
+    && left.sortDir === right.sortDir;
+}
+
+function isSamePresetView(a: SimulationViewState, b: SimulationViewState) {
+  return isSameSimulationView({ ...a, search: "" }, { ...b, search: "" });
+}
+
+const isoDate = (date: Date) => date.toISOString().slice(0, 10);
+
+function loadSavedSimulationViews(): SavedSimulationView[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(SIMULATION_VIEWS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as SavedSimulationView[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistSavedSimulationViews(views: SavedSimulationView[]) {
+  try {
+    localStorage.setItem(SIMULATION_VIEWS_STORAGE_KEY, JSON.stringify(views));
+  } catch {
+    // ignore local persistence failures
+  }
 }
 
 export function SimulationsModule({ session, actions, agencies, clients, users, onNotify, onActionButtons }: SimulationsModuleProps) {
@@ -72,7 +144,12 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     filterClientId, setFilterClientId,
     filterCups, setFilterCups,
     filterStatus, setFilterStatus,
-    applyFilters, clearFilters, filtersAppliedAt,
+    filterType, setFilterType,
+    filterCreatedFrom, setFilterCreatedFrom,
+    filterCreatedTo, setFilterCreatedTo,
+    filterExpiresFrom, setFilterExpiresFrom,
+    filterExpiresTo, setFilterExpiresTo,
+    clearFilters, applyView,
     selectedSimulationId, editPayloadJson, setEditPayloadJson,
     openSimulationEditor, closeSimulationEditor, handleUpdateSimulation,
     handleShare, handleClone, handleRotatePin, handleOcrPrefill, handlePdfDownload, handleArchive,
@@ -96,6 +173,55 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
   const canArchiveSimulation = canDo(session.user.role, "simulations.archive");
   const canShareSimulation = canDo(session.user.role, "simulations.share");
   const canDuplicateSimulation = canDo(session.user.role, "simulations.duplicate");
+  const [savedViews, setSavedViews] = useState<SavedSimulationView[]>([]);
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
+  const [saveViewName, setSaveViewName] = useState("");
+  const [filtersAnchorEl, setFiltersAnchorEl] = useState<HTMLElement | null>(null);
+  const filtersOpen = Boolean(filtersAnchorEl);
+
+  const [draftOwnerUserId, setDraftOwnerUserId] = useState(filterOwnerUserId);
+  const [draftClientId, setDraftClientId] = useState(filterClientId);
+  const [draftCups, setDraftCups] = useState(filterCups);
+  const [draftStatus, setDraftStatus] = useState(filterStatus);
+  const [draftType, setDraftType] = useState(filterType);
+  const [draftCreatedFrom, setDraftCreatedFrom] = useState(filterCreatedFrom);
+  const [draftCreatedTo, setDraftCreatedTo] = useState(filterCreatedTo);
+  const [draftExpiresFrom, setDraftExpiresFrom] = useState(filterExpiresFrom);
+  const [draftExpiresTo, setDraftExpiresTo] = useState(filterExpiresTo);
+  const [draftSortColumn, setDraftSortColumn] = useState(sortColumn);
+  const [draftSortDir, setDraftSortDir] = useState<"asc" | "desc">(sortDir);
+
+  useEffect(() => {
+    setSavedViews(loadSavedSimulationViews());
+  }, []);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    setDraftOwnerUserId(filterOwnerUserId);
+    setDraftClientId(filterClientId);
+    setDraftCups(filterCups);
+    setDraftStatus(filterStatus);
+    setDraftType(filterType);
+    setDraftCreatedFrom(filterCreatedFrom);
+    setDraftCreatedTo(filterCreatedTo);
+    setDraftExpiresFrom(filterExpiresFrom);
+    setDraftExpiresTo(filterExpiresTo);
+    setDraftSortColumn(sortColumn);
+    setDraftSortDir(sortDir);
+  }, [
+    filterClientId,
+    filterCreatedFrom,
+    filterCreatedTo,
+    filterCups,
+    filterExpiresFrom,
+    filterExpiresTo,
+    filterOwnerUserId,
+    filterStatus,
+    filterType,
+    filtersOpen,
+    sortColumn,
+    sortDir,
+  ]);
 
   useEffect(() => {
     if (successText) {
@@ -319,6 +445,275 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     [clients, t],
   );
 
+  const currentView = useMemo<SimulationViewState>(() => ({
+    search: filterSearch,
+    ownerUserId: filterOwnerUserId,
+    clientId: filterClientId,
+    cups: filterCups,
+    status: filterStatus,
+    type: filterType,
+    createdFrom: filterCreatedFrom,
+    createdTo: filterCreatedTo,
+    expiresFrom: filterExpiresFrom,
+    expiresTo: filterExpiresTo,
+    showArchived,
+    sortColumn,
+    sortDir,
+  }), [
+    filterClientId,
+    filterCreatedFrom,
+    filterCreatedTo,
+    filterCups,
+    filterExpiresFrom,
+    filterExpiresTo,
+    filterOwnerUserId,
+    filterSearch,
+    filterStatus,
+    filterType,
+    showArchived,
+    sortColumn,
+    sortDir,
+  ]);
+
+  const builtInViews = useMemo<Array<{ id: string; name: string; view: SimulationViewState }>>((): Array<{ id: string; name: string; view: SimulationViewState }> => {
+    const now = new Date();
+    const today = isoDate(now);
+    const startOfWeek = new Date(now);
+    const dayOffset = (now.getDay() + 6) % 7;
+    startOfWeek.setDate(now.getDate() - dayOffset);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    return [
+      {
+        id: "this-week",
+        name: t("viewPresets", "thisWeek"),
+        view: {
+          search: "",
+          ownerUserId: "",
+          clientId: "",
+          cups: "",
+          status: "",
+          type: "",
+          createdFrom: isoDate(startOfWeek),
+          createdTo: today,
+          expiresFrom: "",
+          expiresTo: "",
+          sortColumn: "createdAt",
+          sortDir: "desc",
+          showArchived: false,
+        },
+      },
+      {
+        id: "this-month",
+        name: t("viewPresets", "thisMonth"),
+        view: {
+          search: "",
+          ownerUserId: "",
+          clientId: "",
+          cups: "",
+          status: "",
+          type: "",
+          createdFrom: isoDate(startOfMonth),
+          createdTo: today,
+          expiresFrom: "",
+          expiresTo: "",
+          sortColumn: "createdAt",
+          sortDir: "desc",
+          showArchived: false,
+        },
+      },
+      {
+        id: "this-year",
+        name: t("viewPresets", "thisYear"),
+        view: {
+          search: "",
+          ownerUserId: "",
+          clientId: "",
+          cups: "",
+          status: "",
+          type: "",
+          createdFrom: isoDate(startOfYear),
+          createdTo: today,
+          expiresFrom: "",
+          expiresTo: "",
+          sortColumn: "createdAt",
+          sortDir: "desc",
+          showArchived: false,
+        },
+      },
+      {
+        id: "my-simulations",
+        name: t("viewPresets", "mySimulations"),
+        view: {
+          search: "",
+          ownerUserId: session.user.id,
+          clientId: "",
+          cups: "",
+          status: "",
+          type: "",
+          createdFrom: "",
+          createdTo: "",
+          expiresFrom: "",
+          expiresTo: "",
+          showArchived: false,
+          sortColumn: "updatedAt",
+          sortDir: "desc",
+        },
+      },
+      {
+        id: "about-to-expire",
+        name: t("viewPresets", "aboutToExpire"),
+        view: {
+          search: "",
+          ownerUserId: "",
+          clientId: "",
+          cups: "",
+          status: "",
+          type: "",
+          createdFrom: "",
+          createdTo: "",
+          expiresFrom: isoDate(new Date()),
+          expiresTo: isoDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+          showArchived: false,
+          sortColumn: "expiresAt",
+          sortDir: "asc",
+        },
+      },
+    ];
+  }, [session.user.id, t]);
+
+  const viewPresets = useMemo(
+    () => [
+      ...builtInViews.map((view) => ({ ...view, kind: "default" as const })),
+      ...savedViews.map((view) => ({ ...view, kind: "saved" as const })),
+    ],
+    [builtInViews, savedViews],
+  );
+
+  const activeViewPresetId = useMemo(
+    () => viewPresets.find((preset) => isSamePresetView(preset.view, currentView))?.id,
+    [currentView, viewPresets],
+  );
+
+  const saveCurrentView = useCallback(() => {
+    const trimmed = saveViewName.trim();
+    if (!trimmed) return;
+    const nextViews = [
+      ...savedViews.filter((view) => view.name.toLowerCase() !== trimmed.toLowerCase()),
+      {
+        id: `view-${Date.now()}`,
+        name: trimmed,
+        view: { ...currentView, search: "" },
+      },
+    ];
+    setSavedViews(nextViews);
+    persistSavedSimulationViews(nextViews);
+    setSaveViewName("");
+    setSaveViewOpen(false);
+  }, [currentView, saveViewName, savedViews]);
+
+  const deleteSavedView = useCallback((id: string) => {
+    const nextViews = savedViews.filter((view) => view.id !== id);
+    setSavedViews(nextViews);
+    persistSavedSimulationViews(nextViews);
+  }, [savedViews]);
+
+  const activeAdvancedFilterCount = useMemo(() => [
+    !activeViewPresetId && session.user.role !== "COMMERCIAL" && filterOwnerUserId,
+    !activeViewPresetId && filterClientId,
+    !activeViewPresetId && filterCups,
+    !activeViewPresetId && filterStatus,
+    !activeViewPresetId && filterType,
+    !activeViewPresetId && (filterCreatedFrom || filterCreatedTo),
+    !activeViewPresetId && (filterExpiresFrom || filterExpiresTo),
+    !activeViewPresetId && (sortColumn !== DEFAULT_SORT_COLUMN || sortDir !== DEFAULT_SORT_DIR),
+  ].filter(Boolean).length, [
+    activeViewPresetId,
+    filterClientId,
+    filterCreatedFrom,
+    filterCreatedTo,
+    filterCups,
+    filterExpiresFrom,
+    filterExpiresTo,
+    filterOwnerUserId,
+    filterStatus,
+    filterType,
+    session.user.role,
+    sortColumn,
+    sortDir,
+  ]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      applyView({ ...currentView, search: filterSearch });
+    }, 400);
+    return () => window.clearTimeout(timeout);
+  }, [applyView, currentView, filterSearch]);
+
+  const applyAdvancedFilters = useCallback(() => {
+    applyView({
+      ...currentView,
+      ownerUserId: draftOwnerUserId,
+      clientId: draftClientId,
+      cups: draftCups,
+      status: draftStatus,
+      type: draftType,
+      createdFrom: draftCreatedFrom,
+      createdTo: draftCreatedTo,
+      expiresFrom: draftExpiresFrom,
+      expiresTo: draftExpiresTo,
+      sortColumn: draftSortColumn,
+      sortDir: draftSortDir,
+    });
+    setFiltersAnchorEl(null);
+  }, [
+    applyView,
+    currentView,
+    draftClientId,
+    draftCreatedFrom,
+    draftCreatedTo,
+    draftCups,
+    draftExpiresFrom,
+    draftExpiresTo,
+    draftOwnerUserId,
+    draftSortColumn,
+    draftSortDir,
+    draftStatus,
+    draftType,
+  ]);
+
+  const clearAdvancedFilters = useCallback(() => {
+    const resetOwnerUserId = session.user.role === "COMMERCIAL" ? session.user.id : "";
+    setDraftOwnerUserId(resetOwnerUserId);
+    setDraftClientId("");
+    setDraftCups("");
+    setDraftStatus("");
+    setDraftType("");
+    setDraftCreatedFrom("");
+    setDraftCreatedTo("");
+    setDraftExpiresFrom("");
+    setDraftExpiresTo("");
+    setDraftSortColumn(DEFAULT_SORT_COLUMN);
+    setDraftSortDir(DEFAULT_SORT_DIR);
+    applyView({
+      search: filterSearch,
+      ownerUserId: resetOwnerUserId,
+      clientId: "",
+      cups: "",
+      status: "",
+      type: "",
+      createdFrom: "",
+      createdTo: "",
+      expiresFrom: "",
+      expiresTo: "",
+      showArchived,
+      sortColumn: DEFAULT_SORT_COLUMN,
+      sortDir: DEFAULT_SORT_DIR,
+    });
+    setFiltersAnchorEl(null);
+  }, [applyView, filterSearch, session.user.id, session.user.role, showArchived]);
+
   const columns = useMemo<ColumnDef<SimulationItem>[]>(() => [
     {
       key: "type",
@@ -423,7 +818,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                   href={`/internal/clients/${s.client.id}/edit`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  sx={{ color: "primary", textDecoration: "none" }}
+                  sx={{ color: "primary.main", textDecoration: "none" }}
                   onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
                   onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
                   onClick={(e) => e.stopPropagation()}
@@ -577,7 +972,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
   ]);
 
   return (
-    <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
+    <Stack spacing={2} sx={{ height: '100%', minHeight: 0 }}>
       <DataTable<SimulationItem>
         tableId="simulations"
         columns={columns}
@@ -585,10 +980,30 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         loading={loading}
         searchValue={filterSearch}
         onSearch={(v) => { setFilterSearch(v); }}
-        onApplyFilters={(draft) => applyFilters(draft)}
         onClearFilters={clearFilters}
         searchPlaceholder={t("search", "simulations")}
         emptyMessage={t("search", "emptySimulations")}
+        hasActiveFilters={Boolean(filterSearch || activeAdvancedFilterCount)}
+        showFilterSubmitActions={false}
+        showFilterLabel={false}
+        headerRight={(
+          <Tooltip title={t("simulationsModule", "filtersTitle")}>
+            <Badge
+              color="primary"
+              badgeContent={activeAdvancedFilterCount || undefined}
+              variant={activeAdvancedFilterCount ? "standard" : "dot"}
+              invisible={!activeAdvancedFilterCount}
+            >
+              <IconButton
+                size="small"
+                onClick={(event) => setFiltersAnchorEl(event.currentTarget)}
+                aria-label={t("simulationsModule", "filtersTitle")}
+              >
+                <FilterListIcon fontSize="small" color="primary" />
+              </IconButton>
+            </Badge>
+          </Tooltip>
+        )}
         sortState={{ column: sortColumn, direction: sortDir }}
         onSort={(col) => {
           const newDir = col === sortColumn && sortDir === "asc" ? "desc" : "asc";
@@ -603,22 +1018,99 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
           onPageSizeChange: (size) => { setPageSize(size); setPage(1); },
         }}
         t={t}
-        renderCustomSearch={({ draft, setDraft, searchPlaceholder }) => (
+        renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
           <>
-            <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
+            <Box sx={{ flex: '0 1 220px', minWidth: 170, maxWidth: 240 }}>
+              <TextField
+                select
+                size="small"
+                label={t("simulationsModule", "viewPresetLabel")}
+                value={activeViewPresetId ?? CUSTOM_VIEW_OPTION}
+                onChange={(event) => {
+                  const preset = viewPresets.find((view) => view.id === event.target.value);
+                  if (preset) applyView(preset.view);
+                }}
+                sx={{
+                  width: "100%",
+                  "& .MuiSelect-select": {
+                    py: 1,
+                    fontWeight: 600,
+                  },
+                }}
+                SelectProps={{
+                  displayEmpty: true,
+                  renderValue: (value) => {
+                    if (value === CUSTOM_VIEW_OPTION) return t("simulationsModule", "customView");
+                    return viewPresets.find((view) => view.id === value)?.name ?? t("simulationsModule", "viewPresetLabel");
+                  },
+                }}
+              >
+                <MenuItem value={CUSTOM_VIEW_OPTION} disabled>
+                  {t("simulationsModule", "customView")}
+                </MenuItem>
+                {viewPresets.filter((view) => view.kind === "default").map((view) => (
+                  <MenuItem key={view.id} value={view.id}>
+                    {view.name}
+                  </MenuItem>
+                ))}
+                {savedViews.length > 0 && (
+                  <MenuItem disabled sx={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", opacity: 0.7 }}>
+                    {t("simulationsModule", "savedViewsGroup")}
+                  </MenuItem>
+                )}
+                {viewPresets.filter((view) => view.kind === "saved").map((view) => (
+                  <MenuItem key={view.id} value={view.id}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%", minWidth: 0 }}>
+                      <Box component="span" sx={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {view.name}
+                      </Box>
+                      <IconButton
+                        size="small"
+                        aria-label={t("simulationsModule", "deleteSavedView")}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          deleteSavedView(view.id);
+                        }}
+                        sx={{ ml: "auto", p: 0.25 }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+            <Box sx={{ flex: '0 1 380px', minWidth: 220, maxWidth: 420 }}>
               <FormInput
                 label=""
                 placeholder={searchPlaceholder}
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") applyFilters(draft); }}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  setFilterSearch(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    commitSearch();
+                    applyView({ ...currentView, search: draft });
+                  }
+                }}
                 size="small"
                 slotProps={{
                   input: {
                     endAdornment: draft ? (
                       <IconButton
                         size="small"
-                        onClick={() => { setDraft(""); applyFilters(""); }}
+                        onClick={() => {
+                          setDraft("");
+                          setFilterSearch("");
+                          applyView({ ...currentView, search: "" });
+                        }}
                         aria-label="Clear"
                         edge="end"
                       >
@@ -627,77 +1119,6 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                     ) : null,
                   },
                 }}
-              />
-            </Box>
-            {session.user.role !== "COMMERCIAL" && (
-              <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
-                <FormSelect
-                  label=""
-                  options={ownerOptions}
-                  value={filterOwnerUserId}
-                  onChange={(val) => {
-                    setFilterOwnerUserId(val as string);
-                  }}
-                  placeholder="Owner"
-                  onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
-                  textFieldProps={{ size: "small" }}
-                />
-              </Box>
-            )}
-
-            <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
-              <FormSelect
-                label=""
-                options={clientOptions}
-                value={filterClientId}
-                onChange={(val) => {
-                  setFilterClientId(val as string);
-                }}
-                placeholder="Client"
-                onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
-                textFieldProps={{ size: "small" }}
-              />
-            </Box>
-            <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
-              <FormInput
-                label=""
-                placeholder="CUPS"
-                value={filterCups}
-                onChange={(e) => { setFilterCups(e.target.value); }}
-                onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
-                size="small"
-                slotProps={{
-                  input: {
-                    endAdornment: filterCups ? (
-                      <IconButton
-                        size="small"
-                        onClick={() => { setFilterCups(""); applyFilters(); }}
-                        aria-label="Clear"
-                        edge="end"
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    ) : null,
-                  },
-                }}
-              />
-            </Box>
-            <Box sx={{ flex: '1 1 220px', minWidth: 180, maxWidth: 280 }}>
-              <FormSelect
-                label=""
-                options={[
-                  { value: "", label: t("search", "allStatuses") },
-                  { value: "DRAFT", label: "DRAFT" },
-                  { value: "SHARED", label: "SHARED" },
-                  { value: "EXPIRED", label: "EXPIRED" },
-                ]}
-                value={filterStatus}
-                onChange={(val) => {
-                  setFilterStatus(val as string);
-                }}
-                placeholder="Status"
-                onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
-                textFieldProps={{ size: "small" }}
               />
             </Box>
           </>
@@ -773,6 +1194,184 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
           },
         ]}
       />
+
+      <Dialog
+        open={filtersOpen}
+        onClose={() => setFiltersAnchorEl(null)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            width: 760,
+            maxWidth: "calc(100vw - 32px)",
+            borderRadius: 2,
+            boxShadow: "var(--scheme-shadow-strong)",
+          },
+        }}
+      >
+        <Stack spacing={2} sx={{ p: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              {t("simulationsModule", "filtersTitle")}
+            </Typography>
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => {
+                setSaveViewName("");
+                setSaveViewOpen(true);
+              }}
+              sx={{ minWidth: 0 }}
+            >
+              {t("simulationsModule", "saveView")}
+            </Button>
+          </Box>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+              gap: 1.5,
+              alignItems: "start",
+            }}
+          >
+            {session.user.role !== "COMMERCIAL" && (
+              <FormSelect
+                label={t("simulationsModule", "ownerFilter")}
+                options={ownerOptions}
+                value={draftOwnerUserId}
+                onChange={(val) => setDraftOwnerUserId((val as string) ?? "")}
+                textFieldProps={{ size: "small" }}
+              />
+            )}
+            <FormSelect
+              label={t("simulationsModule", "clientFilter")}
+              options={clientOptions}
+              value={draftClientId}
+              onChange={(val) => setDraftClientId((val as string) ?? "")}
+              textFieldProps={{ size: "small" }}
+            />
+            <FormSelect
+              label={t("simulationsModule", "statusFilter")}
+              options={[
+                { value: "", label: t("search", "allStatuses") },
+                { value: "DRAFT", label: "DRAFT" },
+                { value: "SHARED", label: "SHARED" },
+                { value: "EXPIRED", label: "EXPIRED" },
+              ]}
+              value={draftStatus}
+              onChange={(val) => setDraftStatus((val as string) ?? "")}
+              textFieldProps={{ size: "small" }}
+            />
+            <FormSelect
+              label={t("simulationsModule", "typeFilter")}
+              options={[
+                { value: "", label: t("simulationsModule", "allTypes") },
+                { value: "ELECTRICITY", label: t("simulationsModule", "typeElectricity") },
+                { value: "GAS", label: t("simulationsModule", "typeGas") },
+                { value: "BOTH", label: t("simulationsModule", "typeBoth") },
+              ]}
+              value={draftType}
+              onChange={(val) => setDraftType((val as string) ?? "")}
+              textFieldProps={{ size: "small" }}
+            />
+            <FormInput
+              label={t("simulationsModule", "cupsFilter")}
+              value={draftCups}
+              onChange={(event) => setDraftCups(event.target.value)}
+              size="small"
+            />
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+              <DateInput
+                label={t("simulationsModule", "createdFrom")}
+                labelPosition="top"
+                value={draftCreatedFrom}
+                onChange={setDraftCreatedFrom}
+              />
+              <DateInput
+                label={t("simulationsModule", "createdTo")}
+                labelPosition="top"
+                value={draftCreatedTo}
+                onChange={setDraftCreatedTo}
+              />
+            </Box>
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+              <DateInput
+                label={t("simulationsModule", "expiresFrom")}
+                labelPosition="top"
+                value={draftExpiresFrom}
+                onChange={setDraftExpiresFrom}
+              />
+              <DateInput
+                label={t("simulationsModule", "expiresTo")}
+                labelPosition="top"
+                value={draftExpiresTo}
+                onChange={setDraftExpiresTo}
+              />
+            </Box>
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+              <FormSelect
+                label={t("simulationsModule", "sortBy")}
+                options={[
+                  { value: "updatedAt", label: t("simulationsModule", "sortUpdated") },
+                  { value: "createdAt", label: t("simulationsModule", "sortCreated") },
+                  { value: "expiresAt", label: t("simulationsModule", "sortExpires") },
+                  { value: "referenceNumber", label: t("simulationsModule", "sortReference") },
+                  { value: "status", label: t("simulationsModule", "sortStatus") },
+                ]}
+                value={draftSortColumn}
+                onChange={(val) => setDraftSortColumn((val as string) || DEFAULT_SORT_COLUMN)}
+                textFieldProps={{ size: "small" }}
+              />
+              <FormSelect
+                label={t("simulationsModule", "sortDirection")}
+                options={[
+                  { value: "desc", label: t("simulationsModule", "directionDescending") },
+                  { value: "asc", label: t("simulationsModule", "directionAscending") },
+                ]}
+                value={draftSortDir}
+                onChange={(val) => setDraftSortDir(val === "asc" ? "asc" : "desc")}
+                textFieldProps={{ size: "small" }}
+              />
+            </Box>
+          </Box>
+
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+            <Button size="small" variant="text" onClick={clearAdvancedFilters}>
+              {t("simulationsModule", "clearFilters")}
+            </Button>
+            <Button size="small" variant="contained" onClick={applyAdvancedFilters}>
+              {t("simulationsModule", "applyFilters")}
+            </Button>
+          </Box>
+        </Stack>
+      </Dialog>
+
+      <Dialog open={saveViewOpen} onClose={() => setSaveViewOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>{t("simulationsModule", "saveViewTitle")}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              {t("simulationsModule", "saveViewDescription")}
+            </Typography>
+            <TextField
+              autoFocus
+              label={t("simulationsModule", "viewName")}
+              value={saveViewName}
+              onChange={(event) => setSaveViewName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") saveCurrentView();
+              }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveViewOpen(false)}>{t("simulationsModule", "cancel")}</Button>
+          <Button variant="contained" onClick={saveCurrentView} disabled={!saveViewName.trim()}>
+            {t("simulationsModule", "save")}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ── Edit payload panel ── */}
       <SlidePanel
@@ -912,7 +1511,8 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             key={i}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
-            sx={{color: item.danger ? "error.main" : item.warning ? "warning.main" : "text.primary",
+            sx={{
+              color: item.danger ? "error.main" : item.warning ? "warning.main" : "text.primary",
               py: 0.75,
               gap: 1,
             }}

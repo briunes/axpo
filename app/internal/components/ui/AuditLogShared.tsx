@@ -115,16 +115,29 @@ export function FieldChangeDetails({
     resolveFieldLabel: (key: string) => string;
     renderValue: (v: unknown, fieldKey?: string) => React.ReactNode;
 }) {
-    const hasDiff =
+    const hasBeforeAfterObjects =
         "before" in metadata && "after" in metadata &&
         typeof metadata.before === "object" && metadata.before !== null &&
         typeof metadata.after === "object" && metadata.after !== null;
 
-    if (!hasDiff) return null;
+    const metadataKeys = Object.keys(metadata);
+    const pairedSuffixBases = new Set(
+        metadataKeys
+            .filter((key) => key.endsWith("Before") && metadataKeys.includes(`${key.slice(0, -6)}After`))
+            .map((key) => key.slice(0, -6)),
+    );
 
-    const before = metadata.before as Record<string, unknown>;
-    const after = metadata.after as Record<string, unknown>;
-    const fields = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]));
+    if (!hasBeforeAfterObjects && pairedSuffixBases.size === 0) return null;
+
+    const before = hasBeforeAfterObjects
+        ? (metadata.before as Record<string, unknown>)
+        : {};
+    const after = hasBeforeAfterObjects
+        ? (metadata.after as Record<string, unknown>)
+        : {};
+    const fields = hasBeforeAfterObjects
+        ? Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
+        : [];
 
     const parseJsonLike = (value: unknown): unknown => {
         if (typeof value !== "string") return value;
@@ -171,6 +184,14 @@ export function FieldChangeDetails({
 
         rows.push({ key: f, oldVal: oldRaw, newVal: newRaw });
     }
+
+    for (const base of pairedSuffixBases) {
+        const oldVal = metadata[`${base}Before`];
+        const newVal = metadata[`${base}After`];
+        rows.push({ key: base, oldVal, newVal });
+    }
+
+    if (rows.length === 0) return null;
 
     const rowBase: React.CSSProperties = {
         display: "grid",

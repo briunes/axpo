@@ -1,15 +1,15 @@
 "use client";
 
-import { Card, Column, Heading, Text } from "@once-ui-system/core";
+import { Paper, Stack, Typography } from "@mui/material";
 
 type MetricTone = "default" | "success" | "warning" | "brand" | "accent";
 
 const toneColor: Record<MetricTone, string> = {
-  success: "success-strong",
-  warning: "warning-strong",
-  brand: "brand-strong",
-  accent: "accent-strong",
-  default: "neutral-strong",
+  success: "success.main",
+  warning: "warning.main",
+  brand: "primary.main",
+  accent: "secondary.main",
+  default: "text.primary",
 };
 
 export function Metric({
@@ -24,26 +24,34 @@ export function Metric({
   tone?: MetricTone;
 }) {
   return (
-    <Card
+    <Paper
       className={`panel-card metric-card tone-${tone}`}
-      fillWidth
-      padding="24"
-      border="neutral-alpha-weak"
-      background="surface"
+      sx={{
+        width: "100%",
+        p: 3,
+        border: "1px solid var(--scheme-neutral-900)",
+        bgcolor: "var(--scheme-surface-raised)",
+        boxShadow: "var(--scheme-shadow-soft)",
+      }}
     >
-      <Column gap="8">
-        <Text variant="label-default-s" onBackground="neutral-weak">{title}</Text>
-        <Heading
-          as="h3"
-          variant="display-strong-l"
-          onBackground={toneColor[tone] as Parameters<typeof Heading>[0]["onBackground"]}
+      <Stack spacing={1}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+          {title}
+        </Typography>
+        <Typography
+          component="h3"
+          variant="h4"
+          color={toneColor[tone]}
+          sx={{ fontWeight: 700, lineHeight: 1.1 }}
         >
           {value}
-        </Heading>
+        </Typography>
         {subtitle && (
-          <Text variant="body-default-s" onBackground="neutral-weak">{subtitle}</Text>
+          <Typography variant="body2" color="text.secondary">
+            {subtitle}
+          </Typography>
         )}
-      </Column>
-    </Card>
+      </Stack>
+    </Paper>
   );
 }

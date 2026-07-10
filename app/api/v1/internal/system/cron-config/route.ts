@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
-import { reloadCronJobs } from "@/lib/cron";
 import cron from "node-cron";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
@@ -99,12 +98,9 @@ export const PATCH = withErrorHandler(async (request: NextRequest) => {
       },
     });
 
-    // Reload cron jobs with new configuration
-    await reloadCronJobs();
-
     return NextResponse.json({
       success: true,
-      message: "Cron configuration updated and reloaded",
+      message: "Cron configuration updated",
       config: {
         enabled: updated.cronExpirationEnabled,
         schedule: updated.cronExpirationSchedule,

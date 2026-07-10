@@ -72,6 +72,20 @@ const excelCellValue = (value: ExcelJS.CellValue): unknown => {
   return String(value);
 };
 
+const excelCellFormula = (cell: ExcelJS.Cell): string | undefined => {
+  if (typeof cell.formula === "string") return cell.formula;
+
+  const value = cell.value;
+  if (value === null || value === undefined || typeof value !== "object") {
+    return undefined;
+  }
+
+  const record = value as unknown as Record<string, unknown>;
+  if (typeof record.formula === "string") return record.formula;
+  if (typeof record.sharedFormula === "string") return record.sharedFormula;
+  return undefined;
+};
+
 async function readWorkbook(buffer: Buffer): Promise<WorkbookLike> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as any);
@@ -87,11 +101,15 @@ async function readWorkbook(buffer: Buffer): Promise<WorkbookLike> {
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
         const value = excelCellValue(cell.value);
+        const formula = excelCellFormula(cell);
         if (value === undefined || value === null || value === "") return;
 
         const r = rowNumber - 1;
         const c = colNumber - 1;
-        sheet[encodeCell({ r, c })] = { v: value };
+        sheet[encodeCell({ r, c })] = {
+          v: value,
+          ...(formula ? { f: formula } : {}),
+        };
         minRow = Math.min(minRow, r);
         minCol = Math.min(minCol, c);
         maxRow = Math.max(maxRow, r);
@@ -312,7 +330,10 @@ function parseIndexProductTier(
 
   const productRaw = match[1].trim();
   const tier = match[2];
-  const slug = profile.indexProductNames?.[productRaw] || INDEX_PRODUCT_MAP[productRaw] || null;
+  const slug =
+    profile.indexProductNames?.[productRaw] ||
+    INDEX_PRODUCT_MAP[productRaw] ||
+    null;
 
   return [slug, tier];
 }
@@ -626,9 +647,7 @@ function parseHiddenElectricityLookup(sheet: WorksheetLike): BaseValueItem[] {
     const rawProduct = String(
       sheet[encodeCell({ r: R, c: 1 })]?.v ?? "",
     ).trim();
-    const tariff = String(
-      sheet[encodeCell({ r: R, c: 2 })]?.v ?? "",
-    ).trim();
+    const tariff = String(sheet[encodeCell({ r: R, c: 2 })]?.v ?? "").trim();
     const monthLabel = String(
       sheet[encodeCell({ r: R, c: 3 })]?.v ?? "",
     ).trim();
@@ -1079,10 +1098,181 @@ function averageRefsFromFormula(
       ? averageMatches[1]
       : averageMatches[0];
 
-  return Array.from(
-    selectedAverage.matchAll(/\$?([A-Z]+)\$?(\d+)/gi),
+  const refs: CellAddress[] = [];
+  for (const part of selectedAverage.split(",")) {
+    const trimmed = part.trim();
+    const rangeMatch = trimmed.match(
+      /^\$?([A-Z]+)\$?(\d+):\$?([A-Z]+)\$?(\d+)$/i,
+    );
+    if (rangeMatch) {
+      const start = decodeCell(`${rangeMatch[1]}${rangeMatch[2]}`);
+      const end = decodeCell(`${rangeMatch[3]}${rangeMatch[4]}`);
+      for (let r = Math.min(start.r, end.r); r <= Math.max(start.r, end.r); r++) {
+        for (
+          let c = Math.min(start.c, end.c);
+          c <= Math.max(start.c, end.c);
+          c++
+        ) {
+          refs.push({ r, c });
+        }
+      }
+      continue;
+    }
+
+    refs.push(
+      ...Array.from(trimmed.matchAll(/\$?([A-Z]+)\$?(\d+)/gi), (match) =>
+        decodeCell(`${match[1]}${match[2]}`),
+      ),
+    );
+  }
+  return refs;
+}
+
+function profileRefsFromFormula(
+  formula: string | undefined,
+): { normalRef: CellAddress; diurnoRef: CellAddress } | null {
+  if (!formula || !formula.toUpperCase().includes("E57")) return null;
+  const refs = Array.from(
+    formula.matchAll(/'INPUT OMIE'!\$?([A-Z]+)\$?(\d+)/gi),
     (match) => decodeCell(`${match[1]}${match[2]}`),
   );
+  if (refs.length < 2) return null;
+  return { normalRef: refs[0], diurnoRef: refs[1] };
+}
+
+function localRefsFromFormula(formula: string | undefined): CellAddress[] {
+  if (!formula) return [];
+  const refs: CellAddress[] = [];
+  for (const match of formula.matchAll(/\$?([A-Z]{1,3})\$?(\d+)/gi)) {
+    const start = match.index ?? 0;
+    const previous = start > 0 ? formula[start - 1] : "";
+    // Skip references that are explicitly qualified with a sheet name.
+    if (previous === "!") continue;
+    refs.push(decodeCell(`${match[1]}${match[2]}`));
+  }
+  return refs;
+}
+
+function formulaCellValue(sheet: WorksheetLike, ref: CellAddress): number | null {
+  return safeFloat(sheet[encodeCell(ref)]?.v);
+}
+
+function profileFormulaRefsForCell(
+  sheet: WorksheetLike,
+  ref: CellAddress,
+): { normalRef: CellAddress; diurnoRef: CellAddress } | null {
+  const cell = sheet[encodeCell(ref)];
+  return profileRefsFromFormula(cell?.f);
+}
+
+function profileSensitivityFromFormula(
+  sheet: WorksheetLike,
+  formula: string | undefined,
+): number {
+  if (!formula) return 1;
+  const factorMatch = formula.match(
+    /\(1\+\$?([A-Z]{1,3})\$?(\d+)\*\$?([A-Z]{1,3})\$?(\d+)\/100\)/i,
+  );
+  const upliftMatch = formula.match(/\*\(1\+([0-9]+(?:\.[0-9]+)?)\)/);
+  const uplift = upliftMatch ? Number(upliftMatch[1]) : 0;
+  if (!factorMatch) return 1 + uplift;
+
+  const left = formulaCellValue(
+    sheet,
+    decodeCell(`${factorMatch[1]}${factorMatch[2]}`),
+  );
+  const right = formulaCellValue(
+    sheet,
+    decodeCell(`${factorMatch[3]}${factorMatch[4]}`),
+  );
+  if (left === null || right === null) return 1 + uplift;
+  return (1 + (left * right) / 100) * (1 + uplift);
+}
+
+function profilePricesFromFormulaCell(
+  sheet: WorksheetLike,
+  inputOmieSheet: WorksheetLike | undefined,
+  cell: { v?: unknown; f?: string } | undefined,
+  seen = new Set<string>(),
+): { normalMwh: number; diurnoMwh: number } | null {
+  if (!cell?.f || !inputOmieSheet) return null;
+
+  const directRefs = profileRefsFromFormula(cell.f);
+  if (directRefs) {
+    const normalMwh = safeFloat(
+      inputOmieSheet[encodeCell(directRefs.normalRef)]?.v,
+    );
+    const diurnoMwh = safeFloat(
+      inputOmieSheet[encodeCell(directRefs.diurnoRef)]?.v,
+    );
+    return normalMwh !== null && diurnoMwh !== null
+      ? { normalMwh, diurnoMwh }
+      : null;
+  }
+
+  const averageRefs = averageRefsFromFormula(cell.f, "Peninsula");
+  if (averageRefs.length > 0) {
+    const values = averageRefs
+      .map((ref) =>
+        profilePricesFromFormulaCell(
+          sheet,
+          inputOmieSheet,
+          sheet[encodeCell(ref)],
+          seen,
+        ),
+      )
+      .filter(
+        (
+          value,
+        ): value is {
+          normalMwh: number;
+          diurnoMwh: number;
+        } => value !== null,
+      );
+    if (values.length === 0) return null;
+    return {
+      normalMwh:
+        values.reduce((acc, value) => acc + value.normalMwh, 0) /
+        values.length,
+      diurnoMwh:
+        values.reduce((acc, value) => acc + value.diurnoMwh, 0) /
+        values.length,
+    };
+  }
+
+  for (const ref of localRefsFromFormula(cell.f)) {
+    const address = encodeCell(ref);
+    if (seen.has(address)) continue;
+    seen.add(address);
+
+    const referencedCell = sheet[address];
+    const nested = profilePricesFromFormulaCell(
+      sheet,
+      inputOmieSheet,
+      referencedCell,
+      seen,
+    );
+    if (nested) {
+      const profileRefs = profileFormulaRefsForCell(sheet, ref);
+      const currentFinal = safeFloat(cell.v);
+      const currentProfile =
+        profileRefs !== null ? safeFloat(referencedCell?.v) : null;
+
+      if (currentFinal !== null && currentProfile !== null) {
+        const sensitivity = profileSensitivityFromFormula(sheet, cell.f);
+        return {
+          normalMwh:
+            currentFinal + (nested.normalMwh - currentProfile) * sensitivity,
+          diurnoMwh:
+            currentFinal + (nested.diurnoMwh - currentProfile) * sensitivity,
+        };
+      }
+
+      return nested;
+    }
+  }
+
+  return null;
 }
 
 // Spanish month name → zero-padded month number
@@ -1140,6 +1330,7 @@ function parseSpanishMonthYear(s: string): string | null {
  */
 function parseDinamicaSheet(
   sheet: WorksheetLike,
+  inputOmieSheet: WorksheetLike | undefined,
   product: string,
   tier: string,
   potenciaByTariff = false,
@@ -1151,9 +1342,7 @@ function parseDinamicaSheet(
   // col 4.  Each subsequent row either holds a month ("ENERO-26" etc.) or is the
   // PROMEDIO summary row.  We stop after the PROMEDIO row.
   let inSection = false;
-  const zone = String(
-    sheet[encodeCell({ r: 41, c: 6 })]?.v ?? "Peninsula",
-  );
+  const zone = String(sheet[encodeCell({ r: 41, c: 6 })]?.v ?? "Peninsula");
   const promedioBFactors = new Map<string, { sum: number; count: number }>();
 
   for (let R = range.s.r; R <= range.e.r; R++) {
@@ -1242,12 +1431,59 @@ function parseDinamicaSheet(
           }
         }
 
-        // €/MWh → €/kWh
+        const profilePrices = profilePricesFromFormulaCell(
+          sheet,
+          inputOmieSheet,
+          cell,
+        );
+        const normalRawMwh = profilePrices?.normalMwh ?? null;
+        const diurnoRawMwh = profilePrices?.diurnoMwh ?? null;
+
+        const toAdjustedKwh = (rawMwh: number): number => {
+          let adjusted = rawMwh;
+          if (product === "PERSONALIZADA_INDEX") {
+            const embeddedMargin = personalizadaIndexEnergyMarginMwh(
+              sheet,
+              tariff,
+              i,
+            );
+            if (embeddedMargin !== 0) {
+              adjusted = Math.max(
+                0,
+                adjusted - embeddedMargin * PERSONALIZADA_INDEX_MARGIN_FACTOR,
+              );
+            }
+          } else if (product === "PERSONALIZADA_OMIE_B") {
+            const embeddedB = safeFloat(
+              sheet[encodeCell({ r: 28, c: bCols[i] })]?.v,
+            );
+            if (embeddedB !== null && bFactor !== null) {
+              adjusted = Math.max(0, adjusted - embeddedB * bFactor);
+            }
+          }
+          return Math.round((adjusted / 1000) * 1e10) / 1e10;
+        };
+
+        // Keep legacy key (profile-agnostic) for backward compatibility.
         const numVal = Math.round((adjustedMwh / 1000) * 1e10) / 1e10;
 
         if (isPromedio) {
           // 12-month average — stored as the un-suffixed fallback key
           items.push({ key: baseKey, valueNumeric: numVal, unit: "€/kWh" });
+          if (normalRawMwh !== null && normalRawMwh > 0) {
+            items.push({
+              key: `${baseKey}:PROFILE:NORMAL`,
+              valueNumeric: toAdjustedKwh(normalRawMwh),
+              unit: "€/kWh",
+            });
+          }
+          if (diurnoRawMwh !== null && diurnoRawMwh > 0) {
+            items.push({
+              key: `${baseKey}:PROFILE:DIURNO`,
+              valueNumeric: toAdjustedKwh(diurnoRawMwh),
+              unit: "€/kWh",
+            });
+          }
         } else {
           // Month-specific price — stored with YYYY-MM suffix
           items.push({
@@ -1255,6 +1491,20 @@ function parseDinamicaSheet(
             valueNumeric: numVal,
             unit: "€/kWh",
           });
+          if (normalRawMwh !== null && normalRawMwh > 0) {
+            items.push({
+              key: `${baseKey}:${monthKey}:PROFILE:NORMAL`,
+              valueNumeric: toAdjustedKwh(normalRawMwh),
+              unit: "€/kWh",
+            });
+          }
+          if (diurnoRawMwh !== null && diurnoRawMwh > 0) {
+            items.push({
+              key: `${baseKey}:${monthKey}:PROFILE:DIURNO`,
+              valueNumeric: toAdjustedKwh(diurnoRawMwh),
+              unit: "€/kWh",
+            });
+          }
         }
 
         if (bFactor !== null) {
@@ -1329,9 +1579,7 @@ function parseDinamicaSheet(
       // Convert from €/kW/día to €/kW/año
       const embeddedPowerMargin =
         product === "PERSONALIZADA_OMIE_B"
-          ? (safeFloat(
-              sheet[encodeCell({ r: R + 8, c: 10 + i })]?.v,
-            ) ?? 0)
+          ? (safeFloat(sheet[encodeCell({ r: R + 8, c: 10 + i })]?.v) ?? 0)
           : 0;
       const yearlyRate =
         Math.round(Math.max(0, dailyRate * 365 - embeddedPowerMargin) * 1e10) /
@@ -1497,6 +1745,7 @@ export async function parseAxpoExcel(
         const isPersonalizada = autoSlug.startsWith("PERSONALIZADA");
         const dinamicaItems = parseDinamicaSheet(
           workbook.Sheets[actual],
+          workbook.Sheets["INPUT OMIE"],
           autoSlug,
           m[2],
           isPersonalizada,
@@ -1511,7 +1760,13 @@ export async function parseAxpoExcel(
     if (actualSheetName) {
       const sheet = workbook.Sheets[actualSheetName];
       // All sheets use tariff-specific POTENCIA rows.
-      const dinamicaItems = parseDinamicaSheet(sheet, product, tier, true);
+      const dinamicaItems = parseDinamicaSheet(
+        sheet,
+        workbook.Sheets["INPUT OMIE"],
+        product,
+        tier,
+        true,
+      );
       allItems.push(...dinamicaItems);
     }
   }

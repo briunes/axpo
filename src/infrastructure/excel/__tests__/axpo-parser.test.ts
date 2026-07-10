@@ -38,14 +38,15 @@ describe("parseAxpoExcel", () => {
     rows[66][6] = 0.019520857534246573;
     rows[66][7] = 0.01918953698630137;
 
-    const buffer = await workbookBuffer(
-      "DINAMICA CONTROL PLUS N3",
-      rows,
-    );
+    const buffer = await workbookBuffer("DINAMICA CONTROL PLUS N3", rows);
 
-    const parsed = await parseAxpoExcel(buffer, "TELEVENTA TEST 04.05.2026.xlsx", {
-      scopeType: "TLV",
-    });
+    const parsed = await parseAxpoExcel(
+      buffer,
+      "TELEVENTA TEST 04.05.2026.xlsx",
+      {
+        scopeType: "TLV",
+      },
+    );
     const byKey = new Map(
       parsed.items.map((item) => [item.key, item.valueNumeric]),
     );
@@ -74,16 +75,93 @@ describe("parseAxpoExcel", () => {
       parsed.items.map((item) => [item.key, item.valueNumeric]),
     );
 
+    expect(byKey.get("ELEC:FIJO:1P_PLUS:N1:6.1TD:P1:ENERGIA")).toBe(0);
+    expect(byKey.get("ELEC:FIJO:1P_PLUS:N1:6.1TD:P1:POTENCIA")).toBe(0);
     expect(
-      byKey.get("ELEC:FIJO:1P_PLUS:N1:6.1TD:P1:ENERGIA"),
-    ).toBe(0);
-    expect(
-      byKey.get("ELEC:FIJO:1P_PLUS:N1:6.1TD:P1:POTENCIA"),
-    ).toBe(0);
+      byKey.get("ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P6:MARGEN:2026-04"),
+    ).toBeCloseTo(0.1201824484, 10);
+  });
+
+  it("extracts NORMAL and DIURNO indexed month keys from INPUT OMIE formula refs", async () => {
+    const workbook = new ExcelJS.Workbook();
+
+    const inputOmie = workbook.addWorksheet("INPUT OMIE");
+    inputOmie.getCell("AE5").value = 100; // NORMAL €/MWh
+    inputOmie.getCell("AE12").value = 200; // DIURNO €/MWh
+
+    const dinamica = workbook.addWorksheet("DINAMICA N1");
+    dinamica.getCell("E1").value = "PRECIO TE";
+    dinamica.getCell("E2").value = "ABRIL-26";
+    dinamica.getCell("G2").value = {
+      formula:
+        "IF('PETICION DATOS LUZ'!E57=\"NORMAL\",'INPUT OMIE'!AE5,'INPUT OMIE'!AE12)",
+      result: 150,
+    } as any;
+    dinamica.getCell("E3").value = "PROMEDIO 12 MESES";
+
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+    const parsed = await parseAxpoExcel(buffer, "SIMULADOR TEST.xlsm");
+    const byKey = new Map(
+      parsed.items.map((item) => [item.key, item.valueNumeric]),
+    );
+
     expect(
       byKey.get(
-        "ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P6:MARGEN:2026-04",
+        "ELEC:INDEX:DINAMICA:N1:6.1TD:P1:MARGEN:2026-04:PROFILE:NORMAL",
       ),
-    ).toBeCloseTo(0.1201824484, 10);
+    ).toBeCloseTo(0.1, 10);
+    expect(
+      byKey.get(
+        "ELEC:INDEX:DINAMICA:N1:6.1TD:P1:MARGEN:2026-04:PROFILE:DIURNO",
+      ),
+    ).toBeCloseTo(0.2, 10);
+  });
+
+  it("extracts profile prices when Precio TE uses intermediate profile cells", async () => {
+    const workbook = new ExcelJS.Workbook();
+
+    const inputOmie = workbook.addWorksheet("INPUT OMIE");
+    inputOmie.getCell("AE5").value = 100; // NORMAL €/MWh
+    inputOmie.getCell("AE12").value = 50; // DIURNO €/MWh
+
+    const dinamica = workbook.addWorksheet("DINAMICA N1");
+    dinamica.getCell("E1").value = "PRECIO TE";
+    dinamica.getCell("E2").value = "ABRIL-26";
+    dinamica.getCell("C2").value = {
+      formula:
+        "IF('PETICION DATOS LUZ'!E57=\"NORMAL\",'INPUT OMIE'!AE5,'INPUT OMIE'!AE12)",
+      result: 100,
+    } as any;
+    dinamica.getCell("C3").value = 10;
+    dinamica.getCell("J7").value = 1;
+    dinamica.getCell("L22").value = 2;
+    dinamica.getCell("L3").value = 2;
+    dinamica.getCell("J8").value = 10;
+    dinamica.getCell("P45").value = 3;
+    dinamica.getCell("P48").value = 4;
+    dinamica.getCell("J10").value = 5;
+    dinamica.getCell("G2").value = {
+      formula:
+        "IF(C2=0,0,((C2+C3+J$7+$L$22)*(1+L3*J$8/100)+(P45+P48))*(1+0.01528)+J$10)",
+      result: 149.778928,
+    } as any;
+    dinamica.getCell("E3").value = "PROMEDIO 12 MESES";
+
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+    const parsed = await parseAxpoExcel(buffer, "SIMULADOR TEST.xlsm");
+    const byKey = new Map(
+      parsed.items.map((item) => [item.key, item.valueNumeric]),
+    );
+
+    expect(
+      byKey.get(
+        "ELEC:INDEX:DINAMICA:N1:6.1TD:P1:MARGEN:2026-04:PROFILE:NORMAL",
+      ),
+    ).toBeCloseTo(0.149778928, 10);
+    expect(
+      byKey.get(
+        "ELEC:INDEX:DINAMICA:N1:6.1TD:P1:MARGEN:2026-04:PROFILE:DIURNO",
+      ),
+    ).toBeCloseTo(0.088862128, 10);
   });
 });

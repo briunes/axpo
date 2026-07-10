@@ -27,7 +27,7 @@ import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutl
 import DownloadIcon from "@mui/icons-material/Download";
 import StarIcon from "@mui/icons-material/Star";
 import StarOutlineIcon from "@mui/icons-material/StarOutline";
-import { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { BaseValueScopeType, BaseValueSetItem } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
@@ -35,7 +35,16 @@ import { downloadBaseValueFile } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
 import type { BaseValuesActions } from "../hooks/useBaseValues";
 import { ConfirmDialog } from "../shared";
-import { DataTable, FormInput, FormSelect, StatusBadge } from "../ui";
+import {
+  DataTable,
+  FormSelect,
+  SaveTableViewDialog,
+  StatusBadge,
+  TableFilterButton,
+  TableFiltersDialog,
+  TableViewSearchControls,
+  useTableViews,
+} from "../ui";
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -51,6 +60,19 @@ interface BaseValuesModuleProps {
   onNotify?: (text: string, tone: "success" | "error") => void;
   onActionButtons?: (buttons: React.ReactNode) => void;
 }
+
+type BaseValuesViewState = {
+  scopeFilter: "" | Extract<BaseValueScopeType, "GLOBAL" | "TLV">;
+  statusFilter: "" | "ACTIVE" | "DRAFT" | "ARCHIVED";
+  productionFilter: "" | "production" | "standard";
+  showArchived: boolean;
+  sortColumn: string;
+  sortDir: "asc" | "desc";
+};
+
+const BASE_VALUE_VIEWS_STORAGE_KEY = "axpo_base_value_saved_views";
+const BASE_VALUE_DEFAULT_SORT_COLUMN = "updatedAt";
+const BASE_VALUE_DEFAULT_SORT_DIR: "asc" | "desc" = "desc";
 
 // ─── Main module ─────────────────────────────────────────────────────────────
 
@@ -74,6 +96,13 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
   const [uploadScopeType, setUploadScopeType] =
     useState<Extract<BaseValueScopeType, "GLOBAL" | "TLV">>("GLOBAL");
   const [maxUploadFileSizeMb, setMaxUploadFileSizeMb] = useState(DEFAULT_MAX_UPLOAD_FILE_SIZE_MB);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
+  const [draftScopeFilter, setDraftScopeFilter] = useState(scopeFilter);
+  const [draftStatusFilter, setDraftStatusFilter] = useState(statusFilter);
+  const [draftProductionFilter, setDraftProductionFilter] = useState(productionFilter);
+  const [draftSortColumn, setDraftSortColumn] = useState(sortColumn);
+  const [draftSortDir, setDraftSortDir] = useState<"asc" | "desc">(sortDir);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadSizeLimitLabel = formatUploadSizeLimit(maxUploadFileSizeMb);
   const maxUploadSizeBytes = uploadSizeMbToBytes(maxUploadFileSizeMb);
@@ -134,9 +163,82 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
     setPendingUploadFile(null);
   };
 
-  const hasActiveFilters = Boolean(
-    search || scopeFilter || statusFilter || productionFilter,
-  );
+  useEffect(() => {
+    if (!filtersOpen) return;
+    setDraftScopeFilter(scopeFilter);
+    setDraftStatusFilter(statusFilter);
+    setDraftProductionFilter(productionFilter);
+    setDraftSortColumn(sortColumn);
+    setDraftSortDir(sortDir);
+  }, [filtersOpen, productionFilter, scopeFilter, sortColumn, sortDir, statusFilter]);
+
+  const currentView = useMemo<BaseValuesViewState>(() => ({
+    scopeFilter,
+    statusFilter,
+    productionFilter,
+    showArchived,
+    sortColumn,
+    sortDir,
+  }), [productionFilter, scopeFilter, showArchived, sortColumn, sortDir, statusFilter]);
+
+  const applyView = useCallback((view: BaseValuesViewState) => {
+    setScopeFilter(view.scopeFilter ?? "");
+    setStatusFilter(view.statusFilter ?? "");
+    setProductionFilter(view.productionFilter ?? "");
+    setShowArchived(Boolean(view.showArchived));
+    setSort(view.sortColumn || BASE_VALUE_DEFAULT_SORT_COLUMN, view.sortDir || BASE_VALUE_DEFAULT_SORT_DIR);
+    setPage(1);
+  }, [setPage, setProductionFilter, setScopeFilter, setShowArchived, setSort, setStatusFilter]);
+
+  const builtInViews = useMemo<Array<{ id: string; name: string; view: BaseValuesViewState }>>(() => [
+    {
+      id: "recent",
+      name: "Recent",
+      view: { scopeFilter: "", statusFilter: "", productionFilter: "", showArchived: false, sortColumn: BASE_VALUE_DEFAULT_SORT_COLUMN, sortDir: BASE_VALUE_DEFAULT_SORT_DIR },
+    },
+    {
+      id: "active",
+      name: t("baseValuesModule", "statusActive"),
+      view: { scopeFilter: "", statusFilter: "ACTIVE", productionFilter: "", showArchived: false, sortColumn: BASE_VALUE_DEFAULT_SORT_COLUMN, sortDir: BASE_VALUE_DEFAULT_SORT_DIR },
+    },
+    {
+      id: "production",
+      name: t("baseValuesModule", "productionFilterOn"),
+      view: { scopeFilter: "", statusFilter: "", productionFilter: "production", showArchived: false, sortColumn: BASE_VALUE_DEFAULT_SORT_COLUMN, sortDir: BASE_VALUE_DEFAULT_SORT_DIR },
+    },
+  ], [t]);
+
+  const { savedViews, viewPresets, activeViewPresetId, saveCurrentView, deleteSavedView } =
+    useTableViews<BaseValuesViewState>({ storageKey: BASE_VALUE_VIEWS_STORAGE_KEY, currentView, presets: builtInViews });
+
+  const activeAdvancedFilterCount = useMemo(() => [
+    !activeViewPresetId && scopeFilter,
+    !activeViewPresetId && statusFilter,
+    !activeViewPresetId && productionFilter,
+    !activeViewPresetId && showArchived,
+    !activeViewPresetId && (sortColumn !== BASE_VALUE_DEFAULT_SORT_COLUMN || sortDir !== BASE_VALUE_DEFAULT_SORT_DIR),
+  ].filter(Boolean).length, [activeViewPresetId, productionFilter, scopeFilter, showArchived, sortColumn, sortDir, statusFilter]);
+
+  const hasActiveFilters = Boolean(search || activeAdvancedFilterCount);
+
+  const applyAdvancedFilters = useCallback(() => {
+    setScopeFilter(draftScopeFilter);
+    setStatusFilter(draftStatusFilter);
+    setProductionFilter(draftProductionFilter);
+    setSort(draftSortColumn || BASE_VALUE_DEFAULT_SORT_COLUMN, draftSortDir);
+    setPage(1);
+    setFiltersOpen(false);
+  }, [draftProductionFilter, draftScopeFilter, draftSortColumn, draftSortDir, draftStatusFilter, setPage, setProductionFilter, setScopeFilter, setSort, setStatusFilter]);
+
+  const clearAdvancedFilters = useCallback(() => {
+    setDraftScopeFilter("");
+    setDraftStatusFilter("");
+    setDraftProductionFilter("");
+    setDraftSortColumn(BASE_VALUE_DEFAULT_SORT_COLUMN);
+    setDraftSortDir(BASE_VALUE_DEFAULT_SORT_DIR);
+    applyView({ scopeFilter: "", statusFilter: "", productionFilter: "", showArchived, sortColumn: BASE_VALUE_DEFAULT_SORT_COLUMN, sortDir: BASE_VALUE_DEFAULT_SORT_DIR });
+    setFiltersOpen(false);
+  }, [applyView, showArchived]);
   const canArchiveSet = (setItem: BaseValueSetItem) =>
     !setItem.isDeleted && !setItem.isActive && !setItem.isProduction;
 
@@ -149,7 +251,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
       renderCell: (s) => (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, opacity: s.isDeleted ? 0.5 : 1 }}>
           <Typography variant="body1" noWrap title={s.name}>{s.name}</Typography>
-          
+
         </Box>
       ),
     },
@@ -375,7 +477,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
   }, [onActionButtons, showArchived, loading, canManage, refresh, t, busyAction, handleFileSelect, fileInputRef]);
 
   return (
-    <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
+    <Stack spacing={2} sx={{ height: '100%', minHeight: 0 }}>
       <DataTable<BaseValueSetItem>
         tableId="base-values"
         columns={columns}
@@ -383,7 +485,6 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
-        onApplyFilters={(draft) => { setSearch(draft); setPage(1); }}
         onClearFilters={() => {
           setSearch("");
           setScopeFilter("");
@@ -392,6 +493,15 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
           setPage(1);
         }}
         hasActiveFilters={hasActiveFilters}
+        showFilterSubmitActions={false}
+        showFilterLabel={false}
+        headerRight={(
+          <TableFilterButton
+            title={t("simulationsModule", "filtersTitle")}
+            activeFilterCount={activeAdvancedFilterCount}
+            onClick={() => setFiltersOpen(true)}
+          />
+        )}
         searchPlaceholder={t("search", "baseValues")}
         emptyMessage={t("search", "emptyBaseValues")}
         sortState={{ column: sortColumn, direction: sortDir }}
@@ -426,84 +536,25 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
           },
         ] : undefined}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
-          <>
-            <Box sx={{ flex:1 }}>
-              <FormInput
-                label=""
-                placeholder={searchPlaceholder}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
-                size="small"
-                slotProps={{
-                  input: {
-                    endAdornment: draft ? (
-                      <IconButton
-                        size="small"
-                        onClick={() => { setDraft(""); setSearch(""); setPage(1); }}
-                        aria-label="Clear"
-                        edge="end"
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    ) : null,
-                  },
-                }}
-              />
-            </Box>
-            <Box sx={{ flex:1 }}>
-              <FormSelect
-                label=""
-                options={[
-                  { value: "", label: t("baseValuesModule", "allScopes") },
-                  { value: "GLOBAL", label: t("baseValuesModule", "scopeGlobal") },
-                  { value: "TLV", label: "TLV" },
-                ]}
-                value={scopeFilter}
-                onChange={(val) => {
-                  setScopeFilter(val as "" | Extract<BaseValueScopeType, "GLOBAL" | "TLV">);
-                  setPage(1);
-                }}
-                placeholder={t("baseValuesModule", "colScope")}
-                textFieldProps={{ size: "small" }}
-              />
-            </Box>
-            <Box sx={{ flex:1 }}>
-              <FormSelect
-                label=""
-                options={[
-                  { value: "", label: t("search", "allStatuses") },
-                  { value: "ACTIVE", label: t("baseValuesModule", "statusActive") },
-                  { value: "DRAFT", label: t("baseValuesModule", "statusDraft") },
-                  { value: "ARCHIVED", label: t("baseValuesModule", "statusArchived") },
-                ]}
-                value={statusFilter}
-                onChange={(val) => {
-                  setStatusFilter(val as "" | "ACTIVE" | "DRAFT" | "ARCHIVED");
-                  setPage(1);
-                }}
-                placeholder={t("baseValuesModule", "colStatus")}
-                textFieldProps={{ size: "small" }}
-              />
-            </Box>
-            <Box sx={{ flex:1 }}>
-              <FormSelect
-                label=""
-                options={[
-                  { value: "", label: t("baseValuesModule", "allProductionStates") },
-                  { value: "production", label: t("baseValuesModule", "productionFilterOn") },
-                  { value: "standard", label: t("baseValuesModule", "productionFilterOff") },
-                ]}
-                value={productionFilter}
-                onChange={(val) => {
-                  setProductionFilter(val as "" | "production" | "standard");
-                  setPage(1);
-                }}
-                placeholder={t("baseValuesModule", "colProduction")}
-                textFieldProps={{ size: "small" }}
-              />
-            </Box>
-          </>
+          <TableViewSearchControls
+            activeViewPresetId={activeViewPresetId}
+            viewPresets={viewPresets}
+            savedViews={savedViews}
+            onApplyView={applyView}
+            onDeleteSavedView={deleteSavedView}
+            labels={{
+              customView: t("simulationsModule", "customView"),
+              savedViewsGroup: t("simulationsModule", "savedViewsGroup"),
+              viewPreset: t("simulationsModule", "viewPresetLabel"),
+              clear: t("actions", "clear"),
+            }}
+            draft={draft}
+            setDraft={setDraft}
+            commitSearch={commitSearch}
+            searchPlaceholder={searchPlaceholder}
+            onLiveSearchChange={(value) => { setSearch(value); setPage(1); }}
+            onClearSearch={() => { setSearch(""); setPage(1); }}
+          />
         )}
         mobileCard={{
           title: "name",
@@ -582,6 +633,86 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
             );
           },
         }}
+      />
+
+      <TableFiltersDialog
+        open={filtersOpen}
+        title={t("simulationsModule", "filtersTitle")}
+        saveViewLabel={t("simulationsModule", "saveView")}
+        clearLabel={t("simulationsModule", "clearFilters")}
+        applyLabel={t("simulationsModule", "applyFilters")}
+        onClose={() => setFiltersOpen(false)}
+        onOpenSaveView={() => setSaveViewOpen(true)}
+        onClear={clearAdvancedFilters}
+        onApply={applyAdvancedFilters}
+      >
+        <FormSelect
+          label={t("baseValuesModule", "colScope")}
+          options={[
+            { value: "", label: t("baseValuesModule", "allScopes") },
+            { value: "GLOBAL", label: t("baseValuesModule", "scopeGlobal") },
+            { value: "TLV", label: "TLV" },
+          ]}
+          value={draftScopeFilter}
+          onChange={(val) => setDraftScopeFilter(val as "" | Extract<BaseValueScopeType, "GLOBAL" | "TLV">)}
+          textFieldProps={{ size: "small" }}
+        />
+        <FormSelect
+          label={t("baseValuesModule", "colStatus")}
+          options={[
+            { value: "", label: t("search", "allStatuses") },
+            { value: "ACTIVE", label: t("baseValuesModule", "statusActive") },
+            { value: "DRAFT", label: t("baseValuesModule", "statusDraft") },
+            { value: "ARCHIVED", label: t("baseValuesModule", "statusArchived") },
+          ]}
+          value={draftStatusFilter}
+          onChange={(val) => setDraftStatusFilter(val as "" | "ACTIVE" | "DRAFT" | "ARCHIVED")}
+          textFieldProps={{ size: "small" }}
+        />
+        <FormSelect
+          label={t("baseValuesModule", "colProduction")}
+          options={[
+            { value: "", label: t("baseValuesModule", "allProductionStates") },
+            { value: "production", label: t("baseValuesModule", "productionFilterOn") },
+            { value: "standard", label: t("baseValuesModule", "productionFilterOff") },
+          ]}
+          value={draftProductionFilter}
+          onChange={(val) => setDraftProductionFilter(val as "" | "production" | "standard")}
+          textFieldProps={{ size: "small" }}
+        />
+        <FormSelect
+          label={t("simulationsModule", "sortBy")}
+          options={[
+            { value: "updatedAt", label: t("columns", "updated") },
+            { value: "createdAt", label: t("columns", "created") },
+            { value: "name", label: t("baseValuesModule", "colName") },
+            { value: "version", label: t("baseValuesModule", "colVersion") },
+          ]}
+          value={draftSortColumn}
+          onChange={(val) => setDraftSortColumn((val as string) || BASE_VALUE_DEFAULT_SORT_COLUMN)}
+          textFieldProps={{ size: "small" }}
+        />
+        <FormSelect
+          label={t("simulationsModule", "sortDirection")}
+          options={[
+            { value: "desc", label: t("simulationsModule", "directionDescending") },
+            { value: "asc", label: t("simulationsModule", "directionAscending") },
+          ]}
+          value={draftSortDir}
+          onChange={(val) => setDraftSortDir(val === "asc" ? "asc" : "desc")}
+          textFieldProps={{ size: "small" }}
+        />
+      </TableFiltersDialog>
+
+      <SaveTableViewDialog
+        open={saveViewOpen}
+        title={t("simulationsModule", "saveViewTitle")}
+        description={t("simulationsModule", "saveViewDescription")}
+        nameLabel={t("simulationsModule", "viewName")}
+        cancelLabel={t("simulationsModule", "cancel")}
+        saveLabel={t("simulationsModule", "save")}
+        onClose={() => setSaveViewOpen(false)}
+        onSave={saveCurrentView}
       />
 
       {confirmBulkArchiveIds && (

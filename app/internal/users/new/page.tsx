@@ -1,7 +1,6 @@
 "use client";
 
-import { Button } from "@once-ui-system/core";
-import { Box, Tabs, Tab, Alert, Typography } from "@mui/material";
+import { Box, Button, Tabs, Tab, Alert, Typography } from "@mui/material";
 import { FormSelect } from "../../components/ui/FormSelect";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -211,7 +210,9 @@ export default function NewUserPage() {
                             <div className="dt-cell-secondary">{t("userFormPage", "pinLabel")}</div>
                             <div className="crud-callout-value">{newlyCreated.pin}</div>
                         </div>
-                        <Button variant="secondary" size="s" onClick={handleDismissPin} label={t("actions", "done")} />
+                        <Button variant="outlined" size="small" onClick={handleDismissPin}>
+                            {t("actions", "done")}
+                        </Button>
                     </div>
                 </div>
             )}

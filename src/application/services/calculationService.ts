@@ -75,6 +75,27 @@ function priceOf(map: PriceMap, key: string): number | undefined {
   return map.get(key);
 }
 
+function indexedEnergyPriceOf(
+  map: PriceMap,
+  baseKey: string,
+  billingMonthKey: string,
+  perfilCarga: "NORMAL" | "DIURNO",
+): number | undefined {
+  return (
+    // Profile-specific month value (new parser keys)
+    priceOf(
+      map,
+      `${baseKey}:MARGEN:${billingMonthKey}:PROFILE:${perfilCarga}`,
+    ) ??
+    // Profile-specific promedio fallback
+    priceOf(map, `${baseKey}:MARGEN:PROFILE:${perfilCarga}`) ??
+    // Backward-compatible keys (no profile dimension)
+    priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) ??
+    priceOf(map, `${baseKey}:MARGEN`) ??
+    priceOf(map, `${baseKey}:ENERGIA`)
+  );
+}
+
 function singlePeriodPriceOf(
   map: PriceMap,
   product: string,
@@ -286,6 +307,7 @@ function calcElecIndex(
   const product = definition.productKey;
   const {
     tarifaAcceso,
+    perfilCarga,
     consumo,
     potenciaContratada,
     excesoPotencia,
@@ -323,13 +345,12 @@ function calcElecIndex(
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
     const baseKey = `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}`;
-    const storedPrice =
-      // 1. Month-specific price (e.g. MARZO-26) — highest priority
-      priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) ??
-      // 2. 12-month PROMEDIO — good fallback for DINAMICA/PLUS
-      priceOf(map, `${baseKey}:MARGEN`) ??
-      // 3. Legacy key name used in earlier imports
-      priceOf(map, `${baseKey}:ENERGIA`);
+    const storedPrice = indexedEnergyPriceOf(
+      map,
+      baseKey,
+      billingMonthKey,
+      perfilCarga,
+    );
     if (storedPrice === undefined) return null;
     terminoEnergia += storedPrice * pv(consumoMap, p);
   }
@@ -505,8 +526,10 @@ function calcPersonalizadaIndex(
   // The product has no tier variant — keys use an empty-string tier (POTENCIA lookup).
   const product = "PERSONALIZADA_INDEX";
   const tier = "";
+  const perfilCarga = inputs.perfilCarga ?? "NORMAL";
 
-  const billingMonthKey = inputs.billingMonth ?? inputs.periodo.fechaFin.slice(0, 7);
+  const billingMonthKey =
+    inputs.billingMonth ?? inputs.periodo.fechaFin.slice(0, 7);
   // Use user-supplied values when present. If the custom fields are blank, fall
   // back to the imported PERSONALIZADA INDEX sheet values, matching Excel.
   const hasAnyUserValue =
@@ -521,8 +544,8 @@ function calcPersonalizadaIndex(
     (p) => {
       const baseKey = `ELEC:INDEX:${product}:${tier}:${inputs.tarifaAcceso}:${p}`;
       return (
-        priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) !== undefined ||
-        priceOf(map, `${baseKey}:MARGEN`) !== undefined
+        indexedEnergyPriceOf(map, baseKey, billingMonthKey, perfilCarga) !==
+        undefined
       );
     },
   );
@@ -561,9 +584,12 @@ function calcPersonalizadaIndex(
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
     const baseKey = `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}`;
-    const storedPrice =
-      priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) ??
-      priceOf(map, `${baseKey}:MARGEN`);
+    const storedPrice = indexedEnergyPriceOf(
+      map,
+      baseKey,
+      billingMonthKey,
+      perfilCarga,
+    );
     const margenEnergiaP =
       ((margenEnergiaMap[p] ?? 0) * PERSONALIZADA_INDEX_ENERGY_MARGIN_FACTOR) /
       1000;
@@ -660,6 +686,7 @@ function calcPersonalizadaOmieB(
 
   const {
     tarifaAcceso,
+    perfilCarga,
     consumo,
     potenciaContratada,
     excesoPotencia,
@@ -688,9 +715,7 @@ function calcPersonalizadaOmieB(
   for (const p of energyPeriods) {
     const baseKey = `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}`;
     const storedPrice =
-      priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) ??
-      priceOf(map, `${baseKey}:MARGEN`) ??
-      priceOf(map, `${baseKey}:ENERGIA`) ??
+      indexedEnergyPriceOf(map, baseKey, billingMonthKey, perfilCarga) ??
       ((inputs.omieEstimado ?? {}) as Record<string, number | undefined>)[p];
     if (storedPrice === undefined) return null;
     const bFactor =
@@ -1082,7 +1107,8 @@ export class CalculationService {
     ) => {
       const products = options.productDefinitions?.filter(
         (product) =>
-          product.commodity === commodity && product.pricingType === pricingType,
+          product.commodity === commodity &&
+          product.pricingType === pricingType,
       );
       return products && products.length > 0
         ? products

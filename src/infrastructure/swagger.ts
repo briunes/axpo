@@ -17,7 +17,7 @@ const swaggerOptions = {
     openapi: "3.0.0",
     info: {
       title: "AXPO Simulador de Ofertas - API v1",
-      version: "0.2.0",
+      version: "0.2.1",
       description: `
 # Simulador de Ofertas API
 

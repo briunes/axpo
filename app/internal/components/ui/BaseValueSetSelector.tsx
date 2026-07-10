@@ -16,6 +16,10 @@ interface BaseValueSetSelectorProps {
     compact?: boolean;
 }
 
+const COMPACT_SELECTOR_WIDTH = 360;
+const DEFAULT_SELECTOR_MIN_WIDTH = 320;
+const DEFAULT_SELECTOR_MAX_WIDTH = 420;
+
 function formatUploadDate(dateStr: string): string {
     return new Date(dateStr).toLocaleString("es-ES", {
         day: "2-digit",
@@ -73,8 +77,8 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
                 alignItems: "center",
                 gap: 10,
                 minWidth: 0,
-                width: compact ? "min(100%, 420px)" : "100%",
-                flex: compact ? "0 1 420px" : "1 1 auto",
+                width: compact ? `min(100%, ${COMPACT_SELECTOR_WIDTH}px)` : "auto",
+                flex: compact ? `0 1 ${COMPACT_SELECTOR_WIDTH}px` : "0 0 auto",
             }}
         >
             <FormSelect
@@ -83,7 +87,7 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
                     value: s.id,
                     label: `${s.name}  v${s.version}`,
                     secondaryLabel: `Uploaded ${formatUploadDate(s.createdAt)}`,
-                    icon: s.isActive ? <StarIcon sx={{color: "warning.main" }} /> : undefined,
+                    icon: s.isActive ? <StarIcon sx={{ color: "warning.main" }} /> : undefined,
                 }))}
                 value={selected}
                 onChange={(id) => {
@@ -94,15 +98,16 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
                     const item = sets.find((s) => s.id === idStr);
                     if (item) onChangeItem?.(item);
                 }}
-                fullWidth
+                fullWidth={compact}
                 textFieldProps={{ size: "small", placeholder: "Select base values set…" }}
                 sx={{
-                    width: "100%",
-                    minWidth: compact ? 0 : { xs: 0, sm: 360 },
-                    maxWidth: compact ? 420 : "100%",
+                    width: compact ? "100%" : "auto",
+                    minWidth: compact ? 0 : { xs: 0, sm: DEFAULT_SELECTOR_MIN_WIDTH },
+                    maxWidth: compact ? COMPACT_SELECTOR_WIDTH : DEFAULT_SELECTOR_MAX_WIDTH,
                     "& .MuiInputBase-root": compact
                         ? {
-                            minHeight: 36, }
+                            minHeight: 36,
+                        }
                         : undefined,
                 }}
             />

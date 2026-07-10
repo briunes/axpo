@@ -129,9 +129,9 @@ interface GasFormState {
     personalizadaFijoTerminoVariable: number;
 }
 
-function daysBetween(from: string, to: string, inclusive = false): number {
+function daysBetween(from: string, to: string): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-    return Math.max(1, inclusive ? d + 1 : d); // electricity: inclusive (end-start+1), gas: non-inclusive (end-start)
+    return Math.max(1, d);
 }
 
 function parseLocalDate(isoDateString: string): Date {
@@ -250,7 +250,7 @@ function deriveCurrentBreakdown(source: Record<string, any>): {
     } = {};
 
     const billingDays =
-        source.fechaInicio && source.fechaFin ? daysBetween(source.fechaInicio, source.fechaFin, false) : undefined;
+        source.fechaInicio && source.fechaFin ? daysBetween(source.fechaInicio, source.fechaFin) : undefined;
     if (billingDays) {
         const powerCost = powerPeriods.reduce((sum, period) => {
             const potencia = finiteNumber(source[`potencia${period}`]) ?? 0;
@@ -443,7 +443,7 @@ function defaultGasState(): GasFormState {
 // ─── Payload builders ──────────────────────────────────────────────────────────
 
 function buildElecInputs(s: ElecFormState): ElectricityInputs {
-    const dias = daysBetween(s.fechaInicio, s.fechaFin, true);
+    const dias = daysBetween(s.fechaInicio, s.fechaFin);
     return {
         clientData: {
             cups: s.cups || undefined,
@@ -1280,7 +1280,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                                 />
                             </Field>
                             <Field label={t("simulationForm", "fieldDays")} flex="0 0 88px">
-                                <FormInput label="" type="number" slotProps={{ htmlInput: { readOnly: true } }} value={daysBetween(state.fechaInicio, state.fechaFin, true)} sx={{ opacity: 0.6 }} />
+                                <FormInput label="" type="number" slotProps={{ htmlInput: { readOnly: true } }} value={daysBetween(state.fechaInicio, state.fechaFin)} sx={{ opacity: 0.6 }} />
                             </Field>
                         </Row>
                     </Sec>

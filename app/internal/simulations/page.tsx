@@ -40,6 +40,11 @@ export default function SimulationsPage() {
       clientId: string;
       cups: string;
       status: string;
+      type: string;
+      createdFrom: string;
+      createdTo: string;
+      expiresFrom: string;
+      expiresTo: string;
     }>("axpo_simulations_filters");
     const ownerUserId = isCommercial
       ? (session?.user.id ?? "")
@@ -56,6 +61,11 @@ export default function SimulationsPage() {
         clientId: filterState.clientId || undefined,
         cups: filterState.cups || undefined,
         status: filterState.status || undefined,
+        type: filterState.type || undefined,
+        createdFrom: filterState.createdFrom || undefined,
+        createdTo: filterState.createdTo || undefined,
+        expiresFrom: filterState.expiresFrom || undefined,
+        expiresTo: filterState.expiresTo || undefined,
       },
       clients: {
         page: 1,

@@ -6,6 +6,10 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { ValidationError } from "@/domain/errors/errors";
 import { buildLegacyAiProvider, getAiTaskConfigs, getConfiguredAiProviders } from "@/application/lib/aiConfig";
+import {
+  appendVersionChangelogEntry,
+  withCurrentVersionChangelog,
+} from "@/application/lib/appChangelog";
 import { normalizeMaxUploadFileSizeMb } from "@/infrastructure/uploads/uploadLimits";
 
 const redactAiProvider = (provider: Record<string, any>) => ({
@@ -17,6 +21,7 @@ const redactAiProvider = (provider: Record<string, any>) => ({
 const toPublicConfig = (config: Record<string, any>) => ({
   magicLinkEnabled: config.magicLinkEnabled,
   appVersion: config.appVersion,
+  appChangelog: withCurrentVersionChangelog(config.appChangelog, config.appVersion),
   maintenanceMode: config.maintenanceMode,
   maintenanceUntil: config.maintenanceUntil,
   maintenanceMessage: config.maintenanceMessage,
@@ -45,6 +50,7 @@ const toRuntimeConfig = (config: Record<string, any>) => ({
   llmEnabled: config.llmEnabled,
   magicLinkEnabled: config.magicLinkEnabled,
   appVersion: config.appVersion,
+  appChangelog: withCurrentVersionChangelog(config.appChangelog, config.appVersion),
   maintenanceMode: config.maintenanceMode,
   maintenanceUntil: config.maintenanceUntil,
   maintenanceMessage: config.maintenanceMessage,
@@ -181,6 +187,9 @@ const PUT = withErrorHandler(async (req: NextRequest) => {
   const body = await req.json();
   const data = { ...body };
   let config = await prisma.systemConfig.findFirst();
+  const previousAppVersion = config?.appVersion ?? null;
+  const changelogNotes = data.appChangelogNotes;
+  delete data.appChangelogNotes;
 
   if (data.smtpPassword === "") {
     delete data.smtpPassword;
@@ -210,6 +219,18 @@ const PUT = withErrorHandler(async (req: NextRequest) => {
       }
       const { hasApiKey: _hasApiKey, ...safeProvider } = provider;
       return safeProvider;
+    });
+  }
+
+  if (
+    data.appVersion !== undefined &&
+    (data.appVersion !== previousAppVersion || changelogNotes !== undefined)
+  ) {
+    data.appChangelog = appendVersionChangelogEntry({
+      changelog: config?.appChangelog,
+      previousVersion: previousAppVersion,
+      nextVersion: data.appVersion,
+      notes: changelogNotes,
     });
   }
 

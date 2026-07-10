@@ -93,7 +93,9 @@ export interface SystemConfig {
   aiTaskConfigs?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
-  appVersion: String;
+  appVersion: string;
+  appChangelog?: AppChangelogEntry[];
+  appChangelogNotes?: string | Record<string, string>;
   // Maintenance mode
   maintenanceMode?: boolean;
   maintenanceUntil?: string | null;
@@ -106,6 +108,14 @@ export interface SystemConfig {
   ocrBillingFixedFeePerCall?: number;
   ocrBillingIncludeFailedCalls?: boolean;
   requestCacheConfig?: RequestCacheConfig;
+}
+
+export interface AppChangelogEntry {
+  version: string;
+  title: string;
+  notes: string[];
+  notesByLanguage?: Record<string, string[]>;
+  publishedAt: string;
 }
 
 export interface PdfTemplateTranslationInput {

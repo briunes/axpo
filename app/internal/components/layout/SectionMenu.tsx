@@ -35,6 +35,7 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { LanguageFlag } from "../../../../src/lib/LanguageFlag";
 import { UI_LANGUAGES } from "../../../../src/lib/uiLanguages";
 import { useThemeMode } from "../../lib/ThemeModeContext";
+import { WhatsNewButton } from "./WhatsNewButton";
 
 export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "logs" | "analytics" | "configurations" | "notifications";
 
@@ -193,7 +194,7 @@ export function SectionMenu({
       boxShadow: "none",
     },
   };
-
+  const showSidebarUserOptions = false; // Hide the sidebar user options for now, as per the latest changes
   return (
     <>
       <Box
@@ -361,7 +362,9 @@ export function SectionMenu({
           </List>
         )}
 
-        <Box className={`sidebar-quick-actions${collapsed ? " collapsed" : ""}`}>
+        {showSidebarUserOptions ? <Box className={`sidebar-quick-actions${collapsed ? " collapsed" : ""}`}>
+          <WhatsNewButton buttonClassName="" buttonSx={quickActionButtonSx} />
+
           <Tooltip title={mode === "dark" ? t("theme", "lightMode") : t("theme", "darkMode")} placement="right" arrow>
             <IconButton
               size="small"
@@ -432,11 +435,11 @@ export function SectionMenu({
                   alignItems: "center",
                   ...(collapsed
                     ? {
-                        marginLeft: 0,
-                      }
+                      marginLeft: 0,
+                    }
                     : {
-                        marginBottom: 0,
-                      }),
+                      marginBottom: 0,
+                    }),
                 },
               }}
             >
@@ -495,9 +498,9 @@ export function SectionMenu({
           </Box>
 
           {notificationBell}
-        </Box>
+        </Box> : null}
 
-        <Box sx={{ display: "flex", flexDirection: collapsed ? "column" : "row", alignItems: "center", gap: collapsed ? 1 : 0.5, px: collapsed ? 1 : 0 }}>
+        {showSidebarUserOptions ? <Box sx={{ display: "flex", flexDirection: collapsed ? "column" : "row", alignItems: "center", gap: collapsed ? 1 : 0.5, px: collapsed ? 1 : 0 }}>
           <Tooltip
             title={t("nav", "myProfile")}
             placement="right"
@@ -583,7 +586,7 @@ export function SectionMenu({
               </Box>
             </Box>
           </Tooltip>
-        </Box>
+        </Box> : null}
       </div>
     </>
   );

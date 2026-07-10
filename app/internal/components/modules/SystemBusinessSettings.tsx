@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Box, Tabs, Tab, Button, Stack, IconButton, Tooltip, TextField, Typography, Checkbox, Switch } from "@mui/material";
+import { Box, Tabs, Tab, Button, Stack, IconButton, Tooltip, TextField, Typography, Checkbox, Switch, Accordion, AccordionSummary, AccordionDetails, Chip, Divider } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { SUPPORTED_LANGUAGES } from "../../../../src/lib/supportedLanguages";
 import { getPdfTemplates, getSystemConfig, updateSystemConfig } from "../../lib/configApi";
 import { LoadingState } from "../shared/LoadingState";
 import { CronSettings } from "./CronSettings";
@@ -68,9 +70,19 @@ interface BusinessConfig {
     defaultPdfTemplateGasId: string | null;
     defaultPdfTemplateElectricityId: string | null;
     appVersion: string;
+    appChangelog: AppChangelogEntry[];
+    appChangelogNotes: Record<string, string>;
     maintenanceMode: boolean;
     maintenanceUntil: string;
     maintenanceMessage: string;
+}
+
+interface AppChangelogEntry {
+    version: string;
+    title: string;
+    notes: string[];
+    notesByLanguage?: Record<string, string[]>;
+    publishedAt: string;
 }
 
 const DEFAULT_ELEC_TAX_CONFIG: ElectricityTaxConfig = {
@@ -101,11 +113,64 @@ const DEFAULT_CONFIG: BusinessConfig = {
     gasTaxConfig: DEFAULT_GAS_TAX_CONFIG,
     defaultPdfTemplateGasId: null,
     defaultPdfTemplateElectricityId: null,
-    appVersion: "1.0.0",
+    appVersion: "0.2.1",
+    appChangelog: [],
+    appChangelogNotes: {},
     maintenanceMode: false,
     maintenanceUntil: "",
     maintenanceMessage: "",
 };
+
+function formatChangelogDate(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+    }).format(date);
+}
+
+function hasReleaseNotes(notesByLanguage: Record<string, string>): boolean {
+    return Object.values(notesByLanguage).some((value) => value.trim().length > 0);
+}
+
+function releaseNotesPayload(notesByLanguage: Record<string, string>): Record<string, string> {
+    return Object.fromEntries(
+        Object.entries(notesByLanguage)
+            .map(([languageCode, notes]) => [languageCode, notes.trim()])
+            .filter(([, notes]) => notes.length > 0),
+    );
+}
+
+function notesForLanguage(entry: AppChangelogEntry, languageCode: string): string[] {
+    return entry.notesByLanguage?.[languageCode] ?? [];
+}
+
+function notesTextForLanguage(entry: AppChangelogEntry, languageCode: string): string {
+    const translatedNotes = notesForLanguage(entry, languageCode);
+    if (translatedNotes.length > 0) return translatedNotes.join("\n");
+
+    if (!entry.notesByLanguage || Object.keys(entry.notesByLanguage).length === 0) {
+        return entry.notes.join("\n");
+    }
+
+    return "";
+}
+
+function editableNotesFromEntry(entry: AppChangelogEntry | undefined): Record<string, string> {
+    if (!entry) return {};
+
+    const notesByLanguage = Object.fromEntries(
+        SUPPORTED_LANGUAGES.map((language) => [language.code, notesTextForLanguage(entry, language.code)]),
+    );
+
+    if (Object.values(notesByLanguage).some((notes) => notes.trim().length > 0)) {
+        return notesByLanguage;
+    }
+
+    return {};
+}
 
 export function SystemBusinessSettings({ session, onNotify, role, activeSection, hideNavigation = false }: SystemBusinessSettingsProps) {
     const { t } = useI18n();
@@ -116,6 +181,9 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
     const [isDirty, setIsDirty] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [pdfTemplates, setPdfTemplates] = useState<any[]>([]);
+    const [activeReleaseNotesLanguage, setActiveReleaseNotesLanguage] = useState(
+        SUPPORTED_LANGUAGES[0]?.code ?? "en",
+    );
 
     const ALL_BUSINESS_TABS: Record<BusinessTab, string> = {
         general: t("systemSettings", "tabGeneral"),
@@ -164,6 +232,12 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
             const ivaRateVal = (data as any).ivaRate || 0.21;
             const elecTaxVal = (data as any).electricityTaxRate || 0.051127;
             const hydroVal = (data as any).hydrocarbonTaxRate || 0.00234;
+            const appVersion = (data as any).appVersion ?? "0.2.1";
+            const appChangelog = Array.isArray((data as any).appChangelog) ? (data as any).appChangelog : [];
+            const currentVersionEntry = appChangelog.find(
+                (entry: AppChangelogEntry) => entry.version.trim() === appVersion.trim(),
+            );
+
             setConfig({
                 simulationExpirationDays: data.simulationExpirationDays,
                 maxUploadFileSizeMb: (data as any).maxUploadFileSizeMb ?? 15,
@@ -179,7 +253,9 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
                 gasTaxConfig: (data as any).gasTaxConfig ?? DEFAULT_GAS_TAX_CONFIG,
                 defaultPdfTemplateGasId: (data as any).defaultPdfTemplateGasId || null,
                 defaultPdfTemplateElectricityId: (data as any).defaultPdfTemplateElectricityId || null,
-                appVersion: (data as any).appVersion ?? "1.0.0",
+                appVersion,
+                appChangelog,
+                appChangelogNotes: editableNotesFromEntry(currentVersionEntry),
                 maintenanceMode: (data as any).maintenanceMode ?? false,
                 maintenanceUntil: (data as any).maintenanceUntil ? new Date((data as any).maintenanceUntil).toISOString().slice(0, 16) : "",
                 maintenanceMessage: (data as any).maintenanceMessage ?? "",
@@ -193,6 +269,17 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
 
     const handleChange = (field: keyof BusinessConfig, value: any) => {
         setConfig((prev) => ({ ...prev, [field]: value }));
+        setIsDirty(true);
+    };
+
+    const handleReleaseNotesChange = (languageCode: string, value: string) => {
+        setConfig((prev) => ({
+            ...prev,
+            appChangelogNotes: {
+                ...prev.appChangelogNotes,
+                [languageCode]: value,
+            },
+        }));
         setIsDirty(true);
     };
 
@@ -214,11 +301,15 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
                 defaultPdfTemplateGasId: config.defaultPdfTemplateGasId ?? undefined,
                 defaultPdfTemplateElectricityId: config.defaultPdfTemplateElectricityId ?? undefined,
                 appVersion: config.appVersion,
+                ...(hasReleaseNotes(config.appChangelogNotes)
+                    ? { appChangelogNotes: releaseNotesPayload(config.appChangelogNotes) }
+                    : {}),
                 maintenanceMode: config.maintenanceMode,
                 maintenanceUntil: config.maintenanceUntil ? new Date(config.maintenanceUntil).toISOString() : null,
                 maintenanceMessage: config.maintenanceMessage || null,
             });
             onNotify(t("systemSettings", "savedSuccess"), "success");
+            await loadConfig();
             setIsDirty(false);
         } catch (error) {
             onNotify(t("systemSettings", "savedError"), "error");
@@ -489,18 +580,9 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
                     <div className="system-settings-content">
                         {resolvedBusinessTab === "general" && (
                             <div className="settings-panel">
-                                <Box sx={{ mb: 3 }}>
-                                    <FormInput
-                                        label={t("systemSettings", "fieldAppVersion")}
-                                        helperText={t("systemSettings", "fieldAppVersionDesc")}
-                                        value={config.appVersion}
-                                        onChange={(e) => handleChange("appVersion", e.target.value)}
-                                    />
-                                </Box>
-
                                 {/* ── Maintenance Mode ─────────────────────────────────── */}
                                 <Box sx={{
-                                    mt: 2,
+                                    mb: 3,
                                     p: 2.5,
                                     border: config.maintenanceMode
                                         ? "1.5px solid rgba(239, 68, 68, 0.5)"
@@ -566,6 +648,146 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
                                             </Box>
                                         </Stack>
                                     )}
+                                </Box>
+
+                                <Box sx={{ mb: 3 }}>
+                                    <FormInput
+                                        label={t("systemSettings", "fieldAppVersion")}
+                                        helperText={t("systemSettings", "fieldAppVersionDesc")}
+                                        value={config.appVersion}
+                                        onChange={(e) => handleChange("appVersion", e.target.value)}
+                                    />
+                                </Box>
+
+                                <Box sx={{ mb: 3 }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                                        {t("systemSettings", "fieldAppChangelogNotes")}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                                        Write the notes for the version above. They will be saved when you click Save Changes.
+                                    </Typography>
+                                    <Tabs
+                                        value={activeReleaseNotesLanguage}
+                                        onChange={(_, value) => setActiveReleaseNotesLanguage(value)}
+                                        variant="scrollable"
+                                        scrollButtons="auto"
+                                        sx={{ minHeight: 40, mb: 1.5 }}
+                                    >
+                                        {SUPPORTED_LANGUAGES.map((language) => (
+                                            <Tab
+                                                key={language.code}
+                                                value={language.code}
+                                                label={language.label}
+                                                sx={{ minHeight: 40, textTransform: "none" }}
+                                            />
+                                        ))}
+                                    </Tabs>
+                                    <TextField
+                                        label={SUPPORTED_LANGUAGES.find((language) => language.code === activeReleaseNotesLanguage)?.label}
+                                        helperText={t("systemSettings", "fieldAppChangelogNotesDesc")}
+                                        placeholder={t("systemSettings", "fieldAppChangelogNotesPlaceholder")}
+                                        value={config.appChangelogNotes[activeReleaseNotesLanguage] ?? ""}
+                                        onChange={(e) => handleReleaseNotesChange(activeReleaseNotesLanguage, e.target.value)}
+                                        fullWidth
+                                        multiline
+                                        minRows={5}
+                                    />
+                                </Box>
+
+                                <Box sx={{ mb: 3 }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                                        {t("systemSettings", "appChangelogHistory")}
+                                    </Typography>
+                                    <Stack spacing={1.5}>
+                                        {config.appChangelog.length === 0 ? (
+                                            <Typography variant="body2" color="text.secondary">
+                                                {t("systemSettings", "appChangelogEmpty")}
+                                            </Typography>
+                                        ) : (
+                                            config.appChangelog.map((entry) => {
+                                                const hasTranslatedNotes = SUPPORTED_LANGUAGES.some(
+                                                    (language) => notesForLanguage(entry, language.code).length > 0,
+                                                );
+
+                                                return (
+                                                    <Accordion
+                                                        key={`${entry.version}-${entry.publishedAt}`}
+                                                        disableGutters
+                                                        variant="outlined"
+                                                        sx={{
+                                                            borderRadius: "8px !important",
+                                                            borderColor: "var(--scheme-neutral-800)",
+                                                            boxShadow: "none",
+                                                            overflow: "hidden",
+                                                            "&:before": { display: "none" },
+                                                        }}
+                                                    >
+                                                        <AccordionSummary
+                                                            expandIcon={<ExpandMoreIcon fontSize="small" />}
+                                                            sx={{
+                                                                minHeight: 52,
+                                                                px: 1.5,
+                                                                "& .MuiAccordionSummary-content": {
+                                                                    alignItems: "center",
+                                                                    justifyContent: "space-between",
+                                                                    gap: 2,
+                                                                    m: 0,
+                                                                },
+                                                                "&.Mui-expanded": {
+                                                                    minHeight: 52,
+                                                                },
+                                                                "& .MuiAccordionSummary-content.Mui-expanded": {
+                                                                    m: 0,
+                                                                },
+                                                            }}
+                                                        >
+                                                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                                                v{entry.version} · {entry.title}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="text.secondary" sx={{ ml: "auto", whiteSpace: "nowrap" }}>
+                                                                {formatChangelogDate(entry.publishedAt)}
+                                                            </Typography>
+                                                        </AccordionSummary>
+                                                        <AccordionDetails sx={{ px: 1.5, pt: 0, pb: 1.5 }}>
+                                                            <Divider sx={{ mb: 1.5 }} />
+                                                            <Stack spacing={1}>
+                                                                {hasTranslatedNotes ? (
+                                                                    SUPPORTED_LANGUAGES.map((language) => {
+                                                                        const notes = notesForLanguage(entry, language.code);
+                                                                        if (notes.length === 0) return null;
+                                                                        return (
+                                                                            <Box key={language.code}>
+                                                                                <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary" }}>
+                                                                                    {language.label}
+                                                                                </Typography>
+                                                                                <Box component="ul" sx={{ pl: 2.5, mt: 0.5, mb: 0 }}>
+                                                                                    {notes.map((note, index) => (
+                                                                                        <Typography key={index} component="li" variant="body2">
+                                                                                            {note}
+                                                                                        </Typography>
+                                                                                    ))}
+                                                                                </Box>
+                                                                            </Box>
+                                                                        );
+                                                                    })
+                                                                ) : (
+                                                                    entry.notes.length > 0 && (
+                                                                        <Box component="ul" sx={{ pl: 2.5, mt: 0, mb: 0 }}>
+                                                                            {entry.notes.map((note, index) => (
+                                                                                <Typography key={index} component="li" variant="body2">
+                                                                                    {note}
+                                                                                </Typography>
+                                                                            ))}
+                                                                        </Box>
+                                                                    )
+                                                                )}
+                                                            </Stack>
+                                                        </AccordionDetails>
+                                                    </Accordion>
+                                                );
+                                            })
+                                        )}
+                                    </Stack>
                                 </Box>
                             </div>
                         )}
@@ -771,7 +993,7 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
                                                 .map((template) => ({
                                                     value: template.id,
                                                     label: template.name
-                                            }))
+                                                }))
                                         ]}
                                     />
                                 </Box>

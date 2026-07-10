@@ -3,6 +3,7 @@ import type { AuthContext } from "@/application/middleware/auth";
 import { isElevatedRole } from "@/application/middleware/rbac";
 import { SimulationService } from "@/application/services/simulationService";
 import { prisma } from "@/infrastructure/database/prisma";
+import { isSupabaseApiMode } from "@/infrastructure/database/databaseMode";
 
 const pageValue = (value: string | null, fallback = 1) =>
   Math.max(1, parseInt(value || String(fallback), 10));
@@ -104,6 +105,64 @@ const buildListPayloadSummary = (payload: Record<string, unknown> | null) => {
   };
 };
 
+const parseDateBoundary = (value: string | null, boundary: "start" | "end") => {
+  if (!value) return undefined;
+  const date = new Date(
+    value.length === 10
+      ? `${value}T${boundary === "start" ? "00:00:00.000" : "23:59:59.999"}Z`
+      : value,
+  );
+  return Number.isNaN(date.getTime()) ? undefined : date;
+};
+
+const payloadCupsFilter = (value: string) => ({
+  versions: {
+    some: {
+      OR: [
+        {
+          payloadJson: {
+            path: ["electricity", "clientData", "cups"],
+            string_contains: value,
+          },
+        },
+        {
+          payloadJson: {
+            path: ["gas", "clientData", "cups"],
+            string_contains: value,
+          },
+        },
+      ],
+    },
+  },
+});
+
+const payloadTypeFilter = (value: string) => ({
+  versions: {
+    some: {
+      payloadJson: {
+        path: ["type"],
+        equals: value,
+      },
+    },
+  },
+});
+
+const payloadMatchesCups = (
+  payload: Record<string, unknown> | null,
+  value: string,
+) => {
+  const needle = value.toLowerCase();
+  return [
+    getNestedString(payload, ["electricity", "clientData", "cups"]),
+    getNestedString(payload, ["gas", "clientData", "cups"]),
+  ].some((candidate) => candidate?.toLowerCase().includes(needle));
+};
+
+const payloadMatchesType = (
+  payload: Record<string, unknown> | null,
+  value: string | undefined,
+) => !value || getNestedString(payload, ["type"]) === value;
+
 export async function listSimulationsForModule(
   auth: AuthContext,
   sp: URLSearchParams,
@@ -119,6 +178,11 @@ export async function listSimulationsForModule(
   const clientId = sp.get("clientId") || undefined;
   const cups = sp.get("cups") || undefined;
   const status = sp.get("status") as SimulationStatus | undefined;
+  const type = sp.get("type") || undefined;
+  const createdFrom = parseDateBoundary(sp.get("createdFrom"), "start");
+  const createdTo = parseDateBoundary(sp.get("createdTo"), "end");
+  const expiresFrom = parseDateBoundary(sp.get("expiresFrom"), "start");
+  const expiresTo = parseDateBoundary(sp.get("expiresTo"), "end");
   const allowedOrderBy: Record<string, true> = {
     updatedAt: true,
     createdAt: true,
@@ -128,6 +192,7 @@ export async function listSimulationsForModule(
     referenceNumber: true,
   };
   const orderBy = allowedOrderBy[rawOrderBy] ? rawOrderBy : "updatedAt";
+  const postFilterPayload = isSupabaseApiMode() && Boolean(search || cups || type);
 
   const baseWhere = SimulationService.buildSimulationFilter(
     auth,
@@ -150,6 +215,7 @@ export async function listSimulationsForModule(
   const searchFilters = search
     ? [
         { referenceNumber: { contains: search, mode: "insensitive" as const } },
+        ...(!postFilterPayload ? [payloadCupsFilter(search)] : []),
         ...(matchingClients.length
           ? [{ clientId: { in: matchingClients.map((client) => client.id) } }]
           : []),
@@ -158,38 +224,27 @@ export async function listSimulationsForModule(
           : []),
       ]
     : [];
+  const advancedPayloadFilters = [
+    ...(!postFilterPayload && cups ? [payloadCupsFilter(cups)] : []),
+    ...(!postFilterPayload && type ? [payloadTypeFilter(type)] : []),
+  ];
 
   const where = {
     ...baseWhere,
     ...(ownerUserId ? { ownerUserId } : {}),
     ...(clientId ? { clientId } : {}),
     ...(status ? { status } : {}),
-    ...(search ? { OR: searchFilters } : {}),
-    ...(cups
-      ? {
-          versions: {
-            some: {
-              OR: [
-                {
-                  payloadJson: {
-                    path: ["electricity", "clientData", "cups"],
-                    string_contains: cups,
-                  },
-                },
-                {
-                  payloadJson: {
-                    path: ["gas", "clientData", "cups"],
-                    string_contains: cups,
-                  },
-                },
-              ],
-            },
-          },
-        }
+    ...(createdFrom || createdTo
+      ? { createdAt: { ...(createdFrom ? { gte: createdFrom } : {}), ...(createdTo ? { lte: createdTo } : {}) } }
       : {}),
+    ...(expiresFrom || expiresTo
+      ? { expiresAt: { ...(expiresFrom ? { gte: expiresFrom } : {}), ...(expiresTo ? { lte: expiresTo } : {}) } }
+      : {}),
+    ...(search && !postFilterPayload ? { OR: searchFilters } : {}),
+    ...(advancedPayloadFilters.length ? { AND: advancedPayloadFilters } : {}),
   };
 
-  const [simulations, total] = await Promise.all([
+  const [simulations, dbTotal] = await Promise.all([
     prisma.simulation.findMany({
       where,
       select: {
@@ -220,13 +275,14 @@ export async function listSimulationsForModule(
         },
       },
       orderBy: { [orderBy]: sortDir },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      ...(postFilterPayload
+        ? {}
+        : { skip: (page - 1) * pageSize, take: pageSize }),
     }),
-    prisma.simulation.count({ where }),
+    postFilterPayload ? Promise.resolve(0) : prisma.simulation.count({ where }),
   ]);
 
-  const items = simulations.map((sim) => {
+  const allItems = simulations.map((sim) => {
     const payload = mergeVersionPayloads(sim.versions);
     const payloadSummary = buildListPayloadSummary(payload);
     const cupsNumber =
@@ -242,6 +298,27 @@ export async function listSimulationsForModule(
       cupsNumber,
     };
   });
+  const filteredItems = postFilterPayload
+    ? allItems.filter((sim) => {
+        const payload = sim.payloadJson as Record<string, unknown> | null;
+        const searchNeedle = search?.toLowerCase();
+        const matchesSearch =
+          !searchNeedle ||
+          sim.referenceNumber?.toLowerCase().includes(searchNeedle) ||
+          sim.client?.name?.toLowerCase().includes(searchNeedle) ||
+          sim.ownerUser?.fullName?.toLowerCase().includes(searchNeedle) ||
+          payloadMatchesCups(payload, search ?? "");
+        return (
+          matchesSearch &&
+          (!cups || payloadMatchesCups(payload, cups)) &&
+          payloadMatchesType(payload, type)
+        );
+      })
+    : allItems;
+  const total = postFilterPayload ? filteredItems.length : dbTotal;
+  const items = postFilterPayload
+    ? filteredItems.slice((page - 1) * pageSize, page * pageSize)
+    : filteredItems;
 
   return { items, total };
 }
