@@ -6,12 +6,12 @@
 
 AXPO 1.0 is the first full release of the app.
 
-- Create and manage simulations in one place.
-- Share simulations with clients in a clear, easy-to-read format.
-- Review pricing, results, and simulation details quickly.
-- Organize users, agencies, and customer information.
-- Keep track of important activity and updates.
-- Use built-in reports, analytics, and customizable templates.
+Create and manage simulations in one place.
+Share simulations with clients in a clear, easy-to-read format.
+Review pricing, results, and simulation details quickly.
+Organize users, agencies, and customer information.
+Keep track of important activity and updates.
+Use built-in reports, analytics, and customizable templates.
 
 ### Español
 
