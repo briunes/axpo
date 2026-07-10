@@ -20,13 +20,22 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import BlockIcon from "@mui/icons-material/Block";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
-import { useEffect, useState, useLayoutEffect } from "react";
+import { useCallback, useEffect, useMemo, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
 import type { AgenciesActions } from "../hooks/useAgencies";
 import { ConfirmDialog } from "../shared";
-import { DataTable, FormInput, FormSelect, StatusBadge } from "../ui";
+import {
+  DataTable,
+  FormSelect,
+  SaveTableViewDialog,
+  StatusBadge,
+  TableFilterButton,
+  TableFiltersDialog,
+  TableViewSearchControls,
+  useTableViews,
+} from "../ui";
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,6 +47,18 @@ interface AgenciesModuleProps {
   onNotify?: (text: string, tone: "success" | "error") => void;
   onActionButtons?: (buttons: React.ReactNode) => void;
 }
+
+type AgenciesViewState = {
+  tlvFilter: string;
+  statusFilter: string;
+  showArchived: boolean;
+  sortColumn: string;
+  sortDir: "asc" | "desc";
+};
+
+const AGENCY_VIEWS_STORAGE_KEY = "axpo_agency_saved_views";
+const AGENCY_DEFAULT_SORT_COLUMN = "createdAt";
+const AGENCY_DEFAULT_SORT_DIR: "asc" | "desc" = "desc";
 
 export function AgenciesModule({ session, actions, onNotify, onActionButtons }: AgenciesModuleProps) {
   const { t } = useI18n();
@@ -66,6 +87,12 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
     items: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
+  const [draftTlvFilter, setDraftTlvFilter] = useState(tlvFilter);
+  const [draftStatusFilter, setDraftStatusFilter] = useState(statusFilter);
+  const [draftSortColumn, setDraftSortColumn] = useState(sortColumn);
+  const [draftSortDir, setDraftSortDir] = useState<"asc" | "desc">(sortDir);
 
   // Bubble success up
   useEffect(() => {
@@ -283,6 +310,80 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
 
   const canManage = isAdmin(session.user.role);
 
+  useEffect(() => {
+    if (!filtersOpen) return;
+    setDraftTlvFilter(tlvFilter);
+    setDraftStatusFilter(statusFilter);
+    setDraftSortColumn(sortColumn);
+    setDraftSortDir(sortDir);
+  }, [filtersOpen, sortColumn, sortDir, statusFilter, tlvFilter]);
+
+  const currentView = useMemo<AgenciesViewState>(() => ({
+    tlvFilter,
+    statusFilter,
+    showArchived,
+    sortColumn,
+    sortDir,
+  }), [showArchived, sortColumn, sortDir, statusFilter, tlvFilter]);
+
+  const applyView = useCallback((view: AgenciesViewState) => {
+    setTlvFilter(view.tlvFilter ?? "");
+    setStatusFilter(view.statusFilter ?? "");
+    setShowArchived(Boolean(view.showArchived));
+    setSort(view.sortColumn || AGENCY_DEFAULT_SORT_COLUMN, view.sortDir || AGENCY_DEFAULT_SORT_DIR);
+    setPage(1);
+  }, [setPage, setShowArchived, setSort, setStatusFilter, setTlvFilter]);
+
+  const builtInViews = useMemo<Array<{ id: string; name: string; view: AgenciesViewState }>>(() => [
+    {
+      id: "recent",
+      name: "Recent",
+      view: { tlvFilter: "", statusFilter: "", showArchived: false, sortColumn: AGENCY_DEFAULT_SORT_COLUMN, sortDir: AGENCY_DEFAULT_SORT_DIR },
+    },
+    {
+      id: "active",
+      name: t("status", "active"),
+      view: { tlvFilter: "", statusFilter: "active", showArchived: false, sortColumn: AGENCY_DEFAULT_SORT_COLUMN, sortDir: AGENCY_DEFAULT_SORT_DIR },
+    },
+    {
+      id: "tlv",
+      name: "TLV",
+      view: { tlvFilter: "tlv", statusFilter: "", showArchived: false, sortColumn: AGENCY_DEFAULT_SORT_COLUMN, sortDir: AGENCY_DEFAULT_SORT_DIR },
+    },
+    {
+      id: "archived",
+      name: t("actions", "showArchived"),
+      view: { tlvFilter: "", statusFilter: "", showArchived: true, sortColumn: AGENCY_DEFAULT_SORT_COLUMN, sortDir: AGENCY_DEFAULT_SORT_DIR },
+    },
+  ], [t]);
+
+  const { savedViews, viewPresets, activeViewPresetId, saveCurrentView, deleteSavedView } =
+    useTableViews<AgenciesViewState>({ storageKey: AGENCY_VIEWS_STORAGE_KEY, currentView, presets: builtInViews });
+
+  const activeAdvancedFilterCount = useMemo(() => [
+    !activeViewPresetId && tlvFilter,
+    !activeViewPresetId && statusFilter,
+    !activeViewPresetId && showArchived,
+    !activeViewPresetId && (sortColumn !== AGENCY_DEFAULT_SORT_COLUMN || sortDir !== AGENCY_DEFAULT_SORT_DIR),
+  ].filter(Boolean).length, [activeViewPresetId, showArchived, sortColumn, sortDir, statusFilter, tlvFilter]);
+
+  const applyAdvancedFilters = useCallback(() => {
+    setTlvFilter(draftTlvFilter);
+    setStatusFilter(draftStatusFilter);
+    setSort(draftSortColumn || AGENCY_DEFAULT_SORT_COLUMN, draftSortDir);
+    setPage(1);
+    setFiltersOpen(false);
+  }, [draftSortColumn, draftSortDir, draftStatusFilter, draftTlvFilter, setPage, setSort, setStatusFilter, setTlvFilter]);
+
+  const clearAdvancedFilters = useCallback(() => {
+    setDraftTlvFilter("");
+    setDraftStatusFilter("");
+    setDraftSortColumn(AGENCY_DEFAULT_SORT_COLUMN);
+    setDraftSortDir(AGENCY_DEFAULT_SORT_DIR);
+    applyView({ tlvFilter: "", statusFilter: "", showArchived, sortColumn: AGENCY_DEFAULT_SORT_COLUMN, sortDir: AGENCY_DEFAULT_SORT_DIR });
+    setFiltersOpen(false);
+  }, [applyView, showArchived]);
+
   // Render action buttons for topbar
   useLayoutEffect(() => {
     if (canManage) {
@@ -352,7 +453,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
   }
 
   return (
-    <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
+    <Stack spacing={2} sx={{ height: '100%', minHeight: 0 }}>
       <DataTable<AgencyItem>
         tableId="agencies"
         columns={columns}
@@ -360,14 +461,22 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
-        onApplyFilters={(draft) => { setSearch(draft); setPage(1); }}
         onClearFilters={() => {
           setSearch("");
           setTlvFilter("");
           setStatusFilter("");
           setPage(1);
         }}
-        hasActiveFilters={Boolean(search || tlvFilter || statusFilter)}
+        hasActiveFilters={Boolean(search || activeAdvancedFilterCount)}
+        showFilterSubmitActions={false}
+        showFilterLabel={false}
+        headerRight={(
+          <TableFilterButton
+            title={t("simulationsModule", "filtersTitle")}
+            activeFilterCount={activeAdvancedFilterCount}
+            onClick={() => setFiltersOpen(true)}
+          />
+        )}
         searchPlaceholder={t("search", "agencies")}
         emptyMessage={t("search", "emptyAgencies")}
         sortState={{ column: sortColumn, direction: sortDir }}
@@ -393,66 +502,25 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
           },
         ]}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
-          <>
-            <Box sx={{ width: { xs: "100%", sm: 280 } }}>
-              <FormInput
-                label=""
-                placeholder={searchPlaceholder}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
-                size="small"
-                slotProps={{
-                  input: {
-                    endAdornment: draft ? (
-                      <IconButton
-                        size="small"
-                        onClick={() => { setDraft(""); setSearch(""); setPage(1); }}
-                        aria-label="Clear"
-                        edge="end"
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    ) : null,
-                  },
-                }}
-              />
-            </Box>
-            <Box sx={{ width: { xs: "100%", sm: 280 } }}>
-              <FormSelect
-                label=""
-                options={[
-                  { value: "", label: "All agency types" },
-                  { value: "tlv", label: "TLV" },
-                  { value: "standard", label: "Standard" },
-                ]}
-                value={tlvFilter}
-                onChange={(val) => {
-                  setTlvFilter(val as string);
-                  setPage(1);
-                }}
-                placeholder="Type"
-                textFieldProps={{ size: "small" }}
-              />
-            </Box>
-            <Box sx={{ width: { xs: "100%", sm: 280 } }}>
-              <FormSelect
-                label=""
-                options={[
-                  { value: "", label: t("search", "allStatuses") },
-                  { value: "active", label: t("status", "active") },
-                  { value: "inactive", label: t("status", "inactive") },
-                ]}
-                value={statusFilter}
-                onChange={(val) => {
-                  setStatusFilter(val as string);
-                  setPage(1);
-                }}
-                placeholder={t("columns", "status")}
-                textFieldProps={{ size: "small" }}
-              />
-            </Box>
-          </>
+          <TableViewSearchControls
+            activeViewPresetId={activeViewPresetId}
+            viewPresets={viewPresets}
+            savedViews={savedViews}
+            onApplyView={applyView}
+            onDeleteSavedView={deleteSavedView}
+            labels={{
+              customView: t("simulationsModule", "customView"),
+              savedViewsGroup: t("simulationsModule", "savedViewsGroup"),
+              viewPreset: t("simulationsModule", "viewPresetLabel"),
+              clear: t("actions", "clear"),
+            }}
+            draft={draft}
+            setDraft={setDraft}
+            commitSearch={commitSearch}
+            searchPlaceholder={searchPlaceholder}
+            onLiveSearchChange={(value) => { setSearch(value); setPage(1); }}
+            onClearSearch={() => { setSearch(""); setPage(1); }}
+          />
         )}
         mobileCard={{
           title: "name",
@@ -492,6 +560,73 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
             </Box>
           ),
         }}
+      />
+
+      <TableFiltersDialog
+        open={filtersOpen}
+        title={t("simulationsModule", "filtersTitle")}
+        saveViewLabel={t("simulationsModule", "saveView")}
+        clearLabel={t("simulationsModule", "clearFilters")}
+        applyLabel={t("simulationsModule", "applyFilters")}
+        onClose={() => setFiltersOpen(false)}
+        onOpenSaveView={() => setSaveViewOpen(true)}
+        onClear={clearAdvancedFilters}
+        onApply={applyAdvancedFilters}
+      >
+        <FormSelect
+          label="Type"
+          options={[
+            { value: "", label: "All agency types" },
+            { value: "tlv", label: "TLV" },
+            { value: "standard", label: "Standard" },
+          ]}
+          value={draftTlvFilter}
+          onChange={(val) => setDraftTlvFilter((val as string) ?? "")}
+          textFieldProps={{ size: "small" }}
+        />
+        <FormSelect
+          label={t("columns", "status")}
+          options={[
+            { value: "", label: t("search", "allStatuses") },
+            { value: "active", label: t("status", "active") },
+            { value: "inactive", label: t("status", "inactive") },
+          ]}
+          value={draftStatusFilter}
+          onChange={(val) => setDraftStatusFilter((val as string) ?? "")}
+          textFieldProps={{ size: "small" }}
+        />
+        <FormSelect
+          label={t("simulationsModule", "sortBy")}
+          options={[
+            { value: "createdAt", label: t("columns", "created") },
+            { value: "updatedAt", label: t("columns", "updated") },
+            { value: "name", label: t("columns", "name") },
+          ]}
+          value={draftSortColumn}
+          onChange={(val) => setDraftSortColumn((val as string) || AGENCY_DEFAULT_SORT_COLUMN)}
+          textFieldProps={{ size: "small" }}
+        />
+        <FormSelect
+          label={t("simulationsModule", "sortDirection")}
+          options={[
+            { value: "desc", label: t("simulationsModule", "directionDescending") },
+            { value: "asc", label: t("simulationsModule", "directionAscending") },
+          ]}
+          value={draftSortDir}
+          onChange={(val) => setDraftSortDir(val === "asc" ? "asc" : "desc")}
+          textFieldProps={{ size: "small" }}
+        />
+      </TableFiltersDialog>
+
+      <SaveTableViewDialog
+        open={saveViewOpen}
+        title={t("simulationsModule", "saveViewTitle")}
+        description={t("simulationsModule", "saveViewDescription")}
+        nameLabel={t("simulationsModule", "viewName")}
+        cancelLabel={t("simulationsModule", "cancel")}
+        saveLabel={t("simulationsModule", "save")}
+        onClose={() => setSaveViewOpen(false)}
+        onSave={saveCurrentView}
       />
 
       {/* ── Confirm bulk delete ──────────────────────────────────── */}

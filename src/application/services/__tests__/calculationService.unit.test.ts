@@ -594,6 +594,108 @@ describe("CalculationService Personalizada Index", () => {
     expect(offer!.desglose?.terminoPotencia).toBe(56.93);
     expect(offer!.totalFactura).toBe(476.45);
   });
+
+  it("uses profile-specific indexed month prices when perfilCarga is DIURNO", () => {
+    const inputsNormal = buildInputs(30000);
+    inputsNormal.tarifaAcceso = "2.0TD";
+    inputsNormal.perfilCarga = "NORMAL";
+    inputsNormal.periodo = {
+      fechaInicio: "2026-04-01",
+      fechaFin: "2026-04-30",
+      dias: 30,
+    };
+    inputsNormal.billingMonth = "2026-04";
+    inputsNormal.potenciaContratada = {
+      P1: 0,
+      P2: 0,
+      P3: 0,
+      P4: 0,
+      P5: 0,
+      P6: 0,
+    };
+    inputsNormal.consumo = {
+      P1: 1000,
+      P2: 1000,
+      P3: 1000,
+      P4: 0,
+      P5: 0,
+      P6: 0,
+    };
+    inputsNormal.extras = {
+      ivaTasa: 0,
+      impuestoElectricoTasa: 0,
+    };
+
+    const inputsDiurno: ElectricityInputs = {
+      ...inputsNormal,
+      perfilCarga: "DIURNO",
+    };
+
+    const map = CalculationService.buildPriceMap([
+      {
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P1:MARGEN:2026-04:PROFILE:NORMAL",
+        valueNumeric: 0.1,
+      },
+      {
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P2:MARGEN:2026-04:PROFILE:NORMAL",
+        valueNumeric: 0.1,
+      },
+      {
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P3:MARGEN:2026-04:PROFILE:NORMAL",
+        valueNumeric: 0.1,
+      },
+      {
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P1:MARGEN:2026-04:PROFILE:DIURNO",
+        valueNumeric: 0.2,
+      },
+      {
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P2:MARGEN:2026-04:PROFILE:DIURNO",
+        valueNumeric: 0.2,
+      },
+      {
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P3:MARGEN:2026-04:PROFILE:DIURNO",
+        valueNumeric: 0.2,
+      },
+      {
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P1:POTENCIA",
+        valueNumeric: 0,
+      },
+      {
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P2:POTENCIA",
+        valueNumeric: 0,
+      },
+    ]);
+
+    const productDefinitions: ProductDefinition[] = [
+      {
+        productKey: "TEST_INDEX",
+        displayName: "Test Indexed",
+        commodity: "ELECTRICITY",
+        pricingType: "INDEXED",
+        tiers: ["N1"],
+      },
+    ];
+
+    const normalResult = CalculationService.calculateElectricity(
+      inputsNormal,
+      map,
+      { productDefinitions },
+    ).find((item) => item.productKey === "TEST_INDEX:N1");
+
+    const diurnoResult = CalculationService.calculateElectricity(
+      inputsDiurno,
+      map,
+      { productDefinitions },
+    ).find((item) => item.productKey === "TEST_INDEX:N1");
+
+    expect(normalResult).toBeDefined();
+    expect(diurnoResult).toBeDefined();
+    expect(normalResult!.desglose?.terminoEnergia).toBe(300);
+    expect(diurnoResult!.desglose?.terminoEnergia).toBe(600);
+    expect(diurnoResult!.totalFactura).toBeGreaterThan(
+      normalResult!.totalFactura,
+    );
+  });
 });
 
 describe("CalculationService gas product configuration", () => {

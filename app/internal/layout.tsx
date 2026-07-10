@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 import { Providers } from "./providers";
 import { InternalWorkspace } from "./components/InternalWorkspace";
 import type { AppSection } from "./components/InternalWorkspace";
-import "@once-ui-system/core/css/styles.css";
-import "@once-ui-system/core/css/tokens.css";
 import "./axpo-tokens.css";
 import "./globals.css";
 import "./crud-pages.css";

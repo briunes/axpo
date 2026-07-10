@@ -35,6 +35,7 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { LanguageFlag } from "../../../../src/lib/LanguageFlag";
 import { UI_LANGUAGES } from "../../../../src/lib/uiLanguages";
 import { useThemeMode } from "../../lib/ThemeModeContext";
+import { WhatsNewButton } from "./WhatsNewButton";
 
 export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "logs" | "analytics" | "configurations" | "notifications";
 
@@ -362,6 +363,8 @@ export function SectionMenu({
         )}
 
         <Box className={`sidebar-quick-actions${collapsed ? " collapsed" : ""}`}>
+          <WhatsNewButton buttonClassName="" buttonSx={quickActionButtonSx} />
+
           <Tooltip title={mode === "dark" ? t("theme", "lightMode") : t("theme", "darkMode")} placement="right" arrow>
             <IconButton
               size="small"

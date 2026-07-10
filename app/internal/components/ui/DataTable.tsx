@@ -1,6 +1,6 @@
 "use client";
 
-import { DataGrid, useGridApiRef, type GridColDef, type GridSortModel } from "@mui/x-data-grid";
+import { DataGrid, useGridApiRef, type GridColDef, type GridRowParams, type GridSortModel } from "@mui/x-data-grid";
 import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl, Checkbox, Button, Tooltip, useTheme, Popover, FormControlLabel, Divider, Typography, Drawer, useMediaQuery, Grow } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
@@ -8,6 +8,7 @@ import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
+import LineWeightIcon from '@mui/icons-material/LineWeight';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -85,6 +86,8 @@ export interface DataTableProps<T extends { id: string }> {
     searchPlaceholder: string;
     mode: "desktop" | "mobile";
   }) => React.ReactNode;
+  showFilterSubmitActions?: boolean;
+  showFilterLabel?: boolean;
   filterBar?: React.ReactNode;
   pagination?: PaginationState;
   rowActions?: (row: T) => React.ReactNode;
@@ -98,6 +101,8 @@ export interface DataTableProps<T extends { id: string }> {
   mobileCard?: MobileCardConfig<T>;
   /** Escape hatch for screens that need a fully custom card. Prefer mobileCard when possible. */
   renderMobileCard?: (row: T) => React.ReactNode;
+  /** Optional expandable desktop detail panel rendered by MUI DataGrid. */
+  rowDetailContent?: (row: T) => React.ReactNode;
 }
 
 const BASE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -196,7 +201,10 @@ interface TablePersistentState {
   sortColumn?: string;
   sortDirection?: "asc" | "desc";
   pageSize?: number;
+  density?: TableDensity;
 }
+
+type TableDensity = "compact" | "standard" | "comfortable";
 
 function loadTableState(tableId: string): TablePersistentState | null {
   if (typeof window === 'undefined' || !tableId) return null;
@@ -232,6 +240,8 @@ export function DataTable<T extends { id: string }>({
   onSort,
   toolbarLeft,
   renderCustomSearch,
+  showFilterSubmitActions = true,
+  showFilterLabel = true,
   filterBar,
   pagination,
   rowActions,
@@ -243,6 +253,7 @@ export function DataTable<T extends { id: string }>({
   enableMobileCards = true,
   mobileCard,
   renderMobileCard,
+  rowDetailContent,
 }: DataTableProps<T>) {
   const { preferences } = useUserPreferences();
   const theme = useTheme();
@@ -280,6 +291,8 @@ export function DataTable<T extends { id: string }>({
   const initialSearch = searchValue || persistedState?.search || "";
   const initialSortColumn = sortState?.column || persistedState?.sortColumn || "";
   const initialSortDir = sortState?.direction || persistedState?.sortDirection || "asc";
+  const [density, setDensity] = useState<TableDensity>(persistedState?.density ?? "standard");
+  const [densityMenuAnchor, setDensityMenuAnchor] = useState<HTMLElement | null>(null);
 
   // Helper to save scroll position before a selection state update and restore it after.
   const withScrollPreserved = useCallback((fn: () => void) => {
@@ -296,6 +309,7 @@ export function DataTable<T extends { id: string }>({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const hasMassActions = Boolean(massActions && massActions.length > 0);
+  const hasRowDetails = Boolean(rowDetailContent);
 
   // Refs so that renderCell callbacks always read latest values without
   // being listed as memo dependencies (avoids DataGrid re-mount on selection).
@@ -420,6 +434,9 @@ export function DataTable<T extends { id: string }>({
               variant="body2"
               className="dt-grid-cell-content"
               sx={{
+                display: 'flex',
+                alignItems: 'center',
+                height: '100%',
                 minWidth: 0,
                 width: '100%',
                 overflow: 'hidden',
@@ -468,12 +485,27 @@ export function DataTable<T extends { id: string }>({
       });
     }
 
+    if (hasRowDetails) {
+      cols.push({
+        field: "__detail_panel_toggle__",
+        headerName: "",
+        sortable: false,
+        width: 48,
+        minWidth: 48,
+        maxWidth: 48,
+        align: "center",
+        headerAlign: "center",
+        disableColumnMenu: true,
+        disableReorder: true,
+      } as GridColDef<T>);
+    }
+
     return cols;
     // NOTE: selectedIds/toggleRow/toggleSelectAll are intentionally omitted – they
     // are accessed via refs inside renderCell to prevent the grid from re-mounting
     // (and scrolling to top) on every checkbox click.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns, rowActions, loading, hasMassActions, hiddenCols, tI18n]);
+  }, [columns, rowActions, loading, hasMassActions, hasRowDetails, hiddenCols, tI18n]);
 
   // Create skeleton rows when loading
   const skeletonRows = useMemo(() => {
@@ -514,10 +546,11 @@ export function DataTable<T extends { id: string }>({
       sortColumn: sortState?.column,
       sortDirection: sortState?.direction,
       pageSize: pagination?.pageSize,
+      density,
     };
 
     saveTableState(tableId, currentState);
-  }, [tableId, searchValue, sortState?.column, sortState?.direction, pagination?.pageSize]);
+  }, [tableId, searchValue, sortState?.column, sortState?.direction, pagination?.pageSize, density]);
 
   // Handle sort model changes
   const handleSortModelChange = (model: GridSortModel) => {
@@ -680,6 +713,14 @@ export function DataTable<T extends { id: string }>({
   const tableSelectedHoverBackground = theme.palette.mode === 'dark'
     ? theme.palette.primary.dark + '44'
     : theme.palette.primary.main + '30';
+  const densityRowHeight = density === "compact" ? 42 : density === "comfortable" ? 64 : 52;
+  const densityActionHeight = density === "compact" ? 30 : density === "comfortable" ? 40 : 34;
+  const densityCellPaddingX = density === "compact" ? 1 : density === "comfortable" ? 1.75 : 1.5;
+  const densityLabel = density === "compact"
+    ? tI18n('dataTable', 'densityCompact')
+    : density === "comfortable"
+      ? tI18n('dataTable', 'densityComfortable')
+      : tI18n('dataTable', 'densityStandard');
 
   return (
     <div className="dt-root" style={{ height: '100%', minHeight: 0 }}>
@@ -694,7 +735,11 @@ export function DataTable<T extends { id: string }>({
             borderBottom: '1px solid color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent)',
           }}
         >
-          {onSearch && (
+          {renderCustomSearch && !showFilterSubmitActions ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              {renderCustomSearch({ draft, setDraft, commitSearch, searchPlaceholder, mode: "mobile" })}
+            </Box>
+          ) : onSearch && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <div className="dt-search-wrap" style={{ flex: 1, minWidth: 0 }}>
                 <input
@@ -729,8 +774,8 @@ export function DataTable<T extends { id: string }>({
               </Button>
             </Box>
           )}
-          <Box sx={{ display: 'grid', gridTemplateColumns: renderCustomSearch ? '1fr 1fr' : '1fr', gap: 1 }}>
-            {renderCustomSearch && (
+          <Box sx={{ display: 'grid', gridTemplateColumns: renderCustomSearch && showFilterSubmitActions ? '1fr 1fr' : '1fr', gap: 1 }}>
+            {renderCustomSearch && showFilterSubmitActions && (
               <Button
                 variant="outlined"
                 size="small"
@@ -765,38 +810,42 @@ export function DataTable<T extends { id: string }>({
         >
           {renderCustomSearch ? (
             <div className="dt-filter-shell">
-              <div className="dt-filter-shell__main">
-                <div className="dt-filter-shell__label">
-                  <FilterListIcon fontSize="small" />
-                  <span>{tI18n('dataTable', 'filters')}</span>
-                  {hasActiveFilters && <span className="dt-active-filter-dot" aria-hidden="true" />}
-                </div>
+              <div className={`dt-filter-shell__main${showFilterLabel ? "" : " dt-filter-shell__main--bare"}`}>
+                {showFilterLabel && (
+                  <div className="dt-filter-shell__label">
+                    <FilterListIcon fontSize="small" />
+                    <span>{tI18n('dataTable', 'filters')}</span>
+                    {hasActiveFilters && <span className="dt-active-filter-dot" aria-hidden="true" />}
+                  </div>
+                )}
                 <div className="dt-filter-controls">
                   {renderCustomSearch({ draft, setDraft, commitSearch, searchPlaceholder, mode: "desktop" })}
                 </div>
               </div>
-              <div className="dt-filter-shell__actions">
-                <Button
-                  size="small"
-                  variant="contained"
-                  onClick={applyFilterControls}
-                  startIcon={<SearchIcon fontSize="small" />}
-                  sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap', display: { xs: useMobileCards ? 'none' : 'inline-flex', md: 'inline-flex' } }}
-                >
-                  {tI18n('common', 'search')}
-                </Button>
-                {onClearFilters && (
+              {showFilterSubmitActions && (
+                <div className="dt-filter-shell__actions">
                   <Button
                     size="small"
-                    variant={hasActiveFilters ? "outlined" : "text"}
-                    onClick={onClearFilters}
-                    startIcon={<ClearIcon fontSize="small" />}
+                    variant="contained"
+                    onClick={applyFilterControls}
+                    startIcon={<SearchIcon fontSize="small" />}
                     sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap', display: { xs: useMobileCards ? 'none' : 'inline-flex', md: 'inline-flex' } }}
                   >
-                    {tI18n('dataTable', 'clearFilters')}
+                    {tI18n('common', 'search')}
                   </Button>
-                )}
-              </div>
+                  {onClearFilters && (
+                    <Button
+                      size="small"
+                      variant={hasActiveFilters ? "outlined" : "text"}
+                      onClick={onClearFilters}
+                      startIcon={<ClearIcon fontSize="small" />}
+                      sx={{ height: 36, textTransform: 'none', whiteSpace: 'nowrap', display: { xs: useMobileCards ? 'none' : 'inline-flex', md: 'inline-flex' } }}
+                    >
+                      {tI18n('dataTable', 'clearFilters')}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             toolbarLeft
@@ -868,9 +917,49 @@ export function DataTable<T extends { id: string }>({
               <ViewColumnIcon fontSize="small" color="primary" />
             </IconButton>
           </Tooltip>
+          <Tooltip title={densityLabel}>
+            <IconButton
+              size="small"
+              onClick={(e) => setDensityMenuAnchor(e.currentTarget)}
+              sx={{ display: { xs: useMobileCards ? 'none' : 'inline-flex', md: 'inline-flex' } }}
+              aria-label={tI18n('dataTable', 'density')}
+            >
+              <LineWeightIcon fontSize="small" color="primary" />
+            </IconButton>
+          </Tooltip>
           {headerRight}
         </div>
       </Box>
+
+      <Popover
+        open={Boolean(densityMenuAnchor)}
+        anchorEl={densityMenuAnchor}
+        onClose={() => setDensityMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Box sx={{ p: 1, minWidth: 180 }}>
+          {(["compact", "standard", "comfortable"] as TableDensity[]).map((option) => (
+            <Button
+              key={option}
+              fullWidth
+              size="small"
+              variant={density === option ? "contained" : "text"}
+              onClick={() => {
+                setDensity(option);
+                setDensityMenuAnchor(null);
+              }}
+              sx={{ justifyContent: "flex-start", mb: option === "comfortable" ? 0 : 0.5 }}
+            >
+              {option === "compact"
+                ? tI18n('dataTable', 'densityCompact')
+                : option === "comfortable"
+                  ? tI18n('dataTable', 'densityComfortable')
+                  : tI18n('dataTable', 'densityStandard')}
+            </Button>
+          ))}
+        </Box>
+      </Popover>
 
       {/* Column visibility popover */}
       <Popover
@@ -1118,6 +1207,9 @@ export function DataTable<T extends { id: string }>({
               apiRef={apiRef}
               rows={displayRows}
               columns={muiColumns}
+              density={density}
+              rowHeight={densityRowHeight}
+              columnHeaderHeight={densityRowHeight}
               loading={false}
               pageSizeOptions={PAGE_SIZE_OPTIONS}
               paginationMode="server"
@@ -1129,6 +1221,7 @@ export function DataTable<T extends { id: string }>({
               disableColumnMenu
               hideFooter
               getRowClassName={getRowClassName}
+              getDetailPanelContent={rowDetailContent ? (params: GridRowParams<T>) => rowDetailContent(params.row) : undefined}
               sx={{
                 height: '100%',
                 border: 0,
@@ -1146,9 +1239,11 @@ export function DataTable<T extends { id: string }>({
                   alignItems: 'center',
                   fontWeight: 400,
                   minWidth: 0,
-                  minHeight: '53px !important',
-                  maxHeight: '53px !important',
+                  minHeight: `${densityRowHeight}px !important`,
+                  maxHeight: `${densityRowHeight}px !important`,
+                  px: densityCellPaddingX,
                   py: 0,
+                  lineHeight: 1.2,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   borderBottom: '1px solid color-mix(in srgb, var(--scheme-neutral-900) 72%, transparent)',
@@ -1160,6 +1255,11 @@ export function DataTable<T extends { id: string }>({
                   '&.MuiDataGrid-cell--selected': {
                     outline: 'none !important',
                   },
+                },
+                '& .MuiDataGrid-cell .MuiButtonGroup-root .MuiButton-root': {
+                  minHeight: densityActionHeight,
+                  height: densityActionHeight,
+                  lineHeight: 1,
                 },
                 '& .MuiDataGrid-row': {
                   backgroundColor: tableSurface,
@@ -1198,14 +1298,31 @@ export function DataTable<T extends { id: string }>({
                   textTransform: 'none',
                 },
                 '& .dt-grid-cell-actions': {
+                  display: 'flex',
+                  alignItems: 'center',
                   overflow: 'visible',
                   justifyContent: 'flex-end',
-                  px: '8px',
+                  height: '100%',
+                  px: densityCellPaddingX,
                   zIndex: 1,
                   backgroundColor: 'inherit',
+                  '& .MuiButtonBase-root': {
+                    minHeight: densityActionHeight,
+                    height: densityActionHeight,
+                  },
                 },
                 '& .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller': {
                   backgroundColor: tableSurface,
+                },
+                '& .MuiDataGrid-detailPanel': {
+                  backgroundColor: 'color-mix(in srgb, var(--scheme-surface-raised) 86%, var(--scheme-neutral-950))',
+                  borderBottom: '1px solid color-mix(in srgb, var(--scheme-neutral-900) 72%, transparent)',
+                },
+                '& .MuiDataGrid-detailPanelToggleCell .MuiIconButton-root': {
+                  color: 'var(--scheme-neutral-300)',
+                },
+                '& .MuiDataGrid-detailPanelToggleCell .MuiIconButton-root:hover': {
+                  color: 'var(--scheme-neutral-100)',
                 },
                 '& .MuiDataGrid-columnSeparator': {
                   display: 'flex',

@@ -1,5 +1,7 @@
 export { TopBar } from "./TopBar";
+export { WhatsNewButton } from "./WhatsNewButton";
 export { SidebarHeader } from "./SidebarHeader";
+export { CommandPalette } from "./CommandPalette";
 export {
   SectionMenu,
   sectionDescriptionKey,

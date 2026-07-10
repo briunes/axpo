@@ -135,6 +135,7 @@ function isMaintenanceBypass(pathname: string): boolean {
     pathname === "/api/v1/internal/health" ||
     pathname === "/api/v1/public/version" ||
     pathname.startsWith("/internal/configurations") ||
+    pathname.startsWith("/internal/changelog") ||
     pathname.startsWith("/_next/") ||
     pathname === "/favicon.ico" ||
     STATIC_ASSET_EXTENSION.test(pathname)

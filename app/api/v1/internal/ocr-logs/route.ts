@@ -57,7 +57,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const typeFilter = searchParams.get("type") || undefined;
   const dateFrom = searchParams.get("dateFrom") || undefined;
   const dateTo = searchParams.get("dateTo") || undefined;
-  const userSearch = searchParams.get("userSearch") || undefined;
+  const userSearch = searchParams.get("userSearch") || searchParams.get("search") || undefined;
   const issueStatus = searchParams.get("issueStatus") || undefined;
 
   const where: any = {};
@@ -70,11 +70,45 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       ...(dateTo ? { lte: new Date(dateTo + "T23:59:59.999Z") } : {}),
     };
   }
+  const [matchingUserIds, matchingSimulationIds] = userSearch
+    ? await Promise.all([
+        prisma.user
+          .findMany({
+            where: {
+              OR: [
+                { fullName: { contains: userSearch, mode: "insensitive" } },
+                { email: { contains: userSearch, mode: "insensitive" } },
+              ],
+            },
+            select: { id: true },
+            take: 100,
+          })
+          .then((users) => users.map((user) => user.id)),
+        prisma.simulation
+          .findMany({
+            where: {
+              referenceNumber: { contains: userSearch, mode: "insensitive" },
+            },
+            select: { id: true },
+            take: 100,
+          })
+          .then((simulations) => simulations.map((simulation) => simulation.id)),
+      ])
+    : [[], []];
+
   if (userSearch) {
     where.OR = [
-      { user: { fullName: { contains: userSearch, mode: "insensitive" } } },
-      { user: { email: { contains: userSearch, mode: "insensitive" } } },
       { userEmail: { contains: userSearch, mode: "insensitive" } },
+      { fileName: { contains: userSearch, mode: "insensitive" } },
+      { provider: { contains: userSearch, mode: "insensitive" } },
+      { model: { contains: userSearch, mode: "insensitive" } },
+      { errorMessage: { contains: userSearch, mode: "insensitive" } },
+      ...(matchingUserIds.length > 0
+        ? [{ userId: { in: matchingUserIds } }]
+        : []),
+      ...(matchingSimulationIds.length > 0
+        ? [{ simulationId: { in: matchingSimulationIds } }]
+        : []),
     ];
   }
   if (issueStatus) {

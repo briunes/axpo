@@ -247,12 +247,12 @@ const ELEC_POWER_PERIODS: Record<string, string[]> = {
 
 function ocrDaysBetween(from: string, to: string): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-    return Math.max(1, d + 1); // electricity: inclusive (end - start + 1)
+    return Math.max(1, d);
 }
 
 function ocrDaysBetweenGas(from: string, to: string): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-    return Math.max(1, d); // gas: non-inclusive (end - start)
+    return Math.max(1, d);
 }
 
 function ocrPrevMonthRange(): { fechaInicio: string; fechaFin: string } {

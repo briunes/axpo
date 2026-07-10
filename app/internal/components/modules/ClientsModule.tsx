@@ -20,7 +20,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import BlockIcon from "@mui/icons-material/Block";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { useEffect, useState, useLayoutEffect } from "react";
+import { useCallback, useEffect, useMemo, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { ClientItem, AgencyItem } from "../../lib/internalApi";
 import { isAdmin } from "../../lib/internalApi";
@@ -28,7 +28,16 @@ import type { ClientsActions } from "../hooks/useClients";
 import { useAgencies } from "../hooks/useAgencies";
 import { usePermissions } from "../../lib/permissionsContext";
 import { ConfirmDialog } from "../shared";
-import { DataTable, StatusBadge, FormSelect, FormInput } from "../ui";
+import {
+  DataTable,
+  StatusBadge,
+  FormSelect,
+  SaveTableViewDialog,
+  TableFilterButton,
+  TableFiltersDialog,
+  TableViewSearchControls,
+  useTableViews,
+} from "../ui";
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,6 +50,17 @@ interface ClientsModuleProps {
   onNotify?: (text: string, tone: "success" | "error") => void;
   onActionButtons?: (buttons: React.ReactNode) => void;
 }
+
+type ClientsViewState = {
+  agencyId: string;
+  showArchived: boolean;
+  sortColumn: string;
+  sortDir: "asc" | "desc";
+};
+
+const CLIENT_VIEWS_STORAGE_KEY = "axpo_client_saved_views";
+const CLIENT_DEFAULT_SORT_COLUMN = "name";
+const CLIENT_DEFAULT_SORT_DIR: "asc" | "desc" = "asc";
 
 export function ClientsModule({ session, actions, agencies: initialAgencies, onNotify, onActionButtons }: ClientsModuleProps) {
   const { t } = useI18n();
@@ -73,6 +93,11 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
     items: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
+  const [draftAgencyId, setDraftAgencyId] = useState(agencyId);
+  const [draftSortColumn, setDraftSortColumn] = useState(sortColumn);
+  const [draftSortDir, setDraftSortDir] = useState<"asc" | "desc">(sortDir);
 
   useEffect(() => {
     if (successText) { onNotify?.(successText, "success"); clearFeedback(); }
@@ -238,6 +263,69 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
 
   const canManage = canDo(role, "clients.view");
 
+  useEffect(() => {
+    if (!filtersOpen) return;
+    setDraftAgencyId(agencyId);
+    setDraftSortColumn(sortColumn);
+    setDraftSortDir(sortDir);
+  }, [agencyId, filtersOpen, sortColumn, sortDir]);
+
+  const currentView = useMemo<ClientsViewState>(() => ({
+    agencyId,
+    showArchived,
+    sortColumn,
+    sortDir,
+  }), [agencyId, showArchived, sortColumn, sortDir]);
+
+  const applyView = useCallback((view: ClientsViewState) => {
+    setAgencyId(view.agencyId ?? "");
+    setShowArchived(Boolean(view.showArchived));
+    setSort(view.sortColumn || CLIENT_DEFAULT_SORT_COLUMN, view.sortDir || CLIENT_DEFAULT_SORT_DIR);
+    setPage(1);
+  }, [setAgencyId, setPage, setShowArchived, setSort]);
+
+  const builtInViews = useMemo<Array<{ id: string; name: string; view: ClientsViewState }>>(() => [
+    {
+      id: "name",
+      name: "A-Z",
+      view: { agencyId: "", showArchived: false, sortColumn: CLIENT_DEFAULT_SORT_COLUMN, sortDir: CLIENT_DEFAULT_SORT_DIR },
+    },
+    {
+      id: "recent",
+      name: "Recent",
+      view: { agencyId: "", showArchived: false, sortColumn: "createdAt", sortDir: "desc" },
+    },
+    {
+      id: "archived",
+      name: t("actions", "showArchived"),
+      view: { agencyId: "", showArchived: true, sortColumn: CLIENT_DEFAULT_SORT_COLUMN, sortDir: CLIENT_DEFAULT_SORT_DIR },
+    },
+  ], [t]);
+
+  const { savedViews, viewPresets, activeViewPresetId, saveCurrentView, deleteSavedView } =
+    useTableViews<ClientsViewState>({ storageKey: CLIENT_VIEWS_STORAGE_KEY, currentView, presets: builtInViews });
+
+  const activeAdvancedFilterCount = useMemo(() => [
+    !activeViewPresetId && isAdmin(role) && agencyId,
+    !activeViewPresetId && showArchived,
+    !activeViewPresetId && (sortColumn !== CLIENT_DEFAULT_SORT_COLUMN || sortDir !== CLIENT_DEFAULT_SORT_DIR),
+  ].filter(Boolean).length, [activeViewPresetId, agencyId, role, showArchived, sortColumn, sortDir]);
+
+  const applyAdvancedFilters = useCallback(() => {
+    setAgencyId(draftAgencyId);
+    setSort(draftSortColumn || CLIENT_DEFAULT_SORT_COLUMN, draftSortDir);
+    setPage(1);
+    setFiltersOpen(false);
+  }, [draftAgencyId, draftSortColumn, draftSortDir, setAgencyId, setPage, setSort]);
+
+  const clearAdvancedFilters = useCallback(() => {
+    setDraftAgencyId("");
+    setDraftSortColumn(CLIENT_DEFAULT_SORT_COLUMN);
+    setDraftSortDir(CLIENT_DEFAULT_SORT_DIR);
+    applyView({ agencyId: "", showArchived, sortColumn: CLIENT_DEFAULT_SORT_COLUMN, sortDir: CLIENT_DEFAULT_SORT_DIR });
+    setFiltersOpen(false);
+  }, [applyView, showArchived]);
+
   // Render action buttons for topbar
   useLayoutEffect(() => {
     if (canManage) {
@@ -309,7 +397,7 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
   }
 
   return (
-    <Stack spacing={3} sx={{ height: '100%', minHeight: 0 }}>
+    <Stack spacing={2} sx={{ height: '100%', minHeight: 0 }}>
       <DataTable<ClientItem>
         tableId="clients"
         columns={columns}
@@ -317,56 +405,43 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
         loading={loading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(1); }}
-        onApplyFilters={(draft) => { setSearch(draft); setPage(1); }}
         onClearFilters={() => {
           setSearch("");
           setAgencyId("");
           setPage(1);
         }}
+        hasActiveFilters={Boolean(search || activeAdvancedFilterCount)}
+        showFilterSubmitActions={false}
+        showFilterLabel={false}
+        headerRight={(
+          <TableFilterButton
+            title={t("simulationsModule", "filtersTitle")}
+            activeFilterCount={activeAdvancedFilterCount}
+            onClick={() => setFiltersOpen(true)}
+          />
+        )}
         searchPlaceholder={t("search", "clients")}
         emptyMessage={t("search", "emptyClients")}
         renderCustomSearch={({ draft, setDraft, commitSearch, searchPlaceholder }) => (
-          <>
-            <Box sx={{ width: { xs: "100%", sm: 280 } }}>
-              <FormInput
-                label=""
-                placeholder={searchPlaceholder}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") commitSearch(); }}
-                size="small"
-                slotProps={{
-                  input: {
-                    endAdornment: draft ? (
-                      <IconButton
-                        size="small"
-                        onClick={() => { setDraft(""); setSearch(""); setPage(1); }}
-                        aria-label="Clear"
-                        edge="end"
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    ) : null,
-                  },
-                }}
-              />
-            </Box>
-            {isAdmin(role) && agencies.length > 0 && (
-              <Box sx={{ width: 240 }}>
-                <FormSelect
-                  label=""
-                  options={[
-                    { value: "", label: t("search", "allAgencies") ?? "All agencies" },
-                    ...agencies.map((a) => ({ value: a.id, label: a.name })),
-                  ]}
-                  value={agencyId}
-                  onChange={(val) => { setAgencyId(val as string); setPage(1); }}
-                  placeholder={t("columns", "agency")}
-                  textFieldProps={{ size: "small" }}
-                />
-              </Box>
-            )}
-          </>
+          <TableViewSearchControls
+            activeViewPresetId={activeViewPresetId}
+            viewPresets={viewPresets}
+            savedViews={savedViews}
+            onApplyView={applyView}
+            onDeleteSavedView={deleteSavedView}
+            labels={{
+              customView: t("simulationsModule", "customView"),
+              savedViewsGroup: t("simulationsModule", "savedViewsGroup"),
+              viewPreset: t("simulationsModule", "viewPresetLabel"),
+              clear: t("actions", "clear"),
+            }}
+            draft={draft}
+            setDraft={setDraft}
+            commitSearch={commitSearch}
+            searchPlaceholder={searchPlaceholder}
+            onLiveSearchChange={(value) => { setSearch(value); setPage(1); }}
+            onClearSearch={() => { setSearch(""); setPage(1); }}
+          />
         )}
         mobileCard={{
           title: "name",
@@ -443,6 +518,63 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
             onClick: (ids) => setConfirmBulkDeleteIds(ids),
           },
         ] : []}
+      />
+
+      <TableFiltersDialog
+        open={filtersOpen}
+        title={t("simulationsModule", "filtersTitle")}
+        saveViewLabel={t("simulationsModule", "saveView")}
+        clearLabel={t("simulationsModule", "clearFilters")}
+        applyLabel={t("simulationsModule", "applyFilters")}
+        onClose={() => setFiltersOpen(false)}
+        onOpenSaveView={() => setSaveViewOpen(true)}
+        onClear={clearAdvancedFilters}
+        onApply={applyAdvancedFilters}
+      >
+        {isAdmin(role) && agencies.length > 0 && (
+          <FormSelect
+            label={t("columns", "agency")}
+            options={[
+              { value: "", label: t("search", "allAgencies") ?? "All agencies" },
+              ...agencies.map((a) => ({ value: a.id, label: a.name })),
+            ]}
+            value={draftAgencyId}
+            onChange={(val) => setDraftAgencyId((val as string) ?? "")}
+            textFieldProps={{ size: "small" }}
+          />
+        )}
+        <FormSelect
+          label={t("simulationsModule", "sortBy")}
+          options={[
+            { value: "name", label: t("columns", "company") },
+            { value: "createdAt", label: t("columns", "created") },
+            { value: "updatedAt", label: t("columns", "updated") },
+          ]}
+          value={draftSortColumn}
+          onChange={(val) => setDraftSortColumn((val as string) || CLIENT_DEFAULT_SORT_COLUMN)}
+          textFieldProps={{ size: "small" }}
+        />
+        <FormSelect
+          label={t("simulationsModule", "sortDirection")}
+          options={[
+            { value: "desc", label: t("simulationsModule", "directionDescending") },
+            { value: "asc", label: t("simulationsModule", "directionAscending") },
+          ]}
+          value={draftSortDir}
+          onChange={(val) => setDraftSortDir(val === "asc" ? "asc" : "desc")}
+          textFieldProps={{ size: "small" }}
+        />
+      </TableFiltersDialog>
+
+      <SaveTableViewDialog
+        open={saveViewOpen}
+        title={t("simulationsModule", "saveViewTitle")}
+        description={t("simulationsModule", "saveViewDescription")}
+        nameLabel={t("simulationsModule", "viewName")}
+        cancelLabel={t("simulationsModule", "cancel")}
+        saveLabel={t("simulationsModule", "save")}
+        onClose={() => setSaveViewOpen(false)}
+        onSave={saveCurrentView}
       />
 
       {confirmBulkDeleteIds && (

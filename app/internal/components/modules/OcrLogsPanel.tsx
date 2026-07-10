@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     alpha,
     Box,
@@ -40,14 +40,14 @@ import AssignmentTurnedInRoundedIcon from "@mui/icons-material/AssignmentTurnedI
 import DoDisturbAltRoundedIcon from "@mui/icons-material/DoDisturbAltRounded";
 import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
 import type { SessionState } from "../../lib/authSession";
-import { DataTable, type ColumnDef } from "../ui";
+import { DataTable, DateInput, TableFilterButton, TableFiltersDialog, type ColumnDef } from "../ui";
 import { FormSelect } from "../ui/FormSelect";
 import { FormInput } from "../ui/FormInput";
-import { DateRangePicker } from "../ui/DateRangePicker";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
 import { improveOcrPrompt, testOcrPrompt, type ImproveOcrPromptResult, type TestOcrPromptResult } from "../../lib/internalApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useLogTableToolbar } from "./logTableToolbar";
 
 interface OcrLogEntry {
     id: string;
@@ -165,6 +165,16 @@ export interface OcrLogsPanelProps {
     session: SessionState;
     onNotify?: (text: string, tone: "success" | "error") => void;
 }
+
+type OcrLogsViewState = {
+    type: string;
+    status: string;
+    issueStatus: string;
+    dateFrom: string;
+    dateTo: string;
+};
+
+const OCR_LOG_VIEWS_STORAGE_KEY = "axpo_ocr_log_saved_views";
 
 function formatFileSize(bytes?: number): string {
     if (!bytes) return "—";
@@ -1452,7 +1462,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
     // Applied filters
     const [filterType, setFilterType] = useState("");
     const [filterStatus, setFilterStatus] = useState("");
-    const [filterUserSearch, setFilterUserSearch] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
     const [filterDateFrom, setFilterDateFrom] = useState("");
     const [filterDateTo, setFilterDateTo] = useState("");
     const [filterIssueStatus, setFilterIssueStatus] = useState("");
@@ -1460,10 +1470,19 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
     // Local (pending) filter state
     const [localType, setLocalType] = useState("");
     const [localStatus, setLocalStatus] = useState("");
-    const [localUserSearch, setLocalUserSearch] = useState("");
     const [localDateFrom, setLocalDateFrom] = useState<Date | null>(null);
     const [localDateTo, setLocalDateTo] = useState<Date | null>(null);
     const [localIssueStatus, setLocalIssueStatus] = useState("");
+    const [filtersOpen, setFiltersOpen] = useState(false);
+
+    useEffect(() => {
+        if (!filtersOpen) return;
+        setLocalType(filterType);
+        setLocalStatus(filterStatus);
+        setLocalIssueStatus(filterIssueStatus);
+        setLocalDateFrom(filterDateFrom ? new Date(`${filterDateFrom}T00:00:00`) : null);
+        setLocalDateTo(filterDateTo ? new Date(`${filterDateTo}T00:00:00`) : null);
+    }, [filterDateFrom, filterDateTo, filterIssueStatus, filterStatus, filterType, filtersOpen]);
 
     const formatDate = useCallback((isoString: string) => {
         try {
@@ -1484,21 +1503,74 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
     const handleSearch = () => {
         setFilterType(localType);
         setFilterStatus(localStatus);
-        setFilterUserSearch(localUserSearch);
         setFilterDateFrom(toDateOnly(localDateFrom));
         setFilterDateTo(toDateOnly(localDateTo));
         setFilterIssueStatus(localIssueStatus);
         setPage(1);
+        setFiltersOpen(false);
     };
 
     const handleClear = () => {
-        setLocalType(""); setLocalStatus(""); setLocalUserSearch(""); setLocalDateFrom(null); setLocalDateTo(null); setLocalIssueStatus("");
-        setFilterType(""); setFilterStatus(""); setFilterUserSearch(""); setFilterDateFrom(""); setFilterDateTo(""); setFilterIssueStatus("");
+        setLocalType(""); setLocalStatus(""); setLocalDateFrom(null); setLocalDateTo(null); setLocalIssueStatus("");
+        setFilterType(""); setFilterStatus(""); setSearchTerm(""); setFilterDateFrom(""); setFilterDateTo(""); setFilterIssueStatus("");
         setPage(1);
+        setFiltersOpen(false);
     };
+    const activeFilterCount = [
+        filterType,
+        filterStatus,
+        filterIssueStatus,
+        filterDateFrom || filterDateTo,
+    ].filter(Boolean).length;
+
+    const currentView = useMemo<OcrLogsViewState>(() => ({
+        type: filterType,
+        status: filterStatus,
+        issueStatus: filterIssueStatus,
+        dateFrom: filterDateFrom,
+        dateTo: filterDateTo,
+    }), [filterDateFrom, filterDateTo, filterIssueStatus, filterStatus, filterType]);
+
+    const applyView = useCallback((view: OcrLogsViewState) => {
+        setFilterType(view.type ?? "");
+        setFilterStatus(view.status ?? "");
+        setFilterIssueStatus(view.issueStatus ?? "");
+        setFilterDateFrom(view.dateFrom ?? "");
+        setFilterDateTo(view.dateTo ?? "");
+        setPage(1);
+    }, []);
+
+    const builtInViews = useMemo<Array<{ id: string; name: string; view: OcrLogsViewState }>>(() => [
+        { id: "recent", name: t("simulationsModule", "presetRecent"), view: { type: "", status: "", issueStatus: "", dateFrom: "", dateTo: "" } },
+        { id: "success", name: t("logs", "success"), view: { type: "", status: "SUCCESS", issueStatus: "", dateFrom: "", dateTo: "" } },
+        { id: "failed", name: t("logs", "failed"), view: { type: "", status: "FAILED", issueStatus: "", dateFrom: "", dateTo: "" } },
+        { id: "invoice-extraction", name: t("logs", "invoiceExtraction"), view: { type: "INVOICE_EXTRACTION", status: "", issueStatus: "", dateFrom: "", dateTo: "" } },
+        { id: "issues", name: t("logs", "reported"), view: { type: "", status: "", issueStatus: "ANY", dateFrom: "", dateTo: "" } },
+    ], [t]);
+
+    const {
+        activeViewPresetId,
+        openSaveViewDialog,
+        saveViewDialog,
+        searchProps,
+    } = useLogTableToolbar<OcrLogsViewState>({
+        storageKey: OCR_LOG_VIEWS_STORAGE_KEY,
+        currentView,
+        presets: builtInViews,
+        applyView,
+        searchValue: searchTerm,
+        onSearchChange: (value) => {
+            setSearchTerm(value);
+            setPage(1);
+        },
+        searchPlaceholder: t("search", "auditLogs"),
+        t,
+    });
+
+    const toolbarFilterCount = activeViewPresetId ? 0 : activeFilterCount;
 
     const { data, isFetching, error } = useQuery({
-        queryKey: ["ocr-logs", session.token, page, pageSize, filterType, filterStatus, filterUserSearch, filterDateFrom, filterDateTo, filterIssueStatus],
+        queryKey: ["ocr-logs", session.token, page, pageSize, filterType, filterStatus, searchTerm, filterDateFrom, filterDateTo, filterIssueStatus],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
@@ -1506,7 +1578,7 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
             });
             if (filterType) params.append("type", filterType);
             if (filterStatus) params.append("status", filterStatus);
-            if (filterUserSearch) params.append("userSearch", filterUserSearch);
+            if (searchTerm) params.append("search", searchTerm);
             if (filterDateFrom) params.append("dateFrom", filterDateFrom);
             if (filterDateTo) params.append("dateTo", filterDateTo);
             if (filterIssueStatus) params.append("issueStatus", filterIssueStatus);
@@ -1793,85 +1865,19 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
         <div >
 
             <DataTable
+                tableId="ocr-logs"
                 columns={columns}
                 rows={logs}
                 loading={isFetching}
-                onApplyFilters={handleSearch}
+                {...searchProps}
                 onClearFilters={handleClear}
-                renderCustomSearch={() => (
-                    <Box sx={{ display: "flex", gap: 1, flex: "0 1 auto", minWidth: 0 }}>
-                        <Box sx={{ width: 180, flex: "0 0 auto" }}>
-                            <FormSelect
-                                label=""
-                                options={[
-                                    { value: "", label: t("logs", "allTypes") },
-                                    { value: "INVOICE_EXTRACTION", label: t("logs", "invoiceExtraction") },
-                                    { value: "PROVIDER_DETECTION", label: t("logs", "providerDetection") },
-                                    { value: "PROMPT_IMPROVEMENT", label: t("logs", "promptImprovement") },
-                                    { value: "PROMPT_TEST", label: t("logs", "promptTest") },
-                                    { value: "TEMPLATE_BUILDER", label: t("logs", "templateBuilder") },
-                                ]}
-                                value={localType}
-                                onChange={(v) => setLocalType(String(v ?? ""))}
-                                placeholder={t("logs", "type")}
-                                textFieldProps={{ size: "small" }}
-                            />
-                        </Box>
-                        <Box sx={{ width: 180, flex: "0 0 auto" }}>
-                            <FormSelect
-                                label=""
-                                options={[
-                                    { value: "", label: t("logs", "allStatuses") },
-                                    { value: "SUCCESS", label: t("logs", "success") },
-                                    { value: "FAILED", label: t("logs", "failed") },
-                                    { value: "ERROR", label: t("logs", "error") },
-                                    { value: "PARSE_ERROR", label: t("logs", "parseError") },
-                                ]}
-                                value={localStatus}
-                                onChange={(v) => setLocalStatus(String(v ?? ""))}
-                                placeholder={t("logs", "status")}
-                                textFieldProps={{ size: "small" }}
-                            />
-                        </Box>
-                        <Box sx={{ width: 180, flex: "0 0 auto" }}>
-                            <FormSelect
-                                label=""
-                                options={[
-                                    { value: "", label: t("logs", "allIssues") },
-                                    { value: "ANY", label: t("logs", "hasIssue") },
-                                    { value: "OPEN", label: t("logs", "open") },
-                                    { value: "IN_PROGRESS", label: t("logs", "inProgress") },
-                                    { value: "RESOLVED", label: t("logs", "resolved") },
-                                    { value: "DISMISSED", label: t("logs", "dismissed") },
-                                ]}
-                                value={localIssueStatus}
-                                onChange={(v) => setLocalIssueStatus(String(v ?? ""))}
-                                placeholder={t("logs", "issue")}
-                                textFieldProps={{ size: "small" }}
-                            />
-                        </Box>
-                        <Box sx={{ width: 260, flex: "0 0 auto" }}>
-                            <FormInput
-                                label=""
-                                size="small"
-                                fullWidth
-                                placeholder={t("logs", "searchUser")}
-                                value={localUserSearch}
-                                onChange={(e) => setLocalUserSearch(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                                sx={{ "& .MuiInputBase-root": { } }}
-                            />
-                        </Box>
-                        <Box sx={{ width: 360, flex: "0 0 auto" }}>
-                            <DateRangePicker
-                                variant="inline"
-                                label={t("logs", "timestamp")}
-                                startDate={localDateFrom}
-                                endDate={localDateTo}
-                                onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
-                            />
-                        </Box>
-                    </Box>
+                hasActiveFilters={Boolean(searchTerm || toolbarFilterCount)}
+                headerRight={(
+                    <TableFilterButton
+                        title={t("simulationsModule", "filtersTitle")}
+                        activeFilterCount={toolbarFilterCount}
+                        onClick={() => setFiltersOpen(true)}
+                    />
                 )}
                 pagination={{
                     page,
@@ -1885,6 +1891,73 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
                 }}
                 emptyMessage={t("logs", "noOcrLogs")}
             />
+
+            <TableFiltersDialog
+                open={filtersOpen}
+                title={t("simulationsModule", "filtersTitle")}
+                saveViewLabel={t("simulationsModule", "saveView")}
+                clearLabel={t("simulationsModule", "clearFilters")}
+                applyLabel={t("simulationsModule", "applyFilters")}
+                onClose={() => setFiltersOpen(false)}
+                onOpenSaveView={openSaveViewDialog}
+                onClear={handleClear}
+                onApply={handleSearch}
+            >
+                <FormSelect
+                    label={t("logs", "type")}
+                    options={[
+                        { value: "", label: t("logs", "allTypes") },
+                        { value: "INVOICE_EXTRACTION", label: t("logs", "invoiceExtraction") },
+                        { value: "PROVIDER_DETECTION", label: t("logs", "providerDetection") },
+                        { value: "PROMPT_IMPROVEMENT", label: t("logs", "promptImprovement") },
+                        { value: "PROMPT_TEST", label: t("logs", "promptTest") },
+                        { value: "TEMPLATE_BUILDER", label: t("logs", "templateBuilder") },
+                    ]}
+                    value={localType}
+                    onChange={(v) => setLocalType(String(v ?? ""))}
+                    textFieldProps={{ size: "small" }}
+                />
+                <FormSelect
+                    label={t("logs", "status")}
+                    options={[
+                        { value: "", label: t("logs", "allStatuses") },
+                        { value: "SUCCESS", label: t("logs", "success") },
+                        { value: "FAILED", label: t("logs", "failed") },
+                        { value: "ERROR", label: t("logs", "error") },
+                        { value: "PARSE_ERROR", label: t("logs", "parseError") },
+                    ]}
+                    value={localStatus}
+                    onChange={(v) => setLocalStatus(String(v ?? ""))}
+                    textFieldProps={{ size: "small" }}
+                />
+                <FormSelect
+                    label={t("logs", "issue")}
+                    options={[
+                        { value: "", label: t("logs", "allIssues") },
+                        { value: "ANY", label: t("logs", "hasIssue") },
+                        { value: "OPEN", label: t("logs", "open") },
+                        { value: "IN_PROGRESS", label: t("logs", "inProgress") },
+                        { value: "RESOLVED", label: t("logs", "resolved") },
+                        { value: "DISMISSED", label: t("logs", "dismissed") },
+                    ]}
+                    value={localIssueStatus}
+                    onChange={(v) => setLocalIssueStatus(String(v ?? ""))}
+                    textFieldProps={{ size: "small" }}
+                />
+                <DateInput
+                    label={t("datePicker", "from")}
+                    labelPosition="top"
+                    value={toDateOnly(localDateFrom)}
+                    onChange={(value) => setLocalDateFrom(value ? new Date(`${value}T00:00:00`) : null)}
+                />
+                <DateInput
+                    label={t("datePicker", "to")}
+                    labelPosition="top"
+                    value={toDateOnly(localDateTo)}
+                    onChange={(value) => setLocalDateTo(value ? new Date(`${value}T00:00:00`) : null)}
+                />
+            </TableFiltersDialog>
+            {saveViewDialog}
 
             {selectedLog && (
                 <OcrLogDetailDialog

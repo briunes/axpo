@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     alpha,
     Box,
@@ -9,7 +9,6 @@ import {
     Drawer,
     IconButton,
     Stack,
-    TextField,
     Tooltip,
     Typography,
     useTheme,
@@ -28,13 +27,13 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import type { SessionState } from "../../lib/authSession";
-import { DataTable, type ColumnDef } from "../ui";
+import { DataTable, DateInput, TableFilterButton, TableFiltersDialog, type ColumnDef } from "../ui";
 import { ConfirmDialog } from "../shared";
 import { FormSelect } from "../ui/FormSelect";
-import { DateRangePicker } from "../ui/DateRangePicker";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useLogTableToolbar } from "./logTableToolbar";
 
 const SENTRY_BASE_URL = "https://signed-axpo.sentry.io";
 
@@ -65,6 +64,14 @@ export interface AppErrorLogsPanelProps {
     onNotify?: (text: string, tone: "success" | "error") => void;
 }
 
+type AppErrorLogsViewState = {
+    errorType: string;
+    dateFrom: string;
+    dateTo: string;
+};
+
+const APP_ERROR_LOG_VIEWS_STORAGE_KEY = "axpo_app_error_log_saved_views";
+
 export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps) {
     const cachePolicy = useRequestCachePolicy("logs");
     const theme = useTheme();
@@ -86,9 +93,16 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
 
     // Local (pending) filter state
     const [localErrorType, setLocalErrorType] = useState("");
-    const [localSearch, setLocalSearch] = useState("");
     const [localDateFrom, setLocalDateFrom] = useState<Date | null>(null);
     const [localDateTo, setLocalDateTo] = useState<Date | null>(null);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+
+    useEffect(() => {
+        if (!filtersOpen) return;
+        setLocalErrorType(filterErrorType);
+        setLocalDateFrom(filterDateFrom ? new Date(`${filterDateFrom}T00:00:00`) : null);
+        setLocalDateTo(filterDateTo ? new Date(`${filterDateTo}T00:00:00`) : null);
+    }, [filterDateFrom, filterDateTo, filterErrorType, filtersOpen]);
 
     const formatDate = useCallback((isoString: string) => {
         try {
@@ -108,17 +122,60 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
 
     const handleSearch = () => {
         setFilterErrorType(localErrorType);
-        setFilterSearch(localSearch);
         setFilterDateFrom(toDateOnly(localDateFrom));
         setFilterDateTo(toDateOnly(localDateTo));
         setPage(1);
+        setFiltersOpen(false);
     };
 
     const handleClear = () => {
-        setLocalErrorType(""); setLocalSearch(""); setLocalDateFrom(null); setLocalDateTo(null);
+        setLocalErrorType(""); setLocalDateFrom(null); setLocalDateTo(null);
         setFilterErrorType(""); setFilterSearch(""); setFilterDateFrom(""); setFilterDateTo("");
         setPage(1);
+        setFiltersOpen(false);
     };
+    const activeFilterCount = [filterErrorType, filterDateFrom || filterDateTo].filter(Boolean).length;
+
+    const currentView = useMemo<AppErrorLogsViewState>(() => ({
+        errorType: filterErrorType,
+        dateFrom: filterDateFrom,
+        dateTo: filterDateTo,
+    }), [filterDateFrom, filterDateTo, filterErrorType]);
+
+    const applyView = useCallback((view: AppErrorLogsViewState) => {
+        setFilterErrorType(view.errorType ?? "");
+        setFilterDateFrom(view.dateFrom ?? "");
+        setFilterDateTo(view.dateTo ?? "");
+        setPage(1);
+    }, []);
+
+    const builtInViews = useMemo<Array<{ id: string; name: string; view: AppErrorLogsViewState }>>(() => [
+        { id: "recent", name: t("simulationsModule", "presetRecent"), view: { errorType: "", dateFrom: "", dateTo: "" } },
+        { id: "error", name: "Error", view: { errorType: "Error", dateFrom: "", dateTo: "" } },
+        { id: "type-error", name: "TypeError", view: { errorType: "TypeError", dateFrom: "", dateTo: "" } },
+        { id: "reference-error", name: "ReferenceError", view: { errorType: "ReferenceError", dateFrom: "", dateTo: "" } },
+    ], [t]);
+
+    const {
+        activeViewPresetId,
+        openSaveViewDialog,
+        saveViewDialog,
+        searchProps,
+    } = useLogTableToolbar<AppErrorLogsViewState>({
+        storageKey: APP_ERROR_LOG_VIEWS_STORAGE_KEY,
+        currentView,
+        presets: builtInViews,
+        applyView,
+        searchValue: filterSearch,
+        onSearchChange: (value) => {
+            setFilterSearch(value);
+            setPage(1);
+        },
+        searchPlaceholder: t("search", "auditLogs"),
+        t,
+    });
+
+    const toolbarFilterCount = activeViewPresetId ? 0 : activeFilterCount;
 
     const { data, isFetching, error } = useQuery({
         queryKey: ["app-error-logs", session.token, page, pageSize, filterErrorType, filterSearch, filterDateFrom, filterDateTo],
@@ -383,50 +440,15 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                     </>
 
                 )}
-                onApplyFilters={handleSearch}
+                {...searchProps}
                 onClearFilters={handleClear}
-                renderCustomSearch={() => (
-                    <Box sx={{ display: 'flex', gap: 1, flex: "0 1 auto", minWidth: 0 }}>
-                        <Box sx={{ width: 350, flex: "0 0 auto" }}>
-                            <FormSelect
-                                label=""
-                                options={[
-                                    { value: "", label: t("logs", "allTypes") },
-                                    { value: "Error", label: "Error" },
-                                    { value: "ReferenceError", label: "ReferenceError" },
-                                    { value: "TypeError", label: "TypeError" },
-                                    { value: "SyntaxError", label: "SyntaxError" },
-                                ]}
-                                value={localErrorType}
-                                onChange={(v) => setLocalErrorType(String(v ?? ""))}
-                                placeholder={t("logs", "errorType")}
-                                textFieldProps={{ size: "small" }}
-                            />
-                        </Box>
-                        <Box sx={{ width: 350, flex: "0 0 auto" }}>
-                            <TextField
-                                size="small"
-                                fullWidth
-                                placeholder={t("logs", "searchError")}
-                                value={localSearch}
-                                onChange={(e) => setLocalSearch(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                                sx={{ "& .MuiInputBase-root": { } }}
-                            />
-                        </Box>
-                        <Box sx={{ width: 450, flex: "0 0 auto" }}>
-                            <DateRangePicker
-                                variant="inline"
-                                label={t("logs", "timestamp")}
-                                startDate={localDateFrom}
-                                endDate={localDateTo}
-                                onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
-
-                            />
-                        </Box>
-                    </Box>
-                )}
-                headerRight={
+                hasActiveFilters={Boolean(filterSearch || toolbarFilterCount)}
+                headerRight={<Stack direction="row" spacing={1} alignItems="center">
+                    <TableFilterButton
+                        title={t("simulationsModule", "filtersTitle")}
+                        activeFilterCount={toolbarFilterCount}
+                        onClick={() => setFiltersOpen(true)}
+                    />
                     <Button
                         variant="outlined"
                         size="small"
@@ -435,7 +457,8 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         sx={{ fontSize: 12, whiteSpace: "nowrap" }}
                     >
                         {t("logs", "openSentry")}
-                    </Button>}
+                    </Button>
+                </Stack>}
                 pagination={{
                     page,
                     pageSize,
@@ -456,6 +479,45 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                 ]}
                 emptyMessage={t("logs", "noAppErrors")}
             />
+
+            <TableFiltersDialog
+                open={filtersOpen}
+                title={t("simulationsModule", "filtersTitle")}
+                saveViewLabel={t("simulationsModule", "saveView")}
+                clearLabel={t("simulationsModule", "clearFilters")}
+                applyLabel={t("simulationsModule", "applyFilters")}
+                onClose={() => setFiltersOpen(false)}
+                onOpenSaveView={openSaveViewDialog}
+                onClear={handleClear}
+                onApply={handleSearch}
+            >
+                <FormSelect
+                    label={t("logs", "errorType")}
+                    options={[
+                        { value: "", label: t("logs", "allTypes") },
+                        { value: "Error", label: "Error" },
+                        { value: "ReferenceError", label: "ReferenceError" },
+                        { value: "TypeError", label: "TypeError" },
+                        { value: "SyntaxError", label: "SyntaxError" },
+                    ]}
+                    value={localErrorType}
+                    onChange={(v) => setLocalErrorType(String(v ?? ""))}
+                    textFieldProps={{ size: "small" }}
+                />
+                <DateInput
+                    label={t("datePicker", "from")}
+                    labelPosition="top"
+                    value={toDateOnly(localDateFrom)}
+                    onChange={(value) => setLocalDateFrom(value ? new Date(`${value}T00:00:00`) : null)}
+                />
+                <DateInput
+                    label={t("datePicker", "to")}
+                    labelPosition="top"
+                    value={toDateOnly(localDateTo)}
+                    onChange={(value) => setLocalDateTo(value ? new Date(`${value}T00:00:00`) : null)}
+                />
+            </TableFiltersDialog>
+            {saveViewDialog}
 
             {/* Detail Drawer */}
             <Drawer

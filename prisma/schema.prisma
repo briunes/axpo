@@ -411,7 +411,8 @@ model SystemConfig {
   hydrocarbonTaxRateOptions       Json?
   electricityTaxConfig            Json?
   gasTaxConfig                    Json?
-  appVersion                      String    @default("1.0.0")
+  appVersion                      String    @default("0.2.1")
+  appChangelog                    Json?
   maintenanceMode                 Boolean   @default(false)
   maintenanceUntil                DateTime?
   maintenanceMessage              String?

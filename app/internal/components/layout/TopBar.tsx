@@ -6,8 +6,10 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { MenuIcon } from "../ui/icons";
 import { Box, Typography } from "@mui/material";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import SearchIcon from "@mui/icons-material/Search";
 import { useRouter } from "next/navigation";
 import type { TopBarBreadcrumb } from "../InternalWorkspace";
+import { getCommandShortcutLabel } from "./shortcutLabel";
 
 const sectionNavKey: Record<AppSection, string> = {
   simulations: "simulations",
@@ -27,16 +29,19 @@ export function TopBar({
   onMobileMenuToggle,
   actionButtons,
   breadcrumbs,
+  onCommandOpen,
 }: {
   section: AppSection | null;
   onRefresh: () => void;
   onMobileMenuToggle: () => void;
   actionButtons?: React.ReactNode;
   breadcrumbs?: TopBarBreadcrumb[] | null;
+  onCommandOpen?: () => void;
 }) {
   const { t } = useI18n();
   const router = useRouter();
-  const Icon = section ? sectionIcon[section] : null;
+  const shortcutLabel = getCommandShortcutLabel();
+  const Icon = section ? sectionIcon[section] : breadcrumbs?.length === 1 ? breadcrumbs[0]?.icon ?? null : null;
   const sectionLabel = section ? t("nav", sectionNavKey[section]) : "";
   const pathItems: TopBarBreadcrumb[] = breadcrumbs?.length
     ? [
@@ -60,6 +65,17 @@ export function TopBar({
         >
           <MenuIcon />
         </button>
+        {onCommandOpen && (
+          <button
+            className="topbar-command-btn"
+            onClick={onCommandOpen}
+            aria-label={`Open global search (${shortcutLabel})`}
+            title={`Global search (${shortcutLabel})`}
+          >
+            <SearchIcon fontSize="small" />
+            <span className="topbar-command-shortcut">{shortcutLabel}</span>
+          </button>
+        )}
         {Icon && (
           <span className="topbar-section-icon">
             <Icon />

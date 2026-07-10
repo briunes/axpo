@@ -856,6 +856,11 @@ export interface ListSimulationsParams {
   clientId?: string;
   cups?: string;
   status?: string;
+  type?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  expiresFrom?: string;
+  expiresTo?: string;
 }
 
 export async function listSimulations(
@@ -874,6 +879,11 @@ export async function listSimulations(
   if (params?.clientId) searchParams.set("clientId", params.clientId);
   if (params?.cups) searchParams.set("cups", params.cups);
   if (params?.status) searchParams.set("status", params.status);
+  if (params?.type) searchParams.set("type", params.type);
+  if (params?.createdFrom) searchParams.set("createdFrom", params.createdFrom);
+  if (params?.createdTo) searchParams.set("createdTo", params.createdTo);
+  if (params?.expiresFrom) searchParams.set("expiresFrom", params.expiresFrom);
+  if (params?.expiresTo) searchParams.set("expiresTo", params.expiresTo);
 
   const url = `${baseUrl}/api/v1/internal/simulations${
     searchParams.toString() ? `?${searchParams.toString()}` : ""

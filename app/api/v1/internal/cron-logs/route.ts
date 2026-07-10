@@ -35,10 +35,19 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const sourceFilter = searchParams.get("source") || undefined;
   const dateFrom = searchParams.get("dateFrom") || undefined;
   const dateTo = searchParams.get("dateTo") || undefined;
+  const search = searchParams.get("search")?.trim() || undefined;
 
   const where: any = {};
   if (statusFilter) where.status = statusFilter;
   if (sourceFilter) where.metadata = { path: ["source"], equals: sourceFilter };
+  if (search) {
+    where.OR = [
+      { jobName: { contains: search, mode: "insensitive" } },
+      { jobType: { contains: search, mode: "insensitive" } },
+      { status: { contains: search, mode: "insensitive" } },
+      { errorMessage: { contains: search, mode: "insensitive" } },
+    ];
+  }
   if (dateFrom || dateTo) {
     where.executedAt = {
       ...(dateFrom ? { gte: new Date(dateFrom + "T00:00:00.000Z") } : {}),

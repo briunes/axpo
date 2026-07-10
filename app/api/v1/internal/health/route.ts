@@ -29,7 +29,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const health = {
     status: "healthy" as const,
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || "0.2.0",
+    version: process.env.npm_package_version || "0.2.1",
     database: {
       mode: shouldCheckDatabase ? databaseMode : "not-disclosed",
       status: databaseStatus,

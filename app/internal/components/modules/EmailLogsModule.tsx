@@ -9,21 +9,20 @@ import {
     DialogContent,
     DialogActions,
     Typography,
-    TextField,
     Chip,
 } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { DataTable, StatusBadge } from "../ui";
+import { DataTable, DateInput, StatusBadge, TableFilterButton, TableFiltersDialog } from "../ui";
 import type { ColumnDef } from "../ui";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { FormSelect } from "../ui/FormSelect";
-import { DateRangePicker } from "../ui/DateRangePicker";
 import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
+import { useLogTableToolbar } from "./logTableToolbar";
 
 interface EmailLog {
     id: string;
@@ -62,6 +61,15 @@ interface EmailLogsModuleProps {
     session: SessionState;
     onNotify?: (text: string, tone: "success" | "error") => void;
 }
+
+type EmailLogsViewState = {
+    status: string;
+    trigger: string;
+    dateFrom: string;
+    dateTo: string;
+};
+
+const EMAIL_LOG_VIEWS_STORAGE_KEY = "axpo_email_log_saved_views";
 
 const EMAIL_TRIGGER_OPTIONS = [
     { value: "otp-login", label: "OTP login" },
@@ -107,9 +115,17 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
     // Local (pending) filter state
     const [localStatus, setLocalStatus] = useState<string>("all");
     const [localTrigger, setLocalTrigger] = useState<string>("all");
-    const [localSearch, setLocalSearch] = useState("");
     const [localDateFrom, setLocalDateFrom] = useState<Date | null>(null);
     const [localDateTo, setLocalDateTo] = useState<Date | null>(null);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+
+    useEffect(() => {
+        if (!filtersOpen) return;
+        setLocalStatus(statusFilter);
+        setLocalTrigger(triggerFilter);
+        setLocalDateFrom(dateFrom ? new Date(`${dateFrom}T00:00:00`) : null);
+        setLocalDateTo(dateTo ? new Date(`${dateTo}T00:00:00`) : null);
+    }, [dateFrom, dateTo, filtersOpen, statusFilter, triggerFilter]);
 
     const formatDate = useCallback((dateStr: string) => {
         try {
@@ -130,17 +146,67 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
     const handleSearch = () => {
         setStatusFilter(localStatus);
         setTriggerFilter(localTrigger);
-        setSearchTerm(localSearch);
         setDateFrom(toDateOnly(localDateFrom));
         setDateTo(toDateOnly(localDateTo));
         setPage(1);
+        setFiltersOpen(false);
     };
 
     const resetFilters = () => {
-        setLocalStatus("all"); setLocalTrigger("all"); setLocalSearch(""); setLocalDateFrom(null); setLocalDateTo(null);
+        setLocalStatus("all"); setLocalTrigger("all"); setLocalDateFrom(null); setLocalDateTo(null);
         setStatusFilter("all"); setTriggerFilter("all"); setSearchTerm(""); setDateFrom(""); setDateTo("");
         setPage(1);
+        setFiltersOpen(false);
     };
+    const activeFilterCount = [
+        statusFilter !== "all",
+        triggerFilter !== "all",
+        dateFrom || dateTo,
+    ].filter(Boolean).length;
+
+    const currentView = useMemo<EmailLogsViewState>(() => ({
+        status: statusFilter,
+        trigger: triggerFilter,
+        dateFrom,
+        dateTo,
+    }), [dateFrom, dateTo, statusFilter, triggerFilter]);
+
+    const applyView = useCallback((view: EmailLogsViewState) => {
+        setStatusFilter(view.status || "all");
+        setTriggerFilter(view.trigger || "all");
+        setDateFrom(view.dateFrom ?? "");
+        setDateTo(view.dateTo ?? "");
+        setPage(1);
+    }, []);
+
+    const builtInViews = useMemo<Array<{ id: string; name: string; view: EmailLogsViewState }>>(() => [
+        { id: "recent", name: t("simulationsModule", "presetRecent"), view: { status: "all", trigger: "all", dateFrom: "", dateTo: "" } },
+        { id: "sent", name: t("logs", "sent"), view: { status: "sent", trigger: "all", dateFrom: "", dateTo: "" } },
+        { id: "failed", name: t("logs", "failed"), view: { status: "failed", trigger: "all", dateFrom: "", dateTo: "" } },
+        { id: "simulation-share", name: EMAIL_TRIGGER_LABELS["simulation-share"], view: { status: "all", trigger: "simulation-share", dateFrom: "", dateTo: "" } },
+        { id: "password-reset", name: EMAIL_TRIGGER_LABELS["password-reset-request"], view: { status: "all", trigger: "password-reset-request", dateFrom: "", dateTo: "" } },
+    ], [t]);
+
+    const {
+        activeViewPresetId,
+        openSaveViewDialog,
+        saveViewDialog,
+        searchProps,
+    } = useLogTableToolbar<EmailLogsViewState>({
+        storageKey: EMAIL_LOG_VIEWS_STORAGE_KEY,
+        currentView,
+        presets: builtInViews,
+        applyView,
+        searchValue: searchTerm,
+        onSearchChange: (value) => {
+            setSearchTerm(value);
+            setPage(1);
+        },
+        searchPlaceholder: t("search", "emailLogs"),
+        t,
+    });
+
+    const toolbarFilterCount = activeViewPresetId ? 0 : activeFilterCount;
 
     // Pagination
     const [page, setPage] = useState(1);
@@ -293,63 +359,21 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
     return (
         <>
             <DataTable
+                tableId="email-logs"
                 columns={columns}
                 rows={logs}
                 loading={loading}
+                {...searchProps}
                 sortState={{ column: sortColumn, direction: sortDir }}
                 onSort={handleSort}
-                onApplyFilters={handleSearch}
                 onClearFilters={resetFilters}
-                renderCustomSearch={() => (
-                    <Box sx={{ display: 'flex', gap: 1, flex: "1 1 auto", minWidth: 0, flexWrap: "wrap" }}>
-                        <Box sx={{ width: { xs: "100%", sm: 230 }, flex: { xs: "1 1 100%", sm: "0 0 auto" } }}>
-                            <FormSelect
-                                label=""
-                                options={[
-                                    { value: "all", label: t("logs", "allStatuses") },
-                                    { value: "sent", label: t("logs", "sent") },
-                                    { value: "failed", label: t("logs", "failed") },
-                                ]}
-                                value={localStatus}
-                                onChange={(v) => setLocalStatus(String(v ?? "all"))}
-                                placeholder={t("logs", "status")}
-                                textFieldProps={{ size: "small" }}
-                            />
-                        </Box>
-                        <Box sx={{ width: { xs: "100%", sm: 230 }, flex: { xs: "1 1 100%", sm: "0 0 auto" } }}>
-                            <FormSelect
-                                label=""
-                                options={[
-                                    { value: "all", label: t("logs", "allTriggers") },
-                                    ...EMAIL_TRIGGER_OPTIONS,
-                                ]}
-                                value={localTrigger}
-                                onChange={(v) => setLocalTrigger(String(v ?? "all"))}
-                                placeholder={t("logs", "triggeredBy")}
-                                textFieldProps={{ size: "small" }}
-                            />
-                        </Box>
-                        <Box sx={{ width: { xs: "100%", sm: 310 }, flex: { xs: "1 1 100%", sm: "0 0 auto" } }}>
-                            <TextField
-                                size="small"
-                                fullWidth
-                                placeholder={t("logs", "searchEmail")}
-                                value={localSearch}
-                                onChange={(e) => setLocalSearch(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                                sx={{ "& .MuiInputBase-root": { } }}
-                            />
-                        </Box>
-                        <Box sx={{ width: { xs: "100%", md: 430 }, flex: { xs: "1 1 100%", md: "0 0 auto" } }}>
-                            <DateRangePicker
-                                variant="inline"
-                                label={t("logs", "date")}
-                                startDate={localDateFrom}
-                                endDate={localDateTo}
-                                onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
-                            />
-                        </Box>
-                    </Box>
+                hasActiveFilters={Boolean(searchTerm || toolbarFilterCount)}
+                headerRight={(
+                    <TableFilterButton
+                        title={t("simulationsModule", "filtersTitle")}
+                        activeFilterCount={toolbarFilterCount}
+                        onClick={() => setFiltersOpen(true)}
+                    />
                 )}
                 pagination={{
                     page,
@@ -374,6 +398,53 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                 )}
                 emptyMessage={t("logs", "noEmailLogs")}
             />
+
+            <TableFiltersDialog
+                open={filtersOpen}
+                title={t("simulationsModule", "filtersTitle")}
+                saveViewLabel={t("simulationsModule", "saveView")}
+                clearLabel={t("simulationsModule", "clearFilters")}
+                applyLabel={t("simulationsModule", "applyFilters")}
+                onClose={() => setFiltersOpen(false)}
+                onOpenSaveView={openSaveViewDialog}
+                onClear={resetFilters}
+                onApply={handleSearch}
+            >
+                <FormSelect
+                    label={t("logs", "status")}
+                    options={[
+                        { value: "all", label: t("logs", "allStatuses") },
+                        { value: "sent", label: t("logs", "sent") },
+                        { value: "failed", label: t("logs", "failed") },
+                    ]}
+                    value={localStatus}
+                    onChange={(v) => setLocalStatus(String(v ?? "all"))}
+                    textFieldProps={{ size: "small" }}
+                />
+                <FormSelect
+                    label={t("logs", "triggeredBy")}
+                    options={[
+                        { value: "all", label: t("logs", "allTriggers") },
+                        ...EMAIL_TRIGGER_OPTIONS,
+                    ]}
+                    value={localTrigger}
+                    onChange={(v) => setLocalTrigger(String(v ?? "all"))}
+                    textFieldProps={{ size: "small" }}
+                />
+                <DateInput
+                    label={t("datePicker", "from")}
+                    labelPosition="top"
+                    value={toDateOnly(localDateFrom)}
+                    onChange={(value) => setLocalDateFrom(value ? new Date(`${value}T00:00:00`) : null)}
+                />
+                <DateInput
+                    label={t("datePicker", "to")}
+                    labelPosition="top"
+                    value={toDateOnly(localDateTo)}
+                    onChange={(value) => setLocalDateTo(value ? new Date(`${value}T00:00:00`) : null)}
+                />
+            </TableFiltersDialog>
+            {saveViewDialog}
 
             {/* Detail Dialog */}
             <Dialog

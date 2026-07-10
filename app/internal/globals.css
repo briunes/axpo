@@ -983,6 +983,39 @@ textarea {
   box-shadow: var(--scheme-shadow-soft);
 }
 
+.topbar-command-btn {
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid var(--scheme-neutral-900);
+  border-radius: 8px;
+  background: var(--scheme-neutral-1200);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--scheme-neutral-500);
+  transition: background 150ms, border-color 150ms, color 150ms, box-shadow 150ms;
+  padding: 0 8px;
+}
+
+.topbar-command-btn:hover {
+  background: var(--scheme-neutral-1000);
+  color: var(--scheme-neutral-300);
+  border-color: var(--scheme-neutral-800);
+  box-shadow: var(--scheme-shadow-soft);
+}
+
+.topbar-command-shortcut {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--scheme-neutral-500);
+  border: 1px solid var(--scheme-neutral-800);
+  border-radius: 999px;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
 .notification-bell {
   position: relative;
   flex: 0 0 auto;
@@ -1417,6 +1450,10 @@ textarea {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
+}
+
+.dt-filter-shell__main--bare {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .dt-filter-shell__label {

@@ -12,7 +12,7 @@
 import { prisma } from "@/infrastructure/database/prisma";
 
 const CACHE_TTL_MS = 15_000;
-const FALLBACK_VERSION = "1.0.0";
+const FALLBACK_VERSION = "0.2.1";
 
 interface VersionCache {
   version: string;

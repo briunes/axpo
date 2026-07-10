@@ -1,20 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { alpha, Box, Button, Chip, Stack, Typography, useTheme } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { SessionState } from "../../lib/authSession";
-import { DataTable, type ColumnDef } from "../ui";
+import { DataTable, DateInput, TableFilterButton, TableFiltersDialog, type ColumnDef } from "../ui";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import { FormSelect } from "../ui/FormSelect";
-import { DateRangePicker } from "../ui/DateRangePicker";
 import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../lib/formatPreferences";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useLogTableToolbar } from "./logTableToolbar";
 
 interface CronLogEntry {
     id: string;
@@ -39,6 +39,15 @@ export interface CronLogsPanelProps {
     onNotify?: (text: string, tone: "success" | "error") => void;
 }
 
+type CronLogsViewState = {
+    status: string;
+    source: string;
+    dateFrom: string;
+    dateTo: string;
+};
+
+const CRON_LOG_VIEWS_STORAGE_KEY = "axpo_cron_log_saved_views";
+
 export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
     const cachePolicy = useRequestCachePolicy("logs");
     const theme = useTheme();
@@ -50,6 +59,7 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
     // Applied filters
     const [filterStatus, setFilterStatus] = useState("");
     const [filterSource, setFilterSource] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
     const [filterDateFrom, setFilterDateFrom] = useState("");
     const [filterDateTo, setFilterDateTo] = useState("");
 
@@ -58,6 +68,15 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
     const [localSource, setLocalSource] = useState("");
     const [localDateFrom, setLocalDateFrom] = useState<Date | null>(null);
     const [localDateTo, setLocalDateTo] = useState<Date | null>(null);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+
+    useEffect(() => {
+        if (!filtersOpen) return;
+        setLocalStatus(filterStatus);
+        setLocalSource(filterSource);
+        setLocalDateFrom(filterDateFrom ? new Date(`${filterDateFrom}T00:00:00`) : null);
+        setLocalDateTo(filterDateTo ? new Date(`${filterDateTo}T00:00:00`) : null);
+    }, [filterDateFrom, filterDateTo, filterSource, filterStatus, filtersOpen]);
 
     const formatDate = useCallback((isoString: string) => {
         try {
@@ -81,16 +100,63 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
         setFilterDateFrom(toDateOnly(localDateFrom));
         setFilterDateTo(toDateOnly(localDateTo));
         setPage(1);
+        setFiltersOpen(false);
     };
 
     const handleClear = () => {
         setLocalStatus(""); setLocalSource(""); setLocalDateFrom(null); setLocalDateTo(null);
         setFilterStatus(""); setFilterSource(""); setFilterDateFrom(""); setFilterDateTo("");
         setPage(1);
+        setFiltersOpen(false);
     };
+    const activeFilterCount = [filterStatus, filterSource, filterDateFrom || filterDateTo].filter(Boolean).length;
+
+    const currentView = useMemo<CronLogsViewState>(() => ({
+        status: filterStatus,
+        source: filterSource,
+        dateFrom: filterDateFrom,
+        dateTo: filterDateTo,
+    }), [filterDateFrom, filterDateTo, filterSource, filterStatus]);
+
+    const applyView = useCallback((view: CronLogsViewState) => {
+        setFilterStatus(view.status ?? "");
+        setFilterSource(view.source ?? "");
+        setFilterDateFrom(view.dateFrom ?? "");
+        setFilterDateTo(view.dateTo ?? "");
+        setPage(1);
+    }, []);
+
+    const builtInViews = useMemo<Array<{ id: string; name: string; view: CronLogsViewState }>>(() => [
+        { id: "recent", name: t("simulationsModule", "presetRecent"), view: { status: "", source: "", dateFrom: "", dateTo: "" } },
+        { id: "success", name: t("logs", "success"), view: { status: "SUCCESS", source: "", dateFrom: "", dateTo: "" } },
+        { id: "failed", name: t("logs", "failed"), view: { status: "FAILED", source: "", dateFrom: "", dateTo: "" } },
+        { id: "manual", name: t("logs", "manualApi"), view: { status: "", source: "api", dateFrom: "", dateTo: "" } },
+        { id: "scheduled", name: t("logs", "scheduled"), view: { status: "", source: "scheduled", dateFrom: "", dateTo: "" } },
+    ], [t]);
+
+    const {
+        activeViewPresetId,
+        openSaveViewDialog,
+        saveViewDialog,
+        searchProps,
+    } = useLogTableToolbar<CronLogsViewState>({
+        storageKey: CRON_LOG_VIEWS_STORAGE_KEY,
+        currentView,
+        presets: builtInViews,
+        applyView,
+        searchValue: searchTerm,
+        onSearchChange: (value) => {
+            setSearchTerm(value);
+            setPage(1);
+        },
+        searchPlaceholder: t("search", "auditLogs"),
+        t,
+    });
+
+    const toolbarFilterCount = activeViewPresetId ? 0 : activeFilterCount;
 
     const { data, isFetching, error } = useQuery({
-        queryKey: ["cron-logs", session.token, page, pageSize, filterStatus, filterSource, filterDateFrom, filterDateTo],
+        queryKey: ["cron-logs", session.token, page, pageSize, filterStatus, filterSource, searchTerm, filterDateFrom, filterDateTo],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
@@ -98,6 +164,7 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
             });
             if (filterStatus) params.append("status", filterStatus);
             if (filterSource) params.append("source", filterSource);
+            if (searchTerm) params.append("search", searchTerm);
             if (filterDateFrom) params.append("dateFrom", filterDateFrom);
             if (filterDateTo) params.append("dateTo", filterDateTo);
 
@@ -259,51 +326,22 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
     return (
         <div>
             <DataTable
+                tableId="cron-logs"
                 columns={columns}
                 rows={logs}
                 loading={loading}
-                onApplyFilters={handleSearch}
-                onClearFilters={handleClear}
-                renderCustomSearch={() => (
-                    <Box sx={{ display: 'flex', gap: 1, flex: "0 1 auto", minWidth: 0 }}>
-                        <Box sx={{ width: 390, flex: "0 0 auto" }}>
-                            <FormSelect
-                                label=""
-                                options={[
-                                    { value: "", label: t("logs", "allStatuses") },
-                                    { value: "SUCCESS", label: t("logs", "success") },
-                                    { value: "FAILED", label: t("logs", "failed") },
-                                ]}
-                                value={localStatus}
-                                onChange={(v) => setLocalStatus(String(v ?? ""))}
-                                placeholder={t("logs", "status")}
-                                textFieldProps={{ size: "small" }}
-                            />
-                        </Box>
-                        <Box sx={{ width: 390, flex: "0 0 auto" }}>
-                            <FormSelect
-                                label=""
-                                options={[
-                                    { value: "", label: t("logs", "allSources") },
-                                    { value: "api", label: t("logs", "manualApi") },
-                                    { value: "scheduled", label: t("logs", "scheduled") },
-                                ]}
-                                value={localSource}
-                                onChange={(v) => setLocalSource(String(v ?? ""))}
-                                placeholder={t("logs", "triggerSource")}
-                                textFieldProps={{ size: "small" }}
-                            />
-                        </Box>
-                        <Box sx={{ width: 520, flex: "0 0 auto" }}>
-                            <DateRangePicker
-                                variant="inline"
-                                label={t("logs", "timestamp")}
-                                startDate={localDateFrom}
-                                endDate={localDateTo}
-                                onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
-                            />
-                        </Box>
-                    </Box>
+                {...searchProps}
+                onClearFilters={() => {
+                    handleClear();
+                    setSearchTerm("");
+                }}
+                hasActiveFilters={Boolean(searchTerm || toolbarFilterCount)}
+                headerRight={(
+                    <TableFilterButton
+                        title={t("simulationsModule", "filtersTitle")}
+                        activeFilterCount={toolbarFilterCount}
+                        onClick={() => setFiltersOpen(true)}
+                    />
                 )}
                 pagination={{
                     page,
@@ -317,6 +355,53 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
                 }}
                 emptyMessage={t("logs", "noCronLogs")}
             />
+            <TableFiltersDialog
+                open={filtersOpen}
+                title={t("simulationsModule", "filtersTitle")}
+                saveViewLabel={t("simulationsModule", "saveView")}
+                clearLabel={t("simulationsModule", "clearFilters")}
+                applyLabel={t("simulationsModule", "applyFilters")}
+                onClose={() => setFiltersOpen(false)}
+                onOpenSaveView={openSaveViewDialog}
+                onClear={handleClear}
+                onApply={handleSearch}
+            >
+                <FormSelect
+                    label={t("logs", "status")}
+                    options={[
+                        { value: "", label: t("logs", "allStatuses") },
+                        { value: "SUCCESS", label: t("logs", "success") },
+                        { value: "FAILED", label: t("logs", "failed") },
+                    ]}
+                    value={localStatus}
+                    onChange={(v) => setLocalStatus(String(v ?? ""))}
+                    textFieldProps={{ size: "small" }}
+                />
+                <FormSelect
+                    label={t("logs", "triggerSource")}
+                    options={[
+                        { value: "", label: t("logs", "allSources") },
+                        { value: "api", label: t("logs", "manualApi") },
+                        { value: "scheduled", label: t("logs", "scheduled") },
+                    ]}
+                    value={localSource}
+                    onChange={(v) => setLocalSource(String(v ?? ""))}
+                    textFieldProps={{ size: "small" }}
+                />
+                <DateInput
+                    label={t("datePicker", "from")}
+                    labelPosition="top"
+                    value={toDateOnly(localDateFrom)}
+                    onChange={(value) => setLocalDateFrom(value ? new Date(`${value}T00:00:00`) : null)}
+                />
+                <DateInput
+                    label={t("datePicker", "to")}
+                    labelPosition="top"
+                    value={toDateOnly(localDateTo)}
+                    onChange={(value) => setLocalDateTo(value ? new Date(`${value}T00:00:00`) : null)}
+                />
+            </TableFiltersDialog>
+            {saveViewDialog}
         </div>
     );
 }
