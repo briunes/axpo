@@ -1432,7 +1432,7 @@ export const translations = {
       btnPreviewPdfTemplate: "Preview",
       previewUnavailableMobileTitle: "Preview not available on mobile",
       previewUnavailableMobile:
-        "Template previews and editing are available on medium screens and above.",
+        "Template previews are available on medium screens and above.",
       loading: "Loading...",
       loadTemplatesFailed: "Failed to load templates",
       generatePdfFailed: "Failed to generate PDF",
@@ -4364,7 +4364,7 @@ export const translations = {
       btnPreviewPdfTemplate: "Vista Previa",
       previewUnavailableMobileTitle: "Vista previa no disponible en móvil",
       previewUnavailableMobile:
-        "Las vistas previas y la edición de plantillas están disponibles en pantallas medianas y superiores.",
+        "Las vistas previas de plantillas están disponibles en pantallas medianas y superiores.",
       loading: "Cargando...",
       loadTemplatesFailed: "No se pudieron cargar las plantillas",
       generatePdfFailed: "No se pudo generar el PDF",
@@ -7757,7 +7757,7 @@ export const translations = {
       btnPreviewPdfTemplate: "Aperçu",
       previewUnavailableMobileTitle: "Aperçu non disponible sur mobile",
       previewUnavailableMobile:
-        "Les aperçus et l'édition des modèles sont disponibles sur les écrans moyens et supérieurs.",
+        "Les aperçus des modèles sont disponibles sur les écrans moyens et supérieurs.",
       loading: "Chargement...",
       loadTemplatesFailed: "Échec du chargement des modèles",
       generatePdfFailed: "Échec de la génération de PDF",
@@ -10725,7 +10725,7 @@ export const translations = {
       previewUnavailableMobileTitle:
         "Visualização não disponível em dispositivos móveis",
       previewUnavailableMobile:
-        "As visualizações e edição de modelos estão disponíveis em telas médias e superiores.",
+        "As visualizações de modelos estão disponíveis em telas médias e superiores.",
       loading: "Carregando...",
       loadTemplatesFailed: "Falha ao carregar modelos",
       generatePdfFailed: "Falha ao gerar PDF",
