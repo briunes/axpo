@@ -35,6 +35,7 @@ import {
   type SimulationItem,
   type UserItem,
 } from "../../lib/internalApi";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 type SearchKind = "simulation" | "user" | "agency" | "client" | "page";
 
@@ -94,21 +95,6 @@ function resultIcon(kind: SearchKind) {
   }
 }
 
-function kindLabel(kind: SearchKind) {
-  switch (kind) {
-    case "simulation":
-      return "Simulation";
-    case "user":
-      return "User";
-    case "agency":
-      return "Agency";
-    case "client":
-      return "Client";
-    case "page":
-      return "Recent";
-  }
-}
-
 function simulationHref(simulation: SimulationItem) {
   return simulation.status === "SHARED"
     ? `/internal/simulations/${simulation.id}/view`
@@ -144,12 +130,12 @@ function mapUser(user: UserItem): GlobalSearchResult {
   };
 }
 
-function mapAgency(agency: AgencyItem): GlobalSearchResult {
+function mapAgency(agency: AgencyItem, t: (namespace: "search", key: string) => string): GlobalSearchResult {
   return {
     id: `agency-${agency.id}`,
     kind: "agency",
     label: agency.name,
-    description: agency.isTlv ? "TLV agency" : "Agency",
+    description: agency.isTlv ? t("search", "kindAgencyTlv") : t("search", "kindAgency"),
     href: `/internal/agencies/${agency.id}/edit`,
   };
 }
@@ -176,6 +162,7 @@ export function CommandPalette({
   token: string;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const shortcutLabel = getCommandShortcutLabel();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -269,7 +256,7 @@ export function CommandPalette({
             }).then((response) => response.items
               .filter((agency) => matchesPrimary(agency.name, debouncedQuery))
               .slice(0, MODULE_RESULT_LIMIT)
-              .map(mapAgency)),
+              .map((agency) => mapAgency(agency, t))),
         );
       }
 
@@ -296,10 +283,27 @@ export function CommandPalette({
   };
 
   const isSearching = debouncedQuery.length >= MIN_QUERY_LENGTH && searchQuery.isFetching;
+  const isSearchingWithoutResults = debouncedQuery.length >= MIN_QUERY_LENGTH
+    && (searchQuery.isLoading || (searchQuery.isFetching && (searchQuery.data?.length ?? 0) === 0));
   const showPrompt = query.trim().length > 0 && query.trim().length < MIN_QUERY_LENGTH;
   const emptyText = debouncedQuery.length >= MIN_QUERY_LENGTH
-    ? "No records found."
-    : "Recently opened records and pages will appear here.";
+    ? t("search", "globalEmpty")
+    : t("search", "globalEmptyRecents");
+
+  const kindLabel = (kind: SearchKind) => {
+    switch (kind) {
+      case "simulation":
+        return t("search", "kindSimulation");
+      case "user":
+        return t("search", "kindUser");
+      case "agency":
+        return t("search", "kindAgency");
+      case "client":
+        return t("search", "kindClient");
+      case "page":
+        return t("search", "kindRecent");
+    }
+  };
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (!shownItems.length) return;
@@ -347,7 +351,7 @@ export function CommandPalette({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={handleInputKeyDown}
-            placeholder="Search simulations, clients, users, agencies..."
+            placeholder={t("search", "globalPlaceholder")}
             size="small"
             InputProps={{
               startAdornment: (
@@ -367,7 +371,14 @@ export function CommandPalette({
           {showPrompt ? (
             <Box sx={{ p: 4, textAlign: "center" }}>
               <Typography variant="body2" color="text.secondary">
-                Type at least {MIN_QUERY_LENGTH} characters to search records.
+                {t("search", "globalMinChars", { min: MIN_QUERY_LENGTH })}
+              </Typography>
+            </Box>
+          ) : isSearchingWithoutResults ? (
+            <Box sx={{ p: 4, textAlign: "center" }}>
+              <CircularProgress size={20} />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+                {t("search", "globalSearching")}
               </Typography>
             </Box>
           ) : shownItems.length > 0 ? shownItems.map((item, index) => {

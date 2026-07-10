@@ -14,16 +14,25 @@ import {
   Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useI18n } from "../../src/lib/i18n-context";
 
 export const APP_VERSION_EVENT = "axpo:app-version";
 export const OPEN_WHATS_NEW_EVENT = "axpo:open-whats-new";
 
 const CHANGELOG_SEEN_VERSION_KEY = "axpo_changelog_seen_version";
+const AUTH_TOKEN_KEY = "axpo.internal.auth.token";
+const AUTH_USER_KEY = "axpo.internal.auth.user";
 const DEFAULT_CHANGELOG_LANGUAGE = "en";
 const BRAND_PRIMARY = "var(--scheme-brand-600, #FF3254)";
 const BRAND_PRIMARY_HOVER = "var(--scheme-brand-700, #FF5D64)";
+const AUTH_ROUTES = new Set([
+  "/internal/login",
+  "/internal/login/magic",
+  "/internal/setup-password",
+  "/internal/forgot-password",
+  "/internal/reset-password",
+]);
 
 export interface AppChangelogEntry {
   version: string;
@@ -68,11 +77,13 @@ export function openWhatsNewModal(): void {
 }
 
 export function WhatsNewModal() {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
+  const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [version, setVersion] = useState<string | null>(null);
   const [entries, setEntries] = useState<AppChangelogEntry[]>([]);
+  const [hasInternalSession, setHasInternalSession] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,6 +133,24 @@ export function WhatsNewModal() {
     };
   }, []);
 
+  useEffect(() => {
+    function updateSessionState() {
+      setHasInternalSession(
+        Boolean(
+          localStorage.getItem(AUTH_TOKEN_KEY) &&
+            localStorage.getItem(AUTH_USER_KEY),
+        ),
+      );
+    }
+
+    updateSessionState();
+    window.addEventListener("storage", updateSessionState);
+
+    return () => {
+      window.removeEventListener("storage", updateSessionState);
+    };
+  }, [pathname, open]);
+
   const currentEntry = useMemo(
     () => entries.find((entry) => entry.version === version) ?? entries[0],
     [entries, version],
@@ -140,13 +169,15 @@ export function WhatsNewModal() {
   };
 
   const currentNotes = currentEntry ? resolveNotes(currentEntry, locale) : [];
+  const showChangelogAction =
+    hasInternalSession && !AUTH_ROUTES.has(pathname ?? "");
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ pr: 7 }}>
         <Stack spacing={1}>
           <Typography component="span" variant="h6" sx={{ fontWeight: 700 }}>
-            What&apos;s new
+            {t("whatsNewModal", "title")}
           </Typography>
           {currentEntry && (
             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
@@ -165,7 +196,7 @@ export function WhatsNewModal() {
           )}
         </Stack>
         <IconButton
-          aria-label="Close what's new"
+          aria-label={t("whatsNewModal", "close")}
           onClick={handleClose}
           sx={{ position: "absolute", right: 12, top: 12 }}
         >
@@ -175,7 +206,7 @@ export function WhatsNewModal() {
       <DialogContent dividers>
         {!currentEntry ? (
           <Typography variant="body2" color="text.secondary">
-            No release notes have been published yet.
+            {t("whatsNewModal", "empty")}
           </Typography>
         ) : currentNotes.length > 0 ? (
           <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
@@ -192,25 +223,27 @@ export function WhatsNewModal() {
           </Box>
         ) : (
           <Typography variant="body2" color="text.secondary">
-            No release notes have been published for this version.
+            {t("whatsNewModal", "emptyVersion")}
           </Typography>
         )}
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button
-          variant="text"
-          onClick={handleGoToChangelog}
-          sx={{
-            color: BRAND_PRIMARY,
-            "&:hover": {
-              color: BRAND_PRIMARY_HOVER,
-              bgcolor: "var(--scheme-brand-600-15, rgba(255, 50, 84, 0.10))",
-            },
-          }}
-        >
-          Go to changelog
-        </Button>
-      </DialogActions>
+      {showChangelogAction && (
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button
+            variant="text"
+            onClick={handleGoToChangelog}
+            sx={{
+              color: BRAND_PRIMARY,
+              "&:hover": {
+                color: BRAND_PRIMARY_HOVER,
+                bgcolor: "var(--scheme-brand-600-15, rgba(255, 50, 84, 0.10))",
+              },
+            }}
+          >
+            {t("whatsNewModal", "goToChangelog")}
+          </Button>
+        </DialogActions>
+      )}
     </Dialog>
   );
 }
