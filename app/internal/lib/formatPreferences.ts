@@ -8,10 +8,37 @@
  * Formats a Date object into a display string respecting the user's dateFormat.
  * Supported formats: "DD/MM/YYYY" | "MM/DD/YYYY" | "YYYY-MM-DD"
  */
-export function formatDisplayDate(date: Date, dateFormat: string): string {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = String(date.getFullYear());
+export function formatDisplayDate(
+  date: Date,
+  dateFormat: string,
+  timeZone?: string,
+): string {
+  let day: string;
+  let month: string;
+  let year: string;
+
+  if (timeZone) {
+    try {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone,
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).formatToParts(date);
+      const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      day = values.day;
+      month = values.month;
+      year = values.year;
+    } catch {
+      day = String(date.getDate()).padStart(2, "0");
+      month = String(date.getMonth() + 1).padStart(2, "0");
+      year = String(date.getFullYear());
+    }
+  } else {
+    day = String(date.getDate()).padStart(2, "0");
+    month = String(date.getMonth() + 1).padStart(2, "0");
+    year = String(date.getFullYear());
+  }
 
   switch (dateFormat) {
     case "MM/DD/YYYY":
@@ -21,6 +48,55 @@ export function formatDisplayDate(date: Date, dateFormat: string): string {
     case "DD/MM/YYYY":
     default:
       return `${day}/${month}/${year}`;
+  }
+}
+
+export interface DateTimeDisplayPreferences {
+  dateFormat: string;
+  timeFormat: string;
+  timezone: string;
+}
+
+/**
+ * Formats an instant in the user's configured timezone. Timestamp values must
+ * include an offset (normally the API's ISO `Z` suffix) so they represent an
+ * unambiguous instant.
+ */
+export function formatDisplayDateTime(
+  value: Date | string | number | null | undefined,
+  preferences: DateTimeDisplayPreferences,
+  options: { includeSeconds?: boolean; fallback?: string } = {},
+): string {
+  if (value === null || value === undefined || value === "") {
+    return options.fallback ?? "—";
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return options.fallback ?? "—";
+
+  const datePart = formatDisplayDate(
+    date,
+    preferences.dateFormat,
+    preferences.timezone,
+  );
+
+  try {
+    const timePart = new Intl.DateTimeFormat("en-GB", {
+      timeZone: preferences.timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      ...(options.includeSeconds ? { second: "2-digit" } : {}),
+      hour12: preferences.timeFormat === "12h",
+    }).format(date);
+    return `${datePart} ${timePart}`;
+  } catch {
+    const timePart = new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      ...(options.includeSeconds ? { second: "2-digit" } : {}),
+      hour12: preferences.timeFormat === "12h",
+    }).format(date);
+    return `${formatDisplayDate(date, preferences.dateFormat)} ${timePart}`;
   }
 }
 

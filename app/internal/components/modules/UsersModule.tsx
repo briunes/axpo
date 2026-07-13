@@ -45,6 +45,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
 import FiberPinIcon from '@mui/icons-material/FiberPin';
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 
 interface UsersModuleProps {
   session: SessionState;
@@ -68,6 +70,7 @@ const USER_DEFAULT_SORT_COLUMN = "createdAt";
 const USER_DEFAULT_SORT_DIR: "asc" | "desc" = "desc";
 
 export function UsersModule({ session, actions, agencies, onNotify, onActionButtons }: UsersModuleProps) {
+  const { preferences } = useUserPreferences();
   const { t } = useI18n();
   const router = useRouter();
   const {
@@ -345,7 +348,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       sortable: true,
       renderCell: (u) => (
         <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
-          {new Date(u.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+          {formatDisplayDateTime(u.createdAt, preferences)}
           {" - "}
           <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {u.createdByUser?.fullName ?? "—"}
@@ -360,7 +363,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       sortable: true,
       renderCell: (u) => (
         <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
-          {new Date(u.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+          {formatDisplayDateTime(u.updatedAt, preferences)}
           {" - "}
           <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {u.updatedByUser?.fullName ?? "—"}

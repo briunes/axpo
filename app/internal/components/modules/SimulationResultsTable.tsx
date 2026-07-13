@@ -2,6 +2,8 @@
 
 import type { SimulationResults, ProductResult } from "@/domain/types";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 
 interface SimulationResultsTableProps {
     results: SimulationResults;
@@ -110,6 +112,7 @@ function ResultsSection({ label, items, facturaActual }: { label: string; items:
 }
 
 export function SimulationResultsTable({ results, facturaActual }: SimulationResultsTableProps) {
+    const { preferences } = useUserPreferences();
     const { t } = useI18n();
     const hasElec = (results.electricity?.length ?? 0) > 0;
     const hasGas = (results.gas?.length ?? 0) > 0;
@@ -125,7 +128,7 @@ export function SimulationResultsTable({ results, facturaActual }: SimulationRes
     return (
         <div>
             <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 16 }}>
-                {t("simulationResults", "calculatedAt")} {new Date(results.calculatedAt).toLocaleString()}
+                {t("simulationResults", "calculatedAt")} {formatDisplayDateTime(results.calculatedAt, preferences)}
                 {" · "}Set: <span className="dt-cell-mono">{results.baseValueSetId.slice(0, 12)}…</span>
             </div>
             {hasElec && (

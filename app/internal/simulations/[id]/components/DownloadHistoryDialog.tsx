@@ -25,6 +25,8 @@ import { LoadingState } from "../../../components/shared";
 import { FormSelect } from "../../../components/ui/FormSelect";
 import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
 import { normalizeLanguageCode, resolveTranslation } from "@/lib/supportedLanguages";
+import { useUserPreferences, type UserPreferences } from "../../../components/providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../../lib/formatPreferences";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -113,6 +115,7 @@ function buildGasHistoryHtml(
     templateHtml: string | null,
     axpoPrimary: string,
     simulation?: any,
+    preferences?: UserPreferences,
 ): string {
     // Build a table showing all tariffs x zones (PEN / BAL)
     const allTariffs = GAS_TARIFF_ORDER.filter((t) => product.tariffs[t]);
@@ -155,8 +158,8 @@ function buildGasHistoryHtml(
       </table>`;
 
     if (templateHtml) {
-        const createdAt = simulation?.createdAt
-            ? new Date(simulation.createdAt).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+        const createdAt = simulation?.createdAt && preferences
+            ? formatDisplayDateTime(simulation.createdAt, preferences, { fallback: "" })
             : "";
 
         return templateHtml
@@ -234,6 +237,7 @@ function buildHistoryHtml(
     templateHtml: string | null,
     axpoPrimary: string,
     simulation?: any,
+    preferences?: UserPreferences,
 ): string {
     const perfilLabel =
         data.perfilCarga === "NORMAL" ? "Perfil Normal" : "Perfil Diurno";
@@ -332,8 +336,8 @@ function buildHistoryHtml(
 
     // If a price-history template is selected, inject the tables and all variables
     if (templateHtml) {
-        const createdAt = simulation?.createdAt
-            ? new Date(simulation.createdAt).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+        const createdAt = simulation?.createdAt && preferences
+            ? formatDisplayDateTime(simulation.createdAt, preferences, { fallback: "" })
             : "";
 
         return templateHtml
@@ -418,6 +422,7 @@ export function DownloadHistoryDialog({
     onError,
 }: DownloadHistoryDialogProps) {
     const { t } = useI18n();
+    const { preferences } = useUserPreferences();
     const theme = useTheme();
 
     const [isLoading, setIsLoading] = useState(true);
@@ -516,9 +521,9 @@ export function DownloadHistoryDialog({
     const previewHtml = useMemo(() => {
         if (!historyData || !selectedProduct) return "";
         if (selectedProduct.type === "GAS" || historyData.isGas) {
-            return buildGasHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation);
+            return buildGasHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation, preferences);
         }
-        return buildHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation);
+        return buildHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation, preferences);
     }, [historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation]);
 
     const handleDownload = async () => {
@@ -527,8 +532,8 @@ export function DownloadHistoryDialog({
         setIsDownloading(true);
         try {
             const html = (selectedProduct.type === "GAS" || historyData.isGas)
-                ? buildGasHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation)
-                : buildHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation);
+                ? buildGasHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation, preferences)
+                : buildHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation, preferences);
 
             const response = await fetch(
                 `/api/v1/internal/simulations/${simulation.id}/generate-pdf`,

@@ -7,10 +7,7 @@ import { loadSession } from "../../../lib/authSession";
 import {
     type PdfTemplate,
     type EmailTemplate,
-    type TemplateVariable,
 } from "../../../lib/configApi";
-import { HtmlEditor } from "../../../components/modules/HtmlEditor";
-import { DraggableVariables } from "../../../components/modules/DraggableVariables";
 import { extractVariableValues, replaceVariables as replaceVars } from "@/infrastructure/pdf/variableReplacer";
 import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
 import type { EditableSectionOverrides, EditableSectionsConfig } from "@/infrastructure/templates/editableSections";
@@ -43,8 +40,6 @@ import {
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import DownloadIcon from "@mui/icons-material/Download";
-import EditIcon from "@mui/icons-material/Edit";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import { LoadingState } from "../../../components/shared";
 import { FormInput } from "../../../components/ui/FormInput";
 
@@ -66,7 +61,6 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
     const [shareMode, setShareMode] = useState<ShareMode>("pdf");
     const [pdfTemplates, setPdfTemplates] = useState<PdfTemplate[]>([]);
     const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
-    const [templateVariables, setTemplateVariables] = useState<TemplateVariable[]>([]);
     const [selectedPdfTemplate, setSelectedPdfTemplate] = useState<string>("");
     const [selectedEmailTemplate, setSelectedEmailTemplate] = useState<string>("");
     const [selectedEmailPdfTemplate, setSelectedEmailPdfTemplate] = useState<string>("");
@@ -78,8 +72,6 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
     const [attachPdfToEmail, setAttachPdfToEmail] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
-    const [templateViewMode, setTemplateViewMode] = useState<"preview" | "edit">("preview");
-    const [pdfTemplateViewMode, setPdfTemplateViewMode] = useState<"preview" | "edit">("preview");
     const [activeTab, setActiveTab] = useState<"email" | "pdf">("email");
 
     // Editable sections state
@@ -97,7 +89,6 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
 
                 setPdfTemplates(init.pdfTemplates);
                 setEmailTemplates(init.emailTemplates);
-                setTemplateVariables(init.templateVariables);
 
                 // Determine client language from language preference (falls back to country detection).
                 // Testing mode still renders the client-facing PDF in the client's language;
@@ -190,7 +181,6 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
         setShareMode(mode);
     };
 
-    // Editable section inline editing modal state
     const [editingSection, setEditingSection] = useState<{
         key: string;
         label: string;
@@ -223,17 +213,18 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
         return replaceVars(content, variableValues);
     };
 
-    /**
-     * Like replaceVariables but wraps editable section values in clickable
-     * zones with a subtle dashed border so users can click to edit inline.
-     */
-    const replaceVariablesWithZones = (
+    const replaceVariablesWithEditableSections = (
         content: string,
         editableOverrides: EditableSectionOverrides,
-        templateSections: EditableSectionsConfig,
+        templateSections?: EditableSectionsConfig | null,
         simulationLink?: string,
     ) => {
+        if (!templateSections) {
+            return replaceVariables(content, simulationLink, editableOverrides);
+        }
+
         if (!simulation) return content;
+
         const payload = simulation.payloadJson;
         const variableValues = extractVariableValues(simulation, payload, {
             pin: simulation.pinSnapshot ?? undefined,
@@ -241,34 +232,37 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
         });
         let result = replaceVars(content, variableValues);
         const merged = mergeEditableSections(templateSections, editableOverrides);
+
         for (const key of Object.keys(templateSections)) {
             const value = merged[key] ?? "";
             const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
             result = result.replace(
                 regex,
-                `<span data-editable-key="${key}" style="outline:2px dashed #e53935;outline-offset:4px;border-radius:3px;cursor:pointer;position:relative;display:inline-block;min-width:40px;" title="Click to edit">${value}<span aria-hidden="true" style="position:absolute;top:-9px;right:-9px;background:#e53935;color:white;border-radius:50%;width:18px;height:18px;font-size:10px;line-height:18px;text-align:center;pointer-events:none;">✎</span></span>`,
+                `<span data-editable-key="${key}" style="outline:2px dashed #FF3254;outline-offset:3px;border-radius:3px;cursor:pointer;display:inline-block;min-width:40px;background:rgba(255,50,84,0.12);" title="${t("shareSimulation", "editableSection")}">${value}</span>`,
             );
         }
+
         return result;
     };
 
     const handlePreviewClick = (
         e: React.MouseEvent<HTMLDivElement>,
-        templateSections: EditableSectionsConfig,
+        templateSections: EditableSectionsConfig | null | undefined,
         overrides: EditableSectionOverrides,
         setOverrides: (o: EditableSectionOverrides) => void,
     ) => {
+        if (!templateSections) return;
         const target = (e.target as HTMLElement).closest("[data-editable-key]") as HTMLElement | null;
         if (!target) return;
         const key = target.getAttribute("data-editable-key");
         if (!key || !templateSections[key]) return;
-        const def = templateSections[key];
+        const section = templateSections[key];
         setEditingSection({
             key,
-            label: def.label,
-            value: overrides[key] ?? def.default,
-            multiline: def.multiline ?? true,
-            maxLength: def.maxLength,
+            label: section.label,
+            value: overrides[key] ?? section.default,
+            multiline: section.multiline ?? true,
+            maxLength: section.maxLength,
             onSave: (val) => {
                 setOverrides({ ...overrides, [key]: val });
                 setEditingSection(null);
@@ -296,7 +290,13 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 }
             }
 
-            const processedContent = replaceVariables(editedPdfContent, simulationLink, pdfEditableOverrides);
+            const selectedPdf = pdfTemplates.find((t) => t.id === selectedPdfTemplate);
+            const processedContent = replaceVariables(
+                editedPdfContent,
+                simulationLink,
+                pdfEditableOverrides,
+                selectedPdf?.editableSections,
+            );
 
             const requestToken = loadSession()?.token ?? token;
             const response = await fetch(`/api/v1/internal/simulations/${simulation.id}/generate-pdf`, {
@@ -364,9 +364,23 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 console.error("Failed to share simulation before sending email:", err);
             }
 
-            const processedContent = replaceVariables(editedEmailContent, simulationLink, emailEditableOverrides);
+            const selectedEmail = emailTemplates.find((t) => t.id === selectedEmailTemplate);
+            const selectedEmailPdf = pdfTemplates.find((t) => t.id === selectedEmailPdfTemplate);
+            const processedContent = replaceVariables(
+                editedEmailContent,
+                simulationLink,
+                emailEditableOverrides,
+                selectedEmail?.editableSections,
+            );
             const processedSubject = replaceVariables(editedSubject, simulationLink);
-            let processedPdfContent = attachPdfToEmail ? replaceVariables(editedEmailPdfContent, simulationLink, emailPdfEditableOverrides) : undefined;
+            let processedPdfContent = attachPdfToEmail
+                ? replaceVariables(
+                    editedEmailPdfContent,
+                    simulationLink,
+                    emailPdfEditableOverrides,
+                    selectedEmailPdf?.editableSections,
+                )
+                : undefined;
             if (processedPdfContent && isTestingMode) {
                 const watermarkCss = `<style>@media print{body::before{content:"TESTING";position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-45deg);font-size:120px;font-weight:bold;color:rgba(0,0,0,0.08);z-index:9999;pointer-events:none;white-space:nowrap;font-family:Arial,sans-serif;letter-spacing:0.1em;}}</style>`;
                 processedPdfContent = processedPdfContent.includes("</head>")
@@ -421,8 +435,6 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
             </Box>
         );
     }
-
-    const sec = editingSection;
 
     return (
         <>
@@ -604,7 +616,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                                     {t("shareSimulation", "previewUnavailableMobileTitle") || "Preview not available on mobile"}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                    {t("shareSimulation", "previewUnavailableMobile") || "Template previews and editing are available on medium screens and above."}
+                                    {t("shareSimulation", "previewUnavailableMobile") || "Template previews are available on medium screens and above."}
                                 </Typography>
                             </Box>
                         </CardContent>
@@ -624,214 +636,47 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
 
                                     {/* Email Tab */}
                                     {activeTab === "email" && (
-                                        <>
-                                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", mb: 2 }}>
-                                                <Button
-                                                    variant="outlined"
-                                                    size="small"
-                                                    startIcon={templateViewMode === "edit" ? <VisibilityIcon /> : <EditIcon />}
-                                                    onClick={() => setTemplateViewMode(templateViewMode === "edit" ? "preview" : "edit")}
-                                                >
-                                                    {templateViewMode === "edit"
-                                                        ? t("shareSimulation", "btnPreviewEmailTemplate")
-                                                        : t("shareSimulation", "btnEditEmailTemplate")}
-                                                </Button>
-                                            </Box>
-
-                                            {templateViewMode === "edit" ? (
-                                                <>
-                                                    <FormInput
-                                                        fullWidth
-                                                        label={t("shareSimulation", "subject")}
-                                                        value={editedSubject}
-                                                        onChange={(e) => setEditedSubject(e.target.value)}
-                                                        sx={{ mb: 2 }}
-                                                    />
-                                                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 280px" }, gap: 2 }}>
-                                                        <HtmlEditor
-                                                            key={`email-${selectedEmailTemplate}`}
-                                                            initialHtml={editedEmailContent}
-                                                            onChange={setEditedEmailContent}
-                                                            height="500px"
-                                                        />
-                                                        <DraggableVariables
-                                                            variables={[
-                                                                // Regular template variables
-                                                                ...templateVariables.map(v => ({
-                                                                    name: v.key,
-                                                                    label: v.label,
-                                                                    description: v.description || "",
-                                                                })),
-                                                                // Editable sections from current template
-                                                                ...Object.entries((currentTemplate?.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
-                                                                    name: key,
-                                                                    label: `📝 ${section.label || key}`,
-                                                                    description: section.description || t("shareSimulation", "editableSection"),
-                                                                }))
-                                                            ]}
-                                                        />
-                                                    </Box>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    {currentTemplate?.editableSections && (
-                                                        <Box sx={{ mb: 1.5, fontSize: "0.75rem", color: "text.secondary", display: "flex", alignItems: "center", gap: 0.5 }}>
-                                                            <Box component="span" sx={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", bgcolor: "#e53935" }} />
-                                                            {t("shareSimulation", "clickHighlightedSections")}
-                                                        </Box>
-                                                    )}
-                                                    <Paper
-                                                        variant="outlined"
-                                                        sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
-                                                        onClick={(e) => currentTemplate?.editableSections && handlePreviewClick(e, currentTemplate.editableSections as EditableSectionsConfig, emailEditableOverrides, setEmailEditableOverrides)}
-                                                        dangerouslySetInnerHTML={{
-                                                            __html: currentTemplate?.editableSections
-                                                                ? replaceVariablesWithZones(editedEmailContent, emailEditableOverrides, currentTemplate.editableSections as EditableSectionsConfig)
-                                                                : replaceVariables(editedEmailContent, undefined, emailEditableOverrides),
-                                                        }}
-                                                    />
-                                                </>
-                                            )}
-                                        </>
+                                        <Paper
+                                            variant="outlined"
+                                            sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
+                                            onClick={(e) => handlePreviewClick(e, currentTemplate.editableSections, emailEditableOverrides, setEmailEditableOverrides)}
+                                            dangerouslySetInnerHTML={{
+                                                __html: replaceVariablesWithEditableSections(editedEmailContent, emailEditableOverrides, currentTemplate.editableSections),
+                                            }}
+                                        />
                                     )}
 
                                     {/* PDF Tab */}
                                     {activeTab === "pdf" && attachPdfToEmail && selectedEmailPdfTemplate && (() => {
                                         const emailPdfTpl = pdfTemplates.find(t => t.id === selectedEmailPdfTemplate);
                                         return (
-                                            <>
-                                                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", mb: 2 }}>
-                                                    <Button
-                                                        variant="outlined"
-                                                        size="small"
-                                                        startIcon={pdfTemplateViewMode === "edit" ? <VisibilityIcon /> : <EditIcon />}
-                                                        onClick={() => setPdfTemplateViewMode(pdfTemplateViewMode === "edit" ? "preview" : "edit")}
-                                                    >
-                                                        {pdfTemplateViewMode === "edit"
-                                                            ? t("shareSimulation", "btnPreviewPdfTemplate")
-                                                            : t("shareSimulation", "btnEditPdfTemplate")}
-                                                    </Button>
-                                                </Box>
-
-                                                {pdfTemplateViewMode === "edit" ? (
-                                                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 280px" }, gap: 2 }}>
-                                                        <HtmlEditor
-                                                            key={`email-pdf-${selectedEmailPdfTemplate}`}
-                                                            initialHtml={editedEmailPdfContent}
-                                                            onChange={setEditedEmailPdfContent}
-                                                            height="500px"
-                                                        />
-                                                        <DraggableVariables
-                                                            variables={[
-                                                                // Charts
-                                                                { name: "CHART_COMPARATIVA", label: "📊 Gráfico Comparativa", description: "Bar chart: annual Competencia vs Axpo + savings stats" },
-                                                                // Regular template variables
-                                                                ...templateVariables.map(v => ({
-                                                                    name: v.key,
-                                                                    label: v.label,
-                                                                    description: v.description || "",
-                                                                })),
-                                                                // Editable sections from current PDF template
-                                                                ...Object.entries((emailPdfTpl?.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
-                                                                    name: key,
-                                                                    label: `📝 ${section.label || key}`,
-                                                                    description: section.description || t("shareSimulation", "editableSection"),
-                                                                }))
-                                                            ]}
-                                                        />
-                                                    </Box>
-                                                ) : (
-                                                    <>
-                                                        {emailPdfTpl?.editableSections && (
-                                                            <Box sx={{ mb: 1.5, fontSize: "0.75rem", color: "text.secondary", display: "flex", alignItems: "center", gap: 0.5 }}>
-                                                                <Box component="span" sx={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", bgcolor: "#e53935" }} />
-                                                                {t("shareSimulation", "clickHighlightedSections")}
-                                                            </Box>
-                                                        )}
-                                                        <Paper
-                                                            variant="outlined"
-                                                            sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
-                                                            onClick={(e) => emailPdfTpl?.editableSections && handlePreviewClick(e, emailPdfTpl.editableSections as EditableSectionsConfig, emailPdfEditableOverrides, setEmailPdfEditableOverrides)}
-                                                            dangerouslySetInnerHTML={{
-                                                                __html: emailPdfTpl?.editableSections
-                                                                    ? replaceVariablesWithZones(editedEmailPdfContent, emailPdfEditableOverrides, emailPdfTpl.editableSections as EditableSectionsConfig)
-                                                                    : replaceVariables(editedEmailPdfContent, undefined, emailPdfEditableOverrides),
-                                                            }}
-                                                        />
-                                                    </>
-                                                )}
-                                            </>
+                                            <Paper
+                                                variant="outlined"
+                                                sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
+                                                onClick={(e) => handlePreviewClick(e, emailPdfTpl?.editableSections, emailPdfEditableOverrides, setEmailPdfEditableOverrides)}
+                                                dangerouslySetInnerHTML={{
+                                                    __html: replaceVariablesWithEditableSections(editedEmailPdfContent, emailPdfEditableOverrides, emailPdfTpl?.editableSections),
+                                                }}
+                                            />
                                         );
                                     })()}
                                 </>
                             ) : (
                                 <>
-                                    {/* PDF Download Mode - Edit/Preview toggle + always-on live preview when editable sections exist */}
                                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
                                         <Typography variant="h6">
-                                            {templateViewMode === "edit"
-                                                ? t("shareSimulation", "editTemplate")
-                                                : t("shareSimulation", "previewTemplate")}
+                                            {t("shareSimulation", "previewTemplate")}
                                         </Typography>
-                                        <Button
-                                            variant="outlined"
-                                            size="small"
-                                            startIcon={templateViewMode === "edit" ? <VisibilityIcon /> : <EditIcon />}
-                                            onClick={() => setTemplateViewMode(templateViewMode === "edit" ? "preview" : "edit")}
-                                        >
-                                            {templateViewMode === "edit"
-                                                ? t("shareSimulation", "previewTemplate")
-                                                : t("shareSimulation", "editTemplate")}
-                                        </Button>
                                     </Box>
 
-                                    {templateViewMode === "edit" ? (
-                                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 280px" }, gap: 2 }}>
-                                            <HtmlEditor
-                                                key={`pdf-${selectedPdfTemplate}`}
-                                                initialHtml={editedPdfContent}
-                                                onChange={setEditedPdfContent}
-                                                height="500px"
-                                            />
-                                            <DraggableVariables
-                                                variables={[
-                                                    // Charts
-                                                    { name: "CHART_COMPARATIVA", label: "📊 Gráfico Comparativa", description: "Bar chart: annual Competencia vs Axpo + savings stats" },
-                                                    // Regular template variables
-                                                    ...templateVariables.map(v => ({
-                                                        name: v.key,
-                                                        label: v.label,
-                                                        description: v.description || "",
-                                                    })),
-                                                    // Editable sections from current template
-                                                    ...Object.entries((currentTemplate?.editableSections as any) || {}).map(([key, section]: [string, any]) => ({
-                                                        name: key,
-                                                        label: `📝 ${section.label || key}`,
-                                                        description: section.description || t("shareSimulation", "editableSection"),
-                                                    }))
-                                                ]}
-                                            />
-                                        </Box>
-                                    ) : (
-                                        <>
-                                            {currentTemplate?.editableSections && (
-                                                <Box sx={{ mb: 1.5, fontSize: "0.75rem", color: "text.secondary", display: "flex", alignItems: "center", gap: 0.5 }}>
-                                                    <Box component="span" sx={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", bgcolor: "#e53935" }} />
-                                                    {t("shareSimulation", "clickHighlightedSections")}
-                                                </Box>
-                                            )}
-                                            <Paper
-                                                variant="outlined"
-                                                sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
-                                                onClick={(e) => currentTemplate?.editableSections && handlePreviewClick(e, currentTemplate.editableSections as EditableSectionsConfig, pdfEditableOverrides, setPdfEditableOverrides)}
-                                                dangerouslySetInnerHTML={{
-                                                    __html: currentTemplate?.editableSections
-                                                        ? replaceVariablesWithZones(editedPdfContent, pdfEditableOverrides, currentTemplate.editableSections as EditableSectionsConfig)
-                                                        : replaceVariables(editedPdfContent, undefined, pdfEditableOverrides),
-                                                }}
-                                            />
-                                        </>
-                                    )}
+                                    <Paper
+                                        variant="outlined"
+                                        sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
+                                        onClick={(e) => handlePreviewClick(e, currentTemplate.editableSections, pdfEditableOverrides, setPdfEditableOverrides)}
+                                        dangerouslySetInnerHTML={{
+                                            __html: replaceVariablesWithEditableSections(editedPdfContent, pdfEditableOverrides, currentTemplate.editableSections),
+                                        }}
+                                    />
                                 </>
                             )}
                         </CardContent>
@@ -871,27 +716,28 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 </Box>
             </Stack>
 
-            {/* Inline section editing modal */}
-            {sec && (
+            {editingSection && (
                 <Dialog open onClose={() => setEditingSection(null)} maxWidth="sm" fullWidth>
-                    <DialogTitle sx={{ pb: 1 }}>{t("shareSimulation", "editSectionTitle", { label: sec.label })}</DialogTitle>
+                    <DialogTitle sx={{ pb: 1 }}>
+                        {t("shareSimulation", "editSectionTitle", { label: editingSection.label })}
+                    </DialogTitle>
                     <DialogContent>
                         <FormInput
                             autoFocus
                             fullWidth
-                            multiline={sec.multiline}
-                            minRows={sec.multiline ? 3 : 1}
+                            multiline={editingSection.multiline}
+                            minRows={editingSection.multiline ? 3 : 1}
                             maxRows={10}
-                            value={sec.value}
-                            onChange={(e) => setEditingSection({ ...sec, value: e.target.value })}
-                            inputProps={{ maxLength: sec.maxLength }}
-                            helperText={sec.maxLength ? `${sec.value.length} / ${sec.maxLength}` : undefined}
+                            value={editingSection.value}
+                            onChange={(e) => setEditingSection({ ...editingSection, value: e.target.value })}
+                            inputProps={{ maxLength: editingSection.maxLength }}
+                            helperText={editingSection.maxLength ? `${editingSection.value.length} / ${editingSection.maxLength}` : undefined}
                             sx={{ mt: 1 }}
                         />
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={() => setEditingSection(null)}>{t("common", "cancel")}</Button>
-                        <Button variant="contained" onClick={() => sec.onSave(sec.value)}>
+                        <Button variant="contained" onClick={() => editingSection.onSave(editingSection.value)}>
                             {t("common", "apply")}
                         </Button>
                     </DialogActions>

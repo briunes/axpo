@@ -20,7 +20,7 @@ import type { AuditLogItem } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
 import type { AuditLogsActions } from "../hooks/useAuditLogs";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
-import { formatDisplayDate } from "../../lib/formatPreferences";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 import {
     AgencyValueResolver,
     FieldChangeDetails,
@@ -467,17 +467,8 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
     // ── Date format ─────────────────────────────────────────────────────────
 
     const formatDate = useCallback((isoString: string) => {
-        try {
-            const date = new Date(isoString);
-            const formatted = formatDisplayDate(date, preferences.dateFormat);
-            const hours = String(date.getHours()).padStart(2, "0");
-            const minutes = String(date.getMinutes()).padStart(2, "0");
-            const seconds = String(date.getSeconds()).padStart(2, "0");
-            return `${formatted} ${hours}:${minutes}:${seconds}`;
-        } catch {
-            return isoString;
-        }
-    }, [preferences.dateFormat]);
+        return formatDisplayDateTime(isoString, preferences, { includeSeconds: true, fallback: isoString });
+    }, [preferences]);
 
     // ── Event type options (grouped, filtered by selected target) ────────────
 

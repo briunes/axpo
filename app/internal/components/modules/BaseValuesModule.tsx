@@ -48,6 +48,8 @@ import {
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 import {
   DEFAULT_MAX_UPLOAD_FILE_SIZE_MB,
   formatUploadSizeLimit,
@@ -77,6 +79,7 @@ const BASE_VALUE_DEFAULT_SORT_DIR: "asc" | "desc" = "desc";
 // ─── Main module ─────────────────────────────────────────────────────────────
 
 export function BaseValuesModule({ session, actions, onNotify, onActionButtons }: BaseValuesModuleProps) {
+  const { preferences } = useUserPreferences();
   const { t } = useI18n();
   const {
     baseValueSets, loading, busyAction, errorText, successText, clearFeedback, refresh,
@@ -299,7 +302,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
       width: "190",
       renderCell: (s) => (
         <Typography variant="body2" color="text.secondary" noWrap>
-          {new Date(s.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+          {formatDisplayDateTime(s.createdAt, preferences)}
         </Typography>
       ),
     },

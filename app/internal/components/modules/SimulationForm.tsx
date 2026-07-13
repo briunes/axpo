@@ -1019,7 +1019,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     electricityTaxRateOptions?: number[];
 }) {
     const { t } = useI18n();
-    const { preferences: { numberFormat } } = useUserPreferences();
+    const { preferences: { numberFormat, timezone } } = useUserPreferences();
     const up = <K extends keyof ElecFormState>(k: K, v: ElecFormState[K]) => onChange({ ...state, [k]: v });
     const upP = (field: "consumo" | "potencia" | "omie" | "personalizadaIndexMargenEnergia" | "personalizadaIndexMargenPotencia" | "personalizadaOmieBTerminoB" | "personalizadaOmieBMargenPotencia" | "personalizadaFijoPotencia" | "personalizadaFijoEnergia") => (p: string, v: number) => up(field, { ...state[field], [p]: v });
     const ep = ELEC_ENERGY_PERIODS[state.tarifaAcceso];
@@ -1118,7 +1118,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                                 };
                                 const color = statusColor[entry.lastStatus ?? ''] ?? '#94a3b8';
                                 const dateStr = entry.lastUsed
-                                    ? new Date(entry.lastUsed).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+                                    ? new Date(entry.lastUsed).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric', timeZone: timezone })
                                     : null;
                                 return (
                                     <li key={key ?? entry.cups} {...restProps} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 14px', gap: 2, cursor: 'pointer' }}>

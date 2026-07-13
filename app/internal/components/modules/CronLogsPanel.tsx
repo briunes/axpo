@@ -12,7 +12,7 @@ import ErrorIcon from "@mui/icons-material/Error";
 import { FormSelect } from "../ui/FormSelect";
 import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
-import { formatDisplayDate } from "../../lib/formatPreferences";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useLogTableToolbar } from "./logTableToolbar";
 
@@ -79,15 +79,8 @@ export function CronLogsPanel({ session, onNotify }: CronLogsPanelProps) {
     }, [filterDateFrom, filterDateTo, filterSource, filterStatus, filtersOpen]);
 
     const formatDate = useCallback((isoString: string) => {
-        try {
-            const date = new Date(isoString);
-            const formatted = formatDisplayDate(date, preferences.dateFormat);
-            const hh = String(date.getHours()).padStart(2, "0");
-            const mm = String(date.getMinutes()).padStart(2, "0");
-            const ss = String(date.getSeconds()).padStart(2, "0");
-            return `${formatted} ${hh}:${mm}:${ss}`;
-        } catch { return isoString; }
-    }, [preferences.dateFormat]);
+        return formatDisplayDateTime(isoString, preferences, { includeSeconds: true, fallback: isoString });
+    }, [preferences]);
 
     const toDateOnly = (d: Date | null) => {
         if (!d) return "";

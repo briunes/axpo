@@ -32,6 +32,8 @@ import { PieChart } from "@mui/x-charts/PieChart";
 import type { SessionState } from "../../lib/authSession";
 import { isAdmin as isAdminRole } from "../../lib/internalApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useUserPreferences, type UserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDate, formatDisplayDateTime } from "../../lib/formatPreferences";
 import { LoadingState, EmptyState } from "../shared";
 import {
     DataTable,
@@ -128,11 +130,13 @@ function fmtPercent(n: number | null) {
     return `${(n * 100).toFixed(1)}%`;
 }
 
-function fmtDate(iso: string, withTime = true): string {
+function fmtDate(iso: string, preferences: UserPreferences, withTime = true): string {
     try {
         const d = new Date(iso);
         if (Number.isNaN(d.getTime())) return iso;
-        return withTime ? d.toLocaleString() : d.toLocaleDateString();
+        return withTime
+            ? formatDisplayDateTime(d, preferences, { fallback: iso })
+            : formatDisplayDate(d, preferences.dateFormat, preferences.timezone);
     } catch {
         return iso;
     }
@@ -214,6 +218,7 @@ type InvoiceRow = OcrUsageInvoiceItem & { id: string };
 type PriceRow = OcrModelPriceItem & { id: string };
 
 export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps) {
+    const { preferences } = useUserPreferences();
     const { t, locale } = useI18n();
     const token = session.token;
     // Pricing configuration, invoice snapshots and the markup breakdown are
@@ -477,7 +482,7 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
             {
                 key: "requestedAt",
                 label: t("ocrUsage", "colDate"),
-                renderCell: (r) => fmtDate(r.requestedAt),
+                renderCell: (r) => fmtDate(r.requestedAt, preferences),
                 sortable: true,
             },
             {
@@ -551,7 +556,7 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
                 key: "period",
                 label: t("ocrUsage", "invoicePeriod"),
                 renderCell: (i) =>
-                    `${fmtDate(i.periodStart, false)} → ${fmtDate(i.periodEnd, false)}`,
+                    `${fmtDate(i.periodStart, preferences, false)} → ${fmtDate(i.periodEnd, preferences, false)}`,
             },
             {
                 key: "calls",
@@ -592,7 +597,7 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
             {
                 key: "createdAt",
                 label: t("ocrUsage", "colDate"),
-                renderCell: (i) => fmtDate(i.createdAt),
+                renderCell: (i) => fmtDate(i.createdAt, preferences),
                 sortable: true,
             },
         ],

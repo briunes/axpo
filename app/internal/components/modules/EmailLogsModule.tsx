@@ -21,7 +21,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import { FormSelect } from "../ui/FormSelect";
 import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
-import { formatDisplayDate } from "../../lib/formatPreferences";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 import { useLogTableToolbar } from "./logTableToolbar";
 
 interface EmailLog {
@@ -133,15 +133,8 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
     }, [dateFrom, dateTo, filtersOpen, statusFilter, triggerFilter]);
 
     const formatDate = useCallback((dateStr: string) => {
-        try {
-            const date = new Date(dateStr);
-            const formatted = formatDisplayDate(date, preferences.dateFormat);
-            const hh = String(date.getHours()).padStart(2, "0");
-            const mm = String(date.getMinutes()).padStart(2, "0");
-            const ss = String(date.getSeconds()).padStart(2, "0");
-            return `${formatted} ${hh}:${mm}:${ss}`;
-        } catch { return dateStr; }
-    }, [preferences.dateFormat]);
+        return formatDisplayDateTime(dateStr, preferences, { includeSeconds: true, fallback: dateStr });
+    }, [preferences]);
 
     const handleSearch = () => {
         setStatusFilter(localStatus);

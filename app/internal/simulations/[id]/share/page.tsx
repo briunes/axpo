@@ -8,19 +8,22 @@ import { getSimulation, getSimulationShareInit, maybePersistRefreshedToken, shar
 import {
     type PdfTemplate,
     type EmailTemplate,
-    type TemplateVariable,
 } from "../../../lib/configApi";
 import { CrudPageLayout, LoadingState, useAlerts } from "../../../components/shared";
-import { HtmlEditor } from "../../../components/modules/HtmlEditor";
-import { DraggableVariables } from "../../../components/modules/DraggableVariables";
 import { extractVariableValues, replaceVariables as replaceVars } from "@/infrastructure/pdf/variableReplacer";
 import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
+import type { EditableSectionOverrides, EditableSectionsConfig } from "@/infrastructure/templates/editableSections";
+import { mergeEditableSections } from "@/infrastructure/templates/editableSections";
 import { normalizeLanguageCode, resolveTranslation, getLanguageFromCountry } from "@/lib/supportedLanguages";
 import {
     Box,
     Button,
     Card,
     CardContent,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     FormControl,
     FormControlLabel,
     InputLabel,
@@ -36,8 +39,6 @@ import {
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import DownloadIcon from "@mui/icons-material/Download";
-import EditIcon from "@mui/icons-material/Edit";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import HistoryIcon from "@mui/icons-material/History";
 import { DownloadHistoryDialog } from "../components/DownloadHistoryDialog";
 import { useTopBarBreadcrumbs } from "../../../components/InternalWorkspace";
@@ -62,17 +63,25 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
     const [shareMode, setShareMode] = useState<ShareMode>("pdf");
     const [pdfTemplates, setPdfTemplates] = useState<PdfTemplate[]>([]);
     const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
-    const [templateVariables, setTemplateVariables] = useState<TemplateVariable[]>([]);
     const [selectedPdfTemplate, setSelectedPdfTemplate] = useState<string>("");
     const [selectedEmailTemplate, setSelectedEmailTemplate] = useState<string>("");
     const [editedPdfContent, setEditedPdfContent] = useState("");
     const [editedEmailContent, setEditedEmailContent] = useState("");
     const [editedSubject, setEditedSubject] = useState("");
     const [recipientEmail, setRecipientEmail] = useState("");
+    const [pdfEditableOverrides, setPdfEditableOverrides] = useState<EditableSectionOverrides>({});
+    const [emailEditableOverrides, setEmailEditableOverrides] = useState<EditableSectionOverrides>({});
     const [clientLanguage, setClientLanguage] = useState<string>("en");
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
-    const [templateViewMode, setTemplateViewMode] = useState<"preview" | "edit">("preview");
+    const [editingSection, setEditingSection] = useState<{
+        key: string;
+        label: string;
+        value: string;
+        multiline: boolean;
+        maxLength?: number;
+        onSave: (val: string) => void;
+    } | null>(null);
     const simulationBreadcrumbLabel =
         simulation?.referenceNumber || simulation?.client?.name || simulation?.id || id;
     const breadcrumbs = useMemo(
@@ -107,7 +116,6 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
 
                 setPdfTemplates(init.pdfTemplates);
                 setEmailTemplates(init.emailTemplates);
-                setTemplateVariables(init.templateVariables);
 
                 // Pre-fill recipient email if client exists and detect the client
                 // language so we can pick the matching template translation.
@@ -128,12 +136,20 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                     const pdfTranslation = resolveTranslation(defaultPdf.translations ?? [], detectedLanguage);
                     setSelectedPdfTemplate(defaultPdf.id);
                     setEditedPdfContent(pdfTranslation?.htmlContent ?? defaultPdf.htmlContent);
+                    const defaults = defaultPdf.editableSections
+                        ? Object.fromEntries(Object.entries(defaultPdf.editableSections).map(([k, v]) => [k, v.default]))
+                        : {};
+                    setPdfEditableOverrides(defaults);
                 }
                 if (defaultEmail) {
                     const emailTranslation = resolveTranslation(defaultEmail.translations ?? [], detectedLanguage);
                     setSelectedEmailTemplate(defaultEmail.id);
                     setEditedEmailContent(emailTranslation?.htmlContent ?? defaultEmail.htmlContent);
                     setEditedSubject(emailTranslation?.subject ?? defaultEmail.subject);
+                    const defaults = defaultEmail.editableSections
+                        ? Object.fromEntries(Object.entries(defaultEmail.editableSections).map(([k, v]) => [k, v.default]))
+                        : {};
+                    setEmailEditableOverrides(defaults);
                 }
             })
             .catch((err) => {
@@ -153,6 +169,10 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
             if (template) {
                 const translation = resolveTranslation(template.translations ?? [], clientLanguage);
                 setEditedPdfContent(translation?.htmlContent ?? template.htmlContent);
+                const defaults = template.editableSections
+                    ? Object.fromEntries(Object.entries(template.editableSections).map(([k, v]) => [k, v.default]))
+                    : {};
+                setPdfEditableOverrides(defaults);
             }
         } else {
             setSelectedEmailTemplate(templateId);
@@ -161,6 +181,10 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                 const translation = resolveTranslation(template.translations ?? [], clientLanguage);
                 setEditedEmailContent(translation?.htmlContent ?? template.htmlContent);
                 setEditedSubject(translation?.subject ?? template.subject);
+                const defaults = template.editableSections
+                    ? Object.fromEntries(Object.entries(template.editableSections).map(([k, v]) => [k, v.default]))
+                    : {};
+                setEmailEditableOverrides(defaults);
             }
         }
     };
@@ -169,20 +193,86 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
         setShareMode(mode);
     };
 
-    const resolveVariables = (content: string) => {
+    const resolveVariables = (
+        content: string,
+        overrides?: EditableSectionOverrides,
+        templateSections?: EditableSectionsConfig | null,
+    ) => {
         if (!simulation) return content;
         // payloadJson is attached directly to the simulation object by the API
         const payload = simulation.payloadJson;
         const variableValues = extractVariableValues(simulation, payload, {
             pin: simulation.pinSnapshot ?? undefined,
         });
+        if (templateSections) {
+            Object.assign(variableValues, mergeEditableSections(templateSections, overrides));
+        } else if (overrides) {
+            Object.assign(variableValues, overrides);
+        }
         return replaceVars(content, variableValues);
+    };
+
+    const resolveVariablesWithEditableSections = (
+        content: string,
+        overrides: EditableSectionOverrides,
+        templateSections?: EditableSectionsConfig | null,
+    ) => {
+        if (!templateSections) return resolveVariables(content, overrides);
+        if (!simulation) return content;
+
+        const payload = simulation.payloadJson;
+        const variableValues = extractVariableValues(simulation, payload, {
+            pin: simulation.pinSnapshot ?? undefined,
+        });
+        let result = replaceVars(content, variableValues);
+        const merged = mergeEditableSections(templateSections, overrides);
+
+        for (const key of Object.keys(templateSections)) {
+            const value = merged[key] ?? "";
+            const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
+            result = result.replace(
+                regex,
+                `<span data-editable-key="${key}" style="outline:2px dashed #FF3254;outline-offset:3px;border-radius:3px;cursor:pointer;display:inline-block;min-width:40px;background:rgba(255,50,84,0.12);" title="${t("shareSimulation", "editableSection")}">${value}</span>`,
+            );
+        }
+
+        return result;
+    };
+
+    const handlePreviewClick = (
+        e: React.MouseEvent<HTMLDivElement>,
+        templateSections: EditableSectionsConfig | null | undefined,
+        overrides: EditableSectionOverrides,
+        setOverrides: (o: EditableSectionOverrides) => void,
+    ) => {
+        if (!templateSections) return;
+        const target = (e.target as HTMLElement).closest("[data-editable-key]") as HTMLElement | null;
+        if (!target) return;
+        const key = target.getAttribute("data-editable-key");
+        if (!key || !templateSections[key]) return;
+        const section = templateSections[key];
+        setEditingSection({
+            key,
+            label: section.label,
+            value: overrides[key] ?? section.default,
+            multiline: section.multiline ?? true,
+            maxLength: section.maxLength,
+            onSave: (val) => {
+                setOverrides({ ...overrides, [key]: val });
+                setEditingSection(null);
+            },
+        });
     };
 
     const handleDownloadPdf = async () => {
         setIsSending(true);
         try {
-            const processedContent = resolveVariables(editedPdfContent);
+            const selectedPdf = pdfTemplates.find((t) => t.id === selectedPdfTemplate);
+            const processedContent = resolveVariables(
+                editedPdfContent,
+                pdfEditableOverrides,
+                selectedPdf?.editableSections,
+            );
 
             // Call backend API to generate PDF
             const requestToken = loadSession()?.token ?? session.token;
@@ -231,7 +321,12 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
         setIsSending(true);
         try {
             // TODO: Implement actual email sending via API
-            const processedContent = resolveVariables(editedEmailContent);
+            const selectedEmail = emailTemplates.find((t) => t.id === selectedEmailTemplate);
+            const processedContent = resolveVariables(
+                editedEmailContent,
+                emailEditableOverrides,
+                selectedEmail?.editableSections,
+            );
             const processedSubject = resolveVariables(editedSubject);
 
             // TODO: Replace with actual email API endpoint
@@ -391,60 +486,27 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                             <CardContent>
                                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
                                     <Typography variant="h6">
-                                        {templateViewMode === "edit"
-                                            ? t("shareSimulation", "editTemplate")
-                                            : t("shareSimulation", "previewTemplate")}
+                                        {t("shareSimulation", "previewTemplate")}
                                     </Typography>
-                                    <Button
-                                        variant="outlined"
-                                        size="small"
-                                        startIcon={templateViewMode === "edit" ? <VisibilityIcon /> : <EditIcon />}
-                                        onClick={() => setTemplateViewMode(templateViewMode === "edit" ? "preview" : "edit")}
-                                    >
-                                        {templateViewMode === "edit"
-                                            ? t("shareSimulation", "previewTemplate")
-                                            : t("shareSimulation", "editTemplate")}
-                                    </Button>
                                 </Box>
 
-                                {templateViewMode === "edit" ? (
-                                    <>
-                                        {shareMode === "email" && (
-                                            <TextField
-                                                fullWidth
-                                                label={t("shareSimulation", "subject")}
-                                                value={editedSubject}
-                                                onChange={(e) => setEditedSubject(e.target.value)}
-                                                sx={{ mb: 2 }}
-                                            />
-                                        )}
-                                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 280px" }, gap: 2 }}>
-                                            <HtmlEditor
-                                                key={`${shareMode}-${shareMode === "pdf" ? selectedPdfTemplate : selectedEmailTemplate}`}
-                                                initialHtml={shareMode === "pdf" ? editedPdfContent : editedEmailContent}
-                                                onChange={shareMode === "pdf" ? setEditedPdfContent : setEditedEmailContent}
-                                                height="500px"
-                                            />
-                                            <DraggableVariables
-                                                variables={templateVariables.map(v => ({
-                                                    name: v.key,
-                                                    label: v.label,
-                                                    description: v.description || "",
-                                                }))}
-                                            />
-                                        </Box>
-                                    </>
-                                ) : (
-                                    <Paper
-                                        variant="outlined"
-                                        sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
-                                        dangerouslySetInnerHTML={{
-                                            __html: resolveVariables(
-                                                shareMode === "pdf" ? editedPdfContent : editedEmailContent
-                                            ),
-                                        }}
-                                    />
-                                )}
+                                <Paper
+                                    variant="outlined"
+                                    sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
+                                    onClick={(e) => handlePreviewClick(
+                                        e,
+                                        currentTemplate.editableSections,
+                                        shareMode === "pdf" ? pdfEditableOverrides : emailEditableOverrides,
+                                        shareMode === "pdf" ? setPdfEditableOverrides : setEmailEditableOverrides,
+                                    )}
+                                    dangerouslySetInnerHTML={{
+                                        __html: resolveVariablesWithEditableSections(
+                                            shareMode === "pdf" ? editedPdfContent : editedEmailContent,
+                                            shareMode === "pdf" ? pdfEditableOverrides : emailEditableOverrides,
+                                            currentTemplate.editableSections,
+                                        ),
+                                    }}
+                                />
                             </CardContent>
                         </Card>
                     )}
@@ -537,6 +599,33 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                     }}
                     onError={showError}
                 />
+            )}
+            {editingSection && (
+                <Dialog open onClose={() => setEditingSection(null)} maxWidth="sm" fullWidth>
+                    <DialogTitle sx={{ pb: 1 }}>
+                        {t("shareSimulation", "editSectionTitle", { label: editingSection.label })}
+                    </DialogTitle>
+                    <DialogContent>
+                        <TextField
+                            autoFocus
+                            fullWidth
+                            multiline={editingSection.multiline}
+                            minRows={editingSection.multiline ? 3 : 1}
+                            maxRows={10}
+                            value={editingSection.value}
+                            onChange={(e) => setEditingSection({ ...editingSection, value: e.target.value })}
+                            inputProps={{ maxLength: editingSection.maxLength }}
+                            helperText={editingSection.maxLength ? `${editingSection.value.length} / ${editingSection.maxLength}` : undefined}
+                            sx={{ mt: 1 }}
+                        />
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setEditingSection(null)}>{t("common", "cancel")}</Button>
+                        <Button variant="contained" onClick={() => editingSection.onSave(editingSection.value)}>
+                            {t("common", "apply")}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             )}
         </CrudPageLayout>
     );
