@@ -42,6 +42,8 @@ import type { ColumnDef } from "../ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 
 interface ClientsModuleProps {
   session: SessionState;
@@ -63,6 +65,7 @@ const CLIENT_DEFAULT_SORT_COLUMN = "name";
 const CLIENT_DEFAULT_SORT_DIR: "asc" | "desc" = "asc";
 
 export function ClientsModule({ session, actions, agencies: initialAgencies, onNotify, onActionButtons }: ClientsModuleProps) {
+  const { preferences } = useUserPreferences();
   const { t } = useI18n();
   const router = useRouter();
   const { canDo } = usePermissions();
@@ -168,7 +171,7 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
       sortable: true,
       renderCell: (c) => (
         <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
-          {new Date(c.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+          {formatDisplayDateTime(c.createdAt, preferences)}
           {" - "}
           <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {c.createdByUser ? `${c.createdByUser.fullName}` : "System"}
@@ -183,7 +186,7 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
       sortable: true,
       renderCell: (c) => (
         <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
-          {new Date(c.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+          {formatDisplayDateTime(c.updatedAt, preferences)}
           {" - "}
           <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {c.updatedByUser ? `${c.updatedByUser.fullName}` : "System"}

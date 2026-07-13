@@ -39,6 +39,8 @@ import {
 import { LoadingState } from "../shared/LoadingState";
 import { DataTable, StatusBadge } from "../ui";
 import type { ColumnDef, SortState } from "../ui";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 
 export interface EmailTemplatesProps {
     session: SessionState;
@@ -229,6 +231,7 @@ function getVariablesForEmailTemplate(
 
 export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
     const { t } = useI18n();
+    const { preferences } = useUserPreferences();
     const TEMPLATE_TYPE_LABELS: Record<EmailTemplateType, string> = {
         "simulation-share": t("emailTemplatesModule", "typeSimulationShare"),
         "magic-link": t("emailTemplatesModule", "typeMagicLink"),
@@ -558,9 +561,7 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
     };
 
     const formatDateTime = (value: string | Date) => {
-        const d = new Date(value);
-        if (Number.isNaN(d.getTime())) return "—";
-        return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        return formatDisplayDateTime(value, preferences);
     };
 
     const filteredTemplates = useMemo(() => {

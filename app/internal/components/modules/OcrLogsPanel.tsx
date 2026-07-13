@@ -44,7 +44,7 @@ import { DataTable, DateInput, TableFilterButton, TableFiltersDialog, type Colum
 import { FormSelect } from "../ui/FormSelect";
 import { FormInput } from "../ui/FormInput";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
-import { formatDisplayDate } from "../../lib/formatPreferences";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 import { improveOcrPrompt, testOcrPrompt, type ImproveOcrPromptResult, type TestOcrPromptResult } from "../../lib/internalApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useLogTableToolbar } from "./logTableToolbar";
@@ -289,6 +289,7 @@ function OcrLogDetailDialog({
 }) {
     const theme = useTheme();
     const { locale, t } = useI18n();
+    const { preferences } = useUserPreferences();
     const [tab, setTab] = useState(0);
     const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
     const [isImprovingPrompt, setIsImprovingPrompt] = useState(false);
@@ -532,10 +533,7 @@ function OcrLogDetailDialog({
                                         {t("logs", "details")}
                                     </Typography>
                                     <Typography sx={{ fontSize: 12.5, color: "text.secondary", lineHeight: 1.35 }}>
-                                        {new Date(log.requestedAt).toLocaleString(locale === "es" ? "es-ES" : "en-GB", {
-                                            day: "2-digit", month: "2-digit", year: "numeric",
-                                            hour: "2-digit", minute: "2-digit", second: "2-digit",
-                                        })}
+                                        {formatDisplayDateTime(log.requestedAt, preferences, { includeSeconds: true })}
                                         {log.userName || log.userEmail ? ` · ${log.userName ?? log.userEmail}` : ""}
                                     </Typography>
                                 </Box>
@@ -1485,15 +1483,8 @@ export function OcrLogsPanel({ session, onNotify }: OcrLogsPanelProps) {
     }, [filterDateFrom, filterDateTo, filterIssueStatus, filterStatus, filterType, filtersOpen]);
 
     const formatDate = useCallback((isoString: string) => {
-        try {
-            const date = new Date(isoString);
-            const formatted = formatDisplayDate(date, preferences.dateFormat);
-            const hh = String(date.getHours()).padStart(2, "0");
-            const mm = String(date.getMinutes()).padStart(2, "0");
-            const ss = String(date.getSeconds()).padStart(2, "0");
-            return `${formatted} ${hh}:${mm}:${ss}`;
-        } catch { return isoString; }
-    }, [preferences.dateFormat]);
+        return formatDisplayDateTime(isoString, preferences, { includeSeconds: true, fallback: isoString });
+    }, [preferences]);
 
     const toDateOnly = (d: Date | null) => {
         if (!d) return "";

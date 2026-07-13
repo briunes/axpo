@@ -40,7 +40,7 @@ import type { AgencyItem, ClientItem, SimulationItem, UserItem } from "../../lib
 import { getSimulation, isAdmin, simulationStatusTone } from "../../lib/internalApi";
 import { usePermissions } from "../../lib/permissionsContext";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
-import { formatDisplayDate } from "../../lib/formatPreferences";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 import type { SimulationsActions, SimulationViewState } from "../hooks/useSimulations";
 import { ConfirmDialog } from "../shared";
 import { DataTable, SlidePanel, StatusBadge, FormInput, FormSelect, DateInput } from "../ui";
@@ -309,34 +309,9 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     }
   }, [onNotify, session.token]);
 
-  const timeFormatter = useMemo(() => {
-    try {
-      return new Intl.DateTimeFormat(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: preferences.timeFormat === "12h",
-        timeZone: preferences.timezone,
-      });
-    } catch {
-      return new Intl.DateTimeFormat(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: preferences.timeFormat === "12h",
-      });
-    }
-  }, [preferences.timeFormat, preferences.timezone]);
-
   const formatDateTime = useCallback((value: string | null | undefined) => {
-    if (!value) return "—";
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "—";
-
-    const datePart = formatDisplayDate(date, preferences.dateFormat);
-    const timePart = timeFormatter.format(date);
-
-    return `${datePart} ${timePart}`;
-  }, [preferences.dateFormat, timeFormatter]);
+    return formatDisplayDateTime(value, preferences);
+  }, [preferences]);
 
   const hasSelectedProduct = useCallback((sim: SimulationItem) => {
     const payload = sim.payloadJson as { selectedOffer?: { productKey?: string } } | null;

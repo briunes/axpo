@@ -29,7 +29,7 @@ import { Country } from "country-state-city";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { listAuditLogs, type AuditLogItem, getAgency, listUsers, type UserItem } from "../../lib/internalApi";
 import { AgencyValueResolver, FieldChangeDetails, formatFieldName, normalizeAuditFieldKey } from "./AuditLogShared";
-import { formatDisplayDate } from "../../lib/formatPreferences";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { DateRangePicker } from "./DateRangePicker";
 import { FormSelect, type FormSelectOption } from "./FormSelect";
@@ -284,16 +284,7 @@ export function AuditLogsModal({
     };
 
     const formatDate = (isoString: string) => {
-        try {
-            const date = new Date(isoString);
-            const formatted = formatDisplayDate(date, preferences.dateFormat);
-            // Add time in HH:mm format
-            const hours = String(date.getHours()).padStart(2, "0");
-            const minutes = String(date.getMinutes()).padStart(2, "0");
-            return `${formatted} ${hours}:${minutes}`;
-        } catch {
-            return isoString;
-        }
+        return formatDisplayDateTime(isoString, preferences, { fallback: isoString });
     };
 
     // formatFieldName and normalizeAuditFieldKey imported from AuditLogShared.tsx

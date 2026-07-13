@@ -39,6 +39,8 @@ import { LoadingState } from "../shared/LoadingState";
 import { AITemplateBuilder, type AIGeneratedTemplate } from "./AITemplateBuilder";
 import { DataTable, StatusBadge } from "../ui";
 import type { ColumnDef, SortState } from "../ui";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 
 export interface PdfTemplatesProps {
     session: SessionState;
@@ -266,6 +268,7 @@ function getVariablesForTemplate(
 
 export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
     const { t } = useI18n();
+    const { preferences } = useUserPreferences();
     const TEMPLATE_TYPE_LABELS: Record<PdfTemplateType, string> = {
         "simulation-output": t("pdfTemplatesModule", "typeSimulationOutput"),
         "simulation-detailed": t("pdfTemplatesModule", "typeDetailedSimulation"),
@@ -505,9 +508,7 @@ export function PdfTemplatesNew({ session, onNotify }: PdfTemplatesProps) {
     };
 
     const formatDateTime = (value: string | Date) => {
-        const d = new Date(value);
-        if (Number.isNaN(d.getTime())) return "—";
-        return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        return formatDisplayDateTime(value, preferences);
     };
 
     const getCommodityLabel = (commodity?: string | null) =>

@@ -40,6 +40,8 @@ import type { ColumnDef } from "../ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 
 interface AgenciesModuleProps {
   session: SessionState;
@@ -62,6 +64,7 @@ const AGENCY_DEFAULT_SORT_DIR: "asc" | "desc" = "desc";
 
 export function AgenciesModule({ session, actions, onNotify, onActionButtons }: AgenciesModuleProps) {
   const { t } = useI18n();
+  const { preferences } = useUserPreferences();
   const router = useRouter();
   const {
     agencies, loading, busyAction, errorText, successText, clearFeedback, refresh,
@@ -232,7 +235,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       sortable: true,
       renderCell: (a) => (
         <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
-          {new Date(a.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+          {formatDisplayDateTime(a.createdAt, preferences)}
           {" - "}
           <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {a.createdByUser ? `${a.createdByUser.fullName}` : "System"}
@@ -247,7 +250,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       sortable: true,
       renderCell: (a) => (
         <Typography variant="body2" sx={{ whiteSpace: "nowrap" }}>
-          {new Date(a.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+          {formatDisplayDateTime(a.updatedAt, preferences)}
           {" - "}
           <Typography component="span" variant="body2" sx={{ color: "var(--scheme-neutral-400)", fontStyle: "italic" }}>
             {a.updatedByUser ? `${a.updatedByUser.fullName}` : "System"}

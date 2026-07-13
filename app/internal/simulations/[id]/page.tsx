@@ -69,7 +69,7 @@ function SimulationMeta({
   const [isOpeningInvoice, setIsOpeningInvoice] = useState(false);
 
   const fmtDate = (iso: string) =>
-    formatDisplayDate(new Date(iso), preferences.dateFormat);
+    formatDisplayDate(new Date(iso), preferences.dateFormat, preferences.timezone);
 
   const handleOpenInvoice = async () => {
     if (isOpeningInvoice) return;

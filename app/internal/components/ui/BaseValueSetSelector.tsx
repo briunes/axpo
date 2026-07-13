@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import StarIcon from "@mui/icons-material/Star";
 import { listBaseValueSets, type BaseValueSetItem } from "../../lib/internalApi";
 import { FormSelect } from "./FormSelect";
+import { useUserPreferences, type UserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 
 interface BaseValueSetSelectorProps {
     token: string;
@@ -20,17 +22,12 @@ const COMPACT_SELECTOR_WIDTH = 360;
 const DEFAULT_SELECTOR_MIN_WIDTH = 320;
 const DEFAULT_SELECTOR_MAX_WIDTH = 420;
 
-function formatUploadDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleString("es-ES", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
+function formatUploadDate(dateStr: string, preferences: UserPreferences): string {
+    return formatDisplayDateTime(dateStr, preferences);
 }
 
 export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scopeType, forAgencyId, onChange, onChangeItem, compact = false }: BaseValueSetSelectorProps) {
+    const { preferences } = useUserPreferences();
     const [sets, setSets] = useState<BaseValueSetItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<string>("");
@@ -86,7 +83,7 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
                 options={sets.map((s) => ({
                     value: s.id,
                     label: `${s.name}  v${s.version}`,
-                    secondaryLabel: `Uploaded ${formatUploadDate(s.createdAt)}`,
+                    secondaryLabel: `Uploaded ${formatUploadDate(s.createdAt, preferences)}`,
                     icon: s.isActive ? <StarIcon sx={{ color: "warning.main" }} /> : undefined,
                 }))}
                 value={selected}

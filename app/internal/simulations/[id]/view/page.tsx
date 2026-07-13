@@ -29,7 +29,7 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
     const [isOpeningInvoice, setIsOpeningInvoice] = useState(false);
 
     const fmtDate = (iso: string) =>
-        formatDisplayDate(new Date(iso), preferences.dateFormat);
+        formatDisplayDate(new Date(iso), preferences.dateFormat, preferences.timezone);
 
     const handleCopyShareLink = async () => {
         if (!sim.publicToken) return;

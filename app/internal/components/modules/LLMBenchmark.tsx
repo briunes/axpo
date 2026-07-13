@@ -27,6 +27,8 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import type { SessionState } from "../../lib/authSession";
+import { useUserPreferences, type UserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 
 export interface LLMBenchmarkProps {
     session: SessionState;
@@ -143,12 +145,8 @@ function getBestRunResult(run: BenchmarkRunGroup): BenchmarkResult | null {
     })[0];
 }
 
-function formatDateTime(value?: string | null) {
-    if (!value) return "—";
-    return new Intl.DateTimeFormat(undefined, {
-        dateStyle: "short",
-        timeStyle: "short",
-    }).format(new Date(value));
+function formatDateTime(value: string | null | undefined, preferences: UserPreferences) {
+    return formatDisplayDateTime(value, preferences);
 }
 
 interface FieldCompareTableProps {
@@ -393,6 +391,7 @@ function ResultsTable({
 
 function BenchmarkHistoryRow({ run }: { run: BenchmarkRunGroup }) {
     const { t } = useI18n();
+    const { preferences } = useUserPreferences();
     const [expanded, setExpanded] = useState(false);
     const bestResult = getBestRunResult(run);
 
@@ -408,7 +407,7 @@ function BenchmarkHistoryRow({ run }: { run: BenchmarkRunGroup }) {
                         {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
                     </IconButton>
                 </TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>{formatDateTime(run.createdAt)}</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>{formatDateTime(run.createdAt, preferences)}</TableCell>
                 <TableCell>
                     {bestResult ? (
                         <>
@@ -476,6 +475,7 @@ function BenchmarkHistoryTable({ runs }: { runs: BenchmarkRunGroup[] }) {
 
 export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }: LLMBenchmarkProps) {
     const { t } = useI18n();
+    const { preferences } = useUserPreferences();
     const activeProviders = providers.filter((p) => p.enabled);
     const allIds = activeProviders.map((p) => p.id);
     const [selected, setSelected] = useState<Set<string>>(new Set(allIds));
@@ -791,7 +791,7 @@ export function LLMBenchmark({ session, onNotify, onHistoryChanged, providers }:
                         <Box sx={{ fontSize: 12, color: "var(--axpo-text-secondary)" }}>
                             {results.length
                                 ? t("llmBenchmark", "llmsTestedCurrent", { count: displayedRun.resultCount, plural: displayedRun.resultCount === 1 ? "" : "s" })
-                                : t("llmBenchmark", "llmsTested", { date: formatDateTime(displayedRun.createdAt), count: displayedRun.resultCount, plural: displayedRun.resultCount === 1 ? "" : "s" })}
+                                : t("llmBenchmark", "llmsTested", { date: formatDateTime(displayedRun.createdAt, preferences), count: displayedRun.resultCount, plural: displayedRun.resultCount === 1 ? "" : "s" })}
                         </Box>
                         <ResultsTable
                             title=""

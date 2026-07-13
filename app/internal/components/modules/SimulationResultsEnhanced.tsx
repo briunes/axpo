@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import type { SimulationResults, ProductResult } from "@/domain/types";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 
 interface SimulationResultsEnhancedProps {
     results: SimulationResults;
@@ -299,6 +301,7 @@ export function SimulationResultsEnhanced({
     consumoAnual,
     mes,
 }: SimulationResultsEnhancedProps) {
+    const { preferences } = useUserPreferences();
     const { t } = useI18n();
     const hasElec = (results.electricity?.length ?? 0) > 0;
     const hasGas = (results.gas?.length ?? 0) > 0;
@@ -501,7 +504,7 @@ export function SimulationResultsEnhanced({
                 alignItems: "center",
             }}>
                 <div>
-                    {t("simulationResultsEnhanced", "calculated")} {new Date(results.calculatedAt).toLocaleString("es-ES")}
+                    {t("simulationResultsEnhanced", "calculated")} {formatDisplayDateTime(results.calculatedAt, preferences)}
                 </div>
                 <div>
                     {t("simulationResultsEnhanced", "priceBase")} <span className="dt-cell-mono" style={{ color: "#cbd5e1", fontWeight: 600 }}>
