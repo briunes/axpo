@@ -774,7 +774,16 @@ export function DataTable<T extends { id: string }>({
               </Button>
             </Box>
           )}
-          <Box sx={{ display: 'grid', gridTemplateColumns: renderCustomSearch && showFilterSubmitActions ? '1fr 1fr' : '1fr', gap: 1 }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: renderCustomSearch && showFilterSubmitActions
+                ? (headerRight ? 'minmax(0, 1fr) minmax(0, 1fr) auto' : 'repeat(2, minmax(0, 1fr))')
+                : (headerRight ? 'minmax(0, 1fr) auto' : '1fr'),
+              gap: 1,
+              alignItems: 'stretch',
+            }}
+          >
             {renderCustomSearch && showFilterSubmitActions && (
               <Button
                 variant="outlined"
@@ -795,9 +804,23 @@ export function DataTable<T extends { id: string }>({
               <ViewColumnIcon fontSize="small" />
               {tI18n('dataTable', 'columnsTitle')}
             </Button>
+            {headerRight && (
+              <Box
+                sx={{
+                  minWidth: 40,
+                  px: 0.5,
+                  display: 'grid',
+                  placeItems: 'center',
+                  border: '1px solid',
+                  borderColor: 'primary.main',
+                  borderRadius: 1,
+                }}
+              >
+                {headerRight}
+              </Box>
+            )}
           </Box>
           {!onSearch && toolbarLeft}
-          {headerRight && <Box>{headerRight}</Box>}
         </Box>
       )}
 
