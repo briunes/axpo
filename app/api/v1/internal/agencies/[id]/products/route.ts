@@ -28,13 +28,14 @@ type AgencyProductRow = {
   isEnabled: boolean;
 };
 
-const loadTlvProducts = async (
+const loadAgencyProducts = async (
   agencyId: string,
+  scopeType: "GLOBAL" | "TLV",
 ): Promise<AgencyProductRow[]> => {
   const [configuredRows, agencyRows] = await Promise.all([
     prisma.excelParserProductConfig.findMany({
       where: {
-        scopeType: "TLV",
+        scopeType,
       },
       orderBy: [{ sortOrder: "asc" }, { sourceLabel: "asc" }],
     }),
@@ -49,7 +50,7 @@ const loadTlvProducts = async (
     }),
   ]);
   const configuredProducts = withMissingDefaultExcelParserProductConfigs(
-    "TLV",
+    scopeType,
     configuredRows.map((row) => ({
       id: row.id,
       scopeType: row.scopeType as ExcelParserProductConfigItem["scopeType"],
@@ -101,13 +102,21 @@ const GET = withErrorHandler(async (req: NextRequest, context) => {
 
   const agency = await prisma.agency.findUnique({
     where: { id: agencyId },
-    select: { id: true, isDeleted: true },
+    select: { id: true, isTlv: true, isDeleted: true },
   });
   if (!agency || agency.isDeleted) {
     throw new NotFoundError("Agency", agencyId);
   }
 
-  return NextResponse.json(await loadTlvProducts(agencyId));
+  const requestedScopeType = req.nextUrl.searchParams.get("scopeType");
+  const scopeType =
+    requestedScopeType === "TLV" || requestedScopeType === "GLOBAL"
+      ? requestedScopeType
+      : agency.isTlv
+        ? "TLV"
+        : "GLOBAL";
+
+  return NextResponse.json(await loadAgencyProducts(agencyId, scopeType));
 });
 
 const PUT = withErrorHandler(async (req: NextRequest, context) => {
@@ -122,10 +131,6 @@ const PUT = withErrorHandler(async (req: NextRequest, context) => {
   if (!agency || agency.isDeleted) {
     throw new NotFoundError("Agency", agencyId);
   }
-  if (!agency.isTlv) {
-    throw new ValidationError("Agency must be TLV to configure TLV products");
-  }
-
   const products = z.array(productConfigSchema).parse(await req.json());
   await Promise.all(
     products.map((product) =>
@@ -152,7 +157,9 @@ const PUT = withErrorHandler(async (req: NextRequest, context) => {
     ),
   );
 
-  return NextResponse.json(await loadTlvProducts(agencyId));
+  return NextResponse.json(
+    await loadAgencyProducts(agencyId, agency.isTlv ? "TLV" : "GLOBAL"),
+  );
 });
 
 export { GET, PUT };

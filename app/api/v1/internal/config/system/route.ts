@@ -191,6 +191,18 @@ const PUT = withErrorHandler(async (req: NextRequest) => {
   const changelogNotes = data.appChangelogNotes;
   delete data.appChangelogNotes;
 
+  if (
+    data.appVersion !== undefined &&
+    data.appVersion !== previousAppVersion &&
+    (!changelogNotes ||
+      typeof changelogNotes !== "object" ||
+      !Object.values(changelogNotes).some(
+        (notes) => typeof notes === "string" && notes.trim().length > 0,
+      ))
+  ) {
+    throw new ValidationError("Release notes are required when publishing a new app version");
+  }
+
   if (data.smtpPassword === "") {
     delete data.smtpPassword;
   }

@@ -88,12 +88,6 @@ export default function EditAgencyPage({
   useTopBarBreadcrumbs(breadcrumbs);
 
   useEffect(() => {
-    if (!isTlv && activeTab === 3) {
-      setActiveTab(0);
-    }
-  }, [activeTab, isTlv]);
-
-  useEffect(() => {
     if (!session || isBoneyardFixture) return;
     getAgency(session.token, id)
       .then((a) => {
@@ -157,7 +151,7 @@ export default function EditAgencyPage({
         province: address.province?.trim() || undefined,
         country: address.country?.trim() || undefined,
         tariffs: tariffsDraft.length > 0 ? tariffsDraft : undefined,
-        products: isTlv && productsDraft.length > 0 ? productsDraft : undefined,
+        products: productsDraft.length > 0 ? productsDraft : undefined,
       });
 
       showSuccess(t("agencyFormPage", "updated"));
@@ -280,7 +274,7 @@ export default function EditAgencyPage({
           >
             <Tab label={t("agencyFormPage", "tabDetails")} />
             <Tab label={t("agencyFormPage", "tabUsers")} />
-            {isTlv && <Tab label={t("agencyFormPage", "tabTlvProducts")} />}
+            <Tab label={t("agencyFormPage", "tabProducts")} />
             {false && <Tab label={t("agencyFormPage", "tabTariffs")} />}
           </Tabs>
         </Box>
@@ -375,19 +369,18 @@ export default function EditAgencyPage({
             }
           />
         </Box>
-        {isTlv && (
-          <Box sx={{ display: activeTab === 2 ? "block" : "none" }}>
+        <Box sx={{ display: activeTab === 2 ? "block" : "none" }}>
             <AgencyTlvProductConfig
               agencyId={agency.id}
               token={session.token}
+              isTlv={isTlv}
               hideSaveButton
               onProductsChange={setProductsDraft}
               onNotify={(msg, type) =>
                 type === "error" ? showError(msg) : showSuccess(msg)
               }
             />
-          </Box>
-        )}
+        </Box>
       </Box>
       {session && (
         <AuditLogsModal

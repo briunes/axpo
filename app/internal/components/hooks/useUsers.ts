@@ -336,9 +336,11 @@ export function useUsers(
   const loading = isFetching;
 
   const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({
-      queryKey: ["users", session?.token ?? ""],
-    });
+    const token = session?.token ?? "";
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["users", token] }),
+      queryClient.invalidateQueries({ queryKey: ["users-init", token] }),
+    ]);
   }, [queryClient, session?.token]);
 
   const refresh = useCallback(
