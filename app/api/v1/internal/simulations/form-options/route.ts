@@ -59,11 +59,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         orderBy: { tariffType: "asc" },
       }),
       prisma.agencyProductConfig.findMany({
-        where: { agencyId, isEnabled: true },
+        where: { agencyId },
         select: {
           commodity: true,
           pricingType: true,
           productKey: true,
+          isEnabled: true,
         },
       }),
       prisma.baseValueSet.findMany({
@@ -141,7 +142,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ? [pricingType]
     : ["FIXED", "INDEXED"];
   const enabledProductKeys = new Set(
-    agencyProducts.map(
+    agencyProducts.filter((item) => item.isEnabled).map(
       (item) => `${item.commodity}:${item.pricingType}:${item.productKey}`,
     ),
   );

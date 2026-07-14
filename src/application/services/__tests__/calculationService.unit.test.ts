@@ -729,6 +729,10 @@ describe("CalculationService gas product configuration", () => {
         key: "GAS:FIJO:ESTABLE_PLUS:N1:RL01:TERMINO_DIA",
         valueNumeric: 0.2,
       },
+      {
+        key: "GAS:INDEX:INDEXADO:N1:RL01:PEN:MARGEN",
+        valueNumeric: 0.01,
+      },
     ]);
     const productDefinitions: ProductDefinition[] = [
       {
@@ -747,6 +751,9 @@ describe("CalculationService gas product configuration", () => {
     expect(results.some((item) => item.productKey === "FIJO:N1")).toBe(false);
     expect(results.some((item) => item.productKey === "ESTABLE_PLUS:N1")).toBe(
       true,
+    );
+    expect(results.some((item) => item.productKey === "INDEXADO:N1")).toBe(
+      false,
     );
   });
 });

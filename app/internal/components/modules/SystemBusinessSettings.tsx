@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Box, Tabs, Tab, Button, Stack, IconButton, Tooltip, TextField, Typography, Checkbox, Switch, Accordion, AccordionSummary, AccordionDetails, Chip, Divider } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import type { SessionState } from "../../lib/authSession";
@@ -178,6 +178,7 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
     const [activeTab, setActiveTab] = useState<BusinessTab>(activeSection ?? (isSysAdmin ? "general" : "simulation"));
     const [calcEnergyTab, setCalcEnergyTab] = useState<"electricity" | "gas">("electricity");
     const [config, setConfig] = useState<BusinessConfig>(DEFAULT_CONFIG);
+    const savedAppVersion = useRef(DEFAULT_CONFIG.appVersion);
     const [isDirty, setIsDirty] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [pdfTemplates, setPdfTemplates] = useState<any[]>([]);
@@ -233,6 +234,7 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
             const elecTaxVal = (data as any).electricityTaxRate || 0.051127;
             const hydroVal = (data as any).hydrocarbonTaxRate || 0.00234;
             const appVersion = (data as any).appVersion ?? "0.2.1";
+            savedAppVersion.current = appVersion;
             const appChangelog = Array.isArray((data as any).appChangelog) ? (data as any).appChangelog : [];
             const currentVersionEntry = appChangelog.find(
                 (entry: AppChangelogEntry) => entry.version.trim() === appVersion.trim(),
@@ -283,7 +285,29 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
         setIsDirty(true);
     };
 
+    const handleAppVersionChange = (value: string) => {
+        const isSavedVersion = value.trim() === savedAppVersion.current.trim();
+        const savedVersionEntry = config.appChangelog.find(
+            (entry) => entry.version.trim() === savedAppVersion.current.trim(),
+        );
+
+        setConfig((prev) => ({
+            ...prev,
+            appVersion: value,
+            appChangelogNotes: isSavedVersion
+                ? editableNotesFromEntry(savedVersionEntry)
+                : {},
+        }));
+        setIsDirty(true);
+    };
+
     const handleSave = async () => {
+        const isPublishingNewVersion = config.appVersion.trim() !== savedAppVersion.current.trim();
+        if (isPublishingNewVersion && !hasReleaseNotes(config.appChangelogNotes)) {
+            onNotify(t("systemSettings", "appChangelogNotesRequired"), "error");
+            return;
+        }
+
         try {
             await updateSystemConfig({
                 simulationExpirationDays: config.simulationExpirationDays,
@@ -655,7 +679,7 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
                                         label={t("systemSettings", "fieldAppVersion")}
                                         helperText={t("systemSettings", "fieldAppVersionDesc")}
                                         value={config.appVersion}
-                                        onChange={(e) => handleChange("appVersion", e.target.value)}
+                                        onChange={(e) => handleAppVersionChange(e.target.value)}
                                     />
                                 </Box>
 
@@ -664,7 +688,7 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
                                         {t("systemSettings", "fieldAppChangelogNotes")}
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                                        Write the notes for the version above. They will be saved when you click Save Changes.
+                                        {t("systemSettings", "fieldAppChangelogNotesPublishDesc")}
                                     </Typography>
                                     <Tabs
                                         value={activeReleaseNotesLanguage}

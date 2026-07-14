@@ -30,6 +30,7 @@ interface AgencyTlvProduct {
 interface AgencyTlvProductConfigProps {
     agencyId: string;
     token: string;
+    isTlv: boolean;
     onNotify?: (message: string, tone: "success" | "error") => void;
     hideSaveButton?: boolean;
     onDirtyChange?: (isDirty: boolean) => void;
@@ -59,6 +60,7 @@ const PRICING_COLUMNS: Array<{ value: PricingType }> = [
 export function AgencyTlvProductConfig({
     agencyId,
     token,
+    isTlv,
     onNotify,
     hideSaveButton = false,
     onDirtyChange,
@@ -72,8 +74,10 @@ export function AgencyTlvProductConfig({
     const [activeCommodity, setActiveCommodity] = useState<CommodityTab>("ELECTRICITY");
 
     useEffect(() => {
-        loadProducts();
-    }, [agencyId]);
+        const controller = new AbortController();
+        loadProducts(controller.signal);
+        return () => controller.abort();
+    }, [agencyId, isTlv]);
 
     useEffect(() => {
         onDirtyChange?.(isDirty);
@@ -93,10 +97,12 @@ export function AgencyTlvProductConfig({
     const productIdentity = (product: Pick<AgencyTlvProduct, "commodity" | "pricingType" | "productKey">) =>
         `${product.commodity}:${product.pricingType}:${product.productKey}`;
 
-    const loadProducts = async () => {
+    const loadProducts = async (signal?: AbortSignal) => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/v1/internal/agencies/${agencyId}/products`, {
+            const scopeType = isTlv ? "TLV" : "GLOBAL";
+            const response = await fetch(`/api/v1/internal/agencies/${agencyId}/products?scopeType=${scopeType}`, {
+                signal,
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -108,12 +114,13 @@ export function AgencyTlvProductConfig({
 
             setProducts(await response.json());
         } catch (error) {
+            if (signal?.aborted) return;
             onNotify?.(
                 error instanceof Error ? error.message : t("agencyTlvProducts", "loadError"),
                 "error",
             );
         } finally {
-            setLoading(false);
+            if (!signal?.aborted) setLoading(false);
         }
     };
 

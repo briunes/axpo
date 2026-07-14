@@ -1110,8 +1110,8 @@ export class CalculationService {
           product.commodity === commodity &&
           product.pricingType === pricingType,
       );
-      return products && products.length > 0
-        ? products
+      return options.productDefinitions !== undefined
+        ? (products ?? [])
         : getProductDefinitions({ scopeType, commodity, pricingType });
     };
 
@@ -1165,8 +1165,8 @@ export class CalculationService {
         (product) =>
           product.commodity === "GAS" && product.pricingType === pricingType,
       );
-      return products && products.length > 0
-        ? products
+      return options.productDefinitions !== undefined
+        ? (products ?? [])
         : getProductDefinitions({
             scopeType,
             commodity: "GAS",

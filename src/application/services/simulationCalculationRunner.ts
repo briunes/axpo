@@ -177,7 +177,10 @@ export async function calculateAndPersistSimulation(
 
   const productDefinitions = await loadProductDefinitions(
     (baseValueSet.scopeType ?? "GLOBAL") as ExcelParserProductConfigScope,
-    simulation.agency.isTlv ? simulation.agencyId : undefined,
+    // Product access follows the simulation owner's current agency. Older
+    // simulations retain their original agencyId when their owner is moved,
+    // which must not preserve access to the old agency's full catalogue.
+    simulation.ownerUser.agencyId,
   );
 
   const results = CalculationService.calculate(
@@ -215,6 +218,7 @@ export async function calculateAndPersistSimulation(
     metadataJson: {
       baseValueSetId,
       versionId: newVersion.id,
+      productAccessAgencyId: simulation.ownerUser.agencyId,
       electricityProducts: results.electricity?.length ?? 0,
       gasProducts: results.gas?.length ?? 0,
     },
@@ -270,31 +274,34 @@ async function loadProductDefinitions(
     return undefined;
   }
 
-  const cacheKey = `${scopeType}:${agencyId ?? ""}`;
+  // Cache only the scope-level parser definitions. Agency enablement is access
+  // control and must be read fresh on every calculation.
+  const cacheKey = scopeType;
   const now = Date.now();
   const cached = productDefinitionsCache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
-    return cached.definitions;
-  }
-
-  const rows = await prisma.excelParserProductConfig.findMany({
-    where: { scopeType },
-    orderBy: [{ sortOrder: "asc" }, { sourceLabel: "asc" }],
-  });
-  const configs =
-    rows.length > 0
-      ? withMissingDefaultExcelParserProductConfigs(
-          scopeType,
-          rows.map(toParserConfigItem),
-        )
-      : defaultExcelParserProductConfigs(scopeType);
-
-  const definitions = productDefinitionsFromParserConfigs(configs);
-  if (scopeType !== "TLV" || !agencyId) {
+  let definitions = cached?.expiresAt && cached.expiresAt > now
+    ? cached.definitions
+    : undefined;
+  if (!definitions) {
+    const rows = await prisma.excelParserProductConfig.findMany({
+      where: { scopeType },
+      orderBy: [{ sortOrder: "asc" }, { sourceLabel: "asc" }],
+    });
+    const configs =
+      rows.length > 0
+        ? withMissingDefaultExcelParserProductConfigs(
+            scopeType,
+            rows.map(toParserConfigItem),
+          )
+        : defaultExcelParserProductConfigs(scopeType);
+    definitions = productDefinitionsFromParserConfigs(configs);
     productDefinitionsCache.set(cacheKey, {
       expiresAt: now + PRODUCT_DEFINITIONS_CACHE_TTL_MS,
       definitions,
     });
+  }
+
+  if (!agencyId) {
     return definitions;
   }
 
@@ -308,10 +315,6 @@ async function loadProductDefinitions(
     },
   });
   if (agencyProducts.length === 0) {
-    productDefinitionsCache.set(cacheKey, {
-      expiresAt: now + PRODUCT_DEFINITIONS_CACHE_TTL_MS,
-      definitions,
-    });
     return definitions;
   }
 
@@ -327,10 +330,6 @@ async function loadProductDefinitions(
         `${definition.commodity}:${definition.pricingType}:${definition.productKey}`,
       ) ?? true,
   );
-  productDefinitionsCache.set(cacheKey, {
-    expiresAt: now + PRODUCT_DEFINITIONS_CACHE_TTL_MS,
-    definitions: filteredDefinitions,
-  });
   return filteredDefinitions;
 }
 
