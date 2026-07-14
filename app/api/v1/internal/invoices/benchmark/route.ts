@@ -179,6 +179,18 @@ The invoice periods MUST be mapped using the ACTUAL printed period labels from t
 NEVER assign values by order or position.
 ONLY use the explicit period identifier shown on the invoice.
 
+2.0TD CONSUMPTION LABEL EXCEPTION:
+When, and only when, the invoice explicitly prints tariff "2.0TD", treat the
+printed energy-consumption labels as canonical period identifiers:
+- "punta" = P1
+- "llano" = P2
+- "valle" = P3
+
+This is allowed only for consumption values explicitly labeled with those
+words (for example, "Los consumos han sido punta: ... llano: ... valle: ...").
+Do not apply this mapping to meter readings, maximum demand, prices, power, or
+unlabeled values. Do not use it unless "2.0TD" is explicitly printed.
+
 CRITICAL TARIFF EXTRACTION RULE:
 tarifaAcceso MUST ONLY be extracted from an EXPLICIT tariff label printed on the invoice.
 NEVER infer tarifaAcceso from number of periods, contracted powers, or energy periods.
@@ -206,6 +218,8 @@ CRITICAL FIELDS TO EXTRACT:
 
 4. ENERGY CONSUMPTION:
    - consumoP1..P6: Consumption in each period (kWh). Map to explicit period labels only.
+   - For an explicitly printed 2.0TD tariff, the consumption labels "punta",
+     "llano", and "valle" explicitly map to P1, P2, and P3 respectively.
 
 5. CONTRACTED POWER:
    - potenciaP1..P6: Contracted power in each period (kW). Map to explicit period labels only.
