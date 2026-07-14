@@ -231,13 +231,23 @@ export default function EditAgencyPage({
       sortable: false,
       renderCell: (row: UserItem) => (
         <StatusBadge
-          label={row.role}
+          label={
+            row.role === "SYS_ADMIN"
+              ? t("userFormPage", "roleSysAdmin")
+              : row.role === "ADMIN"
+                ? t("userFormPage", "roleAdmin")
+                : row.role === "AGENT"
+                  ? t("userFormPage", "roleAgent")
+                  : t("userFormPage", "roleCommercial")
+          }
           tone={
-            row.role === "ADMIN"
-              ? "brand"
-              : row.role === "AGENT"
-                ? "accent"
-                : "neutral"
+            row.role === "SYS_ADMIN"
+              ? "warning"
+              : row.role === "ADMIN"
+                ? "brand"
+                : row.role === "AGENT"
+                  ? "accent"
+                  : "neutral"
           }
         />
       ),

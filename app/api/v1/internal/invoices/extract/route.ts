@@ -220,6 +220,18 @@ NEVER assume:
 
 ONLY use the explicit period identifier shown on the invoice.
 
+2.0TD CONSUMPTION LABEL EXCEPTION:
+When, and only when, the invoice explicitly prints tariff "2.0TD", treat the
+printed energy-consumption labels as canonical period identifiers:
+- "punta" = P1
+- "llano" = P2
+- "valle" = P3
+
+This is allowed only for consumption values explicitly labeled with those
+words (for example, "Los consumos han sido punta: ... llano: ... valle: ...").
+Do not apply this mapping to meter readings, maximum demand, prices, power, or
+unlabeled values. Do not use it unless "2.0TD" is explicitly printed.
+
 Examples:
 
 If the invoice shows:
@@ -385,6 +397,8 @@ CRITICAL FIELDS TO EXTRACT:
 
    STRICT PERIOD MAPPING:
    - Map values ONLY to their explicitly labeled period number.
+   - For an explicitly printed 2.0TD tariff, the consumption labels "punta",
+     "llano", and "valle" explicitly map to P1, P2, and P3 respectively.
    - NEVER remap periods sequentially.
    - NEVER compress gaps.
    - NEVER infer missing periods.
