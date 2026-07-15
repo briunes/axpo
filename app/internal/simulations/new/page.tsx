@@ -42,7 +42,7 @@ function roundMoney(value: number): number {
 const ELEC_PERIOD_LABELS = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
 
 function activePowerPeriodsForTariff(tariff?: string | null): readonly string[] {
-    return tariff === "2.0TD" ? ["P1", "P2"] : ELEC_PERIOD_LABELS;
+    return ELEC_PERIOD_LABELS;
 }
 
 function nonInclusiveDaysBetween(from?: string, to?: string): number | undefined {
@@ -235,12 +235,12 @@ function normalizeClientCif(value?: string | null): string {
 // ─── OCR payload helpers (mirrors SimulationForm logic) ───────────────────────
 
 const ELEC_ENERGY_PERIODS: Record<string, string[]> = {
-    "2.0TD": ["P1", "P2", "P3"],
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 const ELEC_POWER_PERIODS: Record<string, string[]> = {
-    "2.0TD": ["P1", "P2"],
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
@@ -494,15 +494,18 @@ export default function NewSimulationPage() {
     }, [formActions, onActionButtons]);
 
     const handleInvoiceDataExtracted = (data: ExtractedInvoiceData, context?: InvoiceExtractionContext) => {
+        // Keep OCR periods exactly as printed. The Excel simulator treats
+        // E28:E33 as positional P1:P6 inputs and never compacts sparse periods.
+        const normalizedData = data;
         // Resolve config-based tax defaults (used only when OCR didn't return a value)
-        const zone = data.zonaGeografica ?? "Peninsula";
+        const zone = normalizedData.zonaGeografica ?? "Peninsula";
         const zoneKey = zone === "Baleares" ? "baleares" : zone === "Canarias" ? "canarias" : "peninsula";
-        const isGas = data.invoiceType?.toUpperCase() === "GAS";
+        const isGas = normalizedData.invoiceType?.toUpperCase() === "GAS";
 
         // IVA: prefer OCR value, fall back to zone config default
         let resolvedIva: number;
-        if (data.ivaTasa != null && !isNaN(data.ivaTasa)) {
-            resolvedIva = data.ivaTasa;
+        if (normalizedData.ivaTasa != null && !isNaN(normalizedData.ivaTasa)) {
+            resolvedIva = normalizedData.ivaTasa;
         } else if (isGas) {
             const gasZoneConf = gasTaxConfig?.[zoneKey];
             resolvedIva = gasZoneConf
@@ -522,19 +525,19 @@ export default function NewSimulationPage() {
             : 5.11269;
         const resolvedElecTax = isGas
             ? undefined
-            : data.impuestoElectricoTasa != null && !isNaN(data.impuestoElectricoTasa)
-                ? data.impuestoElectricoTasa
+            : normalizedData.impuestoElectricoTasa != null && !isNaN(normalizedData.impuestoElectricoTasa)
+                ? normalizedData.impuestoElectricoTasa
                 : defaultElecTax;
 
         const preparedData = isGas
             ? deriveGasCurrentInvoiceBreakdown({
-                ...data,
+                ...normalizedData,
                 ivaTasa: resolvedIva,
                 impuestoElectricoTasa: resolvedElecTax,
                 useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown !== false,
             })
             : deriveCurrentInvoiceBreakdown(
-                { ...data, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax },
+                { ...normalizedData, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax },
                 resolvedIva,
                 resolvedElecTax,
             );

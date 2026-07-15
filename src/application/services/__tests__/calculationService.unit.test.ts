@@ -698,6 +698,113 @@ describe("CalculationService Personalizada Index", () => {
   });
 });
 
+describe("CalculationService 2.0TD positional power parity", () => {
+  const productDefinitions: ProductDefinition[] = [
+    {
+      productKey: "TEST_FIXED",
+      displayName: "Test Fixed",
+      commodity: "ELECTRICITY",
+      pricingType: "FIXED",
+      tiers: ["N1"],
+    },
+  ];
+
+  function calculate20TdPower(
+    potenciaContratada: ElectricityInputs["potenciaContratada"],
+    extraPowerEntries: Array<{ key: string; valueNumeric: number }> = [],
+  ) {
+    const inputs = buildInputs(10000);
+    inputs.tarifaAcceso = "2.0TD";
+    inputs.periodo = {
+      fechaInicio: "2026-01-01",
+      fechaFin: "2026-12-31",
+      dias: 365,
+    };
+    inputs.potenciaContratada = potenciaContratada;
+    inputs.consumo = { P1: 0, P2: 0, P3: 0, P4: 999, P5: 999, P6: 999 };
+
+    const entries = [
+      ...["P1", "P2", "P3"].map((period) => ({
+        key: `ELEC:FIJO:TEST_FIXED:N1:2.0TD:${period}:ENERGIA`,
+        valueNumeric: 0,
+      })),
+      {
+        key: "ELEC:FIJO:TEST_FIXED:N1:2.0TD:P1:POTENCIA",
+        valueNumeric: 10,
+      },
+      {
+        key: "ELEC:FIJO:TEST_FIXED:N1:2.0TD:P2:POTENCIA",
+        valueNumeric: 20,
+      },
+      ...extraPowerEntries,
+    ];
+
+    return CalculationService.calculateElectricity(
+      inputs,
+      CalculationService.buildPriceMap(entries),
+      { productDefinitions },
+    ).find((item) => item.productKey === "TEST_FIXED:N1");
+  }
+
+  it("keeps sparse P1/P3 positions and does not compact P3 into P2", () => {
+    const offer = calculate20TdPower({ P1: 3, P2: 0, P3: 7 });
+
+    expect(offer).toBeDefined();
+    expect(offer!.desglose?.terminoPotencia).toBe(30);
+    expect(offer!.desglose?.terminoEnergia).toBe(0);
+  });
+
+  it("prices a later period only when Excel supplied a same-position price", () => {
+    const offer = calculate20TdPower(
+      { P1: 3, P2: 0, P3: 7, P4: 11, P5: 13 },
+      [{
+        key: "ELEC:FIJO:TEST_FIXED:N1:2.0TD:P3:POTENCIA",
+        valueNumeric: 4,
+      }],
+    );
+
+    expect(offer).toBeDefined();
+    expect(offer!.desglose?.terminoPotencia).toBe(58);
+  });
+
+  it("passes 2.0TD excess power through to the calculated offer like Excel E35", () => {
+    const inputs = buildInputs(10000);
+    inputs.tarifaAcceso = "2.0TD";
+    inputs.periodo = {
+      fechaInicio: "2026-01-01",
+      fechaFin: "2026-12-31",
+      dias: 365,
+    };
+    inputs.potenciaContratada = { P1: 3, P2: 2 };
+    inputs.consumo = { P1: 0, P2: 0, P3: 0 };
+    inputs.excesoPotencia = 12.34;
+
+    const entries = [
+      ...["P1", "P2", "P3"].map((period) => ({
+        key: `ELEC:FIJO:TEST_FIXED:N1:2.0TD:${period}:ENERGIA`,
+        valueNumeric: 0,
+      })),
+      {
+        key: "ELEC:FIJO:TEST_FIXED:N1:2.0TD:P1:POTENCIA",
+        valueNumeric: 10,
+      },
+      {
+        key: "ELEC:FIJO:TEST_FIXED:N1:2.0TD:P2:POTENCIA",
+        valueNumeric: 20,
+      },
+    ];
+
+    const offer = CalculationService.calculateElectricity(
+      inputs,
+      CalculationService.buildPriceMap(entries),
+      { productDefinitions },
+    ).find((item) => item.productKey === "TEST_FIXED:N1");
+
+    expect(offer).toBeDefined();
+    expect(offer!.desglose?.excesoPotencia).toBe(12.34);
+  });
+});
+
 describe("CalculationService gas product configuration", () => {
   it("uses configured gas product definitions when provided", () => {
     const inputs: GasInputs = {

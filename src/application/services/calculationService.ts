@@ -50,10 +50,17 @@ const ENERGY_PERIODS: Record<string, string[]> = {
 
 /** Contracted power periods per access tariff. */
 const POWER_PERIODS: Record<string, string[]> = {
-  "2.0TD": ["P1", "P2"],
+  // Excel always carries six positional power cells (E28:E33) into every
+  // product formula. For 2.0TD, P3-P6 normally have zero/blank prices, but
+  // their input positions are not compacted or renamed.
+  "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
   "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
   "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
+
+function isUnpriced20TdPowerPeriod(tariff: string, period: string): boolean {
+  return tariff === "2.0TD" && !["P1", "P2"].includes(period);
+}
 
 export interface CalculationOptions {
   baseValueScope?: ProductRegistryScope;
@@ -235,14 +242,16 @@ function calcElecFijo(
 
   let terminoPotencia = 0;
   for (const p of powerPeriods) {
-    const precioPot =
-      priceOf(
-        map,
-        `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
-      ) ??
-      (isSinglePeriod
-        ? singlePeriodPriceOf(map, product, tier, tarifaAcceso, "POTENCIA")
-        : undefined);
+    const explicitPrice = priceOf(
+      map,
+      `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
+    );
+    const precioPot = explicitPrice ??
+      (isUnpriced20TdPowerPeriod(tarifaAcceso, p)
+        ? 0
+        : isSinglePeriod
+          ? singlePeriodPriceOf(map, product, tier, tarifaAcceso, "POTENCIA")
+          : undefined);
     if (precioPot === undefined) return null;
     terminoPotencia += precioPot * pv(potenciaMap, p) * (dias / 365);
   }
@@ -357,10 +366,12 @@ function calcElecIndex(
 
   let terminoPotencia = 0;
   for (const p of powerPeriods) {
-    const precioPot = priceOf(
+    const explicitPrice = priceOf(
       map,
       `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
     );
+    const precioPot = explicitPrice ??
+      (isUnpriced20TdPowerPeriod(tarifaAcceso, p) ? 0 : undefined);
     if (precioPot === undefined) return null;
     terminoPotencia += precioPot * pv(potenciaMap, p) * (dias / 365);
   }

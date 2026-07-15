@@ -30,17 +30,20 @@ import type {
 // ─── Period helpers ────────────────────────────────────────────────────────────
 
 const ELEC_ENERGY_PERIODS: Record<ElecTarifa, string[]> = {
-    "2.0TD": ["P1", "P2", "P3"],
+    // Keep the same six positional cells as Excel; 2.0TD offer prices are
+    // defined only for P1-P3, so P4-P6 are preserved but do not affect offers.
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 const ELEC_POWER_PERIODS: Record<ElecTarifa, string[]> = {
-    "2.0TD": ["P1", "P2"],
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 const ELEC_EXCESS_PERIODS: Record<ElecTarifa, string[]> = {
-    "2.0TD": [],
+    // Excel E35 is a tariff-independent invoice pass-through amount.
+    "2.0TD": ["P1"],
     "3.0TD": ["P1", "P2", "P3"],
     "6.1TD": ["P1", "P2", "P3"],
 };
@@ -232,10 +235,7 @@ function deriveCurrentBreakdown(source: Record<string, any>): {
     const factura = finiteNumber(source.facturaActual);
     const ivaTasa = finiteNumber(source.ivaTasa);
     const impuestoElectricoTasa = finiteNumber(source.impuestoElectricoTasa);
-    const powerPeriods =
-        source.tarifaAcceso === "2.0TD"
-            ? ELEC_POWER_PERIODS["2.0TD"]
-            : ELEC_PERIOD_LABELS;
+    const powerPeriods = ELEC_PERIOD_LABELS;
     const scaleConsumption = shouldScaleOcrConsumption(source, factura);
     const getConsumption = (period: string): number => {
         const value = finiteNumber(source[`consumo${period}`]) ?? 0;
@@ -1049,7 +1049,10 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     // Completion checks
     const clientComplete = !!state.cups && !!state.nombreTitular;
     const invoiceComplete = !!state.fechaInicio && !!state.fechaFin && state.facturaActual > 0;
-    const powerComplete = pp.every((p) => (state.potencia[p] ?? 0) > 0);
+    // Excel accepts sparse positional power inputs (for example P1 + P3).
+    // Completion therefore means that at least one period was supplied, not
+    // that every displayed P1-P6 cell must be non-zero.
+    const powerComplete = pp.some((p) => (state.potencia[p] ?? 0) > 0);
     const consumptionComplete = ep.some((p) => (state.consumo[p] ?? 0) > 0);
     const currentBreakdownTotal = currentElecInvoiceBreakdownTotal(state);
     const currentBreakdownDifference = roundMoney(currentBreakdownTotal - state.facturaActual);

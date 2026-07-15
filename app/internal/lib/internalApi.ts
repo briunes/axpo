@@ -2311,6 +2311,32 @@ export async function downloadBaseValueFile(
   URL.revokeObjectURL(url);
 }
 
+export async function downloadFilledSimulationExcel(
+  token: string,
+  simulationId: string,
+  baseValueSetId?: string,
+): Promise<void> {
+  const query = baseValueSetId
+    ? `?baseValueSetId=${encodeURIComponent(baseValueSetId)}`
+    : "";
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/simulations/${simulationId}/excel${query}`,
+    { method: "GET", headers: authHeaders(token) },
+  );
+  if (!response.ok) throw new Error("Failed to download filled simulation Excel");
+
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filenameMatch = disposition.match(/filename="?([^";]+)"?/);
+  const filename = filenameMatch?.[1] ?? `simulation-${simulationId}-filled.xlsm`;
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export interface ListAuditLogsParams {
   page?: number;
   limit?: number;
