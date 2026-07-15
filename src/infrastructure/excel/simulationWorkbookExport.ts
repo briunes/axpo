@@ -1,11 +1,13 @@
 import JSZip from "jszip";
-import type { ElectricityInputs } from "@/domain/types";
+import type { ElectricityInputs, GasInputs } from "@/domain/types";
 
-const INPUT_SHEET_NAME = "PETICION DATOS LUZ";
+const ELECTRICITY_INPUT_SHEET = "PETICION DATOS LUZ";
+const GAS_INPUT_SHEET = "PETICION DATOS GAS";
 const PERIODS = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
 
 export interface SimulationWorkbookExportInput {
-  electricity: ElectricityInputs;
+  electricity?: ElectricityInputs;
+  gas?: GasInputs;
   clientName?: string | null;
 }
 
@@ -29,12 +31,14 @@ function excelDateSerial(value: string): number {
   return milliseconds / 86400000 + 25569;
 }
 
-function cellValues(input: SimulationWorkbookExportInput): Record<string, string | number> {
-  const electricity = input.electricity;
+function electricityCellValues(
+  electricity: ElectricityInputs,
+  clientName?: string | null,
+): Record<string, string | number> {
   const values: Record<string, string | number> = {
     E8: electricity.tarifaAcceso,
     E11: electricity.zonaGeografica,
-    E14: input.clientName ?? "",
+    E14: clientName ?? "",
     D24: excelDateSerial(electricity.periodo.fechaInicio),
     E24: excelDateSerial(electricity.periodo.fechaFin),
     E35: electricity.excesoPotencia ?? 0,
@@ -55,11 +59,38 @@ function cellValues(input: SimulationWorkbookExportInput): Record<string, string
   return values;
 }
 
+function gasCellValues(
+  gas: GasInputs,
+  clientName?: string | null,
+): Record<string, string | number> {
+  return {
+    E8: gas.tarifaAcceso,
+    E9: gas.cups ?? "",
+    E10: gas.consumoAnual ?? 0,
+    E11: "Peninsula y Baleares",
+    E14: clientName ?? gas.nombreTitular ?? "",
+    E15: gas.personaContacto ?? "",
+    E16: gas.comercial ?? "",
+    E17: gas.direccion ?? "",
+    E18: gas.comercializadorActual ?? "",
+    D24: excelDateSerial(gas.periodo.fechaInicio),
+    E24: excelDateSerial(gas.periodo.fechaFin),
+    E29: gas.consumo,
+    D30: gas.telemedida,
+    E33: gas.extras?.otrosCargos ?? 0,
+    E34: gas.extras?.alquilerEquipoMedida ?? 0,
+    E35: normalizeRate(gas.ivaTasa, 0.21),
+    E37: gas.impuestoHidrocarburo ?? 0.00234,
+    E39: gas.facturaActual,
+  };
+}
+
 function replaceCell(
   sheetXml: string,
   address: string,
   value: number,
   sharedString = false,
+  sheetName = ELECTRICITY_INPUT_SHEET,
 ): string {
   const cellPattern = new RegExp(`<c\\b([^>]*\\br="${address}"[^>]*)>[\\s\\S]*?<\\/c>`);
   const selfClosingPattern = new RegExp(`<c\\b([^>]*\\br="${address}"[^>]*)\\s*\\/>`);
@@ -68,7 +99,7 @@ function replaceCell(
   // and corrupt all intervening cell records.
   const match = sheetXml.match(selfClosingPattern) ?? sheetXml.match(cellPattern);
   if (!match) {
-    throw new Error(`Workbook input cell ${INPUT_SHEET_NAME}!${address} was not found`);
+    throw new Error(`Workbook input cell ${sheetName}!${address} was not found`);
   }
 
   const attributes = match[1]
@@ -103,12 +134,12 @@ function appendSharedStrings(
   };
 }
 
-function workbookSheetPath(workbookXml: string, relsXml: string): string {
+function workbookSheetPath(workbookXml: string, relsXml: string, sheetName: string): string {
   const sheetPattern = new RegExp(
-    `<sheet\\b[^>]*name="${INPUT_SHEET_NAME}"[^>]*r:id="([^"]+)"[^>]*/?>`,
+    `<sheet\\b[^>]*name="${sheetName}"[^>]*r:id="([^"]+)"[^>]*/?>`,
   );
   const sheetMatch = workbookXml.match(sheetPattern);
-  if (!sheetMatch) throw new Error(`Workbook sheet "${INPUT_SHEET_NAME}" was not found`);
+  if (!sheetMatch) throw new Error(`Workbook sheet "${sheetName}" was not found`);
 
   const relationshipPattern = new RegExp(
     `<Relationship\\b[^>]*Id="${sheetMatch[1]}"[^>]*Target="([^"]+)"[^>]*/?>`,
@@ -160,6 +191,13 @@ export async function fillSimulationWorkbook(
   source: Buffer,
   input: SimulationWorkbookExportInput,
 ): Promise<Buffer> {
+  if (Boolean(input.electricity) === Boolean(input.gas)) {
+    throw new Error("Exactly one electricity or gas simulation input is required");
+  }
+  const sheetName = input.electricity ? ELECTRICITY_INPUT_SHEET : GAS_INPUT_SHEET;
+  const values = input.electricity
+    ? electricityCellValues(input.electricity, input.clientName)
+    : gasCellValues(input.gas!, input.clientName);
   const zip = await JSZip.loadAsync(source);
   const workbookFile = zip.file("xl/workbook.xml");
   const relsFile = zip.file("xl/_rels/workbook.xml.rels");
@@ -175,12 +213,12 @@ export async function fillSimulationWorkbook(
     contentTypesFile.async("string"),
     sharedStringsFile.async("string"),
   ]);
-  const sheetPath = workbookSheetPath(workbookXml, relsXml);
+  const sheetPath = workbookSheetPath(workbookXml, relsXml, sheetName);
   const sheetFile = zip.file(sheetPath);
   if (!sheetFile) throw new Error(`Workbook worksheet file ${sheetPath} was not found`);
 
   let sheetXml = await sheetFile.async("string");
-  const entries = Object.entries(cellValues(input));
+  const entries = Object.entries(values);
   const stringEntries = entries.filter((entry): entry is [string, string] => typeof entry[1] === "string");
   const appendedStrings = appendSharedStrings(
     sharedStringsXml,
@@ -196,6 +234,7 @@ export async function fillSimulationWorkbook(
       address,
       sharedStringIndex ?? (value as number),
       sharedStringIndex != null,
+      sheetName,
     );
   }
   zip.file(sheetPath, sheetXml);

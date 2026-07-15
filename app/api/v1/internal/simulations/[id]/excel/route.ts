@@ -35,8 +35,8 @@ export const GET = withErrorHandler(
       return payload && typeof payload === "object" && payload.electricity;
     });
     const payload = payloadVersion?.payloadJson as SimulationPayload | undefined;
-    if (!payload?.electricity) {
-      throw new ValidationError("This simulation has no electricity inputs to export");
+    if (!payload?.electricity && !payload?.gas) {
+      throw new ValidationError("This simulation has no electricity or gas inputs to export");
     }
 
     const baseValueSetId =
@@ -55,9 +55,14 @@ export const GET = withErrorHandler(
 
     const filled = await fillSimulationWorkbook(Buffer.from(set.sourceFileData), {
       electricity: payload.electricity,
+      gas: payload.gas,
       clientName:
-        ((payload as unknown as { invoiceData?: { nombreTitular?: string } }).invoiceData
-          ?.nombreTitular) ?? undefined,
+        payload.electricity
+          ? ((payload as unknown as { invoiceData?: { nombreTitular?: string } }).invoiceData
+              ?.nombreTitular) ??
+            (payload.electricity as unknown as { clientData?: { nombreTitular?: string } })
+              .clientData?.nombreTitular
+          : payload.gas?.nombreTitular,
     });
     const originalExtension = set.sourceFileName.toLowerCase().endsWith(".xlsx") ? ".xlsx" : ".xlsm";
     const reference = safeFilenamePart(simulation.referenceNumber ?? simulation.id) || "simulation";

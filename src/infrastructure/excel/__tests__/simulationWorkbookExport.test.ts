@@ -1,22 +1,31 @@
 import JSZip from "jszip";
 import { fillSimulationWorkbook } from "../simulationWorkbookExport";
-import type { ElectricityInputs } from "@/domain/types";
+import type { ElectricityInputs, GasInputs } from "@/domain/types";
 
-const addresses = [
+const electricityAddresses = [
   "E8", "E11", "E14", "D24", "E24", "E25",
   "E28", "E29", "E30", "E31", "E32", "E33",
   "E35",
   "E39", "E40", "E41", "E42", "E43", "E44",
   "E47", "E48", "E49", "E50", "E51", "E53", "E57",
 ];
+const gasAddresses = [
+  "E8", "E9", "E10", "E11", "E14", "E15", "E16", "E17", "E18",
+  "D24", "E24", "E25", "E29", "D30", "E33", "E34", "E35", "E37", "E39",
+];
+
+function worksheetXml(addresses: string[]): string {
+  return `<?xml version="1.0"?><worksheet><sheetData><row r="1">${addresses.map((address) => address === "D24" || address === "E24" ? `<c r="${address}" s="2"/>` : `<c r="${address}" s="2"><f>OLD_FORMULA</f><v>999</v></c>`).join("")}<c r="A1"><f>SUM(E28:E33)</f><v>0</v></c></row></sheetData></worksheet>`;
+}
 
 async function sourceWorkbook(): Promise<Buffer> {
   const zip = new JSZip();
-  zip.file("xl/workbook.xml", `<?xml version="1.0"?><workbook xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="PETICION DATOS LUZ" sheetId="1" r:id="rId1"/></sheets></workbook>`);
-  zip.file("xl/_rels/workbook.xml.rels", `<?xml version="1.0"?><Relationships><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/calcChain" Target="calcChain.xml"/></Relationships>`);
+  zip.file("xl/workbook.xml", `<?xml version="1.0"?><workbook xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="PETICION DATOS LUZ" sheetId="1" r:id="rId1"/><sheet name="PETICION DATOS GAS" sheetId="2" r:id="rId2"/></sheets></workbook>`);
+  zip.file("xl/_rels/workbook.xml.rels", `<?xml version="1.0"?><Relationships><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/calcChain" Target="calcChain.xml"/></Relationships>`);
   zip.file("[Content_Types].xml", `<?xml version="1.0"?><Types><Override PartName="/xl/calcChain.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml"/></Types>`);
   zip.file("xl/sharedStrings.xml", `<?xml version="1.0"?><sst count="1" uniqueCount="1"><si><t>Existing</t></si></sst>`);
-  zip.file("xl/worksheets/sheet1.xml", `<?xml version="1.0"?><worksheet><sheetData><row r="1">${addresses.map((address) => address === "D24" || address === "E24" ? `<c r="${address}" s="2"/>` : `<c r="${address}" s="2"><f>OLD_FORMULA</f><v>999</v></c>`).join("")}<c r="A1"><f>SUM(E28:E33)</f><v>0</v></c></row></sheetData></worksheet>`);
+  zip.file("xl/worksheets/sheet1.xml", worksheetXml(electricityAddresses));
+  zip.file("xl/worksheets/sheet2.xml", worksheetXml(gasAddresses));
   zip.file("xl/calcChain.xml", `<?xml version="1.0"?><calcChain><c r="E28" i="1"/></calcChain>`);
   zip.file("xl/vbaProject.bin", Buffer.from([0xde, 0xad, 0xbe, 0xef]));
   return zip.generateAsync({ type: "nodebuffer" });
@@ -69,5 +78,44 @@ describe("fillSimulationWorkbook", () => {
     await expect(zip.file("xl/vbaProject.bin")!.async("uint8array")).resolves.toEqual(
       new Uint8Array([0xde, 0xad, 0xbe, 0xef]),
     );
+  });
+
+  it("fills the PETICION DATOS GAS inputs and preserves its day formula", async () => {
+    const gas: GasInputs = {
+      cups: "ES0200000000000001AB",
+      consumoAnual: 12500,
+      nombreTitular: "GAS CUSTOMER",
+      personaContacto: "CONTACT",
+      comercial: "AGENT",
+      direccion: "GAS STREET 1",
+      comercializadorActual: "CURRENT GAS SUPPLIER",
+      tarifaAcceso: "RL02",
+      zonaGeografica: "Peninsula",
+      consumo: 875.5,
+      telemedida: "NO",
+      periodo: { fechaInicio: "2026-05-01", fechaFin: "2026-06-01", dias: 31 },
+      facturaActual: 123.45,
+      extras: { alquilerEquipoMedida: 2.5, otrosCargos: 1.25 },
+      ivaTasa: 21,
+      impuestoHidrocarburo: 0.00234,
+    };
+
+    const output = await fillSimulationWorkbook(await sourceWorkbook(), { gas });
+    const zip = await JSZip.loadAsync(output);
+    const sheet = await zip.file("xl/worksheets/sheet2.xml")!.async("string");
+    const sharedStrings = await zip.file("xl/sharedStrings.xml")!.async("string");
+
+    expect(sheet).toContain('<c r="E8" s="2" t="s"><v>1</v></c>');
+    expect(sheet).toContain('<c r="E10" s="2"><v>12500</v></c>');
+    expect(sheet).toContain('<c r="D24" s="2"><v>46143</v></c>');
+    expect(sheet).toContain('<c r="E24" s="2"><v>46174</v></c>');
+    expect(sheet).toContain('<c r="E25" s="2"><f>OLD_FORMULA</f><v>999</v></c>');
+    expect(sheet).toContain('<c r="E29" s="2"><v>875.5</v></c>');
+    expect(sheet).toContain('<c r="E35" s="2"><v>0.21</v></c>');
+    expect(sheet).toContain('<c r="E37" s="2"><v>0.00234</v></c>');
+    expect(sheet).toContain('<c r="E39" s="2"><v>123.45</v></c>');
+    expect(sharedStrings).toContain("GAS CUSTOMER");
+    expect(sharedStrings).toContain("Peninsula y Baleares");
+    expect(zip.file("xl/calcChain.xml")).toBeNull();
   });
 });
