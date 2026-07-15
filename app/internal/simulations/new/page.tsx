@@ -29,6 +29,7 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 import WarningIcon from '@mui/icons-material/Warning';
+import { normalizeOcr20TdPowerPeriods } from "../../../../src/application/services/ocrElectricityNormalization";
 type SimType = "ELECTRICITY" | "GAS";
 
 function finiteOrUndefined(value: unknown): number | undefined {
@@ -494,15 +495,16 @@ export default function NewSimulationPage() {
     }, [formActions, onActionButtons]);
 
     const handleInvoiceDataExtracted = (data: ExtractedInvoiceData, context?: InvoiceExtractionContext) => {
+        const normalizedData = normalizeOcr20TdPowerPeriods(data);
         // Resolve config-based tax defaults (used only when OCR didn't return a value)
-        const zone = data.zonaGeografica ?? "Peninsula";
+        const zone = normalizedData.zonaGeografica ?? "Peninsula";
         const zoneKey = zone === "Baleares" ? "baleares" : zone === "Canarias" ? "canarias" : "peninsula";
-        const isGas = data.invoiceType?.toUpperCase() === "GAS";
+        const isGas = normalizedData.invoiceType?.toUpperCase() === "GAS";
 
         // IVA: prefer OCR value, fall back to zone config default
         let resolvedIva: number;
-        if (data.ivaTasa != null && !isNaN(data.ivaTasa)) {
-            resolvedIva = data.ivaTasa;
+        if (normalizedData.ivaTasa != null && !isNaN(normalizedData.ivaTasa)) {
+            resolvedIva = normalizedData.ivaTasa;
         } else if (isGas) {
             const gasZoneConf = gasTaxConfig?.[zoneKey];
             resolvedIva = gasZoneConf
@@ -522,19 +524,19 @@ export default function NewSimulationPage() {
             : 5.11269;
         const resolvedElecTax = isGas
             ? undefined
-            : data.impuestoElectricoTasa != null && !isNaN(data.impuestoElectricoTasa)
-                ? data.impuestoElectricoTasa
+            : normalizedData.impuestoElectricoTasa != null && !isNaN(normalizedData.impuestoElectricoTasa)
+                ? normalizedData.impuestoElectricoTasa
                 : defaultElecTax;
 
         const preparedData = isGas
             ? deriveGasCurrentInvoiceBreakdown({
-                ...data,
+                ...normalizedData,
                 ivaTasa: resolvedIva,
                 impuestoElectricoTasa: resolvedElecTax,
                 useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown !== false,
             })
             : deriveCurrentInvoiceBreakdown(
-                { ...data, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax },
+                { ...normalizedData, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax },
                 resolvedIva,
                 resolvedElecTax,
             );
