@@ -6,6 +6,7 @@ import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import {
   downloadBaseValueFile,
+  downloadFilledSimulationExcel,
   getSimulation,
   openSimulationInvoice,
   updateClient,
@@ -40,6 +41,8 @@ import {
   IconButton,
   Tooltip,
   Typography,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import ShareIcon from "@mui/icons-material/Share";
 import CloseIcon from "@mui/icons-material/Close";
@@ -49,6 +52,7 @@ import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import DownloadIcon from "@mui/icons-material/Download";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { ShareSimulationView } from "./components/ShareSimulationView";
 import { DownloadHistoryDialog } from "./components/DownloadHistoryDialog";
 import LaunchIcon from "@mui/icons-material/Launch";
@@ -360,6 +364,7 @@ export default function SimulationDetailPage({
   const [selectedBvsIsProduction, setSelectedBvsIsProduction] = useState<
     boolean | null
   >(null);
+  const [excelMenuAnchor, setExcelMenuAnchor] = useState<HTMLElement | null>(null);
   const simulationBreadcrumbLabel =
     simulation?.referenceNumber || simulation?.client?.name || simulation?.id || id;
   const breadcrumbs = useMemo(
@@ -395,6 +400,19 @@ export default function SimulationDetailPage({
       );
     }
   }, [downloadBaseValueSetId, session, showError, t]);
+
+  const handleDownloadFilledExcel = useCallback(async () => {
+    if (!session || !simulation) return;
+    try {
+      await downloadFilledSimulationExcel(
+        session.token,
+        simulation.id,
+        downloadBaseValueSetId ?? undefined,
+      );
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Failed to download filled simulation Excel");
+    }
+  }, [downloadBaseValueSetId, session, showError, simulation]);
 
   const fetchedRef = useRef(false);
   useEffect(() => {
@@ -467,20 +485,39 @@ export default function SimulationDetailPage({
           </span>
         )}
         {downloadBaseValueSetId && (
-          <Tooltip title={t("baseValuesModule", "download_tooltip")} arrow>
+          <Tooltip title={t("baseValuesModule", "download_tooltip")} arrow placement="top">
             <span className="topbar-action-wrap">
               <Button
                 className="topbar-action topbar-action--compact"
                 variant="outlined"
                 size="small"
                 startIcon={<DownloadIcon fontSize="small" />}
-                onClick={handleDownloadBaseValues}
+                onClick={(event) => setExcelMenuAnchor(event.currentTarget)}
                 aria-label={t("baseValuesModule", "download_tooltip")}
+                endIcon={<ArrowDropDownIcon fontSize="small" />}
               >
                 <span className="topbar-action-label">
                   {t("baseValuesModule", "downloadExcel")}
                 </span>
               </Button>
+              <Menu
+                anchorEl={excelMenuAnchor}
+                open={Boolean(excelMenuAnchor)}
+                onClose={() => setExcelMenuAnchor(null)}
+              >
+                <MenuItem onClick={() => {
+                  setExcelMenuAnchor(null);
+                  void handleDownloadBaseValues();
+                }}>
+                  {t("baseValuesModule", "downloadOriginalExcel")}
+                </MenuItem>
+                <MenuItem onClick={() => {
+                  setExcelMenuAnchor(null);
+                  void handleDownloadFilledExcel();
+                }}>
+                  {t("baseValuesModule", "downloadFilledSimulationExcel")}
+                </MenuItem>
+              </Menu>
             </span>
           </Tooltip>
         )}
@@ -544,8 +581,10 @@ export default function SimulationDetailPage({
     canChooseBaseValues,
     canOpenAuditLogs,
     downloadBaseValueSetId,
+    excelMenuAnchor,
     handleBaseValueSetChange,
     handleDownloadBaseValues,
+    handleDownloadFilledExcel,
     handleShare,
     onActionButtons,
     selectedOfferProductKey,

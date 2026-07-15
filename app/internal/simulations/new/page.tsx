@@ -29,7 +29,6 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 import WarningIcon from '@mui/icons-material/Warning';
-import { normalizeOcr20TdPowerPeriods } from "../../../../src/application/services/ocrElectricityNormalization";
 type SimType = "ELECTRICITY" | "GAS";
 
 function finiteOrUndefined(value: unknown): number | undefined {
@@ -43,7 +42,7 @@ function roundMoney(value: number): number {
 const ELEC_PERIOD_LABELS = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
 
 function activePowerPeriodsForTariff(tariff?: string | null): readonly string[] {
-    return tariff === "2.0TD" ? ["P1", "P2"] : ELEC_PERIOD_LABELS;
+    return ELEC_PERIOD_LABELS;
 }
 
 function nonInclusiveDaysBetween(from?: string, to?: string): number | undefined {
@@ -236,12 +235,12 @@ function normalizeClientCif(value?: string | null): string {
 // ─── OCR payload helpers (mirrors SimulationForm logic) ───────────────────────
 
 const ELEC_ENERGY_PERIODS: Record<string, string[]> = {
-    "2.0TD": ["P1", "P2", "P3"],
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 const ELEC_POWER_PERIODS: Record<string, string[]> = {
-    "2.0TD": ["P1", "P2"],
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
@@ -495,7 +494,9 @@ export default function NewSimulationPage() {
     }, [formActions, onActionButtons]);
 
     const handleInvoiceDataExtracted = (data: ExtractedInvoiceData, context?: InvoiceExtractionContext) => {
-        const normalizedData = normalizeOcr20TdPowerPeriods(data);
+        // Keep OCR periods exactly as printed. The Excel simulator treats
+        // E28:E33 as positional P1:P6 inputs and never compacts sparse periods.
+        const normalizedData = data;
         // Resolve config-based tax defaults (used only when OCR didn't return a value)
         const zone = normalizedData.zonaGeografica ?? "Peninsula";
         const zoneKey = zone === "Baleares" ? "baleares" : zone === "Canarias" ? "canarias" : "peninsula";

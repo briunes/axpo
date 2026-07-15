@@ -138,7 +138,7 @@ export default function EditBaseValueSetPage({
             actions={
                 <>
                     {set?.sourceFileName && (
-                        <Tooltip title={t("baseValuesModule", "download_tooltip")} placement="bottom">
+                        <Tooltip title={t("baseValuesModule", "download_tooltip")} placement="top">
                             <Button
                                 variant="outlined"
                                 size="small"

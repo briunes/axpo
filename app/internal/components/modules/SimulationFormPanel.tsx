@@ -18,17 +18,20 @@ import type {
 // ─── Period helpers ────────────────────────────────────────────────────────────
 
 const ELEC_ENERGY_PERIODS: Record<ElecTarifa, string[]> = {
-    "2.0TD": ["P1", "P2", "P3"],
+    // Keep the same six positional cells as Excel; 2.0TD offer prices are
+    // defined only for P1-P3, so P4-P6 are preserved but do not affect offers.
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 const ELEC_POWER_PERIODS: Record<ElecTarifa, string[]> = {
-    "2.0TD": ["P1", "P2"],
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 const ELEC_EXCESS_PERIODS: Record<ElecTarifa, string[]> = {
-    "2.0TD": [],
+    // Excel E35 is a tariff-independent invoice pass-through amount.
+    "2.0TD": ["P1"],
     "3.0TD": ["P1", "P2", "P3"],
     "6.1TD": ["P1", "P2", "P3"],
 };

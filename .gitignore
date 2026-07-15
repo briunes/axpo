@@ -60,3 +60,4 @@ docker-data/
 *.tmp
 .cache/
 temp/
+tmp/
