@@ -33,19 +33,28 @@ export function SidebarHeader({ collapsed, onToggle, mobileOpen = false, onMobil
           background: 'transparent',
           border: 'none',
           padding: 0,
+          width: '100%',
         }}
         type="button"
         aria-label={collapsed ? t("common", "expandSidebar") : undefined}
       >
         <div className="app-sidebar-logo-mark">
-          <img src="/axpo-mark.svg" alt="AXPO" width={20} height={20} style={{ display: "block" }} />
+          <img
+            src={collapsed ? "/axpo-mark.svg" : "/axpo-logo.svg"}
+            alt="AXPO"
+            width={collapsed ? 20 : 88}
+            height={collapsed ? 42 : 42}
+            style={{
+              display: "block",
+              width: collapsed ? 42 : 88,
+              height: "auto",
+              maxWidth: "none",
+            }}
+          />
         </div>
         <div className="app-sidebar-logo-text">
-          <Typography component="div" variant="body2" className="sidebar-logo-title" sx={{ fontWeight: 700 }}>
-            AXPO
-          </Typography>
           <Typography component="div" variant="caption" className="sidebar-logo-sub">
-            Simulator
+            {t("common", "simulator")}
           </Typography>
         </div>
       </button>

@@ -19,6 +19,7 @@ import {
 import type { SessionState } from "../../lib/authSession";
 import { useRequestCachePolicy } from "./useRequestCachePolicy";
 import { normalizeQueryKeyParams } from "./queryKeys";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface AgenciesActions {
   agencies: AgencyItem[];
@@ -81,6 +82,7 @@ export function useAgencies(
   initialPageSize = 25,
   options?: UseAgenciesOptions,
 ): AgenciesActions {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const cachePolicy = useRequestCachePolicy("agencies");
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -251,7 +253,7 @@ export function useAgencies(
       clearFeedback();
       await fn();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Action failed.");
+      setErrorText(error instanceof Error ? error.message : t("common", "actionFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -260,14 +262,14 @@ export function useAgencies(
   const handleCreateAgency = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session || !newAgencyName.trim()) {
-      setErrorText("Agency name is required.");
+      setErrorText(t("agenciesModule", "nameRequired"));
       return;
     }
     await runAction("create-agency", async () => {
       await createAgency(session.token, { name: newAgencyName.trim() });
       setNewAgencyName("");
       await invalidate();
-      setSuccessText("Agency created.");
+      setSuccessText(t("agenciesModule", "created"));
     });
   };
 
@@ -282,7 +284,7 @@ export function useAgencies(
     e.preventDefault();
     if (!session || !selectedAgencyId) return;
     if (!editAgencyName.trim()) {
-      setErrorText("Agency name is required.");
+      setErrorText(t("agenciesModule", "nameRequired"));
       return;
     }
     await runAction("update-agency", async () => {
@@ -290,7 +292,7 @@ export function useAgencies(
         name: editAgencyName.trim(),
       });
       await invalidate();
-      setSuccessText("Agency updated.");
+      setSuccessText(t("agenciesModule", "updated"));
       setSelectedAgencyId(null);
     });
   };
@@ -300,9 +302,7 @@ export function useAgencies(
       if (!session) return;
       await updateAgencyStatus(session.token, agency.id, !agency.isActive);
       await invalidate();
-      setSuccessText(
-        `Agency ${agency.isActive ? "deactivated" : "activated"}.`,
-      );
+      setSuccessText(t("agenciesModule", agency.isActive ? "deactivated" : "activated"));
     });
   };
 
@@ -311,7 +311,7 @@ export function useAgencies(
     await runAction(`delete-agency-${agency.id}`, async () => {
       await deleteAgency(session.token, agency.id);
       await invalidate();
-      setSuccessText("Agency deleted.");
+      setSuccessText(t("agenciesModule", "deleted"));
     });
   };
 
@@ -320,9 +320,7 @@ export function useAgencies(
       if (!session) return;
       await Promise.all(ids.map((id) => deleteAgency(session.token, id)));
       await invalidate();
-      setSuccessText(
-        `${ids.length} agenc${ids.length !== 1 ? "ies" : "y"} deleted.`,
-      );
+      setSuccessText(t("agenciesModule", "bulkDeleted", { count: ids.length }));
     });
   };
 

@@ -146,7 +146,7 @@ function SimulationMeta({
     label: t("columns", "status"),
     value: (
       <StatusBadge
-        label={sim.status || "DRAFT"}
+        label={sim.status === "DRAFT" || !sim.status ? t("baseValuesModule", "statusDraft") : sim.status}
         tone={simulationStatusTone(sim.status)}
       />
     ),
@@ -410,7 +410,7 @@ export default function SimulationDetailPage({
         downloadBaseValueSetId ?? undefined,
       );
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Failed to download filled simulation Excel");
+      showError(err instanceof Error ? err.message : t("common", "actionFailed"));
     }
   }, [downloadBaseValueSetId, session, showError, simulation]);
 

@@ -26,6 +26,7 @@ import type { SessionState } from "../../lib/authSession";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useRequestCachePolicy } from "./useRequestCachePolicy";
 import { normalizeQueryKeyParams } from "./queryKeys";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "N/A";
@@ -167,6 +168,7 @@ export function useSimulations(
   initialPageSize = 25,
   options?: UseSimulationsOptions,
 ): SimulationsActions {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const cachePolicy = useRequestCachePolicy("simulations");
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -437,7 +439,7 @@ export function useSimulations(
       clearFeedback();
       await fn();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Action failed.");
+      setErrorText(error instanceof Error ? error.message : t("common", "actionFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -556,7 +558,7 @@ export function useSimulations(
       setCupsValidation(result);
     } catch (error) {
       setErrorText(
-        error instanceof Error ? error.message : "CUPS validation failed.",
+        error instanceof Error ? error.message : t("simulationsModule", "cupsValidationFailed"),
       );
     } finally {
       setCupsValidationBusy(false);
@@ -568,7 +570,7 @@ export function useSimulations(
     if (!session) return;
     const days = Number(expiresDays);
     if (!Number.isFinite(days) || days <= 0) {
-      setErrorText("Expiration days must be a positive number.");
+      setErrorText(t("simulationsModule", "invalidExpirationDays"));
       return;
     }
     await runAction("create-simulation", async () => {
@@ -585,7 +587,7 @@ export function useSimulations(
         payloadJson: { clientName, cups, offerType, source: "internal-ui" },
       });
       await invalidate();
-      setSuccessText("Simulation created as draft.");
+      setSuccessText(t("simulationsModule", "createdAsDraft"));
     });
   };
 
@@ -609,7 +611,7 @@ export function useSimulations(
     try {
       parsedPayload = JSON.parse(editPayloadJson) as Record<string, unknown>;
     } catch {
-      setErrorText("Payload JSON is invalid — check your edits.");
+      setErrorText(t("simulationsModule", "invalidPayloadJson"));
       return;
     }
     const expiresAt = editSimulationExpiry
@@ -622,7 +624,7 @@ export function useSimulations(
         payloadJson: parsedPayload,
       });
       await invalidate();
-      setSuccessText("Simulation updated.");
+      setSuccessText(t("simulationsModule", "updated"));
       setSelectedSimulationId(null);
     });
   };
@@ -633,8 +635,8 @@ export function useSimulations(
     await invalidate();
     setSuccessText(
       shared.publicToken
-        ? `Shared. Token: ${shared.publicToken.slice(0, 14)}...`
-        : "Simulation shared.",
+        ? t("simulationsModule", "sharedWithToken", { token: `${shared.publicToken.slice(0, 14)}...` })
+        : t("simulationsModule", "shared"),
     );
     return shared;
   };
@@ -644,7 +646,7 @@ export function useSimulations(
       if (!session) return;
       await cloneSimulation(session.token, sim.id);
       await invalidate();
-      setSuccessText("Simulation cloned.");
+      setSuccessText(t("simulationsModule", "cloned"));
     });
   };
 
@@ -653,7 +655,7 @@ export function useSimulations(
       if (!session) return;
       await rotateSimulationPinSnapshot(session.token, sim.id);
       await invalidate();
-      setSuccessText("PIN snapshot refreshed.");
+      setSuccessText(t("simulationsModule", "pinRefreshed"));
     });
   };
 
@@ -665,7 +667,7 @@ export function useSimulations(
         ocrValidation: "manual-sample",
       });
       await invalidate();
-      setSuccessText("OCR prefill version created.");
+      setSuccessText(t("simulationsModule", "ocrPrefillCreated"));
     });
   };
 
@@ -673,7 +675,7 @@ export function useSimulations(
     await runAction(`pdf-sim-${sim.id}`, async () => {
       if (!session) return;
       await downloadSimulationPdf(session.token, sim.id);
-      setSuccessText("PDF downloaded.");
+      setSuccessText(t("simulationsModule", "pdfDownloaded"));
     });
   };
 
@@ -682,7 +684,7 @@ export function useSimulations(
       if (!session) return;
       await softDeleteSimulation(session.token, sim.id);
       await invalidate();
-      setSuccessText("Simulation archived.");
+      setSuccessText(t("simulationsModule", "archived"));
     });
   };
 
@@ -692,7 +694,7 @@ export function useSimulations(
       const result = await bulkDeleteSimulations(session.token, ids);
       await invalidate();
       setSuccessText(
-        `Deleted ${result.succeeded} of ${result.total} simulation(s).`,
+        t("simulationsModule", "bulkDeletedResult", { succeeded: result.succeeded, total: result.total }),
       );
     });
   };
@@ -703,7 +705,7 @@ export function useSimulations(
       const result = await bulkArchiveSimulations(session.token, ids);
       await invalidate();
       setSuccessText(
-        `Archived ${result.succeeded} of ${result.total} simulation(s).`,
+        t("simulationsModule", "bulkArchivedResult", { succeeded: result.succeeded, total: result.total }),
       );
     });
   };
@@ -734,7 +736,7 @@ export function useSimulations(
         : prev,
     );
     setSuccessText(
-      `Cálculo completado — ${(calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0)} productos evaluados.`,
+      t("simulationsModule", "calculationCompleted", { count: (calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0) }),
     );
     return calcResult.results;
   };

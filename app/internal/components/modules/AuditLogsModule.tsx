@@ -116,6 +116,24 @@ function getEventTypeLabel(eventType: string, t: ReturnType<typeof useI18n>["t"]
     return eventType;
 }
 
+function getTargetTypeLabel(targetType: string, t: ReturnType<typeof useI18n>["t"]): string {
+    const normalized = targetType.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    const labelKeys: Record<string, string> = {
+        SIMULATION: "groupSimulation",
+        USER: "groupUser",
+        AGENCY: "groupAgency",
+        CLIENT: "groupClient",
+        BASEVALUESET: "groupBaseValues",
+        AUTH: "groupAuth",
+        PUBLIC: "groupPublic",
+        SESSION: "targetSession",
+        SYSTEM: "targetSystem",
+        OCRINVOICE: "targetOcrInvoice",
+    };
+    const labelKey = labelKeys[normalized];
+    return labelKey ? t("auditLogsModule", labelKey) : targetType;
+}
+
 function EventChip({ eventType, t }: { eventType: string; t: ReturnType<typeof useI18n>["t"] }) {
     const ev = EVENT_REGISTRY[eventType];
     const label = getEventTypeLabel(eventType, t);
@@ -153,12 +171,12 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
     const { preferences } = useUserPreferences();
 
     const getTargetRoute = useCallback((targetType: string, targetId: string): string | null => {
-        switch (targetType) {
+        switch (targetType.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()) {
             case "USER": return `/internal/users/${targetId}/edit`;
             case "AGENCY": return `/internal/agencies/${targetId}/edit`;
             case "CLIENT": return `/internal/clients/${targetId}/edit`;
             case "SIMULATION": return `/internal/simulations/${targetId}`;
-            case "BASE_VALUE_SET": return `/internal/base-values/${targetId}/edit`;
+            case "BASEVALUESET": return `/internal/base-values/${targetId}/edit`;
             default: return null;
         }
     }, []);
@@ -245,7 +263,7 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
                         </Button>
                     </span>
                 </Tooltip>
-                <Tooltip title={t("actions", "exportCsv")} arrow>
+                <Tooltip title={t("auditLogsModule", "exportCsv")} arrow>
                     <span className="topbar-action-wrap">
                         <Button
                             className="topbar-action topbar-action--compact"
@@ -254,9 +272,9 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
                             onClick={() => handleExportCsv()}
                             disabled={loading || filteredLogs.length === 0}
                             startIcon={<FileDownloadIcon fontSize="small" />}
-                            aria-label={t("actions", "exportCsv")}
+                            aria-label={t("auditLogsModule", "exportCsv")}
                         >
-                            <span className="topbar-action-label">{t("actions", "exportCsv")}</span>
+                            <span className="topbar-action-label">{t("auditLogsModule", "exportCsv")}</span>
                         </Button>
                     </span>
                 </Tooltip>
@@ -543,7 +561,7 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
             width: "150",
             renderCell: (log) => (
                 <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--scheme-neutral-400)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    {log.targetType || "—"}
+                    {log.targetType ? getTargetTypeLabel(log.targetType, t) : "—"}
                 </Typography>
             ),
         },

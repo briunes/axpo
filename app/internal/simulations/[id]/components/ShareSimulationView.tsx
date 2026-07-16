@@ -307,7 +307,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 },
                 body: JSON.stringify({
                     htmlContent: processedContent,
-                    watermark: isTestingMode ? 'TESTING' : (!markAsShared ? 'DRAFT' : undefined),
+                    watermark: isTestingMode ? 'TESTING' : (!markAsShared ? t("baseValuesModule", "statusDraft").toUpperCase() : undefined),
                 }),
             });
             maybePersistRefreshedToken(response);

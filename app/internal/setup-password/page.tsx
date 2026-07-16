@@ -7,6 +7,7 @@ import { setupPassword } from "../lib/internalApi";
 import { useI18n } from "../../../src/lib/i18n-context";
 import { UI_LANGUAGES } from "../../../src/lib/uiLanguages";
 import { LanguageFlag } from "../../../src/lib/LanguageFlag";
+import { FormInput } from "../components/ui/FormInput";
 import styles from "../authPages.module.css";
 
 export default function SetupPasswordPage() {
@@ -95,14 +96,12 @@ function SetupPasswordContent() {
                 {/* ── Brand panel ── */}
                 <div className={styles.brandPanel}>
                     <img
-                        src="/axpo-mark.svg"
-                        className={styles.brandMark}
-                        width={72}
-                        height={72}
+                        src="/axpo-logo.svg"
+                        className={styles.brandLogo}
+                        width={168}
+                        height={80}
                         alt="AXPO"
                     />
-                    <div className={styles.brandName}>AXPO</div>
-                    <div className={styles.brandDivider} />
                     <div className={styles.brandProduct}>{t("common", "offersSimulator")}</div>
                     <div className={styles.brandDesc}>
                         {t("login", "brandDesc")}
@@ -112,7 +111,7 @@ function SetupPasswordContent() {
                 {/* ── Form panel ── */}
                 <div className={styles.formPanel}>
                     <div className={styles.formLogo}>
-                        <img src="/axpo-mark.svg" width={32} height={32} alt="AXPO" />
+                        <img src="/axpo-logo.svg" width={84} height={40} alt="AXPO" />
                     </div>
                     <h2 className={styles.formTitle}>{t("setupPassword", "title")}</h2>
                     <p className={styles.formSubtitle}>
@@ -127,25 +126,21 @@ function SetupPasswordContent() {
                         <form onSubmit={handleSubmit} style={{ width: "100%" }}>
                             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-                                <div className={styles.formField}>
-                                    <label htmlFor="sp-password">{t("setupPassword", "newPassword")}</label>
-                                    <input
-                                        id="sp-password"
-                                        type="password"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        autoComplete="new-password"
-                                        disabled={status === "loading" || !token}
-                                    />
-                                    <span style={{ fontSize: 12, color: "var(--scheme-neutral-500, #6b7280)", marginTop: 4 }}>
-                                        {t("setupPassword", "passwordHint")}
-                                    </span>
-                                </div>
+                                <FormInput
+                                    id="sp-password"
+                                    label={t("setupPassword", "newPassword")}
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    autoComplete="new-password"
+                                    disabled={status === "loading" || !token}
+                                    helperText={t("setupPassword", "passwordHint")}
+                                />
 
-                                <div className={styles.formField}>
-                                    <label htmlFor="sp-confirm">{t("setupPassword", "confirmPassword")}</label>
-                                    <input
+                                <div>
+                                    <FormInput
                                         id="sp-confirm"
+                                        label={t("setupPassword", "confirmPassword")}
                                         type="password"
                                         value={confirm}
                                         onChange={(e) => setConfirm(e.target.value)}

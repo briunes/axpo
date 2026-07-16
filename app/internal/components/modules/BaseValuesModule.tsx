@@ -196,7 +196,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
   const builtInViews = useMemo<Array<{ id: string; name: string; view: BaseValuesViewState }>>(() => [
     {
       id: "recent",
-      name: "Recent",
+      name: t("common", "recent"),
       view: { scopeFilter: "", statusFilter: "", productionFilter: "", showArchived: false, sortColumn: BASE_VALUE_DEFAULT_SORT_COLUMN, sortDir: BASE_VALUE_DEFAULT_SORT_DIR },
     },
     {
@@ -287,7 +287,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
     },
     {
       key: "createdBy",
-      label: "Created By",
+      label: t("baseValuesModule", "colCreatedBy"),
       width: "230",
       renderCell: (s) => (
         <Typography variant="body2" color="text.secondary" noWrap title={s.createdByUser?.fullName || "—"}>
@@ -297,7 +297,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
     },
     {
       key: "createdAt",
-      label: "Created",
+      label: t("baseValuesModule", "colCreated"),
       sortable: true,
       width: "190",
       renderCell: (s) => (
@@ -452,7 +452,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
               style={{ display: "none" }}
               onChange={handleFileSelect}
             />
-            <Tooltip title={busyAction === "upload-base-value-file" ? "Uploading..." : "Upload Excel"} arrow>
+            <Tooltip title={busyAction === "upload-base-value-file" ? t("baseValuesModule", "uploading") : t("baseValuesModule", "uploadExcel")} arrow>
               <span className="topbar-action-wrap">
                 <Button
                   className="topbar-action topbar-action--compact"
@@ -461,10 +461,10 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
                   onClick={() => fileInputRef.current?.click()}
                   disabled={busyAction === "upload-base-value-file"}
                   startIcon={<UploadFileIcon fontSize="small" />}
-                  aria-label={busyAction === "upload-base-value-file" ? "Uploading..." : "Upload Excel"}
+                  aria-label={busyAction === "upload-base-value-file" ? t("baseValuesModule", "uploading") : t("baseValuesModule", "uploadExcel")}
                 >
                   <span className="topbar-action-label">
-                    {busyAction === "upload-base-value-file" ? "Uploading..." : "Upload Excel"}
+                    {busyAction === "upload-base-value-file" ? t("baseValuesModule", "uploading") : t("baseValuesModule", "uploadExcel")}
                   </span>
                 </Button>
               </span>

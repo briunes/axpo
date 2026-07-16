@@ -102,7 +102,7 @@ function ReleaseNotes({ notes }: { notes: string[] }) {
 }
 
 export default function ChangelogPage() {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const [version, setVersion] = useState<string | null>(null);
   const [entries, setEntries] = useState<AppChangelogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +133,7 @@ export default function ChangelogPage() {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Unable to load changelog.");
+        setError(err instanceof Error ? err.message : t("common", "actionFailed"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

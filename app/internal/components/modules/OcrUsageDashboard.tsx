@@ -290,7 +290,7 @@ export function OcrUsageDashboard({ session, onNotify }: OcrUsageDashboardProps)
             setOverview(data);
         } catch (err) {
             console.error(err);
-            setError(err instanceof Error ? err.message : "Failed to load");
+            setError(err instanceof Error ? err.message : t("common", "actionFailed"));
         } finally {
             setLoading(false);
         }

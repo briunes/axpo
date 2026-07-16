@@ -88,29 +88,26 @@ export function WhatsNewModal() {
   useEffect(() => {
     let cancelled = false;
 
-    function applyVersionData(data: VersionResponse, autoOpen: boolean) {
+    function applyVersionData(data: VersionResponse) {
       if (cancelled) return;
 
       setVersion(data.version);
       setEntries(Array.isArray(data.changelog) ? data.changelog : []);
-
-      if (!autoOpen || !data.version) return;
-
-      const seenVersion = localStorage.getItem(CHANGELOG_SEEN_VERSION_KEY);
-      if (seenVersion !== data.version) {
-        setOpen(true);
-      }
     }
 
     function handleVersionEvent(event: Event) {
       const detail = (event as CustomEvent<VersionResponse>).detail;
       if (detail?.version) {
-        applyVersionData(detail, true);
+        applyVersionData(detail);
       }
     }
 
     function handleOpenEvent() {
-      setOpen(true);
+      const hasSession = Boolean(
+        localStorage.getItem(AUTH_TOKEN_KEY) &&
+          localStorage.getItem(AUTH_USER_KEY),
+      );
+      if (hasSession) setOpen(true);
     }
 
     window.addEventListener(APP_VERSION_EVENT, handleVersionEvent);
@@ -121,7 +118,7 @@ export function WhatsNewModal() {
       headers: { pragma: "no-cache", "cache-control": "no-cache" },
     })
       .then((res) => res.json())
-      .then((data: VersionResponse) => applyVersionData(data, true))
+      .then((data: VersionResponse) => applyVersionData(data))
       .catch(() => {
         // Changelog loading is best-effort.
       });
@@ -149,7 +146,21 @@ export function WhatsNewModal() {
     return () => {
       window.removeEventListener("storage", updateSessionState);
     };
-  }, [pathname, open]);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!hasInternalSession) {
+      setOpen(false);
+      return;
+    }
+
+    if (
+      version &&
+      localStorage.getItem(CHANGELOG_SEEN_VERSION_KEY) !== version
+    ) {
+      setOpen(true);
+    }
+  }, [hasInternalSession, version]);
 
   const currentEntry = useMemo(
     () => entries.find((entry) => entry.version === version) ?? entries[0],
@@ -173,7 +184,12 @@ export function WhatsNewModal() {
     hasInternalSession && !AUTH_ROUTES.has(pathname ?? "");
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open && hasInternalSession}
+      onClose={handleClose}
+      maxWidth="md"
+      fullWidth
+    >
       <DialogTitle sx={{ pr: 7 }}>
         <Stack spacing={1}>
           <Typography component="span" variant="h6" sx={{ fontWeight: 700 }}>

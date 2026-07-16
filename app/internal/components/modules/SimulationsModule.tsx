@@ -844,7 +844,10 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       sortable: true,
       renderCell: (s) => (
         <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}>
-          <StatusBadge label={s.status} tone={simulationStatusTone(s.status)} />
+          <StatusBadge
+            label={s.status === "DRAFT" ? t("baseValuesModule", "statusDraft") : s.status}
+            tone={simulationStatusTone(s.status)}
+          />
           {s.status === "SHARED" && s.clientOpenedAt && (
             <StatusBadge label={t("simulationsModule", "clientViewed") || "Viewed"} tone="accent" />
           )}
@@ -1230,7 +1233,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
               label={t("simulationsModule", "statusFilter")}
               options={[
                 { value: "", label: t("search", "allStatuses") },
-                { value: "DRAFT", label: "DRAFT" },
+                { value: "DRAFT", label: t("baseValuesModule", "statusDraft") },
                 { value: "SHARED", label: "SHARED" },
                 { value: "EXPIRED", label: "EXPIRED" },
               ]}
