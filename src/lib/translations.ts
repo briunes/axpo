@@ -272,6 +272,10 @@ export const translations = {
     },
     simulationsModule: {
       subtitle: "Manage all simulations, share them, and monitor access.",
+      cupsValidationFailed: "CUPS validation failed.", invalidExpirationDays: "Expiration days must be a positive number.", createdAsDraft: "Simulation created as draft.",
+      invalidPayloadJson: "Payload JSON is invalid — check your edits.", updated: "Simulation updated.", sharedWithToken: "Shared. Token: {token}", shared: "Simulation shared.",
+      cloned: "Simulation cloned.", pinRefreshed: "PIN snapshot refreshed.", ocrPrefillCreated: "OCR prefill version created.", pdfDownloaded: "PDF downloaded.", archived: "Simulation archived.",
+      bulkDeletedResult: "Deleted {succeeded} of {total} simulation(s).", bulkArchivedResult: "Archived {succeeded} of {total} simulation(s).", calculationCompleted: "Calculation completed — {count} products evaluated.",
       editPayloadTitle: "Edit simulation payload",
       payloadJson: "Payload JSON",
       shareTitle: "Share Simulation",
@@ -343,6 +347,12 @@ export const translations = {
     },
     usersModule: {
       subtitle: "Manage user accounts and access levels.",
+      createRequiredFields: "Name, email, mobile phone, commercial contact and agency are required.", updateRequiredFields: "Full name, email, mobile phone and commercial contacts are required.",
+      passwordPolicy: "Password must be 12–128 chars with uppercase, lowercase, number and special character.", newPasswordPolicy: "New password must be 12–128 chars with uppercase, lowercase, number and special character.",
+      agentCreateRestriction: "Agent can only create commercial users in the same agency.", currentPasswordRequired: "Current password is required to change your own password.",
+      created: "User created.", createdWithPin: "User created. Temporary PIN: {pin}", updated: "User updated.", userAndPasswordUpdated: "User and password updated.",
+      profileRequiredFields: "Full name and email are required.", profileUpdated: "Profile updated.", statusUpdated: "User status updated.", pinRotated: "PIN rotated: {pin}",
+      deleted: "User deleted.", bulkDeleted: "{count} user(s) deleted.", passwordResetSent: "Password reset email sent to {email}",
       noPermission: "You do not have permission to manage users.",
       sessionsShortcut: "Sessions",
       editUser: "Edit user",
@@ -418,6 +428,9 @@ export const translations = {
     },
     agenciesModule: {
       subtitle: "Create and manage agencies.",
+      nameRequired: "Agency name is required.", created: "Agency created.", updated: "Agency updated.",
+      activated: "Agency activated.", deactivated: "Agency deactivated.", deleted: "Agency deleted.",
+      bulkDeleted: "{count} agency/agencies deleted.",
       noPermission: "You do not have permission to manage agencies.",
       editAgency_tooltip: "Edit agency",
       deactivateAgency_tooltip: "Deactivate agency",
@@ -437,6 +450,8 @@ export const translations = {
     },
     clientsModule: {
       subtitle: "Manage company clients linked to simulations.",
+      activated: "Client activated.", deactivated: "Client deactivated.", deleted: "Client deleted.",
+      bulkDeleted: "{count} client(s) deleted.",
       noPermission: "You do not have permission to manage clients.",
       editClient_tooltip: "Edit client",
       deactivateClient_tooltip: "Deactivate client",
@@ -795,6 +810,9 @@ export const translations = {
     },
     baseValuesModule: {
       subtitle: "Configure economic reference values used in simulations.",
+      activated: "Base value set activated.", archived: "Base value set archived.", restored: "Base value set restored.",
+      bulkArchived: "{count} base value set(s) archived.",
+      productionSet: "Base value set set as {scope} production. Other {scope} sets marked as draft.",
       newSet: "New base value set",
       editSet_tooltip: "Edit base value set",
       download_tooltip: "Download source Excel file",
@@ -873,6 +891,7 @@ export const translations = {
         "Row {row}: Either a numeric or text value is required.",
     },
     common: {
+      actionFailed: "Action failed.",
       welcome: "Welcome",
       loading: "Loading...",
       error: "Error",
@@ -1292,6 +1311,7 @@ export const translations = {
     },
     simulationDetail: {
       title: "Simulation",
+      shareLinkCopied: "Share link copied to clipboard", shareLinkCopyFailed: "Failed to copy share link", openInvoiceFailed: "Failed to open invoice",
       loading: "Loading simulation…",
       notFound: "Simulation not found.",
       metaStatus: "Status",
@@ -3197,6 +3217,10 @@ export const translations = {
     simulationsModule: {
       subtitle:
         "Gestiona todas las simulaciones, compártelas y monitorea el acceso.",
+      cupsValidationFailed: "La validación de CUPS ha fallado.", invalidExpirationDays: "Los días de caducidad deben ser un número positivo.", createdAsDraft: "Simulación creada como borrador.",
+      invalidPayloadJson: "El JSON de datos no es válido; revisa los cambios.", updated: "Simulación actualizada.", sharedWithToken: "Compartida. Token: {token}", shared: "Simulación compartida.",
+      cloned: "Simulación clonada.", pinRefreshed: "Instantánea del PIN actualizada.", ocrPrefillCreated: "Versión de precarga OCR creada.", pdfDownloaded: "PDF descargado.", archived: "Simulación archivada.",
+      bulkDeletedResult: "Eliminadas {succeeded} de {total} simulaciones.", bulkArchivedResult: "Archivadas {succeeded} de {total} simulaciones.", calculationCompleted: "Cálculo completado — {count} productos evaluados.",
       editPayloadTitle: "Editar payload de simulación",
       payloadJson: "Payload JSON",
       shareTitle: "Compartir Simulación",
@@ -3268,6 +3292,12 @@ export const translations = {
     },
     usersModule: {
       subtitle: "Gestiona cuentas de usuario y niveles de acceso.",
+      createRequiredFields: "El nombre, correo, teléfono móvil, contacto comercial y agencia son obligatorios.", updateRequiredFields: "El nombre completo, correo, teléfono móvil y contactos comerciales son obligatorios.",
+      passwordPolicy: "La contraseña debe tener entre 12 y 128 caracteres e incluir mayúsculas, minúsculas, un número y un carácter especial.", newPasswordPolicy: "La nueva contraseña debe cumplir la política de seguridad.",
+      agentCreateRestriction: "El agente solo puede crear usuarios comerciales en su misma agencia.", currentPasswordRequired: "La contraseña actual es obligatoria para cambiar tu propia contraseña.",
+      created: "Usuario creado.", createdWithPin: "Usuario creado. PIN temporal: {pin}", updated: "Usuario actualizado.", userAndPasswordUpdated: "Usuario y contraseña actualizados.",
+      profileRequiredFields: "El nombre completo y el correo son obligatorios.", profileUpdated: "Perfil actualizado.", statusUpdated: "Estado del usuario actualizado.", pinRotated: "PIN renovado: {pin}",
+      deleted: "Usuario eliminado.", bulkDeleted: "{count} usuario(s) eliminado(s).", passwordResetSent: "Correo de restablecimiento enviado a {email}",
       noPermission: "No tienes permiso para gestionar usuarios.",
       sessionsShortcut: "Sesiones",
       editUser: "Editar usuario",
@@ -3347,6 +3377,9 @@ export const translations = {
     },
     agenciesModule: {
       subtitle: "Crear y gestionar agencias.",
+      nameRequired: "El nombre de la agencia es obligatorio.", created: "Agencia creada.", updated: "Agencia actualizada.",
+      activated: "Agencia activada.", deactivated: "Agencia desactivada.", deleted: "Agencia eliminada.",
+      bulkDeleted: "{count} agencia(s) eliminada(s).",
       noPermission: "No tienes permiso para gestionar agencias.",
       editAgency_tooltip: "Editar agencia",
       deactivateAgency_tooltip: "Desactivar agencia",
@@ -3366,6 +3399,8 @@ export const translations = {
     },
     clientsModule: {
       subtitle: "Gestiona clientes vinculados a simulaciones.",
+      activated: "Cliente activado.", deactivated: "Cliente desactivado.", deleted: "Cliente eliminado.",
+      bulkDeleted: "{count} cliente(s) eliminado(s).",
       noPermission: "No tienes permiso para gestionar clientes.",
       editClient_tooltip: "Editar cliente",
       deactivateClient_tooltip: "Desactivar cliente",
@@ -3730,6 +3765,9 @@ export const translations = {
     baseValuesModule: {
       subtitle:
         "Configura los valores económicos de referencia usados en las simulaciones.",
+      activated: "Conjunto de valores base activado.", archived: "Conjunto de valores base archivado.", restored: "Conjunto de valores base restaurado.",
+      bulkArchived: "{count} conjunto(s) de valores base archivado(s).",
+      productionSet: "Conjunto establecido como producción {scope}. Los demás conjuntos {scope} se marcaron como borrador.",
       newSet: "Nuevo conjunto de valores base",
       editSet_tooltip: "Editar conjunto de valores base",
       download_tooltip: "Descargar archivo Excel de origen",
@@ -3809,6 +3847,7 @@ export const translations = {
         "Fila {row}: Se requiere un valor numérico o de texto.",
     },
     common: {
+      actionFailed: "La acción ha fallado.",
       welcome: "Bienvenido",
       loading: "Cargando...",
       error: "Error",
@@ -4232,6 +4271,7 @@ export const translations = {
     },
     simulationDetail: {
       title: "Simulación",
+      shareLinkCopied: "Enlace copiado al portapapeles", shareLinkCopyFailed: "No se pudo copiar el enlace", openInvoiceFailed: "No se pudo abrir la factura",
       loading: "Cargando simulación…",
       notFound: "Simulación no encontrada.",
       metaStatus: "Estado",
@@ -5961,6 +6001,7 @@ export const translations = {
     simulationDetail: {
       metaCups: "CUPS",
       title: "Simulation",
+      shareLinkCopied: "Lien copié dans le presse-papiers", shareLinkCopyFailed: "Impossible de copier le lien", openInvoiceFailed: "Impossible d’ouvrir la facture",
       loading: "Chargement de la simulation…",
       notFound: "Simulation introuvable.",
       metaStatus: "Statut",
@@ -6736,6 +6777,10 @@ export const translations = {
     simulationsModule: {
       subtitle:
         "Gérez toutes les simulations, partagez-les et surveillez les accès.",
+      cupsValidationFailed: "La validation CUPS a échoué.", invalidExpirationDays: "Le nombre de jours d’expiration doit être positif.", createdAsDraft: "Simulation créée comme brouillon.",
+      invalidPayloadJson: "Le JSON des données est invalide ; vérifiez vos modifications.", updated: "Simulation mise à jour.", sharedWithToken: "Partagée. Jeton : {token}", shared: "Simulation partagée.",
+      cloned: "Simulation clonée.", pinRefreshed: "Instantané du PIN actualisé.", ocrPrefillCreated: "Version de préremplissage OCR créée.", pdfDownloaded: "PDF téléchargé.", archived: "Simulation archivée.",
+      bulkDeletedResult: "{succeeded} simulation(s) supprimée(s) sur {total}.", bulkArchivedResult: "{succeeded} simulation(s) archivée(s) sur {total}.", calculationCompleted: "Calcul terminé — {count} produits évalués.",
       editPayloadTitle: "Modifier la charge utile de simulation",
       payloadJson: "Charge utile JSON",
       shareTitle: "Partager la simulation",
@@ -6807,6 +6852,12 @@ export const translations = {
     },
     usersModule: {
       subtitle: "Gérez les comptes d'utilisateurs et les niveaux d'accès.",
+      createRequiredFields: "Le nom, l’e-mail, le téléphone portable, le contact commercial et l’agence sont obligatoires.", updateRequiredFields: "Le nom complet, l’e-mail, le téléphone portable et les contacts commerciaux sont obligatoires.",
+      passwordPolicy: "Le mot de passe doit comporter 12 à 128 caractères avec majuscule, minuscule, chiffre et caractère spécial.", newPasswordPolicy: "Le nouveau mot de passe doit respecter la politique de sécurité.",
+      agentCreateRestriction: "L’agent ne peut créer que des utilisateurs commerciaux dans la même agence.", currentPasswordRequired: "Le mot de passe actuel est requis pour modifier votre propre mot de passe.",
+      created: "Utilisateur créé.", createdWithPin: "Utilisateur créé. PIN temporaire : {pin}", updated: "Utilisateur mis à jour.", userAndPasswordUpdated: "Utilisateur et mot de passe mis à jour.",
+      profileRequiredFields: "Le nom complet et l’e-mail sont obligatoires.", profileUpdated: "Profil mis à jour.", statusUpdated: "Statut de l’utilisateur mis à jour.", pinRotated: "PIN renouvelé : {pin}",
+      deleted: "Utilisateur supprimé.", bulkDeleted: "{count} utilisateur(s) supprimé(s).", passwordResetSent: "E-mail de réinitialisation envoyé à {email}",
       noPermission: "Vous n'êtes pas autorisé à gérer les utilisateurs.",
       sessionsShortcut: "Séances",
       editUser: "Modifier l'utilisateur",
@@ -6886,6 +6937,9 @@ export const translations = {
     },
     agenciesModule: {
       subtitle: "Créer et gérer des agences.",
+      nameRequired: "Le nom de l’agence est obligatoire.", created: "Agence créée.", updated: "Agence mise à jour.",
+      activated: "Agence activée.", deactivated: "Agence désactivée.", deleted: "Agence supprimée.",
+      bulkDeleted: "{count} agence(s) supprimée(s).",
       noPermission: "Vous n'êtes pas autorisé à gérer des agences.",
       editAgency_tooltip: "Modifier l'agence",
       deactivateAgency_tooltip: "Désactiver l'agence",
@@ -6905,6 +6959,8 @@ export const translations = {
     },
     clientsModule: {
       subtitle: "Gérer les clients de l'entreprise liés aux simulations.",
+      activated: "Client activé.", deactivated: "Client désactivé.", deleted: "Client supprimé.",
+      bulkDeleted: "{count} client(s) supprimé(s).",
       noPermission: "Vous n'êtes pas autorisé à gérer les clients.",
       editClient_tooltip: "Modifier le client",
       deactivateClient_tooltip: "Désactiver le client",
@@ -7256,6 +7312,9 @@ export const translations = {
     baseValuesModule: {
       subtitle:
         "Configurer les valeurs de référence économiques utilisées dans les simulations.",
+      activated: "Ensemble de valeurs de base activé.", archived: "Ensemble de valeurs de base archivé.", restored: "Ensemble de valeurs de base restauré.",
+      bulkArchived: "{count} ensemble(s) de valeurs de base archivé(s).",
+      productionSet: "Ensemble défini comme production {scope}. Les autres ensembles {scope} ont été marqués comme brouillons.",
       newSet: "Nouvel ensemble de valeurs de base",
       editSet_tooltip: "Modifier l'ensemble de valeurs de base",
       download_tooltip: "Télécharger le fichier source Excel",
@@ -7337,6 +7396,7 @@ export const translations = {
         "Ligne {row} : une valeur numérique ou textuelle est requise.",
     },
     common: {
+      actionFailed: "Échec de l’action.",
       welcome: "Bienvenue",
       loading: "Chargement...",
       error: "Erreur",
@@ -8962,6 +9022,7 @@ export const translations = {
     simulationDetail: {
       metaCups: "CUPS",
       title: "Simulação",
+      shareLinkCopied: "Ligação copiada para a área de transferência", shareLinkCopyFailed: "Não foi possível copiar a ligação", openInvoiceFailed: "Não foi possível abrir a fatura",
       loading: "Carregando simulação…",
       notFound: "Simulação não encontrada.",
       metaStatus: "Status",
@@ -9723,6 +9784,10 @@ export const translations = {
     simulationsModule: {
       subtitle:
         "Gerencie todas as simulações, compartilhe-as e monitore o acesso.",
+      cupsValidationFailed: "A validação do CUPS falhou.", invalidExpirationDays: "Os dias de validade devem ser um número positivo.", createdAsDraft: "Simulação criada como rascunho.",
+      invalidPayloadJson: "O JSON dos dados é inválido; verifique as alterações.", updated: "Simulação atualizada.", sharedWithToken: "Partilhada. Token: {token}", shared: "Simulação partilhada.",
+      cloned: "Simulação clonada.", pinRefreshed: "Instantâneo do PIN atualizado.", ocrPrefillCreated: "Versão de pré-preenchimento OCR criada.", pdfDownloaded: "PDF transferido.", archived: "Simulação arquivada.",
+      bulkDeletedResult: "Eliminadas {succeeded} de {total} simulações.", bulkArchivedResult: "Arquivadas {succeeded} de {total} simulações.", calculationCompleted: "Cálculo concluído — {count} produtos avaliados.",
       editPayloadTitle: "Editar carga útil da simulação",
       payloadJson: "Carga útil JSON",
       shareTitle: "Simulação de compartilhamento",
@@ -9794,6 +9859,12 @@ export const translations = {
     },
     usersModule: {
       subtitle: "Gerencie contas de usuário e níveis de acesso.",
+      createRequiredFields: "O nome, email, telemóvel, contacto comercial e agência são obrigatórios.", updateRequiredFields: "O nome completo, email, telemóvel e contactos comerciais são obrigatórios.",
+      passwordPolicy: "A palavra-passe deve ter entre 12 e 128 caracteres, com maiúscula, minúscula, número e caráter especial.", newPasswordPolicy: "A nova palavra-passe deve cumprir a política de segurança.",
+      agentCreateRestriction: "O agente só pode criar utilizadores comerciais na mesma agência.", currentPasswordRequired: "A palavra-passe atual é obrigatória para alterar a sua própria palavra-passe.",
+      created: "Utilizador criado.", createdWithPin: "Utilizador criado. PIN temporário: {pin}", updated: "Utilizador atualizado.", userAndPasswordUpdated: "Utilizador e palavra-passe atualizados.",
+      profileRequiredFields: "O nome completo e o email são obrigatórios.", profileUpdated: "Perfil atualizado.", statusUpdated: "Estado do utilizador atualizado.", pinRotated: "PIN renovado: {pin}",
+      deleted: "Utilizador eliminado.", bulkDeleted: "{count} utilizador(es) eliminado(s).", passwordResetSent: "Email de reposição enviado para {email}",
       noPermission: "Você não tem permissão para gerenciar usuários.",
       sessionsShortcut: "Sessões",
       editUser: "Editar usuário",
@@ -9870,6 +9941,9 @@ export const translations = {
     },
     agenciesModule: {
       subtitle: "Crie e gerencie agências.",
+      nameRequired: "O nome da agência é obrigatório.", created: "Agência criada.", updated: "Agência atualizada.",
+      activated: "Agência ativada.", deactivated: "Agência desativada.", deleted: "Agência eliminada.",
+      bulkDeleted: "{count} agência(s) eliminada(s).",
       noPermission: "Você não tem permissão para gerenciar agências.",
       editAgency_tooltip: "Editar agência",
       deactivateAgency_tooltip: "Desativar agência",
@@ -9889,6 +9963,8 @@ export const translations = {
     },
     clientsModule: {
       subtitle: "Gerencie clientes da empresa vinculados a simulações.",
+      activated: "Cliente ativado.", deactivated: "Cliente desativado.", deleted: "Cliente eliminado.",
+      bulkDeleted: "{count} cliente(s) eliminado(s).",
       noPermission: "Você não tem permissão para gerenciar clientes.",
       editClient_tooltip: "Editar cliente",
       deactivateClient_tooltip: "Desativar cliente",
@@ -10235,6 +10311,9 @@ export const translations = {
     baseValuesModule: {
       subtitle:
         "Configure os valores de referência econômica utilizados nas simulações.",
+      activated: "Conjunto de valores base ativado.", archived: "Conjunto de valores base arquivado.", restored: "Conjunto de valores base restaurado.",
+      bulkArchived: "{count} conjunto(s) de valores base arquivado(s).",
+      productionSet: "Conjunto definido como produção {scope}. Os outros conjuntos {scope} foram marcados como rascunho.",
       newSet: "Novo conjunto de valores base",
       editSet_tooltip: "Editar conjunto de valores base",
       download_tooltip: "Baixe o arquivo fonte Excel",
@@ -10315,6 +10394,7 @@ export const translations = {
         "Linha {row}: é necessário um valor numérico ou de texto.",
     },
     common: {
+      actionFailed: "A ação falhou.",
       welcome: "Bem vindo",
       loading: "Carregando...",
       error: "Erro",

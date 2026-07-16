@@ -153,7 +153,7 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                 }
             })
             .catch((err) => {
-                showError(err.message || "Failed to load data");
+                showError(err.message || t("shareSimulation", "loadTemplatesFailed"));
             })
             .finally(() => {
                 setIsLoading(false);
@@ -305,7 +305,7 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
             showSuccess(t("shareSimulation", "pdfDownloaded"));
             return true;
         } catch (err) {
-            showError(err instanceof Error ? err.message : "Failed to download PDF");
+            showError(err instanceof Error ? err.message : t("shareSimulation", "generatePdfFailed"));
             return false;
         } finally {
             setIsSending(false);
@@ -339,7 +339,7 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
             showSuccess(t("shareSimulation", "emailSent"));
             return true;
         } catch (err) {
-            showError(err instanceof Error ? err.message : "Failed to send email");
+            showError(err instanceof Error ? err.message : t("shareSimulation", "sendEmailFailed"));
             return false;
         } finally {
             setIsSending(false);
@@ -364,7 +364,7 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                     router.push("/internal/simulations");
                 }, 1500);
             } catch (err) {
-                showError(err instanceof Error ? err.message : "Failed to mark simulation as shared");
+                showError(err instanceof Error ? err.message : t("common", "actionFailed"));
             }
         }
     };

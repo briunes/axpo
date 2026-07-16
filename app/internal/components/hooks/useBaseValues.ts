@@ -20,6 +20,7 @@ import {
 import type { SessionState } from "../../lib/authSession";
 import { useRequestCachePolicy } from "./useRequestCachePolicy";
 import { normalizeQueryKeyParams } from "./queryKeys";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface BaseValuesActions {
   baseValueSets: BaseValueSetItem[];
@@ -71,6 +72,7 @@ interface BaseValuesFilterPersistentState {
 }
 
 export function useBaseValues(session: SessionState | null): BaseValuesActions {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const cachePolicy = useRequestCachePolicy("baseValues");
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -224,7 +226,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
       clearFeedback();
       await fn();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Action failed.");
+      setErrorText(error instanceof Error ? error.message : t("common", "actionFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -235,7 +237,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
       if (!session) return;
       await activateBaseValueSet(session.token, setItem.id);
       await invalidate();
-      setSuccessText("Base value set activated.");
+      setSuccessText(t("baseValuesModule", "activated"));
     });
   };
 
@@ -243,17 +245,13 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
     await runAction(`archive-base-value-${setItem.id}`, async () => {
       if (!session) return;
       if (!setItem.isDeleted && (setItem.isActive || setItem.isProduction)) {
-        throw new Error(
-          "Only draft, non-production base value sets can be archived.",
-        );
+        throw new Error(t("baseValuesModule", "archiveNotAllowed"));
       }
       await updateBaseValueSet(session.token, setItem.id, {
         isDeleted: !setItem.isDeleted,
       });
       await invalidate();
-      setSuccessText(
-        `Base value set ${setItem.isDeleted ? "restored" : "archived"}.`,
-      );
+      setSuccessText(t("baseValuesModule", setItem.isDeleted ? "restored" : "archived"));
     });
   };
 
@@ -268,9 +266,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
           setItem.isDeleted || setItem.isActive || setItem.isProduction,
       );
       if (invalidSets.length > 0) {
-        throw new Error(
-          "Only draft, non-production base value sets can be archived.",
-        );
+        throw new Error(t("baseValuesModule", "archiveNotAllowed"));
       }
 
       await Promise.all(
@@ -279,7 +275,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
         ),
       );
       await invalidate();
-      setSuccessText(`${ids.length} base value set(s) archived.`);
+      setSuccessText(t("baseValuesModule", "bulkArchived", { count: ids.length }));
     });
   };
 
@@ -310,9 +306,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
         !setItem.isProduction,
       );
       await invalidate();
-      setSuccessText(
-        `Base value set set as ${setItem.scopeType} production. Other ${setItem.scopeType} sets marked as draft.`,
-      );
+      setSuccessText(t("baseValuesModule", "productionSet", { scope: setItem.scopeType }));
     });
   };
 

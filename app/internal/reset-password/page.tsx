@@ -7,6 +7,7 @@ import { resetPassword } from "../lib/internalApi";
 import { useI18n } from "../../../src/lib/i18n-context";
 import { UI_LANGUAGES } from "../../../src/lib/uiLanguages";
 import { LanguageFlag } from "../../../src/lib/LanguageFlag";
+import { FormInput } from "../components/ui/FormInput";
 import styles from "../authPages.module.css";
 
 export default function ResetPasswordPage() {
@@ -128,24 +129,22 @@ function ResetPasswordContent() {
                             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
                                 <div className={styles.formField}>
-                                    <label htmlFor="rp-password">{t("resetPassword", "newPassword")}</label>
-                                    <input
+                                    <FormInput
                                         id="rp-password"
+                                        label={t("resetPassword", "newPassword")}
                                         type="password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         autoComplete="new-password"
                                         disabled={status === "loading" || !token}
+                                        helperText={t("resetPassword", "passwordHint")}
                                     />
-                                    <span style={{ fontSize: 12, color: "var(--scheme-neutral-500, #6b7280)", marginTop: 4 }}>
-                                        {t("resetPassword", "passwordHint")}
-                                    </span>
                                 </div>
 
                                 <div className={styles.formField}>
-                                    <label htmlFor="rp-confirm">{t("resetPassword", "confirmPassword")}</label>
-                                    <input
+                                    <FormInput
                                         id="rp-confirm"
+                                        label={t("resetPassword", "confirmPassword")}
                                         type="password"
                                         value={confirm}
                                         onChange={(e) => setConfirm(e.target.value)}

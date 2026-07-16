@@ -39,9 +39,9 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
 
         try {
             await navigator.clipboard.writeText(shareUrl);
-            showSuccess("Share link copied to clipboard");
+            showSuccess(t("simulationDetail", "shareLinkCopied"));
         } catch {
-            showError("Failed to copy share link");
+            showError(t("simulationDetail", "shareLinkCopyFailed"));
         }
     };
 
@@ -51,7 +51,7 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
         try {
             await openSimulationInvoice(token, sim.id);
         } catch (err) {
-            showError(err instanceof Error ? err.message : "Failed to open invoice");
+            showError(err instanceof Error ? err.message : t("simulationDetail", "openInvoiceFailed"));
         } finally {
             setIsOpeningInvoice(false);
         }

@@ -17,6 +17,7 @@ import {
 import type { SessionState } from "../../lib/authSession";
 import { useRequestCachePolicy } from "./useRequestCachePolicy";
 import { normalizeQueryKeyParams } from "./queryKeys";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface ClientsActions {
   clients: ClientItem[];
@@ -66,6 +67,7 @@ export function useClients(
   initialPageSize = 25,
   options?: UseClientsOptions,
 ): ClientsActions {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const cachePolicy = useRequestCachePolicy("clients");
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -221,7 +223,7 @@ export function useClients(
       clearFeedback();
       await fn();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Action failed.");
+      setErrorText(error instanceof Error ? error.message : t("common", "actionFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -234,9 +236,7 @@ export function useClients(
         isActive: !client.isActive,
       });
       await invalidate();
-      setSuccessText(
-        `Client ${client.isActive ? "deactivated" : "activated"}.`,
-      );
+      setSuccessText(t("clientsModule", client.isActive ? "deactivated" : "activated"));
     });
   };
 
@@ -245,7 +245,7 @@ export function useClients(
       if (!session) return;
       await softDeleteClient(session.token, client.id);
       await invalidate();
-      setSuccessText("Client deleted.");
+      setSuccessText(t("clientsModule", "deleted"));
     });
   };
 
@@ -254,9 +254,7 @@ export function useClients(
       if (!session) return;
       await Promise.all(ids.map((id) => softDeleteClient(session.token, id)));
       await invalidate();
-      setSuccessText(
-        `${ids.length} client${ids.length !== 1 ? "s" : ""} deleted.`,
-      );
+      setSuccessText(t("clientsModule", "bulkDeleted", { count: ids.length }));
     });
   };
 

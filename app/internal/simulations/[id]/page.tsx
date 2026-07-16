@@ -410,7 +410,7 @@ export default function SimulationDetailPage({
         downloadBaseValueSetId ?? undefined,
       );
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Failed to download filled simulation Excel");
+      showError(err instanceof Error ? err.message : t("common", "actionFailed"));
     }
   }, [downloadBaseValueSetId, session, showError, simulation]);
 
