@@ -340,7 +340,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
   const builtInViews = useMemo<Array<{ id: string; name: string; view: AgenciesViewState }>>(() => [
     {
       id: "recent",
-      name: "Recent",
+      name: t("common", "recent"),
       view: { tlvFilter: "", statusFilter: "", showArchived: false, sortColumn: AGENCY_DEFAULT_SORT_COLUMN, sortDir: AGENCY_DEFAULT_SORT_DIR },
     },
     {

@@ -88,7 +88,10 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
         label: t("columns", "status"),
         value: (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <StatusBadge label={sim.status || "DRAFT"} tone={simulationStatusTone(sim.status)} />
+                <StatusBadge
+                  label={sim.status === "DRAFT" || !sim.status ? t("baseValuesModule", "statusDraft") : sim.status}
+                  tone={simulationStatusTone(sim.status)}
+                />
                 {sim.status === "SHARED" && sim.clientOpenedAt && (
                     <StatusBadge label={t("simulationsModule", "clientViewed") || "Viewed"} tone="accent" />
                 )}

@@ -146,7 +146,7 @@ function SimulationMeta({
     label: t("columns", "status"),
     value: (
       <StatusBadge
-        label={sim.status || "DRAFT"}
+        label={sim.status === "DRAFT" || !sim.status ? t("baseValuesModule", "statusDraft") : sim.status}
         tone={simulationStatusTone(sim.status)}
       />
     ),

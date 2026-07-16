@@ -55,14 +55,12 @@ export default function ForgotPasswordPage() {
                 {/* ── Brand panel ── */}
                 <div className={styles.brandPanel}>
                     <img
-                        src="/axpo-mark.svg"
-                        className={styles.brandMark}
-                        width={72}
-                        height={72}
+                        src="/axpo-logo.svg"
+                        className={styles.brandLogo}
+                        width={168}
+                        height={80}
                         alt="AXPO"
                     />
-                    <div className={styles.brandName}>AXPO</div>
-                    <div className={styles.brandDivider} />
                     <div className={styles.brandProduct}>{t("common", "offersSimulator")}</div>
                     <div className={styles.brandDesc}>
                         {t("login", "brandDesc")}
@@ -72,7 +70,7 @@ export default function ForgotPasswordPage() {
                 {/* ── Form panel ── */}
                 <div className={styles.formPanel}>
                     <div className={styles.formLogo}>
-                        <img src="/axpo-mark.svg" width={32} height={32} alt="AXPO" />
+                        <img src="/axpo-logo.svg" width={84} height={40} alt="AXPO" />
                     </div>
                     <h2 className={styles.formTitle}>{t("forgotPassword", "title")}</h2>
                     <p className={styles.formSubtitle}>

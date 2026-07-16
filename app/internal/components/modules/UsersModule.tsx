@@ -173,6 +173,11 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       view: { roleFilter: "COMMERCIAL", agencyFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
     },
     {
+      id: "master-agents",
+      name: t("userFormPage", "roleAgent"),
+      view: { roleFilter: "AGENT", agencyFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
+    },
+    {
       id: "admins",
       name: t("userFormPage", "roleAdmin"),
       view: { roleFilter: "ADMIN", agencyFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },

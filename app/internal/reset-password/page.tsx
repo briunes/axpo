@@ -96,14 +96,12 @@ function ResetPasswordContent() {
                 {/* ── Brand panel ── */}
                 <div className={styles.brandPanel}>
                     <img
-                        src="/axpo-mark.svg"
-                        className={styles.brandMark}
-                        width={72}
-                        height={72}
+                        src="/axpo-logo.svg"
+                        className={styles.brandLogo}
+                        width={168}
+                        height={80}
                         alt="AXPO"
                     />
-                    <div className={styles.brandName}>AXPO</div>
-                    <div className={styles.brandDivider} />
                     <div className={styles.brandProduct}>{t("common", "offersSimulator")}</div>
                     <div className={styles.brandDesc}>
                         {t("login", "brandDesc")}
@@ -113,7 +111,7 @@ function ResetPasswordContent() {
                 {/* ── Form panel ── */}
                 <div className={styles.formPanel}>
                     <div className={styles.formLogo}>
-                        <img src="/axpo-mark.svg" width={32} height={32} alt="AXPO" />
+                        <img src="/axpo-logo.svg" width={84} height={40} alt="AXPO" />
                     </div>
                     <h2 className={styles.formTitle}>{t("resetPassword", "title")}</h2>
                     <p className={styles.formSubtitle}>
@@ -128,20 +126,18 @@ function ResetPasswordContent() {
                         <form onSubmit={handleSubmit} style={{ width: "100%" }}>
                             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-                                <div className={styles.formField}>
-                                    <FormInput
-                                        id="rp-password"
-                                        label={t("resetPassword", "newPassword")}
-                                        type="password"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        autoComplete="new-password"
-                                        disabled={status === "loading" || !token}
-                                        helperText={t("resetPassword", "passwordHint")}
-                                    />
-                                </div>
+                                <FormInput
+                                    id="rp-password"
+                                    label={t("resetPassword", "newPassword")}
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    autoComplete="new-password"
+                                    disabled={status === "loading" || !token}
+                                    helperText={t("resetPassword", "passwordHint")}
+                                />
 
-                                <div className={styles.formField}>
+                                <div>
                                     <FormInput
                                         id="rp-confirm"
                                         label={t("resetPassword", "confirmPassword")}

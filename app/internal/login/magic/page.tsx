@@ -70,15 +70,13 @@ function MagicLinkVerifyContent() {
         <div className={styles.shell}>
             <div className={styles.grid}>
                 <div className={styles.brandPanel}>
-                    <img src="/axpo-mark.svg" className={styles.brandMark} width={72} height={72} alt="AXPO" />
-                    <div className={styles.brandName}>AXPO</div>
-                    <div className={styles.brandDivider} />
+                    <img src="/axpo-logo.svg" className={styles.brandLogo} width={168} height={80} alt="AXPO" />
                     <div className={styles.brandProduct}>{t("common", "offersSimulator")}</div>
                 </div>
 
                 <div className={styles.formPanel}>
                     <div className={styles.formLogo}>
-                        <img src="/axpo-mark.svg" width={32} height={32} alt="AXPO" />
+                        <img src="/axpo-logo.svg" width={84} height={40} alt="AXPO" />
                     </div>
 
                     {status === "verifying" && (
