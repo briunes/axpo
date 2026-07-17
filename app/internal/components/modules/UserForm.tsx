@@ -181,7 +181,7 @@ export function UserForm({
                         clearError('email');
                     }}
                     required
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isEditingSelf}
                     error={!!validationErrors.email}
                     helperText={validationErrors.email}
                 />

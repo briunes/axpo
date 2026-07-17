@@ -198,6 +198,14 @@ export const PATCH = withErrorHandler(
       }
     }
 
+    if (
+      auth.userId === id &&
+      payload.email !== undefined &&
+      payload.email.toLowerCase() !== existing.email.toLowerCase()
+    ) {
+      throw new ForbiddenError("You cannot change your own account email");
+    }
+
     const passwordHash = payload.password
       ? await PasswordService.hash(payload.password)
       : undefined;
