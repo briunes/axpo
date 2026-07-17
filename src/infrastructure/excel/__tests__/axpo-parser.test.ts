@@ -155,6 +155,62 @@ describe("parseAxpoExcel", () => {
     expect(byKey.get("DINAMICA_CONTROL_TECHO:N3")?.totalFactura).toBe(1807.79);
   });
 
+  it("matches the v31 DIURNO indexed results for simulation 00546/2026", async () => {
+    const workbookPath = path.join(
+      process.cwd(),
+      "SIMULADOR AXPO 13.07.2026 (Pen, Islas) 1_v31.xlsm",
+    );
+    const parsed = await parseAxpoExcel(
+      fs.readFileSync(workbookPath),
+      path.basename(workbookPath),
+    );
+    const priceMap = CalculationService.buildPriceMap(
+      parsed.items.map((item) => ({
+        key: item.key,
+        valueNumeric: item.valueNumeric ?? null,
+      })),
+    );
+    const results = CalculationService.calculateElectricity(
+      {
+        tarifaAcceso: "3.0TD",
+        zonaGeografica: "Peninsula",
+        perfilCarga: "DIURNO",
+        billingMonth: "2026-05",
+        potenciaContratada: {
+          P1: 86.5,
+          P2: 86.5,
+          P3: 86.5,
+          P4: 86.5,
+          P5: 86.5,
+          P6: 86.5,
+        },
+        consumo: { P1: 0, P2: 0, P3: 0, P4: 4020, P5: 2211, P6: 3310 },
+        periodo: {
+          fechaInicio: "2026-05-01",
+          fechaFin: "2026-05-31",
+          dias: 31,
+        },
+        facturaActual: 1857.05,
+        excesoPotencia: 0,
+        extras: {
+          alquilerEquipoMedida: 14.22,
+          otrosCargos: 0.59,
+          ivaTasa: 21,
+          impuestoElectricoTasa: 5.11269,
+        },
+      },
+      priceMap,
+    );
+    const byKey = new Map(results.map((result) => [result.productKey, result]));
+
+    expect(byKey.get("DINAMICA:N1")?.totalFactura).toBe(1576.31);
+    expect(byKey.get("DINAMICA:N2")?.totalFactura).toBe(1379.07);
+    expect(byKey.get("DINAMICA:N3")?.totalFactura).toBe(1317.59);
+    expect(byKey.get("DINAMICA_CONTROL:N1")?.totalFactura).toBe(1425.01);
+    expect(byKey.get("DINAMICA_CONTROL_PLUS:N2")?.totalFactura).toBe(1424.83);
+    expect(byKey.get("DINAMICA_CONTROL_TECHO:N3")?.totalFactura).toBe(1464.48);
+  });
+
   it("matches the TLV lookup exception for Dinamica Control Plus N3 3.0TD power prices", async () => {
     const rows: unknown[][] = Array.from({ length: 67 }, () => []);
     rows[62][1] = "POTENCIA";
