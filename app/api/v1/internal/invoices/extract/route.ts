@@ -1359,24 +1359,6 @@ If invoice text uses a different format, map it to the closest allowed value abo
   if (invoiceCountParam !== null && invoiceCountParam > 1) {
     const normalizedInvoiceCount = Math.round(invoiceCountParam);
     const messageKey = "multipleInvoicesNotAllowed";
-    const message = `Only 1 invoice can be uploaded at once. This file appears to contain ${normalizedInvoiceCount} invoices. Please upload a new file with a single invoice.`;
-    await saveOcrLog({
-      status: "FAILED",
-      durationMs: Date.now() - requestStartTime,
-      provider: llmProvider,
-      model: llmModelName,
-      baseUrl: llmBaseUrl,
-      fileName: file.name,
-      fileType: file.type,
-      fileSizeBytes: file.size,
-      persistedFiles: requestFiles,
-      errorMessage: message,
-      errorType: "MULTIPLE_INVOICES_NOT_ALLOWED",
-      httpStatusCode: 400,
-      metadata: {
-        invoiceCount: normalizedInvoiceCount,
-      },
-    });
     return NextResponse.json(
       {
         success: false,

@@ -68,7 +68,6 @@ export default function ProfilePage() {
         try {
             await updateUser(session.token, session.user.id, {
                 fullName: formData.fullName.trim(),
-                email: formData.email.trim(),
                 mobilePhone: formData.mobilePhone.trim(),
                 commercialPhone: formData.commercialPhone.trim(),
                 commercialEmail: formData.commercialEmail.trim(),

@@ -871,31 +871,6 @@ If you cannot determine the provider at all, return providerName as null.`;
     const firstFile = fileEntries[0];
     if (invoiceCount > 1) {
       const messageKey = "multipleInvoicesNotAllowed";
-      const message = `Only 1 invoice can be uploaded at once. This file appears to contain ${invoiceCount} invoices. Please upload a new file with a single invoice.`;
-      const createdLog = await saveOcrLog({
-        status: "FAILED",
-        durationMs: Date.now() - requestStartTime,
-        fileName: firstFile?.name,
-        fileType: firstFile?.type,
-        fileSizeBytes: firstFile?.size,
-        pageCount: processedPdfPageCount,
-        persistedFiles: [...fileEntries, ...convertedPdfLogFiles],
-        promptTokens,
-        completionTokens,
-        totalTokens,
-        rawResponseSnippet: responseText.slice(0, 500),
-        promptText: detectionPrompt,
-        errorMessage: message,
-        errorType: "MULTIPLE_INVOICES_NOT_ALLOWED",
-        httpStatusCode: 400,
-        metadata: {
-          detectedProviderName: matchedProvider?.name ?? detectedName,
-          isKnown: matchedProvider !== null,
-          confidence,
-          invoiceType,
-          invoiceCount,
-        },
-      });
       return NextResponse.json(
         {
           success: false,
@@ -904,7 +879,7 @@ If you cannot determine the provider at all, return providerName as null.`;
           messageKey,
           messageParams: { count: invoiceCount },
           invoiceCount,
-          ocrLogId: createdLog?.id ?? null,
+          ocrLogId: null,
         },
         { status: 400 },
       );

@@ -20,7 +20,7 @@ export const translations = {
       forgotPassword: "Forgot your password?",
     },
     forgotPassword: {
-      title: "Reset your password",
+      title: "Forgot your password",
       subtitle:
         "Enter your email and we'll send you a link to reset your password.",
       emailLabel: "Email",
@@ -2968,7 +2968,7 @@ export const translations = {
       forgotPassword: "¿Olvidaste tu contraseña?",
     },
     forgotPassword: {
-      title: "Restablece tu contraseña",
+      title: "¿Olvidaste tu contraseña?",
       subtitle:
         "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
       emailLabel: "Correo electrónico",
@@ -6555,7 +6555,7 @@ export const translations = {
       forgotPassword: "Vous avez oublié votre mot de passe ?",
     },
     forgotPassword: {
-      title: "Réinitialisez votre mot de passe",
+      title: "Mot de passe oublié?",
       subtitle:
         "Entrez votre email et nous vous enverrons un lien pour réinitialiser votre mot de passe.",
       emailLabel: "E-mail",
@@ -9576,7 +9576,7 @@ export const translations = {
       forgotPassword: "Esqueceu sua senha?",
     },
     forgotPassword: {
-      title: "Redefinir sua senha",
+      title: "Esqueceu sua senha?",
       subtitle:
         "Digite seu e-mail e enviaremos um link para redefinir sua senha.",
       emailLabel: "E-mail",
