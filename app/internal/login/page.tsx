@@ -344,7 +344,15 @@ export default function LoginPage() {
                 />
 
                 <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -8, marginBottom: 4 }}>
-
+                  <Button
+                    type="button"
+                    variant="text"
+                    size="small"
+                    onClick={() => router.push("/internal/forgot-password")}
+                    data-testid="forgot-password-link"
+                  >
+                    {t("login", "forgotPassword")}
+                  </Button>
                 </div>
 
                 <Button
