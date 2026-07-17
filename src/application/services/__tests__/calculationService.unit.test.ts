@@ -696,6 +696,76 @@ describe("CalculationService Personalizada Index", () => {
       normalResult!.totalFactura,
     );
   });
+
+  it("uses product-specific month prices before shared NORMAL profile keys", () => {
+    const inputs = buildInputs(30000);
+    inputs.tarifaAcceso = "2.0TD";
+    inputs.perfilCarga = "NORMAL";
+    inputs.billingMonth = "2026-04";
+    inputs.potenciaContratada = {
+      P1: 0,
+      P2: 0,
+      P3: 0,
+      P4: 0,
+      P5: 0,
+      P6: 0,
+    };
+    inputs.consumo = { P1: 1000, P2: 1000, P3: 1000 };
+    inputs.extras = { ivaTasa: 0, impuestoElectricoTasa: 0 };
+
+    const entries: Array<{ key: string; valueNumeric: number }> = [];
+    for (const [product, price] of [
+      ["INDEX_A", 0.1],
+      ["INDEX_B", 0.2],
+    ] as const) {
+      for (const period of ["P1", "P2", "P3"]) {
+        entries.push(
+          {
+            key: `ELEC:INDEX:${product}:N1:2.0TD:${period}:MARGEN:2026-04`,
+            valueNumeric: price,
+          },
+          {
+            key: `ELEC:INDEX:${product}:N1:2.0TD:${period}:MARGEN:2026-04:PROFILE:NORMAL`,
+            valueNumeric: 0.05,
+          },
+        );
+      }
+      for (const period of ["P1", "P2"]) {
+        entries.push({
+          key: `ELEC:INDEX:${product}:N1:2.0TD:${period}:POTENCIA`,
+          valueNumeric: 0,
+        });
+      }
+    }
+
+    const productDefinitions: ProductDefinition[] = [
+      {
+        productKey: "INDEX_A",
+        displayName: "Index A",
+        commodity: "ELECTRICITY",
+        pricingType: "INDEXED",
+        tiers: ["N1"],
+      },
+      {
+        productKey: "INDEX_B",
+        displayName: "Index B",
+        commodity: "ELECTRICITY",
+        pricingType: "INDEXED",
+        tiers: ["N1"],
+      },
+    ];
+
+    const results = CalculationService.calculateElectricity(
+      inputs,
+      CalculationService.buildPriceMap(entries),
+      { productDefinitions },
+    );
+    const a = results.find((item) => item.productKey === "INDEX_A:N1");
+    const b = results.find((item) => item.productKey === "INDEX_B:N1");
+
+    expect(a?.desglose?.terminoEnergia).toBe(300);
+    expect(b?.desglose?.terminoEnergia).toBe(600);
+  });
 });
 
 describe("CalculationService 2.0TD positional power parity", () => {

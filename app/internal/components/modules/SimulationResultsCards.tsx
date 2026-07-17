@@ -353,7 +353,7 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                         color: savingsColor,
                                     }}>
                                         {product.ahorro > 0 ? "↓" : product.ahorro < 0 ? "↑" : "—"}
-                                        {product.pctAhorro > 0 ? "" : ""}{fmt(product.pctAhorro, 1)}%
+                                        {product.pctAhorro > 0 ? "" : ""}{fmt(product.pctAhorro, 0)}%
                                     </Typography>
                                 </td>
                                 <td style={{
@@ -462,7 +462,7 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
                                     <Typography component="span" variant="caption">{t("simulationOffersCards", "colPctDifference")}</Typography>
                                     <Typography component="strong" variant="body2" sx={{ fontWeight: 600, color: savingsColor }}>
                                         {product.ahorro > 0 ? "↓ " : product.ahorro < 0 ? "↑ " : ""}
-                                        {fmt(product.pctAhorro, 1)}%
+                                        {fmt(product.pctAhorro, 0)}%
                                     </Typography>
                                 </div>
                                 <div>

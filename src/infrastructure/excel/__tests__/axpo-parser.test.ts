@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import fs from "fs";
 import path from "path";
+import { CalculationService } from "../../../application/services/calculationService";
 import { parseAxpoExcel } from "../axpo-parser";
 
 describe("parseAxpoExcel", () => {
@@ -19,6 +20,140 @@ describe("parseAxpoExcel", () => {
     });
     return Buffer.from(await workbook.xlsx.writeBuffer());
   };
+
+  it("imports and calculates indexed offers for every v31 electricity tariff", async () => {
+    const workbookPath = path.join(
+      process.cwd(),
+      "SIMULADOR AXPO 13.07.2026 (Pen, Islas) 1_v31.xlsm",
+    );
+    const parsed = await parseAxpoExcel(
+      fs.readFileSync(workbookPath),
+      path.basename(workbookPath),
+    );
+    const keys = new Set(parsed.items.map((item) => item.key));
+    const priceMap = CalculationService.buildPriceMap(
+      parsed.items.map((item) => ({
+        key: item.key,
+        valueNumeric: item.valueNumeric ?? null,
+      })),
+    );
+
+    for (const tariff of ["2.0TD", "3.0TD", "6.1TD"]) {
+      const energyPeriods =
+        tariff === "2.0TD"
+          ? ["P1", "P2", "P3"]
+          : ["P1", "P2", "P3", "P4", "P5", "P6"];
+      const powerPeriods =
+        tariff === "2.0TD"
+          ? ["P1", "P2"]
+          : ["P1", "P2", "P3", "P4", "P5", "P6"];
+
+      for (const period of energyPeriods) {
+        expect(keys).toContain(
+          `ELEC:INDEX:DINAMICA:N1:${tariff}:${period}:MARGEN`,
+        );
+      }
+      for (const period of powerPeriods) {
+        expect(keys).toContain(
+          `ELEC:INDEX:DINAMICA:N1:${tariff}:${period}:POTENCIA`,
+        );
+      }
+
+      const results = CalculationService.calculateElectricity(
+        {
+          tarifaAcceso: tariff as "2.0TD" | "3.0TD" | "6.1TD",
+          zonaGeografica: "Peninsula",
+          perfilCarga: "NORMAL",
+          potenciaContratada: {
+            P1: 10,
+            P2: 10,
+            P3: 10,
+            P4: 10,
+            P5: 10,
+            P6: 10,
+          },
+          consumo: {
+            P1: 100,
+            P2: 100,
+            P3: 100,
+            P4: 100,
+            P5: 100,
+            P6: 100,
+          },
+          periodo: {
+            fechaInicio: "2026-06-01",
+            fechaFin: "2026-06-30",
+            dias: 30,
+          },
+          facturaActual: 1_000,
+          extras: {},
+        },
+        priceMap,
+      );
+
+      const hasStandardIndexedOffers = results.some(
+        (result) =>
+          result.pricingType === "INDEXED" &&
+          !result.productKey.startsWith("PERSONALIZADA"),
+      );
+      expect(hasStandardIndexedOffers).toBe(true);
+    }
+  });
+
+  it("matches the v31 3.0TD indexed results for simulation 00545/2026", async () => {
+    const workbookPath = path.join(
+      process.cwd(),
+      "SIMULADOR AXPO 13.07.2026 (Pen, Islas) 1_v31.xlsm",
+    );
+    const parsed = await parseAxpoExcel(
+      fs.readFileSync(workbookPath),
+      path.basename(workbookPath),
+    );
+    const priceMap = CalculationService.buildPriceMap(
+      parsed.items.map((item) => ({
+        key: item.key,
+        valueNumeric: item.valueNumeric ?? null,
+      })),
+    );
+    const results = CalculationService.calculateElectricity(
+      {
+        tarifaAcceso: "3.0TD",
+        zonaGeografica: "Peninsula",
+        perfilCarga: "NORMAL",
+        billingMonth: "2026-04",
+        potenciaContratada: {
+          P1: 86.5,
+          P2: 86.5,
+          P3: 86.5,
+          P4: 86.5,
+          P5: 86.5,
+          P6: 86.5,
+        },
+        consumo: { P1: 0, P2: 0, P3: 0, P4: 4020, P5: 2211, P6: 3310 },
+        periodo: {
+          fechaInicio: "2026-05-01",
+          fechaFin: "2026-05-31",
+          dias: 31,
+        },
+        facturaActual: 1857.05,
+        excesoPotencia: 0,
+        extras: {
+          alquilerEquipoMedida: 14.22,
+          otrosCargos: 0.59,
+          ivaTasa: 21,
+          impuestoElectricoTasa: 5.11269,
+        },
+      },
+      priceMap,
+    );
+    const byKey = new Map(results.map((result) => [result.productKey, result]));
+
+    expect(byKey.get("DINAMICA:N1")?.totalFactura).toBe(1915.41);
+    expect(byKey.get("DINAMICA:N2")?.totalFactura).toBe(1718.16);
+    expect(byKey.get("DINAMICA:N3")?.totalFactura).toBe(1656.68);
+    expect(byKey.get("DINAMICA_CONTROL:N1")?.totalFactura).toBe(1767.77);
+    expect(byKey.get("DINAMICA_CONTROL_TECHO:N3")?.totalFactura).toBe(1807.79);
+  });
 
   it("matches the TLV lookup exception for Dinamica Control Plus N3 3.0TD power prices", async () => {
     const rows: unknown[][] = Array.from({ length: 67 }, () => []);

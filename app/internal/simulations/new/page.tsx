@@ -45,9 +45,9 @@ function activePowerPeriodsForTariff(tariff?: string | null): readonly string[] 
     return ELEC_PERIOD_LABELS;
 }
 
-function nonInclusiveDaysBetween(from?: string, to?: string): number | undefined {
+function inclusiveDaysBetween(from?: string, to?: string): number | undefined {
     if (!from || !to) return undefined;
-    const days = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+    const days = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000) + 1;
     return Number.isFinite(days) && days > 0 ? days : undefined;
 }
 
@@ -79,7 +79,7 @@ function deriveCurrentInvoiceBreakdown(
 ): ExtractedInvoiceData {
     const next = normalizeOcrElectricityConsumption(data);
     const factura = finiteOrUndefined(next.facturaActual);
-    const billingDays = nonInclusiveDaysBetween(next.fechaInicio, next.fechaFin);
+    const billingDays = inclusiveDaysBetween(next.fechaInicio, next.fechaFin);
 
     if (next.importePotencia == null && billingDays) {
         const powerCost = activePowerPeriodsForTariff(next.tarifaAcceso).reduce((sum, period) => {
@@ -246,12 +246,12 @@ const ELEC_POWER_PERIODS: Record<string, string[]> = {
 };
 
 function ocrDaysBetween(from: string, to: string): number {
-    const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+    const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000) + 1;
     return Math.max(1, d);
 }
 
 function ocrDaysBetweenGas(from: string, to: string): number {
-    const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+    const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000) + 1;
     return Math.max(1, d);
 }
 
