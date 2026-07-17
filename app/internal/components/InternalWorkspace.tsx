@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, createContext, useContext, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { Text } from "@once-ui-system/core";
+import { useCallback, useEffect, useState, createContext, useContext, useRef, isValidElement } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { clearSession, loadSession, type SessionState } from "../lib/authSession";
 import { listRolePermissions, logout } from "../lib/internalApi";
 import {
@@ -15,7 +14,9 @@ import {
   ROLE_PERMISSION_DEFAULTS,
   type PermissionKey,
 } from "../lib/permissionsDefinitions";
-import { TopBar, SectionMenu, SidebarHeader, type AppSection } from "./layout";
+import { CommandPalette, TopBar, SectionMenu, SidebarHeader, type AppSection } from "./layout";
+import type { GlobalSearchRecentItem } from "./layout/CommandPalette";
+import { NotificationBell } from "./layout/NotificationBell";
 import { useUserPreferences } from "./providers/UserPreferencesProvider";
 import { ForbiddenState, LoadingState } from "./shared";
 import { Toast, useToast } from "./ui";
@@ -23,12 +24,131 @@ import { Toast, useToast } from "./ui";
 export type { AppSection };
 
 const isElevatedRole = (role: string) => role === "ADMIN" || role === "SYS_ADMIN";
+const GLOBAL_SEARCH_RECENTS_STORAGE_KEY = "axpo_global_search_recents";
+const SECTION_LABELS: Record<AppSection, string> = {
+  simulations: "Simulaciones",
+  users: "Usuarios",
+  agencies: "Agencias",
+  clients: "Clientes",
+  "base-values": "Valores base",
+  logs: "Logs",
+  analytics: "Analytics",
+  configurations: "Configuraciones",
+  notifications: "Notificaciones",
+};
+
+function rememberRecentPage(item: GlobalSearchRecentItem) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem(GLOBAL_SEARCH_RECENTS_STORAGE_KEY);
+    const current = raw ? (JSON.parse(raw) as GlobalSearchRecentItem[]) : [];
+    const next = [item, ...current.filter((recent) => recent.id !== item.id)].slice(0, 8);
+    localStorage.setItem(GLOBAL_SEARCH_RECENTS_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // recent pages are best-effort only
+  }
+}
+
+function textFromNode(node: React.ReactNode): string | null {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node).trim() || null;
+  }
+  if (Array.isArray(node)) {
+    const text = node.map(textFromNode).filter(Boolean).join(" ").trim();
+    return text || null;
+  }
+  if (isValidElement<{ children?: React.ReactNode }>(node)) {
+    return textFromNode(node.props.children);
+  }
+  return null;
+}
+
+function getRouteFallbackLabel(pathname: string, section: AppSection, sectionLabel: string) {
+  if (pathname === "/internal/simulations/new") return "Nueva simulación";
+  if (/^\/internal\/simulations\/[^/]+\/share$/.test(pathname)) return "Compartir simulación";
+  if (/^\/internal\/simulations\/[^/]+\/view$/.test(pathname)) return "Simulación compartida";
+  if (/^\/internal\/simulations\/[^/]+$/.test(pathname)) return "Simulación";
+
+  if (pathname === "/internal/users/new") return "Nuevo usuario";
+  if (/^\/internal\/users\/[^/]+\/edit$/.test(pathname)) return "Usuario";
+
+  if (pathname === "/internal/agencies/new") return "Nueva agencia";
+  if (/^\/internal\/agencies\/[^/]+\/edit$/.test(pathname)) return "Agencia";
+
+  if (pathname === "/internal/clients/new") return "Nuevo cliente";
+  if (/^\/internal\/clients\/[^/]+\/edit$/.test(pathname)) return "Cliente";
+
+  if (pathname === "/internal/base-values/new") return "Nuevo valor base";
+  if (/^\/internal\/base-values\/[^/]+\/edit$/.test(pathname)) return "Valor base";
+
+  return SECTION_LABELS[section] ?? sectionLabel;
+}
+
+function buildRecentPageItem(
+  pathname: string,
+  section: AppSection,
+  breadcrumbs: TopBarBreadcrumb[] | null,
+): GlobalSearchRecentItem {
+  const sectionLabel = SECTION_LABELS[section];
+  const breadcrumbLabels = breadcrumbs?.map((breadcrumb) => textFromNode(breadcrumb.label)).filter(Boolean) ?? [];
+  const shouldPreferEntityBreadcrumb =
+    /^\/internal\/simulations\/[^/]+\/(share|view)$/.test(pathname) && Boolean(breadcrumbLabels[0]);
+  const label =
+    (shouldPreferEntityBreadcrumb ? breadcrumbLabels[0] : breadcrumbLabels.at(-1)) ??
+    getRouteFallbackLabel(pathname, section, sectionLabel);
+  const breadcrumbTrail = [sectionLabel, ...breadcrumbLabels].filter(Boolean).join(" / ");
+
+  return {
+    id: `page-${pathname}`,
+    kind: "page",
+    label,
+    description: breadcrumbTrail && breadcrumbTrail !== label ? breadcrumbTrail : pathname,
+    href: pathname,
+  };
+}
+
+const isBoneyardBuildMode = () =>
+  typeof window !== "undefined" &&
+  ((window as typeof window & { __BONEYARD_BUILD?: boolean }).__BONEYARD_BUILD === true ||
+    (
+      ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname) &&
+      window.location.pathname.includes("boneyard-fixture")
+    ));
+
+const createBoneyardSession = (): SessionState => ({
+  token: "boneyard-fixture-token",
+  user: {
+    id: "user-skeleton-admin",
+    agencyId: "agency-skeleton-primary",
+    role: "SYS_ADMIN",
+    fullName: "System Admin",
+    email: "admin@example.com",
+  },
+});
 
 // Context for action buttons
 const ActionButtonsContext = createContext<((buttons: React.ReactNode) => void) | null>(null);
 
 export function useActionButtons() {
   return useContext(ActionButtonsContext);
+}
+
+export interface TopBarBreadcrumb {
+  label: React.ReactNode;
+  href?: string;
+  icon?: React.ElementType<{ className?: string }>;
+}
+
+const BreadcrumbsContext = createContext<((breadcrumbs: TopBarBreadcrumb[] | null) => void) | null>(null);
+
+export function useTopBarBreadcrumbs(breadcrumbs: TopBarBreadcrumb[] | null) {
+  const setBreadcrumbs = useContext(BreadcrumbsContext);
+
+  useEffect(() => {
+    if (!setBreadcrumbs) return;
+    setBreadcrumbs(breadcrumbs);
+    return () => setBreadcrumbs(null);
+  }, [breadcrumbs, setBreadcrumbs]);
 }
 
 // Context for the TopBar Refresh button — pages register their own refresh fn
@@ -46,8 +166,21 @@ export function useRegisterRefresh(handler: () => void) {
   }, [register]);
 }
 
-export function InternalWorkspace({ section, children }: { section: AppSection; children?: React.ReactNode }) {
+function WorkspaceLoader({ message }: { message?: string }) {
+  return (
+    <div className="app-shell">
+      <main className="app-content" style={{ width: "100%", display: "grid", placeItems: "center" }}>
+        <div style={{ width: "min(420px, 100%)" }}>
+          <LoadingState message={message} />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export function InternalWorkspace({ section, children }: { section: AppSection | null; children?: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [session, setSession] = useState<SessionState | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -56,15 +189,20 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
   const [permItems, setPermItems] = useState<RolePermissionItem[]>([]);
   const [permLoaded, setPermLoaded] = useState(false);
   const [actionButtons, setActionButtons] = useState<React.ReactNode>(null);
+  const [breadcrumbs, setBreadcrumbs] = useState<TopBarBreadcrumb[] | null>(null);
+  const [commandOpen, setCommandOpen] = useState(false);
 
   const handleActionButtons = useCallback((buttons: React.ReactNode) => {
-    console.log('Setting action buttons:', buttons);
     setActionButtons(buttons);
   }, []);
 
   useEffect(() => {
     setMounted(true);
-    const s = loadSession();
+    const s = loadSession() ?? (isBoneyardBuildMode() ? createBoneyardSession() : null);
+    if (s && isBoneyardBuildMode()) {
+      localStorage.setItem("axpo.internal.auth.token", s.token);
+      localStorage.setItem("axpo.internal.auth.user", JSON.stringify(s.user));
+    }
     setSession(s);
     setSessionChecked(true);
     if (!s) router.replace("/internal/login");
@@ -110,6 +248,17 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
 
   const { messages: toastMessages, dismissToast, showSuccess, showError } = useToast();
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const handleLogout = async () => {
     if (session?.token) {
       try {
@@ -124,6 +273,8 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
   };
 
   const handleNavigate = (target: AppSection) => {
+    setMobileMenuOpen(false);
+
     const routes: Record<AppSection, string> = {
       simulations: "/internal/simulations",
       users: "/internal/users",
@@ -133,6 +284,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
       logs: "/internal/logs",
       analytics: "/internal/analytics",
       configurations: "/internal/configurations",
+      notifications: "/internal/notifications",
     };
     router.push(routes[target]);
   };
@@ -151,19 +303,11 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
     [permItems], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  if (!mounted || !sessionChecked) return null;
-  if (!session) return null;
+  const role = session?.user.role ?? "";
 
-  const role = session.user.role;
-
-  // Wait for DB permissions to load before rendering the menu.
-  // SYS_ADMIN skips this gate — canDo always returns true for it.
-  if (role !== "SYS_ADMIN" && !permLoaded) return null;
-
-  // Section-level access guard — fully driven by DB permissions (canDo handles ADMIN)
   const canSeeAnyLogs =
     isElevatedRole(role) && LOG_PERMISSION_KEYS.some((key) => canDo(role, key));
-  const sectionAllowed: Record<string, boolean> = {
+  const sectionAllowed: Record<AppSection, boolean> = {
     simulations: canDo(role, "section.simulations"),
     users: canDo(role, "section.users"),
     agencies: canDo(role, "section.agencies"),
@@ -172,12 +316,42 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
     logs: canSeeAnyLogs,
     analytics: canDo(role, "section.analytics"),
     configurations: canDo(role, "section.configurations"),
+    notifications: role === "SYS_ADMIN",
   };
-  if (!sectionAllowed[section]) {
+  const availableSections = (Object.keys(sectionAllowed) as AppSection[]).filter(
+    (key) => sectionAllowed[key],
+  );
+
+  useEffect(() => {
+    if (!session || !section || !sectionAllowed[section]) return;
+    rememberRecentPage(buildRecentPageItem(pathname, section, breadcrumbs));
+  }, [breadcrumbs, pathname, section, session?.token, sectionAllowed[section ?? "simulations"]]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!mounted || !sessionChecked) return <WorkspaceLoader />;
+  if (!session) return <WorkspaceLoader />;
+
+  // Wait for DB permissions to load before rendering the menu.
+  // SYS_ADMIN skips this gate — canDo always returns true for it.
+  if (role !== "SYS_ADMIN" && !permLoaded) return <WorkspaceLoader />;
+
+  if (section && !sectionAllowed[section]) {
     return (
       <div className="app-shell">
-        <aside className={`app-sidebar${collapsed ? " collapsed" : ""}`}>
-          <SidebarHeader collapsed={collapsed} onToggle={handleToggle} />
+        {mobileMenuOpen && (
+          <div
+            className="app-sidebar-overlay visible"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        <aside className={`app-sidebar${collapsed ? " collapsed" : ""}${mobileMenuOpen ? " mobile-open" : ""}`}>
+          <SidebarHeader
+            collapsed={collapsed}
+            onToggle={handleToggle}
+            mobileOpen={mobileMenuOpen}
+            onMobileClose={() => setMobileMenuOpen(false)}
+          />
           <SectionMenu
             section={section}
             canSeeUsersSection={canDo(role, "section.users")}
@@ -191,6 +365,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
             onLogout={handleLogout}
             session={session}
             collapsed={collapsed}
+            notificationBell={<NotificationBell token={session.token} role={role} surface="sidebar" collapsed={collapsed} />}
           />
         </aside>
         <div className="app-main">
@@ -199,11 +374,20 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
             onRefresh={() => { }}
             onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
             actionButtons={null}
+            onCommandOpen={() => setCommandOpen(true)}
+            session={session}
+            onLogout={handleLogout}
           />
           <main className="app-content">
             <ForbiddenState section={section} />
           </main>
         </div>
+        <CommandPalette
+          open={commandOpen}
+          onClose={() => setCommandOpen(false)}
+          availableSections={availableSections}
+          token={session.token}
+        />
       </div>
     );
   }
@@ -218,46 +402,64 @@ export function InternalWorkspace({ section, children }: { section: AppSection; 
     <PermissionsContext.Provider value={permissionsContextValue}>
       <RefreshContext.Provider value={handleRegisterRefresh}>
         <ActionButtonsContext.Provider value={handleActionButtons}>
-          <div className="app-shell">
-            <Toast messages={toastMessages} onDismiss={dismissToast} />
-            {mobileMenuOpen && (
-              <div
-                className="app-sidebar-overlay visible"
-                onClick={() => setMobileMenuOpen(false)}
-                aria-hidden="true"
-              />
-            )}
+          <BreadcrumbsContext.Provider value={setBreadcrumbs}>
+            <div className="app-shell">
+              <Toast messages={toastMessages} onDismiss={dismissToast} />
+              {mobileMenuOpen && (
+                <div
+                  className="app-sidebar-overlay visible"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-hidden="true"
+                />
+              )}
 
-            <aside className={`app-sidebar${collapsed ? " collapsed" : ""}${mobileMenuOpen ? " mobile-open" : ""}`}>
-              <SidebarHeader collapsed={collapsed} onToggle={handleToggle} />
-              <SectionMenu
-                section={section}
-                canSeeUsersSection={canDo(role, "section.users")}
-                canSeeAgenciesSection={canDo(role, "section.agencies")}
-                canSeeClientsSection={canDo(role, "section.clients")}
-                canSeeBaseValuesSection={canDo(role, "section.base-values")}
-                canSeeLogsSection={canSeeAnyLogs}
-                canViewAnalytics={canDo(role, "section.analytics")}
-                canSeeConfigurationsSection={canDo(role, "section.configurations")}
-                onNavigate={handleNavigate}
-                onLogout={handleLogout}
-                session={session}
-                collapsed={collapsed}
-              />
-            </aside>
+              <aside className={`app-sidebar${collapsed ? " collapsed" : ""}${mobileMenuOpen ? " mobile-open" : ""}`}>
+                <SidebarHeader
+                  collapsed={collapsed}
+                  onToggle={handleToggle}
+                  mobileOpen={mobileMenuOpen}
+                  onMobileClose={() => setMobileMenuOpen(false)}
+                />
+                <SectionMenu
+                  section={section}
+                  canSeeUsersSection={canDo(role, "section.users")}
+                  canSeeAgenciesSection={canDo(role, "section.agencies")}
+                  canSeeClientsSection={canDo(role, "section.clients")}
+                  canSeeBaseValuesSection={canDo(role, "section.base-values")}
+                  canSeeLogsSection={canSeeAnyLogs}
+                  canViewAnalytics={canDo(role, "section.analytics")}
+                  canSeeConfigurationsSection={canDo(role, "section.configurations")}
+                  onNavigate={handleNavigate}
+                  onLogout={handleLogout}
+                  session={session}
+                  collapsed={collapsed}
+                  notificationBell={<NotificationBell token={session.token} role={role} surface="sidebar" collapsed={collapsed} />}
+                />
+              </aside>
 
-            <div className="app-main">
-              <TopBar
-                section={section}
-                onRefresh={() => refreshHandler?.()}
-                onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
-                actionButtons={actionButtons}
+              <div className="app-main">
+                <TopBar
+                  section={section}
+                  onRefresh={() => refreshHandler?.()}
+                  onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
+                  actionButtons={actionButtons}
+                  breadcrumbs={breadcrumbs}
+                  onCommandOpen={() => setCommandOpen(true)}
+                  session={session}
+                  onLogout={handleLogout}
+                />
+                <main className="app-content" style={{ marginBottom: '2.4rem' }}>
+                  {children}
+                </main>
+              </div>
+              <CommandPalette
+                open={commandOpen}
+                onClose={() => setCommandOpen(false)}
+                availableSections={availableSections}
+                token={session.token}
               />
-              <main className="app-content" style={{ marginBottom: '2.4rem' }}>
-                {children}
-              </main>
             </div>
-          </div>
+          </BreadcrumbsContext.Provider>
         </ActionButtonsContext.Provider>
       </RefreshContext.Provider>
     </PermissionsContext.Provider>

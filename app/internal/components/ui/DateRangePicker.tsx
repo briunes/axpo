@@ -624,7 +624,7 @@ export function DateRangePicker({
     );
 
     const inlineTextFieldsContent = (
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1.5 }}>
             <Box sx={{ flex: 1, minWidth: 0 }}>
                 <DateInput
                     value={startDate ? formatIsoDate(startDate) : ''}
@@ -763,7 +763,7 @@ export function DateRangePicker({
             {/* Selected range display */}
             {formatDateRange() && (
                 <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Typography variant="body2" sx={{ fontSize: '13px' }}>{formatDateRange()}</Typography>
+                    <Typography variant="body2">{formatDateRange()}</Typography>
                     <IconButton size="small" onClick={handleClear}><CloseIcon fontSize="small" /></IconButton>
                 </Box>
             )}

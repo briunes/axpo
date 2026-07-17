@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "AXPO Simulador de Ofertas - Public API v1",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "contact": {
       "name": "AXPO Development"
     },
@@ -725,7 +725,7 @@
           "Public"
         ],
         "summary": "Get current app version",
-        "description": "Returns the current app version stored in system configuration. Used by the frontend to detect stale caches after deployments.",
+        "description": "Returns the current app version and changelog history stored in system configuration. Used by the frontend to detect stale caches after deployments.",
         "responses": {
           "200": {
             "description": "App version",

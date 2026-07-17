@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import { FormSelect } from "./FormSelect";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { getLanguageOptions, isSupportedLanguage } from "../../../../src/lib/supportedLanguages";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 
 export interface UserPreferences {
@@ -122,8 +123,8 @@ export function UserPreferencesForm({
             onNotify?.(t("userPreferences", "saveSuccess"), "success");
             setIsDirty(false);
             // Apply language change immediately and directly
-            if (preferences.language === "en" || preferences.language === "es") {
-                setLocale(preferences.language as "en" | "es");
+            if (isSupportedLanguage(preferences.language)) {
+                setLocale(preferences.language);
             }
             await refreshProviderPrefs();
             loadPreferences(); // Reload to get updated override flags
@@ -177,10 +178,7 @@ export function UserPreferencesForm({
                     label={t("userPreferences", "fieldLanguage")}
                     value={preferences.language ?? ""}
                     onChange={(value) => handleChange("language", value || null)}
-                    options={[
-                        { value: "en", label: "🇬🇧 English" },
-                        { value: "es", label: "🇪🇸 Español" },
-                    ]}
+                    options={getLanguageOptions()}
                 />
 
                 {/* Date Format */}

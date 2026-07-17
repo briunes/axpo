@@ -1,12 +1,14 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import {
+  downloadBaseValueFile,
+  downloadFilledSimulationExcel,
   getSimulation,
-  listClients,
+  openSimulationInvoice,
   updateClient,
   simulationStatusTone,
   type SimulationItem,
@@ -15,7 +17,7 @@ import {
 import { usePermissions } from "../../lib/permissionsContext";
 import {
   CrudPageLayout,
-  LoadingState,
+  FormSkeleton,
   useAlerts,
 } from "../../components/shared";
 import {
@@ -26,8 +28,9 @@ import { BaseValueSetSelector } from "../../components/ui/BaseValueSetSelector";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { AuditLogsModal } from "../../components/ui/AuditLogsModal";
 import { useUserPreferences } from "../../components/providers/UserPreferencesProvider";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 import { formatDisplayDate } from "../../lib/formatPreferences";
-import type { SimulationResults } from "@/domain/types";
+import type { SimulationPayload, SimulationResults } from "@/domain/types";
 import {
   Dialog,
   DialogTitle,
@@ -36,373 +39,293 @@ import {
   Box,
   Divider,
   IconButton,
+  Tooltip,
+  Typography,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import ShareIcon from "@mui/icons-material/Share";
 import CloseIcon from "@mui/icons-material/Close";
 import HistoryIcon from "@mui/icons-material/History";
 import LockIcon from "@mui/icons-material/Lock";
+import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import DownloadIcon from "@mui/icons-material/Download";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { ShareSimulationView } from "./components/ShareSimulationView";
 import { DownloadHistoryDialog } from "./components/DownloadHistoryDialog";
 import LaunchIcon from "@mui/icons-material/Launch";
 
 function SimulationMeta({
   sim,
-  actions,
   canViewClients,
+  token,
 }: {
   sim: SimulationItem;
-  actions?: React.ReactNode;
   canViewClients?: boolean;
+  token: string;
 }) {
   const { t } = useI18n();
   const { preferences } = useUserPreferences();
+  const { showError } = useAlerts();
+  const [isPinVisible, setIsPinVisible] = useState(false);
+  const [isOpeningInvoice, setIsOpeningInvoice] = useState(false);
 
   const fmtDate = (iso: string) =>
-    formatDisplayDate(new Date(iso), preferences.dateFormat);
+    formatDisplayDate(new Date(iso), preferences.dateFormat, preferences.timezone);
+
+  const handleOpenInvoice = async () => {
+    if (isOpeningInvoice) return;
+    setIsOpeningInvoice(true);
+    try {
+      await openSimulationInvoice(token, sim.id);
+    } catch (err) {
+      showError(
+        err instanceof Error
+          ? err.message
+          : "Failed to open invoice",
+      );
+    } finally {
+      setIsOpeningInvoice(false);
+    }
+  };
+
+  const metaItems: Array<{
+    key: string;
+    label: React.ReactNode;
+    value: React.ReactNode;
+    mono?: boolean;
+    prominent?: boolean;
+  }> = [];
+
+  if (sim.referenceNumber) {
+    metaItems.push({
+      key: "reference",
+      label: t("simulationDetail", "metaReference"),
+      value: sim.referenceNumber,
+      mono: true,
+      prominent: true,
+    });
+  }
+
+  if (sim.client) {
+    metaItems.push({
+      key: "client",
+      label: t("simulationDetail", "metaClient"),
+      value: canViewClients ? (
+        <Box
+          component={"a"}
+          href={`/internal/clients/${sim.client.id}/edit`}
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{
+            color: "primary.main",
+            fontWeight: 700,
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.5,
+            minWidth: 0,
+            "&:hover": { textDecoration: "underline" },
+          }}
+        >
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+            {sim.client.name}
+          </span>
+          <LaunchIcon sx={{ fontSize: 16, flexShrink: 0 }} />
+        </Box>
+      ) : (
+        sim.client.name
+      ),
+    });
+  }
+
+  metaItems.push({
+    key: "status",
+    label: t("columns", "status"),
+    value: (
+      <StatusBadge
+        label={sim.status === "DRAFT" || !sim.status ? t("baseValuesModule", "statusDraft") : sim.status}
+        tone={simulationStatusTone(sim.status)}
+      />
+    ),
+  });
+
+  metaItems.push({
+    key: "pin",
+    label: "PIN",
+    value: sim.pinSnapshot ? (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+        <span
+          style={{
+            fontFamily: "monospace",
+          }}
+        >
+          {isPinVisible ? sim.pinSnapshot : "••••"}
+        </span>
+        <Tooltip title={isPinVisible ? "Hide PIN" : "Show PIN"}>
+          <IconButton
+            size="small"
+            onClick={() => setIsPinVisible((current) => !current)}
+            aria-label={isPinVisible ? "Hide PIN" : "Show PIN"}
+            sx={{ color: "var(--scheme-neutral-300)", p: 0.25 }}
+          >
+            {isPinVisible ? (
+              <VisibilityOffIcon sx={{ fontSize: 15 }} />
+            ) : (
+              <VisibilityIcon sx={{ fontSize: 15 }} />
+            )}
+          </IconButton>
+        </Tooltip>
+      </span>
+    ) : (
+      <Tooltip title="No decryptable display PIN is available for this simulation. The stored PIN hash cannot be shown.">
+        <span style={{ color: "var(--scheme-neutral-500)" }}>Unavailable</span>
+      </Tooltip>
+    ),
+    prominent: true,
+  });
+
+  if (sim.cupsNumber) {
+    metaItems.push({
+      key: "cups",
+      label: t("simulationDetail", "metaCups"),
+      value: sim.cupsNumber,
+      mono: true,
+    });
+  }
+
+  if (sim.expiresAt) {
+    metaItems.push({
+      key: "expires",
+      label: t("simulationDetail", "metaExpires"),
+      value: fmtDate(sim.expiresAt),
+    });
+  }
+
+  if (sim.invoiceFileName || sim.invoiceFilePath) {
+    metaItems.push({
+      key: "invoice",
+      label: (
+        <Box component={'span'} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: '100%' }}>
+          {t("simulationDetail", "invoiceFile")}
+          <PictureAsPdfOutlinedIcon fontSize="small" />
+        </Box>
+      ),
+      value: (
+        <button
+          type="button"
+          onClick={handleOpenInvoice}
+          disabled={isOpeningInvoice}
+          style={{
+            minWidth: 0,
+            border: 0,
+            padding: 0,
+            background: "transparent",
+            color: "var(--scheme-primary-500)",
+            cursor: isOpeningInvoice ? "progress" : "pointer",
+            opacity: isOpeningInvoice ? 0.7 : 1,
+            font: "inherit",
+            fontWeight: 700,
+            textAlign: "left",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={sim.invoiceFileName || "View invoice"}
+        >
+          {sim.invoiceFileName || "View"}
+          {sim.invoiceFileSize ? (
+            <span
+              style={{
+                marginLeft: 4,
+                fontSize: 10,
+                color: "var(--scheme-neutral-600)",
+                fontWeight: 500,
+              }}
+            >
+              ({Math.round(sim.invoiceFileSize / 1024)} KB)
+            </span>
+          ) : null}
+        </button>
+      ),
+    });
+  }
+
+  if (sim.createdAt) {
+    metaItems.push({
+      key: "created",
+      label: t("simulationDetail", "metaCreated"),
+      value: fmtDate(sim.createdAt),
+    });
+  }
 
   return (
     <div
+      className="simulation-meta-card"
       style={{
         display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: 24,
-        padding: "10px",
-        background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",
-        border: "1px solid var(--scheme-neutral-900)",
-        borderRadius: 10,
+        flexDirection: "column",
+        gap: 6,
+        marginBottom: 12,
+        padding: "6px 14px",
       }}
     >
       <div
+        className="simulation-meta-grid"
         style={{
           display: "flex",
           flexWrap: "wrap",
-          gap: 8,
+          columnGap: 20,
+          rowGap: 4,
           alignItems: "center",
-          flex: 1,
         }}
       >
-        {/* Reference Number */}
-        {sim.referenceNumber && (
-          <span
-            style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
-          >
-            <span
-              style={{
-                fontSize: 10,
-                color: "var(--scheme-neutral-500)",
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-              }}
-            >
-              {t("simulationDetail", "metaReference")}
-            </span>
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "var(--scheme-neutral-100)",
-                fontFamily: "monospace",
-                letterSpacing: "0.1em",
-                background: "var(--scheme-neutral-900)",
-                padding: "1px 7px",
-                borderRadius: 4,
-              }}
-            >
-              {sim.referenceNumber}
-            </span>
-          </span>
-        )}
-
-        {sim.referenceNumber && sim.client && (
-          <span
+        {metaItems.map((item) => (
+          <Typography
+            component="span"
+            variant="caption"
+            className="simulation-meta-item"
+            key={item.key}
             style={{
-              color: "var(--scheme-neutral-800)",
-              fontSize: 14,
-              userSelect: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              minWidth: 0,
             }}
           >
-            ·
-          </span>
-        )}
-
-        {/* Client */}
-        {sim.client && (
-          <>
-            <span
-              style={{
-                color: "var(--scheme-neutral-800)",
-                fontSize: 14,
-                userSelect: "none",
+            <Typography
+              component="span"
+              variant="caption"
+              sx={{
+                fontWeight: 500
               }}
             >
-              ·
-            </span>
-            <span
-              style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "var(--scheme-neutral-500)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                {t("simulationDetail", "metaClient")}
-              </span>
-              {canViewClients ? (
-                <Box
-                  component={"a"}
-                  href={`/internal/clients/${sim.client.id}/edit`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{
-                    fontSize: 11,
-                    color: "primary.main",
-                    fontWeight: 600,
-                    textDecoration: "none",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 1,
-                  }}
-                >
-                  {sim.client.name}
-                  <LaunchIcon fontSize="small" />
-                </Box>
-              ) : (
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: "var(--scheme-neutral-100)",
-                    fontWeight: 600,
-                  }}
-                >
-                  {sim.client.name}
-                </span>
-              )}
-            </span>
-          </>
-        )}
-
-        {/* Status */}
-        <StatusBadge
-          label={sim.status || "DRAFT"}
-          tone={simulationStatusTone(sim.status)}
-        />
-
-        {/* CUPS */}
-        {sim.cupsNumber && (
-          <>
-            <span
+              {item.label}
+            </Typography>
+            <Typography
+              component="span"
+              variant="caption"
               style={{
-                color: "var(--scheme-neutral-800)",
-                fontSize: 14,
-                userSelect: "none",
+                minWidth: 0,
+                maxWidth: "100%",
+                overflow: item.key === "status" ? "visible" : "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: item.key === "status" ? "normal" : "nowrap",
+                color: "var(--scheme-neutral-100)",
+                fontFamily: item.mono ? "monospace" : undefined,
+                background: item.prominent ? "var(--scheme-neutral-1000)" : "transparent",
+                borderRadius: item.prominent ? 6 : undefined,
+                padding: item.prominent ? "2px 7px" : undefined,
               }}
-            >
-              ·
-            </span>
-            <span
-              style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "var(--scheme-neutral-500)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                {t("simulationDetail", "metaCups")}
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  color: "var(--scheme-neutral-200)",
-                  fontFamily: "monospace",
-                }}
-              >
-                {sim.cupsNumber}
-              </span>
-            </span>
-          </>
-        )}
 
-        {/* Expires */}
-        {sim.expiresAt && (
-          <>
-            <span
-              style={{
-                color: "var(--scheme-neutral-800)",
-                fontSize: 14,
-                userSelect: "none",
-              }}
             >
-              ·
-            </span>
-            <span
-              style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "var(--scheme-neutral-500)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                {t("simulationDetail", "metaExpires")}
-              </span>
-              <span
-                style={{ fontSize: 11, color: "var(--scheme-neutral-200)" }}
-              >
-                {fmtDate(sim.expiresAt)}
-              </span>
-            </span>
-          </>
-        )}
-
-        {/* Invoice File */}
-        {(sim.invoiceFileName || sim.invoiceFilePath) && (
-          <>
-            <span
-              style={{
-                color: "var(--scheme-neutral-800)",
-                fontSize: 14,
-                userSelect: "none",
-              }}
-            >
-              ·
-            </span>
-            <a
-              href={`/api/v1/internal/simulations/${sim.id}/invoice`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-                textDecoration: "none",
-                color: "var(--scheme-primary-500)",
-                cursor: "pointer",
-              }}
-              title={sim.invoiceFileName || "View invoice"}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "var(--scheme-neutral-500)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                📄 {t("simulationDetail", "invoiceFile")}
-              </span>
-              <span style={{ fontSize: 11, fontWeight: 600 }}>
-                {sim.invoiceFileName || "View"}
-              </span>
-              {sim.invoiceFileSize && (
-                <span
-                  style={{ fontSize: 10, color: "var(--scheme-neutral-600)" }}
-                >
-                  ({Math.round(sim.invoiceFileSize / 1024)} KB)
-                </span>
-              )}
-            </a>
-          </>
-        )}
-
-        {/* Created */}
-        {sim.createdAt && (
-          <>
-            <span
-              style={{
-                color: "var(--scheme-neutral-800)",
-                fontSize: 14,
-                userSelect: "none",
-              }}
-            >
-              ·
-            </span>
-            <span
-              style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "var(--scheme-neutral-500)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                {t("simulationDetail", "metaCreated")}
-              </span>
-              <span
-                style={{ fontSize: 11, color: "var(--scheme-neutral-200)" }}
-              >
-                {fmtDate(sim.createdAt)}
-              </span>
-            </span>
-          </>
-        )}
-
-        {/* PIN */}
-        {sim.pinSnapshot && (
-          <>
-            <span
-              style={{
-                color: "var(--scheme-neutral-800)",
-                fontSize: 14,
-                userSelect: "none",
-              }}
-            >
-              ·
-            </span>
-            <span
-              style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "var(--scheme-neutral-500)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                PIN
-              </span>
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: "var(--scheme-neutral-100)",
-                  fontFamily: "monospace",
-                  letterSpacing: "0.14em",
-                  background: "var(--scheme-neutral-900)",
-                  padding: "1px 7px",
-                  borderRadius: 4,
-                }}
-              >
-                {sim.pinSnapshot}
-              </span>
-            </span>
-          </>
-        )}
+              {item.value}
+            </Typography>
+          </Typography>
+        ))}
       </div>
-      {actions && (
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            flexShrink: 0,
-            marginLeft: 16,
-          }}
-        >
-          {actions}
-        </div>
-      )}
     </div>
   );
 }
@@ -413,12 +336,14 @@ export default function SimulationDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const isBoneyardFixture = id === "boneyard-fixture";
   const router = useRouter();
   const searchParams = useSearchParams();
   const [session] = useState(loadSession());
   const { showSuccess, showError } = useAlerts();
   const { t } = useI18n();
   const { canDo } = usePermissions();
+  const onActionButtons = useActionButtons();
 
   const [simulation, setSimulation] = useState<SimulationItem | null>(null);
   const [clients, setClients] = useState<ClientItem[]>([]);
@@ -439,27 +364,62 @@ export default function SimulationDetailPage({
   const [selectedBvsIsProduction, setSelectedBvsIsProduction] = useState<
     boolean | null
   >(null);
+  const [excelMenuAnchor, setExcelMenuAnchor] = useState<HTMLElement | null>(null);
+  const simulationBreadcrumbLabel =
+    simulation?.referenceNumber || simulation?.client?.name || simulation?.id || id;
+  const breadcrumbs = useMemo(
+    () => simulation ? [{ label: simulationBreadcrumbLabel, href: `/internal/simulations/${simulation.id}` }] : null,
+    [simulation, simulationBreadcrumbLabel],
+  );
+  useTopBarBreadcrumbs(breadcrumbs);
   const didAutoOpenShareRef = useRef(false);
   const formRef = useRef<SimulationFormHandle>(null);
 
-  // Auto-recalculate when the admin switches the base value set
-  const isFirstBvsChange = useRef(true);
-  useEffect(() => {
-    if (isFirstBvsChange.current) {
-      isFirstBvsChange.current = false;
-      return;
+  const handleBaseValueSetChange = useCallback((
+    id: string,
+    meta?: { userInitiated: boolean },
+  ) => {
+    setSelectedBaseValueSetId(id);
+    if (meta?.userInitiated) {
+      formRef.current?.calculate(id);
     }
-    if (selectedBaseValueSetId) {
-      formRef.current?.calculate();
+  }, []);
+
+  const downloadBaseValueSetId = usedBaseValueSetId ?? selectedBaseValueSetId;
+
+  const handleDownloadBaseValues = useCallback(async () => {
+    if (!session || !downloadBaseValueSetId) return;
+
+    try {
+      await downloadBaseValueFile(session.token, downloadBaseValueSetId);
+    } catch (err) {
+      showError(
+        err instanceof Error
+          ? err.message
+          : t("baseValuesModule", "download_tooltip"),
+      );
     }
-  }, [selectedBaseValueSetId]);
+  }, [downloadBaseValueSetId, session, showError, t]);
+
+  const handleDownloadFilledExcel = useCallback(async () => {
+    if (!session || !simulation) return;
+    try {
+      await downloadFilledSimulationExcel(
+        session.token,
+        simulation.id,
+        downloadBaseValueSetId ?? undefined,
+      );
+    } catch (err) {
+      showError(err instanceof Error ? err.message : t("common", "actionFailed"));
+    }
+  }, [downloadBaseValueSetId, session, showError, simulation]);
 
   const fetchedRef = useRef(false);
   useEffect(() => {
-    if (!session || fetchedRef.current) return;
+    if (!session || isBoneyardFixture || fetchedRef.current) return;
     fetchedRef.current = true;
     getSimulation(session.token, id)
-      .then(({ simulation: sim, versions }) => {
+      .then(({ simulation: sim }) => {
         setSimulation(sim);
         const payload = sim.payloadJson as {
           results?: SimulationResults;
@@ -467,10 +427,15 @@ export default function SimulationDetailPage({
           baseValueSetId?: string;
         } | null;
         if (payload?.results) setLastResults(payload.results);
-        if (payload?.baseValueSetId)
-          setUsedBaseValueSetId(payload.baseValueSetId);
+        const baseValueSetId =
+          payload?.results?.baseValueSetId ?? payload?.baseValueSetId;
+        if (baseValueSetId) setUsedBaseValueSetId(baseValueSetId);
 
         setSelectedOfferProductKey(payload?.selectedOffer?.productKey ?? "");
+
+        if (sim.client) {
+          setClients([sim.client as ClientItem]);
+        }
       })
       .catch((err) => {
         showError(
@@ -480,30 +445,154 @@ export default function SimulationDetailPage({
         );
         router.push("/internal/simulations");
       });
+  }, [session, id, isBoneyardFixture]);
 
-    listClients(session.token, { pageSize: 500 })
-      .then((res) => setClients(res.items))
-      .catch(() => {
-        /* non-critical */
-      });
-  }, [session, id]);
-
-  const handleShare = async () => {
+  const handleShare = useCallback(() => {
     if (!session || !simulation) return;
-    // Re-fetch the simulation so ShareSimulationView always receives a fresh
-    // payloadJson (containing the latest results + selectedOffer) without
-    // requiring a full page refresh after a calculation or offer selection.
-    try {
-      const { simulation: freshSim } = await getSimulation(
-        session.token,
-        simulation.id,
-      );
-      setSimulation(freshSim);
-    } catch {
-      // Non-critical — fall back to the existing (possibly stale) data.
-    }
     setShowShareDialog(true);
-  };
+  }, [session, simulation]);
+
+  const showDraftResultActions = !!lastResults && simulation?.status === "DRAFT";
+  const canChooseBaseValues =
+    !!session &&
+    (session.user.role === "ADMIN" || session.user.role === "SYS_ADMIN");
+  const canOpenAuditLogs =
+    !!session &&
+    (session.user.role === "AGENT" ||
+      canDo(session.user.role, "section.audit-logs"));
+
+  useLayoutEffect(() => {
+    if (!showDraftResultActions || !session) {
+      onActionButtons?.(null);
+      return;
+    }
+
+    onActionButtons?.(
+      <>
+        {canChooseBaseValues && (
+          <span className="topbar-action-wrap simulation-topbar-base-values">
+            <BaseValueSetSelector
+              token={session.token}
+              isAdmin
+              usedBaseValueSetId={usedBaseValueSetId}
+              forAgencyId={session.user.agencyId}
+              compact
+              onChange={handleBaseValueSetChange}
+              onChangeItem={(item) =>
+                setSelectedBvsIsProduction(item.isProduction)
+              }
+            />
+          </span>
+        )}
+        {downloadBaseValueSetId && (
+          <Tooltip title={t("baseValuesModule", "download_tooltip")} arrow placement="top">
+            <span className="topbar-action-wrap">
+              <Button
+                className="topbar-action topbar-action--compact"
+                variant="outlined"
+                size="small"
+                startIcon={<DownloadIcon fontSize="small" />}
+                onClick={(event) => setExcelMenuAnchor(event.currentTarget)}
+                aria-label={t("baseValuesModule", "download_tooltip")}
+                endIcon={<ArrowDropDownIcon fontSize="small" />}
+              >
+                <span className="topbar-action-label">
+                  {t("baseValuesModule", "downloadExcel")}
+                </span>
+              </Button>
+              <Menu
+                anchorEl={excelMenuAnchor}
+                open={Boolean(excelMenuAnchor)}
+                onClose={() => setExcelMenuAnchor(null)}
+              >
+                <MenuItem onClick={() => {
+                  setExcelMenuAnchor(null);
+                  void handleDownloadBaseValues();
+                }}>
+                  {t("baseValuesModule", "downloadOriginalExcel")}
+                </MenuItem>
+                <MenuItem onClick={() => {
+                  setExcelMenuAnchor(null);
+                  void handleDownloadFilledExcel();
+                }}>
+                  {t("baseValuesModule", "downloadFilledSimulationExcel")}
+                </MenuItem>
+              </Menu>
+            </span>
+          </Tooltip>
+        )}
+        <Tooltip title={t("downloadHistory", "buttonLabel") || "Download History"} arrow>
+          <span className="topbar-action-wrap">
+            <Button
+              className="topbar-action topbar-action--compact"
+              variant="outlined"
+              size="small"
+              startIcon={<HistoryIcon fontSize="small" />}
+              onClick={() => setShowHistoryDialog(true)}
+              aria-label={t("downloadHistory", "buttonLabel") || "Download History"}
+            >
+              <span className="topbar-action-label">
+                {t("downloadHistory", "buttonLabel") || "Download History"}
+              </span>
+            </Button>
+          </span>
+        </Tooltip>
+        {selectedOfferProductKey && (
+          <Tooltip title={t("actions", "share") || "Share"} arrow>
+            <span className="topbar-action-wrap">
+              <Button
+                className="topbar-action topbar-action--compact"
+                variant="outlined"
+                size="small"
+                startIcon={<ShareIcon fontSize="small" />}
+                onClick={handleShare}
+                aria-label={t("actions", "share") || "Share"}
+              >
+                <span className="topbar-action-label">
+                  {t("actions", "share") || "Share"}
+                </span>
+              </Button>
+            </span>
+          </Tooltip>
+        )}
+        {canOpenAuditLogs && (
+          <Tooltip title={t("auditLogsModal", "title")} arrow>
+            <span className="topbar-action-wrap">
+              <Button
+                className="topbar-action topbar-action--compact"
+                variant="outlined"
+                size="small"
+                startIcon={<HistoryIcon fontSize="small" />}
+                onClick={() => setShowAuditLogsModal(true)}
+                aria-label={t("auditLogsModal", "title")}
+              >
+                <span className="topbar-action-label">
+                  {t("auditLogsModal", "title")}
+                </span>
+              </Button>
+            </span>
+          </Tooltip>
+        )}
+      </>,
+    );
+
+    return () => onActionButtons?.(null);
+  }, [
+    canChooseBaseValues,
+    canOpenAuditLogs,
+    downloadBaseValueSetId,
+    excelMenuAnchor,
+    handleBaseValueSetChange,
+    handleDownloadBaseValues,
+    handleDownloadFilledExcel,
+    handleShare,
+    onActionButtons,
+    selectedOfferProductKey,
+    session,
+    showDraftResultActions,
+    t,
+    usedBaseValueSetId,
+  ]);
 
   useEffect(() => {
     if (!session || !simulation || didAutoOpenShareRef.current) return;
@@ -512,18 +601,7 @@ export default function SimulationDetailPage({
 
     didAutoOpenShareRef.current = true;
 
-    (async () => {
-      try {
-        const { simulation: freshSim } = await getSimulation(
-          session.token,
-          simulation.id,
-        );
-        setSimulation(freshSim);
-      } catch {
-        // Non-critical — fall back to existing simulation state.
-      }
-      setShowShareDialog(true);
-    })();
+    setShowShareDialog(true);
   }, [searchParams, session, simulation]);
 
   const handleClientFieldsChanged = async (
@@ -543,8 +621,9 @@ export default function SimulationDetailPage({
       <CrudPageLayout
         title={t("simulationDetail", "title")}
         backHref="/internal/simulations"
+        hideHeader
       >
-        <LoadingState message={t("simulationDetail", "loading")} size={100} />
+        <FormSkeleton variant="simulation-edit" />
       </CrudPageLayout>
     );
   }
@@ -553,79 +632,36 @@ export default function SimulationDetailPage({
     <CrudPageLayout
       title={t("simulationDetail", "title")}
       backHref="/internal/simulations"
+      hideHeader
     >
+      <div className="simulation-detail-page">
       <SimulationMeta
         sim={simulation}
+        token={session.token}
         canViewClients={
           session ? canDo(session.user.role, "section.clients") : false
-        }
-        actions={
-          !!lastResults && simulation.status === "DRAFT" ? (
-            <>
-              {session &&
-                (session.user.role === "ADMIN" ||
-                  session.user.role === "SYS_ADMIN") && (
-                <BaseValueSetSelector
-                  token={session.token}
-                  isAdmin
-                  usedBaseValueSetId={usedBaseValueSetId}
-                  onChange={(id) => setSelectedBaseValueSetId(id)}
-                  onChangeItem={(item) =>
-                    setSelectedBvsIsProduction(item.isProduction)
-                  }
-                />
-              )}
-              <Button
-                variant="outlined"
-                startIcon={<HistoryIcon />}
-                onClick={() => setShowHistoryDialog(true)}
-              >
-                {t("downloadHistory", "buttonLabel") || "Download History"}
-              </Button>
-              {selectedOfferProductKey && (
-                <Button
-                  variant="outlined"
-                  startIcon={<ShareIcon />}
-                  onClick={handleShare}
-                >
-                  {t("actions", "share") || "Share"}
-                </Button>
-              )}
-              {(session.user.role === "AGENT" ||
-                canDo(session.user.role, "section.audit-logs")) && (
-                <Button
-                  variant="outlined"
-                  startIcon={<HistoryIcon />}
-                  onClick={() => setShowAuditLogsModal(true)}
-                >
-                  {t("auditLogsModal", "title")}
-                </Button>
-              )}
-            </>
-          ) : undefined
         }
       />
 
       {simulation.status === "SHARED" && (
         <div
+          className="simulation-readonly-banner"
           style={{
             display: "flex",
             alignItems: "center",
             gap: 8,
-            padding: "10px 16px",
-            marginBottom: 16,
+            padding: "8px 16px",
+            marginBottom: 12,
             background: "rgba(74, 222, 128, 0.07)",
             border: "1px solid rgba(74, 222, 128, 0.3)",
             borderRadius: 8,
-            fontSize: 13,
             color: "#4ade80",
           }}
         >
           <LockIcon sx={{ fontSize: 16 }} />
-          <span>
-            This simulation has been shared and is now read-only. No changes can
-            be made.
-          </span>
+          <Typography component="span" variant="body2">
+            {t("simulationDetail", "readOnlySharedMessage")}
+          </Typography>
         </div>
       )}
 
@@ -635,19 +671,41 @@ export default function SimulationDetailPage({
         token={session.token}
         clients={clients}
         onClientFieldsChanged={handleClientFieldsChanged}
-        onSuccess={(results, bvsId) => {
+        onSuccess={(results, bvsId, payload) => {
           setLastResults(results);
           if (bvsId) setUsedBaseValueSetId(bvsId);
+          if (payload) {
+            setSimulation((current) =>
+              current
+                ? { ...current, payloadJson: payload as unknown as Record<string, unknown> }
+                : current,
+            );
+          }
         }}
         onNotify={(text, tone) =>
           tone === "success" ? showSuccess(text) : showError(text)
         }
-        onOfferSelected={(productKey) =>
-          setSelectedOfferProductKey(productKey ?? "")
-        }
+        onOfferSelected={(productKey, selectedOffer) => {
+          setSelectedOfferProductKey(productKey ?? "");
+          setSimulation((current) => {
+            if (!current) return current;
+            const payload = (current.payloadJson ?? {}) as SimulationPayload;
+            return {
+              ...current,
+              payloadJson: {
+                ...payload,
+                selectedOffer,
+              } as unknown as Record<string, unknown>,
+            };
+          });
+          if (productKey && selectedOffer && simulation.status === "DRAFT") {
+            setShowShareDialog(true);
+          }
+        }}
         readOnly={simulation.status === "SHARED"}
         baseValueSetId={selectedBaseValueSetId}
       />
+      </div>
 
       {/* Share Dialog */}
       <Dialog
@@ -714,15 +772,15 @@ export default function SimulationDetailPage({
       {session &&
         (session.user.role === "AGENT" ||
           canDo(session.user.role, "section.audit-logs")) && (
-        <AuditLogsModal
-          open={showAuditLogsModal}
-          onClose={() => setShowAuditLogsModal(false)}
-          targetType="SIMULATION"
-          targetId={simulation.id}
-          token={session.token}
-          title={`${t("auditLogsModal", "title")} - ${simulation.referenceNumber || simulation.id}`}
-        />
-      )}
+          <AuditLogsModal
+            open={showAuditLogsModal}
+            onClose={() => setShowAuditLogsModal(false)}
+            targetType="SIMULATION"
+            targetId={simulation.id}
+            token={session.token}
+            title={`${t("auditLogsModal", "title")} - ${simulation.referenceNumber || simulation.id}`}
+          />
+        )}
     </CrudPageLayout>
   );
 }

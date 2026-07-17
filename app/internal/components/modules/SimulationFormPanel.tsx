@@ -18,17 +18,20 @@ import type {
 // ─── Period helpers ────────────────────────────────────────────────────────────
 
 const ELEC_ENERGY_PERIODS: Record<ElecTarifa, string[]> = {
-    "2.0TD": ["P1", "P2", "P3"],
+    // Keep the same six positional cells as Excel; 2.0TD offer prices are
+    // defined only for P1-P3, so P4-P6 are preserved but do not affect offers.
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 const ELEC_POWER_PERIODS: Record<ElecTarifa, string[]> = {
-    "2.0TD": ["P1", "P2"],
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 const ELEC_EXCESS_PERIODS: Record<ElecTarifa, string[]> = {
-    "2.0TD": [],
+    // Excel E35 is a tariff-independent invoice pass-through amount.
+    "2.0TD": ["P1"],
     "3.0TD": ["P1", "P2", "P3"],
     "6.1TD": ["P1", "P2", "P3"],
 };
@@ -80,9 +83,9 @@ interface GasFormState {
 
 type SimType = "ELECTRICITY" | "GAS";
 
-function daysBetween(from: string, to: string, inclusive = false): number {
+function daysBetween(from: string, to: string): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-    return Math.max(1, inclusive ? d + 1 : d);
+    return Math.max(1, d);
 }
 
 function defaultElecState(): ElecFormState {
@@ -330,7 +333,7 @@ function ElectricityForm({
                             className="sp-form-input"
                             type="number"
                             readOnly
-                            value={daysBetween(state.fechaInicio, state.fechaFin, true)}
+                            value={daysBetween(state.fechaInicio, state.fechaFin)}
                             style={{ background: "var(--scheme-neutral-1000)", opacity: 0.7 }}
                         />
                     </Field>
@@ -518,7 +521,7 @@ function GasForm({
 // ─── Payload builders ──────────────────────────────────────────────────────────
 
 function buildElecInputs(s: ElecFormState): ElectricityInputs {
-    const dias = daysBetween(s.fechaInicio, s.fechaFin, true);
+    const dias = daysBetween(s.fechaInicio, s.fechaFin);
     return {
         tarifaAcceso: s.tarifaAcceso,
         zonaGeografica: s.zonaGeografica,
@@ -741,9 +744,7 @@ export function SimulationFormPanel({
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
                         style={{
-                            padding: "8px 16px",
-                            fontSize: 13,
-                            fontWeight: activeTab === tab.key ? 600 : 400,
+                            padding: "8px 16px", fontWeight: activeTab === tab.key ? 600 : 400,
                             background: "none",
                             border: "none",
                             cursor: "pointer",
@@ -772,9 +773,7 @@ export function SimulationFormPanel({
                                         borderRadius: 8,
                                         border: `1.5px solid ${simType === stype ? "var(--scheme-brand-600, #888)" : "var(--scheme-neutral-800)"}`,
                                         background: simType === stype ? "var(--scheme-brand-800, rgba(255,255,255,0.08))" : "transparent",
-                                        cursor: "pointer",
-                                        fontSize: 13,
-                                        fontWeight: simType === stype ? 600 : 400,
+                                        cursor: "pointer", fontWeight: simType === stype ? 600 : 400,
                                         color: simType === stype ? "var(--scheme-neutral-100)" : "var(--scheme-neutral-400)",
                                     }}
                                 >
@@ -804,7 +803,7 @@ export function SimulationFormPanel({
                     {results ? (
                         <SimulationResultsTable results={results} facturaActual={facturaActual} />
                     ) : (
-                        <div style={{ padding: 40, textAlign: "center", opacity: 0.5, fontSize: 13 }}>
+                        <div style={{ padding: 40, textAlign: "center", opacity: 0.5, }}>
                             {t("simulationForm", "noResultsPrompt")}
                         </div>
                     )}

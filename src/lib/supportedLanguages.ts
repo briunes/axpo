@@ -1,27 +1,77 @@
 /**
- * Supported languages for email and PDF templates.
+ * Supported languages for email, PDF templates, business preferences, and language switchers.
  *
  * To add a new language, simply add a new entry to this array.
  * The `code` must match the language codes used in UserPreferences.language
  * and SystemConfig.defaultLanguage.
  */
+import { createElement, type ReactNode } from "react";
+
 export interface SupportedLanguage {
   code: string;
   label: string;
   flag: string;
+  flagSrc: string;
 }
 
 export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
-  { code: "en", label: "English", flag: "🇬🇧" },
-  { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "en", label: "English", flag: "🇬🇧", flagSrc: "/flags/en.svg" },
+  { code: "es", label: "Español", flag: "🇪🇸", flagSrc: "/flags/es.svg" },
+  // { code: "pt", label: "Português", flag: "🇵🇹", flagSrc: "/flags/pt.svg" },
+  // { code: "fr", label: "Français", flag: "🇫🇷", flagSrc: "/flags/fr.svg" },
 ];
 
 export const DEFAULT_LANGUAGE = "en";
 
-export function getLanguageLabel(code: string): string {
+export function getLanguageOptions(): Array<{
+  value: string;
+  label: string;
+  icon: ReactNode;
+}> {
+  return SUPPORTED_LANGUAGES.map((language) => ({
+    value: language.code,
+    label: language.label,
+    icon: createElement("img", {
+      src: language.flagSrc,
+      alt: `${language.code.toUpperCase()} flag`,
+      style: {
+        width: 22,
+        height: 15,
+        objectFit: "cover",
+        borderRadius: 2,
+        boxShadow: "0 0 0 1px rgba(0,0,0,0.12)",
+        display: "inline-block",
+      },
+    }),
+  }));
+}
+
+export function getSupportedLanguage(
+  code: string,
+): SupportedLanguage | undefined {
+  return SUPPORTED_LANGUAGES.find((language) => language.code === code);
+}
+
+export function isSupportedLanguage(
+  code: string | null | undefined,
+): code is string {
+  const normalized = code?.trim().toLowerCase();
   return (
-    SUPPORTED_LANGUAGES.find((l) => l.code === code)?.label ??
-    code.toUpperCase()
+    typeof normalized === "string" &&
+    SUPPORTED_LANGUAGES.some((language) => language.code === normalized)
+  );
+}
+
+export function normalizeLanguageCode(code: string | null | undefined): string {
+  const normalized = code?.trim().toLowerCase();
+  return isSupportedLanguage(normalized) ? normalized : DEFAULT_LANGUAGE;
+}
+
+export function getLanguageLabel(code: string): string {
+  const normalized = normalizeLanguageCode(code);
+  return (
+    SUPPORTED_LANGUAGES.find((l) => l.code === normalized)?.label ??
+    normalized.toUpperCase()
   );
 }
 
@@ -75,14 +125,17 @@ export function resolveTranslation<T extends { languageCode: string }>(
   preferredLanguage: string,
 ): T | undefined {
   if (!translations || translations.length === 0) return undefined;
+  const normalizedPreferredLanguage = normalizeLanguageCode(preferredLanguage);
 
   // Try exact match
-  const exact = translations.find((t) => t.languageCode === preferredLanguage);
+  const exact = translations.find(
+    (t) => t.languageCode.trim().toLowerCase() === normalizedPreferredLanguage,
+  );
   if (exact) return exact;
 
   // Try default language
   const defaultLang = translations.find(
-    (t) => t.languageCode === DEFAULT_LANGUAGE,
+    (t) => t.languageCode.trim().toLowerCase() === DEFAULT_LANGUAGE,
   );
   if (defaultLang) return defaultLang;
 

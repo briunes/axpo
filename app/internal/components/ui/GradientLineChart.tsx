@@ -78,16 +78,14 @@ export function GradientLineChart({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                opacity: 0.4,
-                fontSize: 13,
-            }}>
+                opacity: 0.4, }}>
                 {emptyMessage}
             </div>
         );
     }
 
     return (
-        <div style={{ position: "relative" }}>
+        <div style={{ position: "relative", width: "100%", minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
             {/* Hidden SVG carrying the gradient definition for this instance */}
             <svg width="0" height="0" style={{ position: "absolute", overflow: "hidden" }}>
                 <defs>

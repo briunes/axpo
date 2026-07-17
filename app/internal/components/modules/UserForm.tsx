@@ -48,6 +48,7 @@ export interface UserFormProps {
     isEditingSelf?: boolean;
     originalRole?: UserRole;
     onRenderActions?: (actions: React.ReactNode) => void;
+    formVariant?: "card" | "plain";
 }
 
 /**
@@ -70,6 +71,7 @@ export function UserForm({
     isEditingSelf,
     originalRole,
     onRenderActions,
+    formVariant,
 }: UserFormProps) {
     const { t } = useI18n();
     const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
@@ -153,6 +155,7 @@ export function UserForm({
             onCancel={onCancel}
             isSubmitting={isSubmitting}
             onRenderActions={onRenderActions}
+            variant={formVariant}
         >
             <CrudFormRow>
                 <FormInput
@@ -178,7 +181,7 @@ export function UserForm({
                         clearError('email');
                     }}
                     required
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isEditingSelf}
                     error={!!validationErrors.email}
                     helperText={validationErrors.email}
                 />

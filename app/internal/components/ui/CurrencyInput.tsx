@@ -127,13 +127,21 @@ export function CurrencyInput({
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
             const input = e.target.value;
-            // Allow digits, one decimal separator, and an optional leading minus
+            // Auto-correct the "wrong" decimal separator to match the configured one.
+            // e.g. configured EU format (",") + user types "1234.56" → becomes "1234,56"
+            //      configured US format (".") + user types "1234,56" → becomes "1234.56"
+            const oppositeSep = decimalSep === "," ? "." : ",";
+            const corrected = input.replace(
+                new RegExp(`\\${oppositeSep}`, "g"),
+                decimalSep,
+            );
+            // Allow digits, the decimal separator, and an optional leading minus
             const allowedChars = new RegExp(
                 `[^0-9\\-\\${decimalSep}]`,
                 "g",
             );
             // Keep only valid chars; allow at most one decimal separator
-            const cleaned = input.replace(allowedChars, "");
+            const cleaned = corrected.replace(allowedChars, "");
             const parts = cleaned.split(decimalSep);
             const normalised =
                 parts.length > 2

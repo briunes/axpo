@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface HtmlEditorProps {
     initialHtml: string;
@@ -9,6 +10,7 @@ export interface HtmlEditorProps {
 }
 
 export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEditorProps) {
+    const { t } = useI18n();
     const [value, setValue] = useState(initialHtml);
     const [mode, setMode] = useState<"visual" | "code">("visual");
     const editorRef = useRef<HTMLDivElement>(null);
@@ -116,12 +118,12 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
     };
 
     const insertLink = () => {
-        const url = prompt("Enter URL:");
+        const url = prompt(t("htmlEditor", "promptUrl"));
         if (url) execCommand("createLink", url);
     };
 
     const insertImage = () => {
-        const url = prompt("Enter image URL:");
+        const url = prompt(t("htmlEditor", "promptImageUrl"));
         if (url) execCommand("insertImage", url);
     };
 
@@ -130,60 +132,60 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
 
             <div className="editor-toolbar">
                 <button type="button" onClick={() => setMode(mode === "visual" ? "code" : "visual")} className="mode-toggle">
-                    {mode === "visual" ? "📝 Code" : "👁️ Visual"}
+                    {mode === "visual" ? t("htmlEditor", "codeMode") : t("htmlEditor", "visualMode")}
                 </button>
 
                 {mode === "visual" && (
                     <>
                         <div className="toolbar-divider"></div>
                         <select onChange={(e) => execCommand("formatBlock", e.target.value)} className="toolbar-select">
-                            <option value="">- Format -</option>
-                            <option value="p">Paragraph</option>
-                            <option value="h1">Heading 1</option>
-                            <option value="h2">Heading 2</option>
-                            <option value="h3">Heading 3</option>
-                            <option value="h4">Heading 4</option>
-                            <option value="h5">Heading 5</option>
-                            <option value="h6">Heading 6</option>
+                            <option value="">{t("htmlEditor", "format")}</option>
+                            <option value="p">{t("htmlEditor", "paragraph")}</option>
+                            <option value="h1">{t("htmlEditor", "heading1")}</option>
+                            <option value="h2">{t("htmlEditor", "heading2")}</option>
+                            <option value="h3">{t("htmlEditor", "heading3")}</option>
+                            <option value="h4">{t("htmlEditor", "heading4")}</option>
+                            <option value="h5">{t("htmlEditor", "heading5")}</option>
+                            <option value="h6">{t("htmlEditor", "heading6")}</option>
                         </select>
 
                         <div className="toolbar-divider"></div>
-                        <button type="button" onClick={() => execCommand("bold")} title="Bold"><strong>B</strong></button>
-                        <button type="button" onClick={() => execCommand("italic")} title="Italic"><em>I</em></button>
-                        <button type="button" onClick={() => execCommand("underline")} title="Underline"><u>U</u></button>
-                        <button type="button" onClick={() => execCommand("strikeThrough")} title="Strikethrough"><s>S</s></button>
+                        <button type="button" onClick={() => execCommand("bold")} title={t("htmlEditor", "bold")}><strong>B</strong></button>
+                        <button type="button" onClick={() => execCommand("italic")} title={t("htmlEditor", "italic")}><em>I</em></button>
+                        <button type="button" onClick={() => execCommand("underline")} title={t("htmlEditor", "underline")}><u>U</u></button>
+                        <button type="button" onClick={() => execCommand("strikeThrough")} title={t("htmlEditor", "strikethrough")}><s>S</s></button>
 
                         <div className="toolbar-divider"></div>
                         <input
                             type="color"
                             onChange={(e) => execCommand("foreColor", e.target.value)}
-                            title="Text Color"
+                            title={t("htmlEditor", "textColor")}
                             className="color-picker"
                         />
                         <input
                             type="color"
                             onChange={(e) => execCommand("backColor", e.target.value)}
-                            title="Background Color"
+                            title={t("htmlEditor", "backgroundColor")}
                             className="color-picker"
                         />
 
                         <div className="toolbar-divider"></div>
-                        <button type="button" onClick={() => execCommand("justifyLeft")} title="Align Left">⬅</button>
-                        <button type="button" onClick={() => execCommand("justifyCenter")} title="Center">↔</button>
-                        <button type="button" onClick={() => execCommand("justifyRight")} title="Align Right">➡</button>
+                        <button type="button" onClick={() => execCommand("justifyLeft")} title={t("htmlEditor", "alignLeft")}>⬅</button>
+                        <button type="button" onClick={() => execCommand("justifyCenter")} title={t("htmlEditor", "center")}>↔</button>
+                        <button type="button" onClick={() => execCommand("justifyRight")} title={t("htmlEditor", "alignRight")}>➡</button>
 
                         <div className="toolbar-divider"></div>
-                        <button type="button" onClick={() => execCommand("insertUnorderedList")} title="Bullet List">• List</button>
-                        <button type="button" onClick={() => execCommand("insertOrderedList")} title="Numbered List">1. List</button>
-                        <button type="button" onClick={() => execCommand("indent")} title="Indent">→</button>
-                        <button type="button" onClick={() => execCommand("outdent")} title="Outdent">←</button>
+                        <button type="button" onClick={() => execCommand("insertUnorderedList")} title={t("htmlEditor", "bulletList")}>{t("htmlEditor", "bulletListLabel")}</button>
+                        <button type="button" onClick={() => execCommand("insertOrderedList")} title={t("htmlEditor", "numberedList")}>{t("htmlEditor", "numberedListLabel")}</button>
+                        <button type="button" onClick={() => execCommand("indent")} title={t("htmlEditor", "indent")}>→</button>
+                        <button type="button" onClick={() => execCommand("outdent")} title={t("htmlEditor", "outdent")}>←</button>
 
                         <div className="toolbar-divider"></div>
-                        <button type="button" onClick={insertLink} title="Insert Link">🔗 Link</button>
-                        <button type="button" onClick={insertImage} title="Insert Image">🖼️ Image</button>
+                        <button type="button" onClick={insertLink} title={t("htmlEditor", "insertLink")}>{t("htmlEditor", "insertLinkLabel")}</button>
+                        <button type="button" onClick={insertImage} title={t("htmlEditor", "insertImage")}>{t("htmlEditor", "insertImageLabel")}</button>
 
                         <div className="toolbar-divider"></div>
-                        <button type="button" onClick={() => execCommand("removeFormat")} title="Clear Formatting">✖ Clear</button>
+                        <button type="button" onClick={() => execCommand("removeFormat")} title={t("htmlEditor", "clearFormatting")}>{t("htmlEditor", "clearFormattingLabel")}</button>
                     </>
                 )}
             </div>
@@ -223,7 +225,6 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
                     background: rgba(56, 189, 248, 0.12);
                     border-bottom: 1px solid rgba(56, 189, 248, 0.22);
                     padding: 12px 16px;
-                    font-size: 13px;
                     color: #7dd3fc;
                 }
                 .editor-toolbar {
@@ -242,7 +243,6 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
                     color: var(--scheme-neutral-300);
                     border-radius: 4px;
                     cursor: pointer;
-                    font-size: 13px;
                     transition: all 0.2s;
                 }
                 .editor-toolbar button:hover {
@@ -264,7 +264,6 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
                     padding: 6px 8px;
                     border: 1px solid var(--scheme-neutral-900);
                     border-radius: 4px;
-                    font-size: 13px;
                     background: var(--scheme-neutral-1200);
                     color: var(--scheme-neutral-300);
                     cursor: pointer;
@@ -307,7 +306,6 @@ export function HtmlEditor({ initialHtml, onChange, height = "600px" }: HtmlEdit
                     color: var(--scheme-neutral-100);
                     background: var(--scheme-neutral-1200);
                     font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-                    font-size: 13px;
                     line-height: 1.6;
                     resize: vertical;
                     outline: none;

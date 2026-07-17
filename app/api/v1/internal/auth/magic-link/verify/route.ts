@@ -4,7 +4,7 @@ import { ResponseHandler } from "@/application/middleware/response";
 import { AuthService } from "@/application/services/authService";
 import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
 import {
-  applyRateLimit,
+  applyRateLimitShared,
   getClientRateLimitKey,
 } from "@/application/middleware/rateLimit";
 
@@ -30,7 +30,7 @@ import {
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const token = request.nextUrl.searchParams.get("token") ?? "";
   const sessionContext = getRequestSessionContext(request);
-  applyRateLimit(
+  await applyRateLimitShared(
     getClientRateLimitKey(sessionContext.ipAddress, "magic-link-verify"),
     { maxRequests: 10, windowMs: 15 * 60 * 1000 },
   );

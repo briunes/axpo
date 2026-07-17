@@ -1,7 +1,14 @@
 "use client";
 
+import { uploadPresigned } from "@vercel/blob/client";
 import { useState, useEffect, useRef } from "react";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { getSystemConfig } from "../../lib/configApi";
+import {
+    DEFAULT_MAX_UPLOAD_FILE_SIZE_MB,
+    formatUploadSizeLimit,
+    uploadSizeMbToBytes,
+} from "../../../../src/infrastructure/uploads/uploadLimits";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -11,9 +18,12 @@ import BusinessIcon from "@mui/icons-material/Business";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { Button, LinearProgress, Chip, Tooltip, CircularProgress } from "@mui/material";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import CloseIcon from "@mui/icons-material/Close";
+import { Button, LinearProgress, Chip, Tooltip, CircularProgress, Dialog, DialogContent, DialogTitle, IconButton } from "@mui/material";
 import { FormSelect } from "../ui/FormSelect";
-
+import WarningIcon from '@mui/icons-material/Warning';
 export interface ExtractedInvoiceData {
     // Client/Holder Information
     cups?: string;
@@ -56,6 +66,14 @@ export interface ExtractedInvoiceData {
     reactiva?: number;
     alquiler?: number;
     otrosCargos?: number;
+    importePotencia?: number;
+    importeEnergia?: number;
+    importeImpuestoElectrico?: number;
+    importeTerminoFijo?: number;
+    importeTerminoVariable?: number;
+    importeImpuestoHidrocarburos?: number;
+    importeIva?: number;
+    useCurrentInvoiceBreakdown?: boolean;
     ivaTasa?: number;
     impuestoElectricoTasa?: number;
     impuestoHidrocarburo?: number;
@@ -97,6 +115,94 @@ interface InvoiceExtractorProps {
     onFileChange?: (hasFile: boolean) => void;
 }
 
+type InvoiceProviderOption = {
+    id: string;
+    name: string;
+    slug: string;
+    needsPromptConfig: boolean;
+};
+
+type UploadedInvoiceBlob = {
+    blobUrl: string;
+    fileName: string;
+    fileType: string;
+    fileSizeBytes: number;
+};
+
+type ApiErrorPayload = {
+    message?: string;
+    messageKey?: string;
+    messageParams?: Record<string, string | number>;
+    details?: string;
+    provider?: string;
+    model?: string;
+};
+
+let invoiceProvidersCache: InvoiceProviderOption[] | null = null;
+let invoiceProvidersPromise: Promise<InvoiceProviderOption[]> | null = null;
+
+function isLocalUploadEnvironment(): boolean {
+    return typeof window !== "undefined" &&
+        ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+
+function invoiceContentType(file: File): string {
+    if (file.type) return file.type;
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".pdf")) return "application/pdf";
+    if (name.endsWith(".png")) return "image/png";
+    if (name.endsWith(".webp")) return "image/webp";
+    return "image/jpeg";
+}
+
+async function uploadInvoiceFilesToBlob(files: File[], token: string): Promise<UploadedInvoiceBlob[]> {
+    if (!token) {
+        throw new Error("Authentication token is missing. Please log in again.");
+    }
+
+    return Promise.all(files.map(async (file) => {
+        const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const blob = await uploadPresigned(
+            `invoices/${Date.now()}-${crypto.randomUUID()}-${safeFileName}`,
+            file,
+            {
+                access: "private",
+                contentType: invoiceContentType(file),
+                handleUploadUrl: `/api/v1/internal/invoices/upload/blob?token=${encodeURIComponent(token)}`,
+                multipart: file.size > 20 * 1024 * 1024,
+            },
+        );
+
+        return {
+            blobUrl: blob.url,
+            fileName: file.name,
+            fileType: invoiceContentType(file),
+            fileSizeBytes: file.size,
+        };
+    }));
+}
+
+async function loadInvoiceProviders(token: string | null): Promise<InvoiceProviderOption[]> {
+    if (invoiceProvidersCache) return invoiceProvidersCache;
+    if (invoiceProvidersPromise) return invoiceProvidersPromise;
+
+    invoiceProvidersPromise = fetch("/api/v1/internal/invoice-providers", {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => {
+            const providers = Array.isArray(data) ? data : [];
+            invoiceProvidersCache = providers;
+            return providers;
+        })
+        .catch(() => [])
+        .finally(() => {
+            invoiceProvidersPromise = null;
+        });
+
+    return invoiceProvidersPromise;
+}
+
 export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, onFileChange }: InvoiceExtractorProps) {
     const { t } = useI18n();
     const [files, setFiles] = useState<File[]>([]);
@@ -111,7 +217,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
     const [progress, setProgress] = useState(0);
 
     // All providers (for the select dropdown)
-    const [allProviders, setAllProviders] = useState<{ id: string; name: string; slug: string; needsPromptConfig: boolean }[]>([]);
+    const [allProviders, setAllProviders] = useState<InvoiceProviderOption[]>([]);
     const [isAddingProvider, setIsAddingProvider] = useState(false);
 
     // Provider detection state
@@ -122,25 +228,70 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         isKnown: boolean;
         confidence: "high" | "low";
         invoiceType: "ELECTRICITY" | "GAS" | "BOTH" | null;
+        invoiceCount: number | null;
     } | null>(null);
     const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
     const [providerDetectionLogId, setProviderDetectionLogId] = useState<string | null>(null);
     const [extractionLogId, setExtractionLogId] = useState<string | null>(null);
+    const [multiInvoiceError, setMultiInvoiceError] = useState<string | null>(null);
+    const [maxUploadFileSizeMb, setMaxUploadFileSizeMb] = useState(DEFAULT_MAX_UPLOAD_FILE_SIZE_MB);
+    const [preview, setPreview] = useState<{ file: File; url: string; type: "pdf" | "image" } | null>(null);
     const detectionAbortRef = useRef<AbortController | null>(null);
+    const uploadSizeLimitLabel = formatUploadSizeLimit(maxUploadFileSizeMb);
+    const maxUploadSizeBytes = uploadSizeMbToBytes(maxUploadFileSizeMb);
 
     // Load all providers for the select
     useEffect(() => {
         const token = typeof window !== "undefined" ? localStorage.getItem("axpo.internal.auth.token") : null;
-        fetch("/api/v1/internal/invoice-providers", {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then(r => r.ok ? r.json() : [])
-            .then(data => setAllProviders(Array.isArray(data) ? data : []))
-            .catch(() => { });
+        let cancelled = false;
+        loadInvoiceProviders(token).then((providers) => {
+            if (!cancelled) setAllProviders(providers);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        getSystemConfig({ view: "runtime" })
+            .then((systemConfig) => {
+                if (!cancelled) {
+                    setMaxUploadFileSizeMb(systemConfig.maxUploadFileSizeMb ?? DEFAULT_MAX_UPLOAD_FILE_SIZE_MB);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setMaxUploadFileSizeMb(DEFAULT_MAX_UPLOAD_FILE_SIZE_MB);
+            });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const isPdf = (f: File) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
     const currentType: "pdf" | "image" | null = files.length === 0 ? null : isPdf(files[0]) ? "pdf" : "image";
+    const handlePreviewFile = (file: File) => {
+        setPreview(prev => {
+            if (prev) URL.revokeObjectURL(prev.url);
+            return {
+                file,
+                url: URL.createObjectURL(file),
+                type: isPdf(file) ? "pdf" : "image",
+            };
+        });
+    };
+    const handleClosePreview = () => {
+        setPreview(prev => {
+            if (prev) URL.revokeObjectURL(prev.url);
+            return null;
+        });
+    };
+    const translateApiMessage = (payload: ApiErrorPayload | null | undefined, fallback: string) => {
+        if (payload?.messageKey) {
+            return t("invoiceExtractor", payload.messageKey, payload.messageParams);
+        }
+        return payload?.message || fallback;
+    };
 
     // Auto-detect provider whenever files change (debounced to avoid multiple rapid requests)
     useEffect(() => {
@@ -150,10 +301,12 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             setSelectedProviderId(null);
             setProviderDetectionLogId(null);
             setExtractionLogId(null);
+            setMultiInvoiceError(null);
             return;
         }
 
         setDetectionStatus("detecting");
+        setMultiInvoiceError(null);
 
         // Debounce: wait 400ms after last file change before sending the request
         const debounceTimer = setTimeout(() => {
@@ -165,19 +318,45 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             setDetectedProvider(null);
             setSelectedProviderId(null);
             setProviderDetectionLogId(null);
+            setMultiInvoiceError(null);
 
             const run = async () => {
                 try {
-                    const formData = new FormData();
-                    // Only send the first file for detection — all images are from the same invoice
-                    formData.append("file", files[0]);
+                    const token = localStorage.getItem("axpo.internal.auth.token");
+                    if (!token) {
+                        setDetectionStatus("failed");
+                        onError?.("Authentication token missing. Please log in again.");
+                        return;
+                    }
+
+                    const useLocalMultipart = isLocalUploadEnvironment();
+                    let body: BodyInit;
+                    let headers: HeadersInit = {
+                        Authorization: `Bearer ${token}`,
+                    };
+
+                    // For large files (>5MB), always use blob upload even in local environments
+                    // This avoids hitting request body size limits
+                    const fileSizeIsTooLarge = files[0].size > 5 * 1024 * 1024;
+
+                    if (useLocalMultipart && !fileSizeIsTooLarge) {
+                        const formData = new FormData();
+                        // Only send the first file for detection — all images are from the same invoice
+                        formData.append("file", files[0]);
+                        body = formData;
+                    } else {
+                        const uploadedFiles = await uploadInvoiceFilesToBlob([files[0]], token);
+                        headers = {
+                            ...headers,
+                            "Content-Type": "application/json",
+                        };
+                        body = JSON.stringify({ files: uploadedFiles });
+                    }
 
                     const response = await fetch("/api/v1/internal/invoices/detect-provider", {
                         method: "POST",
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem("axpo.internal.auth.token")}`,
-                        },
-                        body: formData,
+                        headers,
+                        body,
                         signal: controller.signal,
                     });
 
@@ -185,6 +364,13 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     setProviderDetectionLogId(result?.ocrLogId ?? null);
 
                     if (!response.ok) {
+                        const message = translateApiMessage(result, t("invoiceExtractor", "providerDetectionFailed"));
+                        if (result?.code === "MULTIPLE_INVOICES_NOT_ALLOWED") {
+                            setMultiInvoiceError(message);
+                            setExtractionStatus("error");
+                            setStatusMessage(message);
+                            onError?.(message);
+                        }
                         setDetectionStatus("failed");
                         return;
                     }
@@ -196,6 +382,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                             isKnown: result.isKnown,
                             confidence: result.confidence,
                             invoiceType: result.invoiceType ?? null,
+                            invoiceCount: typeof result.invoiceCount === "number" ? result.invoiceCount : null,
                         });
                         setSelectedProviderId(result.providerId ?? null);
                         setDetectionStatus("detected");
@@ -216,6 +403,13 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             detectionAbortRef.current?.abort();
         };
     }, [files]);
+
+    useEffect(() => {
+        const previewUrl = preview?.url;
+        return () => {
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+        };
+    }, [preview?.url]);
 
     const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
         e.preventDefault();
@@ -240,6 +434,14 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
     const addFiles = (incoming: File[]) => {
         if (incoming.length === 0) return;
+        const oversizedFile = incoming.find(file => file.size > maxUploadSizeBytes);
+        if (oversizedFile) {
+            const message = t("invoiceExtractor", "fileTooLarge", { max: uploadSizeLimitLabel });
+            setExtractionStatus("error");
+            setStatusMessage(message);
+            onError?.(message);
+            return;
+        }
         const firstIncoming = incoming[0];
         if (isPdf(firstIncoming)) {
             setFiles([firstIncoming]);
@@ -257,6 +459,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         setStatusMessage("");
         setProviderDetectionLogId(null);
         setExtractionLogId(null);
+        setMultiInvoiceError(null);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -271,10 +474,17 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         setStatusMessage("");
         setProviderDetectionLogId(null);
         setExtractionLogId(null);
+        setMultiInvoiceError(null);
     };
 
     const handleExtract = async () => {
         if (files.length === 0) return;
+        if (multiInvoiceError) {
+            setExtractionStatus("error");
+            setStatusMessage(multiInvoiceError);
+            onError?.(multiInvoiceError);
+            return;
+        }
 
         onBeforeExtract?.();
         setIsExtracting(true);
@@ -292,37 +502,88 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         }, 200);
 
         try {
-            const formData = new FormData();
-            files.forEach(f => formData.append("file", f));
+            const token = localStorage.getItem("axpo.internal.auth.token");
+            if (!token) {
+                setExtractionStatus("idle");
+                setStatusMessage("Authentication failed. Please log in again.");
+                clearInterval(rafId);
+                onError?.("Authentication token missing. Please log in again.");
+                return;
+            }
+
+            const useLocalMultipart = isLocalUploadEnvironment();
+
+            // For large files (>5MB), always use blob upload even in local environments
+            // This avoids hitting request body size limits
+            const hasLargeFiles = files.some(f => f.size > 5 * 1024 * 1024);
+
+            let requestBody: BodyInit | undefined;
+            let requestHeaders: HeadersInit = {
+                Authorization: `Bearer ${token}`,
+            };
+            const jsonPayload: Record<string, unknown> = {};
+
+            let formData: FormData | null = null;
+            if (useLocalMultipart && !hasLargeFiles) {
+                formData = new FormData();
+                files.forEach(f => formData!.append("file", f));
+                requestBody = formData;
+            } else {
+                jsonPayload.files = await uploadInvoiceFilesToBlob(files, token);
+                requestHeaders = {
+                    ...requestHeaders,
+                    "Content-Type": "application/json",
+                };
+            }
+
             if (selectedProviderId) {
                 // Only pass the providerId if the provider has an actual configured prompt
                 const selectedProvider = allProviders.find(p => p.id === selectedProviderId);
                 if (selectedProvider && !selectedProvider.needsPromptConfig) {
-                    formData.append("providerId", selectedProviderId);
+                    if (formData) {
+                        formData.append("providerId", selectedProviderId);
+                    } else {
+                        jsonPayload.providerId = selectedProviderId;
+                    }
                 }
             }
             // Pass the detected invoice type so the extract route picks the correct prompt
             const invoiceType = detectedProvider?.invoiceType;
             if (invoiceType === "ELECTRICITY" || invoiceType === "GAS") {
-                formData.append("invoiceType", invoiceType);
+                if (formData) {
+                    formData.append("invoiceType", invoiceType);
+                } else {
+                    jsonPayload.invoiceType = invoiceType;
+                }
+            }
+            const invoiceCount = detectedProvider?.invoiceCount;
+            if (typeof invoiceCount === "number") {
+                if (formData) {
+                    formData.append("invoiceCount", String(invoiceCount));
+                } else {
+                    jsonPayload.invoiceCount = invoiceCount;
+                }
+            }
+
+            if (!formData) {
+                requestBody = JSON.stringify(jsonPayload);
             }
 
             const response = await fetch("/api/v1/internal/invoices/extract", {
                 method: "POST",
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("axpo.internal.auth.token")}`,
-                },
-                body: formData,
+                headers: requestHeaders,
+                body: requestBody ?? JSON.stringify(jsonPayload),
             });
 
             const result = await response.json().catch(() => null);
             setExtractionLogId(result?.ocrLogId ?? null);
 
             if (!response.ok) {
-                const error = result ?? { message: "Extraction failed" };
+                const error = (result ?? { message: "Extraction failed" }) as ApiErrorPayload;
                 const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
                 const providerInfo = error.provider && error.model ? `\n\nProvider: ${error.provider}, Model: ${error.model}` : '';
-                throw new Error(error.message + errorDetails + providerInfo || "Failed to extract data from invoice");
+                const message = translateApiMessage(error, t("invoiceExtractor", "error"));
+                throw new Error(message + errorDetails + providerInfo || t("invoiceExtractor", "error"));
             }
 
             if (result?.success && result.data) {
@@ -366,6 +627,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
         setStatusMessage("");
         setProviderDetectionLogId(null);
         setExtractionLogId(null);
+        setMultiInvoiceError(null);
     };
 
     const handleAddToProviderList = async () => {
@@ -388,7 +650,8 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             });
             if (res.ok) {
                 const created = await res.json();
-                setAllProviders(prev => [...prev, created]);
+                invoiceProvidersCache = [...(invoiceProvidersCache ?? allProviders), created];
+                setAllProviders(invoiceProvidersCache);
                 setSelectedProviderId(created.id);
                 setDetectedProvider(prev => prev ? { ...prev, providerId: created.id, isKnown: true } : prev);
             }
@@ -412,10 +675,10 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
             </div>
 
             <div className="extractor-content">
-                {/* Upload area — always visible for images so more can be added */}
-                {(files.length === 0 || currentType === "image") && (
+                {/* Upload area */}
+                {files.length === 0 && (
                     <label
-                        className={`file-upload-area${isDragging ? " dragging" : ""}${files.length > 0 ? " compact" : ""}`}
+                        className={`file-upload-area${isDragging ? " dragging" : ""}`}
                         onDragOver={handleDragOver}
                         onDragEnter={handleDragOver}
                         onDragLeave={handleDragLeave}
@@ -428,10 +691,10 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                             onChange={handleFileChange}
                             style={{ display: "none" }}
                         />
-                        <CloudUploadIcon sx={{ fontSize: files.length > 0 ? 28 : 48, color: "text.disabled", mb: files.length > 0 ? 0.5 : 2 }} />
+                        <CloudUploadIcon sx={{ fontSize: 48, color: "text.disabled", mb: 2 }} />
                         <div className="upload-text">
-                            <strong>{files.length > 0 ? t("invoiceExtractor", "addMoreImages") ?? "Add more images" : t("invoiceExtractor", "uploadPrompt")}</strong>
-                            {files.length === 0 && <span>{t("invoiceExtractor", "uploadHint")}</span>}
+                            <strong>{t("invoiceExtractor", "uploadPrompt")}</strong>
+                            <span>{t("invoiceExtractor", "uploadHint", { max: uploadSizeLimitLabel })}</span>
                         </div>
                     </label>
                 )}
@@ -453,13 +716,44 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                             disabled={isExtracting}
                                             title="Remove"
                                         >
-                                            <DeleteIcon sx={{ fontSize: 13 }} />
+                                            <DeleteIcon fontSize="small" />
                                         </button>
-                                        <div className="image-card-icon">🖼️</div>
+                                        <button
+                                            type="button"
+                                            className="image-card-preview"
+                                            onClick={() => handlePreviewFile(f)}
+                                            title={t("invoiceExtractor", "preview") ?? "Preview"}
+                                            aria-label={t("invoiceExtractor", "preview") ?? "Preview"}
+                                        >
+                                            <VisibilityIcon fontSize="small" />
+                                        </button>
+                                        <div className="image-card-icon">
+                                            <ImageOutlinedIcon sx={{ fontSize: 24 }} />
+                                        </div>
                                         <div className="image-card-name">{f.name}</div>
                                         <div className="image-card-size">{(f.size / 1024 / 1024).toFixed(2)} MB</div>
                                     </div>
                                 ))}
+                                <label
+                                    className={`image-card image-card-add${isDragging ? " dragging" : ""}`}
+                                    onDragOver={handleDragOver}
+                                    onDragEnter={handleDragOver}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={handleDrop}
+                                    title={t("invoiceExtractor", "addMoreImages") ?? "Add more images"}
+                                >
+                                    <input
+                                        type="file"
+                                        accept=".jpg,.jpeg,.png,.webp"
+                                        multiple
+                                        onChange={handleFileChange}
+                                        style={{ display: "none" }}
+                                    />
+                                    <AddCircleOutlineIcon sx={{ fontSize: 30 }} />
+                                    <span className="image-card-add-label">
+                                        {t("invoiceExtractor", "addMoreImages") ?? "Add more images"}
+                                    </span>
+                                </label>
                             </div>
                         ) : (
                             <div className="file-row">
@@ -511,7 +805,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                                                 size="small"
                                                                 variant="outlined"
                                                                 color="warning"
-                                                                startIcon={isAddingProvider ? <CircularProgress size={12} /> : <AddCircleOutlineIcon sx={{ fontSize: 13 }} />}
+                                                                startIcon={isAddingProvider ? <CircularProgress size={12} /> : <AddCircleOutlineIcon fontSize="small" />}
                                                                 onClick={handleAddToProviderList}
                                                                 disabled={isAddingProvider}
                                                                 sx={{ fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}
@@ -538,6 +832,15 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                                     </div>
                                                 )}
                                             </div>
+                                            <button
+                                                type="button"
+                                                className="file-preview-btn"
+                                                onClick={() => handlePreviewFile(f)}
+                                                title={t("invoiceExtractor", "preview") ?? "Preview"}
+                                                aria-label={t("invoiceExtractor", "preview") ?? "Preview"}
+                                            >
+                                                <VisibilityIcon sx={{ fontSize: 16 }} />
+                                            </button>
                                             <button
                                                 type="button"
                                                 className="file-remove-btn"
@@ -596,7 +899,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                             size="small"
                                             variant="outlined"
                                             color="warning"
-                                            startIcon={isAddingProvider ? <CircularProgress size={12} /> : <AddCircleOutlineIcon sx={{ fontSize: 13 }} />}
+                                            startIcon={isAddingProvider ? <CircularProgress size={12} /> : <AddCircleOutlineIcon fontSize="small" />}
                                             onClick={handleAddToProviderList}
                                             disabled={isAddingProvider}
                                             sx={{ fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}
@@ -634,7 +937,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                 type="button"
                                 className="btn-primary"
                                 onClick={handleExtract}
-                                disabled={isExtracting || detectionStatus === "detecting"}
+                                disabled={isExtracting || detectionStatus === "detecting" || Boolean(multiInvoiceError)}
                                 size="small"
                             >
                                 {isExtracting ? (
@@ -654,6 +957,60 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     </div>
                 )}
 
+                <Dialog
+                    open={Boolean(preview)}
+                    onClose={handleClosePreview}
+                    maxWidth="lg"
+                    fullWidth
+                    PaperProps={{
+                        sx: {
+                            display: "flex",
+                            flexDirection: "column",
+                            height: { xs: "86vh", md: "88vh" },
+                            maxHeight: "88vh",
+                            borderRadius: 2,
+                            overflow: "hidden",
+                        },
+                    }}
+                >
+                    {preview && (
+                        <>
+                            <DialogTitle
+                                sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: 2,
+                                    py: 1.5,
+                                    pr: 1.5,
+                                }}
+                            >
+                                <span className="preview-dialog-title">{preview.file.name}</span>
+                                <IconButton
+                                    onClick={handleClosePreview}
+                                    aria-label={t("actions", "close") ?? "Close"}
+                                    size="small"
+                                >
+                                    <CloseIcon fontSize="small" />
+                                </IconButton>
+                            </DialogTitle>
+                            <DialogContent sx={{ p: 0, flex: 1, minHeight: 0, background: "var(--scheme-neutral-1000, #f4f6f8)" }}>
+                                {preview.type === "pdf" ? (
+                                    <iframe
+                                        src={preview.url}
+                                        title={preview.file.name}
+                                        className="preview-frame"
+                                    />
+                                ) : (
+                                    <div className="preview-image-wrap">
+                                        <img src={preview.url} alt={preview.file.name} className="preview-image" />
+                                    </div>
+                                )}
+                            </DialogContent>
+                        </>
+                    )}
+                </Dialog>
+
                 {isExtracting && (
                     <div style={{ marginTop: 16 }}>
                         <LinearProgress
@@ -669,7 +1026,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                 },
                             }}
                         />
-                        <span style={{ fontSize: 13, color: "var(--scheme-neutral-400, #9ca3af)" }}>
+                        <span style={{ color: "var(--scheme-neutral-400, #9ca3af)" }}>
                             {t("invoiceExtractor", "extracting")}
                         </span>
                     </div>
@@ -688,7 +1045,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
                 {extractionStatus === "success" && !isExtracting && (
                     <div className="ocr-disclaimer">
-                        <span className="ocr-disclaimer-icon">⚠️</span>
+                        <WarningIcon fontSize="small" sx={{ color: "warning.main" }} />
                         <span>{t("invoiceExtractor", "ocrDisclaimer") ?? "O OCR pode conter erros. Por favor, valide os dados preenchidos antes de continuar."}</span>
                     </div>
                 )}
@@ -698,9 +1055,9 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
             <style jsx>{`
                 .invoice-extractor {
-                    background: var(--scheme-neutral-1100);
-                    border: 1px solid var(--scheme-neutral-900);
-                    border-radius: 12px;
+                    background: transparent;
+                    border: 0;
+                    border-radius: 0;
                     padding: 0;
                     color: var(--scheme-neutral-100);
                 }
@@ -726,9 +1083,9 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 }
 
                 .extractor-content {
-                    background: var(--scheme-neutral-1100);
-                    border-radius: 8px;
-                    padding: 12px 16px;
+                    background: transparent;
+                    border-radius: 0;
+                    padding: 0;
                     color: var(--scheme-neutral-100);
                 }
 
@@ -737,18 +1094,22 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
-                    padding: 40px 20px;
-                    border: 2px dashed var(--scheme-neutral-800);
-                    border-radius: 8px;
+                    min-height: 190px;
+                    padding: 36px 20px;
+                    border: 1px dashed color-mix(in srgb, var(--scheme-neutral-800) 86%, var(--scheme-neutral-700));
+                    border-radius: 12px;
                     cursor: pointer;
-                    transition: all 0.2s;
-                    background: var(--scheme-neutral-1000);
+                    transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+                    background:
+                        linear-gradient(180deg, color-mix(in srgb, var(--scheme-surface-raised) 92%, var(--scheme-surface-raised-subtle)), var(--scheme-surface-raised-muted));
                 }
 
                 .file-upload-area:hover,
                 .file-upload-area.dragging {
-                    border-color: var(--scheme-primary-500);
-                    background: var(--scheme-neutral-900);
+                    border-color: var(--scheme-brand-600);
+                    background: var(--scheme-surface-raised);
+                    box-shadow: 0 0 0 4px var(--scheme-brand-600-15);
+                    transform: translateY(-1px);
                 }
 
                 .upload-text {
@@ -769,21 +1130,10 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     font-size: 14px;
                 }
 
-                .file-upload-area.compact {
-                    padding: 14px 20px;
-                    flex-direction: row;
-                    gap: 10px;
-                    margin-bottom: 12px;
-                }
-
-                .file-upload-area.compact .upload-text strong {
-                    font-size: 14px;
-                }
-
                 .file-selected {
                     display: flex;
                     flex-direction: column;
-                    gap: 8px;
+                    gap: 10px;
                 }
 
                 .file-row {
@@ -803,11 +1153,11 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 .file-info {
                     display: flex;
                     align-items: center;
-                    gap: 10px;
-                    padding: 6px 10px;
-                    background: var(--scheme-neutral-1000);
-                    border-radius: 6px;
-                    border: 1px solid var(--scheme-neutral-900);
+                    gap: 12px;
+                    padding: 12px 14px;
+                    background: var(--scheme-surface-raised-muted);
+                    border-radius: 10px;
+                    border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, transparent);
                     min-width: 0;
                 }
 
@@ -821,7 +1171,6 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
 
                 .file-name {
                     font-weight: 600;
-                    font-size: 13px;
                     color: var(--scheme-neutral-100);
                     white-space: nowrap;
                     overflow: hidden;
@@ -848,6 +1197,25 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     transition: color 0.15s;
                 }
 
+                .file-preview-btn {
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    color: var(--scheme-neutral-500);
+                    display: flex;
+                    align-items: center;
+                    padding: 4px;
+                    border-radius: 4px;
+                    flex-shrink: 0;
+                    margin-left: 8px;
+                    transition: color 0.15s, background 0.15s;
+                }
+
+                .file-preview-btn:hover {
+                    color: var(--scheme-brand-600);
+                    background: var(--scheme-brand-600-10, rgba(255, 51, 87, 0.1));
+                }
+
                 .file-remove-btn:hover:not(:disabled) {
                     color: var(--scheme-error-400, #ef4444);
                 }
@@ -859,7 +1227,6 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     gap: 6px;
                     padding: 6px 10px;
                     border-radius: 6px;
-                    font-size: 13px;
                     border: 1px solid transparent;
                 }
 
@@ -935,6 +1302,13 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 .file-actions {
                     display: flex;
                     gap: 8px;
+                    justify-content: flex-start;
+                }
+
+                .file-actions .MuiButton-root {
+                    border-radius: 9px;
+                    min-height: 34px;
+                    box-shadow: none;
                 }
 
                 /* Image cards grid */
@@ -942,6 +1316,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     display: flex;
                     flex-wrap: wrap;
                     gap: 8px;
+                    align-items: stretch;
                 }
 
                 .image-card {
@@ -950,54 +1325,135 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
-                    gap: 3px;
-                    padding: 10px 12px 8px;
-                    background: var(--scheme-neutral-1000);
-                    border: 1px solid var(--scheme-neutral-900);
+                    gap: 7px;
+                    padding: 14px 12px 10px;
+                    background: linear-gradient(180deg, var(--scheme-surface-raised), var(--scheme-surface-raised-muted));
+                    border: 1px solid color-mix(in srgb, var(--scheme-neutral-900) 72%, transparent);
                     border-radius: 8px;
-                    min-width: 100px;
-                    max-width: 140px;
-                    flex: 1 1 100px;
+                    width: 140px;
+                    min-height: 104px;
+                    box-sizing: border-box;
+                    flex: 0 0 140px;
                     text-align: center;
+                    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+                    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+                }
+
+                .image-card:not(.image-card-add):hover {
+                    border-color: color-mix(in srgb, var(--scheme-neutral-700) 80%, var(--scheme-brand-600));
+                    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+                    transform: translateY(-1px);
                 }
 
                 .image-card-remove {
                     position: absolute;
-                    top: 4px;
-                    right: 4px;
-                    background: none;
+                    top: 6px;
+                    right: 6px;
+                    background: color-mix(in srgb, var(--scheme-surface-raised) 88%, transparent);
                     border: none;
                     cursor: pointer;
                     color: var(--scheme-neutral-500);
                     display: flex;
                     align-items: center;
-                    padding: 2px;
-                    border-radius: 3px;
-                    transition: color 0.15s;
+                    justify-content: center;
+                    width: 24px;
+                    height: 24px;
+                    padding: 0;
+                    border-radius: 6px;
+                    transition: color 0.15s, background 0.15s;
                     line-height: 1;
+                }
+
+                .image-card-preview {
+                    position: absolute;
+                    top: 6px;
+                    left: 6px;
+                    background: color-mix(in srgb, var(--scheme-surface-raised) 88%, transparent);
+                    border: none;
+                    cursor: pointer;
+                    color: var(--scheme-neutral-500);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 24px;
+                    height: 24px;
+                    padding: 0;
+                    border-radius: 6px;
+                    transition: color 0.15s, background 0.15s;
+                    line-height: 1;
+                }
+
+                .image-card-preview:hover {
+                    color: var(--scheme-brand-600);
+                    background: color-mix(in srgb, var(--scheme-brand-600) 10%, transparent);
                 }
 
                 .image-card-remove:hover:not(:disabled) {
                     color: var(--scheme-error-400, #ef4444);
+                    background: color-mix(in srgb, var(--scheme-error-400, #ef4444) 10%, transparent);
                 }
 
                 .image-card-icon {
-                    font-size: 20px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 8px;
+                    background: color-mix(in srgb, var(--scheme-brand-600) 9%, var(--scheme-surface-raised));
+                    color: var(--scheme-brand-600);
                     line-height: 1;
                 }
 
                 .image-card-name {
+                    display: -webkit-box;
+                    -webkit-box-orient: vertical;
+                    -webkit-line-clamp: 2;
+                    overflow: hidden;
                     font-size: 11px;
-                    font-weight: 600;
+                    font-weight: 700;
                     color: var(--scheme-neutral-200);
-                    word-break: break-all;
-                    line-height: 1.3;
+                    overflow-wrap: anywhere;
+                    line-height: 1.25;
                     max-width: 100%;
                 }
 
                 .image-card-size {
                     font-size: 10px;
+                    font-weight: 600;
                     color: var(--scheme-neutral-500);
+                }
+
+                .image-card-add {
+                    gap: 8px;
+                    background: transparent;
+                    border: 1px dashed color-mix(in srgb, var(--scheme-neutral-700) 85%, var(--scheme-neutral-500));
+                    color: var(--scheme-neutral-500);
+                    cursor: pointer;
+                    transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, color 160ms ease, transform 160ms ease;
+                }
+
+                .image-card-add:hover,
+                .image-card-add.dragging {
+                    border-color: var(--scheme-brand-600);
+                    background: var(--scheme-surface-raised-muted);
+                    color: var(--scheme-brand-600);
+                    box-shadow: 0 0 0 4px var(--scheme-brand-600-15);
+                    transform: translateY(-1px);
+                }
+
+                .image-card-add-label {
+                    max-width: 100%;
+                    color: var(--scheme-neutral-400);
+                    font-size: 11px;
+                    font-weight: 700;
+                    line-height: 1.25;
+                    text-align: center;
+                }
+
+                .image-card-add:hover .image-card-add-label,
+                .image-card-add.dragging .image-card-add-label {
+                    color: var(--scheme-brand-600);
                 }
 
                 /* Provider section — shown once below all files */
@@ -1012,7 +1468,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     flex: 1;
                     justify-content: flex-end;
                     min-height: unset;
-                    margin: 0 8px;
+                    margin: 0;
                 }
 
                 .provider-detecting-label {
@@ -1027,9 +1483,9 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 .provider-inline-badge {
                     display: flex;
                     align-items: center;
-                    gap: 6px;
-                    padding: 4px 10px;
-                    border-radius: 6px;
+                    gap: 8px;
+                    padding: 6px 8px 6px 10px;
+                    border-radius: 9px;
                     font-size: 12px;
                     border: 1px solid transparent;
                 }
@@ -1085,10 +1541,9 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     display: flex;
                     align-items: center;
                     gap: 8px;
-                    padding: 7px 12px;
-                    border-radius: 6px;
+                    padding: 10px 12px;
+                    border-radius: 10px;
                     margin-top: 0;
-                    font-size: 13px;
                     margin-bottom: 10px;
                     margin-top: 10px;
 
@@ -1116,8 +1571,8 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     display: flex;
                     align-items: flex-start;
                     gap: 8px;
-                    padding: 7px 12px;
-                    border-radius: 6px;
+                    padding: 10px 12px;
+                    border-radius: 10px;
                     margin-top: 0;
                     font-size: 12px;
                     background: #fffbeb;
@@ -1217,6 +1672,45 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                     display: inline-block;
                     margin-right: 8px;
                     animation: spin 0.6s linear infinite;
+                }
+
+                .preview-dialog-title {
+                    min-width: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    font-size: 15px;
+                    font-weight: 700;
+                }
+
+                .preview-frame {
+                    display: block;
+                    width: 100%;
+                    height: 100%;
+                    min-height: 72vh;
+                    border: 0;
+                    background: #fff;
+                }
+
+                .preview-image-wrap {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 100%;
+                    height: 100%;
+                    min-height: 72vh;
+                    padding: 16px;
+                    box-sizing: border-box;
+                    overflow: auto;
+                }
+
+                .preview-image {
+                    display: block;
+                    max-width: 100%;
+                    max-height: 100%;
+                    object-fit: contain;
+                    border-radius: 6px;
+                    box-shadow: 0 10px 34px rgba(15, 23, 42, 0.12);
                 }
 
                 @keyframes spin {

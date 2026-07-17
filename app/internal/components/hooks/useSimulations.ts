@@ -18,11 +18,15 @@ import {
   bulkDeleteSimulations,
   bulkArchiveSimulations,
   type CupsValidationResult,
+  type ListSimulationsParams,
   type SimulationItem,
 } from "../../lib/internalApi";
 import type { SimulationPayload, SimulationResults } from "@/domain/types";
 import type { SessionState } from "../../lib/authSession";
 import { keepPreviousData } from "@tanstack/react-query";
+import { useRequestCachePolicy } from "./useRequestCachePolicy";
+import { normalizeQueryKeyParams } from "./queryKeys";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "N/A";
@@ -64,8 +68,19 @@ export interface SimulationsActions {
   setFilterCups: (v: string) => void;
   filterStatus: string;
   setFilterStatus: (v: string) => void;
-  applyFilters: () => void;
+  filterType: string;
+  setFilterType: (v: string) => void;
+  filterCreatedFrom: string;
+  setFilterCreatedFrom: (v: string) => void;
+  filterCreatedTo: string;
+  setFilterCreatedTo: (v: string) => void;
+  filterExpiresFrom: string;
+  setFilterExpiresFrom: (v: string) => void;
+  filterExpiresTo: string;
+  setFilterExpiresTo: (v: string) => void;
+  applyFilters: (searchOverride?: string) => void;
   clearFilters: () => void;
+  applyView: (view: SimulationViewState) => void;
   filtersAppliedAt: number;
   // create form state
   clientName: string;
@@ -114,18 +129,48 @@ export interface SimulationsActions {
   formatDate: typeof formatDate;
 }
 
+export interface SimulationViewState {
+  search?: string;
+  ownerUserId?: string;
+  clientId?: string;
+  cups?: string;
+  status?: string;
+  type?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  expiresFrom?: string;
+  expiresTo?: string;
+  showArchived?: boolean;
+  sortColumn?: string;
+  sortDir?: "asc" | "desc";
+}
+
 interface SimulationsFilterPersistentState {
   ownerUserId: string;
   clientId: string;
   cups: string;
   status: string;
+  type: string;
+  createdFrom: string;
+  createdTo: string;
+  expiresFrom: string;
+  expiresTo: string;
+}
+
+interface UseSimulationsOptions {
+  queryEnabled?: boolean;
+  initialData?: { items: SimulationItem[]; total: number };
+  initialDataParams?: ListSimulationsParams;
 }
 
 export function useSimulations(
   session: SessionState | null,
   initialPageSize = 25,
+  options?: UseSimulationsOptions,
 ): SimulationsActions {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
+  const cachePolicy = useRequestCachePolicy("simulations");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
@@ -156,6 +201,11 @@ export function useSimulations(
         clientId: parsed.clientId ?? "",
         cups: parsed.cups ?? "",
         status: parsed.status ?? "",
+        type: parsed.type ?? "",
+        createdFrom: parsed.createdFrom ?? "",
+        createdTo: parsed.createdTo ?? "",
+        expiresFrom: parsed.expiresFrom ?? "",
+        expiresTo: parsed.expiresTo ?? "",
       };
     } catch {
       return null;
@@ -193,6 +243,11 @@ export function useSimulations(
   const initialClientId = persistedFilters?.clientId ?? "";
   const initialCups = persistedFilters?.cups ?? "";
   const initialStatus = persistedFilters?.status ?? "";
+  const initialType = persistedFilters?.type ?? "";
+  const initialCreatedFrom = persistedFilters?.createdFrom ?? "";
+  const initialCreatedTo = persistedFilters?.createdTo ?? "";
+  const initialExpiresFrom = persistedFilters?.expiresFrom ?? "";
+  const initialExpiresTo = persistedFilters?.expiresTo ?? "";
 
   const [filterSearch, setFilterSearch] = useState(
     persistedState?.search || "",
@@ -202,6 +257,13 @@ export function useSimulations(
   const [filterClientId, setFilterClientId] = useState(initialClientId);
   const [filterCups, setFilterCups] = useState(initialCups);
   const [filterStatus, setFilterStatus] = useState(initialStatus);
+  const [filterType, setFilterType] = useState(initialType);
+  const [filterCreatedFrom, setFilterCreatedFrom] =
+    useState(initialCreatedFrom);
+  const [filterCreatedTo, setFilterCreatedTo] = useState(initialCreatedTo);
+  const [filterExpiresFrom, setFilterExpiresFrom] =
+    useState(initialExpiresFrom);
+  const [filterExpiresTo, setFilterExpiresTo] = useState(initialExpiresTo);
 
   const [appliedSearch, setAppliedSearch] = useState(
     persistedState?.search || "",
@@ -211,6 +273,13 @@ export function useSimulations(
   const [appliedClientId, setAppliedClientId] = useState(initialClientId);
   const [appliedCups, setAppliedCups] = useState(initialCups);
   const [appliedStatus, setAppliedStatus] = useState(initialStatus);
+  const [appliedType, setAppliedType] = useState(initialType);
+  const [appliedCreatedFrom, setAppliedCreatedFrom] =
+    useState(initialCreatedFrom);
+  const [appliedCreatedTo, setAppliedCreatedTo] = useState(initialCreatedTo);
+  const [appliedExpiresFrom, setAppliedExpiresFrom] =
+    useState(initialExpiresFrom);
+  const [appliedExpiresTo, setAppliedExpiresTo] = useState(initialExpiresTo);
   const [filtersAppliedAt, setFiltersAppliedAt] = useState(0);
 
   // Persist custom simulation filters (owner/client/cups/status) across navigation
@@ -222,6 +291,11 @@ export function useSimulations(
         clientId: filterClientId,
         cups: filterCups,
         status: filterStatus,
+        type: filterType,
+        createdFrom: filterCreatedFrom,
+        createdTo: filterCreatedTo,
+        expiresFrom: filterExpiresFrom,
+        expiresTo: filterExpiresTo,
       };
       localStorage.setItem(
         "axpo_simulations_filters",
@@ -230,7 +304,17 @@ export function useSimulations(
     } catch {
       // ignore persistence failures
     }
-  }, [filterOwnerUserId, filterClientId, filterCups, filterStatus]);
+  }, [
+    filterOwnerUserId,
+    filterClientId,
+    filterCups,
+    filterStatus,
+    filterType,
+    filterCreatedFrom,
+    filterCreatedTo,
+    filterExpiresFrom,
+    filterExpiresTo,
+  ]);
 
   // create form
   const [clientName, setClientName] = useState("");
@@ -263,7 +347,9 @@ export function useSimulations(
   };
 
   // ── TanStack Query ──────────────────────────────────────────────────────
-  const queryParams = {
+  const queryEnabled = options?.queryEnabled ?? true;
+
+  const queryParams: ListSimulationsParams = {
     page,
     pageSize,
     orderBy: sortColumn,
@@ -274,27 +360,62 @@ export function useSimulations(
     clientId: appliedClientId || undefined,
     cups: appliedCups || undefined,
     status: appliedStatus || undefined,
+    type: appliedType || undefined,
+    createdFrom: appliedCreatedFrom || undefined,
+    createdTo: appliedCreatedTo || undefined,
+    expiresFrom: appliedExpiresFrom || undefined,
+    expiresTo: appliedExpiresTo || undefined,
   };
 
-  // Create a stable cache key by serializing query params
-  const queryKeyString = JSON.stringify({
+  const queryKeyParams = normalizeQueryKeyParams({
     page,
     pageSize,
     orderBy: sortColumn,
     sortDir,
-    includeDeleted: showArchived || null,
-    search: appliedSearch || null,
-    ownerUserId: appliedOwnerUserId || null,
-    clientId: appliedClientId || null,
-    cups: appliedCups || null,
-    status: appliedStatus || null,
+    includeDeleted: showArchived,
+    search: appliedSearch,
+    ownerUserId: appliedOwnerUserId,
+    clientId: appliedClientId,
+    cups: appliedCups,
+    status: appliedStatus,
+    type: appliedType,
+    createdFrom: appliedCreatedFrom,
+    createdTo: appliedCreatedTo,
+    expiresFrom: appliedExpiresFrom,
+    expiresTo: appliedExpiresTo,
   });
+  const initialDataKeyParams = options?.initialDataParams
+    ? normalizeQueryKeyParams({
+        page: options.initialDataParams.page ?? 1,
+        pageSize: options.initialDataParams.pageSize ?? initialPageSize,
+        orderBy: options.initialDataParams.orderBy ?? "updatedAt",
+        sortDir: options.initialDataParams.sortDir ?? "desc",
+        includeDeleted: options.initialDataParams.includeDeleted ?? false,
+        search: options.initialDataParams.search ?? "",
+        ownerUserId: options.initialDataParams.ownerUserId ?? "",
+        clientId: options.initialDataParams.clientId ?? "",
+        cups: options.initialDataParams.cups ?? "",
+        status: options.initialDataParams.status ?? "",
+        type: options.initialDataParams.type ?? "",
+        createdFrom: options.initialDataParams.createdFrom ?? "",
+        createdTo: options.initialDataParams.createdTo ?? "",
+        expiresFrom: options.initialDataParams.expiresFrom ?? "",
+        expiresTo: options.initialDataParams.expiresTo ?? "",
+      })
+    : null;
+  const canUseInitialData =
+    !!options?.initialData &&
+    !!initialDataKeyParams &&
+    JSON.stringify(queryKeyParams) === JSON.stringify(initialDataKeyParams);
 
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["simulations", session?.token ?? "", queryKeyString],
+    queryKey: ["simulations", session?.token ?? "", queryKeyParams],
     queryFn: () => listSimulations(session!.token, queryParams),
-    enabled: !!session,
+    enabled: !!session && queryEnabled,
+    initialData: canUseInitialData ? options.initialData : undefined,
+    initialDataUpdatedAt: canUseInitialData ? Date.now() : undefined,
     placeholderData: keepPreviousData,
+    ...cachePolicy,
   });
 
   const simulations = data?.items ?? [];
@@ -318,18 +439,25 @@ export function useSimulations(
       clearFeedback();
       await fn();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Action failed.");
+      setErrorText(error instanceof Error ? error.message : t("common", "actionFailed"));
     } finally {
       setBusyAction(null);
     }
   };
 
-  const applyFilters = useCallback(() => {
-    setAppliedSearch(filterSearch);
+  const applyFilters = useCallback((searchOverride?: string) => {
+    const nextSearch = searchOverride ?? filterSearch;
+    setFilterSearch(nextSearch);
+    setAppliedSearch(nextSearch);
     setAppliedOwnerUserId(filterOwnerUserId);
     setAppliedClientId(filterClientId);
     setAppliedCups(filterCups);
     setAppliedStatus(filterStatus);
+    setAppliedType(filterType);
+    setAppliedCreatedFrom(filterCreatedFrom);
+    setAppliedCreatedTo(filterCreatedTo);
+    setAppliedExpiresFrom(filterExpiresFrom);
+    setAppliedExpiresTo(filterExpiresTo);
     setFiltersAppliedAt((n) => n + 1);
     setPage(1);
   }, [
@@ -338,6 +466,11 @@ export function useSimulations(
     filterClientId,
     filterCups,
     filterStatus,
+    filterType,
+    filterCreatedFrom,
+    filterCreatedTo,
+    filterExpiresFrom,
+    filterExpiresTo,
   ]);
 
   const clearFilters = useCallback(() => {
@@ -347,12 +480,66 @@ export function useSimulations(
     setFilterClientId("");
     setFilterCups("");
     setFilterStatus("");
+    setFilterType("");
+    setFilterCreatedFrom("");
+    setFilterCreatedTo("");
+    setFilterExpiresFrom("");
+    setFilterExpiresTo("");
 
     setAppliedSearch("");
     setAppliedOwnerUserId(resetOwnerUserId);
     setAppliedClientId("");
     setAppliedCups("");
     setAppliedStatus("");
+    setAppliedType("");
+    setAppliedCreatedFrom("");
+    setAppliedCreatedTo("");
+    setAppliedExpiresFrom("");
+    setAppliedExpiresTo("");
+
+    setFiltersAppliedAt((n) => n + 1);
+    setPage(1);
+  }, [isCommercial, selfUserId]);
+
+  const applyView = useCallback((view: SimulationViewState) => {
+    const nextOwnerUserId = isCommercial
+      ? selfUserId
+      : (view.ownerUserId ?? "");
+    const nextSearch = view.search ?? "";
+    const nextClientId = view.clientId ?? "";
+    const nextCups = view.cups ?? "";
+    const nextStatus = view.status ?? "";
+    const nextType = view.type ?? "";
+    const nextCreatedFrom = view.createdFrom ?? "";
+    const nextCreatedTo = view.createdTo ?? "";
+    const nextExpiresFrom = view.expiresFrom ?? "";
+    const nextExpiresTo = view.expiresTo ?? "";
+
+    setFilterSearch(nextSearch);
+    setFilterOwnerUserId(nextOwnerUserId);
+    setFilterClientId(nextClientId);
+    setFilterCups(nextCups);
+    setFilterStatus(nextStatus);
+    setFilterType(nextType);
+    setFilterCreatedFrom(nextCreatedFrom);
+    setFilterCreatedTo(nextCreatedTo);
+    setFilterExpiresFrom(nextExpiresFrom);
+    setFilterExpiresTo(nextExpiresTo);
+
+    setAppliedSearch(nextSearch);
+    setAppliedOwnerUserId(nextOwnerUserId);
+    setAppliedClientId(nextClientId);
+    setAppliedCups(nextCups);
+    setAppliedStatus(nextStatus);
+    setAppliedType(nextType);
+    setAppliedCreatedFrom(nextCreatedFrom);
+    setAppliedCreatedTo(nextCreatedTo);
+    setAppliedExpiresFrom(nextExpiresFrom);
+    setAppliedExpiresTo(nextExpiresTo);
+
+    if (view.showArchived !== undefined) setShowArchived(view.showArchived);
+    if (view.sortColumn) setSortColumn(view.sortColumn);
+    if (view.sortDir) setSortDir(view.sortDir);
 
     setFiltersAppliedAt((n) => n + 1);
     setPage(1);
@@ -371,7 +558,7 @@ export function useSimulations(
       setCupsValidation(result);
     } catch (error) {
       setErrorText(
-        error instanceof Error ? error.message : "CUPS validation failed.",
+        error instanceof Error ? error.message : t("simulationsModule", "cupsValidationFailed"),
       );
     } finally {
       setCupsValidationBusy(false);
@@ -383,7 +570,7 @@ export function useSimulations(
     if (!session) return;
     const days = Number(expiresDays);
     if (!Number.isFinite(days) || days <= 0) {
-      setErrorText("Expiration days must be a positive number.");
+      setErrorText(t("simulationsModule", "invalidExpirationDays"));
       return;
     }
     await runAction("create-simulation", async () => {
@@ -400,7 +587,7 @@ export function useSimulations(
         payloadJson: { clientName, cups, offerType, source: "internal-ui" },
       });
       await invalidate();
-      setSuccessText("Simulation created as draft.");
+      setSuccessText(t("simulationsModule", "createdAsDraft"));
     });
   };
 
@@ -424,7 +611,7 @@ export function useSimulations(
     try {
       parsedPayload = JSON.parse(editPayloadJson) as Record<string, unknown>;
     } catch {
-      setErrorText("Payload JSON is invalid — check your edits.");
+      setErrorText(t("simulationsModule", "invalidPayloadJson"));
       return;
     }
     const expiresAt = editSimulationExpiry
@@ -437,7 +624,7 @@ export function useSimulations(
         payloadJson: parsedPayload,
       });
       await invalidate();
-      setSuccessText("Simulation updated.");
+      setSuccessText(t("simulationsModule", "updated"));
       setSelectedSimulationId(null);
     });
   };
@@ -448,8 +635,8 @@ export function useSimulations(
     await invalidate();
     setSuccessText(
       shared.publicToken
-        ? `Shared. Token: ${shared.publicToken.slice(0, 14)}...`
-        : "Simulation shared.",
+        ? t("simulationsModule", "sharedWithToken", { token: `${shared.publicToken.slice(0, 14)}...` })
+        : t("simulationsModule", "shared"),
     );
     return shared;
   };
@@ -459,7 +646,7 @@ export function useSimulations(
       if (!session) return;
       await cloneSimulation(session.token, sim.id);
       await invalidate();
-      setSuccessText("Simulation cloned.");
+      setSuccessText(t("simulationsModule", "cloned"));
     });
   };
 
@@ -468,7 +655,7 @@ export function useSimulations(
       if (!session) return;
       await rotateSimulationPinSnapshot(session.token, sim.id);
       await invalidate();
-      setSuccessText("PIN snapshot refreshed.");
+      setSuccessText(t("simulationsModule", "pinRefreshed"));
     });
   };
 
@@ -480,7 +667,7 @@ export function useSimulations(
         ocrValidation: "manual-sample",
       });
       await invalidate();
-      setSuccessText("OCR prefill version created.");
+      setSuccessText(t("simulationsModule", "ocrPrefillCreated"));
     });
   };
 
@@ -488,7 +675,7 @@ export function useSimulations(
     await runAction(`pdf-sim-${sim.id}`, async () => {
       if (!session) return;
       await downloadSimulationPdf(session.token, sim.id);
-      setSuccessText("PDF downloaded.");
+      setSuccessText(t("simulationsModule", "pdfDownloaded"));
     });
   };
 
@@ -497,7 +684,7 @@ export function useSimulations(
       if (!session) return;
       await softDeleteSimulation(session.token, sim.id);
       await invalidate();
-      setSuccessText("Simulation archived.");
+      setSuccessText(t("simulationsModule", "archived"));
     });
   };
 
@@ -507,7 +694,7 @@ export function useSimulations(
       const result = await bulkDeleteSimulations(session.token, ids);
       await invalidate();
       setSuccessText(
-        `Deleted ${result.succeeded} of ${result.total} simulation(s).`,
+        t("simulationsModule", "bulkDeletedResult", { succeeded: result.succeeded, total: result.total }),
       );
     });
   };
@@ -518,7 +705,7 @@ export function useSimulations(
       const result = await bulkArchiveSimulations(session.token, ids);
       await invalidate();
       setSuccessText(
-        `Archived ${result.succeeded} of ${result.total} simulation(s).`,
+        t("simulationsModule", "bulkArchivedResult", { succeeded: result.succeeded, total: result.total }),
       );
     });
   };
@@ -549,7 +736,7 @@ export function useSimulations(
         : prev,
     );
     setSuccessText(
-      `Cálculo completado — ${(calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0)} productos evaluados.`,
+      t("simulationsModule", "calculationCompleted", { count: (calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0) }),
     );
     return calcResult.results;
   };
@@ -582,8 +769,19 @@ export function useSimulations(
     setFilterCups,
     filterStatus,
     setFilterStatus,
+    filterType,
+    setFilterType,
+    filterCreatedFrom,
+    setFilterCreatedFrom,
+    filterCreatedTo,
+    setFilterCreatedTo,
+    filterExpiresFrom,
+    setFilterExpiresFrom,
+    filterExpiresTo,
+    setFilterExpiresTo,
     applyFilters,
     clearFilters,
+    applyView,
     filtersAppliedAt,
     clientName,
     setClientName,

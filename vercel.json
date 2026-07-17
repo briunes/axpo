@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
+  "regions": ["dub1"],
   "buildCommand": "pnpm run build",
   "outputDirectory": ".next",
   "installCommand": "pnpm install",
@@ -15,12 +16,24 @@
     "app/api/v1/internal/simulations/[id]/send-email/route.ts": {
       "memory": 1024,
       "maxDuration": 60
+    },
+    "app/api/v1/internal/invoices/extract/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "app/api/v1/internal/invoices/detect-provider/route.ts": {
+      "memory": 1024,
+      "maxDuration": 300
     }
   },
   "crons": [
     {
       "path": "/api/cron/expire-simulations",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/ocr-prompt-improvements",
+      "schedule": "30 2 * * *"
     }
   ]
 }

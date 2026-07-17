@@ -7,6 +7,8 @@ import { useI18n } from "../../../../src/lib/i18n-context";
 import { getSystemConfig, updateSystemConfig } from "../../lib/configApi";
 import { LoadingState } from "../shared/LoadingState";
 import { FormSelect } from "../ui";
+import { getLanguageOptions } from "../../../../src/lib/supportedLanguages";
+import { formatDisplayDate } from "../../lib/formatPreferences";
 
 export interface UserPreferencesSettingsProps {
     session: SessionState;
@@ -94,7 +96,6 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
             ) : (
                 <>
                     <div className="settings-panel">
-                        <h3 className="settings-panel-title">{t("systemSettings", "titlePreferences")}</h3>
                         <p style={{ color: "var(--axpo-text-secondary)", marginBottom: "24px" }}>
                             {t("systemSettings", "preferencesDescription")}
                         </p>
@@ -105,10 +106,7 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
                                 helperText={t("systemSettings", "fieldLanguageDesc")}
                                 value={config.defaultLanguage}
                                 onChange={(value) => handleChange("defaultLanguage", value)}
-                                options={[
-                                    { value: "en", label: "🇬🇧 English" },
-                                    { value: "es", label: "🇪🇸 Español" }
-                                ]}
+                                options={getLanguageOptions()}
                             />
 
                             <FormSelect
@@ -117,9 +115,9 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
                                 value={config.defaultDateFormat}
                                 onChange={(value) => handleChange("defaultDateFormat", value)}
                                 options={[
-                                    { value: "DD/MM/YYYY", label: `DD/MM/YYYY (${new Date().toLocaleDateString("en-GB")})` },
-                                    { value: "MM/DD/YYYY", label: `MM/DD/YYYY (${new Date().toLocaleDateString("en-US")})` },
-                                    { value: "YYYY-MM-DD", label: `YYYY-MM-DD (${new Date().toISOString().split("T")[0]})` }
+                                    { value: "DD/MM/YYYY", label: `DD/MM/YYYY (${formatDisplayDate(new Date(), "DD/MM/YYYY", config.defaultTimezone)})` },
+                                    { value: "MM/DD/YYYY", label: `MM/DD/YYYY (${formatDisplayDate(new Date(), "MM/DD/YYYY", config.defaultTimezone)})` },
+                                    { value: "YYYY-MM-DD", label: `YYYY-MM-DD (${formatDisplayDate(new Date(), "YYYY-MM-DD", config.defaultTimezone)})` }
                                 ]}
                             />
 
@@ -129,8 +127,8 @@ export function UserPreferencesSettings({ session, onNotify }: UserPreferencesSe
                                 value={config.defaultTimeFormat}
                                 onChange={(value) => handleChange("defaultTimeFormat", value)}
                                 options={[
-                                    { value: "24h", label: `24-hour (${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })})` },
-                                    { value: "12h", label: `12-hour (${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })})` }
+                                    { value: "24h", label: `24-hour (${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: config.defaultTimezone })})` },
+                                    { value: "12h", label: `12-hour (${new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: config.defaultTimezone })})` }
                                 ]}
                             />
 

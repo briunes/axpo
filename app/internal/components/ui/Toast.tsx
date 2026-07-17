@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export type ToastTone = "success" | "error" | "info";
 
@@ -26,6 +27,7 @@ export function Toast({ messages, onDismiss }: ToastProps) {
 }
 
 function ToastItem({ msg, onDismiss }: { msg: ToastMessage; onDismiss: (id: number) => void }) {
+  const { t } = useI18n();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -54,7 +56,7 @@ function ToastItem({ msg, onDismiss }: { msg: ToastMessage; onDismiss: (id: numb
       <button
         className="app-toast-close"
         onClick={() => { setVisible(false); setTimeout(() => onDismiss(msg.id), 300); }}
-        aria-label="Dismiss"
+        aria-label={t("common", "dismiss")}
         type="button"
       >
         ×

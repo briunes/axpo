@@ -8,8 +8,8 @@ import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 import { AuditService } from "@/application/services/auditService";
 import {
-  decryptSensitiveValue,
   encryptSensitiveValue,
+  tryDecryptSensitiveValue,
 } from "@/application/lib/sensitiveData";
 
 /**
@@ -41,16 +41,13 @@ export const POST = withErrorHandler(
     if (!owner) {
       throw new ValidationError("Simulation owner not found");
     }
+    const ownerPin = tryDecryptSensitiveValue(owner.pinCurrent);
 
     await prisma.simulation.update({
       where: { id },
       data: {
         pinHashSnapshot: owner.pinHash,
-        pinSnapshot: owner.pinCurrent
-          ? encryptSensitiveValue(
-              decryptSensitiveValue(owner.pinCurrent) ?? "",
-            )
-          : null,
+        pinSnapshot: ownerPin ? encryptSensitiveValue(ownerPin) : null,
       },
     });
 

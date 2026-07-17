@@ -57,7 +57,6 @@
 .ocr-usage-header__subtitle {
   margin: 0;
   color: var(--scheme-neutral-400, #9ca3af);
-  font-size: 13px;
   max-width: 720px;
 }
 
@@ -170,7 +169,6 @@
   gap: 16px;
   padding: 14px 18px;
   border-radius: 10px;
-  font-size: 13px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   position: relative;
   overflow: hidden;
@@ -389,7 +387,6 @@
 
 .ocr-top-users-table .MuiTableCell-root {
   border-bottom-color: var(--scheme-neutral-900, #2a2a2a);
-  font-size: 13px;
 }
 
 .ocr-top-users-table .MuiTableHead-root .MuiTableCell-root {
@@ -551,7 +548,6 @@
 }
 
 .ocr-price-form__title {
-  font-size: 13px;
   font-weight: 600;
   margin-bottom: 12px;
 }

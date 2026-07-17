@@ -29,7 +29,7 @@ import { Country } from "country-state-city";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { listAuditLogs, type AuditLogItem, getAgency, listUsers, type UserItem } from "../../lib/internalApi";
 import { AgencyValueResolver, FieldChangeDetails, formatFieldName, normalizeAuditFieldKey } from "./AuditLogShared";
-import { formatDisplayDate } from "../../lib/formatPreferences";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { DateRangePicker } from "./DateRangePicker";
 import { FormSelect, type FormSelectOption } from "./FormSelect";
@@ -284,16 +284,7 @@ export function AuditLogsModal({
     };
 
     const formatDate = (isoString: string) => {
-        try {
-            const date = new Date(isoString);
-            const formatted = formatDisplayDate(date, preferences.dateFormat);
-            // Add time in HH:mm format
-            const hours = String(date.getHours()).padStart(2, "0");
-            const minutes = String(date.getMinutes()).padStart(2, "0");
-            return `${formatted} ${hours}:${minutes}`;
-        } catch {
-            return isoString;
-        }
+        return formatDisplayDateTime(isoString, preferences, { fallback: isoString });
     };
 
     // formatFieldName and normalizeAuditFieldKey imported from AuditLogShared.tsx
@@ -658,7 +649,13 @@ export function AuditLogsModal({
             onClose={onClose}
             maxWidth="lg"
             fullWidth
-
+            PaperProps={{
+                sx: {
+                    width: { xs: "calc(100% - 16px)", sm: "calc(100% - 48px)" },
+                    maxHeight: { xs: "92vh", md: "90vh" },
+                    m: { xs: 1, sm: 3 },
+                },
+            }}
         >
             <DialogTitle
                 sx={{
@@ -668,12 +665,14 @@ export function AuditLogsModal({
                     borderBottom: "1px solid var(--scheme-neutral-900)",
                     color: "var(--scheme-neutral-100)",
                     backgroundColor: "var(--scheme-neutral-1050)",
-                    padding: "16px 20px",
+                    padding: { xs: "12px 14px", sm: "16px 20px" },
                     fontSize: "1.1rem",
                     fontWeight: 600,
+                    gap: 1,
+                    minWidth: 0,
                 }}
             >
-                <span>{title || t("auditLogsModal", "title")}</span>
+                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title || t("auditLogsModal", "title")}</span>
                 <Button
                     onClick={onClose}
                     size="small"
@@ -700,13 +699,13 @@ export function AuditLogsModal({
             >
                 <Box
                     sx={{
-                        p: 2,
-                        borderBottom: "1px solid var(--scheme-neutral-920)",
-                        backgroundColor: "var(--scheme-neutral-1045)",
-                    }}
-                >
-                    <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-                        <Box sx={{ minWidth: 220 }}>
+                    p: 2,
+                    borderBottom: "1px solid var(--scheme-neutral-920)",
+                    backgroundColor: "var(--scheme-neutral-1045)",
+                }}
+            >
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                        <Box sx={{ width: { xs: "100%", md: "auto" }, minWidth: { xs: 0, md: 220 } }}>
                             <FormSelect
                                 label={t("auditLogsModal", "eventType")}
                                 options={eventTypeSelectOptions}
@@ -716,7 +715,7 @@ export function AuditLogsModal({
                             />
                         </Box>
 
-                        <Box sx={{ minWidth: 280 }}>
+                        <Box sx={{ width: { xs: "100%", md: "auto" }, minWidth: { xs: 0, md: 280 } }}>
                             <FormSelect
                                 label={t("auditLogsModal", "actor")}
                                 options={userSelectOptions}
@@ -726,7 +725,7 @@ export function AuditLogsModal({
                             />
                         </Box>
 
-                        <Box sx={{ minWidth: 280, flex: 1 }}>
+                        <Box sx={{ width: { xs: "100%", md: "auto" }, minWidth: { xs: 0, md: 280 }, flex: 1 }}>
                             <DateRangePicker
                                 labelPosition="top"
                                 variant="single"
@@ -740,12 +739,12 @@ export function AuditLogsModal({
                             />
                         </Box>
 
-                        <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: "stretch", md: "flex-end" } }}>
-                            <Button variant="contained" onClick={handleSearchFilters}>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignSelf: { xs: "stretch", md: "flex-end" } }}>
+                            <Button variant="contained" onClick={handleSearchFilters} sx={{ width: { xs: "100%", sm: "auto" } }}>
                                 <SearchIcon />
                                 {t("common", "search")}
                             </Button>
-                            <Button variant="outlined" onClick={handleClearFilters}>
+                            <Button variant="outlined" onClick={handleClearFilters} sx={{ width: { xs: "100%", sm: "auto" } }}>
                                 <ClearIcon />
                                 {t("dataTable", "clearFilters")}
                             </Button>
@@ -777,11 +776,13 @@ export function AuditLogsModal({
                         </Typography>
                     </Box>
                 ) : (
+                    <>
                     <TableContainer
                         component={Paper}
                         sx={{
                             backgroundColor: "var(--scheme-neutral-1050)",
                             borderRadius: 0,
+                            display: { xs: "none", md: "block" },
                         }}
                     >
                         <Table size="small">
@@ -908,6 +909,106 @@ export function AuditLogsModal({
                             </TableBody>
                         </Table>
                     </TableContainer>
+                    <Stack
+                        spacing={1.25}
+                        sx={{
+                            display: { xs: "flex", md: "none" },
+                            p: 1.5,
+                            backgroundColor: "var(--scheme-neutral-1050)",
+                        }}
+                    >
+                        {paginatedLogs.map((log) => {
+                            const hasChanges = log.metadataJson && "before" in log.metadataJson && "after" in log.metadataJson;
+                            const isExpanded = expandedLogId === log.id;
+
+                            return (
+                                <Paper
+                                    key={log.id}
+                                    variant="outlined"
+                                    sx={{
+                                        overflow: "hidden",
+                                        borderColor: "var(--scheme-neutral-900)",
+                                        backgroundColor: "var(--scheme-neutral-1045)",
+                                    }}
+                                >
+                                    <Box sx={{ p: 1.5 }}>
+                                        <Stack spacing={1.25}>
+                                            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}>
+                                                <Chip
+                                                    label={getEventTypeLabel(log.eventType)}
+                                                    size="small"
+                                                    color={getEventTypeColor(log.eventType)}
+                                                    variant="outlined"
+                                                    sx={{
+                                                        height: "24px",
+                                                        fontSize: "0.7rem",
+                                                        fontWeight: 600,
+                                                        maxWidth: "100%",
+                                                    }}
+                                                />
+                                                {hasChanges ? (
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                                                        sx={{
+                                                            color: "var(--scheme-primary-500)",
+                                                            transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                                                            transition: "transform 200ms ease",
+                                                            flexShrink: 0,
+                                                        }}
+                                                        aria-label={t("auditLogsModal", "details")}
+                                                    >
+                                                        <ExpandMoreIcon fontSize="small" />
+                                                    </IconButton>
+                                                ) : null}
+                                            </Box>
+
+                                            <Box>
+                                                <Typography variant="caption" sx={{ color: "var(--scheme-neutral-600)", display: "block", mb: 0.25 }}>
+                                                    {t("auditLogsModal", "actor")}
+                                                </Typography>
+                                                <Typography variant="body2" sx={{ fontWeight: 700, color: "var(--scheme-neutral-100)", lineHeight: 1.35 }}>
+                                                    {log.actorName || "System"}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        color: "var(--scheme-neutral-500)",
+                                                        display: "block",
+                                                        overflowWrap: "anywhere",
+                                                    }}
+                                                >
+                                                    {log.actorEmail || "—"}
+                                                </Typography>
+                                            </Box>
+
+                                            <Box>
+                                                <Typography variant="caption" sx={{ color: "var(--scheme-neutral-600)", display: "block", mb: 0.25 }}>
+                                                    {t("auditLogsModal", "timestamp")}
+                                                </Typography>
+                                                <Typography variant="body2" sx={{ color: "var(--scheme-neutral-300)" }}>
+                                                    {formatDate(log.createdAt)}
+                                                </Typography>
+                                            </Box>
+                                        </Stack>
+                                    </Box>
+
+                                    {hasChanges && (
+                                        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                            <Box sx={{ borderTop: "1px solid var(--scheme-neutral-900)" }}>
+                                                <FieldChangeDetails
+                                                    metadata={log.metadataJson as Record<string, unknown>}
+                                                    resolveFieldLabel={resolveFieldLabel}
+                                                    renderValue={renderValue}
+                                                />
+                                            </Box>
+                                        </Collapse>
+                                    )}
+                                </Paper>
+                            );
+                        })}
+                    </Stack>
+                    </>
                 )}
 
                 {filteredLogs.length > 0 && (
@@ -926,6 +1027,8 @@ export function AuditLogsModal({
                             "& .MuiTablePagination-toolbar": {
                                 paddingRight: "8px",
                                 minHeight: "48px",
+                                flexWrap: { xs: "wrap", sm: "nowrap" },
+                                justifyContent: { xs: "center", sm: "flex-end" },
                             },
                             "& .MuiTablePagination-select": {
                                 color: "var(--scheme-neutral-400)",

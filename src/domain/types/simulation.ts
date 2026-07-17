@@ -113,8 +113,9 @@ export interface ElectricityInputs {
 
   /**
    * Optional billing month override (YYYY-MM).
-   * When set, indexed calculations use the prices and days for this specific
-   * month instead of deriving them from the billing period dates.
+   * When set, indexed calculations use the prices for this specific month
+   * instead of deriving them from the billing period dates. The invoice period
+   * days are still used for power and annualized savings, matching Excel.
    * Fixed calculations always use periodo.dias regardless of this field.
    */
   billingMonth?: string;
@@ -186,6 +187,27 @@ export interface ElectricityInputs {
     reactiva?: number; // €  reactive energy charge
     alquilerEquipoMedida?: number; // €  meter rental
     otrosCargos?: number; // €  other charges
+    /** Current supplier power term amount in €, copied from invoice detail when available. */
+    terminoPotenciaActual?: number;
+    /** Current supplier energy term amount in €, copied from invoice detail when available. */
+    terminoEnergiaActual?: number;
+    /** Electricity tax amount in €, copied from invoice detail when available. */
+    impuestoElectricoActual?: number;
+    /** IVA/IGIC amount in €, copied from invoice detail when available. */
+    ivaActual?: number;
+    /** Full saved current invoice breakdown used for side-by-side comparison. */
+    currentInvoiceBreakdown?: {
+      terminoPotencia?: number;
+      terminoEnergia?: number;
+      excesoPotencia?: number;
+      impuestoElectrico?: number;
+      otrosCargos?: number;
+      alquiler?: number;
+      iva?: number;
+      total?: number;
+    };
+    /** Whether the simulation output should use the explicit current invoice breakdown. */
+    useCurrentInvoiceBreakdown?: boolean;
     /** IVA rate as a percentage (e.g. 21 means 21%). Falls back to 21% if not set. */
     ivaTasa?: number;
     /** Impuesto Eléctrico rate as a percentage (e.g. 5.11269 means 5.11%). Falls back to 5.11269% if not set. */
@@ -269,6 +291,26 @@ export interface GasInputs {
   extras: {
     alquilerEquipoMedida?: number; // €
     otrosCargos?: number; // €
+    /** Current supplier fixed term amount in €, copied from invoice detail when available. */
+    terminoFijoActual?: number;
+    /** Current supplier variable energy term amount in €, copied from invoice detail when available. */
+    terminoVariableActual?: number;
+    /** Hydrocarbon tax amount in €, copied from invoice detail when available. */
+    impuestoHidrocarburoActual?: number;
+    /** IVA/IGIC amount in €, copied from invoice detail when available. */
+    ivaActual?: number;
+    /** Full saved current invoice breakdown used for side-by-side comparison. */
+    currentInvoiceBreakdown?: {
+      terminoFijo?: number;
+      terminoVariable?: number;
+      impuestoHidrocarburo?: number;
+      otrosCargos?: number;
+      alquiler?: number;
+      iva?: number;
+      total?: number;
+    };
+    /** Whether the simulation output should use the explicit current invoice breakdown. */
+    useCurrentInvoiceBreakdown?: boolean;
   };
 
   /** VAT rate as percentage (e.g., 21 for 21%) */

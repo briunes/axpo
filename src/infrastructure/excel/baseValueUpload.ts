@@ -1,5 +1,3 @@
-export const MAX_BASE_VALUE_WORKBOOK_SIZE = 50 * 1024 * 1024;
-
 export const BASE_VALUE_WORKBOOK_CONTENT_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel.sheet.macroEnabled.12",

@@ -10,8 +10,8 @@ import { assertRole } from "@/application/middleware/rbac";
 import {
   BASE_VALUE_WORKBOOK_CONTENT_TYPES,
   isBaseValueWorkbookFileName,
-  MAX_BASE_VALUE_WORKBOOK_SIZE,
 } from "@/infrastructure/excel/baseValueUpload";
+import { getConfiguredMaxUploadFileSizeBytes } from "@/application/config/uploadLimits";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -29,18 +29,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ) {
           throw new Error("Only .xlsm and .xlsx base value files are allowed");
         }
+        const maximumSizeInBytes = await getConfiguredMaxUploadFileSizeBytes();
 
         return {
           token: await issueSignedToken({
             pathname,
             operations: ["put"],
             allowedContentTypes: BASE_VALUE_WORKBOOK_CONTENT_TYPES,
-            maximumSizeInBytes: MAX_BASE_VALUE_WORKBOOK_SIZE,
+            maximumSizeInBytes,
             validUntil: Date.now() + 5 * 60 * 1000,
           }),
           urlOptions: {
             allowedContentTypes: BASE_VALUE_WORKBOOK_CONTENT_TYPES,
-            maximumSizeInBytes: MAX_BASE_VALUE_WORKBOOK_SIZE,
+            maximumSizeInBytes,
             tokenPayload: JSON.stringify({ userId: auth.userId }),
           },
         };
@@ -49,10 +50,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(response);
   } catch (error) {
+    console.error(
+      "Base value blob upload authorization failed:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "Could not authorize upload",
+        error: "Could not authorize upload",
       },
       { status: 400 },
     );

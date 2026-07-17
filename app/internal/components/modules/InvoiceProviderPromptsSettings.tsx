@@ -352,9 +352,7 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                 marginBottom: 16,
                                 background: "#fffbeb",
                                 border: "1px solid #f59e0b",
-                                color: "#78350f",
-                                fontSize: 13,
-                            }}>
+                                color: "#78350f", }}>
                                 <span style={{ fontSize: 18, lineHeight: 1.2, flexShrink: 0 }}>⚠️</span>
                                 <div>
                                     <strong>{t("invoiceProviderPrompts", "promptNotConfiguredTitle")}</strong>{" "}
@@ -444,8 +442,8 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                         sx={{ borderBottom: 1, borderColor: "divider", mb: 2, minHeight: 36 }}
                                         TabIndicatorProps={{ style: { backgroundColor: "var(--axpo-red, #e30613)" } }}
                                     >
-                                        <Tab value="electricity" label={`⚡ ${t("invoiceProviderPrompts", "electricity")}`} sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "electricity" ? 600 : 400 }} />
-                                        <Tab value="gas" label={`🔥 ${t("invoiceProviderPrompts", "gas")}`} sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "gas" ? 600 : 400 }} />
+                                        <Tab value="electricity" label={`⚡ ${t("invoiceProviderPrompts", "electricity")}`} sx={{ minHeight: 36, textTransform: "none", fontWeight: promptTab === "electricity" ? 600 : 400 }} />
+                                        <Tab value="gas" label={`🔥 ${t("invoiceProviderPrompts", "gas")}`} sx={{ minHeight: 36, textTransform: "none", fontWeight: promptTab === "gas" ? 600 : 400 }} />
                                     </Tabs>
                                     {promptTab === "electricity" ? (
                                         <>
@@ -503,8 +501,8 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                                     sx={{ borderBottom: 1, borderColor: "divider", mb: 2, minHeight: 36 }}
                                     TabIndicatorProps={{ style: { backgroundColor: "var(--axpo-red, #e30613)" } }}
                                 >
-                                    <Tab value="electricity" label={`⚡ ${t("invoiceProviderPrompts", "electricity")}`} sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "electricity" ? 600 : 400 }} />
-                                    <Tab value="gas" label={`🔥 ${t("invoiceProviderPrompts", "gas")}`} sx={{ minHeight: 36, fontSize: 13, textTransform: "none", fontWeight: promptTab === "gas" ? 600 : 400 }} />
+                                    <Tab value="electricity" label={`⚡ ${t("invoiceProviderPrompts", "electricity")}`} sx={{ minHeight: 36, textTransform: "none", fontWeight: promptTab === "electricity" ? 600 : 400 }} />
+                                    <Tab value="gas" label={`🔥 ${t("invoiceProviderPrompts", "gas")}`} sx={{ minHeight: 36, textTransform: "none", fontWeight: promptTab === "gas" ? 600 : 400 }} />
                                 </Tabs>
 
                                 {promptTab === "electricity" ? (
@@ -629,7 +627,6 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                     padding: 24px;
                     color: var(--scheme-neutral-500);
                     text-align: center;
-                    font-size: 13px;
                 }
 
                 .provider-list {
@@ -675,7 +672,6 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                 }
 
                 .provider-item-name {
-                    font-size: 13px;
                     font-weight: 500;
                     color: var(--scheme-neutral-100);
                     white-space: nowrap;
@@ -763,7 +759,6 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                 }
 
                 .form-label {
-                    font-size: 13px;
                     font-weight: 600;
                     color: var(--scheme-neutral-200);
                 }
@@ -804,7 +799,6 @@ export function InvoiceProviderPromptsSettings({ session, onNotify }: InvoicePro
                     border: 1px solid var(--scheme-neutral-800);
                     border-radius: 6px;
                     color: var(--scheme-neutral-100);
-                    font-size: 13px;
                     font-family: "Fira Code", "Courier New", monospace;
                     resize: vertical;
                     min-height: 280px;

@@ -1,15 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Divider, MenuItem, Stack } from "@mui/material";
 import { loadSession } from "../../lib/authSession";
 import { createBaseValueSet, isAdmin, type BaseValueItem } from "../../lib/internalApi";
 import { useAgencies } from "../../components/hooks/useAgencies";
-import { CrudFormContainer, CrudPageLayout, useAlerts } from "../../components/shared";
+import { BoneyardFormSkeleton, CrudFormContainer, CrudPageLayout, useAlerts } from "../../components/shared";
 import { BaseValueItemBuilder } from "../../components/ui/BaseValueItemBuilder";
 import { FormInput } from "../../components/ui";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 
 const defaultItem = (): BaseValueItem => ({ key: "", valueNumeric: undefined, unit: "" });
 
@@ -18,8 +19,12 @@ export default function NewBaseValueSetPage() {
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const onActionButtons = useActionButtons();
+    const isBoneyardBuild =
+        typeof window !== "undefined" &&
+        (window as typeof window & { __BONEYARD_BUILD?: boolean }).__BONEYARD_BUILD === true;
 
-    const agenciesActions = useAgencies(session, 1000, { minimal: true });
+    const agenciesActions = useAgencies(session, 1000, { minimal: true, queryEnabled: !isBoneyardBuild });
 
     const [name, setName] = useState("");
     const [scopeType, setScopeType] = useState<"GLOBAL" | "AGENCY">("GLOBAL");
@@ -30,6 +35,8 @@ export default function NewBaseValueSetPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
+    const breadcrumbs = useMemo(() => [{ label: t("baseValuesModule", "newTitle") }], [t]);
+    useTopBarBreadcrumbs(breadcrumbs);
 
     useEffect(() => {
         if (!session) return;
@@ -39,7 +46,25 @@ export default function NewBaseValueSetPage() {
         }
     }, [router, session]);
 
+    useEffect(() => {
+        onActionButtons?.(formActions);
+        return () => onActionButtons?.(null);
+    }, [formActions, onActionButtons]);
+
     if (!session) return null;
+
+    if (agenciesActions.loading) {
+        return (
+            <CrudPageLayout
+                title={t("baseValuesModule", "newTitle")}
+                subtitle={t("baseValuesModule", "newSubtitle")}
+                backHref="/internal/base-values"
+                hideHeader
+            >
+                <BoneyardFormSkeleton name="new-base-values-form" shape="base-values" />
+            </CrudPageLayout>
+        );
+    }
 
     const validateItems = (): string | null => {
         for (let i = 0; i < items.length; i++) {
@@ -85,7 +110,7 @@ export default function NewBaseValueSetPage() {
             title={t("baseValuesModule", "newTitle")}
             subtitle={t("baseValuesModule", "newSubtitle")}
             backHref="/internal/base-values"
-            actions={formActions}
+            hideHeader
         >
             <CrudFormContainer
                 onSubmit={handleSubmit}

@@ -9,6 +9,8 @@ const assertPermissionMock = jest.fn();
 const assertSimulationAccessMock = jest.fn();
 const updateSimulationMock = jest.fn();
 const findSimulationMock = jest.fn();
+const findOcrLogMock = jest.fn();
+const findOcrLogFileMock = jest.fn();
 
 jest.mock("@/application/middleware/auth", () => ({
   requireAuth: (...args: unknown[]) => requireAuthMock(...args),
@@ -31,6 +33,12 @@ jest.mock("@/infrastructure/database/prisma", () => ({
       update: (...args: unknown[]) => updateSimulationMock(...args),
       findUnique: (...args: unknown[]) => findSimulationMock(...args),
     },
+    ocrLog: {
+      findMany: (...args: unknown[]) => findOcrLogMock(...args),
+    },
+    ocrLogFile: {
+      findMany: (...args: unknown[]) => findOcrLogFileMock(...args),
+    },
   },
 }));
 
@@ -46,6 +54,8 @@ describe("simulation invoice route security", () => {
     });
     assertPermissionMock.mockResolvedValue(undefined);
     assertSimulationAccessMock.mockResolvedValue({ id: "sim-1" });
+    findOcrLogMock.mockResolvedValue([]);
+    findOcrLogFileMock.mockResolvedValue([]);
   });
 
   it("rejects unauthenticated invoice uploads", async () => {
@@ -98,5 +108,53 @@ describe("simulation invoice route security", () => {
 
     expect(response.status).toBe(401);
     expect(findSimulationMock).not.toHaveBeenCalled();
+  });
+
+  it("downloads invoice from the linked OCR log file when simulation file data is absent", async () => {
+    findSimulationMock.mockResolvedValue({
+      invoiceFileData: null,
+      invoiceFileName: "invoice.pdf",
+      invoiceFileMimeType: "application/pdf",
+      invoiceFilePath: null,
+    });
+    findOcrLogMock.mockResolvedValueOnce([{ id: "ocr-log-1" }]);
+    findOcrLogFileMock.mockResolvedValueOnce([
+      {
+        fileData: Buffer.from("page image bytes"),
+        fileName: "invoice_page_1.png",
+        fileType: "image/png",
+      },
+      {
+        fileData: Buffer.from("pdf bytes"),
+        fileName: "invoice.pdf",
+        fileType: "application/pdf",
+      },
+    ]);
+
+    const response = await downloadInvoice(
+      new NextRequest(
+        "http://localhost/api/v1/internal/simulations/sim-1/invoice",
+        { headers: { authorization: "Bearer token" } },
+      ),
+      { params: { id: "sim-1" } },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/pdf");
+    expect(await response.text()).toBe("pdf bytes");
+    expect(findOcrLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          simulationId: "sim-1",
+          type: "INVOICE_EXTRACTION",
+          status: "SUCCESS",
+        },
+      }),
+    );
+    expect(findOcrLogFileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { ocrLogId: { in: ["ocr-log-1"] } },
+      }),
+    );
   });
 });

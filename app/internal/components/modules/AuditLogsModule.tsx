@@ -5,34 +5,22 @@ import {
     Box,
     Button,
     Chip,
-    CircularProgress,
-    Collapse,
     IconButton,
-    Paper,
     Stack,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TablePagination,
-    TableRow,
+    Tooltip,
     Typography,
 } from "@mui/material";
 import { FormSelect, type FormSelectOption } from "../ui/FormSelect";
 import LaunchIcon from '@mui/icons-material/Launch';
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import SearchIcon from "@mui/icons-material/Search";
-import ClearIcon from "@mui/icons-material/Clear";
-import { Button as OnceButton, Column } from "@once-ui-system/core";
+import SyncIcon from "@mui/icons-material/Sync";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import { Country } from "country-state-city";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import type { AuditLogItem } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
 import type { AuditLogsActions } from "../hooks/useAuditLogs";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
-import { formatDisplayDate } from "../../lib/formatPreferences";
-import { DateRangePicker } from "../ui/DateRangePicker";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 import {
     AgencyValueResolver,
     FieldChangeDetails,
@@ -40,7 +28,8 @@ import {
     normalizeAuditFieldKey,
     makeGetAgencyName,
 } from "../ui/AuditLogShared";
-import { FormInput } from "../ui";
+import { DataTable, DateInput, TableFilterButton, TableFiltersDialog, type ColumnDef } from "../ui";
+import { useLogTableToolbar } from "./logTableToolbar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,6 +39,15 @@ interface AuditLogsModuleProps {
     onNotify?: (text: string, tone: "success" | "error") => void;
     onActionButtons?: (buttons: React.ReactNode) => void;
 }
+
+type AuditLogsViewState = {
+    eventType: string;
+    targetType: string;
+    dateFrom: string;
+    dateTo: string;
+};
+
+const AUDIT_LOG_VIEWS_STORAGE_KEY = "axpo_audit_log_saved_views";
 
 // ─── Event registry ───────────────────────────────────────────────────────────
 
@@ -118,6 +116,24 @@ function getEventTypeLabel(eventType: string, t: ReturnType<typeof useI18n>["t"]
     return eventType;
 }
 
+function getTargetTypeLabel(targetType: string, t: ReturnType<typeof useI18n>["t"]): string {
+    const normalized = targetType.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    const labelKeys: Record<string, string> = {
+        SIMULATION: "groupSimulation",
+        USER: "groupUser",
+        AGENCY: "groupAgency",
+        CLIENT: "groupClient",
+        BASEVALUESET: "groupBaseValues",
+        AUTH: "groupAuth",
+        PUBLIC: "groupPublic",
+        SESSION: "targetSession",
+        SYSTEM: "targetSystem",
+        OCRINVOICE: "targetOcrInvoice",
+    };
+    const labelKey = labelKeys[normalized];
+    return labelKey ? t("auditLogsModule", labelKey) : targetType;
+}
+
 function EventChip({ eventType, t }: { eventType: string; t: ReturnType<typeof useI18n>["t"] }) {
     const ev = EVENT_REGISTRY[eventType];
     const label = getEventTypeLabel(eventType, t);
@@ -155,12 +171,12 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
     const { preferences } = useUserPreferences();
 
     const getTargetRoute = useCallback((targetType: string, targetId: string): string | null => {
-        switch (targetType) {
+        switch (targetType.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()) {
             case "USER": return `/internal/users/${targetId}/edit`;
             case "AGENCY": return `/internal/agencies/${targetId}/edit`;
             case "CLIENT": return `/internal/clients/${targetId}/edit`;
             case "SIMULATION": return `/internal/simulations/${targetId}`;
-            case "BASE_VALUE_SET": return `/internal/base-values/${targetId}/edit`;
+            case "BASEVALUESET": return `/internal/base-values/${targetId}/edit`;
             default: return null;
         }
     }, []);
@@ -184,8 +200,6 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
         setFilterDateFrom,
         filterDateTo,
         setFilterDateTo,
-        filterActorSearch,
-        setFilterActorSearch,
         filterTargetType,
         setFilterTargetType,
         filteredLogs,
@@ -200,10 +214,8 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
     const [localDateTo, setLocalDateTo] = useState<Date | null>(
         filterDateTo ? new Date(filterDateTo) : null
     );
-    const [localActorSearch, setLocalActorSearch] = useState(filterActorSearch);
     const [localTargetType, setLocalTargetType] = useState(filterTargetType);
-
-    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [filtersOpen, setFiltersOpen] = useState(false);
 
     // Agency name resolution cache
     const agenciesCacheRef = React.useRef<Map<string, string>>(new Map());
@@ -225,15 +237,47 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
     }, []);
 
     useEffect(() => {
-        setExpandedId(null);
-    }, [page, filterEventType, filterDateFrom, filterDateTo]);
+        if (!filtersOpen) return;
+        setLocalEventType(filterEventType);
+        setLocalTargetType(filterTargetType);
+        setLocalDateFrom(filterDateFrom ? new Date(`${filterDateFrom}T00:00:00`) : null);
+        setLocalDateTo(filterDateTo ? new Date(`${filterDateTo}T00:00:00`) : null);
+    }, [filterDateFrom, filterDateTo, filterEventType, filterTargetType, filtersOpen]);
 
     // ── Action buttons ──────────────────────────────────────────────────────
     useLayoutEffect(() => {
         onActionButtons?.(
             <>
-                <OnceButton variant="secondary" size="s" onClick={handleExportCsv} label={t("auditLogsModule", "exportCsv")} disabled={filteredLogs.length === 0} />
-                <OnceButton variant="secondary" size="s" onClick={() => refresh()} label={t("actions", "refresh")} loading={loading} />
+                <Tooltip title={t("actions", "refresh")} arrow>
+                    <span className="topbar-action-wrap">
+                        <Button
+                            className="topbar-action topbar-action--compact"
+                            variant="outlined"
+                            size="small"
+                            onClick={() => refresh()}
+                            disabled={loading}
+                            startIcon={<SyncIcon fontSize="small" />}
+                            aria-label={t("actions", "refresh")}
+                        >
+                            <span className="topbar-action-label">{t("actions", "refresh")}</span>
+                        </Button>
+                    </span>
+                </Tooltip>
+                <Tooltip title={t("auditLogsModule", "exportCsv")} arrow>
+                    <span className="topbar-action-wrap">
+                        <Button
+                            className="topbar-action topbar-action--compact"
+                            variant="outlined"
+                            size="small"
+                            onClick={() => handleExportCsv()}
+                            disabled={loading || filteredLogs.length === 0}
+                            startIcon={<FileDownloadIcon fontSize="small" />}
+                            aria-label={t("auditLogsModule", "exportCsv")}
+                        >
+                            <span className="topbar-action-label">{t("auditLogsModule", "exportCsv")}</span>
+                        </Button>
+                    </span>
+                </Tooltip>
             </>
         );
         return () => onActionButtons?.(null);
@@ -253,27 +297,74 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
         setFilterEventType(localEventType);
         setFilterDateFrom(toDateOnly(localDateFrom));
         setFilterDateTo(toDateOnly(localDateTo));
-        setFilterActorSearch(localActorSearch);
         setFilterTargetType(localTargetType);
         setPage(1);
-        setExpandedId(null);
+        setFiltersOpen(false);
     };
 
     const handleClear = () => {
         setLocalEventType("");
         setLocalDateFrom(null);
         setLocalDateTo(null);
-        setLocalActorSearch("");
         setLocalTargetType("");
         setFilterEventType("");
         setFilterDateFrom("");
         setFilterDateTo("");
-        setFilterActorSearch("");
         setFilterTargetType("");
         setSearchQuery("");
         setPage(1);
-        setExpandedId(null);
+        setFiltersOpen(false);
     };
+    const activeFilterCount = [
+        filterEventType,
+        filterTargetType,
+        filterDateFrom || filterDateTo,
+    ].filter(Boolean).length;
+
+    const currentView = useMemo<AuditLogsViewState>(() => ({
+        eventType: filterEventType,
+        targetType: filterTargetType,
+        dateFrom: filterDateFrom,
+        dateTo: filterDateTo,
+    }), [filterDateFrom, filterDateTo, filterEventType, filterTargetType]);
+
+    const applyView = useCallback((view: AuditLogsViewState) => {
+        setFilterEventType(view.eventType ?? "");
+        setFilterTargetType(view.targetType ?? "");
+        setFilterDateFrom(view.dateFrom ?? "");
+        setFilterDateTo(view.dateTo ?? "");
+        setPage(1);
+    }, [setFilterDateFrom, setFilterDateTo, setFilterEventType, setFilterTargetType, setPage]);
+
+    const builtInViews = useMemo<Array<{ id: string; name: string; view: AuditLogsViewState }>>(() => [
+        { id: "recent", name: t("simulationsModule", "presetRecent"), view: { eventType: "", targetType: "", dateFrom: "", dateTo: "" } },
+        { id: "simulations", name: t("auditLogsModule", "groupSimulation"), view: { eventType: "", targetType: "SIMULATION", dateFrom: "", dateTo: "" } },
+        { id: "users", name: t("auditLogsModule", "groupUser"), view: { eventType: "", targetType: "USER", dateFrom: "", dateTo: "" } },
+        { id: "agencies", name: t("auditLogsModule", "groupAgency"), view: { eventType: "", targetType: "AGENCY", dateFrom: "", dateTo: "" } },
+        { id: "clients", name: t("auditLogsModule", "groupClient"), view: { eventType: "", targetType: "CLIENT", dateFrom: "", dateTo: "" } },
+        { id: "base-values", name: t("auditLogsModule", "groupBaseValues"), view: { eventType: "", targetType: "BASE_VALUE_SET", dateFrom: "", dateTo: "" } },
+    ], [t]);
+
+    const {
+        activeViewPresetId,
+        openSaveViewDialog,
+        saveViewDialog,
+        searchProps,
+    } = useLogTableToolbar<AuditLogsViewState>({
+        storageKey: AUDIT_LOG_VIEWS_STORAGE_KEY,
+        currentView,
+        presets: builtInViews,
+        applyView,
+        searchValue: searchQuery,
+        onSearchChange: (value) => {
+            setSearchQuery(value);
+            setPage(1);
+        },
+        searchPlaceholder: t("search", "auditLogs"),
+        t,
+    });
+
+    const toolbarFilterCount = activeViewPresetId ? 0 : activeFilterCount;
 
     // ── Field label resolution ──────────────────────────────────────────────
 
@@ -394,17 +485,8 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
     // ── Date format ─────────────────────────────────────────────────────────
 
     const formatDate = useCallback((isoString: string) => {
-        try {
-            const date = new Date(isoString);
-            const formatted = formatDisplayDate(date, preferences.dateFormat);
-            const hours = String(date.getHours()).padStart(2, "0");
-            const minutes = String(date.getMinutes()).padStart(2, "0");
-            const seconds = String(date.getSeconds()).padStart(2, "0");
-            return `${formatted} ${hours}:${minutes}:${seconds}`;
-        } catch {
-            return isoString;
-        }
-    }, [preferences.dateFormat]);
+        return formatDisplayDateTime(isoString, preferences, { includeSeconds: true, fallback: isoString });
+    }, [preferences]);
 
     // ── Event type options (grouped, filtered by selected target) ────────────
 
@@ -449,304 +531,204 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
         return opts;
     }, [logs, t, localTargetType]);
 
-    // ── Row toggle ──────────────────────────────────────────────────────────
-
-    const handleToggle = (id: string, hasMeta: boolean) => {
-        if (!hasMeta) return;
-        setExpandedId((prev) => (prev === id ? null : id));
-    };
-
-    const safePage = Math.min(page, Math.max(totalPages, 1));
+    const columns = useMemo<ColumnDef<AuditLogItem>[]>(() => [
+        {
+            key: "eventType",
+            label: t("auditLogsModal", "eventType"),
+            width: "190",
+            renderCell: (log) => <EventChip eventType={log.eventType} t={t} />,
+        },
+        {
+            key: "actor",
+            label: t("auditLogsModal", "actor"),
+            width: "260",
+            copyable: true,
+            copyText: (log) => [log.actorName, log.actorEmail].filter(Boolean).join(" "),
+            renderCell: (log) => (
+                <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--scheme-neutral-100)", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {log.actorName || t("auditLogsModule", "groupAuth")}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: "var(--scheme-neutral-500)", fontSize: "0.65rem", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {log.actorEmail || "—"}
+                    </Typography>
+                </Stack>
+            ),
+        },
+        {
+            key: "targetType",
+            label: t("logs", "target"),
+            width: "150",
+            renderCell: (log) => (
+                <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--scheme-neutral-400)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    {log.targetType ? getTargetTypeLabel(log.targetType, t) : "—"}
+                </Typography>
+            ),
+        },
+        {
+            key: "targetName",
+            label: t("columns", "name"),
+            copyable: true,
+            copyText: (log) => log.targetName ?? log.targetId ?? "",
+            renderCell: (log) => {
+                const route = getTargetRoute(log.targetType, log.targetId);
+                const label = log.targetName ?? (log.targetId ? `${log.targetId.slice(0, 10)}...` : "—");
+                if (route && log.targetName) {
+                    return (
+                        <Typography
+                            variant="caption"
+                            component="button"
+                            onClick={(e) => { e.stopPropagation(); window.open(route, "_blank"); }}
+                            title={log.targetId ?? undefined}
+                            sx={{
+                                border: 0,
+                                background: "transparent",
+                                p: 0,
+                                font: "inherit",
+                                fontSize: "0.72rem",
+                                color: "primary.main",
+                                cursor: "pointer",
+                                fontWeight: 600,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                minWidth: 0,
+                                "&:hover": { textDecoration: "underline" },
+                            }}
+                        >
+                            <Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {label}
+                            </Box>
+                            <LaunchIcon fontSize="small" sx={{ ml: 0.5, flexShrink: 0 }} />
+                        </Typography>
+                    );
+                }
+                return (
+                    <Typography
+                        variant="caption"
+                        title={log.targetId ?? undefined}
+                        sx={{ fontFamily: "'JetBrains Mono','Fira Code',monospace", fontSize: "0.68rem", color: "var(--scheme-neutral-500)" }}
+                    >
+                        {label}
+                    </Typography>
+                );
+            },
+        },
+        {
+            key: "createdAt",
+            label: t("auditLogsModal", "timestamp"),
+            width: "190",
+            renderCell: (log) => (
+                <Typography variant="caption" sx={{ color: "var(--scheme-neutral-300)", whiteSpace: "nowrap" }}>
+                    {formatDate(log.createdAt)}
+                </Typography>
+            ),
+        },
+    ], [formatDate, getTargetRoute, t]);
 
     return (
-        <Column gap="24" >
+        <Stack spacing={3}>
             {errorText && (
                 <Box sx={{ p: 2, color: "var(--scheme-danger-500)", borderRadius: 1 }}>
                     <Typography variant="body2">{errorText}</Typography>
                 </Box>
             )}
 
-            {/* Filters */}
-            <Box
-                sx={{
-                    pt: 2,
-                    px: 2,
-                }}
+            <TableFiltersDialog
+                open={filtersOpen}
+                title={t("simulationsModule", "filtersTitle")}
+                saveViewLabel={t("simulationsModule", "saveView")}
+                clearLabel={t("simulationsModule", "clearFilters")}
+                applyLabel={t("simulationsModule", "applyFilters")}
+                onClose={() => setFiltersOpen(false)}
+                onOpenSaveView={openSaveViewDialog}
+                onClear={handleClear}
+                onApply={handleSearch}
             >
-                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} flexWrap="wrap" >
-                    <Box sx={{ minWidth: 180, flex: 1, }}>
-                        <FormSelect
-                            label=""
-                            options={[
-                                { value: "", label: t("logs", "allTargets") },
-                                { value: "SIMULATION", label: t("auditLogsModule", "groupSimulation") },
-                                { value: "USER", label: t("auditLogsModule", "groupUser") },
-                                { value: "AGENCY", label: t("auditLogsModule", "groupAgency") },
-                                { value: "CLIENT", label: t("auditLogsModule", "groupClient") },
-                                { value: "BASE_VALUE_SET", label: t("auditLogsModule", "groupBaseValues") },
-                            ]}
-                            value={localTargetType}
-                            onChange={(value) => {
-                                const next = String(value ?? "");
-                                setLocalTargetType(next);
-                                // reset event type if it no longer belongs to the new target
-                                if (next && localEventType) {
-                                    const ev = EVENT_REGISTRY[localEventType];
-                                    const allowed = TARGET_TO_GROUPS[next];
-                                    if (!ev || !allowed?.includes(ev.group)) {
-                                        setLocalEventType("");
-                                    }
-                                }
-                            }}
-                        />
-                    </Box>
+                <FormSelect
+                    label={t("logs", "target")}
+                    options={[
+                        { value: "", label: t("logs", "allTargets") },
+                        { value: "SIMULATION", label: t("auditLogsModule", "groupSimulation") },
+                        { value: "USER", label: t("auditLogsModule", "groupUser") },
+                        { value: "AGENCY", label: t("auditLogsModule", "groupAgency") },
+                        { value: "CLIENT", label: t("auditLogsModule", "groupClient") },
+                        { value: "BASE_VALUE_SET", label: t("auditLogsModule", "groupBaseValues") },
+                    ]}
+                    value={localTargetType}
+                    onChange={(value) => {
+                        const next = String(value ?? "");
+                        setLocalTargetType(next);
+                        if (next && localEventType) {
+                            const ev = EVENT_REGISTRY[localEventType];
+                            const allowed = TARGET_TO_GROUPS[next];
+                            if (!ev || !allowed?.includes(ev.group)) {
+                                setLocalEventType("");
+                            }
+                        }
+                    }}
+                />
+                <FormSelect
+                    label={t("auditLogsModal", "eventType")}
+                    options={eventTypeOptions}
+                    value={localEventType}
+                    onChange={(value) => setLocalEventType(String(value ?? ""))}
+                />
+                <DateInput
+                    label={t("datePicker", "from")}
+                    labelPosition="top"
+                    value={toDateOnly(localDateFrom)}
+                    onChange={(value) => setLocalDateFrom(value ? new Date(`${value}T00:00:00`) : null)}
+                />
+                <DateInput
+                    label={t("datePicker", "to")}
+                    labelPosition="top"
+                    value={toDateOnly(localDateTo)}
+                    onChange={(value) => setLocalDateTo(value ? new Date(`${value}T00:00:00`) : null)}
+                />
+            </TableFiltersDialog>
 
-                    <Box sx={{ minWidth: 200, flex: 1 }}>
-                        <FormSelect
-                            label=""
-                            options={eventTypeOptions}
-                            value={localEventType}
-                            onChange={(value) => setLocalEventType(String(value ?? ""))}
-                        />
-                    </Box>
-
-                    <Box sx={{ minWidth: 200, flex: 1 }}>
-                        <FormInput
-                            placeholder={t("logs", "searchActor")}
-                            value={localActorSearch}
-                            onChange={(e) => setLocalActorSearch(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                        />
-                    </Box>
-
-                    <Box sx={{ minWidth: 280, flex: 2 }}>
-                        <DateRangePicker
-                            variant="inline"
-                            startDate={localDateFrom}
-                            endDate={localDateTo}
-                            onChange={(startDate, endDate) => {
-                                setLocalDateFrom(startDate);
-                                setLocalDateTo(endDate);
-                            }}
-                        />
-                    </Box>
-
-                    <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: "stretch", md: "flex-end" } }}>
-                        <Button variant="contained" onClick={handleSearch} >
-                            <SearchIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                            {t("common", "search")}
-                        </Button>
-                        <Button variant="outlined" onClick={handleClear}>
-                            <ClearIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                            {t("dataTable", "clearFilters")}
-                        </Button>
-                    </Stack>
-                </Stack>
-            </Box>
-
-            {/* Table card */}
-            <Box
-                sx={{
-                    overflow: "hidden",
-                    border: "1px solid var(--scheme-neutral-900)",
-                }}
-            >
-                {loading && logs.length === 0 ? (
-                    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 300 }}>
-                        <CircularProgress size={40} />
-                    </Box>
-                ) : logs.length === 0 ? (
-                    <Box sx={{ p: 3, textAlign: "center" }}>
-                        <Typography variant="body2" sx={{ color: "var(--scheme-neutral-600)" }}>
-                            {t("auditLogsModal", "noLogs")}
-                        </Typography>
-                    </Box>
-                ) : (
-                    <TableContainer component={Paper} sx={{ borderRadius: 0 }}>
-                        <Table size="small">
-                            <TableHead>
-                                <TableRow
-                                    sx={{
-                                        backgroundColor: "var(--scheme-neutral-950)",
-                                        "& th": {
-                                            color: "var(--scheme-neutral-600)",
-                                            fontWeight: 700,
-                                            fontSize: "0.7rem",
-                                            textTransform: "uppercase",
-                                            letterSpacing: "0.08em",
-                                            borderBottom: "1px solid var(--scheme-neutral-900)",
-                                            padding: "14px 12px",
-                                            backgroundColor: "var(--scheme-neutral-950)",
-                                        },
-                                    }}
-                                >
-                                    <TableCell>{t("auditLogsModal", "eventType")}</TableCell>
-                                    <TableCell>{t("auditLogsModal", "actor")}</TableCell>
-                                    <TableCell>{t("logs", "target")}</TableCell>
-                                    <TableCell>{t("columns", "name")}</TableCell>
-                                    <TableCell>{t("auditLogsModal", "timestamp")}</TableCell>
-                                    <TableCell align="right">{t("auditLogsModal", "details")}</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {logs.map((log) => {
-                                    const hasChanges = log.metadataJson && "before" in log.metadataJson && "after" in log.metadataJson;
-                                    const isExpanded = expandedId === log.id;
-                                    return (
-                                        <React.Fragment key={log.id}>
-                                            <TableRow
-                                                hover
-                                                onClick={() => handleToggle(log.id, !!hasChanges)}
-                                                sx={{
-                                                    cursor: hasChanges ? "pointer" : "default",
-                                                    backgroundColor: isExpanded ? "var(--scheme-neutral-1045)" : undefined,
-                                                    "&:hover": { backgroundColor: "var(--scheme-neutral-1045)" },
-                                                    "& td": {
-                                                        borderBottom: "1px solid var(--scheme-neutral-920)",
-                                                        padding: "10px 12px",
-                                                    },
-                                                }}
-                                            >
-                                                {/* Event */}
-                                                <TableCell>
-                                                    <EventChip eventType={log.eventType} t={t} />
-                                                </TableCell>
-
-                                                {/* Actor */}
-                                                <TableCell>
-                                                    <Stack spacing={0.5}>
-                                                        <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--scheme-neutral-100)" }}>
-                                                            {log.actorName || t("auditLogsModule", "groupAuth")}
-                                                        </Typography>
-                                                        <Typography variant="caption" sx={{ color: "var(--scheme-neutral-500)", fontSize: "0.65rem" }}>
-                                                            {log.actorEmail || "—"}
-                                                        </Typography>
-                                                    </Stack>
-                                                </TableCell>
-
-                                                {/* Target */}
-                                                <TableCell>
-                                                    <Typography variant="caption" sx={{ fontWeight: 700, color: "var(--scheme-neutral-400)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                                                        {log.targetType || "—"}
-                                                    </Typography>
-                                                </TableCell>
-
-                                                {/* Target ID */}
-                                                <TableCell>
-                                                    {(() => {
-                                                        const route = getTargetRoute(log.targetType, log.targetId);
-                                                        const label = log.targetName ?? (log.targetId ? `${log.targetId.slice(0, 10)}…` : "—");
-                                                        if (route && log.targetName) {
-                                                            return (
-                                                                <Typography
-                                                                    variant="caption"
-                                                                    onClick={(e) => { e.stopPropagation(); window.open(route, "_blank"); }}
-                                                                    title={log.targetId ?? undefined}
-                                                                    sx={{
-                                                                        fontSize: "0.72rem",
-                                                                        color: "primary.main",
-                                                                        cursor: "pointer",
-                                                                        fontWeight: 600,
-                                                                        "&:hover": { textDecoration: "underline" },
-                                                                        display: 'flex',
-                                                                        alignItems: 'center'
-                                                                    }}
-                                                                >
-                                                                    {label}
-                                                                    <LaunchIcon fontSize="small" sx={{ ml: 0.5 }} />
-                                                                </Typography>
-                                                            );
-                                                        }
-                                                        return (
-                                                            <Typography
-                                                                variant="caption"
-                                                                title={log.targetId ?? undefined}
-                                                                sx={{ fontFamily: "'JetBrains Mono','Fira Code',monospace", fontSize: "0.68rem", color: "var(--scheme-neutral-500)" }}
-                                                            >
-                                                                {label}
-                                                            </Typography>
-                                                        );
-                                                    })()}
-                                                </TableCell>
-
-                                                {/* Timestamp */}
-                                                <TableCell>
-                                                    <Typography variant="caption" sx={{ color: "var(--scheme-neutral-300)", whiteSpace: "nowrap" }}>
-                                                        {formatDate(log.createdAt)}
-                                                    </Typography>
-                                                </TableCell>
-
-                                                {/* Expand toggle */}
-                                                <TableCell align="right">
-                                                    {hasChanges ? (
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={(e) => { e.stopPropagation(); handleToggle(log.id, true); }}
-                                                            sx={{
-                                                                color: "var(--scheme-primary-500)",
-                                                                transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-                                                                transition: "transform 200ms ease",
-                                                            }}
-                                                        >
-                                                            <ExpandMoreIcon fontSize="small" />
-                                                        </IconButton>
-                                                    ) : (
-                                                        <Typography variant="caption" sx={{ color: "var(--scheme-neutral-600)" }}>—</Typography>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-
-                                            {/* Collapsible field change details */}
-                                            {hasChanges && (
-                                                <TableRow
-                                                    sx={{
-                                                        backgroundColor: "var(--scheme-neutral-1045)",
-                                                        "& td": {
-                                                            borderBottom: "1px solid var(--scheme-neutral-920)",
-                                                            padding: 0,
-                                                        },
-                                                    }}
-                                                >
-                                                    <TableCell colSpan={6}>
-                                                        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                                                            <FieldChangeDetails
-                                                                metadata={log.metadataJson as Record<string, unknown>}
-                                                                resolveFieldLabel={resolveFieldLabel}
-                                                                renderValue={renderValue}
-                                                            />
-                                                        </Collapse>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </React.Fragment>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                )}
-
-                {/* Pagination */}
-                {total > 0 && (
-                    <TablePagination
-                        rowsPerPageOptions={[10, 25, 50, 100]}
-                        component="div"
-                        count={total}
-                        rowsPerPage={pageSize}
-                        page={safePage - 1}
-                        onPageChange={(_e, newPage) => setPage(newPage + 1)}
-                        onRowsPerPageChange={(e) => { setPageSize(parseInt(e.target.value, 10)); setPage(1); }}
-                        sx={{
-                            backgroundColor: "var(--scheme-neutral-950)",
-                            color: "var(--scheme-neutral-500)",
-                            borderTop: "1px solid var(--scheme-neutral-900)",
-                            "& .MuiTablePagination-toolbar": { paddingRight: "8px", minHeight: "48px" },
-                            "& .MuiTablePagination-select": { color: "var(--scheme-neutral-400)" },
-                            "& .MuiIconButton-root": { color: "var(--scheme-neutral-500)" },
-                        }}
+            <DataTable<AuditLogItem>
+                tableId="audit-logs"
+                columns={columns}
+                rows={logs}
+                loading={loading}
+                {...searchProps}
+                onClearFilters={handleClear}
+                hasActiveFilters={Boolean(searchQuery || toolbarFilterCount)}
+                headerRight={(
+                    <TableFilterButton
+                        title={t("simulationsModule", "filtersTitle")}
+                        activeFilterCount={toolbarFilterCount}
+                        onClick={() => setFiltersOpen(true)}
                     />
                 )}
-            </Box>
-        </Column>
+                emptyMessage={t("auditLogsModal", "noLogs")}
+                pagination={{
+                    page,
+                    pageSize,
+                    total,
+                    onPageChange: setPage,
+                    onPageSizeChange: setPageSize,
+                }}
+                t={t}
+                rowDetailContent={(log) => {
+                    const metadata = log.metadataJson as Record<string, unknown> | null | undefined;
+                    if (!metadata || Object.keys(metadata).length === 0) return null;
+                    return (
+                        <FieldChangeDetails
+                            metadata={metadata}
+                            resolveFieldLabel={resolveFieldLabel}
+                            renderValue={renderValue}
+                        />
+                    );
+                }}
+                mobileCard={{
+                    title: "eventType",
+                    status: "targetType",
+                    fields: ["actor", "targetName", "createdAt"],
+                }}
+            />
+            {saveViewDialog}
+        </Stack>
     );
 }

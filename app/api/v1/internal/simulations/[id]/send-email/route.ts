@@ -10,6 +10,7 @@ import {
   buildSimulationPdfFilenameFromSimulation,
   resolveSimulationProductName,
 } from "@/infrastructure/pdf/pdfFilename";
+import { installPdfResourceGuard } from "@/infrastructure/pdf/pdfResourceGuard";
 import { SimulationService } from "@/application/services/simulationService";
 
 const sendEmailSchema = z.object({
@@ -115,6 +116,7 @@ export const POST = withErrorHandler(
           @media print {
             *  { box-sizing: border-box; }
             body { margin: 0; padding: 0; }
+            .asim-page { min-height: 0 !important; }
             table, figure, img,
             .asim-comparison,
             .asim-plan-card, .asim-plan-body,
@@ -141,25 +143,32 @@ export const POST = withErrorHandler(
           : `${stylesHtml}\n${pdfHtmlContent}`;
 
         const browser = await launchBrowser();
+        let pdfBuffer: Uint8Array;
 
-        const page = await browser.newPage();
-        await page.setContent(enrichedHtml, {
-          waitUntil: "networkidle0",
-        });
+        try {
+          const page = await browser.newPage();
+          page.setDefaultTimeout(30_000);
+          page.setDefaultNavigationTimeout(30_000);
+          await installPdfResourceGuard(page);
+          await page.setContent(enrichedHtml, {
+            waitUntil: "load",
+            timeout: 30_000,
+          });
 
-        const pdfBuffer = await page.pdf({
-          format: "A4",
-          margin: {
-            top: "15mm",
-            right: "12mm",
-            bottom: "15mm",
-            left: "12mm",
-          },
-          printBackground: true,
-          preferCSSPageSize: false,
-        });
-
-        await browser.close();
+          pdfBuffer = await page.pdf({
+            format: "A4",
+            margin: {
+              top: "15mm",
+              right: "12mm",
+              bottom: "15mm",
+              left: "12mm",
+            },
+            printBackground: true,
+            preferCSSPageSize: false,
+          });
+        } finally {
+          await browser.close();
+        }
 
         const latestPayload = simulation?.versions?.[0]?.payloadJson as any;
         const filename = simulation
@@ -184,7 +193,10 @@ export const POST = withErrorHandler(
           },
         ];
       } catch (err) {
-        console.error("Failed to generate PDF attachment:", err);
+        console.error(
+          "Failed to generate PDF attachment:",
+          err instanceof Error ? err.message : "Unknown error",
+        );
         return NextResponse.json(
           { error: "Failed to generate PDF attachment" },
           { status: 500 },

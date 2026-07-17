@@ -5,7 +5,7 @@ import { ResponseHandler } from "@/application/middleware/response";
 import { AuthService } from "@/application/services/authService";
 import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
 import {
-  applyRateLimit,
+  applyRateLimitShared,
   getClientRateLimitKey,
 } from "@/application/middleware/rateLimit";
 
@@ -60,7 +60,7 @@ const loginSchema = z.object({
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const sessionContext = getRequestSessionContext(request);
   const ip = sessionContext.ipAddress;
-  applyRateLimit(getClientRateLimitKey(ip, "login"), {
+  await applyRateLimitShared(getClientRateLimitKey(ip, "login"), {
     maxRequests: 10,
     windowMs: 15 * 60 * 1000,
   });

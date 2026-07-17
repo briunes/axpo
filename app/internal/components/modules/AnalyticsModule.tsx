@@ -134,7 +134,7 @@ export function AdminAnalyticsViewSkeleton() {
       <ChartSkeleton height={180} />
 
       {/* Charts */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 14 }}>
         <ChartSkeleton />
         <ChartSkeleton />
       </div>
@@ -144,7 +144,7 @@ export function AdminAnalyticsViewSkeleton() {
 
       {/* Alerts */}
       <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}
+        style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: 14 }}
       >
         {[1, 2, 3].map((i) => (
           <div
@@ -191,7 +191,7 @@ export function AgentAnalyticsViewSkeleton() {
       <ChartSkeleton height={180} />
 
       {/* Activity Charts */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 14 }}>
         <ChartSkeleton height={220} />
         <ChartSkeleton height={220} />
       </div>
@@ -211,7 +211,7 @@ export function AgentAnalyticsViewSkeleton() {
           sx={{ marginBottom: 2, bgcolor: "var(--scheme-neutral-800)" }}
         />
         <div
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}
+          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 }}
         >
           {[1, 2, 3].map((i) => (
             <div
@@ -388,7 +388,7 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
   const showAgencyDrillDown = isAdminView && selectedAgencyId !== null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div className="analytics-dashboard" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {errorText && <div className="sp-panel-error">{errorText}</div>}
 
       {showAgencyDrillDown ? (

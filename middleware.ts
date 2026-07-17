@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // ---------------------------------------------------------------------------
+// Legacy QLD Domain Redirect
+// ---------------------------------------------------------------------------
+// Keep the old Vercel preview domain alive for existing client links, but move
+// all traffic to the current pre-production QLD domain.
+const LEGACY_QLD_HOST = "axpo-qld.vercel.app";
+const CURRENT_QLD_ORIGIN = "https://misimulador-pre.axpoiberia.es";
+
+function getRequestHost(request: NextRequest): string {
+  return (
+    request.headers.get("x-forwarded-host") ??
+    request.headers.get("host") ??
+    request.nextUrl.host
+  )
+    .split(",")[0]
+    .trim()
+    .toLowerCase()
+    .replace(/:\d+$/, "");
+}
+
+// ---------------------------------------------------------------------------
 // CORS
 // ---------------------------------------------------------------------------
 // Allowed origins: comma-separated list in CORS_ORIGIN env var.
@@ -98,7 +118,7 @@ function checkBasicAuth(request: NextRequest): boolean {
 // Bypass paths that must always be accessible during maintenance:
 //   - /maintenance (the page itself)
 //   - /api/maintenance (the status endpoint)
-//   - /api/ (so the admin can toggle maintenance off via the API)
+//   - selected API endpoints needed to show or disable maintenance mode
 //   - /internal/configurations (so the admin can reach the toggle)
 //   - /_next/ static files & favicon
 // Static asset extensions served from /public that must remain reachable
@@ -110,8 +130,12 @@ function isMaintenanceBypass(pathname: string): boolean {
   return (
     pathname === "/maintenance" ||
     pathname.startsWith("/maintenance/") ||
-    pathname.startsWith("/api/") ||
+    pathname === "/api/maintenance" ||
+    pathname === "/api/v1/internal/config/system" ||
+    pathname === "/api/v1/internal/health" ||
+    pathname === "/api/v1/public/version" ||
     pathname.startsWith("/internal/configurations") ||
+    pathname.startsWith("/internal/changelog") ||
     pathname.startsWith("/_next/") ||
     pathname === "/favicon.ico" ||
     STATIC_ASSET_EXTENSION.test(pathname)
@@ -167,6 +191,12 @@ async function getMaintenanceStatus(
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const origin = request.headers.get("origin");
+
+  if (getRequestHost(request) === LEGACY_QLD_HOST) {
+    const url = new URL(request.nextUrl.pathname, CURRENT_QLD_ORIGIN);
+    url.search = request.nextUrl.search;
+    return NextResponse.redirect(url, 308);
+  }
 
   // Maintenance mode gate — check before everything else
   if (!isMaintenanceBypass(pathname)) {

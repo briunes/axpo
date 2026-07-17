@@ -12,15 +12,17 @@ import { useUsers } from "../../../components/hooks/useUsers";
 import { usePermissions } from "../../../lib/permissionsContext";
 import { UserForm, type UserFormData } from "../../../components/modules/UserForm";
 import { UserSessionsPanel } from "../../../components/modules/UserSessionsPanel";
-import { CrudPageLayout, LoadingState, PinResultDialog, useAlerts } from "../../../components/shared";
+import { BoneyardFormSkeleton, CrudPageLayout, PinResultDialog, useAlerts } from "../../../components/shared";
 import { UserPreferencesForm, type UserPreferences } from "../../../components/ui/UserPreferencesForm";
 import { AuditLogsModal } from "../../../components/ui/AuditLogsModal";
 import { useUserPreferences } from "../../../components/providers/UserPreferencesProvider";
 import { getUser, type ListUsersResponse, type UserItem } from "../../../lib/internalApi";
 import { getSystemConfig } from "../../../lib/configApi";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../../components/InternalWorkspace";
 
 export default function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const isBoneyardFixture = id === "boneyard-fixture";
     const router = useRouter();
     const [session] = useState(loadSession());
     const { showSuccess: alertSuccess, showError: alertError } = useAlerts();
@@ -28,9 +30,10 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     const { canDo } = usePermissions();
     const { preferences } = useUserPreferences();
     const queryClient = useQueryClient();
+    const onActionButtons = useActionButtons();
 
     const usersActions = useUsers(session, 25, { queryEnabled: false });
-    const agenciesActions = useAgencies(session, 1000, { minimal: true });
+    const agenciesActions = useAgencies(session, 1000, { minimal: true, queryEnabled: !isBoneyardFixture });
     const { loading: loadingAgencies } = agenciesActions;
 
     const [user, setUser] = useState<UserItem | null>(null);
@@ -52,11 +55,18 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
         otherDetails: "",
     });
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
+    const breadcrumbs = useMemo(
+        () => user ? [{ label: user.fullName, href: `/internal/users/${user.id}/edit` }] : null,
+        [user],
+    );
+    useTopBarBreadcrumbs(breadcrumbs);
 
     const isEditingSelf = user?.id === session?.user.id;
     const canManageUserSessions = session ? canDo(session.user.role, "users.sessions.manage") : false;
 
     useEffect(() => {
+        if (isBoneyardFixture) return;
+
         getSystemConfig()
             .then((config) => {
                 setDefaultMaxActiveDevices(config.defaultMaxActiveDevices ?? 3);
@@ -64,7 +74,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
             .catch(() => {
                 // keep fallback
             });
-    }, []);
+    }, [isBoneyardFixture]);
 
     useEffect(() => {
         if (!canManageUserSessions && activeTab === 2) {
@@ -89,7 +99,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
     }, [id, queryClient, session]);
 
     useEffect(() => {
-        if (!session) return;
+        if (!session || isBoneyardFixture) return;
 
         const applyUser = (foundUser: UserItem) => {
             setUser(foundUser);
@@ -118,7 +128,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                 alertError(t("userFormPage", "notFound"));
                 router.push("/internal/users");
             });
-    }, [alertError, cachedUser, defaultMaxActiveDevices, id, router, session, t]);
+    }, [alertError, cachedUser, defaultMaxActiveDevices, id, isBoneyardFixture, router, session, t]);
 
     useEffect(() => {
         if (usersActions.successText) {
@@ -194,14 +204,77 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
         await usersActions.handleRequestPasswordReset(user);
     };
 
+    useEffect(() => {
+        if (!session || !user) {
+            onActionButtons?.(null);
+            return;
+        }
+
+        onActionButtons?.(
+            <>
+                <span className="topbar-action-wrap">
+                    <Button
+                        className="topbar-action topbar-action--compact"
+                        variant="outlined"
+                        size="small"
+                        startIcon={<HistoryIcon />}
+                        onClick={() => setShowAuditLogsModal(true)}
+                    >
+                        <span className="topbar-action-label">{t("auditLogsModal", "title")}</span>
+                    </Button>
+                </span>
+                <span className="topbar-action-wrap">
+                    <Button
+                        className="topbar-action topbar-action--compact"
+                        variant="outlined"
+                        size="small"
+                        onClick={handleSendPasswordReset}
+                        disabled={usersActions.busyAction !== null || isSendingPasswordReset}
+                    >
+                        <span className="topbar-action-label">
+                            {isSendingPasswordReset ? t("common", "loading") : t("userFormPage", "sendPasswordReset")}
+                        </span>
+                    </Button>
+                </span>
+                <span className="topbar-action-wrap">
+                    <Button
+                        className="topbar-action topbar-action--compact"
+                        variant="outlined"
+                        size="small"
+                        onClick={handleRegeneratePin}
+                        disabled={usersActions.busyAction !== null || isRegeneratingPin}
+                    >
+                        <span className="topbar-action-label">
+                            {isRegeneratingPin ? t("common", "loading") : t("userFormPage", "regeneratePin")}
+                        </span>
+                    </Button>
+                </span>
+                {formActions}
+            </>,
+        );
+
+        return () => onActionButtons?.(null);
+    }, [
+        formActions,
+        isRegeneratingPin,
+        isSendingPasswordReset,
+        onActionButtons,
+        session,
+        t,
+        user,
+        usersActions.busyAction,
+    ]);
     if (!session || !user) {
+        const skeletonTabs = canManageUserSessions ? 3 : 2;
+
         return (
             <CrudPageLayout
                 title={t("userFormPage", "editTitle")}
                 backHref="/internal/users"
                 maxWidth={undefined}
+                hideHeader
             >
-                <LoadingState message={t("userFormPage", "loading")} size={100} />
+                <BoneyardFormSkeleton name="edit-user-form" shape="user" tabs={skeletonTabs} />
             </CrudPageLayout>
         );
     }
@@ -213,94 +286,67 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                 subtitle={t("userFormPage", "editSubtitle", { name: user.fullName })}
                 backHref="/internal/users"
                 maxWidth={undefined}
-                actions={
-                    <>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<HistoryIcon />}
-                            onClick={() => setShowAuditLogsModal(true)}
-                        >
-                            {t("auditLogsModal", "title")}
-                        </Button>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            onClick={handleSendPasswordReset}
-                            disabled={usersActions.busyAction !== null || isSendingPasswordReset}
-                        >
-                            {isSendingPasswordReset ? t("common", "loading") : t("userFormPage", "sendPasswordReset")}
-                        </Button>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            onClick={handleRegeneratePin}
-                            disabled={usersActions.busyAction !== null || isRegeneratingPin}
-                        >
-                            {isRegeneratingPin ? t("common", "loading") : t("userFormPage", "regeneratePin")}
-                        </Button>
-                        {formActions}
-
-                    </>
-                }
+                hideHeader
             >
-                <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
-                    <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
-                        <Tab label={t("userFormPage", "tabDetails")} />
-                        <Tab label={t("userPreferences", "tabPreferences")} />
-                        {canManageUserSessions && <Tab label={t("userFormPage", "tabSessions")} />}
-                    </Tabs>
-                </Box>
+                <Box className="crud-tab-panel">
+                    <Box className="crud-tab-panel__tabs">
+                        <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+                            <Tab label={t("userFormPage", "tabDetails")} />
+                            <Tab label={t("userPreferences", "tabPreferences")} />
+                            {canManageUserSessions && <Tab label={t("userFormPage", "tabSessions")} />}
+                        </Tabs>
+                    </Box>
 
-                <Box sx={{ display: activeTab === 0 ? "block" : "none" }}>
-                    <UserForm
-                        session={session}
-                        agencies={agenciesActions.agencies}
-                        data={formData}
-                        onChange={setFormData}
-                        onSubmit={handleSubmit}
-                        errorMessage={usersActions.errorText}
-                        isSubmitting={usersActions.busyAction === "update-user"}
-                        submitLabel={t("userFormPage", "submitLabel")}
-                        cancelLabel={t("actions", "cancel")}
-                        onCancel={() => router.push("/internal/users")}
-                        mode="edit"
-                        isEditingSelf={isEditingSelf}
-                        originalRole={user.role}
-                        onRenderActions={setFormActions}
-                    />
-                </Box>
-
-                <Box sx={{ display: activeTab === 1 ? "block" : "none" }}>
-                    {session && (
-                        <UserPreferencesForm
-                            userId={id}
-                            token={session.token}
-                            hideSaveButton
-                            onPreferencesChange={setPreferencesDraft}
-                            onNotify={(msg, tone) => tone === "error" ? alertError(msg) : alertSuccess(msg)}
+                    <Box sx={{ display: activeTab === 0 ? "block" : "none" }}>
+                        <UserForm
+                            session={session}
+                            agencies={agenciesActions.agencies}
+                            data={formData}
+                            onChange={setFormData}
+                            onSubmit={handleSubmit}
+                            errorMessage={usersActions.errorText}
+                            isSubmitting={usersActions.busyAction === "update-user"}
+                            submitLabel={t("userFormPage", "submitLabel")}
+                            cancelLabel={t("actions", "cancel")}
+                            onCancel={() => router.push("/internal/users")}
+                            mode="edit"
+                            isEditingSelf={isEditingSelf}
+                            originalRole={user.role}
+                            onRenderActions={setFormActions}
                         />
-                    )}
-                </Box>
+                    </Box>
 
-                {canManageUserSessions && (
-                    <Box sx={{ display: activeTab === 2 ? "block" : "none" }}>
+                    <Box sx={{ display: activeTab === 1 ? "block" : "none" }}>
                         {session && (
-                            <UserSessionsPanel
-                                session={session}
+                            <UserPreferencesForm
                                 userId={id}
-                                initialPageSize={preferences.itemsPerPage}
-                                allowUserLogoutAll
-                                maxActiveDevices={formData.maxActiveDevices ?? defaultMaxActiveDevices}
-                                maxActiveDevicesLimit={defaultMaxActiveDevices}
-                                onMaxActiveDevicesChange={(value) => {
-                                    setFormData((prev) => ({ ...prev, maxActiveDevices: value }));
-                                }}
+                                token={session.token}
+                                hideSaveButton
+                                onPreferencesChange={setPreferencesDraft}
                                 onNotify={(msg, tone) => tone === "error" ? alertError(msg) : alertSuccess(msg)}
                             />
                         )}
                     </Box>
-                )}
+
+                    {canManageUserSessions && (
+                        <Box sx={{ display: activeTab === 2 ? "block" : "none" }}>
+                            {session && (
+                                <UserSessionsPanel
+                                    session={session}
+                                    userId={id}
+                                    initialPageSize={preferences.itemsPerPage}
+                                    allowUserLogoutAll
+                                    maxActiveDevices={formData.maxActiveDevices ?? defaultMaxActiveDevices}
+                                    maxActiveDevicesLimit={defaultMaxActiveDevices}
+                                    onMaxActiveDevicesChange={(value) => {
+                                        setFormData((prev) => ({ ...prev, maxActiveDevices: value }));
+                                    }}
+                                    onNotify={(msg, tone) => tone === "error" ? alertError(msg) : alertSuccess(msg)}
+                                />
+                            )}
+                        </Box>
+                    )}
+                </Box>
             </CrudPageLayout>
 
             {showPinDialog && newPin && (

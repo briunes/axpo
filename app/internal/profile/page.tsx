@@ -1,17 +1,24 @@
 "use client";
 
 import { Chip, Divider, Stack, Box, Tabs, Tab } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { loadSession } from "../lib/authSession";
 import { getUser, updateUser, isAdmin, type UserItem } from "../lib/internalApi";
 import { useAgencies } from "../components/hooks/useAgencies";
 import { UserForm, type UserFormData } from "../components/modules/UserForm";
 import { CrudPageLayout, LoadingState, useAlerts } from "../components/shared";
 import { UserPreferencesForm } from "../components/ui/UserPreferencesForm";
+import { UsersIcon } from "../components/ui/icons";
+import { useTopBarBreadcrumbs } from "../components/InternalWorkspace";
 import { useI18n } from "../../../src/lib/i18n-context";
 
 export default function ProfilePage() {
     const { t } = useI18n();
+    const breadcrumbs = useMemo(
+        () => [{ label: t("profilePage", "title"), href: "/internal/profile", icon: UsersIcon }],
+        [t],
+    );
+    useTopBarBreadcrumbs(breadcrumbs);
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const agenciesActions = useAgencies(session, 1000, { minimal: true });
@@ -61,7 +68,6 @@ export default function ProfilePage() {
         try {
             await updateUser(session.token, session.user.id, {
                 fullName: formData.fullName.trim(),
-                email: formData.email.trim(),
                 mobilePhone: formData.mobilePhone.trim(),
                 commercialPhone: formData.commercialPhone.trim(),
                 commercialEmail: formData.commercialEmail.trim(),
@@ -156,6 +162,7 @@ export default function ProfilePage() {
                                 mode="edit"
                                 isEditingSelf
                                 originalRole={user?.role}
+                                formVariant="plain"
                             />
                         </Stack>
                     )}

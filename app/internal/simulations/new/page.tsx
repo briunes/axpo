@@ -1,18 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import { State } from "country-state-city";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import AddIcon from "@mui/icons-material/Add";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { createSimulation, createClient, listAllClients, getAgency, calculateSimulation, type ClientItem, type AgencyItem } from "../../lib/internalApi";
-import { CrudPageLayout, LoadingState, useAlerts } from "../../components/shared";
+import { createSimulation, createClient, listAllClients, getAgency, type ClientItem, type AgencyItem } from "../../lib/internalApi";
+import { CrudPageLayout, FormSkeleton, useAlerts } from "../../components/shared";
 import { CrudFormContainer } from "../../components/shared/CrudFormContainer";
 import { getSystemConfig } from "../../lib/configApi";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem, FormControl, Box, Paper } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Select, MenuItem, FormControl, Box, Paper, FormControlLabel, Switch } from "@mui/material";
 import { ClientForm, type ClientFormData } from "../../components/modules/ClientForm";
 import { InvoiceExtractor, type ExtractedInvoiceData, type InvoiceExtractionContext } from "../../components/modules";
 import { FormSelect } from "../../components/ui/FormSelect";
@@ -20,10 +21,198 @@ import { DateInput } from "../../components/ui/DateInput";
 import { FormInput } from "../../components/ui/FormInput";
 import { CurrencyInput } from "../../components/ui/CurrencyInput";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import PersonSearchIcon from "@mui/icons-material/PersonSearch";
+import TuneIcon from "@mui/icons-material/Tune";
+import ManageSearchIcon from "@mui/icons-material/ManageSearch";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
-
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
+import WarningIcon from '@mui/icons-material/Warning';
 type SimType = "ELECTRICITY" | "GAS";
+
+function finiteOrUndefined(value: unknown): number | undefined {
+    return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function roundMoney(value: number): number {
+    return Math.round(value * 100) / 100;
+}
+
+const ELEC_PERIOD_LABELS = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+
+function activePowerPeriodsForTariff(tariff?: string | null): readonly string[] {
+    return ELEC_PERIOD_LABELS;
+}
+
+function nonInclusiveDaysBetween(from?: string, to?: string): number | undefined {
+    if (!from || !to) return undefined;
+    const days = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+    return Number.isFinite(days) && days > 0 ? days : undefined;
+}
+
+function normalizeOcrElectricityConsumption(data: ExtractedInvoiceData): ExtractedInvoiceData {
+    const factura = data.facturaActual ?? 0;
+    if (!factura || factura > 10000) return data;
+
+    const rawEnergyCost = ELEC_PERIOD_LABELS.reduce((sum, period) => {
+        const consumo = finiteOrUndefined((data as any)[`consumo${period}`]) ?? 0;
+        const precio = finiteOrUndefined((data as any)[`precioEnergia${period}`]) ?? 0;
+        return sum + consumo * precio;
+    }, 0);
+    const scaledEnergyCost = rawEnergyCost / 1000;
+    if (!(rawEnergyCost > factura * 5 && scaledEnergyCost < factura * 2)) return data;
+
+    const normalized: ExtractedInvoiceData = { ...data };
+    ELEC_PERIOD_LABELS.forEach((period) => {
+        const key = `consumo${period}` as keyof ExtractedInvoiceData;
+        const value = finiteOrUndefined((normalized as any)[key]);
+        if (value != null) (normalized as any)[key] = roundMoney(value / 1000);
+    });
+    return normalized;
+}
+
+function deriveCurrentInvoiceBreakdown(
+    data: ExtractedInvoiceData,
+    ivaTasa?: number,
+    impuestoElectricoTasa?: number,
+): ExtractedInvoiceData {
+    const next = normalizeOcrElectricityConsumption(data);
+    const factura = finiteOrUndefined(next.facturaActual);
+    const billingDays = nonInclusiveDaysBetween(next.fechaInicio, next.fechaFin);
+
+    if (next.importePotencia == null && billingDays) {
+        const powerCost = activePowerPeriodsForTariff(next.tarifaAcceso).reduce((sum, period) => {
+            const potencia = finiteOrUndefined((next as any)[`potencia${period}`]) ?? 0;
+            const precio = finiteOrUndefined((next as any)[`precioPotencia${period}`]) ?? 0;
+            return sum + potencia * precio * billingDays;
+        }, 0);
+        if (powerCost > 0) next.importePotencia = roundMoney(powerCost);
+    }
+
+    if (next.importeIva == null && factura != null && ivaTasa != null && Number.isFinite(ivaTasa)) {
+        next.importeIva = roundMoney(factura * (ivaTasa / (100 + ivaTasa)));
+    }
+
+    if (
+        next.importeImpuestoElectrico == null &&
+        factura != null &&
+        ivaTasa != null &&
+        impuestoElectricoTasa != null &&
+        Number.isFinite(ivaTasa) &&
+        Number.isFinite(impuestoElectricoTasa)
+    ) {
+        const ieR = impuestoElectricoTasa / 100;
+        const ivaR = ivaTasa / 100;
+        next.importeImpuestoElectrico = roundMoney(factura * (ieR / ((1 + ieR) * (1 + ivaR))));
+    }
+
+    if (next.importeEnergia == null && factura != null) {
+        const rentalOrOther = Math.max(next.alquiler ?? 0, next.otrosCargos ?? 0);
+        const known =
+            (next.importePotencia ?? 0) +
+            (next.importeImpuestoElectrico ?? 0) +
+            (next.importeIva ?? 0) +
+            (next.excesoPotencia ?? 0) +
+            (next.reactiva ?? 0) +
+            rentalOrOther;
+        const residual = factura - known;
+        if (known > 0 && residual > 0) {
+            next.importeEnergia = roundMoney(residual);
+        }
+    }
+
+    if (next.importeEnergia == null && factura != null) {
+        const hasPricesForAllConsumedPeriods = ELEC_PERIOD_LABELS.every((period) => {
+            const consumo = finiteOrUndefined((next as any)[`consumo${period}`]) ?? 0;
+            const precio = finiteOrUndefined((next as any)[`precioEnergia${period}`]);
+            return consumo <= 0 || (precio != null && precio > 0);
+        });
+        const energyFromPrices = ELEC_PERIOD_LABELS.reduce((sum, period) => {
+            const consumo = finiteOrUndefined((next as any)[`consumo${period}`]) ?? 0;
+            const precio = finiteOrUndefined((next as any)[`precioEnergia${period}`]) ?? 0;
+            return sum + consumo * precio;
+        }, 0);
+        if (hasPricesForAllConsumedPeriods && energyFromPrices > 0 && energyFromPrices < factura) {
+            next.importeEnergia = roundMoney(energyFromPrices);
+        }
+    }
+
+    return next;
+}
+
+function deriveGasCurrentInvoiceBreakdown(data: ExtractedInvoiceData): ExtractedInvoiceData {
+    const next = { ...data };
+    const factura = finiteOrUndefined(next.facturaActual);
+    if (factura == null) return next;
+
+    const ivaTasa = finiteOrUndefined(next.ivaTasa) ?? 21;
+    const consumo = finiteOrUndefined(next.consumoTotal) ?? 0;
+    const impuestoHidrocarburo = finiteOrUndefined(next.impuestoHidrocarburo) ?? 0.00234;
+    const alquiler = finiteOrUndefined(next.alquiler) ?? 0;
+    const otrosCargos = finiteOrUndefined(next.otrosCargos) ?? 0;
+
+    if (next.importeIva == null) {
+        next.importeIva = roundMoney(factura * (ivaTasa / (100 + ivaTasa)));
+    }
+
+    if (next.importeImpuestoHidrocarburos == null) {
+        next.importeImpuestoHidrocarburos = roundMoney(impuestoHidrocarburo * consumo);
+    }
+
+    if (next.importeTerminoFijo == null) {
+        next.importeTerminoFijo = 0;
+    }
+
+    if (next.importeTerminoVariable == null) {
+        const known =
+            (next.importeIva ?? 0) +
+            (next.importeImpuestoHidrocarburos ?? 0) +
+            alquiler +
+            otrosCargos +
+            (next.importeTerminoFijo ?? 0);
+        const residual = factura - known;
+        if (residual > 0) next.importeTerminoVariable = roundMoney(residual);
+    }
+
+    return next;
+}
+
+function currentElecInvoiceBreakdownTotal(data: ExtractedInvoiceData): number {
+    return roundMoney(
+        (data.importePotencia ?? 0) +
+        (data.importeEnergia ?? 0) +
+        (data.excesoPotencia ?? 0) +
+        (data.importeImpuestoElectrico ?? 0) +
+        currentElecOtherChargesForBreakdown(data) +
+        (data.alquiler ?? 0) +
+        (data.importeIva ?? 0),
+    );
+}
+
+function currentElecOtherChargesForBreakdown(data: ExtractedInvoiceData): number {
+    return roundMoney((data.otrosCargos ?? 0) + (data.reactiva ?? 0));
+}
+
+function currentGasInvoiceBreakdownTotal(data: ExtractedInvoiceData): number {
+    return roundMoney(
+        (data.importeTerminoFijo ?? 0) +
+        (data.importeTerminoVariable ?? 0) +
+        (data.importeImpuestoHidrocarburos ?? 0) +
+        (data.otrosCargos ?? 0) +
+        (data.alquiler ?? 0) +
+        (data.importeIva ?? 0),
+    );
+}
+
+function invoiceBreakdownMismatch(total: number, invoiceTotal?: number): boolean {
+    return (invoiceTotal ?? 0) > 0 && Math.abs(roundMoney(total - (invoiceTotal ?? 0))) > 0.02;
+}
+
+function formatBreakdownDifferenceAmount(total: number, invoiceTotal?: number): string {
+    const diff = Math.abs(roundMoney(total - (invoiceTotal ?? 0)));
+    return `${diff.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+}
 
 function addDays(n: number): string {
     const d = new Date();
@@ -46,24 +235,24 @@ function normalizeClientCif(value?: string | null): string {
 // ─── OCR payload helpers (mirrors SimulationForm logic) ───────────────────────
 
 const ELEC_ENERGY_PERIODS: Record<string, string[]> = {
-    "2.0TD": ["P1", "P2", "P3"],
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 const ELEC_POWER_PERIODS: Record<string, string[]> = {
-    "2.0TD": ["P1", "P2"],
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 
 function ocrDaysBetween(from: string, to: string): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-    return Math.max(1, d + 1); // electricity: inclusive (end - start + 1)
+    return Math.max(1, d);
 }
 
 function ocrDaysBetweenGas(from: string, to: string): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-    return Math.max(1, d); // gas: non-inclusive (end - start)
+    return Math.max(1, d);
 }
 
 function ocrPrevMonthRange(): { fechaInicio: string; fechaFin: string } {
@@ -119,6 +308,21 @@ function buildElecPayloadFromOcr(data: import("../../components/modules").Extrac
             reactiva: data.reactiva || undefined,
             alquilerEquipoMedida: data.alquiler || undefined,
             otrosCargos: data.otrosCargos || undefined,
+            useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown !== false,
+            terminoPotenciaActual: finiteOrUndefined(data.importePotencia),
+            terminoEnergiaActual: finiteOrUndefined(data.importeEnergia),
+            impuestoElectricoActual: finiteOrUndefined(data.importeImpuestoElectrico),
+            ivaActual: finiteOrUndefined(data.importeIva),
+            currentInvoiceBreakdown: {
+                terminoPotencia: data.importePotencia ?? 0,
+                terminoEnergia: data.importeEnergia ?? 0,
+                excesoPotencia: data.excesoPotencia ?? 0,
+                impuestoElectrico: data.importeImpuestoElectrico ?? 0,
+                otrosCargos: currentElecOtherChargesForBreakdown(data),
+                alquiler: data.alquiler ?? 0,
+                iva: data.importeIva ?? 0,
+                total: currentElecInvoiceBreakdownTotal(data),
+            },
             ivaTasa: data.ivaTasa,
             impuestoElectricoTasa: data.impuestoElectricoTasa,
         },
@@ -145,6 +349,20 @@ function buildGasPayloadFromOcr(data: import("../../components/modules").Extract
         extras: {
             alquilerEquipoMedida: data.alquiler || undefined,
             otrosCargos: data.otrosCargos || undefined,
+            useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown !== false,
+            terminoFijoActual: finiteOrUndefined(data.importeTerminoFijo),
+            terminoVariableActual: finiteOrUndefined(data.importeTerminoVariable),
+            impuestoHidrocarburoActual: finiteOrUndefined(data.importeImpuestoHidrocarburos),
+            ivaActual: finiteOrUndefined(data.importeIva),
+            currentInvoiceBreakdown: {
+                terminoFijo: data.importeTerminoFijo ?? 0,
+                terminoVariable: data.importeTerminoVariable ?? 0,
+                impuestoHidrocarburo: data.importeImpuestoHidrocarburos ?? 0,
+                otrosCargos: data.otrosCargos ?? 0,
+                alquiler: data.alquiler ?? 0,
+                iva: data.importeIva ?? 0,
+                total: currentGasInvoiceBreakdownTotal(data),
+            },
         },
         ivaTasa: data.ivaTasa,
         impuestoHidrocarburo: data.impuestoHidrocarburo ?? 0.00234,
@@ -156,6 +374,12 @@ export default function NewSimulationPage() {
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const onActionButtons = useActionButtons();
+    const isBoneyardBuild =
+        typeof window !== "undefined" &&
+        (window as typeof window & { __BONEYARD_BUILD?: boolean }).__BONEYARD_BUILD === true;
+    const breadcrumbs = useMemo(() => [{ label: t("newSimulationPage", "title") }], [t]);
+    useTopBarBreadcrumbs(breadcrumbs);
 
     const [clients, setClients] = useState<ClientItem[]>([]);
     const [clientId, setClientId] = useState("");
@@ -185,7 +409,6 @@ export default function NewSimulationPage() {
     const [errorMessage,] = useState<string | null>(null);
     const [extractedData, setExtractedData] = useState<ExtractedInvoiceData | null>(null);
     const [isValidatedExtractedData, setIsValidatedExtractedData] = useState(false);
-    const [uploadedInvoiceFile, setUploadedInvoiceFile] = useState<File | null>(null);
     const [ocrLogIds, setOcrLogIds] = useState<string[]>([]);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isMostlyEmpty, setIsMostlyEmpty] = useState(false);
@@ -196,6 +419,60 @@ export default function NewSimulationPage() {
     const [reportSubmitted, setReportSubmitted] = useState(false);
     const [electricityTaxConfig, setElectricityTaxConfig] = useState<any>(null);
     const [gasTaxConfig, setGasTaxConfig] = useState<any>(null);
+    const [formActions, setFormActions] = useState<React.ReactNode>(null);
+    const selectedClient = useMemo(
+        () => clients.find((client) => client.id === clientId),
+        [clients, clientId],
+    );
+    const hasSource = Boolean(clientId || hasInvoiceFile);
+    const setupReady = Boolean(clientId && simType && expiresAt);
+    const canCreateFromClient = Boolean(clientId && !hasInvoiceFile && setupReady);
+    const canCreateFromExtraction = Boolean(clientId && extractedData && isValidatedExtractedData && expiresAt);
+    const reviewReady = canCreateFromClient || canCreateFromExtraction;
+    // The active step is the FIRST incomplete step in the flow.
+    // flowSteps indices: 0=Source, 1=Extract, 2=Validate, 3=Create.
+    const sourceComplete = hasSource;
+    const extractComplete = Boolean(extractedData);
+    const validateComplete = isValidatedExtractedData || canCreateFromClient;
+    const createComplete = reviewReady;
+    const activeStep = reviewReady
+        ? -1
+        : !sourceComplete
+            ? 0
+            : !extractComplete
+                ? 1
+                : !validateComplete
+                    ? 2
+                    : !createComplete
+                        ? 3
+                        : -1;
+    const flowSteps = [
+        {
+            label: "Source",
+            value: selectedClient?.name ?? (hasInvoiceFile ? "Invoice uploaded" : "Choose"),
+            complete: hasSource,
+            icon: clientId ? <PersonSearchIcon fontSize="small" /> : <CloudUploadIcon fontSize="small" />,
+        },
+
+        {
+            label: "Extract",
+            value: extractedData ? "Done" : hasInvoiceFile ? "Ready" : "Waiting",
+            complete: Boolean(extractedData),
+            icon: <AutoFixHighIcon fontSize="small" />,
+        },
+        {
+            label: "Validate",
+            value: isValidatedExtractedData ? "Validated" : extractedData ? "Review" : "Pending",
+            complete: isValidatedExtractedData || canCreateFromClient,
+            icon: <TuneIcon fontSize="small" />,
+        },
+        {
+            label: "Create",
+            value: reviewReady ? "Ready" : "Pending",
+            complete: reviewReady,
+            icon: <CheckCircleIcon fontSize="small" />,
+        },
+    ];
 
     useEffect(() => {
         const root = document.documentElement;
@@ -211,16 +488,24 @@ export default function NewSimulationPage() {
         return () => observer.disconnect();
     }, []);
 
+    useEffect(() => {
+        onActionButtons?.(formActions);
+        return () => onActionButtons?.(null);
+    }, [formActions, onActionButtons]);
+
     const handleInvoiceDataExtracted = (data: ExtractedInvoiceData, context?: InvoiceExtractionContext) => {
+        // Keep OCR periods exactly as printed. The Excel simulator treats
+        // E28:E33 as positional P1:P6 inputs and never compacts sparse periods.
+        const normalizedData = data;
         // Resolve config-based tax defaults (used only when OCR didn't return a value)
-        const zone = data.zonaGeografica ?? "Peninsula";
+        const zone = normalizedData.zonaGeografica ?? "Peninsula";
         const zoneKey = zone === "Baleares" ? "baleares" : zone === "Canarias" ? "canarias" : "peninsula";
-        const isGas = data.invoiceType?.toUpperCase() === "GAS";
+        const isGas = normalizedData.invoiceType?.toUpperCase() === "GAS";
 
         // IVA: prefer OCR value, fall back to zone config default
         let resolvedIva: number;
-        if (data.ivaTasa != null && !isNaN(data.ivaTasa)) {
-            resolvedIva = data.ivaTasa;
+        if (normalizedData.ivaTasa != null && !isNaN(normalizedData.ivaTasa)) {
+            resolvedIva = normalizedData.ivaTasa;
         } else if (isGas) {
             const gasZoneConf = gasTaxConfig?.[zoneKey];
             resolvedIva = gasZoneConf
@@ -240,14 +525,24 @@ export default function NewSimulationPage() {
             : 5.11269;
         const resolvedElecTax = isGas
             ? undefined
-            : data.impuestoElectricoTasa != null && !isNaN(data.impuestoElectricoTasa)
-                ? data.impuestoElectricoTasa
+            : normalizedData.impuestoElectricoTasa != null && !isNaN(normalizedData.impuestoElectricoTasa)
+                ? normalizedData.impuestoElectricoTasa
                 : defaultElecTax;
 
-        setExtractedData({ ...data, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax });
-        if (context?.file) {
-            setUploadedInvoiceFile(context.file);
-        }
+        const preparedData = isGas
+            ? deriveGasCurrentInvoiceBreakdown({
+                ...normalizedData,
+                ivaTasa: resolvedIva,
+                impuestoElectricoTasa: resolvedElecTax,
+                useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown !== false,
+            })
+            : deriveCurrentInvoiceBreakdown(
+                { ...normalizedData, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax },
+                resolvedIva,
+                resolvedElecTax,
+            );
+
+        setExtractedData(preparedData);
         setOcrLogIds([
             context?.providerDetectionLogId,
             context?.extractionLogId,
@@ -327,7 +622,7 @@ export default function NewSimulationPage() {
 
     const fetchedRef = useRef(false);
     useEffect(() => {
-        if (!session || fetchedRef.current) return;
+        if (!session || isBoneyardBuild || fetchedRef.current) return;
         fetchedRef.current = true;
 
         Promise.all([
@@ -361,7 +656,7 @@ export default function NewSimulationPage() {
         ]).finally(() => {
             setIsLoading(false);
         });
-    }, [session]);
+    }, [session, isBoneyardBuild]);
 
     if (!session) return null;
 
@@ -475,6 +770,34 @@ export default function NewSimulationPage() {
                     excesoPotencia: extractedData.excesoPotencia,
                     alquiler: extractedData.alquiler,
                     otrosCargos: extractedData.otrosCargos,
+                    importePotencia: extractedData.importePotencia,
+                    importeEnergia: extractedData.importeEnergia,
+                    importeImpuestoElectrico: extractedData.importeImpuestoElectrico,
+                    importeTerminoFijo: extractedData.importeTerminoFijo,
+                    importeTerminoVariable: extractedData.importeTerminoVariable,
+                    importeImpuestoHidrocarburos: extractedData.importeImpuestoHidrocarburos,
+                    importeIva: extractedData.importeIva,
+                    useCurrentInvoiceBreakdown: extractedData.useCurrentInvoiceBreakdown,
+                    currentInvoiceBreakdown: simType === "GAS"
+                        ? {
+                            terminoFijo: extractedData.importeTerminoFijo ?? 0,
+                            terminoVariable: extractedData.importeTerminoVariable ?? 0,
+                            impuestoHidrocarburo: extractedData.importeImpuestoHidrocarburos ?? 0,
+                            otrosCargos: extractedData.otrosCargos ?? 0,
+                            alquiler: extractedData.alquiler ?? 0,
+                            iva: extractedData.importeIva ?? 0,
+                            total: currentGasInvoiceBreakdownTotal(extractedData),
+                        }
+                        : {
+                            terminoPotencia: extractedData.importePotencia ?? 0,
+                            terminoEnergia: extractedData.importeEnergia ?? 0,
+                            excesoPotencia: extractedData.excesoPotencia ?? 0,
+                            impuestoElectrico: extractedData.importeImpuestoElectrico ?? 0,
+                            otrosCargos: currentElecOtherChargesForBreakdown(extractedData),
+                            alquiler: extractedData.alquiler ?? 0,
+                            iva: extractedData.importeIva ?? 0,
+                            total: currentElecInvoiceBreakdownTotal(extractedData),
+                        },
                     reactiva: extractedData.reactiva,
                     ivaTasa: extractedData.ivaTasa,
                     impuestoElectricoTasa: extractedData.impuestoElectricoTasa,
@@ -507,36 +830,6 @@ export default function NewSimulationPage() {
                 ocrLogIds: ocrLogIds.length > 0 ? ocrLogIds : undefined,
             });
 
-            // Upload invoice file if one was extracted
-            if (uploadedInvoiceFile) {
-                try {
-                    const formData = new FormData();
-                    formData.append("file", uploadedInvoiceFile);
-                    formData.append("simulationId", created.id);
-
-                    await fetch("/api/v1/internal/simulations/upload-invoice", {
-                        method: "POST",
-                        headers: {
-                            Authorization: `Bearer ${session.token}`,
-                        },
-                        body: formData,
-                    });
-                } catch (uploadErr) {
-                    console.error("Failed to upload invoice file:", uploadErr);
-                    // Don't fail the simulation creation if file upload fails
-                }
-            }
-
-            // If created via OCR, trigger calculation immediately so results are ready
-            if (extractedData) {
-                try {
-                    await calculateSimulation(session.token, created.id);
-                } catch (calcErr) {
-                    console.error("Auto-calculate after OCR creation failed:", calcErr);
-                    // Don't block redirect if calculation fails
-                }
-            }
-
             showSuccess(t("newSimulationPage", "created"));
             router.push(`/internal/simulations/${created.id}`);
         } catch (err) {
@@ -552,629 +845,803 @@ export default function NewSimulationPage() {
             title={t("newSimulationPage", "title")}
             subtitle={t("newSimulationPage", "subtitle")}
             backHref="/internal/simulations"
+            hideHeader
         >
             {isLoading ? (
-                <div style={{ padding: "40px", textAlign: "center" }}>
-                    <LoadingState message={t("common", "loading")} />
+                <div className="new-simulation-skeleton" aria-label={t("common", "loading")}>
+                    <div className="new-simulation-skeleton__stepper">
+                        {[0, 1, 2, 3].map((item) => (
+                            <div className="new-simulation-skeleton__step" key={item}>
+                                <span />
+                                <strong />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="new-simulation-skeleton__panel new-simulation-skeleton__panel--form">
+                        <FormSkeleton variant="simulation" />
+                    </div>
                 </div>
             ) : (
-                <CrudFormContainer
-                    onSubmit={handleSubmit}
-                    submitLabel={t("newSimulationPage", "submitLabel")}
-                    cancelLabel={t("actions", "cancel")}
-                    onCancel={() => router.push("/internal/simulations")}
-                    isSubmitting={isSubmitting}
-                    hideSubmit={llmEnabled && hasInvoiceFile && !extractedData}
-                >
-                    {/* Invoice Data Extraction - Only show if LLM is enabled */}
-                    {llmEnabled && (
-                        <div className="crud-form-section" style={{
-                            background: "var(--scheme-neutral-1100)",
-                            border: "1px solid var(--scheme-neutral-900)",
-                            borderRadius: 12,
-                            padding: "20px 24px",
-                            marginBottom: 24,
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
-                        }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                                <div style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: 8,
-                                    background: "var(--scheme-neutral-1000)",
-                                    border: "1px solid var(--scheme-neutral-900)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    flexShrink: 0
-                                }}>
-                                    <span style={{ fontSize: 18 }}>✨</span>
-                                </div>
-                                <div>
-                                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "var(--scheme-neutral-100)" }}>
-                                        {t("invoiceExtractor", "title") || "Invoice Data Extraction"}
-                                    </h3>
-                                </div>
-                            </div>
-                            <InvoiceExtractor
-                                onDataExtracted={handleInvoiceDataExtracted}
-                                onFileChange={setHasInvoiceFile}
-                                onBeforeExtract={() => {
-                                    setExtractedData(null);
-                                    setIsValidatedExtractedData(false);
-                                    setUploadedInvoiceFile(null);
-                                    setOcrLogIds([]);
-                                    setIsMostlyEmpty(false);
-                                    setExtractionLogId(null);
-                                    setShowReportIssue(false);
-                                    setReportIssueMessage("");
-                                    setReportSubmitted(false);
-                                }}
-                            />
-                        </div>
-                    )}
-
-                    {/* Display Extracted Data */}
-                    {llmEnabled && extractedData && isMostlyEmpty && !showReportIssue && !reportSubmitted && (
-                        <div style={{
-                            display: "flex", flexDirection: "column", gap: 0,
-                            padding: "10px 14px",
-                            borderRadius: 8, marginBottom: 12,
-                            fontSize: 13,
-                            background: isDarkMode ? "#1c1507" : "#fffbeb",
-                            color: isDarkMode ? "#fcd34d" : "#78350f",
-                            border: `1px solid ${isDarkMode ? "#3d2a05" : "#f59e0b"}`,
-                        }}>
-                            <div style={{ display: "flex", alignItems: "flex-start", gap: 7, fontWeight: 500, lineHeight: 1.4 }}>
-                                <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>⚠️</span>
-                                <span>{t("invoiceExtractor", "reportIssueTitle")}</span>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setShowReportIssue(true)}
-                                style={{
-                                    alignSelf: "flex-start", marginTop: 8,
-                                    fontSize: 11, fontWeight: 700, cursor: "pointer",
-                                    background: "transparent",
-                                    border: `1px solid ${isDarkMode ? "#3d2a05" : "#f59e0b"}`,
-                                    borderRadius: 999, padding: "3px 12px",
-                                    color: isDarkMode ? "#fcd34d" : "#92400e",
-                                }}
+                <div className="new-simulation-flow">
+                    <div className="new-simulation-stepper" aria-label="Simulation progress">
+                        {flowSteps.map((step, index) => (
+                            <div
+                                className={[
+                                    "new-simulation-step",
+                                    index === activeStep ? "is-active" : "",
+                                    step.complete ? "is-complete" : "",
+                                ].filter(Boolean).join(" ")}
+                                key={step.label}
                             >
-                                {t("invoiceExtractor", "reportIssueButton")}
-                            </button>
-                        </div>
-                    )}
-
-                    {llmEnabled && extractedData && isMostlyEmpty && !showReportIssue && reportSubmitted && (
-                        <div style={{
-                            display: "flex", alignItems: "center", gap: 6,
-                            padding: "8px 14px", borderRadius: 8, marginBottom: 12,
-                            fontSize: 13, fontWeight: 500,
-                            background: isDarkMode ? "#052e16" : "#f0fdf4",
-                            color: isDarkMode ? "#86efac" : "#166534",
-                            border: `1px solid ${isDarkMode ? "#166534" : "#86efac"}`,
-                        }}>
-                            <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>✓</span>
-                            <span>{t("invoiceExtractor", "reportIssueConfirm")}</span>
-                        </div>
-                    )}
-
-                    {/* Display Extracted Data */}
-                    {llmEnabled && extractedData && (
-                        <Box sx={{
-                            background: isDarkMode ? "linear-gradient(135deg, #0d1f17, #12261d)" : "linear-gradient(135deg, #f0fdf4, #ecfdf5)",
-                            border: isDarkMode ? "1px solid" : "1px solid",
-                            borderColor: isDarkMode ? "#1b3a2a" : "success.main",
-                            borderRadius: 4,
-                            padding: "16px 20px",
-                            marginBottom: 24,
-                            boxShadow: isDarkMode ? "0 2px 8px rgba(0,0,0,0.18)" : "0 2px 8px rgba(16,185,129,0.08)"
-                        }}>
-                            {/* Header */}
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                                <div style={{
-                                    width: 22, height: 22, borderRadius: "50%",
-                                    background: isDarkMode ? "#1b3a2a" : "#10b981", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
-                                }}>
-                                    <span style={{ color: isDarkMode ? "#9dd8bc" : "#fff", fontSize: 12, fontWeight: 700 }}>✓</span>
+                                <div className="new-simulation-step__icon">
+                                    {step.complete ? <CheckCircleIcon fontSize="small" /> : step.icon}
                                 </div>
-                                <span style={{ fontWeight: 700, color: isDarkMode ? "#9dd8bc" : "#065f46", fontSize: 13, letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                                    {t("invoiceExtractor", "extractedDataTitle")}
-                                </span>
-                                {/* Commodity type toggle - always visible */}
-                                <ToggleButtonGroup
-                                    size="small"
-                                    exclusive
-                                    value={extractedData.invoiceType ?? "ELECTRICITY"}
-                                    onChange={(_, val) => {
-                                        if (!val) return;
-                                        setExtractedData(prev => prev ? { ...prev, invoiceType: val } : prev);
-                                        setSimType(val as SimType);
+                                <div className="new-simulation-step__copy">
+                                    <span>{step.label}</span>
+                                    <strong>{step.value}</strong>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <CrudFormContainer
+                        onSubmit={handleSubmit}
+                        submitLabel={t("newSimulationPage", "submitLabel")}
+                        cancelLabel={t("actions", "cancel")}
+                        onCancel={() => router.push("/internal/simulations")}
+                        isSubmitting={isSubmitting}
+                        hideSubmit={llmEnabled && hasInvoiceFile && !extractedData}
+                        disableSubmit={Boolean(!clientId || (llmEnabled && extractedData && !isValidatedExtractedData))}
+                        onRenderActions={setFormActions}
+                    >
+                        {/* Invoice Data Extraction - Only show if LLM is enabled */}
+                        {llmEnabled && (
+                            <div className="crud-form-section new-simulation-card new-simulation-card--invoice">
+                                <div className="new-simulation-card__header">
+                                    <div className="new-simulation-card__icon">
+                                        <AutoFixHighIcon fontSize="small" />
+                                    </div>
+                                    <div className="new-simulation-card__copy">
+                                        <h3>{t("invoiceExtractor", "title") || "Invoice Data Extraction"}</h3>
+                                        <p>{t("invoiceExtractor", "flowDescription")}</p>
+                                    </div>
+                                </div>
+                                <InvoiceExtractor
+                                    onDataExtracted={handleInvoiceDataExtracted}
+                                    onFileChange={setHasInvoiceFile}
+                                    onBeforeExtract={() => {
+                                        setExtractedData(null);
+                                        setIsValidatedExtractedData(false);
+                                        setOcrLogIds([]);
+                                        setIsMostlyEmpty(false);
+                                        setExtractionLogId(null);
+                                        setShowReportIssue(false);
+                                        setReportIssueMessage("");
+                                        setReportSubmitted(false);
                                     }}
-                                    sx={{ ml: 1, height: 26 }}
+                                />
+                            </div>
+                        )}
+
+                        {/* Display Extracted Data */}
+                        {llmEnabled && extractedData && isMostlyEmpty && !showReportIssue && !reportSubmitted && (
+                            <div style={{
+                                display: "flex", flexDirection: "column", gap: 0,
+                                padding: "10px 14px",
+                                borderRadius: 8, marginBottom: 12, background: isDarkMode ? "#1c1507" : "#fffbeb",
+                                color: isDarkMode ? "#fcd34d" : "#78350f",
+                                border: `1px solid ${isDarkMode ? "#3d2a05" : "#f59e0b"}`,
+                            }}>
+                                <div style={{ display: "flex", alignItems: "flex-start", gap: 7, fontWeight: 500, lineHeight: 1.4 }}>
+                                    <WarningIcon fontSize="small" sx={{ color: "warning.main" }} />
+                                    <span>{t("invoiceExtractor", "reportIssueTitle")}</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowReportIssue(true)}
+                                    style={{
+                                        alignSelf: "flex-start", marginTop: 8,
+                                        fontSize: 11, fontWeight: 700, cursor: "pointer",
+                                        background: "transparent",
+                                        border: `1px solid ${isDarkMode ? "#3d2a05" : "#f59e0b"}`,
+                                        borderRadius: 999, padding: "3px 12px",
+                                        color: isDarkMode ? "#fcd34d" : "#92400e",
+                                    }}
                                 >
-                                    <ToggleButton value="ELECTRICITY" sx={{ px: 1.2, py: 0, fontSize: 11, fontWeight: 700, gap: 0.5 }}>
-                                        <BoltIcon sx={{ fontSize: 13, color: "#f59e0b" }} />
-                                        Electricity
-                                    </ToggleButton>
-                                    <ToggleButton value="GAS" sx={{ px: 1.2, py: 0, fontSize: 11, fontWeight: 700, gap: 0.5 }}>
-                                        <LocalFireDepartmentIcon sx={{ fontSize: 13, color: "#ef4444" }} />
-                                        Gas
-                                    </ToggleButton>
-                                </ToggleButtonGroup>
-                                <div style={{ display: "flex", gap: 6, marginLeft: "auto", alignItems: "center" }}>
-                                    {!reportSubmitted && (
+                                    {t("invoiceExtractor", "reportIssueButton")}
+                                </button>
+                            </div>
+                        )}
+
+                        {llmEnabled && extractedData && isMostlyEmpty && !showReportIssue && reportSubmitted && (
+                            <div style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                padding: "8px 14px", borderRadius: 8, marginBottom: 12, fontWeight: 500,
+                                background: isDarkMode ? "#052e16" : "#f0fdf4",
+                                color: isDarkMode ? "#86efac" : "#166534",
+                                border: `1px solid ${isDarkMode ? "#166534" : "#86efac"}`,
+                            }}>
+                                <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>✓</span>
+                                <span>{t("invoiceExtractor", "reportIssueConfirm")}</span>
+                            </div>
+                        )}
+
+                        {/* Display Extracted Data */}
+                        {llmEnabled && extractedData && (
+                            <Box className="new-simulation-extracted">
+                                {/* Header */}
+                                <div className="new-simulation-extracted__header">
+                                    <div className="new-simulation-extracted__title">
+                                        <div className="new-simulation-extracted__icon">
+                                            <CheckCircleIcon fontSize="small" sx={{ color: "success.main" }} />
+                                        </div>
+                                        <span>{t("invoiceExtractor", "extractedDataTitle")}</span>
+                                    </div>
+                                    {/* Commodity type toggle - always visible */}
+                                    <ToggleButtonGroup
+                                        size="small"
+                                        exclusive
+                                        value={extractedData.invoiceType ?? "ELECTRICITY"}
+                                        onChange={(_, val) => {
+                                            if (!val) return;
+                                            setExtractedData(prev => prev ? { ...prev, invoiceType: val } : prev);
+                                            setSimType(val as SimType);
+                                        }}
+                                        className="new-simulation-extracted__toggle"
+                                        sx={{ height: 28 }}
+                                    >
+                                        <ToggleButton value="ELECTRICITY" sx={{ px: 1.2, py: 0, fontSize: 11, fontWeight: 700, gap: 0.5 }}>
+                                            <BoltIcon sx={{ color: "#f59e0b" }} />
+                                            Electricity
+                                        </ToggleButton>
+                                        <ToggleButton value="GAS" sx={{ px: 1.2, py: 0, fontSize: 11, fontWeight: 700, gap: 0.5 }}>
+                                            <LocalFireDepartmentIcon sx={{ color: "#ef4444" }} />
+                                            Gas
+                                        </ToggleButton>
+                                    </ToggleButtonGroup>
+                                    <div className="new-simulation-extracted__actions">
+                                        {!reportSubmitted && (
+                                            <Button
+                                                type="button"
+                                                size="small"
+                                                variant="text"
+                                                color="error"
+                                                onClick={() => setShowReportIssue(v => !v)}
+                                                sx={{ fontSize: 11, py: 0.3, px: 1.2, minWidth: 0, textTransform: "none", fontWeight: 600, opacity: 0.75, '&:hover': { opacity: 1 } }}
+                                            >
+                                                {showReportIssue ? t("invoiceExtractor", "reportIssueCancel") : t("invoiceExtractor", "reportIssueFlagButton")}
+                                            </Button>
+                                        )}
                                         <Button
                                             type="button"
                                             size="small"
-                                            variant="text"
-                                            color="error"
-                                            onClick={() => setShowReportIssue(v => !v)}
-                                            sx={{ fontSize: 11, py: 0.3, px: 1.2, minWidth: 0, textTransform: "none", fontWeight: 600, opacity: 0.75, '&:hover': { opacity: 1 } }}
+                                            variant={isValidatedExtractedData ? "contained" : "outlined"}
+                                            color={isValidatedExtractedData ? "success" : "warning"}
+                                            onClick={() => setIsValidatedExtractedData(v => !v)}
+                                            startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+                                            sx={{ fontSize: 11, py: 0.3, px: 1.2, minWidth: 0, textTransform: "none", fontWeight: 700 }}
                                         >
-                                            {showReportIssue ? t("invoiceExtractor", "reportIssueCancel") : "⚑ Report issue"}
+                                            {isValidatedExtractedData ? t("invoiceExtractor", "validated") : t("invoiceExtractor", "validate")}
                                         </Button>
-                                    )}
-                                    <Button
-                                        type="button"
-                                        size="small"
-                                        variant={isValidatedExtractedData ? "contained" : "outlined"}
-                                        color={isValidatedExtractedData ? "success" : "warning"}
-                                        onClick={() => setIsValidatedExtractedData(v => !v)}
-                                        startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
-                                        sx={{ fontSize: 11, py: 0.3, px: 1.2, minWidth: 0, textTransform: "none", fontWeight: 700 }}
-                                    >
-                                        {isValidatedExtractedData ? "Validated" : "Validate"}
-                                    </Button>
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Inline report issue form */}
-                            {showReportIssue && !reportSubmitted && (
-                                <div style={{
-                                    marginBottom: 14,
-                                    padding: "10px 14px",
-                                    borderRadius: 8,
-                                    background: isDarkMode ? "#1c0a0a" : "#fff7f7",
-                                    border: `1px solid ${isDarkMode ? "#5c1a1a" : "#fca5a5"}`,
-                                }}>
-                                    <textarea
-                                        placeholder={t("invoiceExtractor", "reportIssuePlaceholder") ?? "Describe the issue with the extracted data..."}
-                                        value={reportIssueMessage}
-                                        onChange={e => setReportIssueMessage(e.target.value)}
-                                        rows={3}
-                                        style={{
-                                            width: "100%", boxSizing: "border-box",
-                                            border: `1px solid ${isDarkMode ? "#5c1a1a" : "#fca5a5"}`,
-                                            borderRadius: 5, padding: "7px 10px",
-                                            fontSize: 12, fontFamily: "inherit", resize: "vertical",
-                                            background: isDarkMode ? "#0f0000" : "#fff",
-                                            color: isDarkMode ? "#fca5a5" : "#1a1a1a",
-                                            outline: "none",
-                                        }}
-                                    />
-                                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 6 }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => { setShowReportIssue(false); setReportIssueMessage(""); }}
-                                            style={{ fontSize: 11, cursor: "pointer", background: "transparent", border: "none", color: isDarkMode ? "#fca5a5" : "#b91c1c", padding: "3px 8px" }}
-                                        >
-                                            {t("invoiceExtractor", "reportIssueCancel")}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            disabled={!reportIssueMessage.trim() || isSubmittingReport}
-                                            onClick={async () => {
-                                                if (!extractionLogId || !reportIssueMessage.trim()) return;
-                                                setIsSubmittingReport(true);
-                                                try {
-                                                    const res = await fetch(`/api/v1/internal/ocr-logs/${extractionLogId}/report`, {
-                                                        method: "PATCH",
-                                                        headers: {
-                                                            "Content-Type": "application/json",
-                                                            Authorization: `Bearer ${session?.token}`,
-                                                        },
-                                                        body: JSON.stringify({ message: reportIssueMessage.trim() }),
-                                                    });
-                                                    if (res.ok) { setReportSubmitted(true); setShowReportIssue(false); }
-                                                } finally {
-                                                    setIsSubmittingReport(false);
-                                                }
-                                            }}
+                                {/* Inline report issue form */}
+                                {showReportIssue && !reportSubmitted && (
+                                    <div style={{
+                                        marginBottom: 14,
+                                        padding: "10px 14px",
+                                        borderRadius: 8,
+                                        background: isDarkMode ? "#1c0a0a" : "#fff7f7",
+                                        border: `1px solid ${isDarkMode ? "#5c1a1a" : "#fca5a5"}`,
+                                    }}>
+                                        <textarea
+                                            placeholder={t("invoiceExtractor", "reportIssuePlaceholder") ?? "Describe the issue with the extracted data..."}
+                                            value={reportIssueMessage}
+                                            onChange={e => setReportIssueMessage(e.target.value)}
+                                            rows={3}
                                             style={{
-                                                fontSize: 11, fontWeight: 700, cursor: "pointer",
-                                                background: isDarkMode ? "#5c1a1a" : "#ef4444",
-                                                border: "none", borderRadius: 999, padding: "4px 14px",
-                                                color: "#fff",
-                                                opacity: (!reportIssueMessage.trim() || isSubmittingReport) ? 0.5 : 1,
+                                                width: "100%", boxSizing: "border-box",
+                                                border: `1px solid ${isDarkMode ? "#5c1a1a" : "#fca5a5"}`,
+                                                borderRadius: 5, padding: "7px 10px",
+                                                fontSize: 12, fontFamily: "inherit", resize: "vertical",
+                                                background: isDarkMode ? "#0f0000" : "#fff",
+                                                color: isDarkMode ? "#fca5a5" : "#1a1a1a",
+                                                outline: "none",
                                             }}
-                                        >
-                                            {isSubmittingReport ? t("invoiceExtractor", "reportIssueSubmitting") : t("invoiceExtractor", "reportIssueSubmit")}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Report submitted confirmation (non-mostly-empty case) */}
-                            {!isMostlyEmpty && reportSubmitted && (
-                                <div style={{
-                                    display: "flex", alignItems: "center", gap: 6,
-                                    padding: "8px 14px", borderRadius: 8, marginBottom: 14,
-                                    fontSize: 13, fontWeight: 500,
-                                    background: isDarkMode ? "#052e16" : "#f0fdf4",
-                                    color: isDarkMode ? "#86efac" : "#166534",
-                                    border: `1px solid ${isDarkMode ? "#166534" : "#86efac"}`,
-                                }}>
-                                    <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>✓</span>
-                                    <span>{t("invoiceExtractor", "reportIssueConfirm")}</span>
-                                </div>
-                            )}
-
-                            {/* Grid of fields */}
-                            {(() => {
-                                const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 };
-                                const valueStyle: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827" };
-                                const missingStyle: React.CSSProperties = { fontSize: 13, fontWeight: 500, color: isDarkMode ? "#a16207" : "#92400e", fontStyle: "italic", display: "flex", alignItems: "center", gap: 4 };
-                                const warnIcon = <span title="Not extracted by AI" style={{ fontSize: 13, lineHeight: 1 }}>⚠️</span>;
-                                const upStr = (key: keyof ExtractedInvoiceData, val: string) =>
-                                    setExtractedData(prev => prev ? { ...prev, [key]: val || undefined } : prev);
-                                return (
-                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px 20px" }}>
-                                        {/* CLIENT */}
-                                        <div style={{ gridColumn: "span 2" }}>
-                                            <div style={labelStyle}>{t("newSimulationPage", "clientLabel")}</div>
-                                            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                                                <div style={{ flex: 1 }}>
-                                                    <FormSelect
-                                                        label=""
-                                                        options={clients.map((c) => {
-                                                            const secondaryParts: string[] = [];
-                                                            if (c.cif) secondaryParts.push(`CIF: ${c.cif}`);
-                                                            if (c.contactName) secondaryParts.push(c.contactName);
-                                                            if (c.contactEmail) secondaryParts.push(c.contactEmail);
-                                                            return { value: c.id, label: c.name, secondaryLabel: secondaryParts.join(" • ") };
-                                                        })}
-                                                        value={clientId}
-                                                        onChange={(value) => setClientId(value as string)}
-                                                        required
-                                                        placeholder={t("newSimulationPage", "selectClient")}
-                                                        helperText={t("newSimulationPage", "clientHint")}
-                                                    />
-                                                </div>
-                                                {allowQuickCreate && (
-                                                    <Button type="button" variant="outlined" onClick={() => setShowQuickCreate(true)} title={t("newSimulationPage", "createNew")} style={{ flexShrink: 0, marginTop: 2 }}>
-                                                        <AddIcon />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {/* CUPS - span 2 */}
-                                        <div style={{ gridColumn: "span 2" }}>
-                                            <div style={labelStyle}>{t("invoiceExtractor", "fieldCUPS")}</div>
-                                            <FormInput label="" size="small" type="text" value={extractedData.cups ?? ""} onChange={e => upStr("cups", e.target.value)}
-                                                sx={{ '& input': { fontFamily: 'monospace', color: '#0369a1' } }} />
-                                        </div>
-                                        {/* TARIFF */}
-                                        <div>
-                                            <div style={labelStyle}>{t("invoiceExtractor", "fieldTariff")}</div>
-                                            {(() => {
-                                                const gasOptions = ["RL01", "RL02", "RL03", "RL04", "RL05", "RL06", "RLPS1", "RLPS2", "RLPS3", "RLPS4", "RLPS5", "RLPS6"];
-                                                const elecOptions = ["2.0TD", "3.0TD", "6.1TD"];
-                                                const availableOptions = simType === "GAS" ? gasOptions : elecOptions;
-                                                const extracted = extractedData.tarifaAcceso;
-                                                const isUnsupported = extracted && !availableOptions.includes(extracted);
-                                                return (
-                                                    <FormSelect label="" size="small" value={isUnsupported ? "" : (extractedData.tarifaAcceso ?? "")}
-                                                        onChange={v => upStr("tarifaAcceso", v as string)}
-                                                        helperText={isUnsupported ? `⚠️ OCR detected "${extracted}", not supported by Axpo. Please select manually.` : undefined}
-                                                        options={simType === "GAS"
-                                                            ? gasOptions.map(v => ({ value: v, label: v }))
-                                                            : [
-                                                                { value: "2.0TD", label: "2.0TD (BT ≤15 kW)" },
-                                                                { value: "3.0TD", label: "3.0TD (BT >15 kW)" },
-                                                                { value: "6.1TD", label: "6.1TD (AT)" },
-                                                            ]
-                                                        } />
-                                                );
-                                            })()}
-                                        </div>
-                                        {/* ZONE */}
-                                        <div>
-                                            <div style={labelStyle}>{t("invoiceExtractor", "fieldZone")}</div>
-                                            <FormSelect label="" size="small" value={extractedData.zonaGeografica ?? ""}
-                                                onChange={v => {
-                                                    const newZone = v as string;
-                                                    const newZoneKey = newZone === "Baleares" ? "baleares" : newZone === "Canarias" ? "canarias" : "peninsula";
-                                                    const newZoneConf = electricityTaxConfig?.[newZoneKey];
-                                                    const newIva = newZoneConf
-                                                        ? ((newZoneConf.ivaRates ?? newZoneConf.igicRates ?? [])[0] ?? 0.21) * 100
-                                                        : 21;
-                                                    const newElecTax = newZoneConf
-                                                        ? ((newZoneConf.elecTaxRates ?? [])[0] ?? 0.051127) * 100
-                                                        : 5.11269;
-                                                    setExtractedData(prev => prev ? { ...prev, zonaGeografica: newZone, ivaTasa: newIva, impuestoElectricoTasa: newElecTax } : prev);
+                                        />
+                                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 6 }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setShowReportIssue(false); setReportIssueMessage(""); }}
+                                                style={{ fontSize: 11, cursor: "pointer", background: "transparent", border: "none", color: isDarkMode ? "#fca5a5" : "#b91c1c", padding: "3px 8px" }}
+                                            >
+                                                {t("invoiceExtractor", "reportIssueCancel")}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={!reportIssueMessage.trim() || isSubmittingReport}
+                                                onClick={async () => {
+                                                    if (!extractionLogId || !reportIssueMessage.trim()) return;
+                                                    setIsSubmittingReport(true);
+                                                    try {
+                                                        const res = await fetch(`/api/v1/internal/ocr-logs/${extractionLogId}/report`, {
+                                                            method: "PATCH",
+                                                            headers: {
+                                                                "Content-Type": "application/json",
+                                                                Authorization: `Bearer ${session?.token}`,
+                                                            },
+                                                            body: JSON.stringify({ message: reportIssueMessage.trim() }),
+                                                        });
+                                                        if (res.ok) { setReportSubmitted(true); setShowReportIssue(false); }
+                                                    } finally {
+                                                        setIsSubmittingReport(false);
+                                                    }
                                                 }}
-                                                options={simType === "GAS"
-                                                    ? [{ value: "Peninsula", label: t("simulationForm", "peninsulaYBaleares") }]
-                                                    : [
-                                                        { value: "Peninsula", label: t("simulationForm", "peninsula") },
-                                                        { value: "Baleares", label: t("simulationForm", "balearics") },
-                                                        { value: "Canarias", label: t("simulationForm", "canarias") },
-                                                    ]
-                                                } />
+                                                style={{
+                                                    fontSize: 11, fontWeight: 700, cursor: "pointer",
+                                                    background: isDarkMode ? "#5c1a1a" : "#ef4444",
+                                                    border: "none", borderRadius: 999, padding: "4px 14px",
+                                                    color: "#fff",
+                                                    opacity: (!reportIssueMessage.trim() || isSubmittingReport) ? 0.5 : 1,
+                                                }}
+                                            >
+                                                {isSubmittingReport ? t("invoiceExtractor", "reportIssueSubmitting") : t("invoiceExtractor", "reportIssueSubmit")}
+                                            </button>
                                         </div>
-                                        {/* BILLING PERIOD - span 2 */}
-                                        <div style={{ gridColumn: "span 2" }}>
-                                            <div style={labelStyle}>{t("invoiceExtractor", "fieldPeriod")}</div>
-                                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                                <div style={{ flex: 1 }}>
-                                                    <DateInput value={extractedData.fechaInicio ?? ""} onChange={v => upStr("fechaInicio", v)} label="" />
-                                                </div>
-                                                <span style={{ color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 12, flexShrink: 0 }}>→</span>
-                                                <div style={{ flex: 1 }}>
-                                                    <DateInput value={extractedData.fechaFin ?? ""} onChange={v => upStr("fechaFin", v)} label="" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {/* AMOUNT */}
-                                        <div>
-                                            <div style={labelStyle}>{t("invoiceExtractor", "fieldAmount")}</div>
-                                            <CurrencyInput value={extractedData.facturaActual ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, facturaActual: isNaN(v) ? undefined : v } : prev)} />
-                                        </div>
-                                        {/* CURRENT SUPPLIER */}
-                                        <div>
-                                            <div style={labelStyle}>{t("invoiceExtractor", "fieldSupplier")}</div>
-                                            <FormInput label="" size="small" type="text" value={extractedData.comercializadorActual ?? ""} onChange={e => upStr("comercializadorActual", e.target.value)} />
-                                        </div>
-                                        {/* ADDRESS - span 2 */}
-                                        <div style={{ gridColumn: "span 2" }}>
-                                            <div style={labelStyle}>{t("invoiceExtractor", "fieldAddress")}</div>
-                                            <FormInput label="" size="small" type="text" value={extractedData.direccion ?? ""} onChange={e => upStr("direccion", e.target.value)} />
-                                        </div>
-                                        {/* EXCESS POWER - ELECTRICITY ONLY */}
-                                        {simType === "ELECTRICITY" && (
-                                            <div>
-                                                <div style={labelStyle}>{t("invoiceExtractor", "fieldExcesoPotencia")}</div>
-                                                <CurrencyInput value={extractedData.excesoPotencia ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, excesoPotencia: isNaN(v) ? undefined : v } : prev)} />
-                                            </div>
-                                        )}
-                                        {/* REACTIVE ENERGY - ELECTRICITY ONLY */}
-                                        {simType === "ELECTRICITY" && (
-                                            <div>
-                                                <div style={labelStyle}>{t("simulationForm", "fieldReactiveEnergy")}</div>
-                                                <CurrencyInput value={extractedData.reactiva ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, reactiva: isNaN(v) ? undefined : v } : prev)} />
-                                            </div>
-                                        )}
-                                        {/* METER RENTAL */}
-                                        <div>
-                                            <div style={labelStyle}>{t("simulationForm", "fieldMeterRental")}</div>
-                                            <CurrencyInput value={extractedData.alquiler ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, alquiler: isNaN(v) ? undefined : v } : prev)} />
-                                        </div>
-                                        {/* OTHER CHARGES */}
-                                        <div>
-                                            <div style={labelStyle}>{t("simulationForm", "fieldOtherCharges")}</div>
-                                            <CurrencyInput value={extractedData.otrosCargos ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, otrosCargos: isNaN(v) ? undefined : v } : prev)} />
-                                        </div>
-                                        {/* TELEMEDIDA - GAS ONLY */}
-                                        {simType === "GAS" && (
-                                            <div>
-                                                <div style={labelStyle}>{t("simulationForm", "fieldTelemetering")}</div>
-                                                <FormSelect
-                                                    label=""
-                                                    size="small"
-                                                    value={extractedData.telemedida ?? "NO"}
-                                                    onChange={v => setExtractedData(prev => prev ? { ...prev, telemedida: v as "SI" | "NO" } : prev)}
-                                                    options={[
-                                                        { value: "NO", label: t("simulationForm", "no") },
-                                                        { value: "SI", label: t("simulationForm", "yes") },
-                                                    ]}
-                                                />
-                                            </div>
-                                        )}
                                     </div>
-                                );
-                            })()}
+                                )}
 
-                            {/* Taxes section */}
-                            {(() => {
-                                const zone = extractedData.zonaGeografica ?? "Peninsula";
-                                const isCanarias = zone === "Canarias";
-                                const labelStyle2: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 };
+                                {/* Report submitted confirmation (non-mostly-empty case) */}
+                                {!isMostlyEmpty && reportSubmitted && (
+                                    <div style={{
+                                        display: "flex", alignItems: "center", gap: 6,
+                                        padding: "8px 14px", borderRadius: 8, marginBottom: 14, fontWeight: 500,
+                                        background: isDarkMode ? "#052e16" : "#f0fdf4",
+                                        color: isDarkMode ? "#86efac" : "#166534",
+                                        border: `1px solid ${isDarkMode ? "#166534" : "#86efac"}`,
+                                    }}>
+                                        <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>✓</span>
+                                        <span>{t("invoiceExtractor", "reportIssueConfirm")}</span>
+                                    </div>
+                                )}
 
-                                // Electricity taxes
-                                const elecZoneKey = zone === "Baleares" ? "baleares" : isCanarias ? "canarias" : "peninsula";
-                                const elecZoneConf = electricityTaxConfig?.[elecZoneKey];
-                                const elecIvaOptions: number[] = elecZoneConf
-                                    ? ((elecZoneConf.ivaRates ?? elecZoneConf.igicRates ?? []) as any[]).map((v: any) => Number(v) * 100)
-                                    : [21];
-                                const elecTaxOptions: number[] = elecZoneConf
-                                    ? ((elecZoneConf.elecTaxRates ?? []) as any[]).map((v: any) => Number(v) * 100)
-                                    : [5.11269];
-                                const ivaLabel = isCanarias ? t("simulationForm", "fieldIgic") : t("simulationForm", "fieldVat");
-                                const elecTaxLabel = t("simulationForm", "fieldElecTax");
-
-                                // Gas taxes
-                                const gasZoneKey = zone === "Baleares" ? "baleares" : "peninsula";
-                                const gasZoneConf = gasTaxConfig?.[gasZoneKey];
-                                const gasIvaOptions: number[] = gasZoneConf
-                                    ? ((gasZoneConf.ivaRates ?? []) as any[]).map((v: any) => Number(v) * 100)
-                                    : [21];
-                                const hydroTaxOptions: number[] = gasTaxConfig
-                                    ? ((gasTaxConfig.hydrocarbonTaxRates ?? []) as any[]).map(Number)
-                                    : [];
-
-                                const ivaOptions = simType === "GAS" ? gasIvaOptions : elecIvaOptions;
-
-                                return (
-                                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${isDarkMode ? "#1b3a2a" : "#bbf7d0"}` }}>
-                                        <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
-                                            {t("simulationForm", "sectionTaxes") || "Taxes"}
-                                        </div>
+                                {/* Grid of fields */}
+                                {(() => {
+                                    const labelStyle: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 };
+                                    const valueStyle: React.CSSProperties = { fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827" };
+                                    const missingStyle: React.CSSProperties = { fontWeight: 500, color: isDarkMode ? "#a16207" : "#92400e", fontStyle: "italic", display: "flex", alignItems: "center", gap: 4 };
+                                    const warnIcon = <span title="Not extracted by AI" style={{ lineHeight: 1 }}>⚠️</span>;
+                                    const upStr = (key: keyof ExtractedInvoiceData, val: string) =>
+                                        setExtractedData(prev => prev ? { ...prev, [key]: val || undefined } : prev);
+                                    return (
                                         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px 20px" }}>
-                                            {/* IVA / IGIC */}
-                                            <div>
-                                                <div style={labelStyle2}>{ivaLabel}</div>
-                                                <FormSelect
-                                                    label=""
-                                                    size="small"
-                                                    value={String(extractedData.ivaTasa ?? ivaOptions[0])}
-                                                    onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, ivaTasa: isNaN(n) ? undefined : n } : prev); }}
-                                                    options={[...new Set([...ivaOptions, extractedData.ivaTasa ?? ivaOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: o + "%" }))}
-                                                />
+                                            {/* CLIENT */}
+                                            <div style={{ gridColumn: "span 2" }}>
+                                                <div style={labelStyle}>{t("newSimulationPage", "clientLabel")}</div>
+                                                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <FormSelect
+                                                            label=""
+                                                            options={clients.map((c) => {
+                                                                const secondaryParts: string[] = [];
+                                                                if (c.cif) secondaryParts.push(`CIF: ${c.cif}`);
+                                                                if (c.contactName) secondaryParts.push(c.contactName);
+                                                                if (c.contactEmail) secondaryParts.push(c.contactEmail);
+                                                                return { value: c.id, label: c.name, secondaryLabel: secondaryParts.join(" • ") };
+                                                            })}
+                                                            value={clientId}
+                                                            onChange={(value) => setClientId(value as string)}
+                                                            required
+                                                            placeholder={t("newSimulationPage", "selectClient")}
+                                                            helperText={t("newSimulationPage", "clientHint")}
+                                                        />
+                                                    </div>
+                                                    {allowQuickCreate && (
+                                                        <Button type="button" variant="outlined" onClick={() => setShowQuickCreate(true)} title={t("newSimulationPage", "createNew")} style={{ flexShrink: 0, marginTop: 2 }}>
+                                                            <AddIcon />
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </div>
-                                            {/* Electricity Tax - ELECTRICITY ONLY */}
+                                            {/* CUPS - span 2 */}
+                                            <div style={{ gridColumn: "span 2" }}>
+                                                <div style={labelStyle}>{t("invoiceExtractor", "fieldCUPS")}</div>
+                                                <FormInput label="" size="small" type="text" value={extractedData.cups ?? ""} onChange={e => upStr("cups", e.target.value)}
+                                                    sx={{ '& input': { fontFamily: 'monospace', color: '#0369a1' } }} />
+                                            </div>
+                                            {/* TARIFF */}
+                                            <div>
+                                                <div style={labelStyle}>{t("invoiceExtractor", "fieldTariff")}</div>
+                                                {(() => {
+                                                    const gasOptions = ["RL01", "RL02", "RL03", "RL04", "RL05", "RL06", "RLPS1", "RLPS2", "RLPS3", "RLPS4", "RLPS5", "RLPS6"];
+                                                    const elecOptions = ["2.0TD", "3.0TD", "6.1TD"];
+                                                    const availableOptions = simType === "GAS" ? gasOptions : elecOptions;
+                                                    const extracted = extractedData.tarifaAcceso;
+                                                    const isUnsupported = extracted && !availableOptions.includes(extracted);
+                                                    return (
+                                                        <FormSelect label="" size="small" value={isUnsupported ? "" : (extractedData.tarifaAcceso ?? "")}
+                                                            onChange={v => upStr("tarifaAcceso", v as string)}
+                                                            helperText={isUnsupported ? `⚠️ OCR detected "${extracted}", not supported by Axpo. Please select manually.` : undefined}
+                                                            options={simType === "GAS"
+                                                                ? gasOptions.map(v => ({ value: v, label: v }))
+                                                                : [
+                                                                    { value: "2.0TD", label: "2.0TD (BT ≤15 kW)" },
+                                                                    { value: "3.0TD", label: "3.0TD (BT >15 kW)" },
+                                                                    { value: "6.1TD", label: "6.1TD (AT)" },
+                                                                ]
+                                                            } />
+                                                    );
+                                                })()}
+                                            </div>
+                                            {/* ZONE */}
+                                            <div>
+                                                <div style={labelStyle}>{t("invoiceExtractor", "fieldZone")}</div>
+                                                <FormSelect label="" size="small" value={extractedData.zonaGeografica ?? ""}
+                                                    onChange={v => {
+                                                        const newZone = v as string;
+                                                        const newZoneKey = newZone === "Baleares" ? "baleares" : newZone === "Canarias" ? "canarias" : "peninsula";
+                                                        const newZoneConf = electricityTaxConfig?.[newZoneKey];
+                                                        const newIva = newZoneConf
+                                                            ? ((newZoneConf.ivaRates ?? newZoneConf.igicRates ?? [])[0] ?? 0.21) * 100
+                                                            : 21;
+                                                        const newElecTax = newZoneConf
+                                                            ? ((newZoneConf.elecTaxRates ?? [])[0] ?? 0.051127) * 100
+                                                            : 5.11269;
+                                                        setExtractedData(prev => prev ? { ...prev, zonaGeografica: newZone, ivaTasa: newIva, impuestoElectricoTasa: newElecTax } : prev);
+                                                    }}
+                                                    options={simType === "GAS"
+                                                        ? [{ value: "Peninsula", label: t("simulationForm", "peninsulaYBaleares") }]
+                                                        : [
+                                                            { value: "Peninsula", label: t("simulationForm", "peninsula") },
+                                                            { value: "Baleares", label: t("simulationForm", "balearics") },
+                                                            { value: "Canarias", label: t("simulationForm", "canarias") },
+                                                        ]
+                                                    } />
+                                            </div>
+                                            {/* BILLING PERIOD - span 2 */}
+                                            <div style={{ gridColumn: "span 2" }}>
+                                                <div style={labelStyle}>{t("invoiceExtractor", "fieldPeriod")}</div>
+                                                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <DateInput value={extractedData.fechaInicio ?? ""} onChange={v => upStr("fechaInicio", v)} label="" />
+                                                    </div>
+                                                    <span style={{ color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 12, flexShrink: 0 }}>→</span>
+                                                    <div style={{ flex: 1 }}>
+                                                        <DateInput value={extractedData.fechaFin ?? ""} onChange={v => upStr("fechaFin", v)} label="" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {/* AMOUNT */}
+                                            <div>
+                                                <div style={labelStyle}>{t("invoiceExtractor", "fieldAmount")}</div>
+                                                <CurrencyInput value={extractedData.facturaActual ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, facturaActual: isNaN(v) ? undefined : v } : prev)} />
+                                            </div>
+                                            {/* CURRENT SUPPLIER */}
+                                            <div>
+                                                <div style={labelStyle}>{t("invoiceExtractor", "fieldSupplier")}</div>
+                                                <FormInput label="" size="small" type="text" value={extractedData.comercializadorActual ?? ""} onChange={e => upStr("comercializadorActual", e.target.value)} />
+                                            </div>
+                                            {/* ADDRESS - span 2 */}
+                                            <div style={{ gridColumn: "span 2" }}>
+                                                <div style={labelStyle}>{t("invoiceExtractor", "fieldAddress")}</div>
+                                                <FormInput label="" size="small" type="text" value={extractedData.direccion ?? ""} onChange={e => upStr("direccion", e.target.value)} />
+                                            </div>
+                                            {/* EXCESS POWER - ELECTRICITY ONLY */}
                                             {simType === "ELECTRICITY" && (
                                                 <div>
-                                                    <div style={labelStyle2}>{elecTaxLabel}</div>
+                                                    <div style={labelStyle}>{t("invoiceExtractor", "fieldExcesoPotencia")}</div>
+                                                    <CurrencyInput value={extractedData.excesoPotencia ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, excesoPotencia: isNaN(v) ? undefined : v } : prev)} />
+                                                </div>
+                                            )}
+                                            {/* REACTIVE ENERGY - ELECTRICITY ONLY */}
+                                            {simType === "ELECTRICITY" && (
+                                                <div>
+                                                    <div style={labelStyle}>{t("simulationForm", "fieldReactiveEnergy")}</div>
+                                                    <CurrencyInput value={extractedData.reactiva ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, reactiva: isNaN(v) ? undefined : v } : prev)} />
+                                                </div>
+                                            )}
+                                            {/* METER RENTAL */}
+                                            <div>
+                                                <div style={labelStyle}>{t("simulationForm", "fieldMeterRental")}</div>
+                                                <CurrencyInput value={extractedData.alquiler ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, alquiler: isNaN(v) ? undefined : v } : prev)} />
+                                            </div>
+                                            {/* OTHER CHARGES */}
+                                            <div>
+                                                <div style={labelStyle}>{t("simulationForm", "fieldOtherCharges")}</div>
+                                                <CurrencyInput value={extractedData.otrosCargos ?? 0} onChange={v => setExtractedData(prev => prev ? { ...prev, otrosCargos: isNaN(v) ? undefined : v } : prev)} />
+                                            </div>
+                                            {/* TELEMEDIDA - GAS ONLY */}
+                                            {simType === "GAS" && (
+                                                <div>
+                                                    <div style={labelStyle}>{t("simulationForm", "fieldTelemetering")}</div>
                                                     <FormSelect
                                                         label=""
                                                         size="small"
-                                                        value={String(extractedData.impuestoElectricoTasa ?? elecTaxOptions[0])}
-                                                        onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, impuestoElectricoTasa: isNaN(n) ? undefined : n } : prev); }}
-                                                        options={[...new Set([...elecTaxOptions, extractedData.impuestoElectricoTasa ?? elecTaxOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: o + "%" }))}
+                                                        value={extractedData.telemedida ?? "NO"}
+                                                        onChange={v => setExtractedData(prev => prev ? { ...prev, telemedida: v as "SI" | "NO" } : prev)}
+                                                        options={[
+                                                            { value: "NO", label: t("simulationForm", "no") },
+                                                            { value: "SI", label: t("simulationForm", "yes") },
+                                                        ]}
                                                     />
-
                                                 </div>
                                             )}
-                                            {/* Gas Hydrocarbon Tax - GAS ONLY */}
-                                            {simType === "GAS" && (
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Taxes section */}
+                                {(() => {
+                                    const zone = extractedData.zonaGeografica ?? "Peninsula";
+                                    const isCanarias = zone === "Canarias";
+                                    const labelStyle2: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 };
+
+                                    // Electricity taxes
+                                    const elecZoneKey = zone === "Baleares" ? "baleares" : isCanarias ? "canarias" : "peninsula";
+                                    const elecZoneConf = electricityTaxConfig?.[elecZoneKey];
+                                    const elecIvaOptions: number[] = elecZoneConf
+                                        ? ((elecZoneConf.ivaRates ?? elecZoneConf.igicRates ?? []) as any[]).map((v: any) => Number(v) * 100)
+                                        : [21];
+                                    const elecTaxOptions: number[] = elecZoneConf
+                                        ? ((elecZoneConf.elecTaxRates ?? []) as any[]).map((v: any) => Number(v) * 100)
+                                        : [5.11269];
+                                    const ivaLabel = isCanarias ? t("simulationForm", "fieldIgic") : t("simulationForm", "fieldVat");
+                                    const elecTaxLabel = t("simulationForm", "fieldElecTax");
+
+                                    // Gas taxes
+                                    const gasZoneKey = zone === "Baleares" ? "baleares" : "peninsula";
+                                    const gasZoneConf = gasTaxConfig?.[gasZoneKey];
+                                    const gasIvaOptions: number[] = gasZoneConf
+                                        ? ((gasZoneConf.ivaRates ?? []) as any[]).map((v: any) => Number(v) * 100)
+                                        : [21];
+                                    const hydroTaxOptions: number[] = gasTaxConfig
+                                        ? ((gasTaxConfig.hydrocarbonTaxRates ?? []) as any[]).map(Number)
+                                        : [];
+
+                                    const ivaOptions = simType === "GAS" ? gasIvaOptions : elecIvaOptions;
+
+                                    return (
+                                        <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${isDarkMode ? "#1b3a2a" : "#bbf7d0"}` }}>
+                                            <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                                                {t("simulationForm", "sectionTaxes") || "Taxes"}
+                                            </div>
+                                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px 20px" }}>
+                                                {/* IVA / IGIC */}
                                                 <div>
-                                                    <div style={labelStyle2}>{t("simulationForm", "fieldHydrocarbonTax")}</div>
-                                                    {hydroTaxOptions.length > 0 ? (
+                                                    <div style={labelStyle2}>{ivaLabel}</div>
+                                                    <FormSelect
+                                                        label=""
+                                                        size="small"
+                                                        value={String(extractedData.ivaTasa ?? ivaOptions[0])}
+                                                        onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, ivaTasa: isNaN(n) ? undefined : n } : prev); }}
+                                                        options={[...new Set([...ivaOptions, extractedData.ivaTasa ?? ivaOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: o + "%" }))}
+                                                    />
+                                                </div>
+                                                {/* Electricity Tax - ELECTRICITY ONLY */}
+                                                {simType === "ELECTRICITY" && (
+                                                    <div>
+                                                        <div style={labelStyle2}>{elecTaxLabel}</div>
                                                         <FormSelect
                                                             label=""
                                                             size="small"
-                                                            value={String(extractedData.impuestoHidrocarburo ?? hydroTaxOptions[0])}
-                                                            onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, impuestoHidrocarburo: isNaN(n) ? undefined : n } : prev); }}
-                                                            options={[...new Set([...hydroTaxOptions, extractedData.impuestoHidrocarburo ?? hydroTaxOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: String(o) }))}
+                                                            value={String(extractedData.impuestoElectricoTasa ?? elecTaxOptions[0])}
+                                                            onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, impuestoElectricoTasa: isNaN(n) ? undefined : n } : prev); }}
+                                                            options={[...new Set([...elecTaxOptions, extractedData.impuestoElectricoTasa ?? elecTaxOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: o + "%" }))}
                                                         />
+
+                                                    </div>
+                                                )}
+                                                {/* Gas Hydrocarbon Tax - GAS ONLY */}
+                                                {simType === "GAS" && (
+                                                    <div>
+                                                        <div style={labelStyle2}>{t("simulationForm", "fieldHydrocarbonTax")}</div>
+                                                        {hydroTaxOptions.length > 0 ? (
+                                                            <FormSelect
+                                                                label=""
+                                                                size="small"
+                                                                value={String(extractedData.impuestoHidrocarburo ?? hydroTaxOptions[0])}
+                                                                onChange={v => { const n = parseFloat(v as string); setExtractedData(prev => prev ? { ...prev, impuestoHidrocarburo: isNaN(n) ? undefined : n } : prev); }}
+                                                                options={[...new Set([...hydroTaxOptions, extractedData.impuestoHidrocarburo ?? hydroTaxOptions[0]])].filter(o => !isNaN(o)).sort((a, b) => a - b).map(o => ({ value: String(o), label: String(o) }))}
+                                                            />
+                                                        ) : (
+                                                            <FormInput label="" size="small" type="number" value={extractedData.impuestoHidrocarburo ?? 0.00234}
+                                                                onChange={e => { const n = parseFloat(e.target.value); setExtractedData(prev => prev ? { ...prev, impuestoHidrocarburo: isNaN(n) ? undefined : n } : prev); }} />
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Consumption table: consumo per period - ELECTRICITY ONLY */}
+                                {simType === "ELECTRICITY" && (
+                                    (() => {
+                                        const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+                                        const displayPeriods = periods;
+
+                                        return (
+                                            <div style={{ marginTop: 14 }}>
+                                                <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                                                    Consumo (kWh)
+                                                </div>
+                                                <div style={{ overflowX: "auto" }}>
+                                                    <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
+                                                        <thead>
+                                                            <tr>
+                                                                <th style={{ textAlign: "left", padding: "3px 10px 3px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}></th>
+                                                                {displayPeriods.map(p => (
+                                                                    <th key={p} style={{ textAlign: "center", padding: "3px 12px", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}>{p}</th>
+                                                                ))}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>Energy (kWh)</td>
+                                                                {displayPeriods.map(p => {
+                                                                    const key = `consumo${p}` as keyof ExtractedInvoiceData;
+                                                                    const val = extractedData[key] as number | undefined;
+                                                                    return <td key={p} style={{ textAlign: "center", padding: "4px 6px", fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827", fontFamily: "monospace", fontSize: 12 }}>
+                                                                        <FormInput size="small" type="number" value={val ?? ""}
+                                                                            onChange={e => setExtractedData(prev => prev ? { ...prev, [key]: e.target.value === "" ? undefined : parseFloat(e.target.value) } : prev)}
+                                                                            slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, textAlign: 'center', fontFamily: 'monospace', width: 80, padding: '4px 6px' } } }}
+                                                                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }} />
+                                                                    </td>;
+                                                                })}
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()
+                                )}
+
+                                {/* Consumption single field - GAS ONLY */}
+                                {simType === "GAS" && (
+                                    <div style={{ marginTop: 14 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                                            Consumo (kWh)
+                                        </div>
+                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px 20px" }}>
+                                            <div>
+                                                <FormInput
+                                                    label=""
+                                                    size="small"
+                                                    type="number"
+                                                    value={extractedData.consumoTotal ?? ""}
+                                                    onChange={e => setExtractedData(prev => prev ? { ...prev, consumoTotal: e.target.value === "" ? undefined : parseFloat(e.target.value) } : prev)}
+                                                    placeholder="0"
+                                                    slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, fontFamily: 'monospace' } } }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(() => {
+                                    const enabled = extractedData.useCurrentInvoiceBreakdown !== false;
+                                    const total = simType === "GAS"
+                                        ? currentGasInvoiceBreakdownTotal(extractedData)
+                                        : currentElecInvoiceBreakdownTotal(extractedData);
+                                    const mismatch = enabled && invoiceBreakdownMismatch(total, extractedData.facturaActual);
+                                    const mismatchAmount = formatBreakdownDifferenceAmount(total, extractedData.facturaActual);
+                                    const labelStyle3: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 };
+                                    const updateMoney = (key: keyof ExtractedInvoiceData) => (value: number) =>
+                                        setExtractedData(prev => prev ? { ...prev, [key]: isNaN(value) ? undefined : value } : prev);
+
+                                    return (
+                                        <div style={{
+                                            marginTop: 14,
+                                            border: `1px solid ${mismatch ? "#f59e0b" : enabled ? "#10b981" : "#cbd5e1"}`,
+                                            borderRadius: 8,
+                                            padding: "10px 12px",
+                                            background: mismatch
+                                                ? (isDarkMode ? "rgba(245,158,11,.16)" : "rgba(255,251,235,.95)")
+                                                : enabled
+                                                    ? (isDarkMode ? "rgba(16,185,129,.12)" : "rgba(16,185,129,.08)")
+                                                    : (isDarkMode ? "rgba(148,163,184,.10)" : "rgba(248,250,252,.9)"),
+                                        }}>
+                                            <FormControlLabel
+                                                control={
+                                                    <Switch
+                                                        size="small"
+                                                        checked={enabled}
+                                                        onChange={(_, checked) => setExtractedData(prev => prev ? { ...prev, useCurrentInvoiceBreakdown: checked } : prev)}
+                                                    />
+                                                }
+                                                label={`${t("simulationForm", "currentPlanBreakdownLabel")}: ${enabled ? t("invoiceExtractor", "currentPlanBreakdownStatusEnabled") : t("invoiceExtractor", "currentPlanBreakdownStatusDisabled")}`}
+                                                sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: 12, fontWeight: 800, color: mismatch ? (isDarkMode ? "#fcd34d" : "#92400e") : enabled ? (isDarkMode ? "#d1fae5" : "#047857") : (isDarkMode ? "#cbd5e1" : "#475569") } }}
+                                            />
+                                            <div style={{ fontSize: 11, color: mismatch ? (isDarkMode ? "#fcd34d" : "#92400e") : isDarkMode ? "#94a3b8" : "#64748b", marginLeft: 43, lineHeight: 1.35 }}>
+                                                {mismatch
+                                                    ? t("invoiceExtractor", "currentPlanBreakdownMismatchWarning", { amount: mismatchAmount })
+                                                    : enabled
+                                                        ? t("simulationForm", "currentPlanBreakdownEnabledHint")
+                                                        : t("simulationForm", "currentPlanBreakdownDisabledHint")}
+                                            </div>
+                                            {enabled && (
+                                                <div style={{
+                                                    display: "grid",
+                                                    gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))",
+                                                    gap: "12px 20px",
+                                                    marginTop: 12,
+                                                    padding: "10px 12px",
+                                                    borderRadius: 8,
+                                                    background: mismatch
+                                                        ? (isDarkMode ? "rgba(245,158,11,.12)" : "rgba(255,247,237,.85)")
+                                                        : (isDarkMode ? "rgba(16,185,129,.12)" : "rgba(16,185,129,.08)"),
+                                                }}>
+                                                    {simType === "ELECTRICITY" ? (
+                                                        <>
+                                                            <div><div style={labelStyle3}>{t("invoiceExtractor", "currentPlanPowerCostLabel")}</div><CurrencyInput value={extractedData.importePotencia ?? 0} onChange={updateMoney("importePotencia")} /></div>
+                                                            <div><div style={labelStyle3}>{t("invoiceExtractor", "currentPlanEnergyCostLabel")}</div><CurrencyInput value={extractedData.importeEnergia ?? 0} onChange={updateMoney("importeEnergia")} /></div>
+                                                            <div><div style={labelStyle3}>{t("simulationForm", "excessPowerLabel")}</div><CurrencyInput value={extractedData.excesoPotencia ?? 0} onChange={updateMoney("excesoPotencia")} /></div>
+                                                            <div><div style={labelStyle3}>{t("simulationForm", "currentElectricityTaxLabel")}</div><CurrencyInput value={extractedData.importeImpuestoElectrico ?? 0} onChange={updateMoney("importeImpuestoElectrico")} /></div>
+                                                            <div>
+                                                                <div style={labelStyle3}>{t("simulationForm", "fieldOtherCharges")}</div>
+                                                                <CurrencyInput
+                                                                    value={currentElecOtherChargesForBreakdown(extractedData)}
+                                                                    onChange={(value) => {
+                                                                        const totalOtherCharges = isNaN(value) ? 0 : value;
+                                                                        setExtractedData(prev => prev ? {
+                                                                            ...prev,
+                                                                            otrosCargos: Math.max(0, roundMoney(totalOtherCharges - (prev.reactiva ?? 0))),
+                                                                        } : prev);
+                                                                    }}
+                                                                />
+                                                                <div style={{ marginTop: 4, fontSize: 11, color: isDarkMode ? "#94a3b8" : "#64748b" }}>
+                                                                    {t("simulationForm", "currentOtherChargesIncludesReactiveHint")}
+                                                                </div>
+                                                            </div>
+                                                            <div><div style={labelStyle3}>{t("simulationForm", "fieldMeterRental")}</div><CurrencyInput value={extractedData.alquiler ?? 0} onChange={updateMoney("alquiler")} /></div>
+                                                            <div><div style={labelStyle3}>{t("simulationForm", "currentIvaAmountLabel")}</div><CurrencyInput value={extractedData.importeIva ?? 0} onChange={updateMoney("importeIva")} /></div>
+                                                        </>
                                                     ) : (
-                                                        <FormInput label="" size="small" type="number" value={extractedData.impuestoHidrocarburo ?? 0.00234}
-                                                            onChange={e => { const n = parseFloat(e.target.value); setExtractedData(prev => prev ? { ...prev, impuestoHidrocarburo: isNaN(n) ? undefined : n } : prev); }} />
+                                                        <>
+                                                            <div><div style={labelStyle3}>{t("invoiceExtractor", "currentPlanFixedTermLabel")}</div><CurrencyInput value={extractedData.importeTerminoFijo ?? 0} onChange={updateMoney("importeTerminoFijo")} /></div>
+                                                            <div><div style={labelStyle3}>{t("invoiceExtractor", "currentPlanVariableEnergyTermLabel")}</div><CurrencyInput value={extractedData.importeTerminoVariable ?? 0} onChange={updateMoney("importeTerminoVariable")} /></div>
+                                                            <div><div style={labelStyle3}>Hydrocarbon tax amount</div><CurrencyInput value={extractedData.importeImpuestoHidrocarburos ?? 0} onChange={updateMoney("importeImpuestoHidrocarburos")} /></div>
+                                                            <div><div style={labelStyle3}>{t("simulationForm", "fieldOtherCharges")}</div><CurrencyInput value={extractedData.otrosCargos ?? 0} onChange={updateMoney("otrosCargos")} /></div>
+                                                            <div><div style={labelStyle3}>{t("simulationForm", "fieldMeterRental")}</div><CurrencyInput value={extractedData.alquiler ?? 0} onChange={updateMoney("alquiler")} /></div>
+                                                            <div><div style={labelStyle3}>{t("simulationForm", "currentIvaAmountLabel")}</div><CurrencyInput value={extractedData.importeIva ?? 0} onChange={updateMoney("importeIva")} /></div>
+                                                        </>
                                                     )}
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Consumption table: consumo per period - ELECTRICITY ONLY */}
-                            {simType === "ELECTRICITY" && (
-                                (() => {
-                                    const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
-                                    const displayPeriods = periods;
-
-                                    return (
-                                        <div style={{ marginTop: 14 }}>
-                                            <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-                                                Consumo (kWh)
-                                            </div>
-                                            <div style={{ overflowX: "auto" }}>
-                                                <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
-                                                    <thead>
-                                                        <tr>
-                                                            <th style={{ textAlign: "left", padding: "3px 10px 3px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}></th>
-                                                            {displayPeriods.map(p => (
-                                                                <th key={p} style={{ textAlign: "center", padding: "3px 12px", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}>{p}</th>
-                                                            ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <tr>
-                                                            <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>Energy (kWh)</td>
-                                                            {displayPeriods.map(p => {
-                                                                const key = `consumo${p}` as keyof ExtractedInvoiceData;
-                                                                const val = extractedData[key] as number | undefined;
-                                                                return <td key={p} style={{ textAlign: "center", padding: "4px 6px", fontWeight: 600, color: isDarkMode ? "#e5eee9" : "#111827", fontFamily: "monospace", fontSize: 12 }}>
-                                                                    <FormInput size="small" type="number" value={val ?? ""}
-                                                                        onChange={e => setExtractedData(prev => prev ? { ...prev, [key]: e.target.value === "" ? undefined : parseFloat(e.target.value) } : prev)}
-                                                                        slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, textAlign: 'center', fontFamily: 'monospace', width: 80, padding: '4px 6px' } } }}
-                                                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '6px' } }} />
-                                                                </td>;
-                                                            })}
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
                                     );
-                                })()
-                            )}
+                                })()}
 
-                            {/* Consumption single field - GAS ONLY */}
-                            {simType === "GAS" && (
-                                <div style={{ marginTop: 14 }}>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-                                        Consumo (kWh)
-                                    </div>
-                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px 20px" }}>
-                                        <div>
-                                            <FormInput
-                                                label=""
-                                                size="small"
-                                                type="number"
-                                                value={extractedData.consumoTotal ?? ""}
-                                                onChange={e => setExtractedData(prev => prev ? { ...prev, consumoTotal: e.target.value === "" ? undefined : parseFloat(e.target.value) } : prev)}
-                                                placeholder="0"
-                                                slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, fontFamily: 'monospace' } } }}
-                                            />
-                                        </div>
+                                {/* Potencia table: potencia per period - ELECTRICITY ONLY */}
+                                {simType === "ELECTRICITY" && (
+                                    (() => {
+                                        const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+
+                                        return (
+                                            <div style={{ marginTop: 14 }}>
+                                                <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                                                    Potencia (kW)
+                                                </div>
+                                                <div style={{ overflowX: "auto" }}>
+                                                    <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
+                                                        <thead>
+                                                            <tr>
+                                                                <th style={{ textAlign: "left", padding: "3px 10px 3px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}></th>
+                                                                {periods.map(p => (
+                                                                    <th key={p} style={{ textAlign: "center", padding: "3px 12px", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}>{p}</th>
+                                                                ))}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>Power (kW)</td>
+                                                                {periods.map(p => {
+                                                                    const key = `potencia${p}` as keyof ExtractedInvoiceData;
+                                                                    const val = extractedData[key] as number | undefined;
+                                                                    return (
+                                                                        <td key={p} style={{ textAlign: "center", padding: "4px 6px" }}>
+                                                                            <FormInput size="small" type="number" value={val ?? ""}
+                                                                                onChange={e => setExtractedData(prev => prev ? { ...prev, [key]: e.target.value === "" ? undefined : parseFloat(e.target.value) } : prev)}
+                                                                                slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, textAlign: "center", fontFamily: "monospace", width: 80, padding: "4px 6px" } } }}
+                                                                                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px" } }} />
+                                                                        </td>
+                                                                    );
+                                                                })}
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()
+                                )}
+
+                                {/* Simulation settings: expiration date */}
+                                <div style={{ display: "flex", gap: 16, marginTop: 16, paddingTop: 14, borderTop: `1px solid ${isDarkMode ? "#1b3a2a" : "#bbf7d0"}`, alignItems: "flex-start" }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{t("newSimulationPage", "expirationLabel")}</div>
+                                        <DateInput
+                                            label=""
+                                            value={expiresAt}
+                                            onChange={(value) => setExpiresAt(value)}
+                                            helperText={t("newSimulationPage", "expirationHint").replace("{{days}}", defaultDays)}
+                                            nopadding
+                                        />
                                     </div>
                                 </div>
-                            )}
+                            </Box>
+                        )}
 
-                            {/* Potencia table: potencia per period - ELECTRICITY ONLY */}
-                            {simType === "ELECTRICITY" && (
-                                (() => {
-                                    const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+                        {/* Client, Commodity Type, and Expiration Date - Only shown when no OCR data */}
+                        {!(llmEnabled && extractedData) && !(llmEnabled && hasInvoiceFile) && (<div className="crud-form-section new-simulation-card new-simulation-card--setup">
+                            <div className="crud-form-row" style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
+                                {/* Client */}
+                                <div className="crud-form-group" style={{ flex: 1 }}>
+                                    <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
 
-                                    return (
-                                        <div style={{ marginTop: 14 }}>
-                                            <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-                                                Potencia (kW)
-                                            </div>
-                                            <div style={{ overflowX: "auto" }}>
-                                                <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
-                                                    <thead>
-                                                        <tr>
-                                                            <th style={{ textAlign: "left", padding: "3px 10px 3px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}></th>
-                                                            {periods.map(p => (
-                                                                <th key={p} style={{ textAlign: "center", padding: "3px 12px", color: isDarkMode ? "#8ca397" : "#6b7280", fontWeight: 700, fontSize: 10, textTransform: "uppercase", borderBottom: `1px solid ${isDarkMode ? "#2a3a32" : "#e5e7eb"}` }}>{p}</th>
-                                                            ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <tr>
-                                                            <td style={{ padding: "4px 10px 4px 0", color: isDarkMode ? "#8ca397" : "#6b7280", fontSize: 11, whiteSpace: "nowrap" }}>Power (kW)</td>
-                                                            {periods.map(p => {
-                                                                const key = `potencia${p}` as keyof ExtractedInvoiceData;
-                                                                const val = extractedData[key] as number | undefined;
-                                                                return (
-                                                                    <td key={p} style={{ textAlign: "center", padding: "4px 6px" }}>
-                                                                        <FormInput size="small" type="number" value={val ?? ""}
-                                                                            onChange={e => setExtractedData(prev => prev ? { ...prev, [key]: e.target.value === "" ? undefined : parseFloat(e.target.value) } : prev)}
-                                                                            slotProps={{ htmlInput: { step: 0.01, style: { fontSize: 12, textAlign: "center", fontFamily: "monospace", width: 80, padding: "4px 6px" } } }}
-                                                                            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px" } }} />
-                                                                    </td>
-                                                                );
-                                                            })}
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                        <div style={{ flex: 1 }}>
+                                            <FormSelect
+                                                label={t("newSimulationPage", "clientLabel")}
+                                                options={clients.map((c) => {
+                                                    // Build secondary label with multiple client fields
+                                                    const secondaryParts: string[] = [];
+                                                    if (c.cif) secondaryParts.push(`CIF: ${c.cif}`);
+                                                    if (c.contactName) secondaryParts.push(c.contactName);
+                                                    if (c.contactEmail) secondaryParts.push(c.contactEmail);
+
+                                                    return {
+                                                        value: c.id,
+                                                        label: c.name,
+                                                        secondaryLabel: secondaryParts.join(' • ')
+                                                    };
+                                                })}
+                                                value={clientId}
+                                                onChange={(value) => setClientId(value as string)}
+                                                required
+                                                placeholder={t("newSimulationPage", "selectClient")}
+                                                helperText={t("newSimulationPage", "clientHint")}
+                                            />
                                         </div>
-                                    );
-                                })()
-                            )}
+                                        {allowQuickCreate && (
+                                            <Button type="button" variant="outlined" onClick={() => setShowQuickCreate(true)} title={t("newSimulationPage", "createNew")} style={{ flexShrink: 0, marginTop: 30 }}>
+                                                <AddIcon />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
 
-                            {/* Simulation settings: expiration date */}
-                            <div style={{ display: "flex", gap: 16, marginTop: 16, paddingTop: 14, borderTop: `1px solid ${isDarkMode ? "#1b3a2a" : "#bbf7d0"}`, alignItems: "flex-start" }}>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#8ca397" : "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{t("newSimulationPage", "expirationLabel")}</div>
+                                {/* Commodity type */}
+                                <div className="crud-form-group" style={{ flex: 1 }}>
+                                    <FormSelect
+                                        label={t("newSimulationPage", "commodityLabel")}
+                                        options={[
+                                            {
+                                                value: "ELECTRICITY", label: t("newSimulationPage", "electricity"),
+                                                icon: (
+                                                    <>
+                                                        <BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} />
+                                                    </>
+                                                )
+                                            },
+                                            {
+                                                value: "GAS",
+                                                label: t("newSimulationPage", "gas"),
+                                                icon: <LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444" }} />
+                                            }
+                                        ]}
+                                        value={simType}
+                                        onChange={(value) => setSimType(value as SimType)}
+                                        helperText={t("newSimulationPage", "commodityHint")}
+                                    />
+                                </div>
+
+                                {/* Expiration date */}
+                                <div className="crud-form-group" style={{ flex: 1 }}>
                                     <DateInput
-                                        label=""
+                                        label={t("newSimulationPage", "expirationLabel")}
+                                        labelPosition="top"
                                         value={expiresAt}
                                         onChange={(value) => setExpiresAt(value)}
                                         helperText={t("newSimulationPage", "expirationHint").replace("{{days}}", defaultDays)}
@@ -1182,86 +1649,9 @@ export default function NewSimulationPage() {
                                     />
                                 </div>
                             </div>
-                        </Box>
-                    )}
-
-                    {/* Client, Commodity Type, and Expiration Date - Only shown when no OCR data */}
-                    {!(llmEnabled && extractedData) && !(llmEnabled && hasInvoiceFile) && (<div className="crud-form-section">
-                        <div className="crud-form-row" style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
-                            {/* Client */}
-                            <div className="crud-form-group" style={{ flex: 1 }}>
-                                <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
-
-                                    <div style={{ flex: 1 }}>
-                                        <FormSelect
-                                            label={t("newSimulationPage", "clientLabel")}
-                                            options={clients.map((c) => {
-                                                // Build secondary label with multiple client fields
-                                                const secondaryParts: string[] = [];
-                                                if (c.cif) secondaryParts.push(`CIF: ${c.cif}`);
-                                                if (c.contactName) secondaryParts.push(c.contactName);
-                                                if (c.contactEmail) secondaryParts.push(c.contactEmail);
-
-                                                return {
-                                                    value: c.id,
-                                                    label: c.name,
-                                                    secondaryLabel: secondaryParts.join(' • ')
-                                                };
-                                            })}
-                                            value={clientId}
-                                            onChange={(value) => setClientId(value as string)}
-                                            required
-                                            placeholder={t("newSimulationPage", "selectClient")}
-                                            helperText={t("newSimulationPage", "clientHint")}
-                                        />
-                                    </div>
-                                    {allowQuickCreate && (
-                                        <Button type="button" variant="outlined" onClick={() => setShowQuickCreate(true)} title={t("newSimulationPage", "createNew")} style={{ flexShrink: 0, marginTop: 30 }}>
-                                            <AddIcon />
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Commodity type */}
-                            <div className="crud-form-group" style={{ flex: 1 }}>
-                                <FormSelect
-                                    label={t("newSimulationPage", "commodityLabel")}
-                                    options={[
-                                        {
-                                            value: "ELECTRICITY", label: t("newSimulationPage", "electricity"),
-                                            icon: (
-                                                <>
-                                                    <BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} />
-                                                </>
-                                            )
-                                        },
-                                        {
-                                            value: "GAS",
-                                            label: t("newSimulationPage", "gas"),
-                                            icon: <LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444" }} />
-                                        }
-                                    ]}
-                                    value={simType}
-                                    onChange={(value) => setSimType(value as SimType)}
-                                    helperText={t("newSimulationPage", "commodityHint")}
-                                />
-                            </div>
-
-                            {/* Expiration date */}
-                            <div className="crud-form-group" style={{ flex: 1 }}>
-                                <DateInput
-                                    label={t("newSimulationPage", "expirationLabel")}
-                                    labelPosition="top"
-                                    value={expiresAt}
-                                    onChange={(value) => setExpiresAt(value)}
-                                    helperText={t("newSimulationPage", "expirationHint").replace("{{days}}", defaultDays)}
-                                    nopadding
-                                />
-                            </div>
-                        </div>
-                    </div>)}
-                </CrudFormContainer>
+                        </div>)}
+                    </CrudFormContainer>
+                </div>
             )}
 
             {/* Client Creation Dialog */}

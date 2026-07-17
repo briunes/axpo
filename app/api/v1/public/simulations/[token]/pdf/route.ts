@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
-import { InvalidTokenError, NotFoundError } from "@/domain/errors/errors";
+import { InvalidTokenError } from "@/domain/errors/errors";
 import { SimulationService } from "@/application/services/simulationService";
 import { prisma } from "@/infrastructure/database/prisma";
 import {
@@ -13,6 +13,8 @@ import {
   buildSimulationPdfFilenameFromSimulation,
   resolveSimulationProductName,
 } from "@/infrastructure/pdf/pdfFilename";
+import { installPdfResourceGuard } from "@/infrastructure/pdf/pdfResourceGuard";
+import { normalizeLanguageCode } from "@/lib/supportedLanguages";
 
 interface PublicSessionPayload {
   typ?: string;
@@ -119,6 +121,11 @@ export async function GET(
             commercialEmail: true,
             commercialPhone: true,
             mobilePhone: true,
+            preferences: {
+              select: {
+                language: true,
+              },
+            },
           },
         },
         client: {
@@ -128,6 +135,7 @@ export async function GET(
             contactName: true,
             contactEmail: true,
             contactPhone: true,
+            language: true,
           },
         },
       },
@@ -147,11 +155,10 @@ export async function GET(
       );
     }
 
-    // Get recent versions to find one with results
     const recentVersions = await prisma.simulationVersion.findMany({
       where: { simulationId: simulation.id },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: 200,
     });
 
     // Build a merged payload: use the most recent version with results (which
@@ -163,7 +170,10 @@ export async function GET(
       ) ?? recentVersions[0];
     const latestOfferPayload = recentVersions.find((v) => {
       const payload = v.payloadJson as Record<string, unknown> | null;
-      return payload !== null && Object.prototype.hasOwnProperty.call(payload, "selectedOffer");
+      return (
+        payload !== null &&
+        Object.prototype.hasOwnProperty.call(payload, "selectedOffer")
+      );
     })?.payloadJson as Record<string, unknown> | null;
     const mergedPayload: Record<string, unknown> | null =
       baseVersion?.payloadJson
@@ -175,22 +185,64 @@ export async function GET(
           }
         : null;
 
-    // Debug: log what we have
-    console.log("[PDF] Simulation ID:", simulation.id);
-    console.log("[PDF] Versions found:", recentVersions.length);
-    console.log(
-      "[PDF] Base version has results:",
-      !!(baseVersion?.payloadJson as any)?.results,
-    );
-    console.log(
-      "[PDF] Merged payload keys:",
-      mergedPayload ? Object.keys(mergedPayload) : "null",
+    // Resolve preferred language: client > owner preferences > null
+    const preferredLanguage = normalizeLanguageCode(
+      simulation.client?.language ??
+        simulation.ownerUser?.preferences?.language,
     );
 
-    // Fetch the PDF template
-    const pdfTemplate = await prisma.pdfTemplate.findUnique({
-      where: { id: "simulation-output-default" },
-    });
+    // Determine commodity from merged payload to select the right template
+    const commodity = mergedPayload?.type as "ELECTRICITY" | "GAS" | undefined;
+
+    // Fetch the appropriate PDF template via system config (same approach as /access route)
+    let pdfTemplate: {
+      id: string;
+      active: boolean;
+      htmlContent: string;
+      translations: { languageCode: string; htmlContent: string }[];
+    } | null = null;
+
+    if (commodity) {
+      const systemConfig = await prisma.systemConfig.findFirst({
+        select: {
+          defaultPdfTemplateGasId: true,
+          defaultPdfTemplateElectricityId: true,
+        },
+      });
+      const templateId =
+        commodity === "GAS"
+          ? systemConfig?.defaultPdfTemplateGasId
+          : systemConfig?.defaultPdfTemplateElectricityId;
+
+      if (templateId) {
+        pdfTemplate = await prisma.pdfTemplate.findFirst({
+          where: { id: templateId, isDeleted: false, active: true, commodity },
+          select: {
+            id: true,
+            active: true,
+            htmlContent: true,
+            translations: {
+              select: { languageCode: true, htmlContent: true },
+            },
+          },
+        });
+      }
+    }
+
+    // Fallback to the legacy hardcoded template if no commodity-based template found
+    if (!pdfTemplate) {
+      pdfTemplate = (await prisma.pdfTemplate.findUnique({
+        where: { id: "simulation-output-default" },
+        select: {
+          id: true,
+          active: true,
+          htmlContent: true,
+          translations: {
+            select: { languageCode: true, htmlContent: true },
+          },
+        },
+      })) as typeof pdfTemplate;
+    }
 
     if (!pdfTemplate || !pdfTemplate.active) {
       return NextResponse.json(
@@ -199,22 +251,26 @@ export async function GET(
       );
     }
 
+    // Pick the translation for the preferred language, fall back to default htmlContent
+    const resolvedTemplateContent =
+      pdfTemplate.translations.find(
+        (t) => t.languageCode.trim().toLowerCase() === preferredLanguage,
+      )?.htmlContent ?? pdfTemplate.htmlContent;
+
     // Extract variable values from simulation data
     const simulationPayload = mergedPayload as SimulationPayload | null;
     const variableValues = extractVariableValues(
       simulation,
       simulationPayload ?? undefined,
+      undefined,
+      undefined,
+      undefined,
+      preferredLanguage,
     );
-
-    // Debug: log variable values
-    console.log("[PDF] Client name:", variableValues.CLIENT_NAME);
-    console.log("[PDF] CUPS:", variableValues.CUPS_NUMBER);
-    console.log("[PDF] Current Total:", variableValues.CURRENT_TOTAL);
-    console.log("[PDF] AXPO Total:", variableValues.AXPO_TOTAL);
 
     // Replace variables in template
     const processedHtml = replaceVariables(
-      pdfTemplate.htmlContent,
+      resolvedTemplateContent,
       variableValues,
     );
 
@@ -239,6 +295,7 @@ ${processedHtml}
         @media print {
           *  { box-sizing: border-box; }
           body { margin: 0; padding: 0; }
+          .asim-page { min-height: 0 !important; }
           table, figure, img,
           .asim-period-grid, .asim-period-item,
           .asim-cost-breakdown, .asim-cost-item,
@@ -260,27 +317,33 @@ ${processedHtml}
       ? fullHtml.replace("</head>", `${pageBreakStyle}\n</head>`)
       : `${pageBreakStyle}\n${fullHtml}`;
 
-    // Generate PDF with Puppeteer
     const browser = await launchBrowser();
+    let pdfBuffer: Uint8Array;
 
-    const page = await browser.newPage();
-    await page.setContent(enrichedHtml, {
-      waitUntil: "networkidle0",
-    });
+    try {
+      const page = await browser.newPage();
+      page.setDefaultTimeout(30_000);
+      page.setDefaultNavigationTimeout(30_000);
+      await installPdfResourceGuard(page);
+      await page.setContent(enrichedHtml, {
+        waitUntil: "load",
+        timeout: 30_000,
+      });
 
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      margin: {
-        top: "15mm",
-        right: "12mm",
-        bottom: "15mm",
-        left: "12mm",
-      },
-      printBackground: true,
-      preferCSSPageSize: false,
-    });
-
-    await browser.close();
+      pdfBuffer = await page.pdf({
+        format: "A4",
+        margin: {
+          top: "15mm",
+          right: "12mm",
+          bottom: "15mm",
+          left: "12mm",
+        },
+        printBackground: true,
+        preferCSSPageSize: false,
+      });
+    } finally {
+      await browser.close();
+    }
 
     const filename = buildSimulationPdfFilenameFromSimulation(
       {
@@ -303,7 +366,10 @@ ${processedHtml}
       },
     });
   } catch (error) {
-    console.error("Public PDF generation error:", error);
+    console.error(
+      "Public PDF generation error:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
 
     if (error instanceof jwt.JsonWebTokenError) {
       return NextResponse.json(
@@ -315,7 +381,6 @@ ${processedHtml}
     return NextResponse.json(
       {
         error: "Failed to generate PDF",
-        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     );

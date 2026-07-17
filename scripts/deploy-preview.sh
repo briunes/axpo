@@ -53,26 +53,46 @@ echo ""
 # Each entry is a regex pattern (for grep -E) + the sed replacement key.
 SECRET_FILES=(
   "$ROOT_DIR/.env.local.example"
+  "$ROOT_DIR/.env.dev"
   "$ROOT_DIR/vars"
   "$ROOT_DIR/vars prod"
 )
-SECRET_PATTERN='SENTRY_AUTH_TOKEN=sntryu_[A-Za-z0-9_]+'
-SECRET_PLACEHOLDER='SENTRY_AUTH_TOKEN=your_sentry_auth_token_here'
+SECRET_PATTERNS=(
+  'SENTRY_AUTH_TOKEN=sntryu_[A-Za-z0-9_]+'
+  'SUPABASE_SECRET_KEY=["'\'']?sb_secret_[A-Za-z0-9_-]+["'\'']?'
+  'SUPABASE_SERVICE_ROLE_KEY=["'\'']?sb_secret_[A-Za-z0-9_-]+["'\'']?'
+)
+SECRET_PLACEHOLDERS=(
+  'SENTRY_AUTH_TOKEN=your_sentry_auth_token_here'
+  'SUPABASE_SECRET_KEY=sb_secret_placeholder'
+  'SUPABASE_SERVICE_ROLE_KEY=sb_secret_placeholder'
+)
 
 # Stores original lines so we can restore after push
 # Using parallel arrays for bash 3.2 compatibility (macOS default)
 _SECRET_KEYS=()
 _SECRET_VALS=()
+_SECRET_PLACEHOLDER_VALS=()
 
 scrub_secrets() {
   for f in "${SECRET_FILES[@]}"; do
     [[ -f "$f" ]] || continue
-    local original
-    original=$(grep -E "$SECRET_PATTERN" "$f" || true)
-    if [[ -n "$original" ]]; then
-      _SECRET_KEYS+=("$f")
-      _SECRET_VALS+=("$original")
-      sed -i '' -E "s|${SECRET_PATTERN}|${SECRET_PLACEHOLDER}|g" "$f"
+    local redacted=0
+    local rule_index
+    for rule_index in "${!SECRET_PATTERNS[@]}"; do
+      local pattern="${SECRET_PATTERNS[$rule_index]}"
+      local placeholder="${SECRET_PLACEHOLDERS[$rule_index]}"
+      local original
+      original=$(grep -E "$pattern" "$f" || true)
+      if [[ -n "$original" ]]; then
+        _SECRET_KEYS+=("$f")
+        _SECRET_VALS+=("$original")
+        _SECRET_PLACEHOLDER_VALS+=("$placeholder")
+        sed -i '' -E "s|${pattern}|${placeholder}|g" "$f"
+        redacted=1
+      fi
+    done
+    if [[ "$redacted" -eq 1 ]]; then
       echo -e "${YELLOW}  ⚠  Redacted secret in: $(basename "$f")${NC}"
     fi
   done
@@ -83,7 +103,8 @@ restore_secrets() {
   for i in "${!_SECRET_KEYS[@]}"; do
     local f="${_SECRET_KEYS[$i]}"
     local original="${_SECRET_VALS[$i]}"
-    sed -i '' "s|${SECRET_PLACEHOLDER}|${original}|g" "$f"
+    local placeholder="${_SECRET_PLACEHOLDER_VALS[$i]}"
+    sed -i '' "s|${placeholder}|${original}|g" "$f"
     echo -e "${CYAN}  ↩  Restored secret in: $(basename "$f")${NC}"
   done
 }

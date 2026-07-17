@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "AXPO Simulador de Ofertas - Internal API v1",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "contact": {
       "name": "AXPO Development"
     },
@@ -3246,8 +3246,8 @@
         "tags": [
           "Simulations"
         ],
-        "summary": "Run price calculation against the latest simulation version",
-        "description": "Loads the latest SimulationVersion's payloadJson (typed as SimulationPayload),\nfetches BaseValueItems for the resolved price set, runs CalculationService,\nand persists the results into a new SimulationVersion.\n",
+        "summary": "Run price calculation against simulation inputs",
+        "description": "Calculates from the latest SimulationVersion payload by default. When\npayloadJson is provided, calculates from that payload and persists it\ntogether with the generated results in a new SimulationVersion.\n",
         "security": [
           {
             "bearerAuth": []
@@ -3272,6 +3272,14 @@
                   "baseValueSetId": {
                     "type": "string",
                     "description": "Optional override for the price set to use"
+                  },
+                  "selectedMonth": {
+                    "type": "string",
+                    "description": "Optional YYYY-MM billing month override for indexed offers"
+                  },
+                  "payloadJson": {
+                    "type": "object",
+                    "description": "Optional current form payload to save and calculate in one request"
                   }
                 }
               }
@@ -3465,6 +3473,19 @@
         ]
       }
     },
+    "/api/v1/internal/simulations/{id}/selected-offer": {
+      "patch": {
+        "tags": [
+          "Simulations"
+        ],
+        "summary": "Select or clear the offer presented to the client",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/internal/simulations/{id}/send-email": {
       "post": {
         "summary": "Send simulation email with optional PDF attachment",
@@ -3525,6 +3546,19 @@
             "description": "Invalid request"
           }
         }
+      }
+    },
+    "/api/v1/internal/simulations/{id}/share-init": {
+      "get": {
+        "tags": [
+          "Simulations"
+        ],
+        "summary": "Get templates, variables, and client defaults required to share a simulation",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/internal/simulations/{id}/share": {

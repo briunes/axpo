@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 import { Providers } from "./providers";
 import { InternalWorkspace } from "./components/InternalWorkspace";
 import type { AppSection } from "./components/InternalWorkspace";
-import "@once-ui-system/core/css/styles.css";
-import "@once-ui-system/core/css/tokens.css";
 import "./axpo-tokens.css";
 import "./globals.css";
 import "./crud-pages.css";
@@ -15,19 +13,20 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   // Determine section from pathname
-  const getSection = (): AppSection => {
+  const getSection = (): AppSection | null => {
     if (pathname.startsWith("/internal/simulations")) return "simulations";
     if (pathname.startsWith("/internal/users")) return "users";
     if (pathname.startsWith("/internal/agencies")) return "agencies";
     if (pathname.startsWith("/internal/clients")) return "clients";
     if (pathname.startsWith("/internal/base-values")) return "base-values";
     if (pathname.startsWith("/internal/logs")) return "logs";
+    if (pathname.startsWith("/internal/notifications")) return "notifications";
     if (pathname.startsWith("/internal/audit-logs")) return "logs"; // Redirect old route
     if (pathname.startsWith("/internal/email-logs")) return "logs"; // Redirect old route
     if (pathname.startsWith("/internal/analytics")) return "analytics";
     if (pathname.startsWith("/internal/configurations")) return "configurations";
     if (pathname.startsWith("/internal/ocr-usage")) return "configurations";
-    return "simulations";
+    return null;
   };
 
   const section = getSection();
@@ -39,7 +38,8 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
     pathname === "/internal/setup-password" ||
     pathname === "/internal/forgot-password" ||
     pathname === "/internal/reset-password" ||
-    pathname === "/internal"
+    pathname === "/internal" ||
+    (process.env.NODE_ENV === "development" && pathname.includes("boneyard-fixture"))
   ) {
     return <>{children}</>;
   }

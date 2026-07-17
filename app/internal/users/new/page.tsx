@@ -1,19 +1,20 @@
 "use client";
 
-import { Button } from "@once-ui-system/core";
-import { Box, Tabs, Tab, Alert, Typography } from "@mui/material";
+import { Box, Button, Tabs, Tab, Alert, Typography } from "@mui/material";
 import { FormSelect } from "../../components/ui/FormSelect";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useAgencies } from "../../components/hooks/useAgencies";
 import { useUsers } from "../../components/hooks/useUsers";
 import { UserForm, type UserFormData } from "../../components/modules/UserForm";
 import { UserSessionsPanel } from "../../components/modules/UserSessionsPanel";
-import { CrudPageLayout, useAlerts } from "../../components/shared";
+import { BoneyardFormSkeleton, CrudPageLayout, useAlerts } from "../../components/shared";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 import type { UserRole } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
+import { getLanguageOptions } from "../../../../src/lib/supportedLanguages";
 
 interface LocalPreferences {
     language: string | null;
@@ -29,9 +30,15 @@ export default function NewUserPage() {
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const onActionButtons = useActionButtons();
+    const isBoneyardBuild =
+        typeof window !== "undefined" &&
+        (window as typeof window & { __BONEYARD_BUILD?: boolean }).__BONEYARD_BUILD === true;
+    const breadcrumbs = useMemo(() => [{ label: t("userFormPage", "newTitle") }], [t]);
+    useTopBarBreadcrumbs(breadcrumbs);
 
     const usersActions = useUsers(session, 25, { queryEnabled: false });
-    const agenciesActions = useAgencies(session, 1000, { minimal: true });
+    const agenciesActions = useAgencies(session, 1000, { minimal: true, queryEnabled: !isBoneyardBuild });
 
     const [activeTab, setActiveTab] = useState(0);
     const [hasVisitedPreferences, setHasVisitedPreferences] = useState(false);
@@ -160,8 +167,26 @@ export default function NewUserPage() {
         router.push("/internal/users");
     };
 
+    useEffect(() => {
+        onActionButtons?.(!newlyCreated?.pin ? formActions : null);
+        return () => onActionButtons?.(null);
+    }, [formActions, newlyCreated?.pin, onActionButtons]);
+
     if (!session) {
         return null;
+    }
+
+    if (agenciesActions.loading) {
+        return (
+            <CrudPageLayout
+                title={t("userFormPage", "newTitle")}
+                subtitle={t("userFormPage", "newSubtitle")}
+                backHref="/internal/users"
+                hideHeader
+            >
+                <BoneyardFormSkeleton name="new-user-form" shape="user" tabs={3} />
+            </CrudPageLayout>
+        );
     }
 
     return (
@@ -169,7 +194,7 @@ export default function NewUserPage() {
             title={t("userFormPage", "newTitle")}
             subtitle={t("userFormPage", "newSubtitle")}
             backHref="/internal/users"
-            actions={formActions}
+            hideHeader
         >
             {newlyCreated?.pin && (
                 <div className="crud-callout" style={{ marginBottom: "24px" }}>
@@ -185,7 +210,9 @@ export default function NewUserPage() {
                             <div className="dt-cell-secondary">{t("userFormPage", "pinLabel")}</div>
                             <div className="crud-callout-value">{newlyCreated.pin}</div>
                         </div>
-                        <Button variant="secondary" size="s" onClick={handleDismissPin} label={t("actions", "done")} />
+                        <Button variant="outlined" size="small" onClick={handleDismissPin}>
+                            {t("actions", "done")}
+                        </Button>
                     </div>
                 </div>
             )}
@@ -248,10 +275,7 @@ export default function NewUserPage() {
                                     label={t("userPreferences", "fieldLanguage")}
                                     value={localPreferences.language ?? "en"}
                                     onChange={(value) => setLocalPreferences((p) => ({ ...p, language: (value as string) || null }))}
-                                    options={[
-                                        { value: "en", label: "🇬🇧 English" },
-                                        { value: "es", label: "🇪🇸 Español" },
-                                    ]}
+                                    options={getLanguageOptions()}
                                 />
                                 <FormSelect
                                     label={t("systemSettings", "fieldDateFormat")}

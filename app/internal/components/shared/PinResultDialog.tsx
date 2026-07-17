@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 interface PinResultDialogProps {
     pin: string;
@@ -22,6 +23,7 @@ interface PinResultDialogProps {
 }
 
 export function PinResultDialog({ pin, onClose }: PinResultDialogProps) {
+    const { t } = useI18n();
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
@@ -36,7 +38,7 @@ export function PinResultDialog({ pin, onClose }: PinResultDialogProps) {
 
     return (
         <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
-            <DialogTitle sx={{ pb: 1.5 }}>PIN rotated successfully</DialogTitle>
+            <DialogTitle sx={{ pb: 1.5 }}>{t("pinResultDialog", "title")}</DialogTitle>
             <Divider />
             <DialogContent sx={{ pt: 3, pb: 3 }}>
                 <Box
@@ -60,8 +62,8 @@ export function PinResultDialog({ pin, onClose }: PinResultDialogProps) {
                     >
                         {pin}
                     </Typography>
-                    <Tooltip title={copied ? "Copied!" : "Copy PIN"} placement="top">
-                        <IconButton size="small" onClick={handleCopy} color={copied ? "success" : "default"} aria-label="Copy PIN">
+                    <Tooltip title={copied ? t("common", "copied") : t("common", "copyPin")} placement="top">
+                        <IconButton size="small" onClick={handleCopy} color={copied ? "success" : "default"} aria-label={t("common", "copyPin")}>
                             {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
                         </IconButton>
                     </Tooltip>
@@ -70,10 +72,10 @@ export function PinResultDialog({ pin, onClose }: PinResultDialogProps) {
             <Divider />
             <DialogActions sx={{ px: 3, py: 2 }}>
                 <Button onClick={handleCopy} variant="outlined" startIcon={copied ? <CheckIcon /> : <ContentCopyIcon />}>
-                    {copied ? "Copied!" : "Copy PIN"}
+                    {copied ? t("common", "copied") : t("common", "copyPin")}
                 </Button>
                 <Button onClick={onClose} variant="contained" autoFocus>
-                    Done
+                    {t("common", "done")}
                 </Button>
             </DialogActions>
         </Dialog>

@@ -6,7 +6,7 @@ import { Button } from "@mui/material";
 import { saveSession } from "../../lib/authSession";
 import { getBrowserFingerprint } from "../../lib/browserFingerprint";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import "../../globals.css";
+import styles from "../../authPages.module.css";
 
 export default function MagicLinkVerifyPage() {
     return (
@@ -67,38 +67,36 @@ function MagicLinkVerifyContent() {
     }, [token, router, t]);
 
     return (
-        <div className="login-shell-v2">
-            <div className="login-grid-v2">
-                <div className="login-brand-panel-v2">
-                    <img src="/axpo-mark.svg" className="login-brand-mark-v2" width={72} height={72} alt="AXPO" />
-                    <div className="login-brand-name-v2">AXPO</div>
-                    <div className="login-brand-divider-v2" />
-                    <div className="login-brand-product-v2">OFFERS SIMULATOR</div>
+        <div className={styles.shell}>
+            <div className={styles.grid}>
+                <div className={styles.brandPanel}>
+                    <img src="/axpo-logo.svg" className={styles.brandLogo} width={168} height={80} alt="AXPO" />
+                    <div className={styles.brandProduct}>{t("common", "offersSimulator")}</div>
                 </div>
 
-                <div className="login-form-panel-v2">
-                    <div className="login-form-logo-v2">
-                        <img src="/axpo-mark.svg" width={32} height={32} alt="AXPO" />
+                <div className={styles.formPanel}>
+                    <div className={styles.formLogo}>
+                        <img src="/axpo-logo.svg" width={84} height={40} alt="AXPO" />
                     </div>
 
                     {status === "verifying" && (
                         <>
-                            <h2 className="login-form-title-v2">{t("magicLink", "verifyingTitle")}</h2>
-                            <p className="login-form-subtitle-v2">{t("magicLink", "verifyingSubtitle")}</p>
+                            <h2 className={styles.formTitle}>{t("magicLink", "verifyingTitle")}</h2>
+                            <p className={styles.formSubtitle}>{t("magicLink", "verifyingSubtitle")}</p>
                         </>
                     )}
 
                     {status === "success" && (
                         <>
-                            <h2 className="login-form-title-v2">{t("magicLink", "successTitle")}</h2>
-                            <p className="login-form-subtitle-v2">{t("magicLink", "successSubtitle")}</p>
+                            <h2 className={styles.formTitle}>{t("magicLink", "successTitle")}</h2>
+                            <p className={styles.formSubtitle}>{t("magicLink", "successSubtitle")}</p>
                         </>
                     )}
 
                     {status === "error" && (
                         <>
-                            <h2 className="login-form-title-v2">{t("magicLink", "errorTitle")}</h2>
-                            <p className="login-form-subtitle-v2" style={{ color: "var(--axpo-error, #ef4444)" }}>
+                            <h2 className={styles.formTitle}>{t("magicLink", "errorTitle")}</h2>
+                            <p className={styles.formSubtitle} style={{ color: "var(--axpo-error, #ef4444)" }}>
                                 {errorText || t("magicLink", "verifyFailed")}
                             </p>
                             <Button

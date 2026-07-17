@@ -2,6 +2,8 @@
 
 import type { SimulationResults, ProductResult } from "@/domain/types";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 
 interface SimulationResultsTableProps {
     results: SimulationResults;
@@ -39,7 +41,7 @@ function ProductRow({ r }: { r: ProductResult }) {
     const savingsColor = r.ahorro > 0 ? "var(--scheme-brand-600, #16a34a)" : r.ahorro < 0 ? "#dc2626" : "inherit";
     return (
         <tr>
-            <td style={{ padding: "8px 10px", fontWeight: 500, fontSize: 13 }}>{r.productLabel}</td>
+            <td style={{ padding: "8px 10px", fontWeight: 500, }}>{r.productLabel}</td>
             <td style={{ padding: "8px 10px" }}>
                 <span className="dt-cell-mono" style={{ fontSize: 11, opacity: 0.75 }}>
                     {r.pricingType === "FIXED" ? t("simulationResults", "pricingFixed") : t("simulationResults", "pricingIndexed")}
@@ -87,7 +89,7 @@ function ResultsSection({ label, items, facturaActual }: { label: string; items:
                 )}
             </div>
             <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid var(--scheme-neutral-900, #2a2a2a)" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", }}>
                     <thead>
                         <tr style={{ background: "var(--scheme-neutral-1000, #1a1a1a)" }}>
                             <th style={{ padding: "8px 10px", textAlign: "left", color: "var(--scheme-neutral-400)", fontWeight: 500, fontSize: 11, whiteSpace: "nowrap" }}>{t("simulationResults", "colProduct")}</th>
@@ -110,13 +112,14 @@ function ResultsSection({ label, items, facturaActual }: { label: string; items:
 }
 
 export function SimulationResultsTable({ results, facturaActual }: SimulationResultsTableProps) {
+    const { preferences } = useUserPreferences();
     const { t } = useI18n();
     const hasElec = (results.electricity?.length ?? 0) > 0;
     const hasGas = (results.gas?.length ?? 0) > 0;
 
     if (!hasElec && !hasGas) {
         return (
-            <div style={{ padding: 20, textAlign: "center", opacity: 0.6, fontSize: 13 }}>
+            <div style={{ padding: 20, textAlign: "center", opacity: 0.6, }}>
                 {t("simulationResults", "noResults")}
             </div>
         );
@@ -125,7 +128,7 @@ export function SimulationResultsTable({ results, facturaActual }: SimulationRes
     return (
         <div>
             <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 16 }}>
-                {t("simulationResults", "calculatedAt")} {new Date(results.calculatedAt).toLocaleString()}
+                {t("simulationResults", "calculatedAt")} {formatDisplayDateTime(results.calculatedAt, preferences)}
                 {" · "}Set: <span className="dt-cell-mono">{results.baseValueSetId.slice(0, 12)}…</span>
             </div>
             {hasElec && (

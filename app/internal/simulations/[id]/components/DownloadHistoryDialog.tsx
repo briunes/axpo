@@ -24,6 +24,9 @@ import { getPdfTemplates, type PdfTemplate } from "../../../lib/configApi";
 import { LoadingState } from "../../../components/shared";
 import { FormSelect } from "../../../components/ui/FormSelect";
 import { buildSimulationPdfFilenameFromSimulation } from "@/infrastructure/pdf/pdfFilename";
+import { normalizeLanguageCode, resolveTranslation } from "@/lib/supportedLanguages";
+import { useUserPreferences, type UserPreferences } from "../../../components/providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../../lib/formatPreferences";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -84,6 +87,10 @@ function periodMonthly(v: PeriodData | number | undefined, monthKey: string): nu
     return null;
 }
 
+function resolveUserAgency(simulation?: any): string {
+    return simulation?.ownerUser?.agency?.name || simulation?.agency?.name || "N/A";
+}
+
 export interface DownloadHistoryDialogProps {
     open: boolean;
     onClose: () => void;
@@ -105,9 +112,10 @@ const GAS_TARIFF_ORDER = [
 function buildGasHistoryHtml(
     data: HistoryData,
     product: HistoryProduct,
-    template: PdfTemplate | null,
+    templateHtml: string | null,
     axpoPrimary: string,
     simulation?: any,
+    preferences?: UserPreferences,
 ): string {
     // Build a table showing all tariffs x zones (PEN / BAL)
     const allTariffs = GAS_TARIFF_ORDER.filter((t) => product.tariffs[t]);
@@ -149,12 +157,12 @@ function buildGasHistoryHtml(
         <tbody>${tariffRows}</tbody>
       </table>`;
 
-    if (template?.htmlContent) {
-        const createdAt = simulation?.createdAt
-            ? new Date(simulation.createdAt).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    if (templateHtml) {
+        const createdAt = simulation?.createdAt && preferences
+            ? formatDisplayDateTime(simulation.createdAt, preferences, { fallback: "" })
             : "";
 
-        return template.htmlContent
+        return templateHtml
             .replace(/\{\{HISTORY_TABLES_GAS\}\}/g, gasTableHtml)
             .replace(/\{\{HISTORY_TABLE_GAS\}\}/g, gasTableHtml)
             .replace(/\{\{GAS_PRODUCT_LABEL\}\}/g, product.productLabel)
@@ -164,7 +172,9 @@ function buildGasHistoryHtml(
             .replace(/\{\{SIMULATION_REFERENCE\}\}/g, simulation?.referenceNumber ?? simulation?.id ?? "")
             .replace(/\{\{CREATED_AT\}\}/g, createdAt)
             .replace(/\{\{OWNER_NAME\}\}/g, simulation?.ownerUser?.fullName ?? "")
-            .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "");
+            .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "")
+            .replace(/\{\{USER_AGENCY\}\}/g, resolveUserAgency(simulation))
+            .replace(/\{\{OWNER_AGENCY\}\}/g, resolveUserAgency(simulation));
     }
 
     // Built-in default template for gas
@@ -196,9 +206,12 @@ const TARIFF_PERIODS: Record<string, string[]> = {
 
 const TARIFF_ORDER = ["2.0TD", "3.0TD", "6.1TD"];
 
-/** Excel-matching palette for the price-history table. */
-const HISTORY_HEADER_RED = "#FD5D66"; // tariff label / month row
-const HISTORY_PERIOD_YELLOW = "#EE57"; // P1..Pn column header (yellow)
+/** Visual palette for generated price-history tables. */
+const HISTORY_TABLE_BLUE = "#4946D6";
+const HISTORY_TABLE_BLUE_DARK = "#3E3BC7";
+const HISTORY_TABLE_STRIPE = "#E8E7F7";
+const HISTORY_TABLE_TEXT = "#2F2F37";
+const HISTORY_TABLE_RADIUS = "10px";
 
 // ─── HTML generator ──────────────────────────────────────────────────────────
 
@@ -221,9 +234,10 @@ function fmtMargin(val: number | null | undefined): string {
 function buildHistoryHtml(
     data: HistoryData,
     product: HistoryProduct,
-    template: PdfTemplate | null,
+    templateHtml: string | null,
     axpoPrimary: string,
     simulation?: any,
+    preferences?: UserPreferences,
 ): string {
     const perfilLabel =
         data.perfilCarga === "NORMAL" ? "Perfil Normal" : "Perfil Diurno";
@@ -238,11 +252,7 @@ function buildHistoryHtml(
     // Build one <table> block per tariff.
     // Each cell shows the full all-in Precio TE (€/kWh) for that month+period,
     // taken from the per-month MARGEN key stored in the base value set.
-    // Visually mirrors the Excel sheet "COMPARATIVA LUZ" panel (R1:Y53):
-    //   - red header (#FD5D66) for tariff label and month rows
-    //   - yellow period header (#EE57) for P1..Pn
-    //   - 6-decimal €/kWh values with comma decimal separator
-    //   - Media row = AVERAGEIF of monthly values > 0 (matches Excel AVERAGEIF)
+    // Media row = AVERAGEIF of monthly values > 0 (matches Excel AVERAGEIF).
     const buildTariffBlock = (tariff: string): string => {
         const tariffData = product.tariffs[tariff];
         if (!tariffData) return "";
@@ -255,19 +265,19 @@ function buildHistoryHtml(
         const headerCells = activePeriods
             .map(
                 (p) =>
-                    `<th style="background:${HISTORY_PERIOD_YELLOW};color:#3A3C39;padding:5px 10px;text-align:center;font-weight:bold;font-size:11px;border:1px solid #f0f0f0;">${p}</th>`,
+                    `<th style="background:${HISTORY_TABLE_BLUE};color:#fff;padding:9px 14px;text-align:center;font-weight:700;font-size:13px;border-left:1px solid rgba(255,255,255,0.75);border-bottom:1px solid rgba(255,255,255,0.75);">${p}</th>`,
             )
             .join("");
 
         const monthRows = sortedMonths
             .map(
-                (month) =>
+                (month, monthIndex) =>
                     `<tr>
-              <td style="background:${HISTORY_HEADER_RED};color:#fff;font-weight:bold;padding:5px 10px;font-size:11px;border:1px solid rgba(255,255,255,0.15);white-space:nowrap;">${month.label}</td>
+              <td style="background:${HISTORY_TABLE_BLUE};color:#fff;font-weight:400;padding:8px 20px;font-size:13px;border-top:1px solid rgba(255,255,255,0.75);white-space:nowrap;">${month.label}</td>
               ${activePeriods
                         .map(
                             (p) =>
-                                `<td style="padding:5px 10px;text-align:center;font-size:11px;border:1px solid #f0f0f0;background:#fff;">${fmtMargin(periodMonthly(tariffData[p], month.key))}</td>`,
+                                `<td style="padding:8px 14px;text-align:center;font-size:13px;border-left:1px solid rgba(255,255,255,0.85);border-top:1px solid rgba(255,255,255,0.85);background:${monthIndex % 2 === 0 ? HISTORY_TABLE_STRIPE : "#fff"};color:${HISTORY_TABLE_TEXT};">${fmtMargin(periodMonthly(tariffData[p], month.key))}</td>`,
                         )
                         .join("")}
             </tr>`,
@@ -285,28 +295,30 @@ function buildHistoryHtml(
                     vals.length > 0
                         ? vals.reduce((a, b) => a + b, 0) / vals.length
                         : 0;
-                return `<td style="padding:5px 10px;text-align:center;font-size:11px;border:1px solid #e8e8e8;font-weight:bold;background:#f5f5f5;">${fmtMargin(mean)}</td>`;
+                return `<td style="padding:8px 14px;text-align:center;font-size:13px;border-left:1px solid rgba(255,255,255,0.85);border-top:1px solid rgba(255,255,255,0.85);font-weight:700;background:${HISTORY_TABLE_STRIPE};color:${HISTORY_TABLE_TEXT};">${fmtMargin(mean)}</td>`;
             })
             .join("");
 
         return `
-          <div class="asim-history-block" style="margin-bottom:28px;break-inside:avoid;page-break-inside:avoid;">
-            <div class="asim-history-title" style="text-align:center;color:${HISTORY_HEADER_RED};font-weight:bold;font-size:13px;margin-bottom:6px;break-after:avoid;page-break-after:avoid;">${tariff}</div>
-            <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
+          <div class="asim-history-block" style="margin-bottom:34px;break-inside:avoid;page-break-inside:avoid;">
+            <div class="asim-history-title" style="text-align:center;color:${HISTORY_TABLE_BLUE};font-weight:700;margin-bottom:10px;break-after:avoid;page-break-after:avoid;">${tariff}</div>
+            <div style="overflow:hidden;border-radius:${HISTORY_TABLE_RADIUS};width:100%;max-width:${activePeriods.length <= 3 ? "620px" : "100%"};">
+            <table style="width:100%;border-collapse:separate;border-spacing:0;font-family:Arial,sans-serif;">
               <thead>
                 <tr>
-                  <th style="background:${HISTORY_HEADER_RED};color:#fff;padding:5px 10px;text-align:center;font-weight:bold;font-size:11px;border:1px solid rgba(255,255,255,0.15);">—</th>
+                  <th style="background:${HISTORY_TABLE_BLUE};color:#fff;padding:9px 14px;text-align:center;font-weight:700;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.75);width:25%;">-</th>
                   ${headerCells}
                 </tr>
               </thead>
               <tbody>
                 ${monthRows}
                 <tr>
-                  <td style="padding:5px 10px;font-weight:bold;font-size:11px;border:1px solid #e8e8e8;background:#f5f5f5;">Media</td>
+                  <td style="background:${HISTORY_TABLE_BLUE_DARK};color:#fff;font-weight:700;padding:8px 20px;font-size:13px;border-top:1px solid rgba(255,255,255,0.75);white-space:nowrap;">Media</td>
                   ${avgCells}
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>`;
     };
 
@@ -323,12 +335,12 @@ function buildHistoryHtml(
     const block6TD = buildTariffBlock("6.1TD");
 
     // If a price-history template is selected, inject the tables and all variables
-    if (template?.htmlContent) {
-        const createdAt = simulation?.createdAt
-            ? new Date(simulation.createdAt).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    if (templateHtml) {
+        const createdAt = simulation?.createdAt && preferences
+            ? formatDisplayDateTime(simulation.createdAt, preferences, { fallback: "" })
             : "";
 
-        return template.htmlContent
+        return templateHtml
             .replace(/\{\{HISTORY_TABLES\}\}/g, tariffBlocks)
             .replace(/\{\{HISTORY_TABLE_2TD\}\}/g, block2TD)
             .replace(/\{\{HISTORY_TABLE_3TD\}\}/g, block3TD)
@@ -341,7 +353,9 @@ function buildHistoryHtml(
             .replace(/\{\{SIMULATION_REFERENCE\}\}/g, simulation?.referenceNumber ?? simulation?.id ?? "")
             .replace(/\{\{CREATED_AT\}\}/g, createdAt)
             .replace(/\{\{OWNER_NAME\}\}/g, simulation?.ownerUser?.fullName ?? "")
-            .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "");
+            .replace(/\{\{OWNER_EMAIL\}\}/g, simulation?.ownerUser?.commercialEmail ?? simulation?.ownerUser?.email ?? "")
+            .replace(/\{\{USER_AGENCY\}\}/g, resolveUserAgency(simulation))
+            .replace(/\{\{OWNER_AGENCY\}\}/g, resolveUserAgency(simulation));
     }
 
     // Built-in default template
@@ -408,6 +422,7 @@ export function DownloadHistoryDialog({
     onError,
 }: DownloadHistoryDialogProps) {
     const { t } = useI18n();
+    const { preferences } = useUserPreferences();
     const theme = useTheme();
 
     const [isLoading, setIsLoading] = useState(true);
@@ -447,7 +462,7 @@ export function DownloadHistoryDialog({
                     (tpl) =>
                         tpl.active &&
                         tpl.type === "price-history" &&
-                        (tpl.commodity || "ELECTRICITY") === commodity,
+                        tpl.commodity === commodity,
                 );
                 setHistoryTemplates(historyTpls);
 
@@ -493,13 +508,23 @@ export function DownloadHistoryDialog({
         [selectedTemplateId, historyTemplates],
     );
 
+    const selectedTemplateHtml = useMemo(() => {
+        if (!selectedTemplate) return null;
+        const clientLanguage = normalizeLanguageCode(simulation?.client?.language);
+        const translation = resolveTranslation(
+            selectedTemplate.translations ?? [],
+            clientLanguage,
+        );
+        return translation?.htmlContent ?? selectedTemplate.htmlContent;
+    }, [selectedTemplate, simulation?.client?.language]);
+
     const previewHtml = useMemo(() => {
         if (!historyData || !selectedProduct) return "";
         if (selectedProduct.type === "GAS" || historyData.isGas) {
-            return buildGasHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation);
+            return buildGasHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation, preferences);
         }
-        return buildHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation);
-    }, [historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation]);
+        return buildHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation, preferences);
+    }, [historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation]);
 
     const handleDownload = async () => {
         if (!historyData || !selectedProduct) return;
@@ -507,8 +532,8 @@ export function DownloadHistoryDialog({
         setIsDownloading(true);
         try {
             const html = (selectedProduct.type === "GAS" || historyData.isGas)
-                ? buildGasHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation)
-                : buildHistoryHtml(historyData, selectedProduct, selectedTemplate, theme.palette.primary.main, simulation);
+                ? buildGasHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation, preferences)
+                : buildHistoryHtml(historyData, selectedProduct, selectedTemplateHtml, theme.palette.primary.main, simulation, preferences);
 
             const response = await fetch(
                 `/api/v1/internal/simulations/${simulation.id}/generate-pdf`,
@@ -558,7 +583,7 @@ export function DownloadHistoryDialog({
             onClose={onClose}
             maxWidth="lg"
             fullWidth
-            PaperProps={{ sx: { height: "90vh" } }}
+            PaperProps={{ sx: { height: { xs: "auto", md: "90vh" }, maxHeight: { xs: "92vh", md: "90vh" } } }}
         >
             <DialogTitle
                 sx={{
@@ -581,7 +606,7 @@ export function DownloadHistoryDialog({
 
             <Divider />
 
-            <DialogContent sx={{ p: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <DialogContent sx={{ p: 0, display: "flex", flexDirection: "column", overflow: { xs: "auto", md: "hidden" } }}>
                 {isLoading ? (
                     <Box
                         sx={{
@@ -616,7 +641,7 @@ export function DownloadHistoryDialog({
                             }}
                         >
                             {/* Product selector */}
-                            <Box sx={{ minWidth: 300 }}>
+                            <Box sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { xs: 0, sm: 300 } }}>
                                 <FormSelect
                                     label={t("downloadHistory", "selectProduct") || "Product"}
                                     value={selectedProductKey}
@@ -631,7 +656,7 @@ export function DownloadHistoryDialog({
 
                             {/* Template selector — only shown when price-history templates exist */}
                             {historyTemplates.length > 0 && (
-                                <Box sx={{ minWidth: 300 }}>
+                                <Box sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { xs: 0, sm: 300 } }}>
                                     <FormSelect
                                         label={t("downloadHistory", "selectTemplate") || "Template"}
                                         value={selectedTemplateId}
@@ -653,7 +678,9 @@ export function DownloadHistoryDialog({
                                         display: "flex",
                                         alignItems: "center",
                                         gap: 0.5,
-                                        ml: "auto",
+                                        ml: { xs: 0, sm: "auto" },
+                                        minWidth: 0,
+                                        width: { xs: "100%", sm: "auto" },
                                     }}
                                 >
                                     <VisibilityIcon fontSize="small" color="action" />
@@ -669,7 +696,24 @@ export function DownloadHistoryDialog({
                         </Box>
 
                         {/* Preview area */}
-                        <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
+                        <Box sx={{ display: { xs: "block", md: "none" }, p: 2 }}>
+                            <Paper
+                                variant="outlined"
+                                sx={{
+                                    p: 2,
+                                    borderStyle: "dashed",
+                                    bgcolor: "action.hover",
+                                }}
+                            >
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                                    {t("downloadHistory", "previewUnavailableMobileTitle") || "Preview not available on mobile"}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    {t("downloadHistory", "previewUnavailableMobile") || "The PDF preview is available on medium screens and above."}
+                                </Typography>
+                            </Paper>
+                        </Box>
+                        <Box sx={{ display: { xs: "none", md: "block" }, flex: 1, overflow: "auto", p: 2 }}>
                             <Paper
                                 variant="outlined"
                                 sx={{

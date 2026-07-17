@@ -198,6 +198,14 @@ export const PATCH = withErrorHandler(
       }
     }
 
+    if (
+      auth.userId === id &&
+      payload.email !== undefined &&
+      payload.email.toLowerCase() !== existing.email.toLowerCase()
+    ) {
+      throw new ForbiddenError("You cannot change your own account email");
+    }
+
     const passwordHash = payload.password
       ? await PasswordService.hash(payload.password)
       : undefined;
@@ -355,20 +363,20 @@ export const DELETE = withErrorHandler(
     }
 
     const existing = await prisma.user.findUnique({ where: { id } });
-    if (!existing || existing.isDeleted) {
+    if (!existing || existing.deletedAt) {
       throw new NotFoundError("User", id);
     }
 
     assertUserReadable(auth, existing);
 
-    // Admin sets isDeleted = true (soft delete)
-    // Agent/Commercial can only delete their own user
+    const isPermanentDelete = existing.isDeleted && isElevatedRole(auth.role);
+
     if (isElevatedRole(auth.role)) {
       await prisma.user.update({
         where: { id },
         data: {
           isDeleted: true,
-          deletedAt: new Date(),
+          deletedAt: isPermanentDelete ? new Date() : null,
           isActive: false,
           updatedByUserId: auth.userId,
         },
@@ -382,7 +390,7 @@ export const DELETE = withErrorHandler(
         where: { id },
         data: {
           isDeleted: true,
-          deletedAt: new Date(),
+          deletedAt: null,
           isActive: false,
           updatedByUserId: auth.userId,
         },
@@ -391,7 +399,7 @@ export const DELETE = withErrorHandler(
 
     await AuditService.logEvent({
       actorUserId: auth.userId,
-      eventType: "USER_DELETED",
+      eventType: isPermanentDelete ? "USER_DELETED" : "USER_ARCHIVED",
       targetType: "USER",
       targetId: id,
     });

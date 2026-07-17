@@ -1,9 +1,18 @@
 "use client";
 
 import { sectionIcon } from "./SectionMenu";
-import type { AppSection } from "./SectionMenu";
+import { sectionRoute, type AppSection } from "./SectionMenu";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { MenuIcon } from "../ui/icons";
+import { Box, Typography } from "@mui/material";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import SearchIcon from "@mui/icons-material/Search";
+import { useRouter } from "next/navigation";
+import type { TopBarBreadcrumb } from "../InternalWorkspace";
+import type { SessionState } from "../../lib/authSession";
+import { getCommandShortcutLabel } from "./shortcutLabel";
+import { NotificationBell } from "./NotificationBell";
+import { TopBarUserMenu } from "./TopBarUserMenu";
 
 const sectionNavKey: Record<AppSection, string> = {
   simulations: "simulations",
@@ -14,6 +23,7 @@ const sectionNavKey: Record<AppSection, string> = {
   logs: "logs",
   analytics: "analytics",
   configurations: "configurations",
+  notifications: "notifications",
 };
 
 export function TopBar({
@@ -21,16 +31,36 @@ export function TopBar({
   onRefresh,
   onMobileMenuToggle,
   actionButtons,
+  breadcrumbs,
+  onCommandOpen,
+  session,
+  onLogout,
 }: {
-  section: AppSection;
+  section: AppSection | null;
   onRefresh: () => void;
   onMobileMenuToggle: () => void;
   actionButtons?: React.ReactNode;
+  breadcrumbs?: TopBarBreadcrumb[] | null;
+  onCommandOpen?: () => void;
+  session?: SessionState | null;
+  onLogout?: () => void;
 }) {
   const { t } = useI18n();
-  const Icon = sectionIcon[section];
+  const router = useRouter();
+  const shortcutLabel = getCommandShortcutLabel();
+  const Icon = section ? sectionIcon[section] : breadcrumbs?.length === 1 ? breadcrumbs[0]?.icon ?? null : null;
+  const sectionLabel = section ? t("nav", sectionNavKey[section]) : "";
+  const pathItems: TopBarBreadcrumb[] = breadcrumbs?.length
+    ? [
+      ...(section ? [{ label: sectionLabel, href: sectionRoute[section] }] : []),
+      ...breadcrumbs,
+    ]
+    : [];
 
-  console.log('TopBar rendering, actionButtons:', actionButtons);
+  const handleNavigate = (href?: string) => {
+    if (!href) return;
+    router.push(href);
+  };
 
   return (
     <div className="app-topbar">
@@ -38,17 +68,64 @@ export function TopBar({
         <button
           className="topbar-icon-btn topbar-hamburger"
           onClick={onMobileMenuToggle}
-          aria-label="Toggle menu"
+          aria-label={t("common", "toggleMenu")}
         >
           <MenuIcon />
         </button>
-        <span className="topbar-section-icon">
-          <Icon />
-        </span>
-        <span className="topbar-section-title">{t("nav", sectionNavKey[section])}</span>
+        {onCommandOpen && (
+          <button
+            className="topbar-command-btn"
+            onClick={onCommandOpen}
+            aria-label={`Open global search (${shortcutLabel})`}
+            title={`Global search (${shortcutLabel})`}
+          >
+            <SearchIcon fontSize="small" />
+            <span className="topbar-command-shortcut">{shortcutLabel}</span>
+          </button>
+        )}
+        {Icon && (
+          <span className="topbar-section-icon">
+            <Icon />
+          </span>
+        )}
+        {pathItems.length > 0 ? (
+          <nav className="topbar-breadcrumbs" aria-label={t("nav", "breadcrumb")}>
+            {pathItems.map((item, index) => {
+              const isLast = index === pathItems.length - 1;
+              const currentWeight = isLast && !section && pathItems.length === 1 ? 500 : isLast ? "inherit" : 500;
+              return (
+                <span className="topbar-breadcrumb-item" key={index}>
+                  {index > 0 && <ChevronRightIcon className="topbar-breadcrumb-separator" fontSize="small" />}
+                  <Box
+                    component="button"
+                    className={`topbar-breadcrumb-link${isLast ? " current" : ""}`}
+                    onClick={() => handleNavigate(isLast ? undefined : item.href)}
+                    disabled={isLast || !item.href}
+                    aria-current={isLast ? "page" : undefined}
+                    sx={{ color: !isLast ? "primary.main" : 'inherit' }}
+                  >
+                    <Typography component="span" variant="body2" sx={{ fontWeight: currentWeight }}>
+                      {item.label}
+                    </Typography>
+                  </Box>
+                </span>
+              );
+            })}
+          </nav>
+        ) : sectionLabel ? (
+          <Typography component="span" variant="body2" className="topbar-section-title" sx={{ fontWeight: 500 }}>
+            {sectionLabel}
+          </Typography>
+        ) : null}
       </div>
       <div className="topbar-right">
-        {actionButtons}
+        <div className="topbar-actions">{actionButtons}</div>
+        {session && onLogout ? (
+          <div className="topbar-user-tools">
+            <NotificationBell token={session.token} role={session.user.role} surface="topbar" />
+            <TopBarUserMenu session={session} onLogout={onLogout} />
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -52,12 +52,19 @@ export const GET = withErrorHandler(
       throw new NotFoundError("BaseValueSet", id);
     }
 
-    if (
-      auth.role === UserRole.AGENT &&
-      set.agencyId !== auth.agencyId &&
-      set.scopeType !== "GLOBAL"
-    ) {
-      throw new NotFoundError("BaseValueSet", id);
+    if (auth.role === UserRole.AGENT && set.agencyId !== auth.agencyId) {
+      const authAgency =
+        set.scopeType === "TLV"
+          ? await prisma.agency.findUnique({
+              where: { id: auth.agencyId },
+              select: { isTlv: true },
+            })
+          : null;
+      const canAccessSharedScope =
+        set.scopeType === "GLOBAL" || (set.scopeType === "TLV" && authAgency?.isTlv);
+      if (!canAccessSharedScope) {
+        throw new NotFoundError("BaseValueSet", id);
+      }
     }
 
     return ResponseHandler.ok(set, 200);
@@ -83,6 +90,15 @@ export const PATCH = withErrorHandler(
     const exists = await prisma.baseValueSet.findUnique({ where: { id } });
     if (!exists) {
       throw new NotFoundError("BaseValueSet", id);
+    }
+    if (
+      payload.isDeleted === true &&
+      !exists.isDeleted &&
+      (exists.isActive || exists.isProduction)
+    ) {
+      throw new ValidationError(
+        "Only draft, non-production base value sets can be archived.",
+      );
     }
 
     const updated = await prisma.baseValueSet.update({

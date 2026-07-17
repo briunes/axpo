@@ -3,6 +3,7 @@ import {
   encryptSensitiveValue,
   keyedDigest,
   maskEmail,
+  tryDecryptSensitiveValue,
 } from "../sensitiveData";
 
 describe("sensitive data protection", () => {
@@ -16,6 +17,15 @@ describe("sensitive data protection", () => {
     expect(encrypted).not.toContain("1234");
     expect(decryptSensitiveValue(encrypted)).toBe("1234");
     expect(decryptSensitiveValue("5678")).toBe("5678");
+  });
+
+  it("supports best-effort decrypt for display-only secrets", () => {
+    const invalidEncryptedValue = "enc:v1:invalid";
+
+    expect(() => decryptSensitiveValue(invalidEncryptedValue)).toThrow(
+      "Invalid encrypted value",
+    );
+    expect(tryDecryptSensitiveValue(invalidEncryptedValue)).toBeNull();
   });
 
   it("creates stable keyed digests without retaining the source value", () => {

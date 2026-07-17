@@ -1,9 +1,11 @@
 import { ReactNode } from "react";
+import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v16-appRouter";
 import { I18nProvider } from "../src/lib/i18n-context";
-import { initializeCronJobs } from "../src/lib/cron";
+import { BoneyardRegistry } from "./components/BoneyardRegistry";
 import { VersionChecker } from "./components/VersionChecker";
+import { WhatsNewModal } from "./components/WhatsNewModal";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -11,24 +13,22 @@ const montserrat = Montserrat({
   display: "swap",
 });
 
-import "@once-ui-system/core/css/styles.css";
-import "@once-ui-system/core/css/tokens.css";
 import "./env-indicator.css";
 
-// Initialize cron jobs when the app starts (server-side only)
-if (typeof window === "undefined") {
-  // Fire-and-forget async initialization
-  initializeCronJobs().catch((error) => {
-    console.error("[App] Failed to initialize cron jobs:", error);
-  });
-}
-
-export const metadata = {
+export const metadata: Metadata = {
   title: "AXPO Simulator",
   description: "AXPO Simulador",
+  applicationName: "AXPO Simulator",
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: "/axpo-mark.svg",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#ff3254",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -83,7 +83,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={`${montserrat.className} notranslate`}>
         <AppRouterCacheProvider>
           <I18nProvider>
+            <BoneyardRegistry />
             <VersionChecker />
+            <WhatsNewModal />
             <div
               className={`environment-indicator env-${appEnv}`}
               role="status"

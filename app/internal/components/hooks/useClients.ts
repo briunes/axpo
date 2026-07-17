@@ -12,8 +12,12 @@ import {
   softDeleteClient,
   type ClientItem,
   type ListClientsParams,
+  type ListClientsResponse,
 } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
+import { useRequestCachePolicy } from "./useRequestCachePolicy";
+import { normalizeQueryKeyParams } from "./queryKeys";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface ClientsActions {
   clients: ClientItem[];
@@ -49,6 +53,9 @@ export interface ClientsActions {
 interface UseClientsOptions {
   usePersistedState?: boolean;
   minimal?: boolean;
+  queryEnabled?: boolean;
+  initialData?: ListClientsResponse;
+  initialDataParams?: ListClientsParams;
 }
 
 interface ClientsFilterPersistentState {
@@ -60,12 +67,15 @@ export function useClients(
   initialPageSize = 25,
   options?: UseClientsOptions,
 ): ClientsActions {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
+  const cachePolicy = useRequestCachePolicy("clients");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
   const usePersistedState = options?.usePersistedState ?? true;
   const minimal = options?.minimal ?? false;
+  const queryEnabled = options?.queryEnabled ?? true;
 
   // Load persisted state from localStorage
   const getPersistedState = () => {
@@ -152,22 +162,41 @@ export function useClients(
     minimal: minimal || undefined,
   };
 
-  // Create a stable cache key by serializing query params
-  const queryKeyString = JSON.stringify({
+  const queryKeyParams = normalizeQueryKeyParams({
     page,
     pageSize,
-    search: search || null,
+    search,
     orderBy: sortColumn,
     sortDir,
-    includeDeleted: showArchived || null,
-    agencyId: agencyId || null,
+    includeDeleted: showArchived,
+    agencyId,
+    minimal,
   });
+  const initialDataKeyParams = options?.initialDataParams
+    ? normalizeQueryKeyParams({
+        page: options.initialDataParams.page ?? 1,
+        pageSize: options.initialDataParams.pageSize ?? initialPageSize,
+        search: options.initialDataParams.search ?? "",
+        orderBy: options.initialDataParams.orderBy ?? "name",
+        sortDir: options.initialDataParams.sortDir ?? "asc",
+        includeDeleted: options.initialDataParams.includeDeleted ?? false,
+        agencyId: options.initialDataParams.agencyId ?? "",
+        minimal: options.initialDataParams.minimal ?? false,
+      })
+    : null;
+  const canUseInitialData =
+    !!options?.initialData &&
+    !!initialDataKeyParams &&
+    JSON.stringify(queryKeyParams) === JSON.stringify(initialDataKeyParams);
 
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["clients", session?.token ?? "", queryKeyString],
+    queryKey: ["clients", session?.token ?? "", queryKeyParams],
     queryFn: () => listClients(session!.token, queryParams),
-    enabled: !!session,
+    enabled: !!session && queryEnabled,
+    initialData: canUseInitialData ? options.initialData : undefined,
+    initialDataUpdatedAt: canUseInitialData ? Date.now() : undefined,
     placeholderData: keepPreviousData,
+    ...cachePolicy,
   });
 
   const clients = data?.items ?? [];
@@ -194,7 +223,7 @@ export function useClients(
       clearFeedback();
       await fn();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Action failed.");
+      setErrorText(error instanceof Error ? error.message : t("common", "actionFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -207,9 +236,7 @@ export function useClients(
         isActive: !client.isActive,
       });
       await invalidate();
-      setSuccessText(
-        `Client ${client.isActive ? "deactivated" : "activated"}.`,
-      );
+      setSuccessText(t("clientsModule", client.isActive ? "deactivated" : "activated"));
     });
   };
 
@@ -218,7 +245,7 @@ export function useClients(
       if (!session) return;
       await softDeleteClient(session.token, client.id);
       await invalidate();
-      setSuccessText("Client deleted.");
+      setSuccessText(t("clientsModule", "deleted"));
     });
   };
 
@@ -227,9 +254,7 @@ export function useClients(
       if (!session) return;
       await Promise.all(ids.map((id) => softDeleteClient(session.token, id)));
       await invalidate();
-      setSuccessText(
-        `${ids.length} client${ids.length !== 1 ? "s" : ""} deleted.`,
-      );
+      setSuccessText(t("clientsModule", "bulkDeleted", { count: ids.length }));
     });
   };
 

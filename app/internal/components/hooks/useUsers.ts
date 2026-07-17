@@ -16,11 +16,15 @@ import {
   deleteUser,
   type CreateUserResult,
   type ListUsersParams,
+  type ListUsersResponse,
   type RotatePinResult,
   type UserItem,
   type UserRole,
 } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
+import { useRequestCachePolicy } from "./useRequestCachePolicy";
+import { normalizeQueryKeyParams } from "./queryKeys";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface UsersActions {
   users: UserItem[];
@@ -130,6 +134,8 @@ interface UseUsersOptions {
   usePersistedState?: boolean;
   minimal?: boolean;
   contextual?: boolean;
+  initialData?: ListUsersResponse;
+  initialDataParams?: ListUsersParams;
 }
 
 interface UsersFilterPersistentState {
@@ -143,7 +149,9 @@ export function useUsers(
   initialPageSize = 25,
   options?: UseUsersOptions,
 ): UsersActions {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
+  const cachePolicy = useRequestCachePolicy("users");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
@@ -276,21 +284,39 @@ export function useUsers(
     contextual: contextual || undefined,
   };
 
-  // Create a stable cache key by serializing query params
-  const queryKeyString = JSON.stringify({
+  const queryKeyParams = normalizeQueryKeyParams({
     page,
     pageSize,
-    search: search || null,
-    role: roleFilter || null,
-    agencyId: agencyFilter || null,
+    search,
+    role: roleFilter,
+    agencyId: agencyFilter,
     orderBy: sortColumn,
     sortDir,
-    includeDeleted: showArchived || null,
+    includeDeleted: showArchived,
+    minimal,
     contextual,
   });
+  const initialDataKeyParams = options?.initialDataParams
+    ? normalizeQueryKeyParams({
+        page: options.initialDataParams.page ?? 1,
+        pageSize: options.initialDataParams.pageSize ?? initialPageSize,
+        search: options.initialDataParams.search ?? "",
+        role: options.initialDataParams.role ?? "",
+        agencyId: options.initialDataParams.agencyId ?? "",
+        orderBy: options.initialDataParams.orderBy ?? "createdAt",
+        sortDir: options.initialDataParams.sortDir ?? "desc",
+        includeDeleted: options.initialDataParams.includeDeleted ?? false,
+        minimal: options.initialDataParams.minimal ?? false,
+        contextual: options.initialDataParams.contextual ?? false,
+      })
+    : null;
+  const canUseInitialData =
+    !!options?.initialData &&
+    !!initialDataKeyParams &&
+    JSON.stringify(queryKeyParams) === JSON.stringify(initialDataKeyParams);
 
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["users", session?.token ?? "", queryKeyString],
+    queryKey: ["users", session?.token ?? "", queryKeyParams],
     queryFn: async () => {
       const result = await listUsers(session!.token, queryParams);
       // seed the agencyId for the create form if not yet set
@@ -301,7 +327,10 @@ export function useUsers(
       return result;
     },
     enabled: !!session && queryEnabled,
+    initialData: canUseInitialData ? options.initialData : undefined,
+    initialDataUpdatedAt: canUseInitialData ? Date.now() : undefined,
     placeholderData: keepPreviousData,
+    ...cachePolicy,
   });
 
   const users = data?.items ?? [];
@@ -309,9 +338,11 @@ export function useUsers(
   const loading = isFetching;
 
   const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({
-      queryKey: ["users", session?.token ?? ""],
-    });
+    const token = session?.token ?? "";
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["users", token] }),
+      queryClient.invalidateQueries({ queryKey: ["users-init", token] }),
+    ]);
   }, [queryClient, session?.token]);
 
   const refresh = useCallback(
@@ -328,7 +359,7 @@ export function useUsers(
       clearFeedback();
       await fn();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Action failed.");
+      setErrorText(error instanceof Error ? error.message : t("common", "actionFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -372,7 +403,7 @@ export function useUsers(
       !commercialEmail.trim()
     ) {
       setErrorText(
-        "Name, email, mobile phone, commercial contact and agency are required.",
+        t("usersModule", "createRequiredFields"),
       );
       return null;
     }
@@ -383,7 +414,7 @@ export function useUsers(
       )
     ) {
       setErrorText(
-        "Password must be 12–128 chars with uppercase, lowercase, number and special character.",
+        t("usersModule", "passwordPolicy"),
       );
       return null;
     }
@@ -392,7 +423,7 @@ export function useUsers(
       (role !== "COMMERCIAL" || agencyId !== session.user.agencyId)
     ) {
       setErrorText(
-        "Agent can only create commercial users in the same agency.",
+        t("usersModule", "agentCreateRestriction"),
       );
       return null;
     }
@@ -421,8 +452,8 @@ export function useUsers(
       await invalidate();
       setSuccessText(
         result?.generatedPinMasked
-          ? `User created. Temporary PIN: ${result.generatedPinMasked}`
-          : "User created.",
+          ? t("usersModule", "createdWithPin", { pin: result.generatedPinMasked })
+          : t("usersModule", "created"),
       );
     });
     return result;
@@ -499,7 +530,7 @@ export function useUsers(
       !commercialEmail.trim()
     ) {
       setErrorText(
-        "Full name, email, mobile phone and commercial contacts are required.",
+        t("usersModule", "updateRequiredFields"),
       );
       return;
     }
@@ -511,12 +542,12 @@ export function useUsers(
       )
     ) {
       setErrorText(
-        "New password must be 12–128 chars with uppercase, lowercase, number and special character.",
+        t("usersModule", "newPasswordPolicy"),
       );
       return;
     }
     if (changingPassword && userId === session.user.id && !currentPassword) {
-      setErrorText("Current password is required to change your own password.");
+      setErrorText(t("usersModule", "currentPasswordRequired"));
       return;
     }
     await runAction("update-user", async () => {
@@ -542,7 +573,7 @@ export function useUsers(
       });
       await invalidate();
       setSuccessText(
-        changingPassword ? "User and password updated." : "User updated.",
+        t("usersModule", changingPassword ? "userAndPasswordUpdated" : "updated"),
       );
       setSelectedUserId(null);
       setEditUserPassword("");
@@ -554,7 +585,7 @@ export function useUsers(
     e.preventDefault();
     if (!session) return;
     if (!profileFullName.trim() || !profileEmail.trim()) {
-      setErrorText("Full name and email are required.");
+      setErrorText(t("usersModule", "profileRequiredFields"));
       return;
     }
     await runAction("update-profile", async () => {
@@ -562,7 +593,7 @@ export function useUsers(
         fullName: profileFullName.trim(),
         email: profileEmail.trim(),
       });
-      setSuccessText("Profile updated.");
+      setSuccessText(t("usersModule", "profileUpdated"));
     });
   };
 
@@ -571,7 +602,7 @@ export function useUsers(
       if (!session) return;
       await updateUserStatus(session.token, user.id, !user.isActive);
       await invalidate();
-      setSuccessText("User status updated.");
+      setSuccessText(t("usersModule", "statusUpdated"));
     });
   };
 
@@ -583,7 +614,7 @@ export function useUsers(
     await runAction(`rotate-user-${user.id}`, async () => {
       result = await rotateUserPin(session.token, user.id);
       await invalidate();
-      setSuccessText(`PIN rotated: ${result?.newPinMasked}`);
+      setSuccessText(t("usersModule", "pinRotated", { pin: result?.newPinMasked ?? "" }));
     });
     return result;
   };
@@ -593,7 +624,7 @@ export function useUsers(
     await runAction(`delete-user-${user.id}`, async () => {
       await deleteUser(session.token, user.id);
       await invalidate();
-      setSuccessText("User deleted.");
+      setSuccessText(t("usersModule", "deleted"));
     });
   };
 
@@ -602,9 +633,7 @@ export function useUsers(
       if (!session) return;
       await Promise.all(ids.map((id) => deleteUser(session.token, id)));
       await invalidate();
-      setSuccessText(
-        `${ids.length} user${ids.length !== 1 ? "s" : ""} deleted.`,
-      );
+      setSuccessText(t("usersModule", "bulkDeleted", { count: ids.length }));
     });
   };
 
@@ -612,7 +641,7 @@ export function useUsers(
     if (!session) return;
     await runAction(`request-password-reset-${user.id}`, async () => {
       await requestUserPasswordReset(session.token, user.id);
-      setSuccessText(`Password reset email sent to ${user.email}`);
+      setSuccessText(t("usersModule", "passwordResetSent", { email: user.email }));
     });
   };
 

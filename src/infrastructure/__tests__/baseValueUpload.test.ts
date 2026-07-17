@@ -1,8 +1,8 @@
 import {
   isBaseValueWorkbookFileName,
   isVercelBlobUrl,
-  MAX_BASE_VALUE_WORKBOOK_SIZE,
 } from "@/infrastructure/excel/baseValueUpload";
+import { DEFAULT_MAX_UPLOAD_FILE_SIZE_MB } from "@/infrastructure/uploads/uploadLimits";
 
 describe("base value workbook uploads", () => {
   it("accepts supported Excel extensions case-insensitively", () => {
@@ -30,7 +30,7 @@ describe("base value workbook uploads", () => {
     ).toBe(false);
   });
 
-  it("caps workbooks at 50 MiB", () => {
-    expect(MAX_BASE_VALUE_WORKBOOK_SIZE).toBe(50 * 1024 * 1024);
+  it("uses 15 MiB as the default configurable upload cap", () => {
+    expect(DEFAULT_MAX_UPLOAD_FILE_SIZE_MB).toBe(15);
   });
 });

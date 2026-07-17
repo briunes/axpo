@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   useQuery,
   useQueryClient,
@@ -12,10 +12,15 @@ import {
   updateBaseValueSet,
   uploadBaseValueFile,
   toggleBaseValueSetProduction,
+  invalidateBaseValuesReadCache,
+  type BaseValueScopeType,
   type BaseValueSetItem,
   type ListBaseValueSetsParams,
 } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
+import { useRequestCachePolicy } from "./useRequestCachePolicy";
+import { normalizeQueryKeyParams } from "./queryKeys";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export interface BaseValuesActions {
   baseValueSets: BaseValueSetItem[];
@@ -41,15 +46,35 @@ export interface BaseValuesActions {
   // showArchived
   showArchived: boolean;
   setShowArchived: (v: boolean) => void;
+  scopeFilter: "" | Extract<BaseValueScopeType, "GLOBAL" | "TLV">;
+  setScopeFilter: (v: "" | Extract<BaseValueScopeType, "GLOBAL" | "TLV">) => void;
+  statusFilter: "" | "ACTIVE" | "DRAFT" | "ARCHIVED";
+  setStatusFilter: (v: "" | "ACTIVE" | "DRAFT" | "ARCHIVED") => void;
+  productionFilter: "" | "production" | "standard";
+  setProductionFilter: (v: "" | "production" | "standard") => void;
   // actions
   handleActivateBaseValueSet: (setItem: BaseValueSetItem) => Promise<void>;
   handleArchiveBaseValueSet: (setItem: BaseValueSetItem) => Promise<void>;
+  handleBulkArchiveBaseValueSets: (ids: string[]) => Promise<void>;
   handleToggleProduction: (setItem: BaseValueSetItem) => Promise<void>;
-  handleUploadFile: (file: File, replace?: boolean) => Promise<void>;
+  handleUploadFile: (
+    file: File,
+    replace?: boolean,
+    scopeType?: Extract<BaseValueScopeType, "GLOBAL" | "TLV">,
+  ) => Promise<void>;
+}
+
+interface BaseValuesFilterPersistentState {
+  scopeFilter: "" | Extract<BaseValueScopeType, "GLOBAL" | "TLV">;
+  statusFilter: "" | "ACTIVE" | "DRAFT" | "ARCHIVED";
+  productionFilter: "" | "production" | "standard";
+  showArchived: boolean;
 }
 
 export function useBaseValues(session: SessionState | null): BaseValuesActions {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
+  const cachePolicy = useRequestCachePolicy("baseValues");
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
@@ -67,6 +92,36 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
   };
   const persistedState = getPersistedState();
 
+  const getPersistedFilters = (): BaseValuesFilterPersistentState | null => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("axpo_base_values_filters");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<BaseValuesFilterPersistentState>;
+      return {
+        scopeFilter:
+          parsed.scopeFilter === "GLOBAL" || parsed.scopeFilter === "TLV"
+            ? parsed.scopeFilter
+            : "",
+        statusFilter:
+          parsed.statusFilter === "ACTIVE" ||
+          parsed.statusFilter === "DRAFT" ||
+          parsed.statusFilter === "ARCHIVED"
+            ? parsed.statusFilter
+            : "",
+        productionFilter:
+          parsed.productionFilter === "production" ||
+          parsed.productionFilter === "standard"
+            ? parsed.productionFilter
+            : "",
+        showArchived: parsed.showArchived ?? false,
+      };
+    } catch {
+      return null;
+    }
+  };
+  const persistedFilters = getPersistedFilters();
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [sortColumn, setSortColumn] = useState(
@@ -80,12 +135,38 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
     setSortDir(dir);
   };
   const [search, setSearch] = useState(persistedState?.search || "");
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchived, setShowArchived] = useState(
+    persistedFilters?.showArchived || false,
+  );
+  const [scopeFilter, setScopeFilter] = useState<
+    "" | Extract<BaseValueScopeType, "GLOBAL" | "TLV">
+  >(persistedFilters?.scopeFilter || "");
+  const [statusFilter, setStatusFilter] = useState<
+    "" | "ACTIVE" | "DRAFT" | "ARCHIVED"
+  >(persistedFilters?.statusFilter || "");
+  const [productionFilter, setProductionFilter] = useState<
+    "" | "production" | "standard"
+  >(persistedFilters?.productionFilter || "");
 
   const clearFeedback = () => {
     setErrorText(null);
     setSuccessText(null);
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const nextState: BaseValuesFilterPersistentState = {
+        scopeFilter,
+        statusFilter,
+        productionFilter,
+        showArchived,
+      };
+      localStorage.setItem("axpo_base_values_filters", JSON.stringify(nextState));
+    } catch {
+      // ignore persistence failures
+    }
+  }, [scopeFilter, statusFilter, productionFilter, showArchived]);
 
   // ── TanStack Query ──────────────────────────────────────────────────────
   const queryParams: ListBaseValueSetsParams = {
@@ -95,13 +176,28 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
     orderBy: sortColumn,
     sortDir,
     showArchived,
+    scopeType: scopeFilter || undefined,
+    status: statusFilter || undefined,
+    production: productionFilter || undefined,
   };
+  const queryKeyParams = normalizeQueryKeyParams({
+    page,
+    pageSize,
+    search,
+    orderBy: sortColumn,
+    sortDir,
+    showArchived,
+    scopeType: scopeFilter,
+    status: statusFilter,
+    production: productionFilter,
+  });
 
   const { data, isFetching, refetch } = useQuery({
-    queryKey: ["base-values", session?.token ?? "", queryParams],
+    queryKey: ["base-values", session?.token ?? "", queryKeyParams],
     queryFn: () => listBaseValueSets(session!.token, queryParams),
     enabled: !!session,
     placeholderData: keepPreviousData,
+    ...cachePolicy,
   });
 
   const baseValueSets = data?.items ?? [];
@@ -109,6 +205,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
   const loading = isFetching;
 
   const invalidate = useCallback(async () => {
+    if (session?.token) invalidateBaseValuesReadCache(session.token);
     await queryClient.invalidateQueries({
       queryKey: ["base-values", session?.token ?? ""],
     });
@@ -116,9 +213,10 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
 
   const refresh = useCallback(
     async (_overrides?: ListBaseValueSetsParams) => {
+      if (session?.token) invalidateBaseValuesReadCache(session.token);
       await refetch();
     },
-    [refetch],
+    [refetch, session?.token],
   );
   // ────────────────────────────────────────────────────────────────────────
 
@@ -128,7 +226,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
       clearFeedback();
       await fn();
     } catch (error) {
-      setErrorText(error instanceof Error ? error.message : "Action failed.");
+      setErrorText(error instanceof Error ? error.message : t("common", "actionFailed"));
     } finally {
       setBusyAction(null);
     }
@@ -139,27 +237,61 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
       if (!session) return;
       await activateBaseValueSet(session.token, setItem.id);
       await invalidate();
-      setSuccessText("Base value set activated.");
+      setSuccessText(t("baseValuesModule", "activated"));
     });
   };
 
   const handleArchiveBaseValueSet = async (setItem: BaseValueSetItem) => {
     await runAction(`archive-base-value-${setItem.id}`, async () => {
       if (!session) return;
+      if (!setItem.isDeleted && (setItem.isActive || setItem.isProduction)) {
+        throw new Error(t("baseValuesModule", "archiveNotAllowed"));
+      }
       await updateBaseValueSet(session.token, setItem.id, {
         isDeleted: !setItem.isDeleted,
       });
       await invalidate();
-      setSuccessText(
-        `Base value set ${setItem.isDeleted ? "restored" : "archived"}.`,
-      );
+      setSuccessText(t("baseValuesModule", setItem.isDeleted ? "restored" : "archived"));
     });
   };
 
-  const handleUploadFile = async (file: File, replace: boolean = false) => {
+  const handleBulkArchiveBaseValueSets = async (ids: string[]) => {
+    await runAction("bulk-archive-base-values", async () => {
+      if (!session) return;
+      const selectedSets = baseValueSets.filter((setItem) =>
+        ids.includes(setItem.id),
+      );
+      const invalidSets = selectedSets.filter(
+        (setItem) =>
+          setItem.isDeleted || setItem.isActive || setItem.isProduction,
+      );
+      if (invalidSets.length > 0) {
+        throw new Error(t("baseValuesModule", "archiveNotAllowed"));
+      }
+
+      await Promise.all(
+        ids.map((id) =>
+          updateBaseValueSet(session.token, id, { isDeleted: true }),
+        ),
+      );
+      await invalidate();
+      setSuccessText(t("baseValuesModule", "bulkArchived", { count: ids.length }));
+    });
+  };
+
+  const handleUploadFile = async (
+    file: File,
+    replace: boolean = false,
+    scopeType?: Extract<BaseValueScopeType, "GLOBAL" | "TLV">,
+  ) => {
     await runAction("upload-base-value-file", async () => {
       if (!session) return;
-      const result = await uploadBaseValueFile(session.token, file, replace);
+      const result = await uploadBaseValueFile(
+        session.token,
+        file,
+        replace,
+        scopeType,
+      );
       await invalidate();
       setSuccessText(result.message);
     });
@@ -174,9 +306,7 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
         !setItem.isProduction,
       );
       await invalidate();
-      setSuccessText(
-        "Base value set set as production. Others marked as draft.",
-      );
+      setSuccessText(t("baseValuesModule", "productionSet", { scope: setItem.scopeType }));
     });
   };
 
@@ -200,8 +330,15 @@ export function useBaseValues(session: SessionState | null): BaseValuesActions {
     setSearch,
     showArchived,
     setShowArchived,
+    scopeFilter,
+    setScopeFilter,
+    statusFilter,
+    setStatusFilter,
+    productionFilter,
+    setProductionFilter,
     handleActivateBaseValueSet,
     handleArchiveBaseValueSet,
+    handleBulkArchiveBaseValueSets,
     handleToggleProduction,
     handleUploadFile,
   };

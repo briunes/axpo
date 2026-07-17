@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     alpha,
     Box,
@@ -9,7 +9,6 @@ import {
     Drawer,
     IconButton,
     Stack,
-    TextField,
     Tooltip,
     Typography,
     useTheme,
@@ -25,17 +24,16 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import SearchIcon from "@mui/icons-material/Search";
-import ClearIcon from "@mui/icons-material/Clear";
+import { useRequestCachePolicy } from "../hooks/useRequestCachePolicy";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import type { SessionState } from "../../lib/authSession";
-import { DataTable, type ColumnDef } from "../ui";
+import { DataTable, DateInput, TableFilterButton, TableFiltersDialog, type ColumnDef } from "../ui";
 import { ConfirmDialog } from "../shared";
 import { FormSelect } from "../ui/FormSelect";
-import { DateRangePicker } from "../ui/DateRangePicker";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
-import { formatDisplayDate } from "../../lib/formatPreferences";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useLogTableToolbar } from "./logTableToolbar";
 
 const SENTRY_BASE_URL = "https://signed-axpo.sentry.io";
 
@@ -66,7 +64,16 @@ export interface AppErrorLogsPanelProps {
     onNotify?: (text: string, tone: "success" | "error") => void;
 }
 
+type AppErrorLogsViewState = {
+    errorType: string;
+    dateFrom: string;
+    dateTo: string;
+};
+
+const APP_ERROR_LOG_VIEWS_STORAGE_KEY = "axpo_app_error_log_saved_views";
+
 export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps) {
+    const cachePolicy = useRequestCachePolicy("logs");
     const theme = useTheme();
     const { locale, t } = useI18n();
     const { preferences } = useUserPreferences();
@@ -86,20 +93,20 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
 
     // Local (pending) filter state
     const [localErrorType, setLocalErrorType] = useState("");
-    const [localSearch, setLocalSearch] = useState("");
     const [localDateFrom, setLocalDateFrom] = useState<Date | null>(null);
     const [localDateTo, setLocalDateTo] = useState<Date | null>(null);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+
+    useEffect(() => {
+        if (!filtersOpen) return;
+        setLocalErrorType(filterErrorType);
+        setLocalDateFrom(filterDateFrom ? new Date(`${filterDateFrom}T00:00:00`) : null);
+        setLocalDateTo(filterDateTo ? new Date(`${filterDateTo}T00:00:00`) : null);
+    }, [filterDateFrom, filterDateTo, filterErrorType, filtersOpen]);
 
     const formatDate = useCallback((isoString: string) => {
-        try {
-            const date = new Date(isoString);
-            const formatted = formatDisplayDate(date, preferences.dateFormat);
-            const hh = String(date.getHours()).padStart(2, "0");
-            const mm = String(date.getMinutes()).padStart(2, "0");
-            const ss = String(date.getSeconds()).padStart(2, "0");
-            return `${formatted} ${hh}:${mm}:${ss}`;
-        } catch { return isoString; }
-    }, [preferences.dateFormat]);
+        return formatDisplayDateTime(isoString, preferences, { includeSeconds: true, fallback: isoString });
+    }, [preferences]);
 
     const toDateOnly = (d: Date | null) => {
         if (!d) return "";
@@ -108,17 +115,60 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
 
     const handleSearch = () => {
         setFilterErrorType(localErrorType);
-        setFilterSearch(localSearch);
         setFilterDateFrom(toDateOnly(localDateFrom));
         setFilterDateTo(toDateOnly(localDateTo));
         setPage(1);
+        setFiltersOpen(false);
     };
 
     const handleClear = () => {
-        setLocalErrorType(""); setLocalSearch(""); setLocalDateFrom(null); setLocalDateTo(null);
+        setLocalErrorType(""); setLocalDateFrom(null); setLocalDateTo(null);
         setFilterErrorType(""); setFilterSearch(""); setFilterDateFrom(""); setFilterDateTo("");
         setPage(1);
+        setFiltersOpen(false);
     };
+    const activeFilterCount = [filterErrorType, filterDateFrom || filterDateTo].filter(Boolean).length;
+
+    const currentView = useMemo<AppErrorLogsViewState>(() => ({
+        errorType: filterErrorType,
+        dateFrom: filterDateFrom,
+        dateTo: filterDateTo,
+    }), [filterDateFrom, filterDateTo, filterErrorType]);
+
+    const applyView = useCallback((view: AppErrorLogsViewState) => {
+        setFilterErrorType(view.errorType ?? "");
+        setFilterDateFrom(view.dateFrom ?? "");
+        setFilterDateTo(view.dateTo ?? "");
+        setPage(1);
+    }, []);
+
+    const builtInViews = useMemo<Array<{ id: string; name: string; view: AppErrorLogsViewState }>>(() => [
+        { id: "recent", name: t("simulationsModule", "presetRecent"), view: { errorType: "", dateFrom: "", dateTo: "" } },
+        { id: "error", name: "Error", view: { errorType: "Error", dateFrom: "", dateTo: "" } },
+        { id: "type-error", name: "TypeError", view: { errorType: "TypeError", dateFrom: "", dateTo: "" } },
+        { id: "reference-error", name: "ReferenceError", view: { errorType: "ReferenceError", dateFrom: "", dateTo: "" } },
+    ], [t]);
+
+    const {
+        activeViewPresetId,
+        openSaveViewDialog,
+        saveViewDialog,
+        searchProps,
+    } = useLogTableToolbar<AppErrorLogsViewState>({
+        storageKey: APP_ERROR_LOG_VIEWS_STORAGE_KEY,
+        currentView,
+        presets: builtInViews,
+        applyView,
+        searchValue: filterSearch,
+        onSearchChange: (value) => {
+            setFilterSearch(value);
+            setPage(1);
+        },
+        searchPlaceholder: t("search", "auditLogs"),
+        t,
+    });
+
+    const toolbarFilterCount = activeViewPresetId ? 0 : activeFilterCount;
 
     const { data, isFetching, error } = useQuery({
         queryKey: ["app-error-logs", session.token, page, pageSize, filterErrorType, filterSearch, filterDateFrom, filterDateTo],
@@ -142,7 +192,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
             };
         },
         placeholderData: keepPreviousData,
-        staleTime: 30_000,
+        ...cachePolicy,
     });
 
     useEffect(() => {
@@ -227,10 +277,10 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
             label: t("logs", "timestamp"),
             renderCell: (log) => (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
-                    <Typography variant="body2" sx={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, whiteSpace: "nowrap" }}>
                         {formatDate(log.createdAt)}
                     </Typography>
-                    <Typography variant="caption" sx={{ fontSize: 11, color: "text.secondary" }}>
+                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
                         {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true, locale: locale === "es" ? es : undefined })}
                     </Typography>
                 </Box>
@@ -245,7 +295,6 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                     size="small"
                     sx={{
                         fontFamily: "monospace",
-                        fontSize: 11,
                         fontWeight: 700,
                         height: 22,
                         backgroundColor: alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.18 : 0.1),
@@ -261,7 +310,6 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                 <Typography
                     variant="body2"
                     sx={{
-                        fontSize: 12,
                         color: "text.primary",
                         maxWidth: 340,
                         overflow: "hidden",
@@ -285,7 +333,6 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                                 label={log.method}
                                 size="small"
                                 sx={{
-                                    fontSize: 10,
                                     fontWeight: 700,
                                     height: 18,
                                     fontFamily: "monospace",
@@ -296,14 +343,14 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                         )}
                         <Typography
                             variant="caption"
-                            sx={{ fontFamily: "monospace", fontSize: 11, color: "text.secondary" }}
+                            sx={{ fontFamily: "monospace", color: "text.secondary" }}
                             title={log.path}
                         >
                             {log.path.length > 40 ? `...${log.path.slice(-40)}` : log.path}
                         </Typography>
                     </Box>
                 ) : (
-                    <Typography variant="caption" sx={{ color: "text.disabled" }}>—</Typography>
+                    <Typography variant="caption" sx={{ color: "text.disabled" }}>-</Typography>
                 ),
         },
         {
@@ -313,13 +360,13 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                 log.pagePath ? (
                     <Typography
                         variant="caption"
-                        sx={{ fontFamily: "monospace", fontSize: 11, color: "text.secondary" }}
+                        sx={{ fontFamily: "monospace", color: "text.secondary" }}
                         title={log.pagePath}
                     >
                         {log.pagePath.length > 40 ? `...${log.pagePath.slice(-40)}` : log.pagePath}
                     </Typography>
                 ) : (
-                    <Typography variant="caption" sx={{ color: "text.disabled" }}>—</Typography>
+                    <Typography variant="caption" sx={{ color: "text.disabled" }}>-</Typography>
                 ),
         },
         {
@@ -327,11 +374,11 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
             label: t("logs", "user"),
             renderCell: (log) =>
                 log.user ? (
-                    <Typography variant="caption" sx={{ fontSize: 11 }}>
+                    <Typography variant="caption">
                         {log.user.fullName}
                     </Typography>
                 ) : (
-                    <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 11 }}>—</Typography>
+                    <Typography variant="caption" sx={{ color: "text.disabled" }}>-</Typography>
                 ),
         },
     ];
@@ -368,7 +415,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                                 </IconButton>
                             </Tooltip>
                         ) : (
-                            <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 11 }}>—</Typography>
+                            <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 11 }}>-</Typography>
                         )}
 
                         <Tooltip title={t("logs", "deleteAppError")}>
@@ -386,63 +433,25 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                     </>
 
                 )}
-                renderCustomSearch={({ }) => (
-                    <Box sx={{ display: 'flex', width: '100%', gap: 1 }}>
-                        <Box sx={{ flex: 1, }}>
-                            <FormSelect
-                                label=""
-                                options={[
-                                    { value: "", label: t("logs", "allTypes") },
-                                    { value: "Error", label: "Error" },
-                                    { value: "ReferenceError", label: "ReferenceError" },
-                                    { value: "TypeError", label: "TypeError" },
-                                    { value: "SyntaxError", label: "SyntaxError" },
-                                ]}
-                                value={localErrorType}
-                                onChange={(v) => setLocalErrorType(String(v ?? ""))}
-                                placeholder={t("logs", "errorType")}
-                                textFieldProps={{ size: "small" }}
-                            />
-                        </Box>
-                        <Box sx={{ flex: 1 }}>
-                            <TextField
-                                size="small"
-                                fullWidth
-                                placeholder={t("logs", "searchError")}
-                                value={localSearch}
-                                onChange={(e) => setLocalSearch(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                                sx={{ "& .MuiInputBase-root": { fontSize: 13 } }}
-                            />
-                        </Box>
-                        <Box sx={{ flex: 2 }}>
-                            <DateRangePicker
-                                variant="inline"
-                                label={t("logs", "timestamp")}
-                                startDate={localDateFrom}
-                                endDate={localDateTo}
-                                onChange={(s, e) => { setLocalDateFrom(s); setLocalDateTo(e); }}
-
-                            />
-                        </Box>
-                        <Button variant="contained" size="small" onClick={handleSearch} aria-label={t("common", "search")}>
-                            <SearchIcon />
-                        </Button>
-                        <Button variant="outlined" size="small" onClick={handleClear}>
-                            <ClearIcon />
-                        </Button>
-                    </Box>
-                )}
-                headerRight={
+                {...searchProps}
+                onClearFilters={handleClear}
+                hasActiveFilters={Boolean(filterSearch || toolbarFilterCount)}
+                headerRight={<Stack direction="row" spacing={1} alignItems="center">
+                    <TableFilterButton
+                        title={t("simulationsModule", "filtersTitle")}
+                        activeFilterCount={toolbarFilterCount}
+                        onClick={() => setFiltersOpen(true)}
+                    />
                     <Button
                         variant="outlined"
                         size="small"
                         endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
                         onClick={() => window.open(`${SENTRY_BASE_URL}/issues/`, "_blank", "noopener,noreferrer")}
-                        sx={{ fontSize: 12, whiteSpace: "nowrap", ml: 2 }}
+                        sx={{ fontSize: 12, whiteSpace: "nowrap" }}
                     >
                         {t("logs", "openSentry")}
-                    </Button>}
+                    </Button>
+                </Stack>}
                 pagination={{
                     page,
                     pageSize,
@@ -463,6 +472,45 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                 ]}
                 emptyMessage={t("logs", "noAppErrors")}
             />
+
+            <TableFiltersDialog
+                open={filtersOpen}
+                title={t("simulationsModule", "filtersTitle")}
+                saveViewLabel={t("simulationsModule", "saveView")}
+                clearLabel={t("simulationsModule", "clearFilters")}
+                applyLabel={t("simulationsModule", "applyFilters")}
+                onClose={() => setFiltersOpen(false)}
+                onOpenSaveView={openSaveViewDialog}
+                onClear={handleClear}
+                onApply={handleSearch}
+            >
+                <FormSelect
+                    label={t("logs", "errorType")}
+                    options={[
+                        { value: "", label: t("logs", "allTypes") },
+                        { value: "Error", label: "Error" },
+                        { value: "ReferenceError", label: "ReferenceError" },
+                        { value: "TypeError", label: "TypeError" },
+                        { value: "SyntaxError", label: "SyntaxError" },
+                    ]}
+                    value={localErrorType}
+                    onChange={(v) => setLocalErrorType(String(v ?? ""))}
+                    textFieldProps={{ size: "small" }}
+                />
+                <DateInput
+                    label={t("datePicker", "from")}
+                    labelPosition="top"
+                    value={toDateOnly(localDateFrom)}
+                    onChange={(value) => setLocalDateFrom(value ? new Date(`${value}T00:00:00`) : null)}
+                />
+                <DateInput
+                    label={t("datePicker", "to")}
+                    labelPosition="top"
+                    value={toDateOnly(localDateTo)}
+                    onChange={(value) => setLocalDateTo(value ? new Date(`${value}T00:00:00`) : null)}
+                />
+            </TableFiltersDialog>
+            {saveViewDialog}
 
             {/* Detail Drawer */}
             <Drawer
@@ -529,7 +577,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                             {/* Timestamp */}
                             <Box>
                                 <Typography variant="caption" color="text.secondary">{t("logs", "timestamp")}</Typography>
-                                <Typography variant="body2" sx={{ mt: 0.5, fontSize: 13 }}>
+                                <Typography variant="body2" sx={{ mt: 0.5, }}>
                                     {formatDate(selected.createdAt)}
                                     {" · "}{formatDistanceToNow(new Date(selected.createdAt), { addSuffix: true, locale: locale === "es" ? es : undefined })}
                                 </Typography>
@@ -584,7 +632,7 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                             {selected.user && (
                                 <Box>
                                     <Typography variant="caption" color="text.secondary">{t("logs", "user")}</Typography>
-                                    <Typography variant="body2" sx={{ mt: 0.5, fontSize: 13 }}>
+                                    <Typography variant="body2" sx={{ mt: 0.5, }}>
                                         {selected.user.fullName}
                                         <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
                                             {selected.user.email}

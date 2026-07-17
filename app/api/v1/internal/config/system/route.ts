@@ -4,7 +4,13 @@ import { invalidateAppVersionCache } from "@/application/lib/appVersionCache";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
+import { ValidationError } from "@/domain/errors/errors";
 import { buildLegacyAiProvider, getAiTaskConfigs, getConfiguredAiProviders } from "@/application/lib/aiConfig";
+import {
+  appendVersionChangelogEntry,
+  withCurrentVersionChangelog,
+} from "@/application/lib/appChangelog";
+import { normalizeMaxUploadFileSizeMb } from "@/infrastructure/uploads/uploadLimits";
 
 const redactAiProvider = (provider: Record<string, any>) => ({
   ...provider,
@@ -15,6 +21,7 @@ const redactAiProvider = (provider: Record<string, any>) => ({
 const toPublicConfig = (config: Record<string, any>) => ({
   magicLinkEnabled: config.magicLinkEnabled,
   appVersion: config.appVersion,
+  appChangelog: withCurrentVersionChangelog(config.appChangelog, config.appVersion),
   maintenanceMode: config.maintenanceMode,
   maintenanceUntil: config.maintenanceUntil,
   maintenanceMessage: config.maintenanceMessage,
@@ -25,6 +32,7 @@ const toRuntimeConfig = (config: Record<string, any>) => ({
   simulationExpirationDays: config.simulationExpirationDays,
   autoCreateClientOnSim: config.autoCreateClientOnSim,
   defaultMaxActiveDevices: config.defaultMaxActiveDevices,
+  maxUploadFileSizeMb: normalizeMaxUploadFileSizeMb(config.maxUploadFileSizeMb),
   ivaRate: config.ivaRate,
   electricityTaxRate: config.electricityTaxRate,
   hydrocarbonTaxRate: config.hydrocarbonTaxRate,
@@ -42,9 +50,11 @@ const toRuntimeConfig = (config: Record<string, any>) => ({
   llmEnabled: config.llmEnabled,
   magicLinkEnabled: config.magicLinkEnabled,
   appVersion: config.appVersion,
+  appChangelog: withCurrentVersionChangelog(config.appChangelog, config.appVersion),
   maintenanceMode: config.maintenanceMode,
   maintenanceUntil: config.maintenanceUntil,
   maintenanceMessage: config.maintenanceMessage,
+  requestCacheConfig: config.requestCacheConfig,
 });
 
 const toAdminConfig = (config: Record<string, any>) => ({
@@ -97,6 +107,7 @@ const toAdminConfig = (config: Record<string, any>) => ({
   ocrBillingMarkupPercent: config.ocrBillingMarkupPercent,
   ocrBillingFixedFeePerCall: config.ocrBillingFixedFeePerCall,
   ocrBillingIncludeFailedCalls: config.ocrBillingIncludeFailedCalls,
+  requestCacheConfig: config.requestCacheConfig,
 });
 
 async function getOrCreateSystemConfig() {
@@ -117,6 +128,7 @@ async function getOrCreateSystemConfig() {
         defaultDashboardView: "COMMERCIAL",
         enableRealtimeReports: false,
         defaultMaxActiveDevices: 3,
+        maxUploadFileSizeMb: 15,
       },
     });
   }
@@ -175,12 +187,34 @@ const PUT = withErrorHandler(async (req: NextRequest) => {
   const body = await req.json();
   const data = { ...body };
   let config = await prisma.systemConfig.findFirst();
+  const previousAppVersion = config?.appVersion ?? null;
+  const changelogNotes = data.appChangelogNotes;
+  delete data.appChangelogNotes;
+
+  if (
+    data.appVersion !== undefined &&
+    data.appVersion !== previousAppVersion &&
+    (!changelogNotes ||
+      typeof changelogNotes !== "object" ||
+      !Object.values(changelogNotes).some(
+        (notes) => typeof notes === "string" && notes.trim().length > 0,
+      ))
+  ) {
+    throw new ValidationError("Release notes are required when publishing a new app version");
+  }
 
   if (data.smtpPassword === "") {
     delete data.smtpPassword;
   }
   if (data.llmApiKey === "") {
     delete data.llmApiKey;
+  }
+  if (data.maxUploadFileSizeMb !== undefined) {
+    const parsed = Number.parseInt(String(data.maxUploadFileSizeMb), 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      throw new ValidationError("Maximum upload file size must be at least 1 MB");
+    }
+    data.maxUploadFileSizeMb = Math.round(parsed);
   }
   if (Array.isArray(data.aiProviderConfigs)) {
     const existingProviders = config
@@ -197,6 +231,18 @@ const PUT = withErrorHandler(async (req: NextRequest) => {
       }
       const { hasApiKey: _hasApiKey, ...safeProvider } = provider;
       return safeProvider;
+    });
+  }
+
+  if (
+    data.appVersion !== undefined &&
+    (data.appVersion !== previousAppVersion || changelogNotes !== undefined)
+  ) {
+    data.appChangelog = appendVersionChangelogEntry({
+      changelog: config?.appChangelog,
+      previousVersion: previousAppVersion,
+      nextVersion: data.appVersion,
+      notes: changelogNotes,
     });
   }
 

@@ -9,7 +9,23 @@ import {
   OCR_MAX_PDF_PAGES,
   OCR_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
-import { getAiUsage, resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
+import {
+  getAiUsage,
+  getBedrockRuntimeBaseUrl,
+  isBedrockMantleProvider,
+  isOpenAiCompatibleProvider,
+  resolveAiConfigFromSystemConfig,
+} from "@/application/lib/aiConfig";
+
+const isNvidiaBedrockRuntime = (provider: string): boolean =>
+  provider === "aws-bedrock-nvidia";
+
+const getBedrockImageFormat = (mimeType: string): "png" | "jpeg" | "gif" | "webp" => {
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("gif")) return "gif";
+  if (mimeType.includes("webp")) return "webp";
+  return "jpeg";
+};
 
 /**
  * POST /api/v1/internal/ocr-logs/{id}/test-prompt
@@ -152,7 +168,92 @@ export const POST = withErrorHandler(
           }),
           signal: AbortSignal.timeout(300000),
         });
-      } else if (llmProvider === "openai" || llmProvider === "azure-openai") {
+      } else if (isNvidiaBedrockRuntime(llmProvider)) {
+        const resolvedFiles: Array<{ base64: string; mimeType: string }> = [];
+        for (const f of encodedFiles) {
+          if (isPdf(f.mimeType)) {
+            const imgs = await convertPdfToImages(
+              Buffer.from(f.base64, "base64"),
+              OCR_MAX_PDF_PAGES,
+              OCR_PDF_RENDER_SCALE,
+            );
+            for (const img of imgs) resolvedFiles.push(img);
+          } else if (isImage(f.mimeType)) {
+            resolvedFiles.push(f);
+          }
+        }
+        const content: any[] = [{ text: prompt }];
+        for (const f of resolvedFiles) {
+          content.push({
+            image: {
+              format: getBedrockImageFormat(f.mimeType),
+              source: { bytes: f.base64 },
+            },
+          });
+        }
+        const bedrockBaseUrl = llmBaseUrl.replace(/\/+$/, "");
+        llmResponse = await fetch(
+          `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/converse`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+            },
+            body: JSON.stringify({
+              messages: [{ role: "user", content }],
+              inferenceConfig: {
+                maxTokens: llmMaxTokens,
+                temperature: llmTemperature,
+              },
+            }),
+            signal: AbortSignal.timeout(300000),
+          },
+        );
+      } else if (isBedrockMantleProvider(llmProvider)) {
+        const content: any[] = [{ type: "text", text: prompt }];
+        for (const f of encodedFiles) {
+          if (isPdf(f.mimeType)) {
+            const imgs = await convertPdfToImages(
+              Buffer.from(f.base64, "base64"),
+              OCR_MAX_PDF_PAGES,
+              OCR_PDF_RENDER_SCALE,
+            );
+            for (const img of imgs) {
+              content.push({
+                type: "image_url",
+                image_url: {
+                  url: `data:${img.mimeType};base64,${img.base64}`,
+                },
+              });
+            }
+          } else if (isImage(f.mimeType)) {
+            content.push({
+              type: "image_url",
+              image_url: { url: `data:${f.mimeType};base64,${f.base64}` },
+            });
+          }
+        }
+        const bedrockBaseUrl = getBedrockRuntimeBaseUrl(llmBaseUrl);
+        llmResponse = await fetch(
+          `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/invoke`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+            },
+            body: JSON.stringify({
+              messages: [{ role: "user", content }],
+              temperature: llmTemperature,
+              max_tokens: llmMaxTokens,
+            }),
+            signal: AbortSignal.timeout(300000),
+          },
+        );
+      } else if (isOpenAiCompatibleProvider(llmProvider)) {
         const content: any[] = [{ type: "text", text: prompt }];
         for (const f of encodedFiles) {
           if (isPdf(f.mimeType)) {
@@ -273,14 +374,15 @@ export const POST = withErrorHandler(
     // ── 5. Extract text ────────────────────────────────────────────────────
     let extractedText = "";
     if (
-      llmProvider === "openai" ||
-      llmProvider === "azure-openai" ||
-      llmProvider === "ollama-cloud"
+      isOpenAiCompatibleProvider(llmProvider) ||
+      isBedrockMantleProvider(llmProvider)
     ) {
       const msg = llmData.choices?.[0]?.message;
       extractedText = msg?.content || msg?.reasoning || "";
     } else if (llmProvider === "anthropic") {
       extractedText = llmData.content?.[0]?.text || "";
+    } else if (isNvidiaBedrockRuntime(llmProvider)) {
+      extractedText = llmData.output?.message?.content?.[0]?.text || "";
     } else if (llmProvider === "google") {
       extractedText = llmData.candidates?.[0]?.content?.parts?.[0]?.text || "";
     }

@@ -20,7 +20,6 @@ out/
 dist/
 build/
 *.tsbuildinfo
-
 # Environment files
 .env
 .env.local
@@ -61,3 +60,4 @@ docker-data/
 *.tmp
 .cache/
 temp/
+tmp/

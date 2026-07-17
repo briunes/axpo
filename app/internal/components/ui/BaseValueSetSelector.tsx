@@ -4,32 +4,36 @@ import { useEffect, useState } from "react";
 import StarIcon from "@mui/icons-material/Star";
 import { listBaseValueSets, type BaseValueSetItem } from "../../lib/internalApi";
 import { FormSelect } from "./FormSelect";
+import { useUserPreferences, type UserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 
 interface BaseValueSetSelectorProps {
     token: string;
     isAdmin: boolean;
     usedBaseValueSetId?: string | null;
-    onChange?: (id: string) => void;
+    scopeType?: BaseValueSetItem["scopeType"];
+    forAgencyId?: string;
+    onChange?: (id: string, meta?: { userInitiated: boolean }) => void;
     onChangeItem?: (item: BaseValueSetItem) => void;
+    compact?: boolean;
 }
 
-function formatUploadDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleString("es-ES", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
+const COMPACT_SELECTOR_WIDTH = 360;
+const DEFAULT_SELECTOR_MIN_WIDTH = 320;
+const DEFAULT_SELECTOR_MAX_WIDTH = 420;
+
+function formatUploadDate(dateStr: string, preferences: UserPreferences): string {
+    return formatDisplayDateTime(dateStr, preferences);
 }
 
-export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, onChange, onChangeItem }: BaseValueSetSelectorProps) {
+export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scopeType, forAgencyId, onChange, onChangeItem, compact = false }: BaseValueSetSelectorProps) {
+    const { preferences } = useUserPreferences();
     const [sets, setSets] = useState<BaseValueSetItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<string>("");
 
     useEffect(() => {
-        listBaseValueSets(token, { pageSize: 100, showArchived: false })
+        listBaseValueSets(token, { pageSize: 100, showArchived: false, scopeType, forAgencyId, minimal: true })
             .then((res) => {
                 setSets(res.items);
                 let resolved: BaseValueSetItem | undefined;
@@ -43,11 +47,14 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, onCha
                         res.items[0];
                     if (def) { setSelected(def.id); resolved = def; }
                 }
-                if (resolved) onChangeItem?.(resolved);
+                if (resolved) {
+                    onChange?.(resolved.id, { userInitiated: false });
+                    onChangeItem?.(resolved);
+                }
             })
             .catch(() => { /* non-critical */ })
             .finally(() => setLoading(false));
-    }, [token]);
+    }, [token, scopeType, forAgencyId]);
 
     useEffect(() => {
         if (usedBaseValueSetId && sets.find((s) => s.id === usedBaseValueSetId)) {
@@ -61,27 +68,45 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, onCha
 
 
     return isAdmin ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                minWidth: 0,
+                width: compact ? `min(100%, ${COMPACT_SELECTOR_WIDTH}px)` : "auto",
+                flex: compact ? `0 1 ${COMPACT_SELECTOR_WIDTH}px` : "0 0 auto",
+            }}
+        >
             <FormSelect
                 label=""
                 options={sets.map((s) => ({
                     value: s.id,
                     label: `${s.name}  v${s.version}`,
-                    secondaryLabel: `Uploaded ${formatUploadDate(s.createdAt)}`,
-                    icon: s.isActive ? <StarIcon sx={{ fontSize: 13, color: "warning.main" }} /> : undefined,
+                    secondaryLabel: `Uploaded ${formatUploadDate(s.createdAt, preferences)}`,
+                    icon: s.isActive ? <StarIcon sx={{ color: "warning.main" }} /> : undefined,
                 }))}
                 value={selected}
                 onChange={(id) => {
                     if (!id) return;
                     const idStr = String(id);
                     setSelected(idStr);
-                    onChange?.(idStr);
+                    onChange?.(idStr, { userInitiated: true });
                     const item = sets.find((s) => s.id === idStr);
                     if (item) onChangeItem?.(item);
                 }}
-                fullWidth
+                fullWidth={compact}
                 textFieldProps={{ size: "small", placeholder: "Select base values set…" }}
-                sx={{ minWidth: 360 }}
+                sx={{
+                    width: compact ? "100%" : "auto",
+                    minWidth: compact ? 0 : { xs: 0, sm: DEFAULT_SELECTOR_MIN_WIDTH },
+                    maxWidth: compact ? COMPACT_SELECTOR_WIDTH : DEFAULT_SELECTOR_MAX_WIDTH,
+                    "& .MuiInputBase-root": compact
+                        ? {
+                            minHeight: 36,
+                        }
+                        : undefined,
+                }}
             />
         </div>
     ) : null;

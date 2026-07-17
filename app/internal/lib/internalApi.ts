@@ -1,6 +1,13 @@
 import { getBrowserFingerprint } from "./browserFingerprint";
 import { uploadPresigned } from "@vercel/blob/client";
 import { getBaseValueWorkbookContentType } from "@/infrastructure/excel/baseValueUpload";
+import { formatUploadSizeLimit, uploadSizeMbToBytes } from "@/infrastructure/uploads/uploadLimits";
+import { getSystemConfig } from "./configApi";
+import type {
+  EmailTemplate,
+  PdfTemplate,
+  TemplateVariable,
+} from "./configApi";
 
 export interface LoginResult {
   token?: string;
@@ -32,9 +39,21 @@ export interface SimulationItem {
   id: string;
   referenceNumber?: string | null;
   agencyId?: string;
+  agency?: { id: string; name: string; isTlv?: boolean } | null;
   ownerUserId?: string;
   clientId?: string | null;
-  client?: { id: string; name: string } | null;
+  client?: {
+    id: string;
+    name: string;
+    contactName?: string | null;
+    contactEmail?: string | null;
+    street?: string | null;
+    city?: string | null;
+    postalCode?: string | null;
+    province?: string | null;
+    country?: string | null;
+    language?: string | null;
+  } | null;
   status: string;
   isDeleted?: boolean;
   deletedAt?: string | null;
@@ -66,12 +85,15 @@ interface ListSimulationsResult {
 export interface AgencyItem {
   id: string;
   name: string;
+  isTlv: boolean;
   street?: string | null;
   city?: string | null;
   postalCode?: string | null;
   province?: string | null;
   country?: string | null;
   isActive: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   updatedByUser: {
@@ -106,6 +128,8 @@ export interface ListAgenciesParams {
   sortDir?: "asc" | "desc";
   includeDeleted?: boolean;
   minimal?: boolean;
+  isTlv?: boolean;
+  status?: "active" | "inactive";
 }
 
 export interface ListAgenciesResponse {
@@ -181,6 +205,8 @@ export interface UserItem {
   commercialEmail?: string | null;
   otherDetails?: string | null;
   isActive: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   pinRotatedAt?: string;
@@ -266,7 +292,8 @@ export interface AnalyticsOverview {
   avgConsumoAnual?: number | null;
 }
 
-export type BaseValueScopeType = "GLOBAL" | "AGENCY";
+export type BaseValueScopeType = "GLOBAL" | "AGENCY" | "TLV";
+export type ExcelParserConfigScope = Extract<BaseValueScopeType, "GLOBAL" | "TLV">;
 
 export interface BaseValueSetItem {
   id: string;
@@ -280,7 +307,7 @@ export interface BaseValueSetItem {
   isActive: boolean;
   isProduction: boolean;
   isDeleted: boolean;
-  createdBy: string;
+  createdBy?: string;
   createdByUser?: {
     id: string;
     fullName: string;
@@ -305,6 +332,21 @@ export interface BaseValueItem {
   effectiveTo?: string | null;
 }
 
+export interface ExcelParserConfigItem {
+  id?: string;
+  scopeType: ExcelParserConfigScope;
+  sourceLabel: string;
+  productKey: string;
+  displayName: string;
+  commodity: "ELECTRICITY" | "GAS";
+  pricingType: "FIXED" | "INDEXED";
+  enabled: boolean;
+  singlePeriod: boolean;
+  eligibilityMin?: number | null;
+  eligibilityMax?: number | null;
+  sortOrder: number;
+}
+
 interface ListBaseValueSetsResult {
   items: BaseValueSetItem[];
   total: number;
@@ -319,6 +361,11 @@ export interface ListBaseValueSetsParams {
   orderBy?: string;
   sortDir?: "asc" | "desc";
   showArchived?: boolean;
+  scopeType?: BaseValueScopeType;
+  status?: "ACTIVE" | "DRAFT" | "ARCHIVED";
+  production?: "production" | "standard";
+  forAgencyId?: string;
+  minimal?: boolean;
 }
 
 export interface ListBaseValueSetsResponse {
@@ -380,6 +427,7 @@ interface CreateUserInput {
 
 interface CreateAgencyInput {
   name: string;
+  isTlv?: boolean;
   street?: string;
   city?: string;
   postalCode?: string;
@@ -389,6 +437,7 @@ interface CreateAgencyInput {
 
 interface UpdateAgencyInput {
   name?: string;
+  isTlv?: boolean;
   street?: string;
   city?: string;
   postalCode?: string;
@@ -397,6 +446,12 @@ interface UpdateAgencyInput {
   isActive?: boolean;
   tariffs?: Array<{
     tariffType: string;
+    isEnabled: boolean;
+  }>;
+  products?: Array<{
+    productKey: string;
+    commodity: "ELECTRICITY" | "GAS";
+    pricingType: "FIXED" | "INDEXED";
     isEnabled: boolean;
   }>;
 }
@@ -466,6 +521,15 @@ interface UpdateSimulationInput {
   baseValueSetId?: string | null;
 }
 
+type SelectedOfferInput =
+  | {
+      productKey: string;
+      commodity: "ELECTRICITY" | "GAS";
+      pricingType: "FIXED" | "INDEXED";
+      selectedAt: string;
+    }
+  | null;
+
 export interface CreateUserResult {
   user: UserItem;
   generatedPin?: string;
@@ -528,6 +592,56 @@ const baseUrl =
   (typeof window !== "undefined"
     ? window.location.origin
     : "http://localhost:3000");
+
+const INTERNAL_READ_CACHE_TTL_MS = 30_000;
+const internalReadCache = new Map<
+  string,
+  { expiresAt: number; promise: Promise<unknown> }
+>();
+
+function tokenScopedCacheKey(token: string, url: string): string {
+  return `${token.slice(-12)}:${url}`;
+}
+
+function cachedInternalRead<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  ttlMs = INTERNAL_READ_CACHE_TTL_MS,
+): Promise<T> {
+  if (typeof window === "undefined") return fetcher();
+
+  const now = Date.now();
+  const cached = internalReadCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cached.promise as Promise<T>;
+  }
+
+  const entry = {
+    expiresAt: now + ttlMs,
+    promise: fetcher(),
+  };
+  entry.promise.catch(() => {
+    if (internalReadCache.get(key) === entry) {
+      internalReadCache.delete(key);
+    }
+  });
+  internalReadCache.set(key, entry);
+  return entry.promise as Promise<T>;
+}
+
+export function invalidateBaseValuesReadCache(token: string): void {
+  if (typeof window === "undefined") return;
+
+  const keyPrefix = tokenScopedCacheKey(
+    token,
+    `${baseUrl}/api/v1/internal/base-values`,
+  );
+  for (const key of internalReadCache.keys()) {
+    if (key.startsWith(keyPrefix)) {
+      internalReadCache.delete(key);
+    }
+  }
+}
 
 export function maybePersistRefreshedToken(response: Response): void {
   if (typeof window === "undefined") return;
@@ -742,6 +856,11 @@ export interface ListSimulationsParams {
   clientId?: string;
   cups?: string;
   status?: string;
+  type?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  expiresFrom?: string;
+  expiresTo?: string;
 }
 
 export async function listSimulations(
@@ -760,6 +879,11 @@ export async function listSimulations(
   if (params?.clientId) searchParams.set("clientId", params.clientId);
   if (params?.cups) searchParams.set("cups", params.cups);
   if (params?.status) searchParams.set("status", params.status);
+  if (params?.type) searchParams.set("type", params.type);
+  if (params?.createdFrom) searchParams.set("createdFrom", params.createdFrom);
+  if (params?.createdTo) searchParams.set("createdTo", params.createdTo);
+  if (params?.expiresFrom) searchParams.set("expiresFrom", params.expiresFrom);
+  if (params?.expiresTo) searchParams.set("expiresTo", params.expiresTo);
 
   const url = `${baseUrl}/api/v1/internal/simulations${
     searchParams.toString() ? `?${searchParams.toString()}` : ""
@@ -780,6 +904,57 @@ export async function listSimulations(
   return { items: body.items, total: body.total || body.items.length };
 }
 
+export interface SimulationsInitResponse {
+  simulations: { items: SimulationItem[]; total: number };
+  clients: ListClientsResponse;
+  users: ListUsersResponse;
+}
+
+function appendScopedParams(
+  qs: URLSearchParams,
+  scope: string,
+  params: object,
+) {
+  for (const [key, value] of Object.entries(params)) {
+    if (
+      (typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean") &&
+      value !== ""
+    ) {
+      qs.set(scope ? `${scope}.${key}` : key, String(value));
+    }
+  }
+}
+
+export async function getSimulationsInit(
+  token: string,
+  params: {
+    simulations?: ListSimulationsParams;
+    clients?: ListClientsParams;
+    users?: ListUsersParams;
+  },
+): Promise<SimulationsInitResponse> {
+  const qs = new URLSearchParams();
+  appendScopedParams(qs, "simulations", params.simulations ?? {});
+  appendScopedParams(qs, "clients", params.clients ?? {});
+  appendScopedParams(qs, "users", params.users ?? {});
+
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/simulations/init${qs.toString() ? `?${qs}` : ""}`,
+    {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+
+  return parseApiResponse<SimulationsInitResponse>(
+    response,
+    "Simulations init failed",
+  );
+}
+
 export async function getSimulation(
   token: string,
   simulationId: string,
@@ -796,6 +971,36 @@ export async function getSimulation(
     response,
     "Get simulation failed",
   );
+}
+
+export interface SimulationShareInit {
+  commodity: "ELECTRICITY" | "GAS";
+  pdfTemplates: PdfTemplate[];
+  emailTemplates: EmailTemplate[];
+  templateVariables: TemplateVariable[];
+  clientDefaults: {
+    contactEmail?: string | null;
+    country?: string | null;
+    language?: string | null;
+  } | null;
+}
+
+export async function getSimulationShareInit(
+  token: string,
+  simulationId: string,
+): Promise<SimulationShareInit> {
+  const url = `${baseUrl}/api/v1/internal/simulations/${simulationId}/share-init`;
+  return cachedInternalRead(tokenScopedCacheKey(token, url), async () => {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    return parseApiResponse<SimulationShareInit>(
+      response,
+      "Get simulation share data failed",
+    );
+  });
 }
 
 export async function createSimulation(
@@ -842,6 +1047,28 @@ export async function updateSimulation(
   );
 
   return parseApiResponse<SimulationItem>(response, "Update simulation failed");
+}
+
+export async function updateSimulationSelectedOffer(
+  token: string,
+  simulationId: string,
+  selectedOffer: SelectedOfferInput,
+): Promise<{
+  simulationId: string;
+  selectedOffer: SelectedOfferInput;
+  versionId: string;
+  updatedAt: string;
+}> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/simulations/${simulationId}/selected-offer`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify({ selectedOffer }),
+    },
+  );
+
+  return parseApiResponse(response, "Update selected offer failed");
 }
 
 export async function shareSimulation(
@@ -996,6 +1223,57 @@ export async function downloadSimulationPdf(
   window.URL.revokeObjectURL(objectUrl);
 }
 
+export async function openSimulationInvoice(
+  token: string,
+  simulationId: string,
+): Promise<void> {
+  const pendingWindow = window.open("", "_blank");
+  if (pendingWindow) {
+    pendingWindow.opener = null;
+  }
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/simulations/${simulationId}/invoice`,
+    {
+      method: "GET",
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    },
+  );
+
+  maybePersistRefreshedToken(response);
+
+  if (!response.ok) {
+    pendingWindow?.close();
+    let message = `Invoice download failed (${response.status})`;
+    try {
+      const body = (await response.json()) as ApiEnvelope<unknown> & {
+        message?: string;
+      };
+      message = body.error?.message ?? body.message ?? message;
+    } catch {
+      // Keep the status-based fallback if the response is not JSON.
+    }
+    throw new Error(message);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = window.URL.createObjectURL(blob);
+
+  if (pendingWindow) {
+    pendingWindow.location.href = objectUrl;
+    window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 60_000);
+    return;
+  }
+
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = `simulation-${simulationId}-invoice`;
+  anchor.click();
+  window.URL.revokeObjectURL(objectUrl);
+}
+
 export async function validateCups(
   token: string,
   cups: string,
@@ -1014,6 +1292,8 @@ export async function validateCups(
 
 export interface CalculateSimulationInput {
   baseValueSetId?: string;
+  /** Optional current form payload to save and calculate in a single request. */
+  payloadJson?: import("@/domain/types").SimulationPayload;
   /** Billing month override (YYYY-MM) for indexed offers. Fixed offers always use the billing period days. */
   selectedMonth?: string;
 }
@@ -1127,16 +1407,19 @@ export async function fetchCupsLookup(
   const qs = params.clientId
     ? `?clientId=${encodeURIComponent(params.clientId)}`
     : "";
-  const response = await fetch(`${baseUrl}/api/v1/internal/cups/lookup${qs}`, {
-    method: "GET",
-    headers: authHeaders(token),
-  });
+  const url = `${baseUrl}/api/v1/internal/cups/lookup${qs}`;
+  return cachedInternalRead(tokenScopedCacheKey(token, url), async () => {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: authHeaders(token),
+    });
 
-  const result = await parseApiResponse<{ items: CupsLookupEntry[] }>(
-    response,
-    "CUPS lookup failed",
-  );
-  return result.items;
+    const result = await parseApiResponse<{ items: CupsLookupEntry[] }>(
+      response,
+      "CUPS lookup failed",
+    );
+    return result.items;
+  });
 }
 
 export interface ListUsersParams {
@@ -1193,6 +1476,34 @@ export async function listUsers(
   });
 
   return parseApiResponse<ListUsersResult>(response, "User list failed");
+}
+
+export interface UsersInitResponse {
+  users: ListUsersResponse;
+  agencies: ListAgenciesResponse;
+}
+
+export async function getUsersInit(
+  token: string,
+  params: {
+    users?: ListUsersParams;
+    agencies?: ListAgenciesParams;
+  },
+): Promise<UsersInitResponse> {
+  const qs = new URLSearchParams();
+  appendScopedParams(qs, "users", params.users ?? {});
+  appendScopedParams(qs, "agencies", params.agencies ?? {});
+
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/users/init${qs.toString() ? `?${qs}` : ""}`,
+    {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+
+  return parseApiResponse<UsersInitResponse>(response, "Users init failed");
 }
 
 export async function getUser(token: string, id: string): Promise<UserItem> {
@@ -1382,6 +1693,8 @@ export async function listAgencies(
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
   if (params?.includeDeleted) qs.set("includeDeleted", "true");
   if (params?.minimal) qs.set("minimal", "true");
+  if (params?.isTlv !== undefined) qs.set("isTlv", String(params.isTlv));
+  if (params?.status) qs.set("status", params.status);
   const url = `${baseUrl}/api/v1/internal/agencies${qs.toString() ? `?${qs}` : ""}`;
   const response = await fetch(url, {
     method: "GET",
@@ -1390,6 +1703,33 @@ export async function listAgencies(
   });
 
   return parseApiResponse<ListAgenciesResult>(response, "Agency list failed");
+}
+
+export interface AgenciesInitResponse {
+  agencies: ListAgenciesResponse;
+}
+
+export async function getAgenciesInit(
+  token: string,
+  params?: ListAgenciesParams,
+): Promise<AgenciesInitResponse> {
+  const qs = new URLSearchParams();
+  appendScopedParams(qs, "", params ?? {});
+  const query = qs.toString();
+
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/agencies/init${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+
+  return parseApiResponse<AgenciesInitResponse>(
+    response,
+    "Agencies init failed",
+  );
 }
 
 export async function getAgency(
@@ -1484,6 +1824,34 @@ export async function listClients(
     cache: "no-store",
   });
   return parseApiResponse<ListClientsResult>(response, "Client list failed");
+}
+
+export interface ClientsInitResponse {
+  clients: ListClientsResponse;
+  agencies: ListAgenciesResponse;
+}
+
+export async function getClientsInit(
+  token: string,
+  params: {
+    clients?: ListClientsParams;
+    agencies?: ListAgenciesParams;
+  },
+): Promise<ClientsInitResponse> {
+  const qs = new URLSearchParams();
+  appendScopedParams(qs, "clients", params.clients ?? {});
+  appendScopedParams(qs, "agencies", params.agencies ?? {});
+
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/clients/init${qs.toString() ? `?${qs}` : ""}`,
+    {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+
+  return parseApiResponse<ClientsInitResponse>(response, "Clients init failed");
 }
 
 export async function listAllClients(
@@ -1632,16 +2000,23 @@ export async function listBaseValueSets(
   if (params?.orderBy) qs.set("orderBy", params.orderBy);
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
   if (params?.showArchived) qs.set("showArchived", "true");
+  if (params?.scopeType) qs.set("scopeType", params.scopeType);
+  if (params?.status) qs.set("status", params.status);
+  if (params?.production) qs.set("production", params.production);
+  if (params?.forAgencyId) qs.set("forAgencyId", params.forAgencyId);
+  if (params?.minimal) qs.set("minimal", "true");
   const url = `${baseUrl}/api/v1/internal/base-values${qs.toString() ? `?${qs}` : ""}`;
-  const response = await fetch(url, {
-    method: "GET",
-    headers: { authorization: `Bearer ${token}` },
-    cache: "no-store",
+  return cachedInternalRead(tokenScopedCacheKey(token, url), async () => {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    return parseApiResponse<ListBaseValueSetsResult>(
+      response,
+      "Base values list failed",
+    );
   });
-  return parseApiResponse<ListBaseValueSetsResult>(
-    response,
-    "Base values list failed",
-  );
 }
 
 export async function getBaseValueSet(
@@ -1780,10 +2155,44 @@ export async function activateBaseValueSet(
   );
 }
 
+export async function listExcelParserConfig(
+  token: string,
+  scopeType: ExcelParserConfigScope,
+): Promise<ExcelParserConfigItem[]> {
+  const params = new URLSearchParams({ scopeType });
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/excel-parser-config?${params.toString()}`,
+    { headers: authHeaders(token) },
+  );
+  const body = await parseApiResponse<{ items: ExcelParserConfigItem[] }>(
+    response,
+    "Excel parser config list failed",
+  );
+  return body.items;
+}
+
+export async function saveExcelParserConfig(
+  token: string,
+  scopeType: ExcelParserConfigScope,
+  items: ExcelParserConfigItem[],
+): Promise<ExcelParserConfigItem[]> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/excel-parser-config`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify({ scopeType, items }),
+  });
+  const body = await parseApiResponse<{ items: ExcelParserConfigItem[] }>(
+    response,
+    "Excel parser config save failed",
+  );
+  return body.items;
+}
+
 export async function uploadBaseValueFile(
   token: string,
   file: File,
   replace: boolean = false,
+  scopeType?: Extract<BaseValueScopeType, "GLOBAL" | "TLV">,
 ): Promise<{
   message: string;
   set: {
@@ -1794,6 +2203,44 @@ export async function uploadBaseValueFile(
     isActive: boolean;
   };
 }> {
+  const systemConfig = await getSystemConfig({ view: "runtime" });
+  const uploadSizeLimitLabel = formatUploadSizeLimit(systemConfig.maxUploadFileSizeMb);
+  if (file.size > uploadSizeMbToBytes(systemConfig.maxUploadFileSizeMb)) {
+    throw new Error(`File size exceeds ${uploadSizeLimitLabel} limit`);
+  }
+
+  const isLocalUpload =
+    typeof window !== "undefined" &&
+    ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+
+  if (isLocalUpload) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("replace", replace ? "true" : "false");
+    if (scopeType) {
+      formData.append("scopeType", scopeType);
+    }
+
+    const response = await fetch(`${baseUrl}/api/v1/internal/base-values/upload`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    return parseApiResponse<{
+      message: string;
+      set: {
+        id: string;
+        name: string;
+        version: number;
+        itemCount: number;
+        isActive: boolean;
+      };
+    }>(response, "Upload base value file failed");
+  }
+
   const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const blob = await uploadPresigned(
     `base-values/${Date.now()}-${safeFileName}`,
@@ -1818,6 +2265,7 @@ export async function uploadBaseValueFile(
         blobUrl: blob.url,
         fileName: file.name,
         replace,
+        scopeType,
       }),
     },
   );
@@ -1854,6 +2302,32 @@ export async function downloadBaseValueFile(
   const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
   const filename = filenameMatch?.[1] ?? `base-values-${setId}.xlsm`;
 
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadFilledSimulationExcel(
+  token: string,
+  simulationId: string,
+  baseValueSetId?: string,
+): Promise<void> {
+  const query = baseValueSetId
+    ? `?baseValueSetId=${encodeURIComponent(baseValueSetId)}`
+    : "";
+  const response = await fetch(
+    `${baseUrl}/api/v1/internal/simulations/${simulationId}/excel${query}`,
+    { method: "GET", headers: authHeaders(token) },
+  );
+  if (!response.ok) throw new Error("Failed to download filled simulation Excel");
+
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filenameMatch = disposition.match(/filename="?([^";]+)"?/);
+  const filename = filenameMatch?.[1] ?? `simulation-${simulationId}-filled.xlsm`;
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -1949,6 +2423,96 @@ export function simulationStatusTone(
     return "warning";
   }
   return "neutral";
+}
+
+// ── Notifications ──────────────────────────────────────────────────────────
+
+export type NotificationSeverity =
+  | "INFO"
+  | "SUCCESS"
+  | "WARNING"
+  | "ERROR"
+  | "CRITICAL";
+
+export interface NotificationItem {
+  id: string;
+  type: string;
+  category: string;
+  severity: NotificationSeverity;
+  title: string;
+  body?: string | null;
+  actionUrl?: string | null;
+  sourceType?: string | null;
+  sourceId?: string | null;
+  metadata?: Record<string, unknown> | null;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  readAt?: string | null;
+  dismissedAt?: string | null;
+}
+
+export interface NotificationsResult {
+  items: NotificationItem[];
+  unreadCount: number;
+  totalCount: number;
+  unavailable?: boolean;
+}
+
+export type NotificationStatusFilter = "all" | "unread" | "read" | "dismissed";
+
+export async function listNotifications(
+  token: string,
+  params?: {
+    limit?: number;
+    offset?: number;
+    unreadOnly?: boolean;
+    includeDismissed?: boolean;
+    status?: NotificationStatusFilter;
+    severity?: NotificationSeverity | "all";
+    type?: string;
+    category?: string;
+    sourceType?: string;
+  },
+): Promise<NotificationsResult> {
+  const qs = new URLSearchParams();
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.offset) qs.set("offset", String(params.offset));
+  if (params?.unreadOnly) qs.set("unreadOnly", "true");
+  if (params?.includeDismissed) qs.set("includeDismissed", "true");
+  if (params?.status) qs.set("status", params.status);
+  if (params?.severity && params.severity !== "all") qs.set("severity", params.severity);
+  if (params?.type && params.type !== "all") qs.set("type", params.type);
+  if (params?.category && params.category !== "all") qs.set("category", params.category);
+  if (params?.sourceType && params.sourceType !== "all") qs.set("sourceType", params.sourceType);
+  const queryString = qs.toString();
+  const response = await fetch(
+    `/api/v1/internal/notifications${queryString ? `?${queryString}` : ""}`,
+    {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    },
+  );
+  return parseApiResponse<NotificationsResult>(
+    response,
+    "Notifications request failed",
+  );
+}
+
+export async function markNotifications(
+  token: string,
+  ids: string[],
+  action: "read" | "dismiss",
+): Promise<void> {
+  const response = await fetch("/api/v1/internal/notifications", {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ ids, action }),
+  });
+  await parseApiResponse<{ updated: number; skipped?: number }>(
+    response,
+    "Notification update failed",
+  );
 }
 
 // ── Role Permissions ────────────────────────────────────────────────────────

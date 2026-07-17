@@ -65,6 +65,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     pin: "1234",
     userName: "Test User",
     userEmail: parsed.recipientEmail,
+    USER_AGENCY: "Sample Agency",
     SETUP_PASSWORD_VALIDITY_HOURS: String(
       config?.setupTokenValidityHours ?? 72,
     ),

@@ -72,22 +72,31 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     };
   }
 
-  // Text search across recipient, subject, template name
+  const matchingTriggeredByUserIds = search
+    ? (
+        await prisma.user.findMany({
+          where: {
+            OR: [
+              { email: { contains: search, mode: "insensitive" } },
+              { fullName: { contains: search, mode: "insensitive" } },
+            ],
+          },
+          select: { id: true },
+          take: 100,
+        })
+      ).map((user) => user.id)
+    : [];
+
+  // Text search across scalar email-log fields and related user ids.
   if (search) {
     where.OR = [
       { recipientEmail: { contains: search, mode: "insensitive" as const } },
       { subject: { contains: search, mode: "insensitive" as const } },
       { templateName: { contains: search, mode: "insensitive" as const } },
-      {
-        triggeredByUser: {
-          email: { contains: search, mode: "insensitive" as const },
-        },
-      },
-      {
-        triggeredByUser: {
-          fullName: { contains: search, mode: "insensitive" as const },
-        },
-      },
+      { triggeredBy: { contains: search, mode: "insensitive" as const } },
+      ...(matchingTriggeredByUserIds.length > 0
+        ? [{ triggeredByUserId: { in: matchingTriggeredByUserIds } }]
+        : []),
     ];
   }
 

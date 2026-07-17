@@ -3,6 +3,8 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useI18n } from "../../src/lib/i18n-context";
+import { LanguageFlag } from "../../src/lib/LanguageFlag";
+import { UI_LANGUAGES } from "../../src/lib/uiLanguages";
 import Image from "next/image";
 
 function formatDateTime(isoString: string, locale: string): string {
@@ -48,25 +50,27 @@ function MaintenanceContent() {
                 display: "flex",
                 gap: 8,
             }}>
-                {(["en", "es"] as const).map((lng) => (
+                {UI_LANGUAGES.map((language) => (
                     <button
-                        key={lng}
-                        onClick={() => setLocale(lng)}
+                        key={language.code}
+                        onClick={() => setLocale(language.code)}
                         style={{
                             padding: "4px 12px",
                             borderRadius: 6,
                             border: "1px solid",
-                            borderColor: locale === lng ? "#f97316" : "rgba(148,163,184,0.2)",
-                            background: locale === lng ? "rgba(249,115,22,0.12)" : "transparent",
-                            color: locale === lng ? "#f97316" : "#64748b",
+                            borderColor: locale === language.code ? "#f97316" : "rgba(148,163,184,0.2)",
+                            background: locale === language.code ? "rgba(249,115,22,0.12)" : "transparent",
+                            color: locale === language.code ? "#f97316" : "#64748b",
                             fontSize: 12,
                             fontWeight: 600,
                             cursor: "pointer",
-                            letterSpacing: "0.06em",
-                            textTransform: "uppercase",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
                         }}
                     >
-                        {t("language", lng)}
+                        <LanguageFlag code={language.code} label={language.label} width={20} height={14} />
+                        {t("language", language.code)}
                     </button>
                 ))}
             </div>

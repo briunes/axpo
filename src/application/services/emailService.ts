@@ -2,6 +2,25 @@ import nodemailer from "nodemailer";
 import { prisma } from "@/infrastructure/database/prisma";
 import { resolveTranslation, DEFAULT_LANGUAGE } from "@/lib/supportedLanguages";
 
+const EMAIL_DEBUG_LOGS =
+  process.env.NODE_ENV !== "production" ||
+  process.env.EMAIL_DEBUG_LOGS === "true";
+
+const debugEmailLog = (...args: unknown[]) => {
+  if (EMAIL_DEBUG_LOGS) console.log(...args);
+};
+
+async function getUserAgencyName(userId?: string): Promise<string> {
+  if (!userId) return "N/A";
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { agency: { select: { name: true } } },
+  });
+
+  return user?.agency?.name || "N/A";
+}
+
 interface EmailOptions {
   to: string;
   subject: string;
@@ -125,22 +144,20 @@ export class EmailService {
     const attachmentsCount = options.attachments?.length ?? 0;
     const tag = `[EmailService][${options.triggeredBy ?? "manual"}]`;
 
-    console.log(`${tag} ── START sendEmail ──────────────────────────────────`);
-    console.log(`${tag} to            : ${options.to}`);
-    console.log(`${tag} subject       : ${options.subject}`);
-    console.log(`${tag} templateId    : ${options.templateId ?? "(none)"}`);
-    console.log(`${tag} templateName  : ${options.templateName ?? "(none)"}`);
-    console.log(`${tag} triggeredBy   : ${options.triggeredBy ?? "(none)"}`);
-    console.log(
+    debugEmailLog(`${tag} START sendEmail`);
+    debugEmailLog(`${tag} templateId    : ${options.templateId ?? "(none)"}`);
+    debugEmailLog(`${tag} templateName  : ${options.templateName ?? "(none)"}`);
+    debugEmailLog(`${tag} triggeredBy   : ${options.triggeredBy ?? "(none)"}`);
+    debugEmailLog(
       `${tag} triggeredByUserId: ${options.triggeredByUserId ?? "(none)"}`,
     );
-    console.log(`${tag} relatedUserId : ${options.relatedUserId ?? "(none)"}`);
-    console.log(
+    debugEmailLog(`${tag} relatedUserId : ${options.relatedUserId ?? "(none)"}`);
+    debugEmailLog(
       `${tag} relatedSimulationId: ${options.relatedSimulationId ?? "(none)"}`,
     );
-    console.log(`${tag} attachments   : ${attachmentsCount}`);
+    debugEmailLog(`${tag} attachments   : ${attachmentsCount}`);
     if (options.variables && Object.keys(options.variables).length > 0) {
-      console.log(`${tag} variables     :`, JSON.stringify(options.variables));
+      debugEmailLog(`${tag} variable keys :`, Object.keys(options.variables));
     }
 
     const baseLogData = {
@@ -161,17 +178,17 @@ export class EmailService {
     const startedAt = Date.now();
 
     try {
-      console.log(`${tag} [1/4] Loading SMTP config from database…`);
+      debugEmailLog(`${tag} [1/4] Loading SMTP config from database`);
       const config = await this.getSMTPConfig();
-      console.log(
-        `${tag} [1/4] SMTP config loaded — host=${config.host} port=${config.port} secure=${config.secure ?? false} from="${config.fromName}" <${config.fromEmail}>`,
+      debugEmailLog(
+        `${tag} [1/4] SMTP config loaded host=${config.host} port=${config.port} secure=${config.secure ?? false}`,
       );
 
-      console.log(`${tag} [2/4] Creating nodemailer transporter…`);
+      debugEmailLog(`${tag} [2/4] Creating nodemailer transporter`);
       const transporter = await this.createTransporter();
-      console.log(`${tag} [2/4] Transporter created`);
+      debugEmailLog(`${tag} [2/4] Transporter created`);
 
-      console.log(`${tag} [3/4] Calling transporter.sendMail…`);
+      debugEmailLog(`${tag} [3/4] Calling transporter.sendMail`);
       const info = await transporter.sendMail({
         from: `"${config.fromName}" <${config.fromEmail}>`,
         to: options.to,
@@ -179,11 +196,13 @@ export class EmailService {
         html: options.html,
         text: options.text,
         attachments: options.attachments,
+        disableFileAccess: true,
+        disableUrlAccess: true,
       });
 
       const durationMs = Date.now() - startedAt;
-      console.log(
-        `${tag} [3/4] sendMail returned — messageId=${info.messageId} response="${info.response}" accepted=${JSON.stringify(info.accepted)} rejected=${JSON.stringify(info.rejected)} duration=${durationMs}ms`,
+      debugEmailLog(
+        `${tag} [3/4] sendMail returned messageId=${info.messageId} duration=${durationMs}ms`,
       );
 
       if (info.rejected && info.rejected.length > 0) {
@@ -192,7 +211,7 @@ export class EmailService {
         );
       }
 
-      console.log(`${tag} [4/4] Writing success log to database…`);
+      debugEmailLog(`${tag} [4/4] Writing success log to database`);
       await prisma.emailLog.create({
         data: {
           ...baseLogData,
@@ -207,11 +226,9 @@ export class EmailService {
           durationMs,
         },
       });
-      console.log(`${tag} [4/4] Log saved to database`);
+      debugEmailLog(`${tag} [4/4] Log saved to database`);
 
-      console.log(
-        `${tag} ── DONE (success) ${durationMs}ms ─────────────────────────`,
-      );
+      debugEmailLog(`${tag} DONE success ${durationMs}ms`);
     } catch (error) {
       const durationMs = Date.now() - startedAt;
       console.error(
@@ -244,7 +261,7 @@ export class EmailService {
         );
       }
 
-      console.log(`${tag} Writing failure log to database…`);
+      debugEmailLog(`${tag} Writing failure log to database`);
       await prisma.emailLog.create({
         data: {
           ...baseLogData,
@@ -259,7 +276,7 @@ export class EmailService {
           durationMs,
         },
       });
-      console.log(`${tag} Failure log saved to database`);
+      debugEmailLog(`${tag} Failure log saved to database`);
       console.error(
         `${tag} ── END (failed) ─────────────────────────────────────────`,
       );
@@ -368,10 +385,12 @@ export class EmailService {
         : "";
       const setupPasswordValidityHours =
         config.setupTokenValidityHours ?? 72;
+      const userAgency = await getUserAgencyName(options.userId);
 
       const variables = {
         USER_NAME: options.userName,
         USER_EMAIL: options.userEmail,
+        USER_AGENCY: userAgency,
         USER_PIN: options.userPin,
         USER_PASSWORD:
           options.userPassword || "Please check with your administrator",
@@ -391,7 +410,7 @@ export class EmailService {
         relatedUserId: options.userId,
       });
 
-      console.log(`User creation email sent to ${options.userEmail}`);
+      debugEmailLog(`User creation email sent`);
     } catch (error) {
       // Log the error but don't fail user creation if email fails
       console.error("Failed to send user creation email:", error);
@@ -435,10 +454,12 @@ export class EmailService {
         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
         "http://localhost:3000";
       const resetPasswordUrl = `${baseUrl}/internal/reset-password?token=${options.resetToken}`;
+      const userAgency = await getUserAgencyName(options.userId);
 
       const variables = {
         USER_NAME: options.userName,
         USER_EMAIL: options.userEmail,
+        USER_AGENCY: userAgency,
         RESET_PASSWORD_URL: resetPasswordUrl,
       };
 
@@ -451,7 +472,7 @@ export class EmailService {
         relatedUserId: options.userId,
       });
 
-      console.log(`Password reset email sent to ${options.userEmail}`);
+      debugEmailLog(`Password reset email sent`);
     } catch (error) {
       // Log the error but don't fail the reset request if email fails
       console.error("Failed to send password reset email:", error);
@@ -489,7 +510,7 @@ export class EmailService {
         if (prefs?.language) resolvedLanguage = prefs.language;
       }
 
-      console.log("[EmailService][magic-link] env vars:", {
+      debugEmailLog("[EmailService][magic-link] env vars:", {
         NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
         VERCEL_URL: process.env.VERCEL_URL,
         NODE_ENV: process.env.NODE_ENV,
@@ -502,10 +523,12 @@ export class EmailService {
 
       const magicLinkUrl = `${baseUrl}/internal/login/magic?token=${options.magicLinkToken}`;
       const validityMinutes = config.magicLinkTokenValidityMinutes ?? 15;
+      const userAgency = await getUserAgencyName(options.userId);
 
       const variables = {
         USER_NAME: options.userName,
         USER_EMAIL: options.userEmail,
+        USER_AGENCY: userAgency,
         MAGIC_LINK: magicLinkUrl,
         MAGIC_LINK_VALIDITY_MINUTES: String(validityMinutes),
       };
@@ -519,7 +542,7 @@ export class EmailService {
         relatedUserId: options.userId,
       });
 
-      console.log(`Magic link email sent to ${options.userEmail}`);
+      debugEmailLog(`Magic link email sent`);
     } catch (error) {
       console.error("Failed to send magic link email:", error);
       throw error;
@@ -552,10 +575,12 @@ export class EmailService {
       }
 
       const validityMinutes = config.otpCodeValidityMinutes ?? 10;
+      const userAgency = await getUserAgencyName(options.userId);
 
       const variables = {
         USER_NAME: options.userName,
         USER_EMAIL: options.userEmail,
+        USER_AGENCY: userAgency,
         OTP_CODE: options.otpCode,
         OTP_VALIDITY_MINUTES: String(validityMinutes),
       };
@@ -569,7 +594,7 @@ export class EmailService {
         relatedUserId: options.userId,
       });
 
-      console.log(`OTP email sent to ${options.userEmail}`);
+      debugEmailLog(`OTP email sent`);
     } catch (error) {
       console.error("Failed to send OTP email:", error);
       throw error;

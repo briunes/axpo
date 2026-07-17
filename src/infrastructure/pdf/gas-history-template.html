@@ -1,0 +1,198 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  #axpo-gas-sim-tpl {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 10pt;
+    line-height: 1.4;
+    color: #111827;
+    padding: 28px 36px;
+    background: #ffffff;
+    box-sizing: border-box;
+  }
+  #axpo-gas-sim-tpl * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  #axpo-gas-sim-tpl .asim-page {
+    min-height: 0 !important;
+  }
+  #axpo-gas-sim-tpl .asim-header {
+    display: grid;
+    grid-template-columns: 1fr 150px;
+    gap: 24px;
+    align-items: center;
+    min-height: 150px;
+    margin-bottom: 30px;
+    padding: 26px 30px;
+    border: 1.6px solid #4545cf;
+    border-radius: 12px;
+  }
+  #axpo-gas-sim-tpl .asim-logo {
+    display: block;
+    max-width: 116px;
+    height: auto;
+    justify-self: center;
+  }
+  #axpo-gas-sim-tpl .asim-greeting {
+    font-size: 20pt;
+    line-height: 1.05;
+    font-weight: 400;
+    color: #2f35e8;
+    margin-bottom: 8px;
+  }
+  #axpo-gas-sim-tpl .asim-client-name {
+    display: block;
+    margin-top: 3px;
+    font-size: 11pt;
+    line-height: 1.2;
+    font-weight: 700;
+    color: #777777;
+  }
+  #axpo-gas-sim-tpl .asim-intro {
+    max-width: 360px;
+    margin-top: 34px;
+    font-size: 7.5pt;
+    line-height: 1.35;
+    color: #777777;
+  }
+  #axpo-gas-sim-tpl .asim-section-title {
+    font-size: 15pt;
+    line-height: 1.15;
+    font-weight: 400;
+    color: #1e2cf4;
+    margin-bottom: 20px;
+  }
+  #axpo-gas-sim-tpl .asim-basic-data {
+    margin-bottom: 34px;
+  }
+  #axpo-gas-sim-tpl .asim-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    column-gap: 24px;
+    row-gap: 20px;
+  }
+  #axpo-gas-sim-tpl .asim-info-item {
+    min-width: 0;
+  }
+  #axpo-gas-sim-tpl .asim-info-item--full {
+    grid-column: 1 / -1;
+  }
+  #axpo-gas-sim-tpl .asim-info-label {
+    font-size: 8pt;
+    line-height: 1.2;
+    color: #6b7280;
+    margin-bottom: 5px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #9ca3af;
+  }
+  #axpo-gas-sim-tpl .asim-info-value {
+    font-size: 9pt;
+    line-height: 1.25;
+    color: #111111;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  #axpo-gas-sim-tpl .asim-history {
+    margin: 2px 0 16px;
+  }
+  #axpo-gas-sim-tpl .asim-history-body {
+    margin-top: 12px;
+  }
+  #axpo-gas-sim-tpl .asim-history-body table {
+    width: 100%;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  #axpo-gas-sim-tpl .asim-footer {
+    margin-top: 34px;
+    padding-top: 20px;
+    border-top: 2px solid #e0e0e0;
+    font-size: 8pt;
+    color: #999999;
+    line-height: 1.55;
+  }
+  #axpo-gas-sim-tpl .asim-footer-title {
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #666666;
+  }
+  @media print {
+    #axpo-gas-sim-tpl .asim-header,
+    #axpo-gas-sim-tpl .asim-basic-data,
+    #axpo-gas-sim-tpl .asim-history,
+    #axpo-gas-sim-tpl .asim-history-body,
+    #axpo-gas-sim-tpl .asim-history-body table {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    #axpo-gas-sim-tpl .asim-section-title,
+    #axpo-gas-sim-tpl .asim-info-label {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+  }
+</style>
+
+<div id="axpo-gas-sim-tpl">
+  <div class="asim-page">
+    <div class="asim-header">
+      <div>
+        <div class="asim-greeting">
+          Hola,<span class="asim-client-name">{{CLIENT_NAME}}</span>
+        </div>
+        <div class="asim-intro">Histórico de precios de gas para el producto Axpo seleccionado y la tarifa de acceso.</div>
+      </div>
+      <img class="asim-logo" src="https://tuenergia.axpo.com/wp-content/uploads/2025/12/Axpo_logo.png" alt="Axpo">
+    </div>
+
+    <div class="asim-basic-data">
+      <div class="asim-section-title">Datos básicos de simulación</div>
+      <div class="asim-info-grid">
+        <div class="asim-info-item">
+          <div class="asim-info-label">Tipo de suministro</div>
+          <div class="asim-info-value">Gas</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Tarifa</div>
+          <div class="asim-info-value">{{GAS_TARIFA}}</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Cliente</div>
+          <div class="asim-info-value">{{CLIENT_NAME}}</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Producto</div>
+          <div class="asim-info-value">{{GAS_PRODUCT_LABEL}}</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Fecha de simulación</div>
+          <div class="asim-info-value">{{CREATED_AT}}</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Comercial</div>
+          <div class="asim-info-value">{{OWNER_NAME}}</div>
+        </div>
+        <div class="asim-info-item">
+          <div class="asim-info-label">Correo electrónico</div>
+          <div class="asim-info-value">{{OWNER_EMAIL}}</div>
+        </div>
+        <div class="asim-info-item asim-info-item--full">
+          <div class="asim-info-label">Referencia de simulación</div>
+          <div class="asim-info-value">{{SIMULATION_REFERENCE}}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="asim-history">
+      <div class="asim-section-title">Histórico de precios de gas</div>
+      <div class="asim-history-body">{{HISTORY_TABLES_GAS}}</div>
+    </div>
+
+    <div class="asim-footer">
+      <div class="asim-footer-title">Simulación presentada por {{OWNER_AGENCY}}</div>
+      <p>Documento de histórico de precios generado automáticamente. Los valores mostrados se basan en los datos históricos disponibles para esta simulación y el producto seleccionado.</p>
+    </div>
+  </div>
+</div>

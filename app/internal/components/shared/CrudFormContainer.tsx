@@ -8,12 +8,14 @@ export interface CrudFormContainerProps {
     onSubmit?: (e: React.FormEvent) => void;
     errorMessage?: string | null;
     successMessage?: string | null;
+    variant?: "card" | "plain";
     // Footer
     submitLabel?: string;
     cancelLabel?: string;
     onCancel?: () => void;
     isSubmitting?: boolean;
     hideSubmit?: boolean;
+    disableSubmit?: boolean;
     onRenderActions?: (actions: React.ReactNode) => void;
 }
 
@@ -30,7 +32,9 @@ export function CrudFormContainer({
     onCancel,
     isSubmitting,
     hideSubmit,
+    disableSubmit,
     onRenderActions,
+    variant = "card",
 }: CrudFormContainerProps) {
     const onRenderActionsRef = useRef(onRenderActions);
     const formId = useId();
@@ -43,6 +47,7 @@ export function CrudFormContainer({
         <>
             {onCancel && (
                 <Button
+                    className={onRenderActions ? "topbar-action topbar-action--compact topbar-action--text" : undefined}
                     variant="outlined"
                     size="small"
                     type="button"
@@ -54,27 +59,28 @@ export function CrudFormContainer({
             )}
             {!hideSubmit && (
                 <Button
+                    className={onRenderActions ? "topbar-action topbar-action--compact topbar-action--text" : undefined}
                     type="submit"
                     form={formId}
                     variant="contained"
                     size="small"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || disableSubmit}
                     loading={isSubmitting}
                 >
                     {submitLabel}
                 </Button>
             )}
         </>
-    ), [submitLabel, cancelLabel, isSubmitting, onCancel, formId, hideSubmit]);
+    ), [submitLabel, cancelLabel, isSubmitting, onCancel, formId, hideSubmit, disableSubmit]);
 
     useLayoutEffect(() => {
         if (onRenderActionsRef.current) {
             onRenderActionsRef.current(actionButtons);
         }
-    }, [submitLabel, cancelLabel, isSubmitting]);
+    }, [submitLabel, cancelLabel, isSubmitting, hideSubmit, disableSubmit]);
 
     return (
-        <Stack spacing={3}>
+        <Stack spacing={3} className={variant === "plain" ? "crud-form-panel crud-form-panel--plain" : "crud-form-panel"}>
             {/* Error/Success messages */}
             {errorMessage && (
                 <div className="crud-alert crud-alert--error">

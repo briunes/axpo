@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { Divider, Stack, Button, Tooltip } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import { loadSession } from "../../../lib/authSession";
@@ -15,15 +15,16 @@ import {
     type BaseValueSetItem,
 } from "../../../lib/internalApi";
 import {
+    BoneyardFormSkeleton,
     CrudFormContainer,
     CrudPageLayout,
-    LoadingState,
     useAlerts,
 } from "../../../components/shared";
 import { BaseValueItemBuilder } from "../../../components/ui/BaseValueItemBuilder";
 import { BaseValueItemsViewer } from "../../../components/ui/BaseValueItemsViewer";
 import { FormInput } from "../../../components/ui";
 import { useI18n } from "../../../../../src/lib/i18n-context";
+import { useTopBarBreadcrumbs } from "../../../components/InternalWorkspace";
 
 export default function EditBaseValueSetPage({
     params,
@@ -31,6 +32,7 @@ export default function EditBaseValueSetPage({
     params: Promise<{ id: string }>;
 }) {
     const { id } = use(params);
+    const isBoneyardFixture = id === "boneyard-fixture";
     const router = useRouter();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
@@ -44,9 +46,14 @@ export default function EditBaseValueSetPage({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
+    const breadcrumbs = useMemo(
+        () => set ? [{ label: set.name, href: `/internal/base-values/${set.id}/edit` }] : null,
+        [set],
+    );
+    useTopBarBreadcrumbs(breadcrumbs);
 
     useEffect(() => {
-        if (!session) return;
+        if (!session || isBoneyardFixture) return;
         Promise.all([
             getBaseValueSet(session.token, id),
             listBaseValueItems(session.token, id),
@@ -66,7 +73,7 @@ export default function EditBaseValueSetPage({
                 showError(err instanceof Error ? err.message : t("baseValuesModule", "notFound"));
                 router.push("/internal/base-values");
             });
-    }, [session, id]);
+    }, [session, id, isBoneyardFixture]);
 
     const validateItems = (): string | null => {
         for (let i = 0; i < items.length; i++) {
@@ -111,8 +118,8 @@ export default function EditBaseValueSetPage({
 
     if (!session || !set) {
         return (
-            <CrudPageLayout title={t("baseValuesModule", "editTitle")} backHref="/internal/base-values">
-                <LoadingState message={t("baseValuesModule", "loading")} size={100} />
+            <CrudPageLayout title={t("baseValuesModule", "editTitle")} backHref="/internal/base-values" hideHeader>
+                <BoneyardFormSkeleton name="edit-base-values-form" shape="base-values" />
             </CrudPageLayout>
         );
     }
@@ -131,7 +138,7 @@ export default function EditBaseValueSetPage({
             actions={
                 <>
                     {set?.sourceFileName && (
-                        <Tooltip title={t("baseValuesModule", "download_tooltip")} placement="bottom">
+                        <Tooltip title={t("baseValuesModule", "download_tooltip")} placement="top">
                             <Button
                                 variant="outlined"
                                 size="small"

@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@mui/material";
 import { FormInput } from "../components/ui/FormInput";
 import { useAlerts } from "../components/shared";
-import { loadSession, saveSession } from "../lib/authSession";
+import { saveSession, validateStoredSession } from "../lib/authSession";
 import { login, verifyOtp } from "../lib/internalApi";
 import { useI18n } from "../../../src/lib/i18n-context";
-import "../globals.css";
+import { UI_LANGUAGES } from "../../../src/lib/uiLanguages";
+import { LanguageFlag } from "../../../src/lib/LanguageFlag";
+import styles from "../authPages.module.css";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,10 +28,17 @@ export default function LoginPage() {
   const [otpCooldown, setOtpCooldown] = useState(0);
 
   useEffect(() => {
-    const restored = loadSession();
-    if (restored) {
-      router.replace("/internal/simulations");
-    }
+    let cancelled = false;
+
+    validateStoredSession().then((restored) => {
+      if (!cancelled && restored) {
+        router.replace("/internal/simulations");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   useEffect(() => {
@@ -138,51 +147,45 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-shell-v2">
-      <div className="login-lang-switcher-v2">
-        <button
-          onClick={() => setLocale("en")}
-          className={`login-lang-btn-v2 ${locale === "en" ? "active" : ""}`}
-          title="English"
-        >
-          🇬🇧
-        </button>
-        <button
-          onClick={() => setLocale("es")}
-          className={`login-lang-btn-v2 ${locale === "es" ? "active" : ""}`}
-          title="Español"
-        >
-          🇪🇸
-        </button>
+    <div className={styles.shell}>
+      <div className={styles.langSwitcher}>
+        {UI_LANGUAGES.map((language) => (
+          <button
+            key={language.code}
+            onClick={() => setLocale(language.code)}
+            className={`${styles.langBtn} ${locale === language.code ? styles.active : ""}`}
+            title={language.label}
+          >
+            <LanguageFlag code={language.code} label={language.label} />
+          </button>
+        ))}
       </div>
-      <div className="login-grid-v2">
+      <div className={styles.grid}>
 
         {/* ── Brand panel ── */}
-        <div className="login-brand-panel-v2">
+        <div className={styles.brandPanel}>
           <img
-            src="/axpo-mark.svg"
-            className="login-brand-mark-v2"
-            width={72}
-            height={72}
+            src="/axpo-logo.svg"
+            className={styles.brandLogo}
+            width={168}
+            height={80}
             alt="AXPO"
           />
-          <div className="login-brand-name-v2">AXPO</div>
-          <div className="login-brand-divider-v2" />
-          <div className="login-brand-product-v2">OFFERS SIMULATOR</div>
-          <div className="login-brand-desc-v2">
+          <div className={styles.brandProduct}>{t("common", "offersSimulator")}</div>
+          <div className={styles.brandDesc}>
             {t("login", "brandDesc")}
           </div>
         </div>
 
         {/* ── Form panel ── */}
-        <div className="login-form-panel-v2">
-          <div className="login-form-logo-v2">
-            <img src="/axpo-mark.svg" width={32} height={32} alt="AXPO" />
+        <div className={styles.formPanel}>
+          <div className={styles.formLogo}>
+            <img src="/axpo-logo.svg" width={84} height={40} alt="AXPO" />
           </div>
-          <h2 className="login-form-title-v2">
+          <h2 className={styles.formTitle}>
             {mode === "magic-link" ? t("magicLink", "title") : mode === "otp" ? t("otp", "title") : t("login", "title")}
           </h2>
-          <p className="login-form-subtitle-v2">
+          <p className={styles.formSubtitle}>
             {mode === "magic-link" ? t("magicLink", "subtitle") : mode === "otp" ? t("otp", "subtitle") : t("login", "subtitle")}
           </p>
 
@@ -194,9 +197,7 @@ export default function LoginPage() {
                   {t("otp", "description")}
                 </p>
                 {otpAttempts < 3 ? (
-                  <p style={{
-                    fontSize: 13,
-                    textAlign: "center",
+                  <p style={{textAlign: "center",
                     margin: 0,
                     color: otpAttempts >= 2 ? "var(--color-error, #d32f2f)" : "var(--text-secondary, #888)",
                     fontWeight: otpAttempts >= 2 ? 600 : 400,
@@ -204,7 +205,7 @@ export default function LoginPage() {
                     {t("otp", "attemptsRemaining").replace("{{n}}", String(3 - otpAttempts))}
                   </p>
                 ) : (
-                  <p style={{ fontSize: 13, textAlign: "center", margin: 0, color: "var(--color-error, #d32f2f)", fontWeight: 600 }}>
+                  <p style={{textAlign: "center", margin: 0, color: "var(--color-error, #d32f2f)", fontWeight: 600 }}>
                     {t("otp", "noAttemptsLeft")}
                   </p>
                 )}
@@ -326,7 +327,10 @@ export default function LoginPage() {
                   data-testid="login-email"
                   autoComplete="email"
                   required
+                  size="small"
                 />
+
+
 
                 <FormInput
                   id="login-password"
@@ -340,7 +344,15 @@ export default function LoginPage() {
                 />
 
                 <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -8, marginBottom: 4 }}>
-
+                  <Button
+                    type="button"
+                    variant="text"
+                    size="small"
+                    onClick={() => router.push("/internal/forgot-password")}
+                    data-testid="forgot-password-link"
+                  >
+                    {t("login", "forgotPassword")}
+                  </Button>
                 </div>
 
                 <Button

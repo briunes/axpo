@@ -3,7 +3,19 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
-import { getConfiguredAiProviders } from "@/application/lib/aiConfig";
+import {
+  getBedrockRuntimeBaseUrl,
+  getConfiguredAiProviders,
+  isBedrockMantleProvider,
+  isOpenAiCompatibleProvider,
+} from "@/application/lib/aiConfig";
+
+const isAnthropicBedrockRuntime = (provider: string, baseUrl: string): boolean =>
+  provider === "aws-bedrock-anthropic" ||
+  (provider === "anthropic" && /bedrock-runtime\.[^.]+\.amazonaws\.com/.test(baseUrl));
+
+const isNvidiaBedrockRuntime = (provider: string): boolean =>
+  provider === "aws-bedrock-nvidia";
 
 /**
  * @swagger
@@ -118,7 +130,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           signal: AbortSignal.timeout(10000), // 10 second timeout
         });
       }
-    } else if (provider === "openai" || provider === "azure-openai") {
+    } else if (isOpenAiCompatibleProvider(provider)) {
       // OpenAI-compatible API format
       url = `${baseUrl}/chat/completions`;
       response = await fetch(url, {
@@ -131,6 +143,61 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           model: modelName,
           messages: [{ role: "user", content: testPrompt }],
           max_tokens: 50,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+    } else if (isBedrockMantleProvider(provider)) {
+      const bedrockBaseUrl = getBedrockRuntimeBaseUrl(baseUrl);
+      url = `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/invoke`;
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: testPrompt }],
+          max_tokens: 50,
+          temperature: 0,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+    } else if (isAnthropicBedrockRuntime(provider, baseUrl)) {
+      // AWS Bedrock Runtime InvokeModel format for Anthropic Claude models.
+      const bedrockBaseUrl = baseUrl.replace(/\/+$/, "");
+      url = `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/invoke`;
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          anthropic_version: "bedrock-2023-05-31",
+          max_tokens: 50,
+          messages: [{ role: "user", content: testPrompt }],
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+    } else if (isNvidiaBedrockRuntime(provider)) {
+      // AWS Bedrock Converse format for NVIDIA Nemotron models.
+      const bedrockBaseUrl = baseUrl.replace(/\/+$/, "");
+      url = `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/converse`;
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: [{ text: testPrompt }] }],
+          inferenceConfig: {
+            maxTokens: 50,
+            temperature: 0,
+          },
         }),
         signal: AbortSignal.timeout(10000),
       });

@@ -1,6 +1,7 @@
 "use client";
 
-import { Input, Row, Text } from "@once-ui-system/core";
+import { Box, TextField, Typography } from "@mui/material";
+import { useI18n } from "../../../../src/lib/i18n-context";
 
 export function SectionToolbar({
   searchValue,
@@ -15,19 +16,22 @@ export function SectionToolbar({
   visibleRows: number;
   searchPlaceholder: string;
 }) {
+  const { t } = useI18n();
+
   return (
-    <Row fillWidth horizontal="between" vertical="center" gap="8" wrap>
+    <Box sx={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
       <div className="toolbar-meta">
-        <Text variant="label-default-s" onBackground="neutral-weak">Rows</Text>
-        <Text variant="label-default-s">{visibleRows}/{totalRows}</Text>
+        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>{t("common", "rows")}</Typography>
+        <Typography variant="caption" sx={{ fontWeight: 600 }}>{visibleRows}/{totalRows}</Typography>
       </div>
-      <Input
+      <TextField
         id="section-search"
-        label=""
+        size="small"
         value={searchValue}
         onChange={(event) => onSearchChange(event.target.value)}
         placeholder={searchPlaceholder}
+        sx={{ width: { xs: "100%", sm: 360 } }}
       />
-    </Row>
+    </Box>
   );
 }

@@ -5,7 +5,7 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import { SimulationResultsCards } from "./SimulationResultsCards";
 import type { SimulationItem, ClientItem, CupsLookupEntry } from "../../lib/internalApi";
-import { calculateSimulation, updateSimulation, fetchCupsLookup, listBaseValueSets, listBaseValueItems } from "../../lib/internalApi";
+import { calculateSimulation, updateSimulationSelectedOffer, fetchCupsLookup, listBaseValueSets, listBaseValueItems } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
@@ -15,7 +15,7 @@ import { DateInput } from "../ui/DateInput";
 import { DateRangePicker } from "../ui/DateRangePicker";
 import { FormInput } from "../ui/FormInput";
 import { CurrencyInput } from "../ui/CurrencyInput";
-import { Autocomplete, TextField, Collapse, Divider, Box, Button } from "@mui/material";
+import { Autocomplete, TextField, Collapse, Divider, Box, Button, Tabs, Tab, Typography, FormControlLabel, Switch, Backdrop, CircularProgress } from "@mui/material";
 import { Country } from "country-state-city";
 import type {
     SimulationPayload,
@@ -30,17 +30,20 @@ import type {
 // ─── Period helpers ────────────────────────────────────────────────────────────
 
 const ELEC_ENERGY_PERIODS: Record<ElecTarifa, string[]> = {
-    "2.0TD": ["P1", "P2", "P3"],
+    // Keep the same six positional cells as Excel; 2.0TD offer prices are
+    // defined only for P1-P3, so P4-P6 are preserved but do not affect offers.
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 const ELEC_POWER_PERIODS: Record<ElecTarifa, string[]> = {
-    "2.0TD": ["P1", "P2"],
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
     "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 const ELEC_EXCESS_PERIODS: Record<ElecTarifa, string[]> = {
-    "2.0TD": [],
+    // Excel E35 is a tariff-independent invoice pass-through amount.
+    "2.0TD": ["P1"],
     "3.0TD": ["P1", "P2", "P3"],
     "6.1TD": ["P1", "P2", "P3"],
 };
@@ -86,6 +89,11 @@ interface ElecFormState {
     reactiva: number;
     alquiler: number;
     otrosCargos: number;
+    useCurrentInvoiceBreakdown: boolean;
+    importePotencia: number;
+    importeEnergia: number;
+    importeImpuestoElectrico: number;
+    importeIva: number;
     ivaTasa: number;
     impuestoElectricoTasa: number;
 }
@@ -109,6 +117,11 @@ interface GasFormState {
     facturaActual: number;
     alquiler: number;
     otrosCargos: number;
+    useCurrentInvoiceBreakdown: boolean;
+    importeTerminoFijo: number;
+    importeTerminoVariable: number;
+    importeImpuestoHidrocarburos: number;
+    importeIva: number;
     ivaTasa: number;
     impuestoHidrocarburo: number;
     /** Personalizada Indexada margin over MIBGAS in €/kWh */
@@ -119,9 +132,9 @@ interface GasFormState {
     personalizadaFijoTerminoVariable: number;
 }
 
-function daysBetween(from: string, to: string, inclusive = false): number {
+function daysBetween(from: string, to: string): number {
     const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
-    return Math.max(1, inclusive ? d + 1 : d); // electricity: inclusive (end-start+1), gas: non-inclusive (end-start)
+    return Math.max(1, d);
 }
 
 function parseLocalDate(isoDateString: string): Date {
@@ -182,6 +195,180 @@ function prevMonthRange() {
     };
 }
 
+const ELEC_PERIOD_LABELS = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+
+function roundMoney(value: number): number {
+    return Math.round(value * 100) / 100;
+}
+
+function finiteNumber(value: unknown): number | undefined {
+    return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function shouldScaleOcrConsumption(source: Record<string, any>, facturaActual?: number): boolean {
+    if (!facturaActual || facturaActual > 10000) return false;
+    const rawEnergyCost = ELEC_PERIOD_LABELS.reduce((sum, period) => {
+        const consumo = finiteNumber(source[`consumo${period}`]) ?? 0;
+        const precio = finiteNumber(source[`precioEnergia${period}`]) ?? 0;
+        return sum + consumo * precio;
+    }, 0);
+    return rawEnergyCost > facturaActual * 5 && rawEnergyCost / 1000 < facturaActual * 2;
+}
+
+function normalizeConsumptionMap(
+    consumo: PeriodMap,
+    source: Record<string, any>,
+    facturaActual?: number,
+): PeriodMap {
+    if (!shouldScaleOcrConsumption(source, facturaActual)) return consumo;
+    return Object.fromEntries(
+        Object.entries(consumo).map(([period, value]) => [period, roundMoney(value / 1000)]),
+    );
+}
+
+function deriveCurrentBreakdown(source: Record<string, any>): {
+    importePotencia?: number;
+    importeEnergia?: number;
+    importeImpuestoElectrico?: number;
+    importeIva?: number;
+} {
+    const factura = finiteNumber(source.facturaActual);
+    const ivaTasa = finiteNumber(source.ivaTasa);
+    const impuestoElectricoTasa = finiteNumber(source.impuestoElectricoTasa);
+    const powerPeriods = ELEC_PERIOD_LABELS;
+    const scaleConsumption = shouldScaleOcrConsumption(source, factura);
+    const getConsumption = (period: string): number => {
+        const value = finiteNumber(source[`consumo${period}`]) ?? 0;
+        return scaleConsumption ? value / 1000 : value;
+    };
+
+    const result: {
+        importePotencia?: number;
+        importeEnergia?: number;
+        importeImpuestoElectrico?: number;
+        importeIva?: number;
+    } = {};
+
+    const billingDays =
+        source.fechaInicio && source.fechaFin ? daysBetween(source.fechaInicio, source.fechaFin) : undefined;
+    if (billingDays) {
+        const powerCost = powerPeriods.reduce((sum, period) => {
+            const potencia = finiteNumber(source[`potencia${period}`]) ?? 0;
+            const precio = finiteNumber(source[`precioPotencia${period}`]) ?? 0;
+            return sum + potencia * precio * billingDays;
+        }, 0);
+        if (powerCost > 0) result.importePotencia = roundMoney(powerCost);
+    }
+
+    if (factura != null && ivaTasa != null) {
+        result.importeIva = roundMoney(factura * (ivaTasa / (100 + ivaTasa)));
+    }
+
+    if (factura != null && ivaTasa != null && impuestoElectricoTasa != null) {
+        const ieR = impuestoElectricoTasa / 100;
+        const ivaR = ivaTasa / 100;
+        result.importeImpuestoElectrico = roundMoney(factura * (ieR / ((1 + ieR) * (1 + ivaR))));
+    }
+
+    if (factura != null) {
+        const rentalOrOther = Math.max(
+            finiteNumber(source.alquiler) ?? 0,
+            finiteNumber(source.otrosCargos) ?? 0,
+        );
+        const known =
+            (result.importePotencia ?? 0) +
+            (result.importeImpuestoElectrico ?? 0) +
+            (result.importeIva ?? 0) +
+            (finiteNumber(source.excesoPotencia) ?? 0) +
+            (finiteNumber(source.reactiva) ?? 0) +
+            rentalOrOther;
+        const residual = factura - known;
+        if (known > 0 && residual > 0) {
+            result.importeEnergia = roundMoney(residual);
+        }
+    }
+
+    if (factura != null && result.importeEnergia == null) {
+        const hasPricesForAllConsumedPeriods = ELEC_PERIOD_LABELS.every((period) => {
+            const consumo = getConsumption(period);
+            const precio = finiteNumber(source[`precioEnergia${period}`]);
+            return consumo <= 0 || (precio != null && precio > 0);
+        });
+        const energyFromPrices = ELEC_PERIOD_LABELS.reduce((sum, period) => {
+            const precio = finiteNumber(source[`precioEnergia${period}`]) ?? 0;
+            return sum + getConsumption(period) * precio;
+        }, 0);
+        if (hasPricesForAllConsumedPeriods && energyFromPrices > 0 && energyFromPrices < factura) {
+            result.importeEnergia = roundMoney(energyFromPrices);
+        }
+    }
+
+    return result;
+}
+
+function deriveGasCurrentBreakdown(source: Record<string, any>): {
+    importeTerminoFijo?: number;
+    importeTerminoVariable?: number;
+    importeImpuestoHidrocarburos?: number;
+    importeIva?: number;
+} {
+    const factura = finiteNumber(source.facturaActual);
+    if (factura == null) return {};
+
+    const ivaTasa = finiteNumber(source.ivaTasa) ?? 21;
+    const consumo = finiteNumber(source.consumoTotal) ?? finiteNumber(source.consumo) ?? 0;
+    const impuestoHidrocarburo = finiteNumber(source.impuestoHidrocarburo) ?? 0.00234;
+    const alquiler = finiteNumber(source.alquiler) ?? finiteNumber(source.alquilerEquipoMedida) ?? 0;
+    const otrosCargos = finiteNumber(source.otrosCargos) ?? 0;
+
+    const importeIva = roundMoney(factura * (ivaTasa / (100 + ivaTasa)));
+    const importeImpuestoHidrocarburos = roundMoney(impuestoHidrocarburo * consumo);
+    const known =
+        importeIva +
+        importeImpuestoHidrocarburos +
+        alquiler +
+        otrosCargos;
+    const residual = Math.max(0, factura - known);
+
+    return {
+        importeTerminoFijo: 0,
+        importeTerminoVariable: roundMoney(residual),
+        importeImpuestoHidrocarburos,
+        importeIva,
+    };
+}
+
+function currentElecInvoiceBreakdownTotal(s: ElecFormState): number {
+    return roundMoney(
+        (s.importePotencia || 0) +
+        (s.importeEnergia || 0) +
+        (s.exceso || 0) +
+        (s.importeImpuestoElectrico || 0) +
+        currentElecOtherChargesForBreakdown(s) +
+        (s.alquiler || 0) +
+        (s.importeIva || 0),
+    );
+}
+
+function currentElecOtherChargesForBreakdown(s: ElecFormState): number {
+    return roundMoney((s.otrosCargos || 0) + (s.reactiva || 0));
+}
+
+function currentGasInvoiceBreakdownTotal(s: GasFormState): number {
+    return roundMoney(
+        (s.importeTerminoFijo || 0) +
+        (s.importeTerminoVariable || 0) +
+        (s.importeImpuestoHidrocarburos || 0) +
+        (s.otrosCargos || 0) +
+        (s.alquiler || 0) +
+        (s.importeIva || 0),
+    );
+}
+
+function invoiceBreakdownMismatch(total: number, invoiceTotal: number): boolean {
+    return invoiceTotal > 0 && Math.abs(roundMoney(total - invoiceTotal)) > 0.02;
+}
+
 function defaultElecState(): ElecFormState {
     const { fechaInicio, fechaFin } = prevMonthRange();
     return {
@@ -211,6 +398,11 @@ function defaultElecState(): ElecFormState {
         reactiva: 0,
         alquiler: 0,
         otrosCargos: 0,
+        useCurrentInvoiceBreakdown: true,
+        importePotencia: 0,
+        importeEnergia: 0,
+        importeImpuestoElectrico: 0,
+        importeIva: 0,
         ivaTasa: 21,
         impuestoElectricoTasa: 5.11269,
     };
@@ -235,6 +427,11 @@ function defaultGasState(): GasFormState {
         facturaActual: 0,
         alquiler: 0,
         otrosCargos: 0,
+        useCurrentInvoiceBreakdown: true,
+        importeTerminoFijo: 0,
+        importeTerminoVariable: 0,
+        importeImpuestoHidrocarburos: 0,
+        importeIva: 0,
         ivaTasa: 21,
         impuestoHidrocarburo: 0.00234,
         personalizadaIndexMargen: 0,
@@ -246,11 +443,11 @@ function defaultGasState(): GasFormState {
 // ─── Payload builders ──────────────────────────────────────────────────────────
 
 function buildElecInputs(s: ElecFormState): ElectricityInputs {
-    const dias = daysBetween(s.fechaInicio, s.fechaFin, true);
+    const dias = daysBetween(s.fechaInicio, s.fechaFin);
     return {
         clientData: {
             cups: s.cups || undefined,
-            consumoAnual: s.consumoAnual || undefined,
+            consumoAnual: s.consumoAnual,
             nombreTitular: s.nombreTitular || undefined,
             personaContacto: s.personaContacto || undefined,
             comercial: s.comercial || undefined,
@@ -282,6 +479,21 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
             reactiva: s.reactiva || undefined,
             alquilerEquipoMedida: s.alquiler || undefined,
             otrosCargos: s.otrosCargos || undefined,
+            useCurrentInvoiceBreakdown: s.useCurrentInvoiceBreakdown,
+            terminoPotenciaActual: s.importePotencia || undefined,
+            terminoEnergiaActual: s.importeEnergia || undefined,
+            impuestoElectricoActual: s.importeImpuestoElectrico || undefined,
+            ivaActual: s.importeIva || undefined,
+            currentInvoiceBreakdown: {
+                terminoPotencia: s.importePotencia || 0,
+                terminoEnergia: s.importeEnergia || 0,
+                excesoPotencia: s.exceso || 0,
+                impuestoElectrico: s.importeImpuestoElectrico || 0,
+                otrosCargos: currentElecOtherChargesForBreakdown(s),
+                alquiler: s.alquiler || 0,
+                iva: s.importeIva || 0,
+                total: currentElecInvoiceBreakdownTotal(s),
+            },
             ivaTasa: s.ivaTasa,
             impuestoElectricoTasa: s.impuestoElectricoTasa,
         },
@@ -307,6 +519,20 @@ function buildGasInputs(s: GasFormState): GasInputs {
         extras: {
             alquilerEquipoMedida: s.alquiler || undefined,
             otrosCargos: s.otrosCargos || undefined,
+            useCurrentInvoiceBreakdown: s.useCurrentInvoiceBreakdown,
+            terminoFijoActual: s.importeTerminoFijo || undefined,
+            terminoVariableActual: s.importeTerminoVariable || undefined,
+            impuestoHidrocarburoActual: s.importeImpuestoHidrocarburos || undefined,
+            ivaActual: s.importeIva || undefined,
+            currentInvoiceBreakdown: {
+                terminoFijo: s.importeTerminoFijo || 0,
+                terminoVariable: s.importeTerminoVariable || 0,
+                impuestoHidrocarburo: s.importeImpuestoHidrocarburos || 0,
+                otrosCargos: s.otrosCargos || 0,
+                alquiler: s.alquiler || 0,
+                iva: s.importeIva || 0,
+                total: currentGasInvoiceBreakdownTotal(s),
+            },
         },
         ivaTasa: s.ivaTasa || undefined,
         impuestoHidrocarburo: s.impuestoHidrocarburo || undefined,
@@ -359,6 +585,7 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
             const key = `consumo${p}` as keyof typeof invoiceData;
             consumo[p] = invoiceData[key] ?? 0;
         });
+        const normalizedConsumo = normalizeConsumptionMap(consumo, invoiceData, invoiceData.facturaActual);
 
         // Build power map from invoice periods
         const potencia: PeriodMap = {};
@@ -384,7 +611,7 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
             perfilCarga: "NORMAL",
             fechaInicio,
             fechaFin,
-            consumo,
+            consumo: normalizedConsumo,
             potencia,
             exceso: invoiceData.excesoPotencia ?? 0,
             omie: emptyPeriods(ep),
@@ -398,6 +625,11 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
             reactiva: invoiceData.reactiva ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
             otrosCargos: invoiceData.otrosCargos ?? 0,
+            useCurrentInvoiceBreakdown: invoiceData.useCurrentInvoiceBreakdown !== false,
+            importePotencia: invoiceData.importePotencia ?? deriveCurrentBreakdown(invoiceData).importePotencia ?? 0,
+            importeEnergia: invoiceData.importeEnergia ?? deriveCurrentBreakdown(invoiceData).importeEnergia ?? 0,
+            importeImpuestoElectrico: invoiceData.importeImpuestoElectrico ?? deriveCurrentBreakdown(invoiceData).importeImpuestoElectrico ?? 0,
+            importeIva: invoiceData.importeIva ?? deriveCurrentBreakdown(invoiceData).importeIva ?? 0,
             ivaTasa: invoiceData.ivaTasa ?? 21,
             impuestoElectricoTasa: invoiceData.impuestoElectricoTasa ?? 5.11269,
         };
@@ -410,6 +642,25 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
     const potMap = e.potenciaContratada as unknown as Record<string, number>;
     const omieMap = (e.omieEstimado ?? {}) as Record<string, number>;
     const clientData = (e as any).clientData ?? {};
+    const deriveSource: Record<string, any> = {
+        ...(invoiceData ?? {}),
+        tarifaAcceso: e.tarifaAcceso,
+        facturaActual: e.facturaActual,
+        fechaInicio: e.periodo.fechaInicio,
+        fechaFin: e.periodo.fechaFin,
+        excesoPotencia: e.excesoPotencia,
+        reactiva: e.extras?.reactiva,
+        alquiler: e.extras?.alquilerEquipoMedida,
+        otrosCargos: e.extras?.otrosCargos,
+        ivaTasa: e.extras?.ivaTasa,
+        impuestoElectricoTasa: e.extras?.impuestoElectricoTasa,
+    };
+    ELEC_PERIOD_LABELS.forEach((period) => {
+        deriveSource[`consumo${period}`] = (invoiceData as any)?.[`consumo${period}`] ?? cMap[period];
+        deriveSource[`potencia${period}`] = (invoiceData as any)?.[`potencia${period}`] ?? potMap[period];
+    });
+    const derivedBreakdown = deriveCurrentBreakdown(deriveSource);
+    const rawConsumo = Object.fromEntries(ep.map((p) => [p, cMap[p] ?? 0]));
     return {
         cups: clientData.cups ?? "",
         consumoAnual: clientData.consumoAnual ?? 0,
@@ -423,7 +674,7 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
         perfilCarga: e.perfilCarga,
         fechaInicio: e.periodo.fechaInicio,
         fechaFin: e.periodo.fechaFin,
-        consumo: Object.fromEntries(ep.map((p) => [p, cMap[p] ?? 0])),
+        consumo: normalizeConsumptionMap(rawConsumo, deriveSource, e.facturaActual),
         potencia: Object.fromEntries(pp.map((p) => [p, potMap[p] ?? 0])),
         exceso: typeof e.excesoPotencia === "number" ? e.excesoPotencia : 0,
         omie: Object.fromEntries(ep.map((p) => [p, omieMap[p] ?? 0])),
@@ -437,6 +688,11 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
         reactiva: e.extras?.reactiva ?? 0,
         alquiler: e.extras?.alquilerEquipoMedida ?? 0,
         otrosCargos: e.extras?.otrosCargos ?? 0,
+        useCurrentInvoiceBreakdown: (e.extras as any)?.useCurrentInvoiceBreakdown !== false,
+        importePotencia: (e.extras as any)?.terminoPotenciaActual ?? (invoiceData as any)?.importePotencia ?? derivedBreakdown.importePotencia ?? 0,
+        importeEnergia: (e.extras as any)?.terminoEnergiaActual ?? (invoiceData as any)?.importeEnergia ?? derivedBreakdown.importeEnergia ?? 0,
+        importeImpuestoElectrico: (e.extras as any)?.impuestoElectricoActual ?? (invoiceData as any)?.importeImpuestoElectrico ?? derivedBreakdown.importeImpuestoElectrico ?? 0,
+        importeIva: (e.extras as any)?.ivaActual ?? (invoiceData as any)?.importeIva ?? derivedBreakdown.importeIva ?? 0,
         ivaTasa: e.extras?.ivaTasa ?? 21,
         impuestoElectricoTasa: e.extras?.impuestoElectricoTasa ?? 5.11269,
     };
@@ -467,6 +723,7 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
         const { fechaInicio, fechaFin } = invoiceData.fechaInicio && invoiceData.fechaFin
             ? { fechaInicio: invoiceData.fechaInicio, fechaFin: invoiceData.fechaFin }
             : prevMonthRange();
+        const derivedBreakdown = deriveGasCurrentBreakdown(invoiceData);
 
         return {
             cups: invoiceData.cups || "",
@@ -485,6 +742,11 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
             facturaActual: invoiceData.facturaActual ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
             otrosCargos: invoiceData.otrosCargos ?? 0,
+            useCurrentInvoiceBreakdown: invoiceData.useCurrentInvoiceBreakdown !== false,
+            importeTerminoFijo: invoiceData.importeTerminoFijo ?? derivedBreakdown.importeTerminoFijo ?? 0,
+            importeTerminoVariable: invoiceData.importeTerminoVariable ?? derivedBreakdown.importeTerminoVariable ?? 0,
+            importeImpuestoHidrocarburos: invoiceData.importeImpuestoHidrocarburos ?? derivedBreakdown.importeImpuestoHidrocarburos ?? 0,
+            importeIva: invoiceData.importeIva ?? derivedBreakdown.importeIva ?? 0,
             ivaTasa: invoiceData.ivaTasa ?? 21,
             impuestoHidrocarburo: invoiceData.impuestoHidrocarburo ?? 0.00234,
             personalizadaIndexMargen: 0,
@@ -494,6 +756,16 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
     }
 
     if (!g) return null;
+    const derivedBreakdown = deriveGasCurrentBreakdown({
+        ...(invoiceData ?? {}),
+        facturaActual: g.facturaActual,
+        consumo: g.consumo,
+        alquilerEquipoMedida: g.extras?.alquilerEquipoMedida,
+        alquiler: g.extras?.alquilerEquipoMedida,
+        otrosCargos: g.extras?.otrosCargos,
+        ivaTasa: g.ivaTasa,
+        impuestoHidrocarburo: g.impuestoHidrocarburo,
+    });
     return {
         cups: g.cups || "",
         consumoAnual: g.consumoAnual || 0,
@@ -511,6 +783,11 @@ function hydrateGas(p: SimulationPayload): GasFormState | null {
         facturaActual: g.facturaActual,
         alquiler: g.extras?.alquilerEquipoMedida ?? 0,
         otrosCargos: g.extras?.otrosCargos ?? 0,
+        useCurrentInvoiceBreakdown: (g.extras as any)?.useCurrentInvoiceBreakdown !== false,
+        importeTerminoFijo: (g.extras as any)?.terminoFijoActual ?? (invoiceData as any)?.importeTerminoFijo ?? derivedBreakdown.importeTerminoFijo ?? 0,
+        importeTerminoVariable: (g.extras as any)?.terminoVariableActual ?? (invoiceData as any)?.importeTerminoVariable ?? derivedBreakdown.importeTerminoVariable ?? 0,
+        importeImpuestoHidrocarburos: (g.extras as any)?.impuestoHidrocarburoActual ?? (invoiceData as any)?.importeImpuestoHidrocarburos ?? derivedBreakdown.importeImpuestoHidrocarburos ?? 0,
+        importeIva: (g.extras as any)?.ivaActual ?? (invoiceData as any)?.importeIva ?? derivedBreakdown.importeIva ?? 0,
         ivaTasa: g.ivaTasa ?? 21,
         impuestoHidrocarburo: g.impuestoHidrocarburo ?? 0.00234,
         personalizadaIndexMargen: g.personalizadaIndex?.margenEnergia ?? 0,
@@ -564,14 +841,14 @@ function Sec({ title, children, block, collapsible, defaultOpen = true, optional
     const { t } = useI18n();
     const [isOpen, setIsOpen] = useState(defaultOpen);
     return (
-        <div style={{
+        <div className={block ? "simulation-form-section simulation-form-section--block" : "simulation-form-section"} style={{
             marginBottom: 24,
             ...(block ? {
-                background: "var(--scheme-neutral-1200)",
-                border: `1px solid var(--scheme-neutral-${complete ? '700' : '900'}, rgba(255,255,255,0.08))`,
+                background: "linear-gradient(180deg, color-mix(in srgb, var(--scheme-neutral-1200) 94%, var(--scheme-neutral-1000)), var(--scheme-neutral-1200))",
+                border: `1px solid ${complete ? "var(--scheme-neutral-800)" : "color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800))"}`,
                 borderRadius: 12,
-                padding: "24px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.03)",
+                padding: "clamp(14px, 4vw, 24px)",
+                boxShadow: "var(--scheme-shadow-soft)",
             } : {})
         }}>
             <div
@@ -609,7 +886,7 @@ function Sec({ title, children, block, collapsible, defaultOpen = true, optional
 }
 
 function Row({ children }: { children: React.ReactNode }) {
-    return <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>{children}</div>;
+    return <div className="simulation-form-row" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>{children}</div>;
 }
 
 function Field({ label, hint, flex, error, required, help, children }: {
@@ -622,7 +899,7 @@ function Field({ label, hint, flex, error, required, help, children }: {
     children: React.ReactNode;
 }) {
     return (
-        <div className="sp-form-group" style={{ flex: flex ?? "1 1 150px", minWidth: 110, ...(error ? { borderLeft: "2px solid var(--scheme-error-400, #f87171)", paddingLeft: 8 } : {}) }}>
+        <div className="sp-form-group simulation-form-field" style={{ flex: flex ?? "1 1 150px", minWidth: 0, maxWidth: "100%", ...(error ? { borderLeft: "2px solid var(--scheme-error-400, #f87171)", paddingLeft: 8 } : {}) }}>
             <label className="sp-form-label" style={error ? { color: "var(--scheme-error-400, #f87171)" } : undefined}>
                 {label}
                 {required && <span style={{ color: "var(--scheme-error-400, #f87171)", marginLeft: 2 }}>*</span>}
@@ -632,6 +909,30 @@ function Field({ label, hint, flex, error, required, help, children }: {
             {error
                 ? <span style={{ fontSize: 11, color: "var(--scheme-error-400, #f87171)", marginTop: 3, display: "block" }}>{error}</span>
                 : hint ? <span className="sp-form-hint">{hint}</span> : null}
+        </div>
+    );
+}
+
+function BreakdownField({ label, hint, children }: {
+    label: string;
+    hint?: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="sp-form-group simulation-form-field" style={{ minWidth: 0 }}>
+            <label
+                className="sp-form-label"
+                style={{
+                    minHeight: 28,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    lineHeight: 1.25,
+                }}
+            >
+                {label}
+            </label>
+            {children}
+            {hint ? <span className="sp-form-hint" style={{ maxWidth: 230 }}>{hint}</span> : null}
         </div>
     );
 }
@@ -675,11 +976,11 @@ function PeriodGrid({ label, periods, values, onChange, step, hint, errorPeriods
     return (
         <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 11, opacity: 0.55, marginBottom: 6 }}>{label}</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div className="simulation-period-grid" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {periods.map((p) => {
                     const isInvalid = errorPeriods?.includes(p);
                     return (
-                        <div key={p} style={{ flex: "1 1 90px", minWidth: 75 }}>
+                        <div className="simulation-period-field" key={p} style={{ flex: "1 1 90px", minWidth: 0 }}>
                             <div style={{ fontSize: 10, textAlign: "center", marginBottom: 3, ...(isInvalid ? { color: "var(--scheme-error-400, #f87171)", fontWeight: 600 } : { opacity: 0.5 }) }}>{p}</div>
                             <FormInput
                                 label=""
@@ -718,7 +1019,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     electricityTaxRateOptions?: number[];
 }) {
     const { t } = useI18n();
-    const { preferences: { numberFormat } } = useUserPreferences();
+    const { preferences: { numberFormat, timezone } } = useUserPreferences();
     const up = <K extends keyof ElecFormState>(k: K, v: ElecFormState[K]) => onChange({ ...state, [k]: v });
     const upP = (field: "consumo" | "potencia" | "omie" | "personalizadaIndexMargenEnergia" | "personalizadaIndexMargenPotencia" | "personalizadaOmieBTerminoB" | "personalizadaOmieBMargenPotencia" | "personalizadaFijoPotencia" | "personalizadaFijoEnergia") => (p: string, v: number) => up(field, { ...state[field], [p]: v });
     const ep = ELEC_ENERGY_PERIODS[state.tarifaAcceso];
@@ -748,8 +1049,15 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     // Completion checks
     const clientComplete = !!state.cups && !!state.nombreTitular;
     const invoiceComplete = !!state.fechaInicio && !!state.fechaFin && state.facturaActual > 0;
-    const powerComplete = pp.every((p) => (state.potencia[p] ?? 0) > 0);
+    // Excel accepts sparse positional power inputs (for example P1 + P3).
+    // Completion therefore means that at least one period was supplied, not
+    // that every displayed P1-P6 cell must be non-zero.
+    const powerComplete = pp.some((p) => (state.potencia[p] ?? 0) > 0);
     const consumptionComplete = ep.some((p) => (state.consumo[p] ?? 0) > 0);
+    const currentBreakdownTotal = currentElecInvoiceBreakdownTotal(state);
+    const currentBreakdownDifference = roundMoney(currentBreakdownTotal - state.facturaActual);
+    const currentBreakdownDoesNotMatch = state.useCurrentInvoiceBreakdown && invoiceBreakdownMismatch(currentBreakdownTotal, state.facturaActual);
+    const currentOtherChargesBreakdown = currentElecOtherChargesForBreakdown(state);
 
     const requiredSteps = [clientComplete, invoiceComplete, powerComplete, consumptionComplete];
     const completedCount = requiredSteps.filter(Boolean).length;
@@ -759,7 +1067,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
     return (
         <>
             {/* Progress indicator */}
-            <div style={{
+            <div className="simulation-input-progress-card" style={{
                 marginBottom: 28,
                 padding: "16px 20px",
                 background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",
@@ -767,7 +1075,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                 borderRadius: 8,
             }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
+                    <span style={{ fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
                         {t("simulationForm", "formCompletion", { completed: completedCount, total: totalSteps })}
                     </span>
                     <span style={{ fontSize: 12, color: "var(--scheme-neutral-400)" }}>{Math.round(progressPercent)}%</span>
@@ -813,11 +1121,11 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                                 };
                                 const color = statusColor[entry.lastStatus ?? ''] ?? '#94a3b8';
                                 const dateStr = entry.lastUsed
-                                    ? new Date(entry.lastUsed).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+                                    ? new Date(entry.lastUsed).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric', timeZone: timezone })
                                     : null;
                                 return (
                                     <li key={key ?? entry.cups} {...restProps} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 14px', gap: 2, cursor: 'pointer' }}>
-                                        <span style={{ fontWeight: 600, fontSize: 13, letterSpacing: '0.03em' }}>{entry.cups}</span>
+                                        <span style={{ fontWeight: 600, letterSpacing: '0.03em' }}>{entry.cups}</span>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
 
                                             {entry.lastStatus && (
@@ -916,9 +1224,9 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
             </Sec>
 
             <Sec title={t("simulationForm", "sectionInvoiceBreakdown")} block collapsible complete={powerComplete && consumptionComplete && invoiceComplete}>
-                <Box style={{
+                <Box className="simulation-form-responsive-grid" style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
                     gap: 16,
                 }}>
                     <Sec>
@@ -975,7 +1283,7 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                                 />
                             </Field>
                             <Field label={t("simulationForm", "fieldDays")} flex="0 0 88px">
-                                <FormInput label="" type="number" slotProps={{ htmlInput: { readOnly: true } }} value={daysBetween(state.fechaInicio, state.fechaFin, true)} sx={{ opacity: 0.6 }} />
+                                <FormInput label="" type="number" slotProps={{ htmlInput: { readOnly: true } }} value={daysBetween(state.fechaInicio, state.fechaFin)} sx={{ opacity: 0.6 }} />
                             </Field>
                         </Row>
                     </Sec>
@@ -1011,6 +1319,81 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                         <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
                     </Field>
                 </Row>
+                <Row>
+                    <Field label="" flex="1 1 100%">
+                        <Box
+                            sx={{
+                                border: "1px solid",
+                                borderColor: currentBreakdownDoesNotMatch ? "warning.main" : state.useCurrentInvoiceBreakdown ? "success.main" : "divider",
+                                borderRadius: 1,
+                                p: 1.25,
+                                bgcolor: currentBreakdownDoesNotMatch ? "rgba(245,158,11,.16)" : state.useCurrentInvoiceBreakdown ? "rgba(16,185,129,.08)" : "transparent",
+                            }}
+                        >
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        size="small"
+                                        checked={state.useCurrentInvoiceBreakdown}
+                                        onChange={(_, checked) => up("useCurrentInvoiceBreakdown", checked)}
+                                    />
+                                }
+                                label={t("simulationForm", "currentPlanBreakdownLabel")}
+                                sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: 12, fontWeight: 800 } }}
+                            />
+                            {state.useCurrentInvoiceBreakdown ? (
+                                <Typography variant="caption" sx={{ display: "block", ml: 5.25, color: "text.secondary", lineHeight: 1.35 }}>
+                                    {t("simulationForm", "currentPlanBreakdownEnabledHint")}
+                                </Typography>
+                            ) : null}
+                            {currentBreakdownDoesNotMatch ? (
+                                <Typography variant="caption" sx={{ display: "block", ml: 5.25, color: "warning.main", lineHeight: 1.35, fontWeight: 700 }}>
+                                    {t("simulationForm", "currentPlanBreakdownMismatchWarning", { amount: `${formatNumber(Math.abs(currentBreakdownDifference), numberFormat, 2)} €` })}
+                                </Typography>
+                            ) : null}
+                        </Box>
+                    </Field>
+                </Row>
+                <Collapse in={state.useCurrentInvoiceBreakdown} timeout={200} unmountOnExit>
+                    <Box sx={{ p: 1.25, borderRadius: 1, bgcolor: currentBreakdownDoesNotMatch ? "rgba(245,158,11,.12)" : "rgba(16,185,129,.08)" }}>
+                        <Box
+                            sx={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 210px), 1fr))",
+                                gap: "12px 20px",
+                                alignItems: "start",
+                            }}
+                        >
+                            <BreakdownField label={t("simulationForm", "currentPowerCostLabel")}>
+                                <CurrencyInput value={state.importePotencia} onChange={(v) => up("importePotencia", isNaN(v) ? 0 : v)} />
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "currentEnergyCostLabel")}>
+                                <CurrencyInput value={state.importeEnergia} onChange={(v) => up("importeEnergia", isNaN(v) ? 0 : v)} />
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "excessPowerLabel")}>
+                                <CurrencyInput value={state.exceso} onChange={(v) => up("exceso", isNaN(v) ? 0 : v)} />
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "currentElectricityTaxLabel")}>
+                                <CurrencyInput value={state.importeImpuestoElectrico} onChange={(v) => up("importeImpuestoElectrico", isNaN(v) ? 0 : v)} />
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "fieldOtherCharges")} hint={t("simulationForm", "currentOtherChargesIncludesReactiveHint")}>
+                                <CurrencyInput
+                                    value={currentOtherChargesBreakdown}
+                                    onChange={(v) => {
+                                        const totalOtherCharges = isNaN(v) ? 0 : v;
+                                        up("otrosCargos", Math.max(0, roundMoney(totalOtherCharges - (state.reactiva || 0))));
+                                    }}
+                                />
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "fieldMeterRental")}>
+                                <CurrencyInput value={state.alquiler} onChange={(v) => up("alquiler", isNaN(v) ? 0 : v)} />
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "currentIvaAmountLabel")}>
+                                <CurrencyInput value={state.importeIva} onChange={(v) => up("importeIva", isNaN(v) ? 0 : v)} />
+                            </BreakdownField>
+                        </Box>
+                    </Box>
+                </Collapse>
                 <Divider sx={{ my: 2 }} />
                 <Row>
                     <Field label={state.zonaGeografica === "Canarias" ? t("simulationForm", "fieldIgic") : t("simulationForm", "fieldVat")} hint={state.zonaGeografica === "Canarias" ? t("simulationForm", "fieldIgicHint") : t("simulationForm", "fieldVatHint")} flex="1 1 0">
@@ -1052,6 +1435,9 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
     // Completion checks for gas
     const invoiceComplete = !!state.fechaInicio && !!state.fechaFin && state.facturaActual > 0;
     const consumptionComplete = state.consumo > 0;
+    const currentBreakdownTotal = currentGasInvoiceBreakdownTotal(state);
+    const currentBreakdownDifference = roundMoney(currentBreakdownTotal - state.facturaActual);
+    const currentBreakdownDoesNotMatch = state.useCurrentInvoiceBreakdown && invoiceBreakdownMismatch(currentBreakdownTotal, state.facturaActual);
 
     const requiredSteps = [invoiceComplete, consumptionComplete];
     const completedCount = requiredSteps.filter(Boolean).length;
@@ -1061,7 +1447,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
     return (
         <>
             {/* Progress indicator */}
-            <div style={{
+            <div className="simulation-input-progress-card" style={{
                 marginBottom: 28,
                 padding: "16px 20px",
                 background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",
@@ -1069,7 +1455,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                 borderRadius: 8,
             }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
+                    <span style={{ fontWeight: 600, color: "var(--scheme-neutral-300)" }}>
                         {t("simulationForm", "formCompletion", { completed: completedCount, total: totalSteps })}
                     </span>
                     <span style={{ fontSize: 12, color: "var(--scheme-neutral-400)" }}>{Math.round(progressPercent)}%</span>
@@ -1140,9 +1526,9 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
 
             {/* Invoice breakdown section */}
             <Sec title={t("simulationForm", "sectionInvoiceBreakdown")} block collapsible complete={invoiceComplete && consumptionComplete}>
-                <Box style={{
+                <Box className="simulation-form-responsive-grid" style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
                     gap: 16,
                 }}>
                     <Sec>
@@ -1212,6 +1598,65 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                         <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
                     </Field>
                 </Row>
+                <Row>
+                    <Field label="" flex="1 1 100%">
+                        <Box
+                            sx={{
+                                border: "1px solid",
+                                borderColor: currentBreakdownDoesNotMatch ? "warning.main" : state.useCurrentInvoiceBreakdown ? "success.main" : "divider",
+                                borderRadius: 1,
+                                p: 1.25,
+                                bgcolor: currentBreakdownDoesNotMatch ? "rgba(245,158,11,.16)" : state.useCurrentInvoiceBreakdown ? "rgba(16,185,129,.08)" : "transparent",
+                            }}
+                        >
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        size="small"
+                                        checked={state.useCurrentInvoiceBreakdown}
+                                        onChange={(_, checked) => up("useCurrentInvoiceBreakdown", checked)}
+                                    />
+                                }
+                                label={t("simulationForm", "currentPlanBreakdownLabel")}
+                                sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: 12, fontWeight: 800 } }}
+                            />
+                            {state.useCurrentInvoiceBreakdown ? (
+                                <Typography variant="caption" sx={{ display: "block", ml: 5.25, color: "text.secondary", lineHeight: 1.35 }}>
+                                    {t("simulationForm", "currentPlanBreakdownEnabledHint")}
+                                </Typography>
+                            ) : null}
+                            {currentBreakdownDoesNotMatch ? (
+                                <Typography variant="caption" sx={{ display: "block", ml: 5.25, color: "warning.main", lineHeight: 1.35, fontWeight: 700 }}>
+                                    {t("simulationForm", "currentPlanBreakdownMismatchWarning", { amount: `${formatNumber(Math.abs(currentBreakdownDifference), numberFormat, 2)} €` })}
+                                </Typography>
+                            ) : null}
+                        </Box>
+                    </Field>
+                </Row>
+                <Collapse in={state.useCurrentInvoiceBreakdown} timeout={200} unmountOnExit>
+                    <Box sx={{ p: 1.25, borderRadius: 1, bgcolor: currentBreakdownDoesNotMatch ? "rgba(245,158,11,.12)" : "rgba(16,185,129,.08)" }}>
+                        <Row>
+                            <Field label="Fixed term" flex="1 1 180px">
+                                <CurrencyInput value={state.importeTerminoFijo} onChange={(v) => up("importeTerminoFijo", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label="Variable energy term" flex="1 1 180px">
+                                <CurrencyInput value={state.importeTerminoVariable} onChange={(v) => up("importeTerminoVariable", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label="Hydrocarbon tax amount" flex="1 1 180px">
+                                <CurrencyInput value={state.importeImpuestoHidrocarburos} onChange={(v) => up("importeImpuestoHidrocarburos", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label={t("simulationForm", "fieldOtherCharges")} flex="1 1 180px">
+                                <CurrencyInput value={state.otrosCargos} onChange={(v) => up("otrosCargos", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label={t("simulationForm", "fieldMeterRental")} flex="1 1 180px">
+                                <CurrencyInput value={state.alquiler} onChange={(v) => up("alquiler", isNaN(v) ? 0 : v)} />
+                            </Field>
+                            <Field label={t("simulationForm", "currentIvaAmountLabel")} flex="1 1 180px">
+                                <CurrencyInput value={state.importeIva} onChange={(v) => up("importeIva", isNaN(v) ? 0 : v)} />
+                            </Field>
+                        </Row>
+                    </Box>
+                </Collapse>
                 <Divider sx={{ my: 2 }} />
                 <Row>
                     <Field label={t("simulationForm", "fieldIVA")} hint={t("simulationForm", "fieldIVAHint")} flex="1 1 0">
@@ -1270,7 +1715,7 @@ function TypeButton({ active, onClick, children }: { active: boolean; onClick: (
 // ─── Main export ───────────────────────────────────────────────────────────────
 
 export interface SimulationFormHandle {
-    calculate: () => void;
+    calculate: (baseValueSetIdOverride?: string) => void;
 }
 
 export interface SimulationFormProps {
@@ -1278,9 +1723,9 @@ export interface SimulationFormProps {
     token: string;
     clients?: ClientItem[];
     onClientFieldsChanged?: (clientId: string, data: { name?: string; contactName?: string }) => void;
-    onSuccess?: (results: SimulationResults, baseValueSetId?: string) => void;
+    onSuccess?: (results: SimulationResults, baseValueSetId?: string, payload?: SimulationPayload) => void;
     onNotify?: (text: string, tone: "success" | "error") => void;
-    onOfferSelected?: (productKey?: string) => void;
+    onOfferSelected?: (productKey?: string, selectedOffer?: SimulationPayload["selectedOffer"]) => void;
     readOnly?: boolean;
     /** ID of the base value set to use for calculation (Admin override) */
     baseValueSetId?: string;
@@ -1467,6 +1912,11 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 reactiva: 0,
                 alquiler: 1.3,
                 otrosCargos: 0,
+                useCurrentInvoiceBreakdown: true,
+                importePotencia: 0,
+                importeEnergia: 0,
+                importeImpuestoElectrico: 0,
+                importeIva: 0,
                 ivaTasa: 21,
                 impuestoElectricoTasa: 5.11269,
                 personalizadaIndexMargenEnergia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
@@ -1496,6 +1946,11 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 facturaActual: 285.50,
                 alquiler: 1.5,
                 otrosCargos: 0,
+                useCurrentInvoiceBreakdown: true,
+                importeTerminoFijo: 0,
+                importeTerminoVariable: 223.80,
+                importeImpuestoHidrocarburos: 11.70,
+                importeIva: 50.00,
                 ivaTasa: 21,
                 impuestoHidrocarburo: 0.00234,
                 personalizadaIndexMargen: 0,
@@ -1507,7 +1962,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         onNotify?.(t("simulationForm", "testDataFilled"), "success");
     }, [simType, onNotify]);
 
-    const handleCalculate = useCallback(async () => {
+    const handleCalculate = useCallback(async (baseValueSetIdOverride?: string) => {
         setHasValidated(true);
         const eErrs = simType !== "GAS" ? validateElec(elecState) : {};
         const gErrs = simType !== "ELECTRICITY" ? validateGas(gasState) : {};
@@ -1515,18 +1970,36 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         setError(null);
         setCalculating(true);
         try {
+            const effectiveBillingMonth =
+                billingMonthOverride ??
+                (simType !== "GAS"
+                    ? getDominantBillingMonth(elecState.fechaInicio, elecState.fechaFin)
+                    : undefined);
             const payload: SimulationPayload = {
                 schemaVersion: "1",
                 type: simType,
-                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
+                electricity: simType !== "GAS"
+                    ? {
+                        ...buildElecInputs(elecState),
+                        ...(effectiveBillingMonth ? { billingMonth: effectiveBillingMonth } : {}),
+                    }
+                    : undefined,
                 gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
                 ...(selectedOffer ? { selectedOffer } : {}),
             };
-            await updateSimulation(token, simulation.id, { payloadJson: payload as Record<string, unknown> });
-            const calcResult = await calculateSimulation(token, simulation.id, baseValueSetId ? { baseValueSetId } : undefined);
+            const effectiveBaseValueSetId = baseValueSetIdOverride ?? baseValueSetId;
+            const calcResult = await calculateSimulation(token, simulation.id, {
+                ...(effectiveBaseValueSetId ? { baseValueSetId: effectiveBaseValueSetId } : {}),
+                payloadJson: payload,
+                ...(effectiveBillingMonth ? { selectedMonth: effectiveBillingMonth } : {}),
+            });
+            const updatedPayload: SimulationPayload = {
+                ...payload,
+                results: calcResult.results,
+            };
             setResults(calcResult.results);
             setActiveTab("results");
-            onSuccess?.(calcResult.results, calcResult.baseValueSetId);
+            onSuccess?.(calcResult.results, calcResult.baseValueSetId, updatedPayload);
             onNotify?.(t("simulationForm", "calculationComplete", { count: (calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0) }), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "calculationFailed");
@@ -1535,7 +2008,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         } finally {
             setCalculating(false);
         }
-    }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify, baseValueSetId]);
+    }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify, baseValueSetId, billingMonthOverride]);
 
     const calculateWithMonth = useCallback(async (month: string) => {
         // Do NOT change fechaInicio/fechaFin — the billing period must stay as-is.
@@ -1549,18 +2022,27 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             const payload: SimulationPayload = {
                 schemaVersion: "1",
                 type: simType,
-                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
+                electricity: simType !== "GAS"
+                    ? {
+                        ...buildElecInputs(elecState),
+                        billingMonth: month,
+                    }
+                    : undefined,
                 gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
                 ...(selectedOffer ? { selectedOffer } : {}),
             };
-            await updateSimulation(token, simulation.id, { payloadJson: payload as Record<string, unknown> });
             const calcResult = await calculateSimulation(token, simulation.id, {
                 ...(baseValueSetId ? { baseValueSetId } : {}),
+                payloadJson: payload,
                 selectedMonth: month,
             });
+            const updatedPayload: SimulationPayload = {
+                ...payload,
+                results: calcResult.results,
+            };
             setResults(calcResult.results);
             setActiveTab("results");
-            onSuccess?.(calcResult.results, calcResult.baseValueSetId);
+            onSuccess?.(calcResult.results, calcResult.baseValueSetId, updatedPayload);
             onNotify?.(t("simulationForm", "calculationComplete", { count: (calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0) }), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "calculationFailed");
@@ -1578,20 +2060,8 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         const previousOffer = selectedOffer;
         setSelectedOffer(offerData);
         try {
-            // Build the full payload from current state so we never lose inputs or
-            // results when only the selectedOffer changes.  Using simulation.payloadJson
-            // (the mount-time prop) would spread stale data that is missing the inputs
-            // and/or results saved by the most recent calculation.
-            const updatedPayload: SimulationPayload = {
-                schemaVersion: "1",
-                type: simType,
-                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
-                gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
-                ...(results ? { results } : {}),
-                selectedOffer: offerData,
-            };
-            await updateSimulation(token, simulation.id, { payloadJson: updatedPayload as Record<string, unknown> });
-            onOfferSelected?.(productKey);
+            await updateSimulationSelectedOffer(token, simulation.id, offerData);
+            onOfferSelected?.(productKey, offerData);
             onNotify?.(t("simulationForm", "offerSaved"), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "failedToSaveSelection");
@@ -1599,22 +2069,14 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             setSelectedOffer(previousOffer);
         } finally {
         }
-    }, [simulation.id, token, simType, elecState, gasState, results, selectedOffer, onOfferSelected, onNotify]);
+    }, [simulation.id, token, selectedOffer, onOfferSelected, onNotify]);
 
     const handleClearOffer = useCallback(async () => {
         const previousOffer = selectedOffer;
         setSelectedOffer(undefined);
         try {
-            const updatedPayload: SimulationPayload = {
-                schemaVersion: "1",
-                type: simType,
-                electricity: simType !== "GAS" ? buildElecInputs(elecState) : undefined,
-                gas: simType !== "ELECTRICITY" ? buildGasInputs(gasState) : undefined,
-                ...(results ? { results } : {}),
-                selectedOffer: null,
-            };
-            await updateSimulation(token, simulation.id, { payloadJson: updatedPayload as Record<string, unknown> });
-            onOfferSelected?.(undefined);
+            await updateSimulationSelectedOffer(token, simulation.id, null);
+            onOfferSelected?.(undefined, null);
             onNotify?.(t("simulationForm", "offerCleared"), "success");
         } catch (err) {
             const msg = err instanceof Error ? err.message : t("simulationForm", "failedToClearSelection");
@@ -1622,7 +2084,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             onNotify?.(msg, "error");
             throw err;
         }
-    }, [simulation.id, token, simType, elecState, gasState, results, selectedOffer, onOfferSelected, onNotify]);
+    }, [simulation.id, token, selectedOffer, onOfferSelected, onNotify]);
 
     const facturaActual = simType === "ELECTRICITY" ? elecState.facturaActual
         : simType === "GAS" ? gasState.facturaActual : undefined;
@@ -1646,67 +2108,92 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     })();
 
     const resultCount = (results?.electricity?.length ?? 0) + (results?.gas?.length ?? 0);
-    const isOfferLocked = !!selectedOffer;
 
-    useEffect(() => {
-        if (isOfferLocked && activeTab !== "results") {
-            setActiveTab("results");
+    const handleTabClick = useCallback(async (tab: "inputs" | "results") => {
+        if (tab === "inputs" && selectedOffer && !readOnly) {
+            try {
+                await handleClearOffer();
+            } catch {
+                return;
+            }
         }
-    }, [isOfferLocked, activeTab]);
+        setActiveTab(tab);
+    }, [selectedOffer, readOnly, handleClearOffer]);
 
     return (
         <div>
-            {/* Tabs */}
-            <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--scheme-neutral-900)", marginBottom: 28 }}>
-                {[
-                    ...(!isOfferLocked ? [{ key: "inputs" as const, label: t("simulationForm", "tabInputs") }] : []),
-                    { key: "results" as const, label: results ? t("simulationForm", "tabResultsWithCount", { count: resultCount }) : t("simulationForm", "tabResults") },
-                ].map((tab) => (
-                    <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setActiveTab(tab.key)}
-                        style={{
-                            padding: "10px 20px",
-                            fontSize: 14,
-                            fontWeight: activeTab === tab.key ? 600 : 400,
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            color: activeTab === tab.key ? "var(--scheme-neutral-100)" : "var(--scheme-neutral-400)",
-                            borderBottom: activeTab === tab.key ? "2px solid var(--scheme-brand-600, #4ade80)" : "2px solid transparent",
-                            marginBottom: -1,
-                        }}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+            <Backdrop
+                open={calculating}
+                sx={{
+                    color: "#fff",
+                    zIndex: (theme) => theme.zIndex.modal + 1,
+                    backgroundColor: "rgba(15, 23, 42, 0.62)",
+                    backdropFilter: "blur(2px)",
+                }}
+            >
+                <CircularProgress
+                    role="status"
+                    aria-label={t("simulationForm", "btnCalculating")}
+                    color="inherit"
+                    size={44}
+                    thickness={4}
+                />
+            </Backdrop>
+            <Box className="simulation-detail-tabs" sx={{ mb: '12px' }}>
+                <Tabs
+                    value={activeTab}
+                    onChange={(_, value: "inputs" | "results") => void handleTabClick(value)}
+                    textColor="primary"
+                    indicatorColor="primary"
+                    sx={{
+                        minHeight: 36,
+                        "& .MuiTab-root": {
+                            minHeight: 36,
+                            px: 2,
+                            py: 0.75,
+                            textTransform: "none",
+                            fontWeight: 500,
+                        },
+                    }}
+                >
+                    <Tab
+                        value="inputs"
+                        label={<Typography component="span" variant="body2" sx={{ fontWeight: 500 }}>{t("simulationForm", "tabInputs")}</Typography>}
+                    />
+                    <Tab
+                        value="results"
+                        label={
+                            <Typography component="span" variant="body2" sx={{ fontWeight: 500 }}>
+                                {results ? t("simulationForm", "tabResultsWithCount", { count: resultCount }) : t("simulationForm", "tabResults")}
+                            </Typography>
+                        }
+                    />
+                </Tabs>
+            </Box>
 
             {/* Inputs tab */}
-            {!isOfferLocked && activeTab === "inputs" && (
+            {activeTab === "inputs" && (
                 <div>
                     {/* OCR disclaimer */}
                     {isOcrFilled && (
-                        <div style={{
+                        <div className="simulation-input-notice-card simulation-input-notice-card--warning" style={{
                             display: "flex",
                             alignItems: "flex-start",
                             gap: 8,
                             padding: "10px 14px",
                             borderRadius: 8,
                             marginBottom: 20,
-                            fontSize: 13,
                             background: "rgba(245, 158, 11, 0.08)",
                             color: "var(--scheme-warning-400, #f59e0b)",
                             border: "1px solid rgba(245, 158, 11, 0.3)",
                         }}>
-                            <span style={{ flexShrink: 0, fontSize: 15, lineHeight: 1.3 }}>⚠️</span>
-                            <span>{t("invoiceExtractor", "ocrDisclaimer") ?? "O OCR pode conter erros. Por favor, valide os dados preenchidos antes de continuar."}</span>
+                            <Typography component="span" variant="body2" sx={{ flexShrink: 0, lineHeight: 1.3 }}>⚠️</Typography>
+                            <Typography component="span" variant="body2">{t("invoiceExtractor", "ocrDisclaimer") ?? "O OCR pode conter erros. Por favor, valide os dados preenchidos antes de continuar."}</Typography>
                         </div>
                     )}
 
                     {/* Commodity type indicator (read-only) */}
-                    <div style={{
+                    <div className="simulation-input-utility-card" style={{
                         marginBottom: 28,
                         padding: "12px 16px",
                         background: "var(--scheme-neutral-1050, rgba(255,255,255,0.02))",
@@ -1716,11 +2203,11 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                         alignItems: "center",
                         gap: 10,
                     }}>
-                        <span style={{ fontSize: 13, color: "var(--scheme-neutral-400)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{t("simulationForm", "commodityType")}</span>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--scheme-neutral-200)", display: "flex", alignItems: "center", gap: 6 }}>
+                        <Typography component="span" variant="caption" sx={{ color: "var(--scheme-neutral-400)", fontWeight: 600, textTransform: "uppercase" }}>{t("simulationForm", "commodityType")}</Typography>
+                        <Typography component="span" variant="body2" sx={{ fontWeight: 600, color: "var(--scheme-neutral-200)", display: "flex", alignItems: "center", gap: 0.75 }}>
                             {simType === "ELECTRICITY" && <><BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} /> {t("simulationForm", "electricity")}</>}
                             {simType === "GAS" && <><LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444" }} /> {t("simulationForm", "gas")}</>}
-                        </span>
+                        </Typography>
                     </div>
 
                     {(simType === "ELECTRICITY") && (
@@ -1815,9 +2302,9 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
                     {/* Validation + API error + Calculate button */}
                     {hasErrors && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "10px 14px", background: "rgba(248,113,113,0.08)", border: "1px solid var(--scheme-error-400, #f87171)", borderRadius: 8, fontSize: 13, color: "var(--scheme-error-400, #f87171)" }}>
-                            <span>⚠</span>
-                            <span>{t("simulationForm", "fieldsRequireAttention", { count: Object.keys(elecErrors).length + Object.keys(gasErrors).length })}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "10px 14px", background: "rgba(248,113,113,0.08)", border: "1px solid var(--scheme-error-400, #f87171)", borderRadius: 8, color: "var(--scheme-error-400, #f87171)" }}>
+                            <Typography component="span" variant="body2">⚠</Typography>
+                            <Typography component="span" variant="body2">{t("simulationForm", "fieldsRequireAttention", { count: Object.keys(elecErrors).length + Object.keys(gasErrors).length })}</Typography>
                         </div>
                     )}
                     {error && (
@@ -1835,7 +2322,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                             )}
                             <Button
                                 variant="contained"
-                                onClick={handleCalculate}
+                                onClick={() => void handleCalculate()}
                                 disabled={calculating}
                             >
                                 {calculating ? t("simulationForm", "btnCalculating") : t("simulationForm", "btnCalculate")}
@@ -1910,7 +2397,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                             onUpdateGasPersonalizadaFijo={readOnly || simType !== "GAS" ? undefined : (field, value) => {
                                 setGasState(prev => ({ ...prev, [field === "terminoDia" ? "personalizadaFijoTerminoDia" : "personalizadaFijoTerminoVariable"]: value }));
                             }}
-                            onRecalculate={readOnly ? undefined : handleCalculate}
+                            onRecalculate={readOnly ? undefined : () => void handleCalculate()}
                             calculating={calculating}
                             selectedOffer={selectedOffer ?? undefined}
                             onSelectOffer={readOnly ? undefined : handleSelectOffer}
@@ -1923,13 +2410,11 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                     ) : (
                         <div style={{ padding: "60px 20px", textAlign: "center", opacity: 0.5 }}>
                             <div style={{ marginBottom: 12 }}><BoltIcon sx={{ fontSize: 48, color: "#f59e0b" }} /></div>
-                            <div style={{ fontSize: 15, marginBottom: 8 }}>{t("simulationForm", "noResultsYet")}</div>
-                            <div style={{ fontSize: 13 }}>{t("simulationForm", "noResultsInstructions")}</div>
-                            {!isOfferLocked && (
-                                <button type="button" className="sp-btn-primary" onClick={() => setActiveTab("inputs")} style={{ marginTop: 20 }}>
-                                    {t("simulationForm", "goToInputs")}
-                                </button>
-                            )}
+                            <Typography variant="body2" component="div" sx={{ mb: 1, fontWeight: 600 }}>{t("simulationForm", "noResultsYet")}</Typography>
+                            <Typography variant="body2" component="div">{t("simulationForm", "noResultsInstructions")}</Typography>
+                            <Button variant="contained" onClick={() => void handleTabClick("inputs")} sx={{ mt: 2.5 }}>
+                                {t("simulationForm", "goToInputs")}
+                            </Button>
                         </div>
                     )}
                 </div>

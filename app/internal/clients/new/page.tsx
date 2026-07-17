@@ -1,21 +1,26 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { createClient, isAdmin } from "../../lib/internalApi";
 import { useAgencies } from "../../components/hooks/useAgencies";
 import { ClientForm, type ClientFormData } from "../../components/modules/ClientForm";
-import { CrudPageLayout, useAlerts } from "../../components/shared";
+import { BoneyardFormSkeleton, CrudPageLayout, useAlerts } from "../../components/shared";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
 
 export default function NewClientPage() {
     const router = useRouter();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const onActionButtons = useActionButtons();
+    const isBoneyardBuild =
+        typeof window !== "undefined" &&
+        (window as typeof window & { __BONEYARD_BUILD?: boolean }).__BONEYARD_BUILD === true;
 
-    const agenciesActions = useAgencies(session, 1000, { minimal: true });
+    const agenciesActions = useAgencies(session, 1000, { minimal: true, queryEnabled: !isBoneyardBuild });
 
     const [formData, setFormData] = useState<ClientFormData>({
         name: "",
@@ -31,6 +36,8 @@ export default function NewClientPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
+    const breadcrumbs = useMemo(() => [{ label: t("clientFormPage", "newTitle") }], [t]);
+    useTopBarBreadcrumbs(breadcrumbs);
 
     useEffect(() => {
         if (agenciesActions.agencies.length > 0 && !formData.agencyId) {
@@ -41,7 +48,25 @@ export default function NewClientPage() {
         }
     }, [agenciesActions.agencies, formData.agencyId, session]);
 
+    useEffect(() => {
+        onActionButtons?.(formActions);
+        return () => onActionButtons?.(null);
+    }, [formActions, onActionButtons]);
+
     if (!session) return null;
+
+    if (agenciesActions.loading) {
+        return (
+            <CrudPageLayout
+                title={t("clientFormPage", "newTitle")}
+                subtitle={t("clientFormPage", "newSubtitle")}
+                backHref="/internal/clients"
+                hideHeader
+            >
+                <BoneyardFormSkeleton name="new-client-form" shape="client" />
+            </CrudPageLayout>
+        );
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -79,7 +104,7 @@ export default function NewClientPage() {
             title={t("clientFormPage", "newTitle")}
             subtitle={t("clientFormPage", "newSubtitle")}
             backHref="/internal/clients"
-            actions={formActions}
+            hideHeader
         >
             <ClientForm
                 session={session}

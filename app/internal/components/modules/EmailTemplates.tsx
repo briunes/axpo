@@ -224,7 +224,7 @@ export function EmailTemplates({ session, onNotify }: EmailTemplatesProps) {
                                 <button
                                     className="config-btn config-btn-secondary"
                                     onClick={() => handleToggleActive(selectedTemplate.id)}
-                                    style={{ padding: "6px 12px", fontSize: "13px" }}
+                                    style={{ padding: "6px 12px", }}
                                 >
                                     {selectedTemplate.active ? "Deactivate" : "Activate"}
                                 </button>

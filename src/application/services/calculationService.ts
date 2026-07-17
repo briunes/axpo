@@ -25,6 +25,12 @@ import type {
   ProductResult,
   SimulationResults,
 } from "@/domain/types";
+import {
+  getProductDefinitions,
+  isProductEligible,
+  type ProductDefinition,
+  type ProductRegistryScope,
+} from "@/domain/productRegistry";
 
 export type PriceMap = Map<string, number>;
 
@@ -33,31 +39,7 @@ export type PriceMap = Map<string, number>;
 const IMPUESTO_ELECTRICO = 0.0511; // matches Excel E51 default (5.11%)
 const IVA_RATE = 0.21;
 const IMPUESTO_HIDROCARBURO = 0.00234; // €/kWh — Ley de Hidrocarburos
-
-const TIERS = ["N1", "N2", "N3"] as const;
-
-// Product order matches Excel simulator layout
-const ELEC_FIJO_PRODUCTS = [
-  "ESTABLE",
-  "ESTABLE_PLUS",
-  "1P_PLUS",
-  "1P_PLUS_XL",
-  "1P_PLUS_SSCC_LIBRES",
-  "ESTABLE_TALLERES",
-  "ESTABLE_PLUS_TALLERES",
-] as const;
-
-// Product order matches Excel simulator layout
-const ELEC_INDEX_PRODUCTS = [
-  "DINAMICA",
-  "DINAMICA_PLUS",
-  "DINAMICA_CONTROL",
-  "DINAMICA_CONTROL_PLUS",
-  "DINAMICA_CONTROL_TECHO",
-] as const;
-
-const GAS_FIJO_PRODUCTS = ["FIJO", "ESTABLE_PLUS"] as const;
-const GAS_INDEX_PRODUCTS = ["INDEXADO", "DINAMICA_PLUS"] as const;
+const PERSONALIZADA_INDEX_ENERGY_MARGIN_FACTOR = 1.01528;
 
 /** Energy periods consumed per access tariff. */
 const ENERGY_PERIODS: Record<string, string[]> = {
@@ -68,32 +50,22 @@ const ENERGY_PERIODS: Record<string, string[]> = {
 
 /** Contracted power periods per access tariff. */
 const POWER_PERIODS: Record<string, string[]> = {
-  "2.0TD": ["P1", "P2"],
+  // Excel always carries six positional power cells (E28:E33) into every
+  // product formula. For 2.0TD, P3-P6 normally have zero/blank prices, but
+  // their input positions are not compacted or renamed.
+  "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
   "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
   "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
 };
 
-const ELEC_PRODUCT_LABELS: Record<string, string> = {
-  ESTABLE: "Estable",
-  ESTABLE_PLUS: "Estable Plus",
-  "1P_PLUS": "1P Plus",
-  "1P_PLUS_XL": "1P Plus XL",
-  "1P_PLUS_SSCC_LIBRES": "1P Plus SSCC Libres",
-  ESTABLE_TALLERES: "Estable Talleres",
-  ESTABLE_PLUS_TALLERES: "Estable Plus Talleres",
-  DINAMICA_CONTROL: "Dinámica Control",
-  DINAMICA_CONTROL_PLUS: "Dinámica Control Plus",
-  DINAMICA_CONTROL_TECHO: "Dinámica Control Techo",
-  DINAMICA: "Dinámica",
-  DINAMICA_PLUS: "Dinámica Plus",
-};
+function isUnpriced20TdPowerPeriod(tariff: string, period: string): boolean {
+  return tariff === "2.0TD" && !["P1", "P2"].includes(period);
+}
 
-const GAS_PRODUCT_LABELS: Record<string, string> = {
-  FIJO: "Gas Estable",
-  ESTABLE_PLUS: "Gas Estable Plus",
-  INDEXADO: "Gas Dinámica",
-  DINAMICA_PLUS: "Gas Dinámica Plus",
-};
+export interface CalculationOptions {
+  baseValueScope?: ProductRegistryScope;
+  productDefinitions?: ProductDefinition[];
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -108,6 +80,37 @@ function pv(map: Record<string, number | undefined>, period: string): number {
 
 function priceOf(map: PriceMap, key: string): number | undefined {
   return map.get(key);
+}
+
+function indexedEnergyPriceOf(
+  map: PriceMap,
+  baseKey: string,
+  billingMonthKey: string,
+  perfilCarga: "NORMAL" | "DIURNO",
+): number | undefined {
+  return (
+    // Profile-specific month value (new parser keys)
+    priceOf(
+      map,
+      `${baseKey}:MARGEN:${billingMonthKey}:PROFILE:${perfilCarga}`,
+    ) ??
+    // Profile-specific promedio fallback
+    priceOf(map, `${baseKey}:MARGEN:PROFILE:${perfilCarga}`) ??
+    // Backward-compatible keys (no profile dimension)
+    priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) ??
+    priceOf(map, `${baseKey}:MARGEN`) ??
+    priceOf(map, `${baseKey}:ENERGIA`)
+  );
+}
+
+function singlePeriodPriceOf(
+  map: PriceMap,
+  product: string,
+  tier: string,
+  tariff: string,
+  kind: "ENERGIA" | "POTENCIA",
+): number | undefined {
+  return priceOf(map, `ELEC:FIJO:${product}:${tier}:${tariff}:P1:${kind}`);
 }
 
 /**
@@ -154,56 +157,50 @@ function dominantBillingMonth(fechaInicio: string, fechaFin: string): string {
 }
 
 function getAnnualConsumption(inputs: ElectricityInputs): number | null {
+  const toFiniteNumber = (value: unknown): number | null => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value.replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
   const fromTopLevel = (inputs as ElectricityInputs & { consumoAnual?: number })
     .consumoAnual;
-  if (typeof fromTopLevel === "number" && Number.isFinite(fromTopLevel)) {
-    return fromTopLevel;
-  }
+  const topLevelValue = toFiniteNumber(fromTopLevel);
+  if (topLevelValue !== null) return topLevelValue;
 
   const fromClientData = (
     inputs as ElectricityInputs & {
       clientData?: { consumoAnual?: number };
     }
   ).clientData?.consumoAnual;
-
-  return typeof fromClientData === "number" && Number.isFinite(fromClientData)
-    ? fromClientData
-    : null;
+  const clientDataValue = toFiniteNumber(fromClientData);
+  if (clientDataValue !== null) return clientDataValue;
+  return 0;
 }
 
-function isEligibleSinglePeriodProduct(
+function isEligibleProduct(
   inputs: ElectricityInputs,
-  product: string,
+  definition: ProductDefinition,
 ): boolean {
   const annualConsumption = getAnnualConsumption(inputs);
-  if (annualConsumption === null) return true;
-
-  if (product === "1P_PLUS") {
-    return annualConsumption < 50000;
-  }
-
-  if (product === "1P_PLUS_XL") {
-    return annualConsumption > 50000 && annualConsumption < 100000;
-  }
-
-  if (product === "1P_PLUS_SSCC_LIBRES") {
-    return annualConsumption < 50000;
-  }
-
-  return true;
+  return isProductEligible(definition, { annualConsumption });
 }
 
 // ─── Electricity – Fixed ──────────────────────────────────────────────────────
 
 function calcElecFijo(
   inputs: ElectricityInputs,
-  product: string,
+  definition: ProductDefinition,
   tier: string,
   map: PriceMap,
 ): ProductResult | null {
-  if (!isEligibleSinglePeriodProduct(inputs, product)) {
+  if (!isEligibleProduct(inputs, definition)) {
     return null;
   }
+  const product = definition.productKey;
 
   const {
     tarifaAcceso,
@@ -223,13 +220,11 @@ function calcElecFijo(
     number | undefined
   >;
 
-  // "1P PLUS" products are "Periodo Único" — they publish a single P1 price that
-  // applies to all energy and power periods.  This allows them to work with any
-  // access tariff (2.0TD, 3.0TD, 6.1TD) without requiring separate per-period keys.
-  const isSinglePeriod =
-    product === "1P_PLUS" ||
-    product === "1P_PLUS_XL" ||
-    product === "1P_PLUS_SSCC_LIBRES";
+  // "1P PLUS" products are "Periodo Único" — when a selected tariff has only a
+  // P1 price, it applies to all periods for that tariff. Do not fall back across
+  // tariffs: the workbook looks up the selected tariff and leaves unavailable
+  // tariff/product combinations blank.
+  const isSinglePeriod = Boolean(definition.singlePeriod);
 
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
@@ -239,10 +234,7 @@ function calcElecFijo(
         `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:${p}:ENERGIA`,
       ) ??
       (isSinglePeriod
-        ? priceOf(
-            map,
-            `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:P1:ENERGIA`,
-          )
+        ? singlePeriodPriceOf(map, product, tier, tarifaAcceso, "ENERGIA")
         : undefined);
     if (precioEn === undefined) return null; // missing price → product unavailable for this tier/tariff combo
     terminoEnergia += precioEn * pv(consumoMap, p);
@@ -250,17 +242,16 @@ function calcElecFijo(
 
   let terminoPotencia = 0;
   for (const p of powerPeriods) {
-    const precioPot =
-      priceOf(
-        map,
-        `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
-      ) ??
-      (isSinglePeriod
-        ? priceOf(
-            map,
-            `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:P1:POTENCIA`,
-          )
-        : undefined);
+    const explicitPrice = priceOf(
+      map,
+      `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
+    );
+    const precioPot = explicitPrice ??
+      (isUnpriced20TdPowerPeriod(tarifaAcceso, p)
+        ? 0
+        : isSinglePeriod
+          ? singlePeriodPriceOf(map, product, tier, tarifaAcceso, "POTENCIA")
+          : undefined);
     if (precioPot === undefined) return null;
     terminoPotencia += precioPot * pv(potenciaMap, p) * (dias / 365);
   }
@@ -295,7 +286,7 @@ function calcElecFijo(
 
   return {
     productKey: `${product}:${tier}`,
-    productLabel: `${ELEC_PRODUCT_LABELS[product] ?? product} ${tier}`,
+    productLabel: `${definition.displayName} ${tier}`,
     commodity: "ELECTRICITY",
     pricingType: "FIXED",
     totalFactura: total,
@@ -318,12 +309,14 @@ function calcElecFijo(
 
 function calcElecIndex(
   inputs: ElectricityInputs,
-  product: string,
+  definition: ProductDefinition,
   tier: string,
   map: PriceMap,
 ): ProductResult | null {
+  const product = definition.productKey;
   const {
     tarifaAcceso,
+    perfilCarga,
     consumo,
     potenciaContratada,
     excesoPotencia,
@@ -332,19 +325,13 @@ function calcElecIndex(
     extras,
     omieEstimado,
   } = inputs;
-  // Indexed offers use the selected billing month's days (not the full billing
-  // period days). Fixed offers use periodo.dias.
+  // Indexed offers use the selected billing month for price lookup, while Excel
+  // still uses the invoice period days for power and annualized savings.
   // Use fechaFin (not fechaInicio) to derive the default billing month — a billing
   // period like "2026-01-31 → 2026-02-28" is a February bill, not a January bill.
   // fechaInicio may fall on the last day of the previous month (common in Spain).
   const billingMonthKey = inputs.billingMonth ?? periodo.fechaFin.slice(0, 7); // "YYYY-MM"
-  const dias = (() => {
-    if (inputs.billingMonth) {
-      const [y, m] = inputs.billingMonth.split("-").map(Number);
-      return new Date(y, m, 0).getDate();
-    }
-    return periodo.dias;
-  })();
+  const dias = periodo.dias;
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
@@ -367,23 +354,24 @@ function calcElecIndex(
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
     const baseKey = `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}`;
-    const storedPrice =
-      // 1. Month-specific price (e.g. MARZO-26) — highest priority
-      priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) ??
-      // 2. 12-month PROMEDIO — good fallback for DINAMICA/PLUS
-      priceOf(map, `${baseKey}:MARGEN`) ??
-      // 3. Legacy key name used in earlier imports
-      priceOf(map, `${baseKey}:ENERGIA`);
+    const storedPrice = indexedEnergyPriceOf(
+      map,
+      baseKey,
+      billingMonthKey,
+      perfilCarga,
+    );
     if (storedPrice === undefined) return null;
     terminoEnergia += storedPrice * pv(consumoMap, p);
   }
 
   let terminoPotencia = 0;
   for (const p of powerPeriods) {
-    const precioPot = priceOf(
+    const explicitPrice = priceOf(
       map,
       `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
     );
+    const precioPot = explicitPrice ??
+      (isUnpriced20TdPowerPeriod(tarifaAcceso, p) ? 0 : undefined);
     if (precioPot === undefined) return null;
     terminoPotencia += precioPot * pv(potenciaMap, p) * (dias / 365);
   }
@@ -415,7 +403,7 @@ function calcElecIndex(
 
   return {
     productKey: `${product}:${tier}`,
-    productLabel: `${ELEC_PRODUCT_LABELS[product] ?? product} ${tier}`,
+    productLabel: `${definition.displayName} ${tier}`,
     commodity: "ELECTRICITY",
     pricingType: "INDEXED",
     totalFactura: total,
@@ -539,7 +527,7 @@ function calcElecPersonalizadaFijo(
  * Personalizada Index product.
  * Uses user-supplied energy margins (€/MWh) and power margins (€/kW/year).
  * Only computed when at least one energy margin period is > 0.
- * Formula: energyCost = (omie[p] + margenEnergia[p]/1000) × consumo[p]
+ * Formula: energyCost = (precioExcel[p] + margenEnergia[p] × 1.01528/1000) × consumo[p]
  *          powerCost  = (atrPower[p] + margenPotencia[p]) × potencia[p] × dias/365
  */
 function calcPersonalizadaIndex(
@@ -549,14 +537,33 @@ function calcPersonalizadaIndex(
   // The product has no tier variant — keys use an empty-string tier (POTENCIA lookup).
   const product = "PERSONALIZADA_INDEX";
   const tier = "";
+  const perfilCarga = inputs.perfilCarga ?? "NORMAL";
 
-  // Guard: only compute when at least one energy margin or OMIE estimate is provided.
-  const hasAnyMargen =
+  const billingMonthKey =
+    inputs.billingMonth ?? inputs.periodo.fechaFin.slice(0, 7);
+  // Use user-supplied values when present. If the custom fields are blank, fall
+  // back to the imported PERSONALIZADA INDEX sheet values, matching Excel.
+  const hasAnyUserValue =
     Object.values(inputs.personalizadaIndex?.margenEnergia ?? {}).some(
       (v) => v != null && v !== 0,
     ) ||
+    Object.values(inputs.personalizadaIndex?.margenPotencia ?? {}).some(
+      (v) => v != null && v !== 0,
+    ) ||
     Object.values(inputs.omieEstimado ?? {}).some((v) => v != null && v !== 0);
-  if (!hasAnyMargen) return null;
+  const hasImportedDefaults = (ENERGY_PERIODS[inputs.tarifaAcceso] ?? []).some(
+    (p) => {
+      const baseKey = `ELEC:INDEX:${product}:${tier}:${inputs.tarifaAcceso}:${p}`;
+      return (
+        indexedEnergyPriceOf(map, baseKey, billingMonthKey, perfilCarga) !==
+        undefined
+      );
+    },
+  );
+  if (!hasAnyUserValue && !hasImportedDefaults) return null;
+  const hasExplicitOmie = Object.values(inputs.omieEstimado ?? {}).some(
+    (v) => v != null && v !== 0,
+  );
 
   const {
     tarifaAcceso,
@@ -567,13 +574,7 @@ function calcPersonalizadaIndex(
     facturaActual,
     extras,
   } = inputs;
-  const dias = (() => {
-    if (inputs.billingMonth) {
-      const [y, m] = inputs.billingMonth.split("-").map(Number);
-      return new Date(y, m, 0).getDate();
-    }
-    return periodo.dias;
-  })();
+  const dias = periodo.dias;
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
@@ -593,13 +594,24 @@ function calcPersonalizadaIndex(
 
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
-    // Energy price = user's OMIE estimate (€/kWh) + energy margin (€/MWh → /1000 to get €/kWh)
-    // The OMIE estimate should be the all-in cost per kWh the user expects for this
-    // billing month (including access tariff components). The margin is the commercial
-    // add-on agreed with the client on top of OMIE.
-    const omieP = pv(omieMapIdx, p) ?? 0;
-    const margenP = (margenEnergiaMap[p] ?? 0) / 1000;
-    terminoEnergia += (omieP + margenP) * pv(consumoMap, p);
+    const baseKey = `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}`;
+    const storedPrice = indexedEnergyPriceOf(
+      map,
+      baseKey,
+      billingMonthKey,
+      perfilCarga,
+    );
+    const margenEnergiaP =
+      ((margenEnergiaMap[p] ?? 0) * PERSONALIZADA_INDEX_ENERGY_MARGIN_FACTOR) /
+      1000;
+    const precioEnergia =
+      storedPrice !== undefined
+        ? storedPrice + margenEnergiaP
+        : hasExplicitOmie
+          ? pv(omieMapIdx, p) + margenEnergiaP
+          : margenEnergiaP;
+    if (precioEnergia === undefined) return null;
+    terminoEnergia += precioEnergia * pv(consumoMap, p);
   }
 
   let terminoPotencia = 0;
@@ -685,6 +697,7 @@ function calcPersonalizadaOmieB(
 
   const {
     tarifaAcceso,
+    perfilCarga,
     consumo,
     potenciaContratada,
     excesoPotencia,
@@ -693,13 +706,7 @@ function calcPersonalizadaOmieB(
     extras,
   } = inputs;
   const billingMonthKey = inputs.billingMonth ?? periodo.fechaFin.slice(0, 7);
-  const dias = (() => {
-    if (inputs.billingMonth) {
-      const [y, m] = inputs.billingMonth.split("-").map(Number);
-      return new Date(y, m, 0).getDate();
-    }
-    return periodo.dias;
-  })();
+  const dias = periodo.dias;
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
   const powerPeriods = POWER_PERIODS[tarifaAcceso] ?? [];
   const consumoMap = consumo as unknown as Record<string, number | undefined>;
@@ -719,9 +726,7 @@ function calcPersonalizadaOmieB(
   for (const p of energyPeriods) {
     const baseKey = `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}`;
     const storedPrice =
-      priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) ??
-      priceOf(map, `${baseKey}:MARGEN`) ??
-      priceOf(map, `${baseKey}:ENERGIA`) ??
+      indexedEnergyPriceOf(map, baseKey, billingMonthKey, perfilCarga) ??
       ((inputs.omieEstimado ?? {}) as Record<string, number | undefined>)[p];
     if (storedPrice === undefined) return null;
     const bFactor =
@@ -789,10 +794,11 @@ function calcPersonalizadaOmieB(
 
 function calcGasFijo(
   inputs: GasInputs,
-  product: string,
+  definition: ProductDefinition,
   tier: string,
   map: PriceMap,
 ): ProductResult | null {
+  const product = definition.productKey;
   const {
     tarifaAcceso,
     zonaGeografica,
@@ -836,7 +842,7 @@ function calcGasFijo(
 
   return {
     productKey: `${product}:${tier}`,
-    productLabel: `${GAS_PRODUCT_LABELS[product] ?? product} ${tier}`,
+    productLabel: `${definition.displayName} ${tier}`,
     commodity: "GAS",
     pricingType: "FIXED",
     totalFactura: total,
@@ -858,10 +864,11 @@ function calcGasFijo(
 
 function calcGasIndex(
   inputs: GasInputs,
-  product: string,
+  definition: ProductDefinition,
   tier: string,
   map: PriceMap,
 ): ProductResult | null {
+  const product = definition.productKey;
   const {
     tarifaAcceso,
     zonaGeografica,
@@ -920,7 +927,7 @@ function calcGasIndex(
 
   return {
     productKey: `${product}:${tier}`,
-    productLabel: `${GAS_PRODUCT_LABELS[product] ?? product} ${tier}`,
+    productLabel: `${definition.displayName} ${tier}`,
     commodity: "GAS",
     pricingType: "INDEXED",
     totalFactura: total,
@@ -1101,18 +1108,33 @@ export class CalculationService {
   static calculateElectricity(
     inputs: ElectricityInputs,
     map: PriceMap,
+    options: CalculationOptions = {},
   ): ProductResult[] {
     const results: ProductResult[] = [];
+    const scopeType = options.baseValueScope ?? "GLOBAL";
+    const configuredProducts = (
+      commodity: "ELECTRICITY",
+      pricingType: "FIXED" | "INDEXED",
+    ) => {
+      const products = options.productDefinitions?.filter(
+        (product) =>
+          product.commodity === commodity &&
+          product.pricingType === pricingType,
+      );
+      return options.productDefinitions !== undefined
+        ? (products ?? [])
+        : getProductDefinitions({ scopeType, commodity, pricingType });
+    };
 
-    for (const product of ELEC_FIJO_PRODUCTS) {
-      for (const tier of TIERS) {
+    for (const product of configuredProducts("ELECTRICITY", "FIXED")) {
+      for (const tier of product.tiers) {
         const r = calcElecFijo(inputs, product, tier, map);
         if (r) results.push(r);
       }
     }
 
-    for (const product of ELEC_INDEX_PRODUCTS) {
-      for (const tier of TIERS) {
+    for (const product of configuredProducts("ELECTRICITY", "INDEXED")) {
+      for (const tier of product.tiers) {
         const r = calcElecIndex(inputs, product, tier, map);
         if (r) results.push(r);
       }
@@ -1142,18 +1164,36 @@ export class CalculationService {
    * Returns results for every (product × tier) combination that has valid prices.
    * Results are sorted by ahorro descending.
    */
-  static calculateGas(inputs: GasInputs, map: PriceMap): ProductResult[] {
+  static calculateGas(
+    inputs: GasInputs,
+    map: PriceMap,
+    options: CalculationOptions = {},
+  ): ProductResult[] {
     const results: ProductResult[] = [];
+    const scopeType = options.baseValueScope ?? "GLOBAL";
+    const configuredProducts = (pricingType: "FIXED" | "INDEXED") => {
+      const products = options.productDefinitions?.filter(
+        (product) =>
+          product.commodity === "GAS" && product.pricingType === pricingType,
+      );
+      return options.productDefinitions !== undefined
+        ? (products ?? [])
+        : getProductDefinitions({
+            scopeType,
+            commodity: "GAS",
+            pricingType,
+          });
+    };
 
-    for (const product of GAS_FIJO_PRODUCTS) {
-      for (const tier of TIERS) {
+    for (const product of configuredProducts("FIXED")) {
+      for (const tier of product.tiers) {
         const r = calcGasFijo(inputs, product, tier, map);
         if (r) results.push(r);
       }
     }
 
-    for (const product of GAS_INDEX_PRODUCTS) {
-      for (const tier of TIERS) {
+    for (const product of configuredProducts("INDEXED")) {
+      for (const tier of product.tiers) {
         const r = calcGasIndex(inputs, product, tier, map);
         if (r) results.push(r);
       }
@@ -1180,6 +1220,7 @@ export class CalculationService {
     payload: SimulationPayload,
     map: PriceMap,
     baseValueSetId: string,
+    options: CalculationOptions = {},
   ): SimulationResults {
     const results: SimulationResults = {
       calculatedAt: new Date().toISOString(),
@@ -1187,11 +1228,15 @@ export class CalculationService {
     };
 
     if (payload.electricity) {
-      results.electricity = this.calculateElectricity(payload.electricity, map);
+      results.electricity = this.calculateElectricity(
+        payload.electricity,
+        map,
+        options,
+      );
     }
 
     if (payload.gas) {
-      results.gas = this.calculateGas(payload.gas, map);
+      results.gas = this.calculateGas(payload.gas, map, options);
     }
 
     return results;

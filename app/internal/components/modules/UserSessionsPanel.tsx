@@ -31,6 +31,8 @@ import {
     type UserSessionItem,
 } from "../../lib/internalApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { useUserPreferences, type UserPreferences } from "../providers/UserPreferencesProvider";
+import { formatDisplayDateTime } from "../../lib/formatPreferences";
 
 interface UserSessionsPanelProps {
     session: SessionState;
@@ -46,16 +48,8 @@ interface UserSessionsPanelProps {
     onNotify?: (message: string, tone: "success" | "error") => void;
 }
 
-const formatDate = (value?: string | null): string => {
-    if (!value) return "—";
-    return new Date(value).toLocaleString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-};
+const formatDate = (value: string | null | undefined, preferences: UserPreferences): string =>
+    formatDisplayDateTime(value, preferences);
 
 const ONLINE_THRESHOLD_MINUTES = 30;
 
@@ -88,7 +82,7 @@ const getLatestAuthRedirect = (item: UserSessionItem): AuthRedirectMetadata | nu
     return latest as AuthRedirectMetadata;
 };
 
-const formatAuthRedirect = (item: UserSessionItem): string => {
+const formatAuthRedirect = (item: UserSessionItem, preferences: UserPreferences): string => {
     const report = getLatestAuthRedirect(item);
     if (!report) return "—";
 
@@ -101,7 +95,7 @@ const formatAuthRedirect = (item: UserSessionItem): string => {
         report.currentPath ? `Page: ${report.currentPath}` : null,
         apiDetails ? `API: ${apiDetails}` : null,
     ].filter(Boolean).join(" | ") || "Redirected to login";
-    return report.at ? `${main} (${formatDate(report.at)})` : main;
+    return report.at ? `${main} (${formatDate(report.at, preferences)})` : main;
 };
 
 export function UserSessionsPanel({
@@ -118,6 +112,7 @@ export function UserSessionsPanel({
     onNotify,
 }: UserSessionsPanelProps) {
     const { t } = useI18n();
+    const { preferences } = useUserPreferences();
     const [items, setItems] = useState<UserSessionItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [activeOnly, setActiveOnly] = useState(true);
@@ -435,7 +430,7 @@ export function UserSessionsPanel({
 
         return (
             <Typography variant="caption" color="warning.main" sx={{ display: "block", maxWidth: 360 }}>
-                {formatAuthRedirect(item)}
+                {formatAuthRedirect(item, preferences)}
             </Typography>
         );
     };
@@ -617,8 +612,8 @@ export function UserSessionsPanel({
                                                     </TableCell>
                                                     <TableCell>{renderStatus(true, group.latestActivityAt)}</TableCell>
                                                     <TableCell>{group.sessions.length}</TableCell>
-                                                    <TableCell>{formatDate(group.latestLoginAt)}</TableCell>
-                                                    <TableCell>{formatDate(group.latestActivityAt)}</TableCell>
+                                                    <TableCell>{formatDate(group.latestLoginAt, preferences)}</TableCell>
+                                                    <TableCell>{formatDate(group.latestActivityAt, preferences)}</TableCell>
                                                     <TableCell align="right">
                                                         <IconButton
                                                             size="small"
@@ -655,8 +650,8 @@ export function UserSessionsPanel({
                                                                     <TableBody>
                                                                         {group.sessions.map((activeSession) => (
                                                                             <TableRow key={activeSession.id}>
-                                                                                <TableCell>{formatDate(activeSession.loginAt)}</TableCell>
-                                                                                <TableCell>{formatDate(activeSession.lastActivityAt)}</TableCell>
+                                                                                <TableCell>{formatDate(activeSession.loginAt, preferences)}</TableCell>
+                                                                                <TableCell>{formatDate(activeSession.lastActivityAt, preferences)}</TableCell>
                                                                                 <TableCell>{activeSession.authMethod}</TableCell>
                                                                                 <TableCell>
                                                                                     {[activeSession.browser, activeSession.os].filter(Boolean).join(" / ") || "—"}
@@ -711,9 +706,9 @@ export function UserSessionsPanel({
                                                                         <TableBody>
                                                                             {pastSessions.map((pastSession) => (
                                                                                 <TableRow key={pastSession.id}>
-                                                                                    <TableCell>{formatDate(pastSession.loginAt)}</TableCell>
-                                                                                    <TableCell>{formatDate(pastSession.lastActivityAt)}</TableCell>
-                                                                                    <TableCell>{formatDate(pastSession.logoutAt)}</TableCell>
+                                                                                    <TableCell>{formatDate(pastSession.loginAt, preferences)}</TableCell>
+                                                                                    <TableCell>{formatDate(pastSession.lastActivityAt, preferences)}</TableCell>
+                                                                                    <TableCell>{formatDate(pastSession.logoutAt, preferences)}</TableCell>
                                                                                     <TableCell>{pastSession.authMethod}</TableCell>
                                                                                     <TableCell>
                                                                                         {[pastSession.browser, pastSession.os].filter(Boolean).join(" / ") || "—"}
@@ -768,9 +763,9 @@ export function UserSessionsPanel({
                                                 </TableCell>
                                             )}
                                             <TableCell>{renderStatus(item.isActive, item.lastActivityAt)}</TableCell>
-                                            <TableCell>{formatDate(item.loginAt)}</TableCell>
-                                            <TableCell>{formatDate(item.lastActivityAt)}</TableCell>
-                                            <TableCell>{formatDate(item.logoutAt)}</TableCell>
+                                            <TableCell>{formatDate(item.loginAt, preferences)}</TableCell>
+                                            <TableCell>{formatDate(item.lastActivityAt, preferences)}</TableCell>
+                                            <TableCell>{formatDate(item.logoutAt, preferences)}</TableCell>
                                             <TableCell>{item.authMethod}</TableCell>
                                             <TableCell>{[item.browser, item.os].filter(Boolean).join(" / ") || "—"}</TableCell>
                                             <TableCell>{item.ipAddress || "—"}</TableCell>

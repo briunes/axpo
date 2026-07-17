@@ -2,13 +2,29 @@
 
 import { useState } from "react";
 import type { SimulationItem } from "../../lib/internalApi";
-import type { SimulationPayload, SimulationResults } from "@/domain/types";
+import type { SimulationResults } from "@/domain/types";
 import { SimulationResultsCards } from "./SimulationResultsCards";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import BoltIcon from "@mui/icons-material/Bolt";
+import CheckIcon from "@mui/icons-material/Check";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { Collapse, IconButton } from "@mui/material";
+import { Box, Button, Tab, Tabs } from "@mui/material";
+
+const ELEC_ENERGY_PERIODS: Record<string, string[]> = {
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
+    "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
+    "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
+};
+
+const ELEC_POWER_PERIODS: Record<string, string[]> = {
+    "2.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
+    "3.0TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
+    "6.1TD": ["P1", "P2", "P3", "P4", "P5", "P6"],
+};
+
+type TranslateFn = ReturnType<typeof useI18n>["t"];
 
 function Section({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
     return (
@@ -35,6 +51,8 @@ function Section({ title, children }: { title: React.ReactNode; children: React.
 }
 
 function Field({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
+    const isEmpty = value === undefined || value === null || value === "";
+
     return (
         <div style={{ marginBottom: 16 }}>
             <div style={{
@@ -51,7 +69,142 @@ function Field({ label, value, mono }: { label: string; value: React.ReactNode; 
                 color: "var(--scheme-neutral-200)",
                 fontFamily: mono ? "monospace" : undefined,
             }}>
-                {value || <span style={{ color: "var(--scheme-neutral-600)" }}>—</span>}
+                {isEmpty ? <span style={{ color: "var(--scheme-neutral-600)" }}>—</span> : value}
+            </div>
+        </div>
+    );
+}
+
+function FormLikeSection({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
+    return (
+        <div className="simulation-view-section simulation-form-section simulation-form-section--block" style={{
+            background: "linear-gradient(180deg, color-mix(in srgb, var(--scheme-neutral-1200) 94%, var(--scheme-neutral-1000)), var(--scheme-neutral-1200))",
+            border: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 82%, var(--scheme-neutral-800))",
+            borderRadius: 12,
+            padding: "clamp(14px, 4vw, 24px)",
+            marginBottom: 24,
+            boxShadow: "var(--scheme-shadow-soft)",
+        }}>
+            <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 22,
+            }}>
+                <h3 style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    margin: 0,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: "var(--scheme-neutral-200)",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                }}>
+                    {title}
+                    <CheckIcon sx={{ fontSize: 16, color: "var(--scheme-primary-500)" }} />
+                </h3>
+                <KeyboardArrowUpIcon sx={{ fontSize: 18, color: "var(--scheme-neutral-500)" }} />
+            </div>
+            {children}
+        </div>
+    );
+}
+
+function FormRow({ children }: { children: React.ReactNode }) {
+    return (
+        <div className="simulation-form-row simulation-view-row" style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            marginBottom: 14,
+        }}>
+            {children}
+        </div>
+    );
+}
+
+function DividerLine({ compact }: { compact?: boolean }) {
+    return (
+        <div style={{
+            height: 1,
+            background: "var(--scheme-neutral-900)",
+            margin: compact ? "12px 0" : "20px 0",
+        }} />
+    );
+}
+
+function ReadOnlyInputField({
+    label,
+    value,
+    flex = "1 1 220px",
+    mono,
+}: {
+    label: string;
+    value: React.ReactNode;
+    flex?: string;
+    mono?: boolean;
+}) {
+    const isEmpty = value === undefined || value === null || value === "";
+
+    return (
+        <div className="simulation-form-field simulation-view-field" style={{ flex, minWidth: 0, maxWidth: "100%" }}>
+            <div style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--scheme-neutral-400)",
+                marginBottom: 6,
+            }}>
+                {label}
+            </div>
+            <div className="simulation-view-readonly-value" style={{
+                minHeight: 36,
+                display: "flex",
+                alignItems: "center",
+                padding: "7px 12px",
+                border: "1px solid color-mix(in srgb, var(--scheme-neutral-900) 72%, var(--scheme-neutral-800))",
+                borderRadius: 9,
+                background: "var(--scheme-neutral-1200)",
+                color: isEmpty ? "var(--scheme-neutral-600)" : "var(--scheme-neutral-200)",
+                fontSize: 14,
+                fontFamily: mono ? "monospace" : undefined,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+            }}>
+                {isEmpty ? "—" : value}
+            </div>
+        </div>
+    );
+}
+
+function FormPeriodValues({ label, values }: { label: string; values: Record<string, number> }) {
+    const entries = Object.entries(values);
+    if (entries.length === 0) return null;
+
+    return (
+        <div style={{ marginBottom: 14 }}>
+            <div style={{
+                fontSize: 11,
+                color: "var(--scheme-neutral-500)",
+                marginBottom: 8,
+            }}>
+                {label}
+            </div>
+            <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))",
+                gap: 8,
+            }}>
+                {entries.map(([period, value]) => (
+                    <ReadOnlyInputField
+                        key={period}
+                        label={period}
+                        value={Number(value).toFixed(2)}
+                        flex="1 1 0"
+                    />
+                ))}
             </div>
         </div>
     );
@@ -78,9 +231,7 @@ function PeriodValues({ label, values }: { label: string; values: Record<string,
                         style={{
                             padding: "6px 12px",
                             background: "var(--scheme-neutral-1000)",
-                            borderRadius: 6,
-                            fontSize: 13,
-                        }}
+                            borderRadius: 6, }}
                     >
                         <span style={{ color: "var(--scheme-neutral-500)", marginRight: 6 }}>{period}:</span>
                         <span style={{ fontWeight: 600, color: "var(--scheme-neutral-200)" }}>{Number(value).toFixed(2)}</span>
@@ -91,6 +242,26 @@ function PeriodValues({ label, values }: { label: string; values: Record<string,
     );
 }
 
+function periodValues(source: unknown, periods: string[]): Record<string, number> {
+    const values = (source ?? {}) as Record<string, number>;
+    return Object.fromEntries(periods.map((period) => [period, Number(values[period] ?? 0)]));
+}
+
+function currency(value: unknown): string {
+    return `€${Number(value ?? 0).toFixed(2)}`;
+}
+
+function percent(value: unknown, digits = 3): string {
+    return `${Number(value ?? 0).toFixed(digits)}%`;
+}
+
+function electricityTariffLabel(t: TranslateFn, tariff: string): string {
+    if (tariff === "2.0TD") return t("simulationForm", "optionLowVoltage15");
+    if (tariff === "3.0TD") return t("simulationForm", "optionLowVoltage15Plus");
+    if (tariff === "6.1TD") return t("simulationForm", "optionHighVoltage");
+    return tariff;
+}
+
 export function SimulationViewDisplay({ simulation }: { simulation: SimulationItem }) {
     const payload = simulation.payloadJson as any;
     const simType = payload?.type;
@@ -99,14 +270,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
     const results = payload?.results as SimulationResults | undefined;
     const selectedOffer = payload?.selectedOffer as { productKey: string; commodity: "ELECTRICITY" | "GAS"; pricingType: "FIXED" | "INDEXED"; selectedAt: string } | undefined;
 
-    const [showAllOffers, setShowAllOffers] = useState(false);
-
-    // Find the selected product from results
-    const selectedProduct = selectedOffer && results
-        ? (selectedOffer.commodity === "ELECTRICITY" ? results.electricity : results.gas)?.find(
-            p => p.productKey === selectedOffer.productKey
-        )
-        : undefined;
+    const [activeTab, setActiveTab] = useState<"inputs" | "results">(results ? "results" : "inputs");
 
     const { t } = useI18n();
 
@@ -122,7 +286,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                 borderRadius: 12,
                 border: "2px dashed var(--scheme-neutral-800)",
             }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>📋</div>
+                <DescriptionOutlinedIcon sx={{ fontSize: 48, color: "var(--scheme-neutral-500)", mb: 2 }} />
                 <div style={{ fontSize: 18, fontWeight: 600, color: "var(--scheme-neutral-200)", marginBottom: 8 }}>
                     {t("simulationView", "noDataTitle") || "No Simulation Data"}
                 </div>
@@ -133,314 +297,365 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
         );
     }
 
+    const resultCount = (results?.electricity?.length ?? 0) + (results?.gas?.length ?? 0);
+    const elecEnergyPeriods = elec
+        ? ELEC_ENERGY_PERIODS[elec.tarifaAcceso] ?? Object.keys(elec.consumo ?? {})
+        : [];
+    const elecPowerPeriods = elec
+        ? ELEC_POWER_PERIODS[elec.tarifaAcceso] ?? Object.keys(elec.potenciaContratada ?? {})
+        : [];
+
     return (
-        <div>
-            {/* Type indicator */}
-            {simType && (
-                <div style={{ marginBottom: 24 }}>
-                    <div style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "8px 16px",
-                        background: "var(--scheme-neutral-1000)",
-                        borderRadius: 6,
-                        fontSize: 15,
-                        fontWeight: 600,
-                    }}>
-                        {simType === "ELECTRICITY" && <><BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} /> Electricity Simulation</>}
-                        {simType === "GAS" && <><LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444" }} /> Gas Simulation</>}
-                        {simType === "BOTH" && <><BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} /><LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444", marginLeft: "-4px" }} /> Electricity & Gas Simulation</>}
-                    </div>
-                </div>
-            )}
+        <div className="simulation-view-display">
+            <Box className="simulation-detail-tabs" sx={{ mb: "12px" }}>
+                <Tabs
+                    value={activeTab}
+                    onChange={(_, value: "inputs" | "results") => setActiveTab(value)}
+                    textColor="primary"
+                    indicatorColor="primary"
+                    sx={{
+                        minHeight: 36,
+                        "& .MuiTab-root": {
+                            minHeight: 36,
+                            px: 2,
+                            py: 0.75,
+                            textTransform: "none",
+                            fontSize: 14,
+                            fontWeight: 500,
+                        },
+                    }}
+                >
+                    <Tab value="inputs" label={t("simulationForm", "tabInputs")} />
+                    <Tab
+                        value="results"
+                        label={results ? t("simulationForm", "tabResultsWithCount", { count: resultCount }) : t("simulationForm", "tabResults")}
+                    />
+                </Tabs>
+            </Box>
 
-            {/* Client Data */}
-            {elec?.clientData && (
-                <Section title={t("simulationView", "sectionClientInfo")}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16 }}>
-                        <Field label={t("simulationView", "fieldCups")} value={elec.clientData.cups} mono />
-                        <Field label={t("simulationView", "fieldAnnualConsumption")} value={elec.clientData.consumoAnual ? `${elec.clientData.consumoAnual.toLocaleString()} kWh` : undefined} />
-                        <Field label={t("simulationView", "fieldAccountHolder")} value={elec.clientData.nombreTitular} />
-                        <Field label={t("simulationView", "fieldContactPerson")} value={elec.clientData.personaContacto} />
-                        <Field label={t("simulationView", "fieldSalesRep")} value={elec.clientData.comercial} />
-                        <Field label={t("simulationView", "fieldAddress")} value={elec.clientData.direccion} />
-                        <Field label={t("simulationView", "fieldCurrentSupplier")} value={elec.clientData.comercializadorActual} />
-                    </div>
-                </Section>
-            )}
-
-            {/* Electricity Configuration */}
-            {(simType === "ELECTRICITY" || simType === "BOTH") && elec && (
-                <Section title={<div style={{ display: "flex", alignItems: "center", gap: 8 }}><BoltIcon sx={{ fontSize: 18, color: "#f59e0b" }} /> {t("simulationView", "sectionElecConfig").replace("⚡ ", "")}</div>}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16, marginBottom: 20 }}>
-                        <Field label={t("simulationView", "fieldAccessTariff")} value={elec.tarifaAcceso} />
-                        <Field label={t("simulationView", "fieldGeographicZone")} value={elec.zonaGeografica} />
-                        <Field label={t("simulationView", "fieldLoadProfile")} value={elec.perfilCarga} />
-                        <Field
-                            label={t("simulationView", "fieldPeriod")}
-                            value={elec.periodo ? `${elec.periodo.fechaInicio} → ${elec.periodo.fechaFin} (${t("simulationView", "periodDays", { days: elec.periodo.dias })})` : undefined}
-                        />
-                        <Field label={t("simulationView", "fieldCurrentInvoice")} value={elec.facturaActual ? `€${elec.facturaActual.toFixed(2)}` : undefined} />
-                        <Field label={t("simulationView", "fieldReactiveEnergy")} value={elec.extras?.reactiva ? `€${elec.extras.reactiva.toFixed(2)}` : undefined} />
-                        <Field label={t("simulationView", "fieldEquipmentRental")} value={elec.extras?.alquilerEquipoMedida ? `€${elec.extras.alquilerEquipoMedida.toFixed(2)}` : undefined} />
-                        <Field label={t("simulationView", "fieldOtherCharges")} value={elec.extras?.otrosCargos ? `€${elec.extras.otrosCargos.toFixed(2)}` : undefined} />
-                    </div>
-
-                    {elec.consumo && <PeriodValues label={t("simulationView", "periodValues_consumption")} values={elec.consumo as any} />}
-                    {elec.potenciaContratada && <PeriodValues label={t("simulationView", "periodValues_power")} values={elec.potenciaContratada as any} />}
-                    {elec.excesoPotencia && Object.keys(elec.excesoPotencia).length > 0 && (
-                        <PeriodValues label={t("simulationView", "periodValues_excessPower")} values={elec.excesoPotencia as any} />
-                    )}
-                    {elec.omieEstimado && Object.keys(elec.omieEstimado).length > 0 && (
-                        <PeriodValues label={t("simulationView", "periodValues_omie")} values={elec.omieEstimado as any} />
-                    )}
-                </Section>
-            )}
-
-            {/* Gas Configuration */}
-            {(simType === "GAS" || simType === "BOTH") && gas && (
-                <Section title={<div style={{ display: "flex", alignItems: "center", gap: 8 }}><LocalFireDepartmentIcon sx={{ fontSize: 18, color: "#ef4444" }} /> {t("simulationView", "sectionGasConfig").replace("🔥 ", "")}</div>}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16 }}>
-                        <Field label={t("simulationView", "fieldAccessTariff")} value={gas.tarifaAcceso} />
-                        <Field label={t("simulationView", "fieldGeographicZone")} value={gas.zonaGeografica} />
-                        <Field label={t("simulationView", "fieldConsumption")} value={gas.consumo ? `${gas.consumo.toLocaleString()} kWh` : undefined} />
-                        <Field label={t("simulationView", "fieldTelemetry")} value={gas.telemedida} />
-                        <Field
-                            label={t("simulationView", "fieldPeriod")}
-                            value={gas.periodo ? `${gas.periodo.fechaInicio} → ${gas.periodo.fechaFin} (${t("simulationView", "periodDays", { days: gas.periodo.dias })})` : undefined}
-                        />
-                        <Field label={t("simulationView", "fieldCurrentInvoice")} value={gas.facturaActual ? `€${gas.facturaActual.toFixed(2)}` : undefined} />
-                        <Field label={t("simulationView", "fieldEquipmentRental")} value={gas.extras?.alquilerEquipoMedida ? `€${gas.extras.alquilerEquipoMedida.toFixed(2)}` : undefined} />
-                        <Field label={t("simulationView", "fieldOtherCharges")} value={gas.extras?.otrosCargos ? `€${gas.extras.otrosCargos.toFixed(2)}` : undefined} />
-                    </div>
-                </Section>
-            )}
-
-            {/* Selected Offer Highlight */}
-            {selectedProduct && selectedOffer && (
-                <div style={{
-                    marginBottom: 32,
-                    padding: 24,
-                    background: "linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.08) 100%)",
-                    border: "3px solid #6366f1",
-                    borderRadius: 16,
-                    boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.2)",
-                }}>
-                    <div style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        marginBottom: 16,
-                    }}>
-                        <span style={{ fontSize: 28 }}>✓</span>
-                        <h2 style={{
-                            margin: 0,
-                            fontSize: 20,
-                            fontWeight: 700,
-                            color: "var(--scheme-neutral-100)",
-                        }}>
-                            {t("simulationView", "selectedOfferTitle")}
-                        </h2>
-                    </div>
-
-                    <div style={{
-                        padding: 20,
-                        background: "var(--scheme-neutral-1050)",
-                        borderRadius: 12,
-                        marginBottom: 16,
-                    }}>
-                        <div style={{
-                            fontSize: 18,
-                            fontWeight: 700,
-                            color: "var(--scheme-neutral-100)",
-                            marginBottom: 12,
-                        }}>
-                            {selectedProduct.productLabel}
-                        </div>
-
-                        <div style={{
-                            display: "flex",
-                            gap: 8,
-                            marginBottom: 16,
-                        }}>
-                            <span style={{
-                                fontSize: 11,
-                                fontWeight: 600,
-                                color: "var(--scheme-neutral-400)",
-                                background: "var(--scheme-neutral-900)",
-                                padding: "4px 10px",
-                                borderRadius: 12,
-                                textTransform: "uppercase",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4,
-                            }}>
-                                {selectedOffer.commodity === "ELECTRICITY" ? <><BoltIcon sx={{ fontSize: 12, color: "#f59e0b" }} /> Electricity</> : <><LocalFireDepartmentIcon sx={{ fontSize: 12, color: "#ef4444" }} /> Gas</>}
-                            </span>
-                            <span style={{
-                                fontSize: 11,
-                                fontWeight: 600,
-                                color: "var(--scheme-neutral-400)",
-                                background: "var(--scheme-neutral-900)",
-                                padding: "4px 10px",
-                                borderRadius: 12,
-                                textTransform: "uppercase",
-                            }}>
-                                {selectedOffer.pricingType === "FIXED" ? t("simulationView", "badgeFixed") : t("simulationView", "badgeIndexed")}
-                            </span>
-                        </div>
-
-                        <div style={{
-                            display: "grid",
-                            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                            gap: 16,
-                            padding: 16,
-                            background: "var(--scheme-neutral-1000)",
-                            borderRadius: 8,
-                        }}>
-                            <div>
-                                <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginBottom: 4, textTransform: "uppercase" }}>
-                                    {t("simulationView", "labelTotalInvoice")}
-                                </div>
-                                <div style={{ fontSize: 24, fontWeight: 700, color: "var(--scheme-neutral-100)" }}>
-                                    {selectedProduct.totalFactura.toFixed(2)} €
-                                </div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginBottom: 4, textTransform: "uppercase" }}>
-                                    {t("simulationView", "labelMonthlySavings")}
-                                </div>
-                                <div style={{
-                                    fontSize: 24,
-                                    fontWeight: 700,
-                                    color: selectedProduct.ahorro > 0 ? "#10b981" : "#ef4444",
-                                }}>
-                                    {selectedProduct.ahorro > 0 ? "+" : ""}{selectedProduct.ahorro.toFixed(2)} €
-                                </div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginBottom: 4, textTransform: "uppercase" }}>
-                                    {t("simulationView", "labelPctDifference")}
-                                </div>
-                                <div style={{
-                                    fontSize: 24,
-                                    fontWeight: 700,
-                                    color: selectedProduct.ahorro > 0 ? "#10b981" : "#ef4444",
-                                }}>
-                                    {selectedProduct.pctAhorro > 0 ? "+" : ""}{selectedProduct.pctAhorro.toFixed(1)}%
-                                </div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: 11, color: "var(--scheme-neutral-500)", marginBottom: 4, textTransform: "uppercase" }}>
-                                    {t("simulationView", "labelAnnualSavings")}
-                                </div>
-                                <div style={{
-                                    fontSize: 24,
-                                    fontWeight: 700,
-                                    color: selectedProduct.ahorro > 0 ? "#10b981" : "#ef4444",
-                                }}>
-                                    {selectedProduct.ahorro > 0 ? "+" : ""}{selectedProduct.ahorroAnual.toFixed(2)} €
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style={{
-                        fontSize: 12,
-                        color: "var(--scheme-neutral-500)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                    }}>
-                        <span>📅</span>
-                        <span>{t("simulationView", "selectedAt", {
-                            date: new Date(selectedOffer.selectedAt).toLocaleDateString(undefined, {
-                                day: "2-digit",
-                                month: "long",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit"
-                            })
-                        })}</span>
-                    </div>
-                </div>
-            )}
-
-            {/* Results - All Offers (Read-only, Collapsible) */}
-            {results && (
-                <div style={{ marginTop: 32 }}>
-                    <div
-                        onClick={() => setShowAllOffers(!showAllOffers)}
-                        style={{
-                            padding: "14px 20px",
-                            background: "var(--scheme-neutral-1000)",
-                            border: "2px solid var(--scheme-neutral-800)",
-                            borderRadius: showAllOffers ? "12px 12px 0 0" : 12,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            userSelect: "none",
-                            transition: "border-radius 0.15s ease",
-                        }}
-                    >
-                        <h2 style={{
-                            margin: 0,
-                            fontSize: 18,
-                            fontWeight: 700,
-                            color: "var(--scheme-neutral-100)",
-                        }}>
-                            {t("simulationView", "allOffersTitle")}
-                        </h2>
-                        <IconButton
-                            size="small"
-                            onClick={(e) => { e.stopPropagation(); setShowAllOffers(!showAllOffers); }}
-                            sx={{
-                                color: "var(--scheme-neutral-400)",
-                                transform: showAllOffers ? "rotate(180deg)" : "rotate(0deg)",
-                                transition: "transform 0.2s ease",
-                            }}
-                        >
-                            <ExpandMoreIcon />
-                        </IconButton>
-                    </div>
-
-                    <Collapse in={showAllOffers} unmountOnExit>
-                        <div style={{
-                            padding: 20,
-                            background: "var(--scheme-neutral-1050)",
-                            border: "2px solid var(--scheme-neutral-800)",
-                            borderTop: "none",
-                            borderRadius: "0 0 12px 12px",
-                        }}>
+            {activeTab === "inputs" && (
+                <div>
+                    {/* Type indicator */}
+                    {simType && (
+                        <div style={{ marginBottom: 24 }}>
                             <div style={{
-                                fontSize: 13,
-                                color: "var(--scheme-neutral-400)",
-                                marginBottom: 16,
-                                padding: 12,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 8,
+                                padding: "8px 16px",
                                 background: "var(--scheme-neutral-1000)",
-                                borderRadius: 8,
+                                borderRadius: 6,
+                                fontSize: 15,
+                                fontWeight: 600,
                             }}>
-                                {t("simulationView", "readOnlyHint")}
+                                {simType === "ELECTRICITY" && <><BoltIcon sx={{ fontSize: 18, color: "var(--scheme-primary-500)" }} /> {t("simulationView", "typeElectricity")}</>}
+                                {simType === "GAS" && <><LocalFireDepartmentIcon sx={{ fontSize: 18, color: "var(--scheme-primary-500)" }} /> {t("simulationView", "typeGas")}</>}
+                                {simType === "BOTH" && <><BoltIcon sx={{ fontSize: 18, color: "var(--scheme-primary-500)" }} /><LocalFireDepartmentIcon sx={{ fontSize: 18, color: "var(--scheme-primary-500)", marginLeft: "-4px" }} /> {t("simulationView", "typeBoth")}</>}
                             </div>
-                            <SimulationResultsCards
-                                results={results}
-                                facturaActual={
-                                    simType === "ELECTRICITY" ? elec?.facturaActual
-                                        : simType === "GAS" ? gas?.facturaActual
-                                            : undefined
-                                }
-                                tarifaAcceso={elec?.tarifaAcceso ?? gas?.tarifaAcceso}
-                                consumoAnual={elec?.clientData?.consumoAnual}
-                                selectedOffer={selectedOffer ? {
-                                    productKey: selectedOffer.productKey,
-                                    commodity: selectedOffer.commodity
-                                } : undefined}
-                                readOnly
-                            />
                         </div>
-                    </Collapse>
+                    )}
+
+                    {/* Submitted values */}
+                    {(elec?.clientData || gas) && (
+                        <FormLikeSection title={t("simulationForm", "sectionClientInfo")}>
+                            <FormRow>
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldCups")}
+                                    value={elec?.clientData?.cups ?? gas?.cups}
+                                    flex="1 1 280px"
+                                    mono
+                                />
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldAnnualConsumption")}
+                                    value={Number(elec?.clientData?.consumoAnual ?? gas?.consumoAnual ?? 0).toLocaleString()}
+                                    flex="1 1 220px"
+                                />
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldZone")}
+                                    value={elec?.zonaGeografica ?? gas?.zonaGeografica}
+                                    flex="1 1 220px"
+                                />
+                            </FormRow>
+                            <DividerLine compact />
+                            <FormRow>
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldClientName")}
+                                    value={elec?.clientData?.nombreTitular ?? gas?.nombreTitular}
+                                />
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldContactPerson")}
+                                    value={elec?.clientData?.personaContacto ?? gas?.personaContacto}
+                                />
+                            </FormRow>
+                            <FormRow>
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldSalesAgent")}
+                                    value={elec?.clientData?.comercial ?? gas?.comercial}
+                                />
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldAddress")}
+                                    value={elec?.clientData?.direccion ?? gas?.direccion}
+                                />
+                            </FormRow>
+                            <FormRow>
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldCurrentSupplier")}
+                                    value={elec?.clientData?.comercializadorActual ?? gas?.comercializadorActual}
+                                    flex="1 1 100%"
+                                />
+                            </FormRow>
+                        </FormLikeSection>
+                    )}
+
+                    {/* Electricity values */}
+                    {(simType === "ELECTRICITY" || simType === "BOTH") && elec && (
+                        <FormLikeSection title={t("simulationForm", "sectionInvoiceBreakdown")}>
+                            <div className="simulation-form-responsive-grid simulation-view-responsive-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: 16 }}>
+                                <div>
+                                    <ReadOnlyInputField
+                                        label={t("simulationForm", "fieldTariff")}
+                                        value={electricityTariffLabel(t, elec.tarifaAcceso)}
+                                        flex="1 1 100%"
+                                    />
+                                    <div style={{ height: 10 }} />
+                                    <ReadOnlyInputField
+                                        label={t("simulationForm", "fieldLoadProfile")}
+                                        value={elec.perfilCarga}
+                                        flex="1 1 100%"
+                                    />
+                                </div>
+                                <div>
+                                    <FormRow>
+                                        <ReadOnlyInputField
+                                            label={t("simulationForm", "fieldBillingPeriod")}
+                                            value={elec.periodo ? `${elec.periodo.fechaInicio} → ${elec.periodo.fechaFin}` : undefined}
+                                            flex="1 1 320px"
+                                        />
+                                        <ReadOnlyInputField
+                                            label={t("simulationForm", "fieldDays")}
+                                            value={elec.periodo?.dias ?? 0}
+                                            flex="0 0 96px"
+                                        />
+                                    </FormRow>
+                                </div>
+                            </div>
+
+                            <DividerLine />
+                            <FormPeriodValues
+                                label={t("simulationForm", "powerPeriodsLabel", { periods: elecPowerPeriods.join(" · ") })}
+                                values={periodValues(elec.potenciaContratada, elecPowerPeriods)}
+                            />
+                            <FormRow>
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "excessPowerLabel")}
+                                    value={currency(elec.excesoPotencia)}
+                                    flex="0 1 220px"
+                                />
+                            </FormRow>
+
+                            <DividerLine />
+                            <FormPeriodValues
+                                label={t("simulationForm", "energyPeriodsLabel", { periods: elecEnergyPeriods.join(" · ") })}
+                                values={periodValues(elec.consumo, elecEnergyPeriods)}
+                            />
+
+                            <DividerLine />
+                            <FormRow>
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldInvoiceTotal")}
+                                    value={currency(elec.facturaActual)}
+                                />
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldReactiveEnergy")}
+                                    value={currency(elec.extras?.reactiva)}
+                                />
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldMeterRental")}
+                                    value={currency(elec.extras?.alquilerEquipoMedida)}
+                                />
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldOtherCharges")}
+                                    value={currency(elec.extras?.otrosCargos)}
+                                />
+                            </FormRow>
+
+                            <DividerLine compact />
+                            <FormRow>
+                                <ReadOnlyInputField
+                                    label={elec.zonaGeografica === "Canarias" ? t("simulationForm", "fieldIgic") : t("simulationForm", "fieldVat")}
+                                    value={percent(elec.extras?.ivaTasa ?? 21, elec.zonaGeografica === "Canarias" ? 2 : 0)}
+                                />
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldElecTax")}
+                                    value={percent(elec.extras?.impuestoElectricoTasa ?? 5.11269, 3)}
+                                />
+                            </FormRow>
+                        </FormLikeSection>
+                    )}
+
+                    {(simType === "ELECTRICITY" || simType === "BOTH") && elec && (
+                        <>
+                            <FormLikeSection title={t("simulationForm", "sectionPersonalizadaIndex")}>
+                                <FormPeriodValues
+                                    label={t("simulationForm", "personalizadaIndexMargenPotenciaLabel")}
+                                    values={periodValues(elec.personalizadaIndex?.margenPotencia, elecPowerPeriods)}
+                                />
+                                <FormPeriodValues
+                                    label={t("simulationForm", "personalizadaIndexMargenEnergiaLabel")}
+                                    values={periodValues(elec.personalizadaIndex?.margenEnergia, elecEnergyPeriods)}
+                                />
+                            </FormLikeSection>
+
+                            <FormLikeSection title={t("simulationForm", "sectionPersonalizadaOmieB")}>
+                                <FormPeriodValues
+                                    label={t("simulationForm", "personalizadaOmieBMargenPotenciaLabel")}
+                                    values={periodValues(elec.personalizadaOmieB?.margenPotencia, elecPowerPeriods)}
+                                />
+                                <FormPeriodValues
+                                    label={t("simulationForm", "personalizadaOmieBTerminoBLabel")}
+                                    values={periodValues(elec.personalizadaOmieB?.terminoB, elecEnergyPeriods)}
+                                />
+                            </FormLikeSection>
+
+                            <FormLikeSection title={t("simulationView", "sectionPersonalizadaFijo")}>
+                                <FormPeriodValues
+                                    label={t("simulationView", "personalizadaFijoPotenciaLabel")}
+                                    values={periodValues(elec.personalizadaFijo?.preciosPotencia, elecPowerPeriods)}
+                                />
+                                <FormPeriodValues
+                                    label={t("simulationView", "personalizadaFijoEnergiaLabel")}
+                                    values={periodValues(elec.personalizadaFijo?.preciosEnergia, elecEnergyPeriods)}
+                                />
+                            </FormLikeSection>
+                        </>
+                    )}
+
+                    {/* Gas values */}
+                    {(simType === "GAS" || simType === "BOTH") && gas && (
+                        <FormLikeSection title={t("simulationForm", "sectionInvoiceBreakdown")}>
+                            <div className="simulation-form-responsive-grid simulation-view-responsive-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: 16 }}>
+                                <div>
+                                    <ReadOnlyInputField
+                                        label={t("simulationForm", "fieldTariff")}
+                                        value={gas.tarifaAcceso}
+                                        flex="1 1 100%"
+                                    />
+                                    <div style={{ height: 10 }} />
+                                    <ReadOnlyInputField
+                                        label={t("simulationForm", "fieldTelemetering")}
+                                        value={gas.telemedida}
+                                        flex="1 1 100%"
+                                    />
+                                </div>
+                                <div>
+                                    <FormRow>
+                                        <ReadOnlyInputField
+                                            label={t("simulationForm", "fieldBillingPeriod")}
+                                            value={gas.periodo ? `${gas.periodo.fechaInicio} → ${gas.periodo.fechaFin}` : undefined}
+                                            flex="1 1 320px"
+                                        />
+                                        <ReadOnlyInputField
+                                            label={t("simulationForm", "fieldDays")}
+                                            value={gas.periodo?.dias ?? 0}
+                                            flex="0 0 96px"
+                                        />
+                                    </FormRow>
+                                </div>
+                            </div>
+
+                            <DividerLine />
+                            <FormRow>
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldConsumption")}
+                                    value={Number(gas.consumo ?? 0).toLocaleString()}
+                                    flex="1 1 260px"
+                                />
+                            </FormRow>
+
+                            <DividerLine />
+                            <FormRow>
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldCurrentInvoice")}
+                                    value={currency(gas.facturaActual)}
+                                />
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldMeterRental")}
+                                    value={currency(gas.extras?.alquilerEquipoMedida)}
+                                />
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldOtherCharges")}
+                                    value={currency(gas.extras?.otrosCargos)}
+                                />
+                            </FormRow>
+
+                            <DividerLine compact />
+                            <FormRow>
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldIVA")}
+                                    value={percent(gas.ivaTasa ?? 21, 0)}
+                                />
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "fieldHydrocarbonTax")}
+                                    value={Number(gas.impuestoHidrocarburo ?? 0.00234).toFixed(5)}
+                                />
+                            </FormRow>
+                        </FormLikeSection>
+                    )}
+
+                    {(simType === "GAS" || simType === "BOTH") && gas && (
+                        <>
+                            <FormLikeSection title={t("simulationForm", "sectionGasPersonalizadaIndex")}>
+                                <ReadOnlyInputField
+                                    label={t("simulationForm", "gasPersonalizadaIndexMargenLabel")}
+                                    value={Number(gas.personalizadaIndex?.margenEnergia ?? 0).toFixed(5)}
+                                    flex="1 1 260px"
+                                />
+                            </FormLikeSection>
+
+                            <FormLikeSection title={t("simulationView", "sectionGasPersonalizadaFijo")}>
+                                <FormRow>
+                                    <ReadOnlyInputField
+                                        label={t("simulationView", "gasPersonalizadaFijoTerminoDiaLabel")}
+                                        value={Number(gas.personalizadaFijo?.terminoDia ?? 0).toFixed(4)}
+                                    />
+                                    <ReadOnlyInputField
+                                        label={t("simulationView", "gasPersonalizadaFijoTerminoVariableLabel")}
+                                        value={Number(gas.personalizadaFijo?.terminoVariable ?? 0).toFixed(5)}
+                                    />
+                                </FormRow>
+                            </FormLikeSection>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {activeTab === "results" && (
+                <div>
+                    {results ? (
+                        <SimulationResultsCards
+                            results={results}
+                            facturaActual={
+                                simType === "ELECTRICITY" ? elec?.facturaActual
+                                    : simType === "GAS" ? gas?.facturaActual
+                                        : undefined
+                            }
+                            tarifaAcceso={elec?.tarifaAcceso ?? gas?.tarifaAcceso}
+                            consumoAnual={elec?.clientData?.consumoAnual}
+                            selectedOffer={selectedOffer ? {
+                                productKey: selectedOffer.productKey,
+                                commodity: selectedOffer.commodity
+                            } : undefined}
+                            readOnly
+                        />
+                    ) : (
+                        <div style={{ padding: "60px 20px", textAlign: "center", opacity: 0.5 }}>
+                            <div style={{ marginBottom: 12 }}><BoltIcon sx={{ fontSize: 48, color: "var(--scheme-primary-500)" }} /></div>
+                            <div style={{ fontSize: 15, marginBottom: 8 }}>{t("simulationForm", "noResultsYet")}</div>
+                            <Button variant="contained" onClick={() => setActiveTab("inputs")} sx={{ mt: 2.5 }}>
+                                {t("simulationForm", "goToInputs")}
+                            </Button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

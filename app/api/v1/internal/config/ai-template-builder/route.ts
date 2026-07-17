@@ -3,7 +3,13 @@ import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SUPPORTED_LANGUAGES } from "@/lib/supportedLanguages";
-import { getAiUsage, resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
+import {
+  getAiUsage,
+  getBedrockRuntimeBaseUrl,
+  isBedrockMantleProvider,
+  isOpenAiCompatibleProvider,
+  resolveAiConfigFromSystemConfig,
+} from "@/application/lib/aiConfig";
 
 // Allow up to 5 minutes — template generation for multiple languages can be slow
 export const maxDuration = 300;
@@ -145,12 +151,7 @@ async function callLLM(
     });
   }
 
-  if (
-    provider === "openai" ||
-    provider === "azure-openai" ||
-    provider === "ollama-cloud" ||
-    provider === "custom"
-  ) {
+  if (isOpenAiCompatibleProvider(provider) || provider === "custom") {
     return fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
@@ -168,6 +169,54 @@ async function callLLM(
       }),
       signal: timeout,
     });
+  }
+
+  if (isBedrockMantleProvider(provider)) {
+    const bedrockBaseUrl = getBedrockRuntimeBaseUrl(baseUrl);
+    return fetch(
+      `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/invoke`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+          temperature,
+          max_tokens: maxTokens,
+        }),
+        signal: timeout,
+      },
+    );
+  }
+
+  if (provider === "aws-bedrock-nvidia") {
+    const bedrockBaseUrl = baseUrl.replace(/\/+$/, "");
+    return fetch(
+      `${bedrockBaseUrl}/model/${encodeURIComponent(modelName)}/converse`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          system: [{ text: systemPrompt }],
+          messages: [{ role: "user", content: [{ text: userMessage }] }],
+          inferenceConfig: {
+            temperature,
+            maxTokens,
+          },
+        }),
+        signal: timeout,
+      },
+    );
   }
 
   if (provider === "anthropic") {
@@ -212,9 +261,8 @@ async function callLLM(
 
 function extractResponseText(provider: string, llmData: any): string {
   if (
-    provider === "openai" ||
-    provider === "azure-openai" ||
-    provider === "ollama-cloud" ||
+    isOpenAiCompatibleProvider(provider) ||
+    isBedrockMantleProvider(provider) ||
     provider === "custom"
   ) {
     return llmData.choices?.[0]?.message?.content || "";
@@ -224,6 +272,9 @@ function extractResponseText(provider: string, llmData: any): string {
   }
   if (provider === "anthropic") {
     return llmData.content?.[0]?.text || "";
+  }
+  if (provider === "aws-bedrock-nvidia") {
+    return llmData.output?.message?.content?.[0]?.text || "";
   }
   if (provider === "google") {
     return llmData.candidates?.[0]?.content?.parts?.[0]?.text || "";

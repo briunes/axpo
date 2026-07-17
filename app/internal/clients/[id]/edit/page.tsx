@@ -1,23 +1,26 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
 import { getClient, isAdmin, listAgencies, updateClient, type ClientItem } from "../../../lib/internalApi";
-import { CrudPageLayout, LoadingState, useAlerts } from "../../../components/shared";
+import { BoneyardFormSkeleton, CrudPageLayout, useAlerts } from "../../../components/shared";
 import { ClientForm, type ClientFormData } from "../../../components/modules/ClientForm";
 import { AuditLogsModal } from "../../../components/ui/AuditLogsModal";
 import type { AgencyItem } from "../../../lib/internalApi";
+import { useActionButtons, useTopBarBreadcrumbs } from "../../../components/InternalWorkspace";
 
 export default function EditClientPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const isBoneyardFixture = id === "boneyard-fixture";
     const router = useRouter();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
+    const onActionButtons = useActionButtons();
 
     const [client, setClient] = useState<ClientItem | null>(null);
     const [agencies, setAgencies] = useState<AgencyItem[]>([]);
@@ -36,10 +39,15 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
+    const breadcrumbs = useMemo(
+        () => client ? [{ label: client.name, href: `/internal/clients/${client.id}/edit` }] : null,
+        [client],
+    );
+    useTopBarBreadcrumbs(breadcrumbs);
 
     const fetchedRef = useRef(false);
     useEffect(() => {
-        if (!session || fetchedRef.current) return;
+        if (!session || isBoneyardFixture || fetchedRef.current) return;
         fetchedRef.current = true;
 
         getClient(session.token, id)
@@ -71,7 +79,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
         if (isAdmin(session.user.role)) {
             listAgencies(session.token, {}).then((res) => setAgencies(res.items)).catch(() => { });
         }
-    }, [session, id]);
+    }, [session, id, isBoneyardFixture]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -105,10 +113,36 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
         }
     };
 
-    if (!session || !client) {
+    useEffect(() => {
+        if (!session || !client) {
+            onActionButtons?.(null);
+            return;
+        }
+
+        onActionButtons?.(
+            <>
+                <span className="topbar-action-wrap">
+                    <Button
+                        className="topbar-action topbar-action--compact"
+                        variant="outlined"
+                        size="small"
+                        startIcon={<HistoryIcon />}
+                        onClick={() => setShowAuditLogsModal(true)}
+                    >
+                        <span className="topbar-action-label">{t("auditLogsModal", "title")}</span>
+                    </Button>
+                </span>
+                {formActions}
+            </>,
+        );
+
+        return () => onActionButtons?.(null);
+    }, [client, formActions, onActionButtons, session, t]);
+
+    if (!session || !client || false) {
         return (
-            <CrudPageLayout title={t("clientFormPage", "editTitle")} backHref="/internal/clients">
-                <LoadingState message={t("clientFormPage", "loading")} size={100} />
+            <CrudPageLayout title={t("clientFormPage", "editTitle")} backHref="/internal/clients" hideHeader>
+                <BoneyardFormSkeleton name="edit-client-form" shape="client" />
             </CrudPageLayout>
         );
     }
@@ -118,19 +152,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
             title={t("clientFormPage", "editTitle")}
             subtitle={t("clientFormPage", "editSubtitle", { name: client.name })}
             backHref="/internal/clients"
-            actions={
-                <>
-                    <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<HistoryIcon />}
-                        onClick={() => setShowAuditLogsModal(true)}
-                    >
-                        {t("auditLogsModal", "title")}
-                    </Button>
-                    {formActions}
-                </>
-            }
+            hideHeader
         >
             <ClientForm
                 session={session}
@@ -156,6 +178,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
                     token={session.token}
                     title={`${t("auditLogsModal", "title")} - ${client.name}`}
                 />
-            )}        </CrudPageLayout>
+            )}
+        </CrudPageLayout>
     );
 }

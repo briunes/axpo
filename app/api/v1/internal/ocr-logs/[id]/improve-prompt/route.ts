@@ -9,7 +9,23 @@ import {
   OCR_MAX_PDF_PAGES,
   OCR_PDF_RENDER_SCALE,
 } from "@/lib/pdfToImage";
-import { getAiUsage, resolveAiConfigFromSystemConfig } from "@/application/lib/aiConfig";
+import {
+  getAiUsage,
+  getBedrockRuntimeBaseUrl,
+  isBedrockMantleProvider,
+  isOpenAiCompatibleProvider,
+  resolveAiConfigFromSystemConfig,
+} from "@/application/lib/aiConfig";
+
+const isNvidiaBedrockRuntime = (provider: string): boolean =>
+  provider === "aws-bedrock-nvidia";
+
+const getBedrockImageFormat = (mimeType: string): "png" | "jpeg" | "gif" | "webp" => {
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("gif")) return "gif";
+  if (mimeType.includes("webp")) return "webp";
+  return "jpeg";
+};
 
 const COMMON_CORRECTION_FIELDS = new Set([
   "cups",
@@ -26,6 +42,10 @@ const COMMON_CORRECTION_FIELDS = new Set([
   "facturaActual",
   "alquiler",
   "otrosCargos",
+  "importePotencia",
+  "importeEnergia",
+  "importeImpuestoElectrico",
+  "importeIva",
   "ivaTasa",
   "invoiceType",
 ]);
@@ -534,7 +554,7 @@ Therefore:
 - NEVER instruct the extraction AI to return a fixed/hardcoded value for any field (e.g., do NOT write 'always return telemedida: ""' or 'zonaGeografica is not applicable — return ""').
 - NEVER instruct the AI to skip or omit a field just because it is absent from this particular sample invoice.
 - For every field in the JSON schema, the prompt must tell the AI WHERE to look for it on any invoice of this template, and to return null only if genuinely absent after a thorough search.
-- Fields like zonaGeografica, telemedida, perfilCarga, alquiler, otrosCargos, consumoAnual, etc. may be present on other invoices from this provider even if they are absent from the sample. Always try to extract them dynamically.
+- Fields like zonaGeografica, telemedida, perfilCarga, alquiler, otrosCargos, importePotencia, importeEnergia, importeImpuestoElectrico, importeIva, consumoAnual, etc. may be present on other invoices from this provider even if they are absent from the sample. Always try to extract them dynamically.
 
 Return ONLY the complete new prompt text — no commentary, no markdown fences, no preamble.`;
     } else {
@@ -600,7 +620,7 @@ Therefore:
 - NEVER instruct the extraction AI to return a fixed/hardcoded value for any field (e.g., do NOT write 'always return telemedida: ""' or 'zonaGeografica is not applicable — return ""').
 - NEVER instruct the AI to skip or omit a field just because it is absent from this particular sample invoice.
 - For every field in the JSON schema, the prompt must tell the AI WHERE to look for it on any invoice of this template, and to return null only if genuinely absent after a thorough search.
-- Fields like zonaGeografica, telemedida, perfilCarga, alquiler, otrosCargos, consumoAnual, etc. may be present on other invoices from this provider even if they are absent from the sample. Always try to extract them dynamically.
+- Fields like zonaGeografica, telemedida, perfilCarga, alquiler, otrosCargos, importePotencia, importeEnergia, importeImpuestoElectrico, importeIva, consumoAnual, etc. may be present on other invoices from this provider even if they are absent from the sample. Always try to extract them dynamically.
 
 Return ONLY the complete new prompt text — no commentary, no markdown fences, no preamble.`;
     }
@@ -682,7 +702,103 @@ Return ONLY the complete new prompt text — no commentary, no markdown fences, 
           }),
           signal: AbortSignal.timeout(300000),
         });
-      } else if (llmProvider === "openai" || llmProvider === "azure-openai") {
+      } else if (isNvidiaBedrockRuntime(llmProvider)) {
+        const resolvedFiles: Array<{
+          base64: string;
+          mimeType: string;
+          fileName: string;
+        }> = [];
+        for (const f of encodedFiles) {
+          if (isPdf(f.mimeType)) {
+            const pdfImages = await convertPdfToImages(
+              Buffer.from(f.base64, "base64"),
+              OCR_MAX_PDF_PAGES,
+              OCR_PDF_RENDER_SCALE,
+            );
+            for (const img of pdfImages) {
+              resolvedFiles.push({
+                base64: img.base64,
+                mimeType: img.mimeType,
+                fileName: f.fileName,
+              });
+            }
+          } else if (isImage(f.mimeType)) {
+            resolvedFiles.push(f);
+          }
+        }
+
+        const content: any[] = [{ text: metaPrompt }];
+        for (const f of resolvedFiles) {
+          content.push({
+            image: {
+              format: getBedrockImageFormat(f.mimeType),
+              source: { bytes: f.base64 },
+            },
+          });
+        }
+        const bedrockBaseUrl = llmBaseUrl.replace(/\/+$/, "");
+        llmResponse = await fetch(
+          `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/converse`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+            },
+            body: JSON.stringify({
+              messages: [{ role: "user", content }],
+              inferenceConfig: {
+                maxTokens: llmMaxTokens,
+                temperature: llmTemperature,
+              },
+            }),
+            signal: AbortSignal.timeout(300000),
+          },
+        );
+      } else if (isBedrockMantleProvider(llmProvider)) {
+        const content: any[] = [{ type: "text", text: metaPrompt }];
+        for (const f of encodedFiles) {
+          if (isPdf(f.mimeType)) {
+            const imgs = await convertPdfToImages(
+              Buffer.from(f.base64, "base64"),
+              OCR_MAX_PDF_PAGES,
+              OCR_PDF_RENDER_SCALE,
+            );
+            for (const img of imgs) {
+              content.push({
+                type: "image_url",
+                image_url: {
+                  url: `data:${img.mimeType};base64,${img.base64}`,
+                },
+              });
+            }
+          } else if (isImage(f.mimeType)) {
+            content.push({
+              type: "image_url",
+              image_url: { url: `data:${f.mimeType};base64,${f.base64}` },
+            });
+          }
+        }
+        const bedrockBaseUrl = getBedrockRuntimeBaseUrl(llmBaseUrl);
+        llmResponse = await fetch(
+          `${bedrockBaseUrl}/model/${encodeURIComponent(llmModelName)}/invoke`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+            },
+            body: JSON.stringify({
+              messages: [{ role: "user", content }],
+              temperature: llmTemperature,
+              max_tokens: llmMaxTokens,
+            }),
+            signal: AbortSignal.timeout(300000),
+          },
+        );
+      } else if (isOpenAiCompatibleProvider(llmProvider)) {
         const content: any[] = [{ type: "text", text: metaPrompt }];
         for (const f of encodedFiles) {
           content.push(toOpenAIFilePart(f));
@@ -794,14 +910,15 @@ Return ONLY the complete new prompt text — no commentary, no markdown fences, 
     // ── 9. Extract text from response ──────────────────────────────────────
     let improvedPrompt = "";
     if (
-      llmProvider === "openai" ||
-      llmProvider === "azure-openai" ||
-      llmProvider === "ollama-cloud"
+      isOpenAiCompatibleProvider(llmProvider) ||
+      isBedrockMantleProvider(llmProvider)
     ) {
       const msg = llmData.choices?.[0]?.message;
       improvedPrompt = msg?.content || msg?.reasoning || "";
     } else if (llmProvider === "anthropic") {
       improvedPrompt = llmData.content?.[0]?.text || "";
+    } else if (isNvidiaBedrockRuntime(llmProvider)) {
+      improvedPrompt = llmData.output?.message?.content?.[0]?.text || "";
     } else if (llmProvider === "google") {
       improvedPrompt = llmData.candidates?.[0]?.content?.parts?.[0]?.text || "";
     }
