@@ -48,6 +48,19 @@ interface CachedProductDefinitions {
 const priceMapCache = new Map<string, CachedPriceMap>();
 const productDefinitionsCache = new Map<string, CachedProductDefinitions>();
 
+function inclusiveBillingDays(periodo: {
+  fechaInicio: string;
+  fechaFin: string;
+  dias: number;
+}): number {
+  const start = Date.parse(`${periodo.fechaInicio}T00:00:00Z`);
+  const end = Date.parse(`${periodo.fechaFin}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+    return periodo.dias;
+  }
+  return Math.round((end - start) / 86_400_000) + 1;
+}
+
 export const calculateAndPersistSchema = z.object({
   baseValueSetId: z.string().min(1).optional(),
   payloadJson: z.record(z.unknown()).optional(),
@@ -143,6 +156,10 @@ export async function calculateAndPersistSimulation(
       ? {
           ...payload.electricity,
           ...(input.selectedMonth ? { billingMonth: input.selectedMonth } : {}),
+          periodo: {
+            ...payload.electricity.periodo,
+            dias: inclusiveBillingDays(payload.electricity.periodo),
+          },
           extras: {
             ...payload.electricity.extras,
             ivaTasa:
@@ -161,6 +178,10 @@ export async function calculateAndPersistSimulation(
     gas: payload.gas
       ? {
           ...payload.gas,
+          periodo: {
+            ...payload.gas.periodo,
+            dias: inclusiveBillingDays(payload.gas.periodo),
+          },
           ivaTasa:
             payload.gas.ivaTasa ??
             (systemConfig?.ivaRate != null
@@ -198,6 +219,19 @@ export async function calculateAndPersistSimulation(
 
   const updatedPayload: SimulationPayload = {
     ...payload,
+    electricity: payload.electricity
+      ? {
+          ...payload.electricity,
+          periodo: payloadWithTaxRates.electricity!.periodo,
+          ...(input.selectedMonth ? { billingMonth: input.selectedMonth } : {}),
+        }
+      : undefined,
+    gas: payload.gas
+      ? {
+          ...payload.gas,
+          periodo: payloadWithTaxRates.gas!.periodo,
+        }
+      : undefined,
     results,
   };
 
