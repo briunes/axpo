@@ -334,6 +334,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       accessSessionToken: issuePublicSessionToken(simulation.id, payload.token),
       simulation: {
         id: simulation.id,
+        referenceNumber: simulation.referenceNumber,
         status: simulation.status,
         expiresAt: simulation.expiresAt,
         sharedAt: simulation.sharedAt,
