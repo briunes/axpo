@@ -489,19 +489,7 @@ export function DataTable<T extends { id: string }>({
           }
           // Show skeleton when loading
           if (loading && (params.row as any).__skeleton) {
-            if (isActionsColumn) {
-              return (
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
-                  <Skeleton
-                    animation="wave"
-                    variant="rounded"
-                    width={132}
-                    height="62%"
-                    sx={{ bgcolor: 'color-mix(in srgb, var(--scheme-neutral-500) 22%, transparent)' }}
-                  />
-                </Box>
-              );
-            }
+            if (isActionsColumn) return null;
             return <Skeleton variant="rounded" width="100%" height={'50%'} />;
           }
           const content = col.renderCell(params.row);
@@ -554,19 +542,7 @@ export function DataTable<T extends { id: string }>({
         cellClassName: "dt-grid-cell-actions",
         renderCell: (params) => {
           if ((params.row as any).__detailPanelFor) return null;
-          if (loading && (params.row as any).__skeleton) {
-            return (
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
-                <Skeleton
-                  animation="wave"
-                  variant="rounded"
-                  width={132}
-                  height="62%"
-                  sx={{ bgcolor: 'color-mix(in srgb, var(--scheme-neutral-500) 22%, transparent)' }}
-                />
-              </Box>
-            );
-          }
+          if (loading && (params.row as any).__skeleton) return null;
           return rowActions(params.row);
         },
       });
@@ -1416,17 +1392,6 @@ export function DataTable<T extends { id: string }>({
                 '& .MuiDataGrid-main': {
                   border: 'none',
                   position: 'relative',
-                  '&::after': hasActionsColumn ? {
-                    content: '""',
-                    position: 'absolute',
-                    zIndex: 4,
-                    pointerEvents: 'none',
-                    top: 0,
-                    bottom: 0,
-                    right: 'var(--dt-actions-width, 164px)',
-                    width: 14,
-                    background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.16))',
-                  } : undefined,
                 },
                 '& .MuiDataGrid-virtualScroller': {
                   backgroundColor: tableSurface,
@@ -1522,6 +1487,20 @@ export function DataTable<T extends { id: string }>({
                   pr: densityCellPaddingX,
                   zIndex: 2,
                   backgroundColor: tableSurface,
+                  '&::after': loading ? {
+                    content: '""',
+                    position: 'absolute',
+                    right: densityCellPaddingX,
+                    width: 132,
+                    maxWidth: `calc(100% - ${densityCellPaddingX * 2}px)`,
+                    height: '50%',
+                    borderRadius: '999px',
+                    backgroundColor: theme.palette.mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.13)'
+                      : 'rgba(0, 0, 0, 0.11)',
+                    animation: 'dt-actions-skeleton-pulse 2s ease-in-out 0.5s infinite',
+                    pointerEvents: 'none',
+                  } : undefined,
                   '& .MuiButtonBase-root': {
                     minHeight: densityActionHeight,
                     height: densityActionHeight,
@@ -1542,6 +1521,11 @@ export function DataTable<T extends { id: string }>({
                 '& .MuiDataGrid-detailPanel': {
                   backgroundColor: 'color-mix(in srgb, var(--scheme-surface-raised) 86%, var(--scheme-neutral-950))',
                   borderBottom: '1px solid color-mix(in srgb, var(--scheme-neutral-900) 72%, transparent)',
+                },
+                '@keyframes dt-actions-skeleton-pulse': {
+                  '0%': { opacity: 1 },
+                  '50%': { opacity: 0.4 },
+                  '100%': { opacity: 1 },
                 },
                 '& .MuiDataGrid-detailPanelToggleCell .MuiIconButton-root': {
                   color: 'var(--scheme-neutral-300)',
