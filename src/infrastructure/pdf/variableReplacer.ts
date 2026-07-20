@@ -157,14 +157,22 @@ export function extractVariableValues(
   const periodEnd = electricity?.periodo?.fechaFin || "N/A";
   const simulationPeriod = `${periodStart} - ${periodEnd}`;
 
-  // Calculate annual consumption (approximate from monthly)
+  // Annual consumption is an explicit input returned in the endpoint payload.
+  // Do not infer it from billing-period consumption: periods may cover a range
+  // other than one month, and an inferred value can contradict the user's input.
+  const annualConsumption = (
+    electricity as (typeof electricity & {
+      clientData?: { consumoAnual?: number };
+    })
+  )?.clientData?.consumoAnual;
+  // This is the explicit billing-period total used by the separate
+  // ELECTRICITY_CONSUMPTION_KWH template field; it is not annualized.
   const totalConsumption = electricity?.consumo
     ? Object.values(electricity.consumo).reduce(
         (a: number, b: unknown) => (a || 0) + ((b as number) || 0),
         0,
       )
     : 0;
-  const annualConsumption = (totalConsumption as number) * 12;
   const electricityBillingDays = electricity?.periodo?.dias || 0;
 
   // Extract client info - check simulation, electricity and gas payload shapes.
@@ -363,9 +371,8 @@ export function extractVariableValues(
     ? gasResults?.find((r: any) => r.productKey === selectedGasOfferKey)
     : gasResults?.[0];
 
-  // Gas consumption - prefer consumoAnual, fall back to consumo (monthly * 12)
-  const gasAnnualConsumptionKwh =
-    gas?.consumoAnual || (gas?.consumo ? (gas.consumo as number) * 12 : 0);
+  // As with electricity, only expose the explicit endpoint value.
+  const gasAnnualConsumptionKwh = gas?.consumoAnual;
 
   // Current gas costs
   const gasCurrentTotal: number = gas?.facturaActual || 0;

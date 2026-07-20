@@ -133,14 +133,13 @@ export function extractTemplateVariables(
   const periodEnd = electricity?.periodo?.fechaFin || "N/A";
   const simulationPeriod = `${periodStart} — ${periodEnd}`;
 
-  // Calculate annual consumption (approximate from monthly)
-  const totalConsumption = electricity?.consumo
-    ? Object.values(electricity.consumo).reduce(
-        (a, b) => (a || 0) + (b || 0),
-        0,
-      )
-    : 0;
-  const annualConsumption = totalConsumption * 12;
+  // Only use the annual-consumption value supplied by the endpoint payload.
+  // Billing-period consumption must never be annualized in the presentation layer.
+  const annualConsumption = (
+    electricity as (typeof electricity & {
+      clientData?: { consumoAnual?: number };
+    })
+  )?.clientData?.consumoAnual;
 
   // Extract client info
   const clientName = simulation.client?.name || "N/A";
