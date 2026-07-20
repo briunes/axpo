@@ -166,6 +166,7 @@ export const GET = withErrorHandler(
       ...simulationPublicFields,
       pinSnapshot: displayPin,
       payloadJson: mergedPayload,
+      baseValueSetId: versions[0]?.baseValueSetId ?? null,
       client: client ?? null,
       ownerUser: ownerUser ?? simulation.ownerUser,
       agency: agency ?? null,

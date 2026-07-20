@@ -9,13 +9,14 @@ import { CrudPageLayout, FormSkeleton, useAlerts } from "../../../components/sha
 import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { SimulationViewDisplay } from "../../../components/modules/SimulationViewDisplay";
 import type { SimulationResults } from "@/domain/types";
-import { Button, IconButton, Tooltip } from "@mui/material";
+import { Box, Button, IconButton, Tooltip } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import HistoryIcon from "@mui/icons-material/History";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import LaunchIcon from "@mui/icons-material/Launch";
 import { DownloadHistoryDialog } from "../components/DownloadHistoryDialog";
 import { useUserPreferences } from "../../../components/providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../../lib/formatPreferences";
@@ -80,6 +81,33 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
             key: "client",
             label: t("simulationDetail", "metaClient"),
             value: sim.client.name,
+        });
+    }
+
+    if (sim.clonedFromSimulation) {
+        metaItems.push({
+            key: "clonedFrom",
+            label: t("simulationDetail", "metaClonedFrom"),
+            value: (
+                <Box
+                    component={"a"}
+                    href={`/internal/simulations/${sim.clonedFromSimulation.id}/view`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{
+                        color: "primary.main",
+                        fontWeight: 700,
+                        textDecoration: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                        "&:hover": { textDecoration: "underline" },
+                    }}
+                >
+                    {sim.clonedFromSimulation.referenceNumber ?? sim.clonedFromSimulation.id}
+                    <LaunchIcon sx={{ fontSize: 16, flexShrink: 0 }} />
+                </Box>
+            ),
         });
     }
 

@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { Prisma } from "@prisma/client";
-import { SimulationStatus, UserRole } from "@/domain/types";
+import { BaseValueScope, SimulationStatus, UserRole } from "@/domain/types";
 import {
   ForbiddenError,
   NotFoundError,
@@ -329,6 +329,9 @@ export class SimulationService {
         createdAt: true,
         updatedAt: true,
         clientId: true,
+        clonedFromSimulation: {
+          select: { id: true, referenceNumber: true },
+        },
         pinSnapshot: true,
         invoiceFilePath: true,
         invoiceFileMimeType: true,
@@ -900,9 +903,21 @@ export class SimulationService {
 
     // Fetch the new owner's PIN snapshot so the cloned simulation is
     // properly associated with the duplicating user's credentials.
-    const [newOwner, systemConfig] = await Promise.all([
+    const [newOwner, systemConfig, productionBaseValueSet] = await Promise.all([
       prisma.user.findUnique({ where: { id: actor.userId } }),
       prisma.systemConfig.findFirst(),
+      prisma.baseValueSet.findFirst({
+        where: {
+          isProduction: true,
+          isActive: true,
+          isDeleted: false,
+          scopeType: simulation.agency.isTlv
+            ? BaseValueScope.TLV
+            : BaseValueScope.GLOBAL,
+        },
+        orderBy: { version: "desc" },
+        select: { id: true },
+      }),
     ]);
 
     // Compute expiresAt from system config (same logic as createSimulation)
@@ -929,6 +944,7 @@ export class SimulationService {
             agencyId: newAgencyId,
             ownerUserId: actor.userId, // Actor becomes the new owner
             clientId: simulation.clientId,
+            clonedFromSimulationId: simulation.id,
             status: SimulationStatus.DRAFT,
             expiresAt: cloneExpiresAt,
             referenceNumber,
@@ -947,15 +963,20 @@ export class SimulationService {
       }
     }
 
-    // Strip selectedOffer from the payload so the cloned simulation starts
-    // without a pre-selected offer (calculated results are kept).
+    // Strip the source offer and calculated results. The clone route
+    // recalculates the copied inputs against the current production prices.
     let clonedPayload: Prisma.InputJsonValue | typeof Prisma.JsonNull;
     if (latestVersion.payloadJson === null) {
       clonedPayload = Prisma.JsonNull;
     } else {
       const raw = latestVersion.payloadJson as Record<string, unknown>;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { selectedOffer: _dropped, ...rest } = raw;
+      const {
+        selectedOffer: _droppedOffer,
+        results: _droppedResults,
+        baseValueSetId: _droppedBaseValueSetId,
+        ...rest
+      } = raw;
       clonedPayload = rest as Prisma.InputJsonValue;
     }
 
@@ -963,7 +984,9 @@ export class SimulationService {
       data: {
         simulationId: cloned.id,
         payloadJson: clonedPayload,
-        baseValueSetId: latestVersion.baseValueSetId,
+        // A clone is a new draft, so calculate it against the current
+        // production prices rather than retaining the source's old snapshot.
+        baseValueSetId: productionBaseValueSet?.id ?? null,
         createdBy: actor.userId,
       },
     });
