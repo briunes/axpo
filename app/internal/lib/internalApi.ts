@@ -42,6 +42,11 @@ export interface SimulationItem {
   agency?: { id: string; name: string; isTlv?: boolean } | null;
   ownerUserId?: string;
   clientId?: string | null;
+  baseValueSetId?: string | null;
+  clonedFromSimulation?: {
+    id: string;
+    referenceNumber?: string | null;
+  } | null;
   client?: {
     id: string;
     name: string;

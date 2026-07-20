@@ -224,6 +224,7 @@ model Simulation {
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   clientId            String?
+  clonedFromSimulationId String?
   pinSnapshot         String?
   invoiceFilePath     String?
   invoiceFileData     Bytes?
@@ -235,11 +236,14 @@ model Simulation {
   versions            SimulationVersion[]
   agency              Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   client              Client?             @relation(fields: [clientId], references: [id])
+  clonedFromSimulation Simulation?         @relation("SimulationClones", fields: [clonedFromSimulationId], references: [id], onDelete: SetNull)
+  clonedSimulations    Simulation[]         @relation("SimulationClones")
   ownerUser           User                @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
 
   @@index([agencyId, isDeleted, updatedAt(sort: Desc)])
   @@index([ownerUserId, isDeleted, updatedAt(sort: Desc)])
   @@index([status, isDeleted])
+  @@index([clonedFromSimulationId])
   @@map("simulations")
 }
 

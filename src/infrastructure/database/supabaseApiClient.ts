@@ -137,6 +137,11 @@ const models: Record<string, ModelMeta> = {
         constraint: "simulations_ownerUserId_fkey",
       },
       client: { table: "clients" },
+      clonedFromSimulation: {
+        table: "simulations",
+        localField: "clonedFromSimulationId",
+        manual: true,
+      },
       versions: { table: "simulation_versions", many: true },
       accessAttempts: { table: "access_attempts", many: true },
       ocrLogs: { table: "ocr_logs", many: true },

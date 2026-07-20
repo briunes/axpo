@@ -141,6 +141,33 @@ function SimulationMeta({
     });
   }
 
+  if (sim.clonedFromSimulation) {
+    metaItems.push({
+      key: "clonedFrom",
+      label: t("simulationDetail", "metaClonedFrom"),
+      value: (
+        <Box
+          component={"a"}
+          href={`/internal/simulations/${sim.clonedFromSimulation.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{
+            color: "primary.main",
+            fontWeight: 700,
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.5,
+            "&:hover": { textDecoration: "underline" },
+          }}
+        >
+          {sim.clonedFromSimulation.referenceNumber ?? sim.clonedFromSimulation.id}
+          <LaunchIcon sx={{ fontSize: 16, flexShrink: 0 }} />
+        </Box>
+      ),
+    });
+  }
+
   metaItems.push({
     key: "status",
     label: t("columns", "status"),
@@ -428,7 +455,9 @@ export default function SimulationDetailPage({
         } | null;
         if (payload?.results) setLastResults(payload.results);
         const baseValueSetId =
-          payload?.results?.baseValueSetId ?? payload?.baseValueSetId;
+          sim.baseValueSetId ??
+          payload?.results?.baseValueSetId ??
+          payload?.baseValueSetId;
         if (baseValueSetId) setUsedBaseValueSetId(baseValueSetId);
 
         setSelectedOfferProductKey(payload?.selectedOffer?.productKey ?? "");
