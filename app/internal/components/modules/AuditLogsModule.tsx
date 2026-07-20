@@ -722,6 +722,10 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
                         />
                     );
                 }}
+                rowHasDetails={(log) => {
+                    const metadata = log.metadataJson as Record<string, unknown> | null | undefined;
+                    return Boolean(metadata && "before" in metadata && "after" in metadata);
+                }}
                 mobileCard={{
                     title: "eventType",
                     status: "targetType",

@@ -1,3 +1,4 @@
+
 <style>
   #axpo-sim-tpl {
     font-family: Helvetica, Arial, sans-serif;
@@ -296,11 +297,11 @@
   #axpo-sim-tpl .asim-notice {
     font-size: 8.5pt;
     color: #333333;
-    margin-top: 8px;
+    margin-top: 20px;
   }
   #axpo-sim-tpl .asim-footer {
-    margin-top: 12px;
-    padding-top: 10px;
+    margin-top: 34px;
+    padding-top: 20px;
     border-top: 2px solid #e0e0e0;
     font-size: 8pt;
     color: #999999;
@@ -339,7 +340,7 @@
     <div class="asim-header">
       <div>
         <div class="asim-greeting">
-          Hola,<span class="asim-client-name">{{CLIENT_NAME}}</span>
+          Hello,<span class="asim-client-name">{{CLIENT_NAME}}</span>
         </div>
         <div class="asim-intro">{{COMMERCIALTEXT}}</div>
       </div>
@@ -347,26 +348,26 @@
     </div>
 
     <div class="asim-basic-data">
-      <div class="asim-section-title">Datos básicos de la simulación</div>
+      <div class="asim-section-title">Basic simulation data</div>
       <div class="asim-info-grid">
         <div class="asim-info-item">
-          <div class="asim-info-label">Tipo de negocio</div>
-          <div class="asim-info-value">Electricidad</div>
+          <div class="asim-info-label">Type of business</div>
+          <div class="asim-info-value">Electricity</div>
         </div>
         <div class="asim-info-item">
-          <div class="asim-info-label">Tarifa</div>
+          <div class="asim-info-label">Tarif</div>
           <div class="asim-info-value">{{ELECTRICITY_TARIFF}}</div>
         </div>
         <div class="asim-info-item">
-          <div class="asim-info-label">Cliente</div>
+          <div class="asim-info-label">Client</div>
           <div class="asim-info-value">{{CLIENT_NAME}}</div>
         </div>
         <div class="asim-info-item">
-          <div class="asim-info-label">Dirección</div>
+          <div class="asim-info-label">Address</div>
           <div class="asim-info-value">{{CLIENT_ADDRESS}}</div>
         </div>
         <div class="asim-info-item">
-          <div class="asim-info-label">Producto</div>
+          <div class="asim-info-label">Product</div>
           <div class="asim-info-value">{{PRODUCT_NAME}}</div>
         </div>
         <div class="asim-info-item">
@@ -374,19 +375,19 @@
           <div class="asim-info-value">{{CUPS_NUMBER}}</div>
         </div>
         <div class="asim-info-item">
-          <div class="asim-info-label">Período de simulación</div>
+          <div class="asim-info-label">Simulation period</div>
           <div class="asim-info-value">{{SIMULATION_PERIOD}}</div>
         </div>
         <div class="asim-info-item">
-          <div class="asim-info-label">Consumo anual (kWh)</div>
+          <div class="asim-info-label">Annual consumption (kWh)</div>
           <div class="asim-info-value">{{ANNUAL_CONSUMPTION}}</div>
         </div>
         <div class="asim-info-item">
-          <div class="asim-info-label">Fecha de simulación</div>
+          <div class="asim-info-label">Simulation Date</div>
           <div class="asim-info-value">{{SIMULATION_GENERATED_AT}}</div>
         </div>
         <div class="asim-info-item asim-info-item--full">
-          <div class="asim-info-label">Referencia de simulación</div>
+          <div class="asim-info-label">Simulation reference</div>
           <div class="asim-info-value">{{SIMULATION_REFERENCE}}</div>
         </div>
       </div>
@@ -396,19 +397,19 @@
   </div>
 
   <div class="asim-page asim-page--comparison">
-    <div class="asim-section-title">Comparación de facturas</div>
+    <div class="asim-section-title">Invoice comparison</div>
 
     <div class="asim-comparison">
       <div class="asim-plan-card">
         <div class="asim-plan-header asim-plan-header--current">
-          Plan Actual
+          Current Plan
         </div>
         <div class="asim-plan-body">
-          <div class="asim-plan-title">Plan Actual</div>
-          <div class="asim-plan-tariff">Tarifa CUPS</div>
+          <div class="asim-plan-title">Current Plan</div>
+          <div class="asim-plan-tariff">CUPS Tariff</div>
 
           <div class="asim-data-section">
-            <div class="asim-data-section-title">Potencia contratada (kW)</div>
+            <div class="asim-data-section-title">Contracted power (kW)</div>
             <div class="asim-period-grid">
               <div class="asim-period-item">
                 <div class="asim-period-label">P1</div>
@@ -438,7 +439,7 @@
           </div>
 
           <div class="asim-data-section">
-            <div class="asim-data-section-title">Energía mensual (kWh)</div>
+            <div class="asim-data-section-title">Monthly energy (kWh)</div>
             <div class="asim-period-grid">
               <div class="asim-period-item">
                 <div class="asim-period-label">P1</div>
@@ -480,14 +481,14 @@
 
       <div class="asim-plan-card asim-plan-card--axpo">
         <div class="asim-plan-header asim-plan-header--axpo">
-          Ahorros de {{SAVINGS_AMOUNT}} €
+          Savings of {{SAVINGS_AMOUNT}} €
         </div>
         <div class="asim-plan-body">
-          <div class="asim-plan-title">Plan Axpo</div>
+          <div class="asim-plan-title">Axpo Plan</div>
           <div class="asim-plan-tariff">{{PRODUCT_NAME}}</div>
 
           <div class="asim-data-section">
-            <div class="asim-data-section-title">Potencia contratada (kW)</div>
+            <div class="asim-data-section-title">Contracted power (kW)</div>
             <div class="asim-period-grid">
               <div class="asim-period-item">
                 <div class="asim-period-label">P1</div>
@@ -517,7 +518,7 @@
           </div>
 
           <div class="asim-data-section">
-            <div class="asim-data-section-title">Energía mensual (kWh)</div>
+            <div class="asim-data-section-title">Monthly energy (kWh)</div>
             <div class="asim-period-grid">
               <div class="asim-period-item">
                 <div class="asim-period-label">P1</div>
@@ -548,27 +549,27 @@
 
           <div class="asim-cost-breakdown">
             <div class="asim-cost-item">
-              <div class="asim-cost-label">Costo de potencia</div>
+              <div class="asim-cost-label">Power cost</div>
               <div class="asim-cost-value">{{AXPO_POWER_COST}} €</div>
             </div>
             <div class="asim-cost-item">
-              <div class="asim-cost-label">Costo de energía</div>
+              <div class="asim-cost-label">Energy cost</div>
               <div class="asim-cost-value">{{AXPO_ENERGY_COST}} €</div>
             </div>
             <div class="asim-cost-item">
-              <div class="asim-cost-label">Cargos por exceso</div>
+              <div class="asim-cost-label">Excess charges</div>
               <div class="asim-cost-value">{{AXPO_EXCESS_COST}} €</div>
             </div>
             <div class="asim-cost-item">
-              <div class="asim-cost-label">Impuestos</div>
+              <div class="asim-cost-label">Taxes</div>
               <div class="asim-cost-value">{{AXPO_TAX_COST}} €</div>
             </div>
             <div class="asim-cost-item">
-              <div class="asim-cost-label">Otros cargos</div>
+              <div class="asim-cost-label">Other charges</div>
               <div class="asim-cost-value">{{AXPO_OTHER_COST}} €</div>
             </div>
             <div class="asim-cost-item">
-              <div class="asim-cost-label">Alquiler</div>
+              <div class="asim-cost-label">Rental</div>
               <div class="asim-cost-value">{{AXPO_RENTAL_COST}} €</div>
             </div>
             <div class="asim-cost-item">
@@ -589,14 +590,14 @@
       </div>
     </div>
 
-    <div class="asim-notice">Estos precios son indicativos y no están garantizados.</div>
+    <div class="asim-notice">These prices are indicative and not guaranteed.</div>
 
     <div class="asim-footer">
-      <div class="asim-footer-title">Simulación presentada por {{USER_AGENCY}}</div>
+      <div class="asim-footer-title">Simulation presented by {{USER_AGENCY}}</div>
       <p>
-        Los cálculos se realizaron basándose en perfiles de consumo durante el horario comercial. Los precios mostrados no incluyen actualizaciones resultantes de fluctuaciones del mercado mayorista; cambios de tarifas; peajes regulados, cargos o impuestos; contribuciones al Fondo Nacional de Eficiencia Energética; costos asociados con el mecanismo de financiamiento del bono social; ajustes de operadores del mercado o del sistema; cambios regulatorios; u otras circunstancias imprevistas que puedan afectar el costo del suministro.
+        The calculations were performed based on consumption profiles during business hours. The prices shown do not include updates resulting from wholesale market fluctuations; tariff changes; regulated tolls, charges, or taxes; contributions to the National Energy Efficiency Fund; costs associated with the social bonus financing mechanism; adjustments by market or system operators; regulatory changes; or other unforeseen circumstances that may affect the cost of supply.
 
-Esta simulación es meramente una estimación y no constituye una oferta o compromiso contractual; solo las condiciones acordadas por escrito y firmadas por las partes serán vinculantes. El proveedor no será responsable por cualquier discrepancia entre esta simulación y la facturación real resultante del contrato final.
+This simulation is merely an estimate and does not constitute an offer or contractual commitment; only the conditions agreed upon in writing and signed by the parties will be binding. The supplier will not be liable for any discrepancies between this simulation and the actual billing resulting from the final contract.
       </p>
     </div>
   </div>

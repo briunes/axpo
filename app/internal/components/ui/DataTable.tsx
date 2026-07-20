@@ -1,6 +1,6 @@
 "use client";
 
-import { DataGrid, useGridApiRef, type GridColDef, type GridRowParams, type GridSortModel } from "@mui/x-data-grid";
+import { DataGrid, useGridApiRef, type GridColDef, type GridSortModel } from "@mui/x-data-grid";
 import { Box, IconButton, Skeleton, Pagination, Select, MenuItem, FormControl, Checkbox, Button, Tooltip, useTheme, Popover, FormControlLabel, Divider, Typography, Drawer, useMediaQuery, Grow } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
@@ -9,6 +9,7 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
 import LineWeightIcon from '@mui/icons-material/LineWeight';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { useI18n } from "../../../../src/lib/i18n-context";
@@ -101,8 +102,10 @@ export interface DataTableProps<T extends { id: string }> {
   mobileCard?: MobileCardConfig<T>;
   /** Escape hatch for screens that need a fully custom card. Prefer mobileCard when possible. */
   renderMobileCard?: (row: T) => React.ReactNode;
-  /** Optional expandable desktop detail panel rendered by MUI DataGrid. */
+  /** Optional expandable desktop detail row. */
   rowDetailContent?: (row: T) => React.ReactNode;
+  /** Hide the detail toggle for rows that do not contain expandable data. */
+  rowHasDetails?: (row: T) => boolean;
 }
 
 const BASE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -205,6 +208,29 @@ interface TablePersistentState {
 }
 
 type TableDensity = "compact" | "standard" | "comfortable";
+const SHARED_DENSITY_STORAGE_KEY = "axpo_dt_density";
+const SHARED_DENSITY_EVENT = "axpo-datatable-density-change";
+
+function isTableDensity(value: unknown): value is TableDensity {
+  return value === "compact" || value === "standard" || value === "comfortable";
+}
+
+function loadSharedDensity(): TableDensity | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = localStorage.getItem(SHARED_DENSITY_STORAGE_KEY);
+    return isTableDensity(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSharedDensity(density: TableDensity) {
+  try {
+    localStorage.setItem(SHARED_DENSITY_STORAGE_KEY, density);
+    window.dispatchEvent(new CustomEvent<TableDensity>(SHARED_DENSITY_EVENT, { detail: density }));
+  } catch { /* ignore */ }
+}
 
 function loadTableState(tableId: string): TablePersistentState | null {
   if (typeof window === 'undefined' || !tableId) return null;
@@ -254,11 +280,13 @@ export function DataTable<T extends { id: string }>({
   mobileCard,
   renderMobileCard,
   rowDetailContent,
+  rowHasDetails,
 }: DataTableProps<T>) {
   const { preferences } = useUserPreferences();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'), { noSsr: true });
   const apiRef = useGridApiRef();
+  const gridContainerRef = useRef<HTMLDivElement>(null);
   const { t: tI18n } = useI18n();
 
   // ── Column visibility ───────────────────────────────────────────────────────
@@ -291,8 +319,33 @@ export function DataTable<T extends { id: string }>({
   const initialSearch = searchValue || persistedState?.search || "";
   const initialSortColumn = sortState?.column || persistedState?.sortColumn || "";
   const initialSortDir = sortState?.direction || persistedState?.sortDirection || "asc";
-  const [density, setDensity] = useState<TableDensity>(persistedState?.density ?? "standard");
+  const [density, setDensity] = useState<TableDensity>(() => loadSharedDensity() ?? persistedState?.density ?? "standard");
   const [densityMenuAnchor, setDensityMenuAnchor] = useState<HTMLElement | null>(null);
+
+  // Density is a workspace-wide table preference. Keep every mounted table and
+  // every browser tab in sync, while migrating the old per-table value once.
+  useEffect(() => {
+    const handleDensityChange = (event: Event) => {
+      const next = (event as CustomEvent<TableDensity>).detail;
+      if (isTableDensity(next)) setDensity(next);
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === SHARED_DENSITY_STORAGE_KEY && isTableDensity(event.newValue)) {
+        setDensity(event.newValue);
+      }
+    };
+
+    window.addEventListener(SHARED_DENSITY_EVENT, handleDensityChange);
+    window.addEventListener("storage", handleStorage);
+    const sharedDensity = loadSharedDensity();
+    if (sharedDensity) setDensity(sharedDensity);
+    else saveSharedDensity(density);
+
+    return () => {
+      window.removeEventListener(SHARED_DENSITY_EVENT, handleDensityChange);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Helper to save scroll position before a selection state update and restore it after.
   const withScrollPreserved = useCallback((fn: () => void) => {
@@ -307,10 +360,10 @@ export function DataTable<T extends { id: string }>({
 
   // Row selection state (only active when massActions provided)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [expandedDetailIds, setExpandedDetailIds] = useState<Set<string>>(new Set());
 
   const hasMassActions = Boolean(massActions && massActions.length > 0);
   const hasRowDetails = Boolean(rowDetailContent);
-
   // Refs so that renderCell callbacks always read latest values without
   // being listed as memo dependencies (avoids DataGrid re-mount on selection).
   const selectedIdsRef = useRef(selectedIds);
@@ -355,8 +408,10 @@ export function DataTable<T extends { id: string }>({
   toggleSelectAllRef.current = toggleSelectAll;
 
   const getRowClassName = useCallback(
-    (params: import("@mui/x-data-grid").GridRowClassNameParams) =>
-      hasMassActions && selectedIdsRef.current.has(params.row.id) ? 'dt-row-selected' : '',
+    (params: import("@mui/x-data-grid").GridRowClassNameParams) => {
+      if ((params.row as any).__detailPanelFor) return 'dt-detail-row';
+      return hasMassActions && selectedIdsRef.current.has(params.row.id) ? 'dt-row-selected' : '';
+    },
     // hasMassActions is stable after mount; selectedIdsRef is always current
     [hasMassActions]
   );
@@ -378,6 +433,9 @@ export function DataTable<T extends { id: string }>({
   // Convert custom ColumnDef to MUI GridColDef
   const muiColumns: GridColDef<T>[] = useMemo(() => {
     const cols: GridColDef<T>[] = [];
+    const visibleDataColumns = columns.filter((col) => !hiddenCols.has(col.key));
+    const firstDataColumn = visibleDataColumns[0]?.key;
+    const detailColSpan = visibleDataColumns.length + (hasMassActions ? 1 : 0) + (rowActions ? 1 : 0) + 1;
 
     // Checkbox column
     if (hasMassActions) {
@@ -396,6 +454,7 @@ export function DataTable<T extends { id: string }>({
           />
         ),
         renderCell: (params: import("@mui/x-data-grid").GridRenderCellParams<T>) => {
+          if ((params.row as any).__detailPanelFor) return null;
           return (
             <CheckboxCell
               id={params.row.id}
@@ -407,7 +466,7 @@ export function DataTable<T extends { id: string }>({
       } as GridColDef<T>);
     }
 
-    columns.filter((col) => !hiddenCols.has(col.key)).forEach((col) => {
+    visibleDataColumns.forEach((col) => {
       const isActionsColumn = col.key === "actions";
       const explicitWidth = col.width ? parseInt(col.width) : undefined;
 
@@ -415,16 +474,34 @@ export function DataTable<T extends { id: string }>({
         field: col.key,
         headerName: col.label,
         sortable: col.sortable ?? false,
-        width: explicitWidth ?? (isActionsColumn ? 180 : undefined),
-        minWidth: isActionsColumn ? 164 : undefined,
-        maxWidth: isActionsColumn && !explicitWidth ? 220 : undefined,
+        width: explicitWidth ?? (isActionsColumn ? 164 : undefined),
+        minWidth: isActionsColumn ? 120 : undefined,
+        maxWidth: isActionsColumn && !explicitWidth ? 320 : undefined,
         flex: !col.width && !isActionsColumn ? 1 : undefined,
         align: isActionsColumn ? "right" : undefined,
         headerAlign: isActionsColumn ? "right" : undefined,
         cellClassName: isActionsColumn ? "dt-grid-cell-actions" : undefined,
+        colSpan: (_value, row) => (row as any).__detailPanelFor && col.key === firstDataColumn ? detailColSpan : undefined,
         renderCell: (params) => {
+          const detailParent = (params.row as any).__detailPanelFor as T | undefined;
+          if (detailParent) {
+            return col.key === firstDataColumn ? rowDetailContent?.(detailParent) : null;
+          }
           // Show skeleton when loading
           if (loading && (params.row as any).__skeleton) {
+            if (isActionsColumn) {
+              return (
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
+                  <Skeleton
+                    animation="wave"
+                    variant="rounded"
+                    width={132}
+                    height="62%"
+                    sx={{ bgcolor: 'color-mix(in srgb, var(--scheme-neutral-500) 22%, transparent)' }}
+                  />
+                </Box>
+              );
+            }
             return <Skeleton variant="rounded" width="100%" height={'50%'} />;
           }
           const content = col.renderCell(params.row);
@@ -469,14 +546,24 @@ export function DataTable<T extends { id: string }>({
         field: "actions",
         headerName: tI18n('common', 'actions'),
         sortable: false,
-        width: 200,
+        width: 164,
+        minWidth: 120,
+        maxWidth: 320,
+        align: "right",
+        headerAlign: "right",
+        cellClassName: "dt-grid-cell-actions",
         renderCell: (params) => {
+          if ((params.row as any).__detailPanelFor) return null;
           if (loading && (params.row as any).__skeleton) {
             return (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Skeleton width={50} height={26} variant="rounded" />
-                <Skeleton width={80} height={26} variant="rounded" />
-                <Skeleton width={80} height={26} variant="rounded" />
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
+                <Skeleton
+                  animation="wave"
+                  variant="rounded"
+                  width={132}
+                  height="62%"
+                  sx={{ bgcolor: 'color-mix(in srgb, var(--scheme-neutral-500) 22%, transparent)' }}
+                />
               </Box>
             );
           }
@@ -497,6 +584,29 @@ export function DataTable<T extends { id: string }>({
         headerAlign: "center",
         disableColumnMenu: true,
         disableReorder: true,
+        renderCell: (params) => {
+          if ((params.row as any).__detailPanelFor) return null;
+          const canExpand = rowHasDetails ? rowHasDetails(params.row) : Boolean(rowDetailContent?.(params.row));
+          if (!canExpand) return null;
+          const expanded = expandedDetailIds.has(params.row.id);
+          return (
+            <IconButton
+              size="small"
+              aria-label={tI18n('auditLogsModal', 'details')}
+              onClick={(event) => {
+                event.stopPropagation();
+                setExpandedDetailIds((current) => {
+                  const next = new Set(current);
+                  expanded ? next.delete(params.row.id) : next.add(params.row.id);
+                  return next;
+                });
+              }}
+              sx={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 200ms ease' }}
+            >
+              <KeyboardArrowDownIcon fontSize="small" />
+            </IconButton>
+          );
+        },
       } as GridColDef<T>);
     }
 
@@ -505,7 +615,53 @@ export function DataTable<T extends { id: string }>({
     // are accessed via refs inside renderCell to prevent the grid from re-mounting
     // (and scrolling to top) on every checkbox click.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columns, rowActions, loading, hasMassActions, hasRowDetails, hiddenCols, tI18n]);
+  }, [columns, rowActions, loading, hasMassActions, hasRowDetails, hiddenCols, tI18n, expandedDetailIds, rowDetailContent, rowHasDetails]);
+
+  const hasActionsColumn = useMemo(
+    () => muiColumns.some((column) => column.field === "actions"),
+    [muiColumns],
+  );
+
+  // Sticky cells must stay mounted even after they leave the virtualized
+  // horizontal viewport.
+  useEffect(() => {
+    apiRef.current?.unstable_setColumnVirtualization(!hasActionsColumn);
+  }, [apiRef, hasActionsColumn]);
+
+  // Action controls vary by row, locale and permissions. Measure the rendered
+  // controls instead of reserving a fixed width, and repeat when the table is
+  // resized so the pinned edge remains aligned with the viewport.
+  useEffect(() => {
+    if (!hasActionsColumn || loading) return;
+
+    let frame = 0;
+    const autosizeActions = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        void apiRef.current?.autosizeColumns({
+          columns: ["actions"],
+          includeHeaders: true,
+          includeOutliers: true,
+          expand: false,
+          disableColumnVirtualization: false,
+        }).then(() => {
+          const width = apiRef.current?.getColumn("actions")?.computedWidth;
+          if (width && gridContainerRef.current) {
+            gridContainerRef.current.style.setProperty("--dt-actions-width", `${width}px`);
+          }
+        });
+      });
+    };
+
+    autosizeActions();
+    const observer = new ResizeObserver(autosizeActions);
+    if (gridContainerRef.current) observer.observe(gridContainerRef.current);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [apiRef, hasActionsColumn, loading, muiColumns, rows]);
 
   // Create skeleton rows when loading
   const skeletonRows = useMemo(() => {
@@ -516,7 +672,13 @@ export function DataTable<T extends { id: string }>({
   }, []);
 
   // Use skeleton rows when loading, otherwise use actual rows
-  const displayRows = loading ? skeletonRows : rows;
+  const displayRows = useMemo(() => {
+    if (loading) return skeletonRows;
+    if (!rowDetailContent) return rows;
+    return rows.flatMap((row) => expandedDetailIds.has(row.id)
+      ? [row, { id: `__detail-${row.id}`, __detailPanelFor: row } as unknown as T]
+      : [row]);
+  }, [expandedDetailIds, loading, rowDetailContent, rows, skeletonRows]);
 
   // Local draft for search — only committed on Enter or button click
   const [draft, setDraft] = useState(searchValue);
@@ -546,11 +708,10 @@ export function DataTable<T extends { id: string }>({
       sortColumn: sortState?.column,
       sortDirection: sortState?.direction,
       pageSize: pagination?.pageSize,
-      density,
     };
 
     saveTableState(tableId, currentState);
-  }, [tableId, searchValue, sortState?.column, sortState?.direction, pagination?.pageSize, density]);
+  }, [tableId, searchValue, sortState?.column, sortState?.direction, pagination?.pageSize]);
 
   // Handle sort model changes
   const handleSortModelChange = (model: GridSortModel) => {
@@ -969,7 +1130,7 @@ export function DataTable<T extends { id: string }>({
               size="small"
               variant={density === option ? "contained" : "text"}
               onClick={() => {
-                setDensity(option);
+                saveSharedDensity(option);
                 setDensityMenuAnchor(null);
               }}
               sx={{ justifyContent: "flex-start", mb: option === "comfortable" ? 0 : 0.5 }}
@@ -1217,6 +1378,7 @@ export function DataTable<T extends { id: string }>({
       {shouldRenderGrid && (
         <Grow in={true}>
           <Box
+            ref={gridContainerRef}
             sx={{
               flex: '1 1 auto',
               height: '100%',
@@ -1244,7 +1406,7 @@ export function DataTable<T extends { id: string }>({
               disableColumnMenu
               hideFooter
               getRowClassName={getRowClassName}
-              getDetailPanelContent={rowDetailContent ? (params: GridRowParams<T>) => rowDetailContent(params.row) : undefined}
+              getRowHeight={(params) => (params.model as any).__detailPanelFor ? 'auto' : densityRowHeight}
               sx={{
                 height: '100%',
                 border: 0,
@@ -1253,6 +1415,18 @@ export function DataTable<T extends { id: string }>({
                 color: 'var(--scheme-neutral-100)',
                 '& .MuiDataGrid-main': {
                   border: 'none',
+                  position: 'relative',
+                  '&::after': hasActionsColumn ? {
+                    content: '""',
+                    position: 'absolute',
+                    zIndex: 4,
+                    pointerEvents: 'none',
+                    top: 0,
+                    bottom: 0,
+                    right: 'var(--dt-actions-width, 164px)',
+                    width: 14,
+                    background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.16))',
+                  } : undefined,
                 },
                 '& .MuiDataGrid-virtualScroller': {
                   backgroundColor: tableSurface,
@@ -1301,6 +1475,16 @@ export function DataTable<T extends { id: string }>({
                   '&.dt-row-selected:hover': {
                     backgroundColor: tableSelectedHoverBackground,
                   },
+                  '&.dt-detail-row': {
+                    backgroundColor: 'color-mix(in srgb, var(--scheme-surface-raised) 86%, var(--scheme-neutral-950))',
+                  },
+                  '&.dt-detail-row .MuiDataGrid-cell': {
+                    minHeight: '0 !important',
+                    maxHeight: 'none !important',
+                    height: 'auto',
+                    p: 0,
+                    overflow: 'visible',
+                  },
                 },
                 '& .MuiDataGrid-columnHeaders': {
                   borderBottom: '1px solid color-mix(in srgb, var(--scheme-neutral-900) 78%, transparent)',
@@ -1315,24 +1499,42 @@ export function DataTable<T extends { id: string }>({
                   borderRight: 'none',
                   textTransform: 'none',
                 },
+                '& .MuiDataGrid-columnHeader[data-field="actions"]': {
+                  position: 'sticky',
+                  right: 0,
+                  zIndex: 3,
+                  backgroundColor: tableSurface,
+                },
                 '& .MuiDataGrid-columnHeaderTitle': {
                   fontWeight: 500,
                   letterSpacing: 0,
                   textTransform: 'none',
                 },
                 '& .dt-grid-cell-actions': {
+                  position: 'sticky',
+                  right: 0,
                   display: 'flex',
                   alignItems: 'center',
                   overflow: 'visible',
                   justifyContent: 'flex-end',
                   height: '100%',
-                  px: densityCellPaddingX,
-                  zIndex: 1,
-                  backgroundColor: 'inherit',
+                  pl: densityCellPaddingX + 1,
+                  pr: densityCellPaddingX,
+                  zIndex: 2,
+                  backgroundColor: tableSurface,
                   '& .MuiButtonBase-root': {
                     minHeight: densityActionHeight,
                     height: densityActionHeight,
                   },
+                },
+                '& .MuiDataGrid-row:hover .dt-grid-cell-actions': {
+                  backgroundColor: tableHoverBackground,
+                },
+                '& .MuiDataGrid-row.dt-row-selected .dt-grid-cell-actions': {
+                  backgroundColor: tableSelectedBackground,
+                },
+                '& .MuiDataGrid-row.dt-row-selected:hover .dt-grid-cell-actions': {
+                  backgroundColor: tableSelectedHoverBackground,
                 },
                 '& .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller': {
                   backgroundColor: tableSurface,
