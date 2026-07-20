@@ -135,6 +135,26 @@ export function NotificationBell({
     setAnchorEl(null);
   };
 
+  const handleBellOpen = async (anchor: HTMLButtonElement) => {
+    setAnchorEl(anchor);
+
+    try {
+      const unread = await listNotifications(token, { limit: 100, unreadOnly: true });
+      const unreadIds = unread.items
+        .filter((notification) => !notification.readAt && !notification.dismissedAt)
+        .map((notification) => notification.id);
+
+      if (unreadIds.length > 0) {
+        await markNotifications(token, unreadIds, "read");
+      }
+
+      await refreshNotifications();
+    } catch {
+      // Keep the panel usable if acknowledging notifications fails.
+      await refetch().catch(() => undefined);
+    }
+  };
+
   if (!isVisible) return null;
 
   const open = Boolean(anchorEl);
@@ -154,8 +174,11 @@ export function NotificationBell({
         aria-label={t("notifications", "title")}
         aria-expanded={open}
         onClick={(event) => {
-          setAnchorEl(open ? null : event.currentTarget);
-          if (!open) void refetch();
+          if (open) {
+            setAnchorEl(null);
+            return;
+          }
+          void handleBellOpen(event.currentTarget);
         }}
         sx={{
           width: 36,
