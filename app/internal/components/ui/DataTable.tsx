@@ -1372,6 +1372,7 @@ export function DataTable<T extends { id: string }>({
               rowHeight={densityRowHeight}
               columnHeaderHeight={densityRowHeight}
               loading={false}
+              localeText={{ noRowsLabel: tI18n('dataTable', 'noRows') }}
               pageSizeOptions={PAGE_SIZE_OPTIONS}
               paginationMode="server"
               paginationModel={paginationModel}
