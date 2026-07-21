@@ -191,10 +191,16 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
   const [actionButtons, setActionButtons] = useState<React.ReactNode>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<TopBarBreadcrumb[] | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
+  const activeActionButtonsPathnameRef = useRef(pathname);
+  activeActionButtonsPathnameRef.current = pathname;
 
   const handleActionButtons = useCallback((buttons: React.ReactNode) => {
+    // Route transitions can mount the destination before the outgoing page's
+    // effect cleanup runs. Ignore that stale cleanup so it cannot clear the
+    // action buttons just registered by the destination page.
+    if (activeActionButtonsPathnameRef.current !== pathname) return;
     setActionButtons(buttons);
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     setMounted(true);

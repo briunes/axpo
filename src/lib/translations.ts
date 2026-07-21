@@ -230,6 +230,7 @@ export const translations = {
       of: "of",
     },
     dataTable: {
+      noRows: "No rows",
       showHideColumns: "Show/hide columns",
       columnsTitle: "Columns",
       showAll: "Show all",
@@ -3185,6 +3186,7 @@ export const translations = {
       of: "de",
     },
     dataTable: {
+      noRows: "Sin filas",
       showHideColumns: "Mostrar/ocultar columnas",
       columnsTitle: "Columnas",
       showAll: "Mostrar todas",
@@ -6757,6 +6759,7 @@ export const translations = {
       of: "de",
     },
     dataTable: {
+      noRows: "Aucune ligne",
       showHideColumns: "Afficher/masquer les colonnes",
       columnsTitle: "Colonnes",
       showAll: "Afficher tout",
@@ -9775,6 +9778,7 @@ export const translations = {
       of: "de",
     },
     dataTable: {
+      noRows: "Sem linhas",
       showHideColumns: "Mostrar/ocultar colunas",
       columnsTitle: "Colunas",
       showAll: "Mostrar tudo",

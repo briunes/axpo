@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Checkbox, FormControlLabel, Stack } from "@mui/material";
+import { Box, FormControlLabel, Stack, Switch } from "@mui/material";
 import { loadSession } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { createAgency } from "../../lib/internalApi";
@@ -100,31 +100,47 @@ export default function NewAgencyPage() {
                 onRenderActions={setFormActions}
             >
                 <Stack spacing={2}>
-                    <FormInput
-                        label={t("agencyFormPage", "nameLabel")}
-                        type="text"
-                        value={name}
-                        onChange={(e) => {
-                            setName((e.target as HTMLInputElement).value);
-                            clearError("name");
+                    <Box
+                        sx={{
+                            display: "grid",
+                            gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) auto" },
+                            alignItems: "flex-end",
+                            columnGap: 3,
+                            rowGap: 1.5,
                         }}
-                        placeholder="e.g. Energía Sur S.L."
-                        autoFocus
-                        required
-                        disabled={isSubmitting}
-                        error={!!validationErrors.name}
-                        helperText={validationErrors.name}
-                    />
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                checked={isTlv}
-                                onChange={(event) => setIsTlv(event.target.checked)}
-                                disabled={isSubmitting}
-                            />
-                        }
-                        label={t("agencyFormPage", "tlvAgencyLabel")}
-                    />
+                    >
+                        <FormInput
+                            label={t("agencyFormPage", "nameLabel")}
+                            type="text"
+                            value={name}
+                            onChange={(e) => {
+                                setName((e.target as HTMLInputElement).value);
+                                clearError("name");
+                            }}
+                            placeholder="e.g. Energía Sur S.L."
+                            autoFocus
+                            required
+                            disabled={isSubmitting}
+                            error={!!validationErrors.name}
+                            helperText={validationErrors.name}
+                        />
+                        <FormControlLabel
+                            sx={{
+                                mb: validationErrors.name ? "24px" : 0,
+                                mr: 0,
+                                minHeight: "37px",
+                                whiteSpace: "nowrap",
+                            }}
+                            control={
+                                <Switch
+                                    checked={isTlv}
+                                    onChange={(event) => setIsTlv(event.target.checked)}
+                                    disabled={isSubmitting}
+                                />
+                            }
+                            label={t("agencyFormPage", "tlvAgencyLabel")}
+                        />
+                    </Box>
                     <AddressForm value={address} onChange={setAddress} disabled={isSubmitting} />
                 </Stack>
             </CrudFormContainer>
