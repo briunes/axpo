@@ -86,14 +86,20 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <BoneyardRegistry />
             <VersionChecker />
             <WhatsNewModal />
+            {!isProduction && (
+              <div
+                className={`environment-indicator env-${appEnv}`}
+                role="status"
+                aria-live="polite"
+              >
+                Environment: {envLabel}
+              </div>
+            )}
             <div
-              className={`environment-indicator env-${appEnv}`}
-              role="status"
-              aria-live="polite"
+              className={`environment-content${isProduction ? " no-environment-indicator" : ""}`}
             >
-              Environment: {envLabel}
+              {children}
             </div>
-            <div className="environment-content">{children}</div>
           </I18nProvider>
         </AppRouterCacheProvider>
       </body>

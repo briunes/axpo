@@ -448,7 +448,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
                   session={session}
                   onLogout={handleLogout}
                 />
-                <main className="app-content" style={{ marginBottom: '2.4rem' }}>
+                <main className="app-content">
                   {children}
                 </main>
               </div>

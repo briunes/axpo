@@ -86,3 +86,13 @@ html[data-theme="dark"] body {
   min-height: calc(100vh - 38px);
   background: inherit;
 }
+
+.environment-content.no-environment-indicator {
+  min-height: 100dvh;
+  height: 100dvh;
+}
+
+.environment-content.no-environment-indicator .app-shell {
+  height: 100%;
+  max-height: 100%;
+}
