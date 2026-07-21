@@ -301,6 +301,46 @@ describe("extractVariableValues", () => {
     expect(variables.CHART_COMPARATIVA).toContain("border-top:1px solid");
   });
 
+  it("uses only explicit endpoint annual consumption and never annualizes periods", () => {
+    const basePayload = {
+      type: "ELECTRICITY" as const,
+      electricity: {
+        tarifaAcceso: "2.0TD" as const,
+        zonaGeografica: "Peninsula" as const,
+        perfilCarga: "NORMAL" as const,
+        potenciaContratada: { P1: 1, P2: 1 },
+        consumo: { P1: 721, P2: 1000 },
+        periodo: {
+          fechaInicio: "2026-05-31",
+          fechaFin: "2026-06-30",
+          dias: 30,
+        },
+        facturaActual: 100,
+        extras: {},
+      },
+    };
+
+    expect(
+      extractVariableValues(
+        { id: "simulation-id" },
+        {
+          ...basePayload,
+          electricity: {
+            ...basePayload.electricity,
+            clientData: { consumoAnual: 0 },
+          },
+        } as any,
+      ).ANNUAL_CONSUMPTION,
+    ).toBe("0");
+
+    expect(
+      extractVariableValues(
+        { id: "simulation-id" },
+        basePayload,
+      ).ANNUAL_CONSUMPTION,
+    ).toBe("-");
+  });
+
   it("uses explicit current invoice breakdown amounts when present", () => {
     const variables = extractVariableValues(
       {

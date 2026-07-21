@@ -13,6 +13,53 @@ describe("Supabase Data API database adapter", () => {
     global.fetch = fetchMock;
   });
 
+  it("hydrates a simulation's immediate clone source through a manual self-join", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify([
+          {
+            id: "sim-442",
+            clonedFromSimulationId: "sim-441",
+          },
+        ]),
+        { status: 200 },
+      ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            { id: "sim-441", referenceNumber: "00441/2026" },
+          ]),
+          { status: 200 },
+        ),
+      );
+    const client = createSupabaseApiPrismaClient();
+
+    const simulation = await client.simulation.findUnique({
+      where: { id: "sim-442" },
+      select: {
+        id: true,
+        clonedFromSimulation: {
+          select: { id: true, referenceNumber: true },
+        },
+      },
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining(
+        "select=id%2CclonedFromSimulationId",
+      ),
+      expect.any(Object),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(simulation.clonedFromSimulation).toEqual({
+      id: "sim-441",
+      referenceNumber: "00441/2026",
+    });
+  });
+
   it("selects API mode through the environment", () => {
     process.env.DB_CONNECTION_MODE = "api";
     expect(getDatabaseConnectionMode()).toBe("api");

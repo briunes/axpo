@@ -133,7 +133,7 @@ interface GasFormState {
 }
 
 function daysBetween(from: string, to: string): number {
-    const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
+    const d = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000) + 1;
     return Math.max(1, d);
 }
 
@@ -1236,10 +1236,6 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                                 onChange({
                                     ...state,
                                     tarifaAcceso: tariff,
-                                    consumo: emptyPeriods(ELEC_ENERGY_PERIODS[tariff]),
-                                    potencia: emptyPeriods(ELEC_POWER_PERIODS[tariff]),
-                                    exceso: 0,
-                                    omie: emptyPeriods(ELEC_ENERGY_PERIODS[tariff]),
                                 });
                             }} options={[{ value: "2.0TD", label: t("simulationForm", "optionLowVoltage15") }, { value: "3.0TD", label: t("simulationForm", "optionLowVoltage15Plus") }, { value: "6.1TD", label: t("simulationForm", "optionHighVoltage") }]} />
                         </Field>

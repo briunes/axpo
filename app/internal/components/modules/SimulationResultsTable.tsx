@@ -31,7 +31,7 @@ function PctBadge({ pct }: { pct: number }) {
             background: isPositive ? "rgba(22,163,74,0.12)" : pct < 0 ? "rgba(220,38,38,0.1)" : "rgba(150,150,150,0.1)",
             color,
         }}>
-            {isPositive ? "+" : ""}{fmt(pct, 1)}%
+            {isPositive ? "+" : ""}{fmt(pct, 0)}%
         </span>
     );
 }

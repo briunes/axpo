@@ -1157,14 +1157,6 @@ function formulaCellValue(sheet: WorksheetLike, ref: CellAddress): number | null
   return safeFloat(sheet[encodeCell(ref)]?.v);
 }
 
-function profileFormulaRefsForCell(
-  sheet: WorksheetLike,
-  ref: CellAddress,
-): { normalRef: CellAddress; diurnoRef: CellAddress } | null {
-  const cell = sheet[encodeCell(ref)];
-  return profileRefsFromFormula(cell?.f);
-}
-
 function profileSensitivityFromFormula(
   sheet: WorksheetLike,
   formula: string | undefined,
@@ -1253,10 +1245,13 @@ function profilePricesFromFormulaCell(
       seen,
     );
     if (nested) {
-      const profileRefs = profileFormulaRefsForCell(sheet, ref);
       const currentFinal = safeFloat(cell.v);
-      const currentProfile =
-        profileRefs !== null ? safeFloat(referencedCell?.v) : null;
+      // Intermediate pass-through cells (for example Y19 -> Y16 -> F16) do
+      // not reference INPUT OMIE directly, but their cached value is still the
+      // NORMAL profile value used by the outer Precio TE formula. Preserve that
+      // value so the NORMAL/DIURNO delta is transformed by every outer formula
+      // instead of returning the raw shared OMIE component for every product.
+      const currentProfile = safeFloat(referencedCell?.v);
 
       if (currentFinal !== null && currentProfile !== null) {
         const sensitivity = profileSensitivityFromFormula(sheet, cell.f);

@@ -88,17 +88,34 @@ function indexedEnergyPriceOf(
   billingMonthKey: string,
   perfilCarga: "NORMAL" | "DIURNO",
 ): number | undefined {
+  const monthPrice = priceOf(
+    map,
+    `${baseKey}:MARGEN:${billingMonthKey}`,
+  );
+  const averagePrice = priceOf(map, `${baseKey}:MARGEN`);
+
+  // The workbook's ordinary month keys are its final NORMAL-profile Precio TE
+  // values, including each product/tier's commercial adjustments. Some imported
+  // PROFILE:NORMAL keys contain only the shared OMIE component, which flattens
+  // every indexed product to the same energy price if they take precedence.
+  if (perfilCarga === "NORMAL") {
+    return (
+      monthPrice ??
+      averagePrice ??
+      priceOf(
+        map,
+        `${baseKey}:MARGEN:${billingMonthKey}:PROFILE:NORMAL`,
+      ) ??
+      priceOf(map, `${baseKey}:MARGEN:PROFILE:NORMAL`) ??
+      priceOf(map, `${baseKey}:ENERGIA`)
+    );
+  }
+
   return (
-    // Profile-specific month value (new parser keys)
-    priceOf(
-      map,
-      `${baseKey}:MARGEN:${billingMonthKey}:PROFILE:${perfilCarga}`,
-    ) ??
-    // Profile-specific promedio fallback
-    priceOf(map, `${baseKey}:MARGEN:PROFILE:${perfilCarga}`) ??
-    // Backward-compatible keys (no profile dimension)
-    priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}`) ??
-    priceOf(map, `${baseKey}:MARGEN`) ??
+    priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}:PROFILE:DIURNO`) ??
+    priceOf(map, `${baseKey}:MARGEN:PROFILE:DIURNO`) ??
+    monthPrice ??
+    averagePrice ??
     priceOf(map, `${baseKey}:ENERGIA`)
   );
 }
