@@ -23,16 +23,13 @@ export const OCR_MAX_PDF_PAGES = 30;
 export const OCR_PDF_IMAGE_QUALITY = 85;
 
 export async function configurePdfJsWorker(pdfjsLib: any): Promise<void> {
-  const { createRequire } = await import("module");
-  const path = await import("path");
-  const { pathToFileURL } = await import("url");
-  const resolveFromProject = createRequire(
-    path.join(process.cwd(), "package.json"),
-  );
-  const workerPath = resolveFromProject.resolve(
-    "pdfjs-dist/legacy/build/pdf.worker.mjs",
-  );
-  pdfjsLib.GlobalWorkerOptions.workerSrc = pathToFileURL(workerPath).href;
+  // In Node, PDF.js uses a "fake" in-process worker. Register the worker
+  // module directly so Next includes it in the server bundle. Resolving it
+  // from process.cwd()/package.json breaks in traced Vercel functions because
+  // /var/task does not necessarily contain pnpm's root node_modules symlink.
+  const pdfjsWorker = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
+  (globalThis as typeof globalThis & { pdfjsWorker?: typeof pdfjsWorker })
+    .pdfjsWorker = pdfjsWorker;
 }
 
 /**
