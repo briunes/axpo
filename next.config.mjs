@@ -26,6 +26,9 @@ const nextConfig = {
     "/api/v1/internal/invoices/detect-provider": [
       "./node_modules/pdfjs-dist/legacy/build/**/*",
     ],
+    "/api/v1/internal/invoices/benchmark": [
+      "./node_modules/pdfjs-dist/legacy/build/**/*",
+    ],
   },
   images: {
     remotePatterns: [

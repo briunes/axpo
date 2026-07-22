@@ -4,6 +4,7 @@ import { requireAuth } from "@/application/middleware/auth";
 import { prisma } from "@/infrastructure/database/prisma";
 import {
   convertAllPdfPagesToImages,
+  configurePdfJsWorker,
   convertPdfToImages,
   OCR_PROVIDER_DETECTION_PDF_RENDER_SCALE,
   OCR_MAX_PDF_PAGES,
@@ -1251,12 +1252,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     let activePrompt = EXTRACTION_PROMPT;
     try {
       const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-      const nodePath = await import("path");
-      const workerPath = nodePath.resolve(
-        process.cwd(),
-        "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
-      );
-      (pdfjsLib as any).GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
+      await configurePdfJsWorker(pdfjsLib);
       const loadingTask = (pdfjsLib as any).getDocument({
         data: new Uint8Array(pdfBuffer),
         verbosity: 0,

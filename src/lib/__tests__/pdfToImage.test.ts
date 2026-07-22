@@ -27,6 +27,10 @@ jest.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({
   })),
 }));
 
+jest.mock("pdfjs-dist/legacy/build/pdf.worker.mjs", () => ({
+  WorkerMessageHandler: {},
+}));
+
 import {
   convertAllPdfPagesToImages,
   convertPdfToImages,
