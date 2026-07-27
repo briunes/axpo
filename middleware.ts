@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   configuredAllowedIps,
   getClientIp,
+  isIpGateBypassPath,
   isLocalRequest,
 } from "./src/infrastructure/security/ipAllowlist";
 
@@ -236,9 +237,9 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const origin = request.headers.get("origin");
 
-  // Apply before redirects and every other application concern so all pages,
-  // APIs and public assets covered by the matcher receive the same protection.
-  if (pathname !== "/access-denied" && ipAccessDenied(request)) {
+  // The denial/maintenance branding assets must remain available so those
+  // public gate pages can render correctly for blocked visitors.
+  if (!isIpGateBypassPath(pathname) && ipAccessDenied(request)) {
     return ipAccessDeniedResponse(request);
   }
 

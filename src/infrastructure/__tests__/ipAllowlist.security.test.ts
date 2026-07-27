@@ -1,6 +1,7 @@
 import {
   configuredAllowedIps,
   getClientIp,
+  isIpGateBypassPath,
   isLocalRequest,
   normalizeIp,
 } from "../security/ipAllowlist";
@@ -52,4 +53,14 @@ describe("IP allowlist", () => {
     expect(configuredAllowedIps(undefined).size).toBe(0);
     expect(configuredAllowedIps("invalid").size).toBe(0);
   });
+
+  it.each(["/access-denied", "/axpo-logo.svg", "/axpo-mark.svg"])(
+    "allows the public gate resource %s through the IP filter",
+    (pathname) => expect(isIpGateBypassPath(pathname)).toBe(true),
+  );
+
+  it.each(["/", "/api/v1/public/version", "/other-logo.svg"])(
+    "keeps non-gate resource %s protected",
+    (pathname) => expect(isIpGateBypassPath(pathname)).toBe(false),
+  );
 });

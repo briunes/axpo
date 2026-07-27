@@ -1,5 +1,12 @@
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 
+// These assets are required to render the two public gate pages. Keeping the
+// bypass explicit avoids exposing every file in /public when the IP gate is on.
+const IP_GATE_PUBLIC_ASSETS = new Set([
+  "/axpo-logo.svg",
+  "/axpo-mark.svg",
+]);
+
 function normalizeIpv4(value: string): string | null {
   const parts = value.split(".");
   if (parts.length !== 4) return null;
@@ -63,4 +70,8 @@ export function getClientIp(headers: Headers, isVercel: boolean): string | null 
 
 export function isLocalRequest(hostname: string, isVercel: boolean): boolean {
   return !isVercel && LOCAL_HOSTS.has(hostname.toLowerCase());
+}
+
+export function isIpGateBypassPath(pathname: string): boolean {
+  return pathname === "/access-denied" || IP_GATE_PUBLIC_ASSETS.has(pathname);
 }
