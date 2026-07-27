@@ -39,9 +39,14 @@ describe("IP allowlist", () => {
     expect(getClientIp(headers, true)).toBe("2a09:bac0:1001:272::39f:c6");
   });
 
-  it("does not trust x-forwarded-for as a Vercel fallback", () => {
+  it("uses Vercel's standard forwarded header when the dedicated copy is absent", () => {
     const headers = new Headers({ "x-forwarded-for": "198.51.100.99" });
-    expect(getClientIp(headers, true)).toBeNull();
+    expect(getClientIp(headers, true)).toBe("198.51.100.99");
+  });
+
+  it("uses x-real-ip as the final Vercel fallback", () => {
+    const headers = new Headers({ "x-real-ip": "198.51.100.100" });
+    expect(getClientIp(headers, true)).toBe("198.51.100.100");
   });
 
   it("bypasses localhost only off Vercel", () => {

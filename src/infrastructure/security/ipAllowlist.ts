@@ -60,10 +60,13 @@ export function configuredAllowedIps(rawAllowlist: string | undefined): Set<stri
 }
 
 export function getClientIp(headers: Headers, isVercel: boolean): string | null {
-  // Vercel documents this copy as the safe choice when another proxy may
-  // overwrite x-forwarded-for. Outside Vercel, use the conventional header.
+  // Prefer Vercel's dedicated copy, but fall back to the standard headers.
+  // Vercel overwrites x-forwarded-for at its edge, so it cannot be spoofed by
+  // a client when the request reaches middleware without the dedicated copy.
   const raw = isVercel
-    ? headers.get("x-vercel-forwarded-for")
+    ? headers.get("x-vercel-forwarded-for") ??
+      headers.get("x-forwarded-for") ??
+      headers.get("x-real-ip")
     : headers.get("x-forwarded-for") ?? headers.get("x-real-ip");
   return raw ? normalizeIp(raw) : null;
 }
