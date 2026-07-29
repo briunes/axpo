@@ -6,6 +6,13 @@ export const translations = {
       fr: "FR",
       pt: "PT",
     },
+    accessDenied: {
+      eyebrow: "Protected access",
+      title: "You don't have access to this environment",
+      description:
+        "Your IP address is not authorized. Connect from an allowed network or request access from the simulator administrator.",
+      errorCode: "Error 403 · Access denied",
+    },
     login: {
       brandDesc:
         "Create, review and send your energy offers from a single platform.",
@@ -2956,6 +2963,13 @@ export const translations = {
       es: "ES",
       fr: "FR",
       pt: "PT",
+    },
+    accessDenied: {
+      eyebrow: "Acceso protegido",
+      title: "No tienes acceso a este entorno",
+      description:
+        "Tu dirección IP no está autorizada. Conéctate desde una red permitida o solicita acceso al administrador del simulador.",
+      errorCode: "Error 403 · Acceso denegado",
     },
     login: {
       brandDesc:
@@ -5973,6 +5987,13 @@ export const translations = {
       es: "ES",
       fr: "FR",
       pt: "PT",
+    },
+    accessDenied: {
+      eyebrow: "Accès protégé",
+      title: "Vous n’avez pas accès à cet environnement",
+      description:
+        "Votre adresse IP n’est pas autorisée. Connectez-vous depuis un réseau autorisé ou demandez l’accès à l’administrateur du simulateur.",
+      errorCode: "Erreur 403 · Accès refusé",
     },
     columns: {
       id: "ID",
@@ -9006,6 +9027,13 @@ export const translations = {
       es: "ES",
       fr: "FR",
       pt: "PT",
+    },
+    accessDenied: {
+      eyebrow: "Acesso protegido",
+      title: "Não tem acesso a este ambiente",
+      description:
+        "O seu endereço IP não está autorizado. Ligue-se através de uma rede permitida ou solicite acesso ao administrador do simulador.",
+      errorCode: "Erro 403 · Acesso negado",
     },
     columns: {
       id: "ID",
