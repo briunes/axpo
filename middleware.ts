@@ -1,4 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  configuredAllowedIps,
+  getClientIp,
+  isIpGateBypassPath,
+  isLocalRequest,
+} from "./src/infrastructure/security/ipAllowlist";
+
+// ---------------------------------------------------------------------------
+// IP allowlist
+// ---------------------------------------------------------------------------
+// IP_ALLOWLIST accepts comma-separated IPv4 and/or IPv6 addresses. The gate is
+// enabled in any environment where at least one valid address is configured.
+// Local non-Vercel development remains available.
+function ipAccessDenied(request: NextRequest): boolean {
+  const allowedIps = configuredAllowedIps(process.env.IP_ALLOWLIST);
+  if (allowedIps.size === 0) return false;
+
+  const isVercel = !!process.env.VERCEL;
+  if (isLocalRequest(request.nextUrl.hostname, isVercel)) return false;
+
+  const clientIp = getClientIp(request.headers, isVercel);
+  if (!clientIp) return true;
+
+  return !allowedIps.has(clientIp);
+}
+
+function ipAccessDeniedResponse(request: NextRequest): NextResponse {
+  if (!request.nextUrl.pathname.startsWith("/api/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/access-denied";
+    url.search = "";
+    return NextResponse.rewrite(url, {
+      status: 403,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+
+  return new NextResponse("Forbidden", {
+    status: 403,
+    headers: {
+      "Cache-Control": "private, no-store",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Legacy QLD Domain Redirect
@@ -191,6 +236,12 @@ async function getMaintenanceStatus(
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const origin = request.headers.get("origin");
+
+  // The denial/maintenance branding assets must remain available so those
+  // public gate pages can render correctly for blocked visitors.
+  if (!isIpGateBypassPath(pathname) && ipAccessDenied(request)) {
+    return ipAccessDeniedResponse(request);
+  }
 
   if (getRequestHost(request) === LEGACY_QLD_HOST) {
     const url = new URL(request.nextUrl.pathname, CURRENT_QLD_ORIGIN);
