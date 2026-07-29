@@ -54,9 +54,18 @@ describe("IP allowlist", () => {
     expect(isLocalRequest("localhost", true)).toBe(false);
   });
 
-  it("is disabled when no valid addresses are configured", () => {
-    expect(configuredAllowedIps(undefined).size).toBe(0);
-    expect(configuredAllowedIps("invalid").size).toBe(0);
+  test.each([
+    ["missing", undefined],
+    ["empty", ""],
+    ["whitespace-only", "   "],
+    ["separator-only", " , , "],
+    ["without valid addresses", "invalid"],
+  ])("is disabled when the allowlist is %s", (_description, value) => {
+    expect(configuredAllowedIps(value).size).toBe(0);
+  });
+
+  it("is enabled by the presence of at least one configured address", () => {
+    expect(configuredAllowedIps(" , 198.51.100.10, ").size).toBe(1);
   });
 
   it.each(["/access-denied", "/axpo-logo.svg", "/axpo-mark.svg"])(
