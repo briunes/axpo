@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Country } from "country-state-city";
+import { COUNTRIES } from "../../../../src/lib/locations";
 import { FormSelect } from "./FormSelect";
 import type { FormSelectProps } from "./FormSelect";
 
@@ -19,7 +19,7 @@ export interface CountrySelectProps
 export function CountrySelect({ value, onChange, ...props }: CountrySelectProps) {
     const options = useMemo(
         () =>
-            Country.getAllCountries().map((country) => ({
+            COUNTRIES.map((country) => ({
                 value: country.isoCode,
                 label: country.name,
                 icon: country.flag ? (

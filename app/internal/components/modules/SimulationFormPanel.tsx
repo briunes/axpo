@@ -95,7 +95,7 @@ function defaultElecState(): ElecFormState {
     return {
         tarifaAcceso: "3.0TD",
         zonaGeografica: "Peninsula",
-        perfilCarga: "NORMAL",
+        perfilCarga: "DIURNO",
         fechaInicio: firstDay.toISOString().slice(0, 10),
         fechaFin: lastDay.toISOString().slice(0, 10),
         consumo: { P1: 5000, P2: 4000, P3: 3000, P4: 2000, P5: 1500, P6: 1000 },

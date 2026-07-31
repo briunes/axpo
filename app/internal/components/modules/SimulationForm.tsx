@@ -8,6 +8,7 @@ import type { SimulationItem, ClientItem, CupsLookupEntry } from "../../lib/inte
 import { calculateSimulation, updateSimulationSelectedOffer, fetchCupsLookup, listBaseValueSets, listBaseValueItems } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { getCountryName } from "../../../../src/lib/locations";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatNumber } from "../../lib/formatPreferences";
 import { FormSelect } from "../ui/FormSelect";
@@ -16,7 +17,6 @@ import { DateRangePicker } from "../ui/DateRangePicker";
 import { FormInput } from "../ui/FormInput";
 import { CurrencyInput } from "../ui/CurrencyInput";
 import { Autocomplete, TextField, Collapse, Divider, Box, Button, Tabs, Tab, Typography, FormControlLabel, Switch, Backdrop, CircularProgress } from "@mui/material";
-import { Country } from "country-state-city";
 import type {
     SimulationPayload,
     ElectricityInputs,
@@ -381,7 +381,7 @@ function defaultElecState(): ElecFormState {
         comercializadorActual: "",
         tarifaAcceso: "3.0TD",
         zonaGeografica: "Peninsula",
-        perfilCarga: "NORMAL",
+        perfilCarga: "DIURNO",
         fechaInicio,
         fechaFin,
         consumo: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
@@ -608,7 +608,7 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
             comercializadorActual: invoiceData.comercializadorActual || "",
             tarifaAcceso: tariff,
             zonaGeografica: "Peninsula",
-            perfilCarga: "NORMAL",
+            perfilCarga: "DIURNO",
             fechaInicio,
             fechaFin,
             consumo: normalizedConsumo,
@@ -1844,8 +1844,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             if (cityLine) parts.push(cityLine);
             if (c.province) parts.push(c.province);
             if (c.country) {
-                const countryObj = Country.getCountryByCode(c.country);
-                parts.push(countryObj ? countryObj.name : c.country);
+                parts.push(getCountryName(c.country) ?? c.country);
             }
             return parts.join(", ");
         };

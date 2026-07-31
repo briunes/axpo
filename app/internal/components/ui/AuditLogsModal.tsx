@@ -25,8 +25,8 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { Country } from "country-state-city";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { getCountryName as lookupCountryName } from "../../../../src/lib/locations";
 import { listAuditLogs, type AuditLogItem, getAgency, listUsers, type UserItem } from "../../lib/internalApi";
 import { AgencyValueResolver, FieldChangeDetails, formatFieldName, normalizeAuditFieldKey } from "./AuditLogShared";
 import { formatDisplayDateTime } from "../../lib/formatPreferences";
@@ -104,12 +104,7 @@ export function AuditLogsModal({
     // Helper: Resolve country code to country name
     const getCountryName = useCallback((countryCode: string): string | null => {
         if (!countryCode || typeof countryCode !== "string") return null;
-        try {
-            const country = Country.getCountryByCode(countryCode);
-            return country?.name || null;
-        } catch {
-            return null;
-        }
+        return lookupCountryName(countryCode) ?? null;
     }, []);
 
     // Helper: Resolve agency ID to agency name

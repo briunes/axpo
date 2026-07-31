@@ -14,8 +14,8 @@ import { FormSelect, type FormSelectOption } from "../ui/FormSelect";
 import LaunchIcon from '@mui/icons-material/Launch';
 import SyncIcon from "@mui/icons-material/Sync";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import { Country } from "country-state-city";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { getCountryName as lookupCountryName } from "../../../../src/lib/locations";
 import type { AuditLogItem } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
 import type { AuditLogsActions } from "../hooks/useAuditLogs";
@@ -229,11 +229,7 @@ export function AuditLogsModule({ session, actions, onNotify: _onNotify, onActio
 
     const getCountryName = useCallback((countryCode: string): string | null => {
         if (!countryCode) return null;
-        try {
-            return Country.getCountryByCode(countryCode)?.name ?? null;
-        } catch {
-            return null;
-        }
+        return lookupCountryName(countryCode) ?? null;
     }, []);
 
     useEffect(() => {

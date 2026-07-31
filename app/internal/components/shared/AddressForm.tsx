@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import { Stack } from "@mui/material";
-import { State } from "country-state-city";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { getSubdivisions } from "../../../../src/lib/locations";
 import { FormInput, FormSelect, CountrySelect } from "../ui";
 
 export interface AddressData {
@@ -31,7 +31,7 @@ export function AddressForm({ value = {}, onChange, disabled, countryRequired, c
     const { t } = useI18n();
 
     const provinces = useMemo(
-        () => (value.country ? State.getStatesOfCountry(value.country) : []),
+        () => getSubdivisions(value.country),
         [value.country]
     );
 
@@ -72,10 +72,10 @@ export function AddressForm({ value = {}, onChange, disabled, countryRequired, c
                                 onChange({ ...value, province: val as string })
                             }
                             options={[
-                                { value: "", label: t("addressForm", "provinceSelectPlaceholder") },
-                                ...provinces.map((s) => ({ value: s.name, label: s.name }))
+                                ...provinces.map((province) => ({ value: province, label: province }))
                             ]}
                             placeholder={t("addressForm", "provinceSelectPlaceholder")}
+                            allowCustomValue
                             disabled={disabled}
                         />
                     ) : (
