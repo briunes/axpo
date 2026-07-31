@@ -4,7 +4,7 @@ import { use, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
-import { getSimulation, openSimulationInvoice, type SimulationItem, simulationStatusTone } from "../../../lib/internalApi";
+import { downloadSharedSimulationPdf, getSimulation, openSimulationInvoice, type SimulationItem, simulationStatusTone } from "../../../lib/internalApi";
 import { CrudPageLayout, FormSkeleton, useAlerts } from "../../../components/shared";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { SimulationViewDisplay } from "../../../components/modules/SimulationViewDisplay";
@@ -17,6 +17,7 @@ import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import LaunchIcon from "@mui/icons-material/Launch";
+import DownloadIcon from "@mui/icons-material/Download";
 import { DownloadHistoryDialog } from "../components/DownloadHistoryDialog";
 import { useUserPreferences } from "../../../components/providers/UserPreferencesProvider";
 import { formatDisplayDate } from "../../../lib/formatPreferences";
@@ -28,6 +29,7 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
     const { showSuccess, showError } = useAlerts();
     const [isPinVisible, setIsPinVisible] = useState(false);
     const [isOpeningInvoice, setIsOpeningInvoice] = useState(false);
+    const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
     const fmtDate = (iso: string) =>
         formatDisplayDate(new Date(iso), preferences.dateFormat, preferences.timezone);
@@ -55,6 +57,19 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
             showError(err instanceof Error ? err.message : t("simulationDetail", "openInvoiceFailed"));
         } finally {
             setIsOpeningInvoice(false);
+        }
+    };
+
+    const handleDownloadSharedPdf = async () => {
+        if (!sim.publicToken || isDownloadingPdf) return;
+        setIsDownloadingPdf(true);
+        try {
+            await downloadSharedSimulationPdf(sim.publicToken, `simulation-${sim.id}.pdf`);
+            showSuccess(t("shareSimulation", "pdfDownloaded"));
+        } catch (err) {
+            showError(err instanceof Error ? err.message : t("shareSimulation", "generatePdfFailed"));
+        } finally {
+            setIsDownloadingPdf(false);
         }
     };
 
@@ -241,6 +256,27 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
                     sx={{ minWidth: "auto", px: 1.25, py: 0.25, textTransform: "none" }}
                 >
                     Copy share link
+                </Button>
+            ),
+        });
+    }
+
+    if (sim.status === "SHARED" && sim.publicToken) {
+        metaItems.push({
+            key: "shared-pdf",
+            label: "PDF",
+            value: (
+                <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<DownloadIcon fontSize="small" />}
+                    onClick={handleDownloadSharedPdf}
+                    disabled={isDownloadingPdf}
+                    sx={{ minWidth: "auto", px: 1.25, py: 0.25, textTransform: "none" }}
+                >
+                    {isDownloadingPdf
+                        ? t("shareSimulation", "processing")
+                        : t("shareSimulation", "downloadPdf")}
                 </Button>
             ),
         });

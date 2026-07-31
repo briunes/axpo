@@ -11,7 +11,7 @@ export interface FormSelectOption {
     group?: string;
 }
 
-export interface FormSelectProps extends Omit<AutocompleteProps<FormSelectOption, false, false, false>, 'options' | 'renderInput' | 'onChange' | 'value' | 'groupBy'> {
+export interface FormSelectProps extends Omit<AutocompleteProps<FormSelectOption, false, false, true>, 'options' | 'renderInput' | 'onChange' | 'value' | 'groupBy' | 'freeSolo'> {
     label: string;
     labelId?: string;
     required?: boolean;
@@ -23,6 +23,8 @@ export interface FormSelectProps extends Omit<AutocompleteProps<FormSelectOption
     error?: boolean;
     placeholder?: string;
     textFieldProps?: Partial<TextFieldProps>;
+    /** Allow a value that is not present in the supplied options. */
+    allowCustomValue?: boolean;
 }
 
 /**
@@ -40,16 +42,18 @@ export function FormSelect({
     error,
     placeholder,
     textFieldProps,
+    allowCustomValue = false,
     disabled,
     ...autocompleteProps
 }: FormSelectProps) {
     const generatedLabelId = labelId || `select-${label?.toLowerCase().replace(/\s+/g, '-')}`;
 
     const selectedOption = options.find(opt => opt.value === value) || null;
+    const selectedValue = selectedOption ?? (allowCustomValue && value ? String(value) : null);
 
-    const handleChange = (_event: SyntheticEvent, newValue: FormSelectOption | null) => {
+    const handleChange = (_event: SyntheticEvent, newValue: FormSelectOption | string | null) => {
         if (onChange) {
-            onChange(newValue?.value ?? null);
+            onChange(typeof newValue === "string" ? newValue : newValue?.value ?? null);
         }
     };
 
@@ -72,12 +76,13 @@ export function FormSelect({
                     {required && <span style={{ color: '#d32f2f', marginLeft: '4px' }}>*</span>}
                 </label>
             )}
-            <Autocomplete<FormSelectOption, false, false, false>
+            <Autocomplete<FormSelectOption, false, false, true>
                 id={generatedLabelId}
                 options={options}
-                value={selectedOption}
+                value={selectedValue}
                 onChange={handleChange}
-                getOptionLabel={(option) => option.label}
+                getOptionLabel={(option) => typeof option === "string" ? option : option.label}
+                {...(allowCustomValue ? { freeSolo: true, autoSelect: true, clearOnBlur: false } : {})}
                 {...(hasGroups ? { groupBy: (option) => option.group ?? '' } : {})}
                 isOptionEqualToValue={(option, value) => option.value === value.value}
                 filterOptions={(options, state) => {

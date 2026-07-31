@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useRef, useState } from "react";
-import { State } from "country-state-city";
+import { normalizeSubdivision } from "../../../../src/lib/locations";
 import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import AddIcon from "@mui/icons-material/Add";
@@ -294,7 +294,7 @@ function buildElecPayloadFromOcr(data: import("../../components/modules").Extrac
         },
         tarifaAcceso: tariff,
         zonaGeografica: data.zonaGeografica || "Peninsula",
-        perfilCarga: "NORMAL",
+        perfilCarga: "DIURNO",
         potenciaContratada: potencia,
         excesoPotencia: data.excesoPotencia ?? 0,
         consumo,
@@ -592,13 +592,9 @@ export default function NewSimulationPage() {
             // Pre-fill quick create form for new client and open modal instantly
             const billingAddr = (data as any).clienteAddress;
             const countryCode = billingAddr?.country || "ES";
-            // Normalize province: do a case-insensitive match against the library's state names
+            // Normalize province against the project's canonical subdivision names.
             const rawProvince: string = billingAddr?.province || "";
-            const stateList = State.getStatesOfCountry(countryCode);
-            const matchedState = stateList.find(
-                (s) => s.name.toLowerCase() === rawProvince.toLowerCase()
-            );
-            const normalizedProvince = matchedState ? matchedState.name : rawProvince;
+            const normalizedProvince = normalizeSubdivision(countryCode, rawProvince);
             setQuickClientData({
                 name: data.nombreTitular,
                 cif: data.cif || "",
