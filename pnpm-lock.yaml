@@ -78,9 +78,6 @@ importers:
       boneyard-js:
         specifier: ^1.9.0
         version: 1.9.0(react@19.2.5)
-      country-state-city:
-        specifier: ^3.2.1
-        version: 3.2.1
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -2022,8 +2019,8 @@ packages:
     resolution: {integrity: sha512-f1WO2Lx8a9t8DARmcWAUPJbu0G20bJlj8L4z72K00TMeJAoyLr/tHhI/pzYBLrR4dXWkcxO1cWYZEOX8DKHTqA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@unlayer/types@1.449.0':
-    resolution: {integrity: sha512-ZAF/r6km+Bf7yJdiyOX3SloCy+lWp/NUoZTcteYXDd+kfqQAEO3yX+IbegAGyj559rF1sYFtOcoV+E1dPNh1WQ==}
+  '@unlayer/types@1.460.0':
+    resolution: {integrity: sha512-ytaxDBU40apAzgHEKI28D9B56hsp+VcfZCh2hhludW1PWtX+ay8z2GTcduosTin2xZ9zPPNquueLL7MjbWHthA==}
 
   '@unrs/resolver-binding-android-arm-eabi@1.11.1':
     resolution: {integrity: sha512-ppLRUgHVaGRWUx0R0Ut06Mjo9gBaBkg3v/8AxusGLhsIotbBLuRk51rAzqLC8gq6NyyAojEXglNjzf6R948DNw==}
@@ -2683,9 +2680,6 @@ packages:
   cosmiconfig@7.1.0:
     resolution: {integrity: sha512-AdmX6xUzdNASswsFtmwSt7Vj8po9IuqXm0UXz7QKPuEUmPB4XyjGfaAr2PSuELMwkRMVH1EpIkX5bTZGRB3eCA==}
     engines: {node: '>=10'}
-
-  country-state-city@3.2.1:
-    resolution: {integrity: sha512-kxbanqMc6izjhc/EHkGPCTabSPZ2G6eG4/97akAYHJUN4stzzFEvQPZoF8oXDQ+10gM/O/yUmISCR1ZVxyb6EA==}
 
   crc-32@1.2.2:
     resolution: {integrity: sha512-ROmzCKrTnOwybPcJApAA6WBWij23HVfGVNKqqrZpuyZOHqK2CwHSvpGuyt/UNNvaIjEd8X5IFGp4Mh+Ie1IHJQ==}
@@ -7598,7 +7592,7 @@ snapshots:
       '@typescript-eslint/types': 8.58.2
       eslint-visitor-keys: 5.0.1
 
-  '@unlayer/types@1.449.0': {}
+  '@unlayer/types@1.460.0': {}
 
   '@unrs/resolver-binding-android-arm-eabi@1.11.1':
     optional: true
@@ -8275,8 +8269,6 @@ snapshots:
       parse-json: 5.2.0
       path-type: 4.0.0
       yaml: 1.10.3
-
-  country-state-city@3.2.1: {}
 
   crc-32@1.2.2: {}
 
@@ -10337,7 +10329,7 @@ snapshots:
 
   react-email-editor@1.8.0(react@19.2.5):
     dependencies:
-      '@unlayer/types': 1.449.0
+      '@unlayer/types': 1.460.0
       react: 19.2.5
 
   react-hook-form@7.72.1(react@19.2.5):

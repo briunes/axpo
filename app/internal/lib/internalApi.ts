@@ -1228,6 +1228,36 @@ export async function downloadSimulationPdf(
   window.URL.revokeObjectURL(objectUrl);
 }
 
+export async function downloadSharedSimulationPdf(
+  publicToken: string,
+  fallbackFilename = "simulation.pdf",
+): Promise<void> {
+  const response = await fetch(
+    `${baseUrl}/api/v1/public/simulations/${encodeURIComponent(publicToken)}/pdf`,
+    { method: "GET", cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(body?.error || `PDF generation failed (${response.status})`);
+  }
+
+  const disposition = response.headers.get("content-disposition");
+  const encodedFilename = disposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const plainFilename = disposition?.match(/filename="?([^";]+)"?/i)?.[1];
+  const filename = encodedFilename
+    ? decodeURIComponent(encodedFilename)
+    : plainFilename || fallbackFilename;
+  const objectUrl = window.URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(objectUrl);
+}
+
 export async function openSimulationInvoice(
   token: string,
   simulationId: string,
