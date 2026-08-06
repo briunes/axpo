@@ -4,7 +4,7 @@ import { use, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadSession } from "../../../lib/authSession";
 import { useI18n } from "../../../../../src/lib/i18n-context";
-import { downloadSharedSimulationPdf, getSimulation, openSimulationInvoice, type SimulationItem, simulationStatusTone } from "../../../lib/internalApi";
+import { downloadSimulationPdf, getSimulation, openSimulationInvoice, type SimulationItem, simulationStatusTone } from "../../../lib/internalApi";
 import { CrudPageLayout, FormSkeleton, useAlerts } from "../../../components/shared";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { SimulationViewDisplay } from "../../../components/modules/SimulationViewDisplay";
@@ -60,11 +60,11 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
         }
     };
 
-    const handleDownloadSharedPdf = async () => {
-        if (!sim.publicToken || isDownloadingPdf) return;
+    const handleDownloadPdf = async () => {
+        if (isDownloadingPdf) return;
         setIsDownloadingPdf(true);
         try {
-            await downloadSharedSimulationPdf(sim.publicToken, `simulation-${sim.id}.pdf`);
+            await downloadSimulationPdf(token, sim.id);
             showSuccess(t("shareSimulation", "pdfDownloaded"));
         } catch (err) {
             showError(err instanceof Error ? err.message : t("shareSimulation", "generatePdfFailed"));
@@ -270,7 +270,7 @@ function SimulationMeta({ sim, token }: { sim: SimulationItem; token: string }) 
                     size="small"
                     variant="outlined"
                     startIcon={<DownloadIcon fontSize="small" />}
-                    onClick={handleDownloadSharedPdf}
+                    onClick={handleDownloadPdf}
                     disabled={isDownloadingPdf}
                     sx={{ minWidth: "auto", px: 1.25, py: 0.25, textTransform: "none" }}
                 >
