@@ -85,6 +85,10 @@ export const buildSimulationPdfFilenameFromSimulation = (
     prefix?: string;
   },
 ): string => {
+  if (simulation.referenceNumber) {
+    return `${sanitizeFilenamePart(simulation.referenceNumber, simulation.id)}.pdf`;
+  }
+
   const productName =
     options?.productName ??
     resolveSimulationProductName(simulation.payloadJson);
@@ -93,6 +97,6 @@ export const buildSimulationPdfFilenameFromSimulation = (
     prefix: options?.prefix,
     productName,
     clientName: simulation.client?.name,
-    simulationCode: simulation.referenceNumber ?? simulation.id,
+    simulationCode: simulation.id,
   });
 };

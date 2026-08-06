@@ -5,57 +5,41 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
+import { launchBrowser } from "@/infrastructure/pdf/browserLauncher";
+import { installPdfResourceGuard } from "@/infrastructure/pdf/pdfResourceGuard";
+import {
+  extractVariableValues,
+  replaceVariables,
+} from "@/infrastructure/pdf/variableReplacer";
 import {
   buildSimulationPdfFilenameFromSimulation,
   resolveSimulationProductName,
 } from "@/infrastructure/pdf/pdfFilename";
+import type { SimulationPayload } from "@/domain/types/simulation";
+import { normalizeLanguageCode } from "@/lib/supportedLanguages";
+import type { EditableSectionsConfig } from "@/infrastructure/templates/editableSections";
 
-const escapePdfText = (text: string): string => {
-  return text
-    .replace(/\\/g, "\\\\")
-    .replace(/\(/g, "\\(")
-    .replace(/\)/g, "\\)");
-};
-
-const buildSimplePdf = (lines: string[]): Buffer => {
-  const content = [
-    "BT",
-    "/F1 12 Tf",
-    "50 780 Td",
-    ...lines.map((line, index) =>
-      index === 0
-        ? `(${escapePdfText(line)}) Tj`
-        : `0 -18 Td (${escapePdfText(line)}) Tj`,
-    ),
-    "ET",
-  ].join("\n");
-
-  const objects = [
-    "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
-    "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
-    "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj",
-    "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj",
-    `5 0 obj << /Length ${Buffer.byteLength(content, "utf8")} >> stream\n${content}\nendstream endobj`,
-  ];
-
-  let pdf = "%PDF-1.4\n";
-  const offsets: number[] = [0];
-  for (const object of objects) {
-    offsets.push(Buffer.byteLength(pdf, "utf8"));
-    pdf += `${object}\n`;
+const PDF_PAGE_BREAK_STYLE = `<style>
+  @media print {
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; }
+    .asim-page { min-height: 0 !important; }
+    table, figure, img,
+    .asim-period-grid, .asim-period-item,
+    .asim-cost-breakdown, .asim-cost-item,
+    .asim-total-section, .asim-savings-badge,
+    .asim-basic-data, .asim-header,
+    tr, td, th {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+    h1, h2, h3, h4, h5, h6,
+    .asim-section-title, .asim-data-section-title, .asim-plan-header {
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+    }
   }
-
-  const xrefOffset = Buffer.byteLength(pdf, "utf8");
-  pdf += `xref\n0 ${objects.length + 1}\n`;
-  pdf += "0000000000 65535 f \n";
-  for (let i = 1; i <= objects.length; i += 1) {
-    pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
-  }
-  pdf += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\n`;
-  pdf += `startxref\n${xrefOffset}\n%%EOF`;
-
-  return Buffer.from(pdf, "utf8");
-};
+</style>`;
 
 /**
  * @swagger
@@ -79,44 +63,177 @@ export const GET = withErrorHandler(
       throw new ValidationError("Simulation id parameter is required");
     }
 
-    const simulation = await SimulationService.assertSimulationAccess(auth, id);
-    const latestVersion = await prisma.simulationVersion.findFirst({
+    await SimulationService.assertSimulationAccess(auth, id);
+
+    const simulation = await prisma.simulation.findFirst({
+      where: { id, isDeleted: false },
+      include: {
+        ownerUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            commercialEmail: true,
+            commercialPhone: true,
+            mobilePhone: true,
+            preferences: { select: { language: true } },
+          },
+        },
+        client: {
+          select: {
+            id: true,
+            name: true,
+            contactName: true,
+            contactEmail: true,
+            contactPhone: true,
+            language: true,
+          },
+        },
+      },
+    });
+    if (!simulation) {
+      throw new ValidationError("Simulation not found");
+    }
+
+    const recentVersions = await prisma.simulationVersion.findMany({
       where: { simulationId: simulation.id },
       orderBy: { createdAt: "desc" },
+      take: 200,
     });
-    const client = simulation.clientId
-      ? await prisma.client.findUnique({
-          where: { id: simulation.clientId },
-          select: { name: true },
-        })
+
+    const baseVersion =
+      recentVersions.find(
+        (version) =>
+          (version.payloadJson as Record<string, unknown> | null)?.results,
+      ) ?? recentVersions[0];
+    const latestOfferPayload = recentVersions.find((version) => {
+      const payload = version.payloadJson as Record<string, unknown> | null;
+      return (
+        payload !== null &&
+        Object.prototype.hasOwnProperty.call(payload, "selectedOffer")
+      );
+    })?.payloadJson as Record<string, unknown> | null;
+    const mergedPayload: Record<string, unknown> | null = baseVersion?.payloadJson
+      ? {
+          ...(baseVersion.payloadJson as Record<string, unknown>),
+          ...(latestOfferPayload?.selectedOffer !== undefined
+            ? { selectedOffer: latestOfferPayload.selectedOffer }
+            : {}),
+        }
       : null;
 
-    const pdf = buildSimplePdf([
-      `AXPO Simulation Snapshot`,
-      `Simulation ID: ${simulation.id}`,
-      `Status: ${simulation.status}`,
-      `Shared At: ${simulation.sharedAt ? simulation.sharedAt.toISOString() : "N/A"}`,
-      `Expires At: ${simulation.expiresAt ? simulation.expiresAt.toISOString() : "N/A"}`,
-      `Latest Version: ${latestVersion?.id ?? "N/A"}`,
-    ]);
-    const latestPayload = latestVersion?.payloadJson as any;
+    const preferredLanguage = normalizeLanguageCode(
+      simulation.client?.language ?? simulation.ownerUser?.preferences?.language,
+    );
+    const commodity = mergedPayload?.type as "ELECTRICITY" | "GAS" | undefined;
+    let pdfTemplate: {
+      id: string;
+      active: boolean;
+      htmlContent: string;
+      editableSections: unknown;
+      translations: { languageCode: string; htmlContent: string }[];
+    } | null = null;
+
+    if (commodity) {
+      const systemConfig = await prisma.systemConfig.findFirst({
+        select: {
+          defaultPdfTemplateGasId: true,
+          defaultPdfTemplateElectricityId: true,
+        },
+      });
+      const templateId =
+        commodity === "GAS"
+          ? systemConfig?.defaultPdfTemplateGasId
+          : systemConfig?.defaultPdfTemplateElectricityId;
+      if (templateId) {
+        pdfTemplate = await prisma.pdfTemplate.findFirst({
+          where: { id: templateId, isDeleted: false, active: true, commodity },
+          select: {
+            id: true,
+            active: true,
+            htmlContent: true,
+            editableSections: true,
+            translations: { select: { languageCode: true, htmlContent: true } },
+          },
+        });
+      }
+    }
+
+    if (!pdfTemplate) {
+      pdfTemplate = (await prisma.pdfTemplate.findUnique({
+        where: { id: "simulation-output-default" },
+        select: {
+          id: true,
+          active: true,
+          htmlContent: true,
+          editableSections: true,
+          translations: { select: { languageCode: true, htmlContent: true } },
+        },
+      })) as typeof pdfTemplate;
+    }
+    if (!pdfTemplate?.active) {
+      throw new ValidationError("PDF template not found or inactive");
+    }
+
+    const templateHtml =
+      pdfTemplate.translations.find(
+        (translation) =>
+          translation.languageCode.trim().toLowerCase() === preferredLanguage,
+      )?.htmlContent ?? pdfTemplate.htmlContent;
+    const processedHtml = replaceVariables(
+      templateHtml,
+      extractVariableValues(
+        simulation,
+        (mergedPayload as SimulationPayload | null) ?? undefined,
+        undefined,
+        (pdfTemplate.editableSections as EditableSectionsConfig | null) ??
+          undefined,
+        undefined,
+        preferredLanguage,
+      ),
+    );
+    const fullHtml = processedHtml.includes("<!DOCTYPE html>")
+      ? processedHtml
+      : `<!DOCTYPE html><html lang="${preferredLanguage || "es"}"><head><meta charset="UTF-8"></head><body>${processedHtml}</body></html>`;
+    const enrichedHtml = fullHtml.includes("</head>")
+      ? fullHtml.replace("</head>", `${PDF_PAGE_BREAK_STYLE}\n</head>`)
+      : `${PDF_PAGE_BREAK_STYLE}\n${fullHtml}`;
+
+    const browser = await launchBrowser();
+    let pdfBuffer: Uint8Array;
+    try {
+      const page = await browser.newPage();
+      page.setDefaultTimeout(30_000);
+      page.setDefaultNavigationTimeout(30_000);
+      await installPdfResourceGuard(page);
+      await page.setContent(enrichedHtml, { waitUntil: "load", timeout: 30_000 });
+      pdfBuffer = await page.pdf({
+        format: "A4",
+        margin: { top: "15mm", right: "12mm", bottom: "15mm", left: "12mm" },
+        printBackground: true,
+        preferCSSPageSize: false,
+      });
+    } finally {
+      await browser.close();
+    }
+
     const filename = buildSimulationPdfFilenameFromSimulation(
       {
         id: simulation.id,
         referenceNumber: simulation.referenceNumber,
-        client,
-        payloadJson: latestPayload,
+        client: simulation.client,
+        payloadJson: mergedPayload as any,
       },
       {
-        productName: resolveSimulationProductName(latestPayload),
+        productName: resolveSimulationProductName(mergedPayload as any),
       },
     );
 
-    return new NextResponse(new Uint8Array(pdf), {
+    return new NextResponse(Buffer.from(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="${filename}"`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "no-store",
       },
     });
