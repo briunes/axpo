@@ -15,6 +15,7 @@ import {
 } from "@/infrastructure/pdf/pdfFilename";
 import { installPdfResourceGuard } from "@/infrastructure/pdf/pdfResourceGuard";
 import { normalizeLanguageCode } from "@/lib/supportedLanguages";
+import type { EditableSectionsConfig } from "@/infrastructure/templates/editableSections";
 
 interface PublicSessionPayload {
   typ?: string;
@@ -199,6 +200,7 @@ export async function GET(
       id: string;
       active: boolean;
       htmlContent: string;
+      editableSections: unknown;
       translations: { languageCode: string; htmlContent: string }[];
     } | null = null;
 
@@ -221,6 +223,7 @@ export async function GET(
             id: true,
             active: true,
             htmlContent: true,
+            editableSections: true,
             translations: {
               select: { languageCode: true, htmlContent: true },
             },
@@ -237,6 +240,7 @@ export async function GET(
           id: true,
           active: true,
           htmlContent: true,
+          editableSections: true,
           translations: {
             select: { languageCode: true, htmlContent: true },
           },
@@ -263,7 +267,8 @@ export async function GET(
       simulation,
       simulationPayload ?? undefined,
       undefined,
-      undefined,
+      (pdfTemplate.editableSections as EditableSectionsConfig | null) ??
+        undefined,
       undefined,
       preferredLanguage,
     );
