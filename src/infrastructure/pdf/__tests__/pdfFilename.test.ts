@@ -1,7 +1,7 @@
 import { buildSimulationPdfFilenameFromSimulation } from "../pdfFilename";
 
 describe("buildSimulationPdfFilenameFromSimulation", () => {
-  it("uses only the simulation reference when one is available", () => {
+  it("uses the product, client, and simulation reference when available", () => {
     expect(
       buildSimulationPdfFilenameFromSimulation({
         id: "cmshcf5ohd667d0f632caf173",
@@ -9,7 +9,7 @@ describe("buildSimulationPdfFilenameFromSimulation", () => {
         client: { name: "ALWAYS REVOLUTION SL" },
         payloadJson: { productName: "Estable N2" },
       }),
-    ).toBe("00602-2026.pdf");
+    ).toBe("simulation-Estable-N2-ALWAYS-REVOLUTION-SL-00602-2026.pdf");
   });
 
   it("keeps the descriptive UUID fallback for legacy simulations", () => {

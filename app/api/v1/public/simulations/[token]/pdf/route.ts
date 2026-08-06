@@ -301,6 +301,9 @@ ${processedHtml}
           *  { box-sizing: border-box; }
           body { margin: 0; padding: 0; }
           .asim-page { min-height: 0 !important; }
+          .asim-data-section + .asim-cost-breakdown {
+            margin-top: -8px !important;
+          }
           table, figure, img,
           .asim-period-grid, .asim-period-item,
           .asim-cost-breakdown, .asim-cost-item,
