@@ -1219,12 +1219,20 @@ export async function downloadSimulationPdf(
     throw new Error(`PDF generation failed (${response.status})`);
   }
 
+  const disposition = response.headers.get("content-disposition");
+  const encodedFilename = disposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const plainFilename = disposition?.match(/filename="?([^";]+)"?/i)?.[1];
+  const filename = encodedFilename
+    ? decodeURIComponent(encodedFilename)
+    : plainFilename || `simulation-${simulationId}.pdf`;
   const blob = await response.blob();
   const objectUrl = window.URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = objectUrl;
-  anchor.download = `simulation-${simulationId}.pdf`;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
   anchor.click();
+  anchor.remove();
   window.URL.revokeObjectURL(objectUrl);
 }
 
