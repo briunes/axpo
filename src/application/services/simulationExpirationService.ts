@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationStatus } from "@/domain/types";
 import { NotificationService } from "@/application/services/notificationService";
+import { isSupabaseApiMode } from "@/infrastructure/database/databaseMode";
 
 export interface ExpirationResult {
   totalExpired: number;
@@ -105,12 +106,19 @@ export class SimulationExpirationService {
 
     const expiredIds = expiredSimulations.map((sim) => sim.id);
 
-    // Use raw SQL so this scheduled status transition does not touch updatedAt.
-    await prisma.$executeRaw`
-      UPDATE "simulations"
-      SET "status" = ${SimulationStatus.EXPIRED}::"SimulationStatus"
-      WHERE "id" IN (${Prisma.join(expiredIds)})
-    `;
+    // Keep updatedAt unchanged for this scheduled status transition. Supabase
+    // Data API mode cannot execute raw SQL, so it uses the equivalent RPC.
+    if (isSupabaseApiMode()) {
+      await (prisma as any).$rpc("axpo_expire_simulations", {
+        p_simulation_ids: expiredIds,
+      });
+    } else {
+      await prisma.$executeRaw`
+        UPDATE "simulations"
+        SET "status" = ${SimulationStatus.EXPIRED}::"SimulationStatus"
+        WHERE "id" IN (${Prisma.join(expiredIds)})
+      `;
+    }
 
     console.log(
       `[SimulationExpirationService] Expired ${expiredIds.length} simulations:`,
