@@ -12,7 +12,7 @@ import { UserForm, type UserFormData } from "../../components/modules/UserForm";
 import { UserSessionsPanel } from "../../components/modules/UserSessionsPanel";
 import { BoneyardFormSkeleton, CrudPageLayout, useAlerts } from "../../components/shared";
 import { useActionButtons, useTopBarBreadcrumbs } from "../../components/InternalWorkspace";
-import type { UserRole } from "../../lib/internalApi";
+import { isAdmin, type UserRole } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
 import { getLanguageOptions } from "../../../../src/lib/supportedLanguages";
 
@@ -87,7 +87,7 @@ export default function NewUserPage() {
         commercialEmail: "",
         otherDetails: "",
         role: "COMMERCIAL",
-        agencyId: session?.user.agencyId || "",
+        agencyId: session && !isAdmin(session.user.role) ? session.user.agencyId || "" : "",
     });
 
     const [newlyCreated, setNewlyCreated] = useState<{
@@ -95,15 +95,6 @@ export default function NewUserPage() {
         pin: string;
     } | null>(null);
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
-
-    useEffect(() => {
-        if (agenciesActions.agencies.length > 0 && !formData.agencyId) {
-            setFormData((prev) => ({
-                ...prev,
-                agencyId: session?.user.agencyId || agenciesActions.agencies[0].id,
-            }));
-        }
-    }, [agenciesActions.agencies, session]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
