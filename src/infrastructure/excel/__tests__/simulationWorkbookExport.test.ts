@@ -83,7 +83,7 @@ describe("fillSimulationWorkbook", () => {
     expect(contentTypes).not.toContain("calcChain");
     expect(sharedStrings).toContain("CDAD PROP LOS PLANOS 1A-1B");
     expect(sharedStrings).toContain("ABRIL-26");
-    expect(workbook).toContain('name="COMPARATIVA LIBRE LUZ" sheetId="3" r:id="rId4" state="hidden"');
+    expect(workbook).toContain('<sheet name="COMPARATIVA LIBRE LUZ" sheetId="3" r:id="rId4" state="hidden"/>');
     await expect(zip.file("xl/vbaProject.bin")!.async("uint8array")).resolves.toEqual(
       new Uint8Array([0xde, 0xad, 0xbe, 0xef]),
     );
