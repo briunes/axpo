@@ -303,6 +303,10 @@ function buildElecPayloadFromOcr(data: import("../../components/modules").Extrac
         personalizadaOmieB: { terminoB: zero, margenPotencia: zeroPow },
         personalizadaFijo: { preciosEnergia: zero, preciosPotencia: zeroPow },
         periodo: { fechaInicio, fechaFin, dias },
+        // Match Excel: the selected billing month is an explicit input (O7).
+        // For a newly OCR-created simulation, preselect the invoice end month;
+        // later date edits must not silently replace this saved selection.
+        billingMonth: fechaFin.slice(0, 7),
         facturaActual: data.facturaActual ?? 0,
         extras: {
             reactiva: data.reactiva || undefined,

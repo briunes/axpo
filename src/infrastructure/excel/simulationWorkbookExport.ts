@@ -3,7 +3,21 @@ import type { ElectricityInputs, GasInputs } from "@/domain/types";
 
 const ELECTRICITY_INPUT_SHEET = "PETICION DATOS LUZ";
 const GAS_INPUT_SHEET = "PETICION DATOS GAS";
+const ELECTRICITY_CUSTOM_SHEET = "COMPARATIVA LIBRE LUZ";
 const PERIODS = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+
+const SPANISH_MONTHS = [
+  "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+  "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
+] as const;
+
+function excelBillingMonth(value: string): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  if (!match) throw new Error(`Invalid billing month: ${value}`);
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) throw new Error(`Invalid billing month: ${value}`);
+  return `${SPANISH_MONTHS[month - 1]}-${match[1].slice(2)}`;
+}
 
 export interface SimulationWorkbookExportInput {
   electricity?: ElectricityInputs;
@@ -39,6 +53,9 @@ function electricityCellValues(
     E8: electricity.tarifaAcceso,
     E11: electricity.zonaGeografica,
     E14: clientName ?? "",
+    O7: excelBillingMonth(
+      electricity.billingMonth ?? electricity.periodo.fechaFin.slice(0, 7),
+    ),
     D24: excelDateSerial(electricity.periodo.fechaInicio),
     E24: excelDateSerial(electricity.periodo.fechaFin),
     E35: electricity.excesoPotencia ?? 0,
@@ -134,21 +151,31 @@ function appendSharedStrings(
   };
 }
 
-function workbookSheetPath(workbookXml: string, relsXml: string, sheetName: string): string {
+function findWorkbookSheetPath(
+  workbookXml: string,
+  relsXml: string,
+  sheetName: string,
+): string | undefined {
   const sheetPattern = new RegExp(
     `<sheet\\b[^>]*name="${sheetName}"[^>]*r:id="([^"]+)"[^>]*/?>`,
   );
   const sheetMatch = workbookXml.match(sheetPattern);
-  if (!sheetMatch) throw new Error(`Workbook sheet "${sheetName}" was not found`);
+  if (!sheetMatch) return undefined;
 
   const relationshipPattern = new RegExp(
     `<Relationship\\b[^>]*Id="${sheetMatch[1]}"[^>]*Target="([^"]+)"[^>]*/?>`,
   );
   const relationshipMatch = relsXml.match(relationshipPattern);
-  if (!relationshipMatch) throw new Error(`Workbook relationship ${sheetMatch[1]} was not found`);
+  if (!relationshipMatch) return undefined;
 
   const target = relationshipMatch[1].replace(/^\//, "");
   return target.startsWith("xl/") ? target : `xl/${target.replace(/^\.\//, "")}`;
+}
+
+function workbookSheetPath(workbookXml: string, relsXml: string, sheetName: string): string {
+  const path = findWorkbookSheetPath(workbookXml, relsXml, sheetName);
+  if (!path) throw new Error(`Workbook sheet "${sheetName}" was not found`);
+  return path;
 }
 
 function enableFullRecalculation(workbookXml: string): string {
@@ -183,6 +210,25 @@ function removeCalcChainContentType(contentTypesXml: string): string {
   return contentTypesXml.replace(
     /<Override\b(?=[^>]*\bPartName="\/xl\/calcChain\.xml")[^>]*\/>/g,
     "",
+  );
+}
+
+function setWorksheetVisibility(
+  workbookXml: string,
+  sheetName: string,
+  hidden: boolean,
+): string {
+  const sheetPattern = new RegExp(
+    `(<sheet\\b[^>]*name="${sheetName}"[^>]*)(/?>)`,
+  );
+  const match = workbookXml.match(sheetPattern);
+  if (!match) return workbookXml;
+  const attributes = match[1]
+    .replace(/\s+state="[^"]*"/g, "")
+    .replace(/\s*\/$/, "");
+  return workbookXml.replace(
+    match[0],
+    `${attributes}${hidden ? ' state="hidden"' : ""}${match[2]}`,
   );
 }
 
@@ -238,8 +284,49 @@ export async function fillSimulationWorkbook(
     );
   }
   zip.file(sheetPath, sheetXml);
+
+  let finalWorkbookXml = enableFullRecalculation(workbookXml);
+  if (input.electricity) {
+    const custom = input.electricity.personalizadaFijo;
+    const hasCustomEnergyPrice = Object.values(custom?.preciosEnergia ?? {}).some(
+      (value) => typeof value === "number" && value > 0,
+    );
+    const customSheetPath = findWorkbookSheetPath(
+      workbookXml,
+      relsXml,
+      ELECTRICITY_CUSTOM_SHEET,
+    );
+    const customSheetFile = customSheetPath ? zip.file(customSheetPath) : null;
+    if (customSheetFile && hasCustomEnergyPrice) {
+      let customSheetXml = await customSheetFile.async("string");
+      PERIODS.forEach((period, index) => {
+        customSheetXml = replaceCell(
+          customSheetXml,
+          `${String.fromCharCode(73 + index)}43`,
+          custom?.preciosPotencia?.[period] ?? 0,
+          false,
+          ELECTRICITY_CUSTOM_SHEET,
+        );
+        customSheetXml = replaceCell(
+          customSheetXml,
+          `${String.fromCharCode(73 + index)}48`,
+          custom?.preciosEnergia?.[period] ?? 0,
+          false,
+          ELECTRICITY_CUSTOM_SHEET,
+        );
+      });
+      zip.file(customSheetPath!, customSheetXml);
+    }
+    // An empty personalized offer otherwise recalculates as a near-zero invoice
+    // and displays a fictitious ~100% saving in Excel.
+    finalWorkbookXml = setWorksheetVisibility(
+      finalWorkbookXml,
+      ELECTRICITY_CUSTOM_SHEET,
+      !hasCustomEnergyPrice,
+    );
+  }
   zip.file("xl/sharedStrings.xml", appendedStrings.xml);
-  zip.file("xl/workbook.xml", enableFullRecalculation(workbookXml));
+  zip.file("xl/workbook.xml", finalWorkbookXml);
   // The calculation chain is a derived cache. Replacing inputs makes the old
   // chain invalid, so remove it and let Excel rebuild it during full recalc.
   zip.remove("xl/calcChain.xml");
