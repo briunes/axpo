@@ -150,12 +150,18 @@ export async function calculateAndPersistSimulation(
     );
   }
 
+  const selectedBillingMonth =
+    input.selectedMonth ??
+    payload.electricity?.billingMonth ??
+    payload.electricity?.periodo.fechaFin.slice(0, 7);
   const payloadWithTaxRates: SimulationPayload = {
     ...payload,
     electricity: payload.electricity
       ? {
           ...payload.electricity,
-          ...(input.selectedMonth ? { billingMonth: input.selectedMonth } : {}),
+          ...(selectedBillingMonth
+            ? { billingMonth: selectedBillingMonth }
+            : {}),
           periodo: {
             ...payload.electricity.periodo,
             dias: inclusiveBillingDays(payload.electricity.periodo),
@@ -223,7 +229,9 @@ export async function calculateAndPersistSimulation(
       ? {
           ...payload.electricity,
           periodo: payloadWithTaxRates.electricity!.periodo,
-          ...(input.selectedMonth ? { billingMonth: input.selectedMonth } : {}),
+          ...(selectedBillingMonth
+            ? { billingMonth: selectedBillingMonth }
+            : {}),
         }
       : undefined,
     gas: payload.gas

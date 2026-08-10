@@ -1751,9 +1751,14 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     const [selectedOffer, setSelectedOffer] = useState<SimulationPayload["selectedOffer"]>(
         existingPayload.selectedOffer ?? undefined
     );
-    // Tracks the billing month explicitly chosen by the user via the month selector.
-    // null means "derive from the billing period dates" (the default).
-    const [billingMonthOverride, setBillingMonthOverride] = useState<string | null>(null);
+    // Excel treats PETICION DATOS LUZ!O7 (the explicitly selected billing
+    // month) as authoritative. Preserve the saved selection across edits;
+    // dates determine billing days, not the indexed-price month.
+    const [billingMonthOverride, setBillingMonthOverride] = useState<string | null>(() =>
+        existingPayload.electricity?.billingMonth ??
+        existingPayload.electricity?.periodo.fechaFin?.slice(0, 7) ??
+        null
+    );
     const [cupsHistory, setCupsHistory] = useState<CupsLookupEntry[]>([]);
     const [ivaRateOptions, setIvaRateOptions] = useState<number[]>([]);
     const [electricityTaxRateOptions, setElectricityTaxRateOptions] = useState<number[]>([]);
@@ -1966,10 +1971,9 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         setCalculating(true);
         try {
             const effectiveBillingMonth =
-                billingMonthOverride ??
-                (simType !== "GAS"
-                    ? getDominantBillingMonth(elecState.fechaInicio, elecState.fechaFin)
-                    : undefined);
+                simType !== "GAS"
+                    ? billingMonthOverride ?? elecState.fechaFin.slice(0, 7)
+                    : undefined;
             const payload: SimulationPayload = {
                 schemaVersion: "1",
                 type: simType,
@@ -2086,7 +2090,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
     const selectedMonth = billingMonthOverride ?? (
         simType !== "GAS"
-            ? getDominantBillingMonth(elecState.fechaInicio, elecState.fechaFin)
+            ? elecState.fechaFin.slice(0, 7)
             : getDominantBillingMonth(gasState.fechaInicio, gasState.fechaFin)
     );
     const availableMonths = (() => {
