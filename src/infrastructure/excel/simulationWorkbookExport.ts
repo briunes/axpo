@@ -219,7 +219,7 @@ function setWorksheetVisibility(
   hidden: boolean,
 ): string {
   const sheetPattern = new RegExp(
-    `(<sheet\\b[^>]*name="${sheetName}"[^>]*)(/?>)`,
+    `<sheet\\b([^>]*name="${sheetName}"[^>]*)/?>`,
   );
   const match = workbookXml.match(sheetPattern);
   if (!match) return workbookXml;
@@ -228,7 +228,7 @@ function setWorksheetVisibility(
     .replace(/\s*\/$/, "");
   return workbookXml.replace(
     match[0],
-    `${attributes}${hidden ? ' state="hidden"' : ""}${match[2]}`,
+    `<sheet${attributes}${hidden ? ' state="hidden"' : ""}/>`,
   );
 }
 
