@@ -44,6 +44,7 @@ export const GET = withErrorHandler(
       throw new NotFoundError("Email log");
     }
 
-    return ResponseHandler.ok(log);
+    const { trackingToken: _trackingToken, ...safeLog } = log;
+    return ResponseHandler.ok(safeLog);
   },
 );

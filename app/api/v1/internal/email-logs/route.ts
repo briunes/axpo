@@ -115,8 +115,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     prisma.emailLog.count({ where }),
   ]);
 
+  // The token is write-only: internal viewers do not need a URL that could be
+  // fetched manually and create a false open event.
+  const safeLogs = logs.map(({ trackingToken: _trackingToken, ...log }) => log);
+
   return ResponseHandler.ok({
-    logs,
+    logs: safeLogs,
     pagination: {
       page,
       limit,

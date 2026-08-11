@@ -599,6 +599,10 @@ model EmailLog {
   durationMs          Int?
   hasAttachments      Boolean  @default(false)
   attachmentsCount    Int      @default(0)
+  trackingToken       String?  @unique
+  openedAt            DateTime?
+  lastOpenedAt        DateTime?
+  openCount           Int      @default(0)
   triggeredByUser     User?    @relation(fields: [triggeredByUserId], references: [id])
 
   @@index([sentAt])
@@ -606,6 +610,7 @@ model EmailLog {
   @@index([triggeredBy])
   @@index([status])
   @@index([triggeredByUserId])
+  @@index([openedAt])
   @@map("email_logs")
 }
 

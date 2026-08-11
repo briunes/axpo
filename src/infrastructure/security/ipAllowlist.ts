@@ -76,5 +76,9 @@ export function isLocalRequest(hostname: string, isVercel: boolean): boolean {
 }
 
 export function isIpGateBypassPath(pathname: string): boolean {
-  return pathname === "/access-denied" || IP_GATE_PUBLIC_ASSETS.has(pathname);
+  return (
+    pathname === "/access-denied" ||
+    pathname.startsWith("/api/v1/public/email-open/") ||
+    IP_GATE_PUBLIC_ASSETS.has(pathname)
+  );
 }
