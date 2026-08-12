@@ -258,7 +258,7 @@ const buildApiOverview = async (input: {
     ).length,
     accessAttempts: periodAccess.length,
     successfulAccess: periodShared.filter((simulation) =>
-      simulation.accessAttempts.some((attempt) => attempt.success),
+      simulation.sharedVia === "EMAIL" && simulation.accessAttempts.some((attempt) => attempt.success),
     ).length,
     simulationTrend: dayKeys.map((date) => ({
       date,
@@ -282,8 +282,12 @@ const buildApiOverview = async (input: {
     previousPeriod: {
       totalSimulations: previousSimulations.length,
       sharedSimulations: previousShared.length,
+      emailSharedSimulations: previousShared.filter((item) => item.sharedVia === "EMAIL").length,
       sentEmails: previousEmails.length,
       openedEmails: previousEmails.filter((item) => item.openedAt !== null).length,
+      openedWebSimulations: previousShared.filter((simulation) =>
+        simulation.sharedVia === "EMAIL" && simulation.accessAttempts.some((attempt) => attempt.success),
+      ).length,
       emailOpenEvents: previousEmails.reduce((sum, item) => sum + item.openCount, 0),
       activeAgencies: new Set(previousSimulations.map((item) => item.agencyId)).size,
       activeUsers: new Set(previousSimulations.map((item) => item.ownerUserId)).size,
@@ -497,10 +501,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       where: { ...simulationPeriodFilter, status: "DRAFT" },
     }),
     prisma.accessAttempt.count({ where: accessOnPeriodSimsFilter }),
-    // "Opened on web" = distinct simulations shared in the period that a client accessed successfully.
+    // "Opened on web" = distinct email-shared simulations from the period
+    // that a client accessed successfully. PDF shares cannot be opened on web.
     prisma.simulation.count({
       where: {
         ...sharedPeriodFilter,
+        sharedVia: "EMAIL",
         accessAttempts: { some: { success: true } },
       },
     }),
@@ -541,16 +547,26 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const [
     previousTotalSimulations,
     previousSharedSimulations,
+    previousEmailSharedSimulations,
     previousSentEmails,
     previousOpenedEmails,
+    previousOpenedWebSimulations,
     previousEmailOpenAggregate,
     previousAgencyRows,
     previousUserRows,
   ] = await Promise.all([
     prisma.simulation.count({ where: previousSimulationPeriodFilter }),
     prisma.simulation.count({ where: previousSharedPeriodFilter }),
+    prisma.simulation.count({ where: { ...previousSharedPeriodFilter, sharedVia: "EMAIL" } }),
     prisma.emailLog.count({ where: previousEmailFilter }),
     prisma.emailLog.count({ where: { ...previousEmailFilter, openedAt: { not: null } } }),
+    prisma.simulation.count({
+      where: {
+        ...previousSharedPeriodFilter,
+        sharedVia: "EMAIL",
+        accessAttempts: { some: { success: true } },
+      },
+    }),
     prisma.emailLog.aggregate({ where: previousEmailFilter, _sum: { openCount: true } }),
     prisma.simulation.groupBy({ by: ["agencyId"], where: previousSimulationPeriodFilter }),
     prisma.simulation.groupBy({ by: ["ownerUserId"], where: previousSimulationPeriodFilter }),
@@ -826,8 +842,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       previousPeriod: {
         totalSimulations: previousTotalSimulations,
         sharedSimulations: previousSharedSimulations,
+        emailSharedSimulations: previousEmailSharedSimulations,
         sentEmails: previousSentEmails,
         openedEmails: previousOpenedEmails,
+        openedWebSimulations: previousOpenedWebSimulations,
         emailOpenEvents: previousEmailOpenAggregate._sum.openCount ?? 0,
         activeAgencies: previousAgencyRows.length,
         activeUsers: previousUserRows.length,
