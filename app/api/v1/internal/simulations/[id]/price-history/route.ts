@@ -110,6 +110,20 @@ function latestDataMonth(items: { key: string }[]): Date | undefined {
   return new Date(y, m - 1, 1);
 }
 
+async function loadBaseValueItemsBySetId(
+  baseValueSetId: string,
+): Promise<{ key: string; valueNumeric: any }[]> {
+  // Keep this as a top-level query instead of embedding `items` in a
+  // BaseValueSet include. In Supabase Data API mode, PostgREST caps embedded
+  // relations at 1,000 rows; base-value sets are considerably larger. The
+  // compatibility client's findMany implementation paginates top-level
+  // queries, so this returns the complete set in both database modes.
+  return prisma.baseValueItem.findMany({
+    where: { baseValueSetId },
+    select: { key: true, valueNumeric: true },
+  });
+}
+
 async function loadCommodityBaseValueItems(
   commodity: "ELEC" | "GAS",
   agencyId?: string | null,
@@ -221,19 +235,23 @@ export async function GET(
     if (baseValueSetId) {
       const bvSet = await prisma.baseValueSet.findUnique({
         where: { id: baseValueSetId },
-        include: { items: { select: { key: true, valueNumeric: true } } },
+        select: { id: true },
       });
-      baseValueItems = bvSet?.items ?? [];
+      if (bvSet) {
+        baseValueItems = await loadBaseValueItemsBySetId(bvSet.id);
+      }
     }
 
     // Fall back to active base value set for the simulation agency scope.
     if (baseValueItems.length === 0) {
       const defaultSet = await prisma.baseValueSet.findFirst({
         where: { isActive: true, isDeleted: false, scopeType: defaultScopeType },
-        include: { items: { select: { key: true, valueNumeric: true } } },
+        select: { id: true },
         orderBy: { updatedAt: "desc" },
       });
-      baseValueItems = defaultSet?.items ?? [];
+      if (defaultSet) {
+        baseValueItems = await loadBaseValueItemsBySetId(defaultSet.id);
+      }
     }
 
     // Older simulation versions can point to a base-value set containing only
