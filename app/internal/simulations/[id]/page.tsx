@@ -3,10 +3,12 @@
 import { use, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { loadSession } from "../../lib/authSession";
+import { getSystemConfig } from "../../lib/configApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import {
   downloadBaseValueFile,
   downloadFilledSimulationExcel,
+  reportSimulationIssue,
   getSimulation,
   openSimulationInvoice,
   updateClient,
@@ -56,6 +58,8 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { ShareSimulationView } from "./components/ShareSimulationView";
 import { DownloadHistoryDialog } from "./components/DownloadHistoryDialog";
 import LaunchIcon from "@mui/icons-material/Launch";
+import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
+import { ReportIssueDialog } from "./components/ReportIssueDialog";
 
 function SimulationMeta({
   sim,
@@ -380,6 +384,15 @@ export default function SimulationDetailPage({
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [showAuditLogsModal, setShowAuditLogsModal] = useState(false);
+  const [showReportIssueDialog, setShowReportIssueDialog] = useState(false);
+  const [simulationIssuesEnabled, setSimulationIssuesEnabled] = useState(true);
+
+  useEffect(() => {
+    if (!session) return;
+    getSystemConfig({ view: "runtime" })
+      .then((config) => setSimulationIssuesEnabled(config.simulationIssuesEnabled !== false))
+      .catch(() => undefined);
+  }, [session]);
   const [selectedOfferProductKey, setSelectedOfferProductKey] =
     useState<string>("");
   const [selectedBaseValueSetId, setSelectedBaseValueSetId] = useState<
@@ -485,6 +498,8 @@ export default function SimulationDetailPage({
   const canChooseBaseValues =
     !!session &&
     (session.user.role === "ADMIN" || session.user.role === "SYS_ADMIN");
+  const canDownloadExcel =
+    !!session && canDo(session.user.role, "simulations.download_excel");
   const canOpenAuditLogs =
     !!session &&
     (session.user.role === "AGENT" ||
@@ -513,7 +528,7 @@ export default function SimulationDetailPage({
             />
           </span>
         )}
-        {downloadBaseValueSetId && (
+        {canDownloadExcel && downloadBaseValueSetId && (
           <Tooltip title={t("baseValuesModule", "download_tooltip")} arrow placement="top">
             <span className="topbar-action-wrap">
               <Button
@@ -602,12 +617,21 @@ export default function SimulationDetailPage({
             </span>
           </Tooltip>
         )}
+        {simulationIssuesEnabled && <Tooltip title={t("simulationIssues", "reportTooltip")} arrow>
+          <span className="topbar-action-wrap">
+            <Button className="topbar-action topbar-action--compact" variant="outlined" size="small"
+              startIcon={<ReportProblemOutlinedIcon fontSize="small" />} onClick={() => setShowReportIssueDialog(true)}>
+              <span className="topbar-action-label">{t("simulationIssues", "report")}</span>
+            </Button>
+          </span>
+        </Tooltip>}
       </>,
     );
 
     return () => onActionButtons?.(null);
   }, [
     canChooseBaseValues,
+    canDownloadExcel,
     canOpenAuditLogs,
     downloadBaseValueSetId,
     excelMenuAnchor,
@@ -620,6 +644,8 @@ export default function SimulationDetailPage({
     session,
     showDraftResultActions,
     t,
+    showReportIssueDialog,
+    simulationIssuesEnabled,
     usedBaseValueSetId,
   ]);
 
@@ -671,6 +697,11 @@ export default function SimulationDetailPage({
           session ? canDo(session.user.role, "section.clients") : false
         }
       />
+      {simulationIssuesEnabled && <ReportIssueDialog open={showReportIssueDialog} onClose={() => setShowReportIssueDialog(false)}
+        onSubmit={async (description, files) => {
+          await reportSimulationIssue(session.token, simulation.id, description, files);
+          showSuccess(t("simulationIssues", "submitSuccess"));
+        }} />}
 
       {simulation.status === "SHARED" && (
         <div

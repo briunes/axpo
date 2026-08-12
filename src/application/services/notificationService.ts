@@ -107,6 +107,43 @@ export class NotificationService {
     };
   }
 
+  static async notifyAccessRequestReceived(input: {
+    requestId: string;
+    kamUserId: string;
+    applicantName: string;
+    agencyName: string;
+    requestedAt?: Date;
+  }): Promise<void> {
+    await upsertNotification({
+      type: "access_request.received",
+      category: "users",
+      severity: "INFO",
+      title: `New access request from ${input.applicantName}`,
+      body: `${input.applicantName} requested access for ${input.agencyName}.`,
+      audienceUserId: input.kamUserId,
+      sourceType: "access_request",
+      sourceId: input.requestId,
+      dedupeKey: `user:${input.kamUserId}:access_request.received:${input.requestId}`,
+      actionUrl: "/internal/users/access-requests",
+      metadata: {
+        applicantName: input.applicantName,
+        agencyName: input.agencyName,
+        requestedAt: toIsoString(input.requestedAt ?? new Date()),
+      },
+    });
+  }
+
+  static async resolveAccessRequest(requestId: string): Promise<void> {
+    await prisma.notification.updateMany({
+      where: {
+        sourceType: "access_request",
+        sourceId: requestId,
+        resolvedAt: null,
+      },
+      data: { resolvedAt: new Date() },
+    });
+  }
+
   private static getSysAdminSyncTtlMs(): number {
     const value = Number(process.env.NOTIFICATION_SYNC_TTL_MS);
     if (!Number.isFinite(value) || value < 0) return DEFAULT_SYS_ADMIN_SYNC_TTL_MS;

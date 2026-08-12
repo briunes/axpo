@@ -12,11 +12,14 @@ interface KpiCardProps {
     value: string | number;
     sub?: string;
     accent?: string;
-    percentage?: number;
-    trend?: "up" | "down" | "neutral";
+    progressPercentage?: number;
+    openedPercentage?: number;
+    comparison?: number | null;
+    previousValue?: string | number;
+    comparisonLabel?: string;
 }
 
-function KpiCard({ title, value, sub, accent, percentage, trend }: KpiCardProps) {
+function KpiCard({ title, value, sub, accent, progressPercentage, openedPercentage, comparison, previousValue, comparisonLabel }: KpiCardProps) {
     return (
         <div className="panel-card" style={{
             flex: "1 1 160px",
@@ -41,23 +44,22 @@ function KpiCard({ title, value, sub, accent, percentage, trend }: KpiCardProps)
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginBottom: 8 }}>{title}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                 <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.1 }}>{value}</div>
-                {percentage !== undefined && (
+                {comparison !== undefined && (
                     <div style={{
                         fontSize: 14,
                         fontWeight: 600,
-                        color: accent || "var(--scheme-neutral-400)",
+                        color: comparison === null || comparison === 0 ? "var(--scheme-neutral-400)" : comparison > 0 ? "#10b981" : "#ef4444",
                         display: "flex",
                         alignItems: "center",
                         gap: 4,
-                    }}>
-                        {trend === "up" && "↗"}
-                        {trend === "down" && "↘"}
-                        {percentage}%
+                    }} title={comparisonLabel}>
+                        <span style={{ fontSize: 10, fontWeight: 500, color: "var(--scheme-neutral-500)" }}>{comparisonLabel}: {previousValue}</span>
+                        <span>{comparison === null ? "—%" : <>{comparison > 0 ? "↗" : comparison < 0 ? "↘" : "→"}{Math.abs(comparison)}%</>}</span>
                     </div>
                 )}
             </div>
             {sub && <div style={{ fontSize: 12, color: "var(--scheme-neutral-500)", marginTop: 6 }}>{sub}</div>}
-            {percentage !== undefined && (
+            {progressPercentage !== undefined && (
                 <div style={{
                     marginTop: 10,
                     height: 4,
@@ -65,12 +67,10 @@ function KpiCard({ title, value, sub, accent, percentage, trend }: KpiCardProps)
                     borderRadius: 2,
                     overflow: "hidden",
                 }}>
-                    <div style={{
-                        height: "100%",
-                        width: `${Math.min(percentage, 100)}%`,
-                        background: `linear-gradient(90deg, ${accent} 0%, ${accent}CC 100%)`,
-                        transition: "width 0.6s ease",
-                    }} />
+                    <div style={{ display: "flex", height: "100%", width: `${Math.min(progressPercentage, 100)}%`, transition: "width 0.6s ease" }}>
+                        {openedPercentage !== undefined && <div style={{ width: `${progressPercentage > 0 ? Math.min(openedPercentage / progressPercentage * 100, 100) : 0}%`, background: "#06b6d4" }} />}
+                        <div style={{ flex: 1, background: `linear-gradient(90deg, ${accent} 0%, ${accent}CC 100%)` }} />
+                    </div>
                 </div>
             )}
         </div>
@@ -116,13 +116,25 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
     // Open rate is computed against email-shared simulations only:
     // PDF/download shares can never be opened by the client, so including them
     // would artificially deflate the open rate percentage.
-    const emailSent = analytics.emailSharedSimulations ?? analytics.sharedSimulations;
+    const emailSent = analytics.sentEmails ?? analytics.emailSharedSimulations ?? analytics.sharedSimulations;
+    const emailOpened = analytics.openedEmails ?? analytics.successfulAccess;
     const openRate = emailSent > 0
-        ? Math.round((analytics.successfulAccess / emailSent) * 100)
+        ? Math.round((emailOpened / emailSent) * 100)
         : 0;
     const sentRate = analytics.totalSimulations > 0
-        ? Math.round((analytics.sharedSimulations / analytics.totalSimulations) * 100)
+        ? Math.round((emailSent / analytics.totalSimulations) * 100)
         : 0;
+    const openedOfTotalRate = analytics.totalSimulations > 0
+        ? Math.round((emailOpened / analytics.totalSimulations) * 100)
+        : 0;
+    const previous = analytics.previousPeriod;
+    const percentChange = (current: number, prior: number | undefined) =>
+        prior === undefined ? null : prior === 0 ? (current === 0 ? 0 : 100) : Math.round(((current - prior) / prior) * 100);
+    const previousOpenRate = previous && previous.sentEmails > 0
+        ? Math.round((previous.openedEmails / previous.sentEmails) * 100)
+        : 0;
+    const previousValue = (value: string | number | undefined) => value ?? "—";
+    const comparisonLabel = t("analyticsModule", "previousPeriodValue");
 
     // Prepare trend data
     const simDates = (analytics.simulationTrend ?? []).map((d) => new Date(d.date + "T00:00:00"));
@@ -213,40 +225,57 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                     value={analytics.byAgency?.length || 0}
                     accent="#8b5cf6"
                     sub={t("analyticsModule", "kpiTotalAgenciesSub")}
+                    comparison={percentChange(analytics.byAgency?.length || 0, previous?.activeAgencies)}
+                    previousValue={previousValue(previous?.activeAgencies)}
+                    comparisonLabel={comparisonLabel}
                 />
                 <KpiCard
                     title={t("analyticsModule", "kpiSimsCreated")}
                     value={analytics.totalSimulations}
                     accent="#3b82f6"
                     sub={t("analyticsModule", "kpiSimsCreatedSub")}
+                    comparison={percentChange(analytics.totalSimulations, previous?.totalSimulations)}
+                    previousValue={previousValue(previous?.totalSimulations)}
+                    comparisonLabel={comparisonLabel}
                 />
                 <KpiCard
                     title={t("analyticsModule", "kpiSimsSent")}
-                    value={analytics.sharedSimulations}
-                    sub={t("analyticsModule", "kpiSimsSentSub")}
+                    value={emailSent}
+                    sub={t("analyticsModule", "kpiEmailSentSub").replace("{opened}", String(emailOpened)).replace("{sent}", String(emailSent))}
                     accent="#10b981"
-                    percentage={sentRate}
-                    trend={sentRate > 70 ? "up" : sentRate < 40 ? "down" : "neutral"}
+                    progressPercentage={sentRate}
+                    openedPercentage={openedOfTotalRate}
+                    comparison={percentChange(emailSent, previous?.sentEmails)}
+                    previousValue={previousValue(previous?.sentEmails)}
+                    comparisonLabel={comparisonLabel}
                 />
                 <KpiCard
                     title={t("analyticsModule", "kpiOpenRate")}
                     value={`${openRate}%`}
-                    sub={t("analyticsModule", "kpiOpenRateSub").replace("{count}", String(analytics.successfulAccess))}
+                    sub={t("analyticsModule", "kpiOpenRateSub").replace("{count}", String(emailOpened))}
                     accent="#06b6d4"
-                    percentage={openRate}
-                    trend={openRate > 60 ? "up" : openRate < 30 ? "down" : "neutral"}
+                    progressPercentage={openRate}
+                    comparison={previous ? percentChange(openRate, previousOpenRate) : null}
+                    previousValue={previous ? `${previousOpenRate}%` : "—"}
+                    comparisonLabel={comparisonLabel}
                 />
                 <KpiCard
                     title={t("analyticsModule", "kpiTotalOpens")}
-                    value={analytics.successfulAccess || 0}
+                    value={analytics.emailOpenEvents ?? emailOpened}
                     accent="#14b8a6"
-                    sub={t("analyticsModule", "kpiTotalOpensSub").replace("{count}", String(analytics.accessAttempts))}
+                    sub={t("analyticsModule", "kpiTotalOpensSub").replace("{count}", String(emailOpened))}
+                    comparison={percentChange(analytics.emailOpenEvents ?? emailOpened, previous?.emailOpenEvents)}
+                    previousValue={previousValue(previous?.emailOpenEvents)}
+                    comparisonLabel={comparisonLabel}
                 />
                 <KpiCard
                     title={t("analyticsModule", "kpiActiveUsers")}
                     value={analytics.byUser?.length || 0}
                     accent="#a78bfa"
                     sub={t("analyticsModule", "kpiActiveUsersSub")}
+                    comparison={percentChange(analytics.byUser?.length || 0, previous?.activeUsers)}
+                    previousValue={previousValue(previous?.activeUsers)}
+                    comparisonLabel={comparisonLabel}
                 />
             </div>
 
@@ -256,7 +285,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                     {[
                         { label: t("analyticsModule", "funnelCreated"), value: analytics.totalSimulations, color: "#3b82f6", percent: 100 },
                         { label: t("analyticsModule", "funnelSentEmail") || "Sent (Email)", value: emailSent, color: "#10b981", percent: analytics.totalSimulations > 0 ? Math.round((emailSent / analytics.totalSimulations) * 100) : 0 },
-                        { label: t("analyticsModule", "funnelOpened"), value: analytics.successfulAccess || 0, color: "#06b6d4", percent: openRate },
+                        { label: t("analyticsModule", "funnelOpened"), value: emailOpened, color: "#06b6d4", percent: openRate },
                     ].map((stage, idx) => (
                         <div className="analytics-funnel-stage" key={stage.label} style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", gap: 8, position: "relative", minWidth: 0 }}>
                             <div style={{

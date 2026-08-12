@@ -59,6 +59,7 @@ interface SimulationResultsCardsProps {
     onUpdateElecPersonalizadaFijo?: (field: "preciosPotencia" | "preciosEnergia", period: string, value: number) => void;
     gasPersonalizadaFijo?: { terminoDia: number; terminoVariable: number };
     onUpdateGasPersonalizadaFijo?: (field: "terminoDia" | "terminoVariable", value: number) => void;
+    electricityPersonalizedFixedEnabled?: boolean;
 }
 
 interface PendingOffer {
@@ -503,6 +504,7 @@ function EditableInputPanel({
     onUpdateElecPersonalizadaFijo,
     gasPersonalizadaFijo,
     onUpdateGasPersonalizadaFijo,
+    electricityPersonalizedFixedEnabled = true,
 }: {
     facturaActual?: number;
     tarifaAcceso?: string;
@@ -528,6 +530,7 @@ function EditableInputPanel({
     onUpdateElecPersonalizadaFijo?: (field: "preciosPotencia" | "preciosEnergia", period: string, value: number) => void;
     gasPersonalizadaFijo?: { terminoDia: number; terminoVariable: number };
     onUpdateGasPersonalizadaFijo?: (field: "terminoDia" | "terminoVariable", value: number) => void;
+    electricityPersonalizedFixedEnabled?: boolean;
 }) {
     const { t } = useI18n();
     const { preferences: { numberFormat } } = useUserPreferences();
@@ -841,7 +844,7 @@ function EditableInputPanel({
                     </AccordionSection>
                 )}
 
-                {elecPersonalizadaFijoPeriods && (
+                {electricityPersonalizedFixedEnabled && elecPersonalizadaFijoPeriods && (
                     <AccordionSection id="elec-personalizada-fijo" title="Personalized Fixed (custom)">
                         <div>
                             <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, textTransform: "uppercase" }}>Término Potencia (€/kWdia)</Typography>
@@ -954,6 +957,7 @@ export function SimulationResultsCards({
     onUpdateElecPersonalizadaFijo,
     gasPersonalizadaFijo,
     onUpdateGasPersonalizadaFijo,
+    electricityPersonalizedFixedEnabled = true,
 }: SimulationResultsCardsProps) {
     const { t, locale } = useI18n();
     const theme = useTheme();
@@ -1048,13 +1052,16 @@ export function SimulationResultsCards({
                     onUpdateElecPersonalizadaFijo={onUpdateElecPersonalizadaFijo}
                     gasPersonalizadaFijo={gasPersonalizadaFijo}
                     onUpdateGasPersonalizadaFijo={onUpdateGasPersonalizadaFijo}
+                    electricityPersonalizedFixedEnabled={electricityPersonalizedFixedEnabled}
                 />
 
                 {/* Right side - Product tables */}
                 <div className="simulation-results-offers-pane" style={{ minHeight: 0, minWidth: 0, height: "100%", paddingRight: 0 }}>
                     {/* Electricity section */}
                     {hasElec && (() => {
-                        const elecProducts = [...results.electricity!].sort((a, b) => b.ahorro - a.ahorro);
+                        const elecProducts = [...results.electricity!]
+                            .filter((product) => electricityPersonalizedFixedEnabled || product.productKey !== "PERSONALIZADA_FIJO")
+                            .sort((a, b) => b.ahorro - a.ahorro);
                         const fixedProducts = elecProducts.filter(p => p.pricingType === "FIXED" && p.productKey !== "PERSONALIZADA_FIJO");
                         const indexedProducts = elecProducts.filter(p => p.pricingType === "INDEXED" && p.productKey !== "PERSONALIZADA_INDEX");
                         const personalizadaProducts = elecProducts.filter(p => p.productKey === "PERSONALIZADA_INDEX" || p.productKey === "PERSONALIZADA_OMIE_B" || p.productKey === "PERSONALIZADA_FIJO");

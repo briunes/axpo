@@ -33,6 +33,7 @@ model Agency {
   simulations          Simulation[]
   users                User[]
   ocrUsageInvoices     OcrUsageInvoice[]
+  accessRequests       AccessRequest[]
 
   @@index([isDeleted])
   @@map("agencies")
@@ -152,6 +153,11 @@ model User {
   ocrInvoicesAsUser           OcrUsageInvoice[]   @relation("OcrInvoiceUser")
   audienceNotifications       Notification[]      @relation("NotificationAudienceUser")
   notificationReads           NotificationRead[]
+  accessRequestsAsKam         AccessRequest[]     @relation("AccessRequestKam")
+  reviewedAccessRequests      AccessRequest[]     @relation("AccessRequestReviewer")
+  submittedSimulationIssues   SimulationIssue[]   @relation("SimulationIssueReporter")
+  handledSimulationIssues     SimulationIssue[]   @relation("SimulationIssueHandler")
+  simulationIssueStatusChanges SimulationIssueStatusChange[]
   agency                      Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   createdByUser               User?               @relation("UserCreatedBy", fields: [createdByUserId], references: [id])
   createdUsers                User[]              @relation("UserCreatedBy")
@@ -161,6 +167,36 @@ model User {
   @@index([agencyId, isDeleted])
   @@index([email, isDeleted])
   @@map("users")
+}
+
+model AccessRequest {
+  id                          String              @id @default(cuid())
+  fullName                    String
+  email                       String
+  phone                       String
+  agencyId                    String
+  kamUserId                   String
+  comments                    String?
+  languageCode                String              @default("en")
+  status                      AccessRequestStatus @default(PENDING)
+  notificationSentAt          DateTime?
+  notificationError           String?
+  applicantNotificationSentAt DateTime?
+  applicantNotificationError  String?
+  reviewedAt                  DateTime?
+  reviewedByUserId            String?
+  reviewNotes                 String?
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
+  agency                      Agency              @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  kamUser                     User                @relation("AccessRequestKam", fields: [kamUserId], references: [id], onDelete: Restrict)
+  reviewedByUser              User?               @relation("AccessRequestReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([email, status])
+  @@index([agencyId, status])
+  @@index([kamUserId, status])
+  @@map("access_requests")
 }
 
 model UserSession {
@@ -208,43 +244,99 @@ model UserPreferences {
 }
 
 model Simulation {
-  id                  String              @id @default(cuid())
-  referenceNumber     String?             @unique
-  agencyId            String
-  ownerUserId         String
-  status              SimulationStatus    @default(DRAFT)
-  expiresAt           DateTime?
-  publicToken         String?             @unique
-  pinHashSnapshot     String?
-  isDeleted           Boolean             @default(false)
-  deletedAt           DateTime?
-  sharedAt            DateTime?
-  clientOpenedAt      DateTime?
-  sharedVia           String?
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  clientId            String?
+  id                     String              @id @default(cuid())
+  referenceNumber        String?             @unique
+  agencyId               String
+  ownerUserId            String
+  status                 SimulationStatus    @default(DRAFT)
+  expiresAt              DateTime?
+  publicToken            String?             @unique
+  pinHashSnapshot        String?
+  isDeleted              Boolean             @default(false)
+  deletedAt              DateTime?
+  sharedAt               DateTime?
+  clientOpenedAt         DateTime?
+  sharedVia              String?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  clientId               String?
   clonedFromSimulationId String?
-  pinSnapshot         String?
-  invoiceFilePath     String?
-  invoiceFileData     Bytes?
-  invoiceFileMimeType String?
-  invoiceFileName     String?
-  invoiceFileSize     Int?
-  accessAttempts      AccessAttempt[]
-  ocrLogs             OcrLog[]
-  versions            SimulationVersion[]
-  agency              Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
-  client              Client?             @relation(fields: [clientId], references: [id])
-  clonedFromSimulation Simulation?         @relation("SimulationClones", fields: [clonedFromSimulationId], references: [id], onDelete: SetNull)
-  clonedSimulations    Simulation[]         @relation("SimulationClones")
-  ownerUser           User                @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  pinSnapshot            String?
+  invoiceFilePath        String?
+  invoiceFileData        Bytes?
+  invoiceFileMimeType    String?
+  invoiceFileName        String?
+  invoiceFileSize        Int?
+  accessAttempts         AccessAttempt[]
+  ocrLogs                OcrLog[]
+  versions               SimulationVersion[]
+  agency                 Agency              @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  client                 Client?             @relation(fields: [clientId], references: [id])
+  clonedFromSimulation   Simulation?         @relation("SimulationClones", fields: [clonedFromSimulationId], references: [id], onDelete: SetNull)
+  clonedSimulations      Simulation[]        @relation("SimulationClones")
+  ownerUser              User                @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  issues                 SimulationIssue[]
 
   @@index([agencyId, isDeleted, updatedAt(sort: Desc)])
   @@index([ownerUserId, isDeleted, updatedAt(sort: Desc)])
   @@index([status, isDeleted])
   @@index([clonedFromSimulationId])
   @@map("simulations")
+}
+
+model SimulationIssue {
+  id                     String                  @id @default(cuid())
+  simulationId           String?
+  simulationReference    String?
+  description            String
+  status                 SimulationIssueStatus   @default(NEW)
+  snapshotFileName       String
+  snapshotMimeType       String
+  snapshotFileSize       Int
+  snapshotFileData       Bytes
+  reportedByUserId       String
+  handledByUserId        String?
+  statusChangedAt        DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  simulation             Simulation?             @relation(fields: [simulationId], references: [id], onDelete: SetNull)
+  reportedByUser         User                    @relation("SimulationIssueReporter", fields: [reportedByUserId], references: [id], onDelete: Restrict)
+  handledByUser          User?                   @relation("SimulationIssueHandler", fields: [handledByUserId], references: [id], onDelete: SetNull)
+  attachments            SimulationIssueAttachment[]
+  statusChanges          SimulationIssueStatusChange[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([reportedByUserId, createdAt(sort: Desc)])
+  @@index([simulationId])
+  @@map("simulation_issues")
+}
+
+model SimulationIssueStatusChange {
+  id          String                @id @default(cuid())
+  issueId     String
+  fromStatus  SimulationIssueStatus
+  toStatus    SimulationIssueStatus
+  changedByUserId String
+  createdAt   DateTime              @default(now())
+  issue       SimulationIssue       @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  changedByUser User                @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([issueId, createdAt(sort: Desc)])
+  @@map("simulation_issue_status_changes")
+}
+
+model SimulationIssueAttachment {
+  id          String          @id @default(cuid())
+  issueId     String
+  fileName    String
+  mimeType    String
+  fileSize    Int
+  fileData    Bytes
+  createdAt   DateTime        @default(now())
+  issue       SimulationIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@index([issueId])
+  @@map("simulation_issue_attachments")
 }
 
 model SimulationVersion {
@@ -355,78 +447,83 @@ model AuditLog {
 }
 
 model SystemConfig {
-  id                              String    @id @default(cuid())
-  simulationExpirationDays        Int       @default(30)
-  simulationShareText             String    @default("Your simulation is ready. Access it with PIN: {PIN}")
-  enablePixelTracking             Boolean   @default(true)
-  requirePinForAccess             Boolean   @default(true)
-  pinLength                       Int       @default(4)
-  autoCreateClientOnSim           Boolean   @default(false)
-  enableAnalyticsModule           Boolean   @default(true)
-  enableAuditLogsModule           Boolean   @default(true)
-  defaultDashboardView            String    @default("COMMERCIAL")
-  enableRealtimeReports           Boolean   @default(false)
-  updatedAt                       DateTime  @updatedAt
-  createdAt                       DateTime  @default(now())
-  smtpFromEmail                   String?
-  smtpFromName                    String?   @default("Axpo Simulator")
-  smtpHost                        String?
-  smtpPassword                    String?
-  smtpPort                        Int?      @default(587)
-  smtpSecure                      Boolean   @default(false)
-  smtpUser                        String?
-  userCreationEmailTemplateId     String?
-  electricityTaxRate              Decimal   @default(0.051127)
-  ivaRate                         Decimal   @default(0.21)
-  defaultDateFormat               String    @default("DD/MM/YYYY")
-  defaultItemsPerPage             Int       @default(10)
-  defaultLanguage                 String    @default("en")
-  defaultNumberFormat             String    @default("eu")
-  defaultTimeFormat               String    @default("24h")
-  defaultTimezone                 String    @default("Europe/Madrid")
-  llmApiKey                       String?
-  llmBaseUrl                      String?
-  llmEnabled                      Boolean   @default(false)
-  llmMaxTokens                    Int?      @default(2000)
-  llmModelName                    String?   @default("llama3.2")
-  llmProvider                     String?   @default("ollama")
-  llmTemperature                  Decimal?  @default(0.1)
-  aiProviderConfigs               Json?
-  aiTaskConfigs                   Json?
-  setupTokenValidityHours         Int       @default(72)
-  passwordResetEmailTemplateId    String?
-  passwordResetTokenValidityHours Int       @default(24)
-  magicLinkEnabled                Boolean   @default(false)
-  magicLinkEmailTemplateId        String?
-  magicLinkTokenValidityMinutes   Int       @default(15)
-  otpEnabled                      Boolean   @default(false)
-  otpEmailTemplateId              String?
-  otpCodeValidityMinutes          Int       @default(10)
-  defaultMaxActiveDevices         Int       @default(3)
-  defaultPdfTemplateElectricityId String?
-  defaultPdfTemplateGasId         String?
-  maxUploadFileSizeMb             Int       @default(15)
-  cronExpirationEnabled           Boolean   @default(true)
-  cronExpirationSchedule          String    @default("0 2 * * *")
-  cronExpirationTimezone          String    @default("UTC")
-  hydrocarbonTaxRate              Decimal   @default(0.00234)
-  ivaRateOptions                  Json?
-  electricityTaxRateOptions       Json?
-  hydrocarbonTaxRateOptions       Json?
-  electricityTaxConfig            Json?
-  gasTaxConfig                    Json?
-  appVersion                      String    @default("0.2.1")
-  appChangelog                    Json?
-  maintenanceMode                 Boolean   @default(false)
-  maintenanceUntil                DateTime?
-  maintenanceMessage              String?
-  ocrBillingEnabled               Boolean   @default(false)
-  ocrBillingCurrency              String    @default("USD")
-  ocrBillingUnitTokens            Int       @default(1000)
-  ocrBillingMarkupPercent         Decimal   @default(0)
-  ocrBillingFixedFeePerCall       Decimal   @default(0)
-  ocrBillingIncludeFailedCalls    Boolean   @default(false)
-  requestCacheConfig              Json?
+  id                                    String    @id @default(cuid())
+  simulationExpirationDays              Int       @default(30)
+  simulationShareText                   String    @default("Your simulation is ready. Access it with PIN: {PIN}")
+  enablePixelTracking                   Boolean   @default(true)
+  requirePinForAccess                   Boolean   @default(true)
+  pinLength                             Int       @default(4)
+  autoCreateClientOnSim                 Boolean   @default(false)
+  enableAnalyticsModule                 Boolean   @default(true)
+  enableAuditLogsModule                 Boolean   @default(true)
+  defaultDashboardView                  String    @default("COMMERCIAL")
+  enableRealtimeReports                 Boolean   @default(false)
+  simulationIssuesEnabled               Boolean   @default(true)
+  accessRequestsEnabled                 Boolean   @default(true)
+  electricityPersonalizedFixedEnabled  Boolean   @default(true)
+  updatedAt                             DateTime  @updatedAt
+  createdAt                             DateTime  @default(now())
+  smtpFromEmail                         String?
+  smtpFromName                          String?   @default("Axpo Simulator")
+  smtpHost                              String?
+  smtpPassword                          String?
+  smtpPort                              Int?      @default(587)
+  smtpSecure                            Boolean   @default(false)
+  smtpUser                              String?
+  userCreationEmailTemplateId           String?
+  electricityTaxRate                    Decimal   @default(0.051127)
+  ivaRate                               Decimal   @default(0.21)
+  defaultDateFormat                     String    @default("DD/MM/YYYY")
+  defaultItemsPerPage                   Int       @default(10)
+  defaultLanguage                       String    @default("en")
+  defaultNumberFormat                   String    @default("eu")
+  defaultTimeFormat                     String    @default("24h")
+  defaultTimezone                       String    @default("Europe/Madrid")
+  llmApiKey                             String?
+  llmBaseUrl                            String?
+  llmEnabled                            Boolean   @default(false)
+  llmMaxTokens                          Int?      @default(2000)
+  llmModelName                          String?   @default("llama3.2")
+  llmProvider                           String?   @default("ollama")
+  llmTemperature                        Decimal?  @default(0.1)
+  aiProviderConfigs                     Json?
+  aiTaskConfigs                         Json?
+  setupTokenValidityHours               Int       @default(72)
+  passwordResetEmailTemplateId          String?
+  passwordResetTokenValidityHours       Int       @default(24)
+  magicLinkEnabled                      Boolean   @default(false)
+  magicLinkEmailTemplateId              String?
+  magicLinkTokenValidityMinutes         Int       @default(15)
+  otpEnabled                            Boolean   @default(false)
+  otpEmailTemplateId                    String?
+  otpCodeValidityMinutes                Int       @default(10)
+  accessRequestKamEmailTemplateId       String?
+  accessRequestApplicantEmailTemplateId String?
+  defaultMaxActiveDevices               Int       @default(3)
+  defaultPdfTemplateElectricityId       String?
+  defaultPdfTemplateGasId               String?
+  maxUploadFileSizeMb                   Int       @default(15)
+  cronExpirationEnabled                 Boolean   @default(true)
+  cronExpirationSchedule                String    @default("0 2 * * *")
+  cronExpirationTimezone                String    @default("UTC")
+  hydrocarbonTaxRate                    Decimal   @default(0.00234)
+  ivaRateOptions                        Json?
+  electricityTaxRateOptions             Json?
+  hydrocarbonTaxRateOptions             Json?
+  electricityTaxConfig                  Json?
+  gasTaxConfig                          Json?
+  appVersion                            String    @default("0.2.1")
+  appChangelog                          Json?
+  maintenanceMode                       Boolean   @default(false)
+  maintenanceUntil                      DateTime?
+  maintenanceMessage                    String?
+  ocrBillingEnabled                     Boolean   @default(false)
+  ocrBillingCurrency                    String    @default("USD")
+  ocrBillingUnitTokens                  Int       @default(1000)
+  ocrBillingMarkupPercent               Decimal   @default(0)
+  ocrBillingFixedFeePerCall             Decimal   @default(0)
+  ocrBillingIncludeFailedCalls          Boolean   @default(false)
+  requestCacheConfig                    Json?
 
   @@map("system_config")
 }
@@ -507,26 +604,26 @@ model RolePermission {
 }
 
 model Notification {
-  id             String                 @id @default(cuid())
+  id             String               @id @default(cuid())
   type           String
   category       String
-  severity       NotificationSeverity   @default(INFO)
+  severity       NotificationSeverity @default(INFO)
   title          String
   body           String?
   audienceRole   UserRole?
   audienceUserId String?
   sourceType     String?
   sourceId       String?
-  dedupeKey      String                 @unique
+  dedupeKey      String               @unique
   actionUrl      String?
   metadata       Json?
-  firstSeenAt    DateTime               @default(now())
-  lastSeenAt     DateTime               @default(now())
+  firstSeenAt    DateTime             @default(now())
+  lastSeenAt     DateTime             @default(now())
   resolvedAt     DateTime?
   expiresAt      DateTime?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  audienceUser   User?                  @relation("NotificationAudienceUser", fields: [audienceUserId], references: [id], onDelete: Cascade)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  audienceUser   User?                @relation("NotificationAudienceUser", fields: [audienceUserId], references: [id], onDelete: Cascade)
   reads          NotificationRead[]
 
   @@index([audienceRole, resolvedAt, lastSeenAt(sort: Desc)])
@@ -574,8 +671,8 @@ model TemplateVariable {
 }
 
 model EmailLog {
-  id                  String   @id @default(cuid())
-  sentAt              DateTime @default(now())
+  id                  String    @id @default(cuid())
+  sentAt              DateTime  @default(now())
   recipientEmail      String
   templateId          String?
   templateName        String?
@@ -584,7 +681,7 @@ model EmailLog {
   triggeredBy         String?
   triggeredByUserId   String?
   variables           Json?
-  status              String   @default("sent")
+  status              String    @default("sent")
   errorMessage        String?
   errorStack          String?
   relatedUserId       String?
@@ -597,13 +694,13 @@ model EmailLog {
   messageId           String?
   smtpResponse        String?
   durationMs          Int?
-  hasAttachments      Boolean  @default(false)
-  attachmentsCount    Int      @default(0)
-  trackingToken       String?  @unique
+  hasAttachments      Boolean   @default(false)
+  attachmentsCount    Int       @default(0)
+  trackingToken       String?   @unique
   openedAt            DateTime?
   lastOpenedAt        DateTime?
-  openCount           Int      @default(0)
-  triggeredByUser     User?    @relation(fields: [triggeredByUserId], references: [id])
+  openCount           Int       @default(0)
+  triggeredByUser     User?     @relation(fields: [triggeredByUserId], references: [id])
 
   @@index([sentAt])
   @@index([recipientEmail])
@@ -772,10 +869,23 @@ enum UserRole {
   COMMERCIAL
 }
 
+enum AccessRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum SimulationStatus {
   DRAFT
   SHARED
   EXPIRED
+}
+
+enum SimulationIssueStatus {
+  NEW
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
 }
 
 enum BaseValueScope {

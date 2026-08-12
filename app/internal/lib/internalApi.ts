@@ -282,6 +282,12 @@ export interface AnalyticsOverview {
   sharedSimulations: number;
   /** Simulations shared via email — only these can be opened by the client */
   emailSharedSimulations: number;
+  /** Successfully sent simulation emails in the selected period */
+  sentEmails: number;
+  /** Successfully sent simulation emails whose tracking pixel was loaded */
+  openedEmails: number;
+  /** Total tracking-pixel loads, including repeat opens */
+  emailOpenEvents: number;
   expiredSimulations: number;
   draftSimulations: number;
   accessAttempts: number;
@@ -295,6 +301,14 @@ export interface AnalyticsOverview {
   energyTypeSplit?: Array<{ type: string; count: number }>;
   tariffBreakdown?: Array<{ tariff: string; count: number }>;
   avgConsumoAnual?: number | null;
+  previousPeriod: {
+    totalSimulations: number;
+    sentEmails: number;
+    openedEmails: number;
+    emailOpenEvents: number;
+    activeAgencies: number;
+    activeUsers: number;
+  };
 }
 
 export type BaseValueScopeType = "GLOBAL" | "AGENCY" | "TLV";
@@ -597,6 +611,12 @@ const baseUrl =
   (typeof window !== "undefined"
     ? window.location.origin
     : "http://localhost:3000");
+
+// Analytics frontend and route are released together. Using an externally
+// configured backend here can pair a new card UI with an older API response
+// that does not contain the period-comparison payload.
+const analyticsBaseUrl =
+  typeof window !== "undefined" ? window.location.origin : baseUrl;
 
 const INTERNAL_READ_CACHE_TTL_MS = 30_000;
 const internalReadCache = new Map<
@@ -1989,9 +2009,10 @@ export async function fetchAnalyticsOverview(
   energyType?: string,
 ): Promise<AnalyticsOverview> {
   const qs = new URLSearchParams({ days: String(days) });
+  qs.set("comparisonVersion", "1");
   if (energyType) qs.set("energyType", energyType);
   const response = await fetch(
-    `${baseUrl}/api/v1/internal/analytics/overview?${qs}`,
+    `${analyticsBaseUrl}/api/v1/internal/analytics/overview?${qs}`,
     {
       method: "GET",
       headers: {
@@ -2014,9 +2035,10 @@ export async function fetchAnalyticsForAgency(
   energyType?: string,
 ): Promise<AnalyticsOverview> {
   const qs = new URLSearchParams({ days: String(days), agencyId });
+  qs.set("comparisonVersion", "1");
   if (energyType) qs.set("energyType", energyType);
   const response = await fetch(
-    `${baseUrl}/api/v1/internal/analytics/overview?${qs}`,
+    `${analyticsBaseUrl}/api/v1/internal/analytics/overview?${qs}`,
     {
       method: "GET",
       headers: {
@@ -2378,6 +2400,54 @@ export async function downloadFilledSimulationExcel(
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export async function reportSimulationIssue(token: string, simulationId: string, description: string, files: File[]): Promise<void> {
+  const body = new FormData();
+  body.set("description", description);
+  files.forEach((file) => body.append("attachments", file));
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulations/${simulationId}/issues`, {
+    method: "POST", headers: { authorization: `Bearer ${token}` }, body,
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.error?.message ?? "No se pudo enviar la incidencia");
+  }
+}
+
+export interface SimulationIssueItem {
+  id: string; simulationId: string | null; simulationReference: string | null; description: string;
+  status: "NEW" | "IN_REVIEW" | "RESOLVED" | "DISMISSED"; createdAt: string; statusChangedAt: string | null;
+  snapshotFileName: string; snapshotFileSize: number;
+  reportedByUser: { id: string; fullName: string; email: string };
+  handledByUser: { id: string; fullName: string } | null;
+  attachments: Array<{ id: string; fileName: string; mimeType: string; fileSize: number }>;
+}
+
+export async function listSimulationIssues(token: string, filters?: { status?: string; reporter?: string; dateFrom?: string; dateTo?: string; page?: number; pageSize?: number }): Promise<{ items: SimulationIssueItem[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } }> {
+  const query = new URLSearchParams();
+  if (filters?.status) query.set("status", filters.status);
+  if (filters?.reporter) query.set("reporter", filters.reporter);
+  if (filters?.dateFrom) query.set("dateFrom", filters.dateFrom);
+  if (filters?.dateTo) query.set("dateTo", filters.dateTo);
+  if (filters?.page) query.set("page", String(filters.page));
+  if (filters?.pageSize) query.set("limit", String(filters.pageSize));
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulation-issues${query.size ? `?${query}` : ""}`, { headers: authHeaders(token) });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload?.error?.message ?? "Failed to load issues");
+  return payload.data;
+}
+
+export async function updateSimulationIssueStatus(token: string, id: string, status: string): Promise<void> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulation-issues/${id}`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify({ status }) });
+  if (!response.ok) throw new Error("Failed to update issue status");
+}
+
+export async function downloadSimulationIssueFile(token: string, issueId: string, fileId: string, fileName: string): Promise<void> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulation-issues/${issueId}/files/${fileId}`, { headers: authHeaders(token) });
+  if (!response.ok) throw new Error("Failed to download issue file");
+  const url = URL.createObjectURL(await response.blob()); const anchor = document.createElement("a");
+  anchor.href = url; anchor.download = fileName; anchor.click(); URL.revokeObjectURL(url);
 }
 
 export interface ListAuditLogsParams {

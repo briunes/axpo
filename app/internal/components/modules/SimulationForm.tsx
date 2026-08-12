@@ -1765,6 +1765,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     const [hydrocarbonTaxRateOptions, setHydrocarbonTaxRateOptions] = useState<number[]>([]);
     const [electricityTaxConfig, setElectricityTaxConfig] = useState<any>(null);
     const [gasTaxConfig, setGasTaxConfig] = useState<any>(null);
+    const [electricityPersonalizedFixedEnabled, setElectricityPersonalizedFixedEnabled] = useState(false);
 
     // Load CUPS history (scoped to simulation's client if set)
     useEffect(() => {
@@ -1777,6 +1778,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
     useEffect(() => {
         getSystemConfig().then((cfg) => {
             const opts = cfg as any;
+            setElectricityPersonalizedFixedEnabled(opts.electricityPersonalizedFixedEnabled !== false);
 
             // Store full tax configs for zone-aware lookups
             if (opts.electricityTaxConfig) setElectricityTaxConfig(opts.electricityTaxConfig);
@@ -2378,7 +2380,8 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                                     }));
                                 }
                             }}
-                            elecPersonalizadaFijoPeriods={simType !== "GAS" ? { preciosPotencia: elecState.personalizadaFijoPotencia, preciosEnergia: elecState.personalizadaFijoEnergia } : undefined}
+                            elecPersonalizadaFijoPeriods={simType !== "GAS" && electricityPersonalizedFixedEnabled ? { preciosPotencia: elecState.personalizadaFijoPotencia, preciosEnergia: elecState.personalizadaFijoEnergia } : undefined}
+                            electricityPersonalizedFixedEnabled={electricityPersonalizedFixedEnabled}
                             onUpdateElecPersonalizadaFijo={readOnly || simType === "GAS" ? undefined : (field, period, value) => {
                                 setElecState(prev => ({
                                     ...prev,

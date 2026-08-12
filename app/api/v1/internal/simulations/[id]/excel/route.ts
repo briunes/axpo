@@ -18,7 +18,7 @@ export const GET = withErrorHandler(
     context?: { params?: Record<string, string> },
   ) => {
     const auth = await requireAuth(request);
-    await assertPermission(auth, "section.simulations");
+    await assertPermission(auth, "simulations.download_excel");
 
     const simulationId = context?.params?.id;
     if (!simulationId) throw new ValidationError("Simulation id parameter is required");

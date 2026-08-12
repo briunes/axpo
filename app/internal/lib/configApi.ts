@@ -35,6 +35,9 @@ export interface SystemConfig {
   enableAuditLogsModule: boolean;
   defaultDashboardView: string;
   enableRealtimeReports: boolean;
+  simulationIssuesEnabled?: boolean;
+  accessRequestsEnabled?: boolean;
+  electricityPersonalizedFixedEnabled?: boolean;
   ivaRate?: number;
   electricityTaxRate?: number;
   hydrocarbonTaxRate?: number;
@@ -68,6 +71,8 @@ export interface SystemConfig {
   otpEnabled?: boolean;
   otpEmailTemplateId?: string;
   otpCodeValidityMinutes?: number;
+  accessRequestKamEmailTemplateId?: string;
+  accessRequestApplicantEmailTemplateId?: string;
   defaultMaxActiveDevices?: number;
   // LLM settings
   llmProvider?: string;

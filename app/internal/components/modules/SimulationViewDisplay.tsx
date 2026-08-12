@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SimulationItem } from "../../lib/internalApi";
 import type { SimulationResults } from "@/domain/types";
 import { SimulationResultsCards } from "./SimulationResultsCards";
+import { getSystemConfig } from "../../lib/configApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import BoltIcon from "@mui/icons-material/Bolt";
 import CheckIcon from "@mui/icons-material/Check";
@@ -263,6 +264,13 @@ function electricityTariffLabel(t: TranslateFn, tariff: string): string {
 }
 
 export function SimulationViewDisplay({ simulation }: { simulation: SimulationItem }) {
+    const [electricityPersonalizedFixedEnabled, setElectricityPersonalizedFixedEnabled] = useState(false);
+
+    useEffect(() => {
+        getSystemConfig({ view: "runtime" })
+            .then((config) => setElectricityPersonalizedFixedEnabled(config.electricityPersonalizedFixedEnabled !== false))
+            .catch(() => undefined);
+    }, []);
     const payload = simulation.payloadJson as any;
     const simType = payload?.type;
     const elec = payload?.electricity;
@@ -517,7 +525,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                                 />
                             </FormLikeSection>
 
-                            <FormLikeSection title={t("simulationView", "sectionPersonalizadaFijo")}>
+                            {electricityPersonalizedFixedEnabled && <FormLikeSection title={t("simulationView", "sectionPersonalizadaFijo")}>
                                 <FormPeriodValues
                                     label={t("simulationView", "personalizadaFijoPotenciaLabel")}
                                     values={periodValues(elec.personalizadaFijo?.preciosPotencia, elecPowerPeriods)}
@@ -526,7 +534,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                                     label={t("simulationView", "personalizadaFijoEnergiaLabel")}
                                     values={periodValues(elec.personalizadaFijo?.preciosEnergia, elecEnergyPeriods)}
                                 />
-                            </FormLikeSection>
+                            </FormLikeSection>}
                         </>
                     )}
 
@@ -646,6 +654,7 @@ export function SimulationViewDisplay({ simulation }: { simulation: SimulationIt
                                 commodity: selectedOffer.commodity
                             } : undefined}
                             readOnly
+                            electricityPersonalizedFixedEnabled={electricityPersonalizedFixedEnabled}
                         />
                     ) : (
                         <div style={{ padding: "60px 20px", textAlign: "center", opacity: 0.5 }}>

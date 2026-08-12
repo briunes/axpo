@@ -52,6 +52,71 @@ interface SendTemplateEmailOptions {
 }
 
 export class EmailService {
+  static async sendAccessRequestNotification(options: {
+    recipientEmail: string;
+    kamName: string;
+    requestId: string;
+    applicantName: string;
+    applicantEmail: string;
+    applicantPhone: string;
+    agencyName: string;
+    comments?: string;
+  }): Promise<boolean> {
+    const config = await prisma.systemConfig.findFirst();
+    if (!config?.accessRequestKamEmailTemplateId) {
+      console.warn("Access request KAM email template not configured. Skipping email.");
+      return false;
+    }
+
+    await this.sendTemplateEmail({
+      to: options.recipientEmail,
+      templateId: config.accessRequestKamEmailTemplateId,
+      triggeredBy: "access-request",
+      variables: {
+        REQUEST_ID: options.requestId,
+        APPLICANT_NAME: options.applicantName,
+        APPLICANT_EMAIL: options.applicantEmail,
+        APPLICANT_PHONE: options.applicantPhone,
+        AGENCY_NAME: options.agencyName,
+        KAM_NAME: options.kamName,
+      },
+      languageCode: config.defaultLanguage ?? "en",
+    });
+    return true;
+  }
+
+  static async sendAccessRequestApplicantConfirmation(options: {
+    recipientEmail: string;
+    languageCode: string;
+    requestId: string;
+    applicantName: string;
+    applicantPhone: string;
+    agencyName: string;
+    kamName: string;
+  }): Promise<boolean> {
+    const config = await prisma.systemConfig.findFirst();
+    if (!config?.accessRequestApplicantEmailTemplateId) {
+      console.warn("Access request applicant email template not configured. Skipping email.");
+      return false;
+    }
+
+    await this.sendTemplateEmail({
+      to: options.recipientEmail,
+      templateId: config.accessRequestApplicantEmailTemplateId,
+      triggeredBy: "access-request-confirmation",
+      languageCode: options.languageCode,
+      variables: {
+        REQUEST_ID: options.requestId,
+        APPLICANT_NAME: options.applicantName,
+        APPLICANT_EMAIL: options.recipientEmail,
+        APPLICANT_PHONE: options.applicantPhone,
+        AGENCY_NAME: options.agencyName,
+        KAM_NAME: options.kamName,
+      },
+    });
+    return true;
+  }
+
   /**
    * Get SMTP configuration from database
    */

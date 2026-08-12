@@ -31,6 +31,9 @@ const models: Record<string, ModelMeta> = {
       },
       clients: { table: "clients", many: true },
       simulations: { table: "simulations", many: true },
+      submittedSimulationIssues: { table: "simulation_issues", many: true, foreignField: "reportedByUserId" },
+      handledSimulationIssues: { table: "simulation_issues", many: true, foreignField: "handledByUserId" },
+      simulationIssueStatusChanges: { table: "simulation_issue_status_changes", many: true, foreignField: "changedByUserId" },
       agencyTariffs: { table: "agency_tariffs", many: true },
       agencyProductConfigs: {
         table: "agency_product_configs",
@@ -50,7 +53,11 @@ const models: Record<string, ModelMeta> = {
     table: "agency_tariffs",
     timestamps: true,
     relations: {
-      agency: { table: "agencies", localField: "agencyId" },
+      agency: {
+        table: "agencies",
+        localField: "agencyId",
+        constraint: "access_requests_agencyId_fkey",
+      },
     },
     compoundUniques: {
       agencyId_tariffType: ["agencyId", "tariffType"],
@@ -145,6 +152,7 @@ const models: Record<string, ModelMeta> = {
       versions: { table: "simulation_versions", many: true },
       accessAttempts: { table: "access_attempts", many: true },
       ocrLogs: { table: "ocr_logs", many: true },
+      issues: { table: "simulation_issues", many: true },
     },
   },
   simulationVersion: {
@@ -192,6 +200,23 @@ const models: Record<string, ModelMeta> = {
   accessAttempt: {
     table: "access_attempts",
     relations: { simulation: { table: "simulations" } },
+  },
+  accessRequest: {
+    table: "access_requests",
+    timestamps: true,
+    relations: {
+      agency: { table: "agencies", localField: "agencyId" },
+      kamUser: {
+        table: "users",
+        localField: "kamUserId",
+        constraint: "access_requests_kamUserId_fkey",
+      },
+      reviewedByUser: {
+        table: "users",
+        localField: "reviewedByUserId",
+        constraint: "access_requests_reviewedByUserId_fkey",
+      },
+    },
   },
   auditLog: {
     table: "audit_logs",
@@ -310,6 +335,25 @@ const models: Record<string, ModelMeta> = {
   appErrorLog: {
     table: "app_error_logs",
     relations: { user: { table: "users" } },
+  },
+  simulationIssue: {
+    table: "simulation_issues",
+    timestamps: true,
+    relations: {
+      simulation: { table: "simulations" },
+      reportedByUser: { table: "users", localField: "reportedByUserId", constraint: "simulation_issues_reportedByUserId_fkey" },
+      handledByUser: { table: "users", localField: "handledByUserId", constraint: "simulation_issues_handledByUserId_fkey" },
+      attachments: { table: "simulation_issue_attachments", many: true, foreignField: "issueId" },
+      statusChanges: { table: "simulation_issue_status_changes", many: true, foreignField: "issueId" },
+    },
+  },
+  simulationIssueAttachment: {
+    table: "simulation_issue_attachments",
+    relations: { issue: { table: "simulation_issues" } },
+  },
+  simulationIssueStatusChange: {
+    table: "simulation_issue_status_changes",
+    relations: { issue: { table: "simulation_issues" }, changedByUser: { table: "users", localField: "changedByUserId" } },
   },
   ocrModelPrice: { table: "ocr_model_prices", timestamps: true },
   ocrUsageInvoice: {

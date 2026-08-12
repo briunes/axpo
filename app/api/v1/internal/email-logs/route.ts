@@ -103,7 +103,14 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const [logs, total] = await Promise.all([
     prisma.emailLog.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        sentAt: true,
+        recipientEmail: true,
+        subject: true,
+        triggeredBy: true,
+        status: true,
+        openedAt: true,
         triggeredByUser: {
           select: { id: true, email: true, fullName: true },
         },
@@ -117,10 +124,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   // The token is write-only: internal viewers do not need a URL that could be
   // fetched manually and create a false open event.
-  const safeLogs = logs.map(({ trackingToken: _trackingToken, ...log }) => log);
-
   return ResponseHandler.ok({
-    logs: safeLogs,
+    logs,
     pagination: {
       page,
       limit,

@@ -8,6 +8,7 @@
     "dev": "rm -f .env.local && cp .env.local.example .env.local && next dev",
     "dev:dev": "rm -f .env.local && cp .env.dev .env.local && next dev",
     "dev:preview": "rm -f .env.local && cp .env.preview .env.local && next dev",
+    "dev:prod": "test -s 'vars prod' || (echo \"Missing production environment file: vars prod\" >&2; exit 1); cp 'vars prod' .env.local && next dev",
     "build": "node scripts/sync-postman-artifacts.js && node scripts/generate-openapi.js && prisma generate && next build",
     "sync:postman": "node scripts/sync-postman-artifacts.js",
     "openapi:generate": "node scripts/generate-openapi.js",
