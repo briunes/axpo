@@ -5,6 +5,10 @@ import type { AnalyticsOverview, AnalyticsUserStat } from "../../lib/internalApi
 import { DataTable, GradientLineChart, GradientBarChart, ResponsivePieChart } from "../ui";
 import type { ColumnDef } from "../ui";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
+import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
+import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
+import TrackChangesOutlinedIcon from "@mui/icons-material/TrackChangesOutlined";
 
 interface KpiCardProps {
     title: string;
@@ -16,62 +20,60 @@ interface KpiCardProps {
     comparison?: number | null;
     previousValue?: string | number;
     comparisonLabel?: string;
+    sparklineValues?: number[];
+    icon?: React.ReactNode;
+    split?: { leftLabel: string; leftPercent: number; rightLabel: string; rightPercent: number; denominatorLabel: string };
 }
 
-function KpiCard({ title, value, sub, accent, progressPercentage, openedPercentage, comparison, previousValue, comparisonLabel }: KpiCardProps) {
+function KpiCard({ title, value, sub, accent = "#8b5cf6", comparison, previousValue, comparisonLabel, sparklineValues = [], icon, split }: KpiCardProps) {
+    const values = sparklineValues.length > 1 ? sparklineValues : [0, 0];
+    const min = Math.min(...values);
+    const range = Math.max(...values) - min || 1;
+    const points = values.map((v, i) => `${(i / (values.length - 1)) * 100},${26 - ((v - min) / range) * 20}`).join(" ");
     return (
         <div className="panel-card" style={{
-            flex: "1 1 160px",
+            flex: "1 1 180px",
             background: accent ? `linear-gradient(135deg, ${accent}14 0%, ${accent}05 100%), var(--scheme-surface-raised)` : undefined,
             border: accent ? `1px solid ${accent}40` : undefined,
             borderRadius: 12,
-            padding: "18px 20px",
+            padding: "12px 16px 9px",
             position: "relative",
             overflow: "hidden",
             minWidth: 0,
+            minHeight: 148,
+            display: "flex",
+            flexDirection: "column",
         }}>
-            {accent && (
-                <div style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: 3,
-                    background: `linear-gradient(90deg, ${accent} 0%, ${accent}80 100%)`,
-                }} />
+            {comparison !== undefined && (
+                <div style={{ position: "absolute", top: 12, right: 15, fontSize: 13, fontWeight: 700, textAlign: "right", color: comparison === null || comparison === 0 ? "var(--scheme-neutral-400)" : comparison > 0 ? "#10b981" : "#ef4444" }} title={comparisonLabel}>
+                    <div>{comparison === null ? "—%" : <>{comparison > 0 ? "↑" : comparison < 0 ? "↓" : "→"} {Math.abs(comparison)}%</>}</div>
+                    <div style={{ fontSize: 10, fontWeight: 500, color: "var(--scheme-neutral-500)", marginTop: 2 }}>vs. {previousValue}</div>
+                </div>
             )}
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginBottom: 8 }}>{title}</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.1 }}>{value}</div>
-                {comparison !== undefined && (
-                    <div style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: comparison === null || comparison === 0 ? "var(--scheme-neutral-400)" : comparison > 0 ? "#10b981" : "#ef4444",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                    }} title={comparisonLabel}>
-                        <span style={{ fontSize: 10, fontWeight: 500, color: "var(--scheme-neutral-500)" }}>{comparisonLabel}: {previousValue}</span>
-                        <span>{comparison === null ? "—%" : <>{comparison > 0 ? "↗" : comparison < 0 ? "↘" : "→"}{Math.abs(comparison)}%</>}</span>
-                    </div>
-                )}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 9, paddingRight: 58 }}>
+                <div style={{ width: 28, height: 28, flex: "0 0 28px", borderRadius: 8, display: "grid", placeItems: "center", color: accent, background: `${accent}16` }}>{icon}</div>
+                <div><div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--scheme-neutral-400)", lineHeight: 1.2 }}>{title}</div>
+                {sub && <div style={{ fontSize: 10, color: "var(--scheme-neutral-500)", marginTop: 4, lineHeight: 1.25 }}>{sub}</div>}</div>
             </div>
-            {sub && <div style={{ fontSize: 12, color: "var(--scheme-neutral-500)", marginTop: 6 }}>{sub}</div>}
-            {progressPercentage !== undefined && (
-                <div style={{
-                    marginTop: 10,
-                    height: 4,
-                    background: "var(--scheme-neutral-900)",
-                    borderRadius: 2,
-                    overflow: "hidden",
-                }}>
-                    <div style={{ display: "flex", height: "100%", width: `${Math.min(progressPercentage, 100)}%`, transition: "width 0.6s ease" }}>
-                        {openedPercentage !== undefined && <div style={{ width: `${progressPercentage > 0 ? Math.min(openedPercentage / progressPercentage * 100, 100) : 0}%`, background: "#06b6d4" }} />}
-                        <div style={{ flex: 1, background: `linear-gradient(90deg, ${accent} 0%, ${accent}CC 100%)` }} />
+            <div>
+                <div style={{ fontSize: 34, fontWeight: 750, lineHeight: 1 }}>{value}</div>
+            </div>
+            {split && (
+                <div style={{ marginTop: 7 }}>
+                    <div style={{ display: "flex", height: 4, borderRadius: 999, overflow: "hidden", background: "var(--scheme-neutral-900)" }}>
+                        <div style={{ width: `${split.leftPercent}%`, background: accent }} />
+                        <div style={{ width: `${split.rightPercent}%`, background: "#06b6d4" }} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3, fontSize: 9, color: "var(--scheme-neutral-500)" }}>
+                        <span>{split.leftLabel} {split.leftPercent}%</span>
+                        <span>{split.rightLabel} {split.rightPercent}% {split.denominatorLabel}</span>
                     </div>
                 </div>
             )}
+            <svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" style={{ width: "100%", height: 27, display: "block", marginTop: "auto", paddingTop: 7 }}>
+                <polyline points={points} fill="none" stroke={accent} strokeWidth="1.8" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+                {values.map((v, i) => <circle key={i} cx={(i / (values.length - 1)) * 100} cy={26 - ((v - min) / range) * 20} r="1.2" fill="white" stroke={accent} strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
+            </svg>
         </div>
     );
 }
@@ -135,6 +137,8 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
         : 0;
     const previousPendingOpens = previous ? Math.max(0, previous.sentEmails - previous.openedEmails) : undefined;
     const previousValue = (value: string | number | undefined) => value ?? "—";
+    const emailShareRate = analytics.sharedSimulations > 0 ? Math.round((analytics.emailSharedSimulations / analytics.sharedSimulations) * 100) : 0;
+    const pdfShareRate = analytics.sharedSimulations > 0 ? 100 - emailShareRate : 0;
     const comparisonLabel = t("analyticsModule", "previousPeriodValue");
 
     // Prepare trend data
@@ -236,95 +240,89 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             {/* ── Agent KPIs ─────────────────────────────────────────────── */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
                 <KpiCard
-                    title={t("analyticsModule", "kpiCommercials")}
-                    value={analytics.byUser?.length || 0}
+                    title={t("analyticsModule", "kpiUsersCreating")}
+                    icon={<GroupOutlinedIcon fontSize="small" />}
+                    value={analytics.activeUsers}
                     accent="#8b5cf6"
-                    sub={t("analyticsModule", "kpiCommercialsSub")}
-                    comparison={percentChange(analytics.byUser?.length || 0, previous?.activeUsers)}
+                    sub={t("analyticsModule", "kpiUsersCreatingSub")}
+                    comparison={percentChange(analytics.activeUsers, previous?.activeUsers)}
                     previousValue={previousValue(previous?.activeUsers)}
                     comparisonLabel={comparisonLabel}
+                    sparklineValues={[previous?.activeUsers ?? 0, analytics.activeUsers]}
                 />
                 <KpiCard
                     title={t("analyticsModule", "kpiSimsCreatedAgency")}
+                    icon={<AssessmentOutlinedIcon fontSize="small" />}
                     value={analytics.totalSimulations}
                     accent="#3b82f6"
                     sub={t("analyticsModule", "kpiSimsCreatedAgencySub")}
                     comparison={percentChange(analytics.totalSimulations, previous?.totalSimulations)}
                     previousValue={previousValue(previous?.totalSimulations)}
                     comparisonLabel={comparisonLabel}
+                    sparklineValues={simCounts}
                 />
                 <KpiCard
-                    title={t("analyticsModule", "kpiSimsSent")}
-                    value={emailSent}
-                    sub={t("analyticsModule", "kpiEmailSentSub").replace("{opened}", String(emailOpened)).replace("{sent}", String(emailSent))}
+                    title={t("analyticsModule", "kpiSimsShared")}
+                    icon={<SendOutlinedIcon fontSize="small" />}
+                    value={analytics.sharedSimulations}
+                    sub={t("analyticsModule", "kpiSharedBreakdown")
+                        .replace("{email}", String(analytics.emailSharedSimulations))
+                        .replace("{pdf}", String(Math.max(0, analytics.sharedSimulations - analytics.emailSharedSimulations)))}
                     accent="#10b981"
                     progressPercentage={sentRate}
                     openedPercentage={openedOfTotalRate}
-                    comparison={percentChange(emailSent, previous?.sentEmails)}
-                    previousValue={previousValue(previous?.sentEmails)}
+                    comparison={percentChange(analytics.sharedSimulations, previous?.sharedSimulations)}
+                    previousValue={previousValue(previous?.sharedSimulations)}
                     comparisonLabel={comparisonLabel}
+                    sparklineValues={[previous?.sharedSimulations ?? 0, analytics.sharedSimulations]}
+                    split={{ leftLabel: "PDF", leftPercent: pdfShareRate, rightLabel: "Email", rightPercent: emailShareRate, denominatorLabel: t("analyticsModule", "sharePercentOfShared") }}
                 />
                 <KpiCard
                     title={t("analyticsModule", "kpiOpenRate")}
+                    icon={<TrackChangesOutlinedIcon fontSize="small" />}
                     value={`${openRate}%`}
-                    sub={t("analyticsModule", "kpiOpenRateSub").replace("{count}", String(emailOpened))}
+                    sub={t("analyticsModule", "kpiEmailSentSub").replace("{opened}", String(emailOpened)).replace("{sent}", String(emailSent))}
                     accent="#06b6d4"
                     progressPercentage={openRate}
                     comparison={previous ? percentChange(openRate, previousOpenRate) : null}
                     previousValue={previous ? `${previousOpenRate}%` : "—"}
                     comparisonLabel={comparisonLabel}
-                />
-                <KpiCard
-                    title={t("analyticsModule", "kpiPendingOpens")}
-                    value={pendingOpens}
-                    accent="#f59e0b"
-                    sub={t("analyticsModule", "kpiPendingOpensSub")}
-                    comparison={percentChange(pendingOpens, previousPendingOpens)}
-                    previousValue={previousValue(previousPendingOpens)}
-                    comparisonLabel={comparisonLabel}
-                />
-                <KpiCard
-                    title={t("analyticsModule", "kpiTotalOpens")}
-                    value={analytics.emailOpenEvents ?? emailOpened}
-                    accent="#14b8a6"
-                    sub={t("analyticsModule", "kpiTotalOpensSub").replace("{count}", String(emailOpened))}
-                    comparison={percentChange(analytics.emailOpenEvents ?? emailOpened, previous?.emailOpenEvents)}
-                    previousValue={previousValue(previous?.emailOpenEvents)}
-                    comparisonLabel={comparisonLabel}
+                    sparklineValues={[previousOpenRate, openRate]}
                 />
             </div>
 
             {/* ── Team Funnel ───────────────────────────────────────────────── */}
             <ChartPanel title={t("analyticsModule", "chartTeamEngagementFunnel")} subtitle={t("analyticsModule", "chartTeamEngagementFunnelSub")}>
-                <div className="analytics-funnel" style={{ display: "flex", gap: 12, alignItems: "stretch", padding: "12px 0", position: "relative" }}>
+                <div className="analytics-funnel" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: 12, padding: "8px 0" }}>
                     {[
                         { label: t("analyticsModule", "funnelCreated"), value: analytics.totalSimulations, color: "#3b82f6", percent: 100 },
-                        { label: t("analyticsModule", "funnelSentEmail") || "Sent (Email)", value: emailSent, color: "#10b981", percent: analytics.totalSimulations > 0 ? Math.round((emailSent / analytics.totalSimulations) * 100) : 0 },
-                        { label: t("analyticsModule", "funnelOpened"), value: emailOpened, color: "#06b6d4", percent: openRate },
+                        { label: t("analyticsModule", "kpiSimsShared"), value: analytics.sharedSimulations, color: "#10b981", percent: analytics.totalSimulations > 0 ? Math.round((analytics.sharedSimulations / analytics.totalSimulations) * 100) : 0, context: `${analytics.emailSharedSimulations} email · ${Math.max(0, analytics.sharedSimulations - analytics.emailSharedSimulations)} PDF` },
+                        { label: t("analyticsModule", "funnelOpenedWeb"), value: analytics.successfulAccess, color: "#06b6d4", percent: analytics.sharedSimulations > 0 ? Math.round((analytics.successfulAccess / analytics.sharedSimulations) * 100) : 0 },
                     ].map((stage, idx) => (
-                        <div className="analytics-funnel-stage" key={stage.label} style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", gap: 8, position: "relative", minWidth: 0 }}>
+                        <div className="analytics-funnel-stage" key={stage.label} style={{ minWidth: 0 }}>
                             <div style={{
-                                background: `${stage.color}20`,
-                                border: `1px solid ${stage.color}55`,
-                                borderRadius: 8,
-                                padding: "20px",
-                                textAlign: "center",
+                                background: `linear-gradient(135deg, ${stage.color}14, ${stage.color}05)`,
+                                border: `1px solid ${stage.color}38`,
+                                borderRadius: 10,
+                                padding: "15px 17px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 13,
+                                height: "100%",
+                                minHeight: 84,
+                                boxSizing: "border-box",
                             }}>
-                                <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--scheme-neutral-400)", marginBottom: 8 }}>{stage.label}</div>
-                                <div style={{ fontSize: 36, fontWeight: 700, color: stage.color }}>{stage.value}</div>
-                                <div style={{ fontSize: 20, fontWeight: 600, color: `${stage.color}CC`, marginTop: 6 }}>{stage.percent}%</div>
+                                <div style={{ width: 32, height: 32, flex: "0 0 32px", borderRadius: 999, display: "grid", placeItems: "center", background: `${stage.color}18`, color: stage.color, fontSize: 12, fontWeight: 750 }}>{idx + 1}</div>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--scheme-neutral-400)" }}>{stage.label}</div>
+                                    <div style={{ minHeight: 11, fontSize: 9, color: "var(--scheme-neutral-500)", marginTop: 2 }}>{stage.context ?? "\u00A0"}</div>
+                                    <div style={{ fontSize: 30, fontWeight: 750, lineHeight: 1.15, color: stage.color, marginTop: 3 }}>{stage.value}</div>
+                                </div>
+                                <div style={{ textAlign: "right" }}>
+                                    <div style={{ fontSize: 18, fontWeight: 700, color: `${stage.color}DD` }}>{stage.percent}%</div>
+                                    <div style={{ minHeight: 11, fontSize: 9, color: "var(--scheme-neutral-500)", marginTop: 2 }}>{idx === 0 ? "\u00A0" : idx === 1 ? t("analyticsModule", "funnelPercentOfCreated") : t("analyticsModule", "sharePercentOfShared")}</div>
+                                </div>
                             </div>
-                            {idx < 2 && (
-                                <div className="analytics-funnel-arrow" style={{
-                                    position: "absolute",
-                                    right: "-24px",
-                                    top: "50%",
-                                    transform: "translateY(-50%)",
-                                    fontSize: 32,
-                                    color: "var(--scheme-neutral-600)",
-                                    zIndex: 1,
-                                }}>→</div>
-                            )}
                         </div>
                     ))}
                 </div>

@@ -28,6 +28,34 @@ const payloadConsumption = (payload: any): number | null => {
   return Number.isFinite(value) ? value : null;
 };
 
+const EMAIL_SIMULATION_ID_BATCH_SIZE = 100;
+
+const findTrackedEmailsForSimulations = async (input: {
+  simulationIds: string[];
+  sentAt: { gte: Date; lt?: Date };
+}) => {
+  if (input.simulationIds.length === 0) return [];
+
+  const batches: string[][] = [];
+  for (let index = 0; index < input.simulationIds.length; index += EMAIL_SIMULATION_ID_BATCH_SIZE) {
+    batches.push(input.simulationIds.slice(index, index + EMAIL_SIMULATION_ID_BATCH_SIZE));
+  }
+
+  const results = await Promise.all(
+    batches.map((simulationIds) =>
+      prisma.emailLog.findMany({
+        where: {
+          relatedSimulationId: { in: simulationIds },
+          sentAt: input.sentAt,
+          status: "sent",
+        },
+        select: { openedAt: true, openCount: true },
+      }),
+    ),
+  );
+  return results.flat();
+};
+
 const buildApiOverview = async (input: {
   days: number;
   since: Date;
@@ -63,6 +91,26 @@ const buildApiOverview = async (input: {
       },
     },
   });
+  const sharedCandidates = await prisma.simulation.findMany({
+    where: {
+      isDeleted: false,
+      sharedAt: { gte: previousSince },
+      ...(input.filterAgencyId ? { agencyId: input.filterAgencyId } : {}),
+    },
+    select: {
+      id: true,
+      sharedAt: true,
+      sharedVia: true,
+      accessAttempts: {
+        select: { success: true },
+      },
+      versions: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { payloadJson: true },
+      },
+    },
+  });
 
   const filteredSimulations = simulations.filter((simulation) => {
     if (!input.energyTypeFilter) return true;
@@ -77,29 +125,26 @@ const buildApiOverview = async (input: {
   const previousSimulations = filteredSimulations.filter(
     (simulation) => simulation.createdAt >= previousSince && simulation.createdAt < input.since,
   );
+  const filteredShared = sharedCandidates.filter((simulation) =>
+    !input.energyTypeFilter || payloadEnergyType(simulation.versions[0]?.payloadJson) === input.energyTypeFilter,
+  );
+  const periodShared = filteredShared.filter(
+    (simulation) => simulation.sharedAt && simulation.sharedAt >= input.since,
+  );
+  const previousShared = filteredShared.filter(
+    (simulation) => simulation.sharedAt && simulation.sharedAt >= previousSince && simulation.sharedAt < input.since,
+  );
   const periodAccess = periodSimulations.flatMap((item) => item.accessAttempts);
-  const simulationIds = periodSimulations.map((item) => item.id);
-  const trackedEmails = simulationIds.length
-    ? await prisma.emailLog.findMany({
-        where: {
-          relatedSimulationId: { in: simulationIds },
-          sentAt: { gte: input.since },
-          status: "sent",
-        },
-        select: { openedAt: true, openCount: true },
-      })
-    : [];
-  const previousSimulationIds = previousSimulations.map((item) => item.id);
-  const previousEmails = previousSimulationIds.length
-    ? await prisma.emailLog.findMany({
-        where: {
-          relatedSimulationId: { in: previousSimulationIds },
-          sentAt: { gte: previousSince, lt: input.since },
-          status: "sent",
-        },
-        select: { openedAt: true, openCount: true },
-      })
-    : [];
+  const simulationIds = periodShared.filter((item) => item.sharedVia === "EMAIL").map((item) => item.id);
+  const trackedEmails = await findTrackedEmailsForSimulations({
+    simulationIds,
+    sentAt: { gte: input.since },
+  });
+  const previousSimulationIds = previousShared.filter((item) => item.sharedVia === "EMAIL").map((item) => item.id);
+  const previousEmails = await findTrackedEmailsForSimulations({
+    simulationIds: previousSimulationIds,
+    sentAt: { gte: previousSince, lt: input.since },
+  });
 
   const recentAccess = await prisma.accessAttempt.findMany({
     where: { createdAt: { gte: input.since } },
@@ -198,12 +243,10 @@ const buildApiOverview = async (input: {
 
   return {
     totalSimulations: periodSimulations.length,
-    sharedSimulations: periodSimulations.filter(
-      (item) => item.status === "SHARED",
-    ).length,
-    emailSharedSimulations: periodSimulations.filter(
-      (item) => item.status === "SHARED" && item.sharedVia === "EMAIL",
-    ).length,
+    activeAgencies: new Set(periodSimulations.map((item) => item.agencyId)).size,
+    activeUsers: new Set(periodSimulations.map((item) => item.ownerUserId)).size,
+    sharedSimulations: periodShared.length,
+    emailSharedSimulations: periodShared.filter((item) => item.sharedVia === "EMAIL").length,
     sentEmails: trackedEmails.length,
     openedEmails: trackedEmails.filter((item) => item.openedAt !== null).length,
     emailOpenEvents: trackedEmails.reduce((sum, item) => sum + item.openCount, 0),
@@ -214,7 +257,9 @@ const buildApiOverview = async (input: {
       (item) => item.status === "DRAFT",
     ).length,
     accessAttempts: periodAccess.length,
-    successfulAccess: periodSimulations.filter(hasSuccessfulAccess).length,
+    successfulAccess: periodShared.filter((simulation) =>
+      simulation.accessAttempts.some((attempt) => attempt.success),
+    ).length,
     simulationTrend: dayKeys.map((date) => ({
       date,
       count: simulationsByDay.get(date) ?? 0,
@@ -236,6 +281,7 @@ const buildApiOverview = async (input: {
       : null,
     previousPeriod: {
       totalSimulations: previousSimulations.length,
+      sharedSimulations: previousShared.length,
       sentEmails: previousEmails.length,
       openedEmails: previousEmails.filter((item) => item.openedAt !== null).length,
       emailOpenEvents: previousEmails.reduce((sum, item) => sum + item.openCount, 0),
@@ -365,6 +411,14 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ...simulationFilter,
     createdAt: { gte: previousSince, lt: since },
   };
+  const sharedPeriodFilter = {
+    ...simulationFilter,
+    sharedAt: { gte: since },
+  };
+  const previousSharedPeriodFilter = {
+    ...simulationFilter,
+    sharedAt: { gte: previousSince, lt: since },
+  };
 
   // Access counts are scoped to simulations created in the period (same cohort),
   // so that "opens" is always comparable to "sent" and open rate stays ≤ 100%
@@ -381,14 +435,14 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const simulationEmailFilter = {
     relatedSimulationId: { in: await prisma.simulation.findMany({
-      where: simulationPeriodFilter,
+      where: { ...sharedPeriodFilter, sharedVia: "EMAIL" },
       select: { id: true },
     }).then((rows) => rows.map((row) => row.id)) },
     sentAt: { gte: since },
     status: "sent",
   };
   const previousSimulationIds = await prisma.simulation.findMany({
-    where: previousSimulationPeriodFilter,
+    where: { ...previousSharedPeriodFilter, sharedVia: "EMAIL" },
     select: { id: true },
   }).then((rows) => rows.map((row) => row.id));
   const previousEmailFilter = {
@@ -412,18 +466,19 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     recentSimulations,
     recentAccess,
     byUserRaw,
+    activeAgencyRows,
+    activeUserRows,
   ] = await Promise.all([
     prisma.simulation.count({ where: simulationPeriodFilter }),
     prisma.simulation.count({
-      where: { ...simulationPeriodFilter, status: "SHARED" },
+      where: sharedPeriodFilter,
     }),
     // Only simulations sent via email can be "opened" by the client —
     // PDF/download shares will never register an open, so email-sent is the
     // correct denominator for open-rate calculations.
     prisma.simulation.count({
       where: {
-        ...simulationPeriodFilter,
-        status: "SHARED",
+        ...sharedPeriodFilter,
         sharedVia: "EMAIL",
       },
     }),
@@ -442,10 +497,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       where: { ...simulationPeriodFilter, status: "DRAFT" },
     }),
     prisma.accessAttempt.count({ where: accessOnPeriodSimsFilter }),
-    // "Opened" = distinct simulations (created in period) that a client accessed at least once successfully
+    // "Opened on web" = distinct simulations shared in the period that a client accessed successfully.
     prisma.simulation.count({
       where: {
-        ...simulationPeriodFilter,
+        ...sharedPeriodFilter,
         accessAttempts: { some: { success: true } },
       },
     }),
@@ -473,10 +528,19 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       orderBy: { _count: { ownerUserId: "desc" } },
       take: 10,
     }),
+    prisma.simulation.groupBy({
+      by: ["agencyId"],
+      where: simulationPeriodFilter,
+    }),
+    prisma.simulation.groupBy({
+      by: ["ownerUserId"],
+      where: simulationPeriodFilter,
+    }),
   ]);
 
   const [
     previousTotalSimulations,
+    previousSharedSimulations,
     previousSentEmails,
     previousOpenedEmails,
     previousEmailOpenAggregate,
@@ -484,6 +548,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     previousUserRows,
   ] = await Promise.all([
     prisma.simulation.count({ where: previousSimulationPeriodFilter }),
+    prisma.simulation.count({ where: previousSharedPeriodFilter }),
     prisma.emailLog.count({ where: previousEmailFilter }),
     prisma.emailLog.count({ where: { ...previousEmailFilter, openedAt: { not: null } } }),
     prisma.emailLog.aggregate({ where: previousEmailFilter, _sum: { openCount: true } }),
@@ -741,6 +806,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   return ResponseHandler.ok(
     {
       totalSimulations,
+      activeAgencies: activeAgencyRows.length,
+      activeUsers: activeUserRows.length,
       sharedSimulations,
       emailSharedSimulations,
       sentEmails,
@@ -758,6 +825,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       avgConsumoAnual,
       previousPeriod: {
         totalSimulations: previousTotalSimulations,
+        sharedSimulations: previousSharedSimulations,
         sentEmails: previousSentEmails,
         openedEmails: previousOpenedEmails,
         emailOpenEvents: previousEmailOpenAggregate._sum.openCount ?? 0,
