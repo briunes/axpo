@@ -27,7 +27,7 @@ export function useAnalytics(session: SessionState | null): AnalyticsActions {
   const [energyType, setEnergyType] = useState<string>("");
 
   const { data, isFetching, error, refetch } = useQuery({
-    queryKey: ["analytics", "period-comparison-v1", session?.token ?? "", days, energyType],
+    queryKey: ["analytics", "period-comparison-v2", session?.token ?? "", days, energyType],
     queryFn: () =>
       getAnalyticsSummary(session!.token, days, energyType || undefined),
     enabled: !!session,
@@ -46,7 +46,7 @@ export function useAnalytics(session: SessionState | null): AnalyticsActions {
         await queryClient.invalidateQueries({
           queryKey: [
             "analytics",
-            "period-comparison-v1",
+            "period-comparison-v2",
             session?.token ?? "",
             overrideDays,
             energyType,

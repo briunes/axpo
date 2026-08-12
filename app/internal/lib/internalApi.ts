@@ -279,6 +279,8 @@ export interface AnalyticsUserStat {
 
 export interface AnalyticsOverview {
   totalSimulations: number;
+  activeAgencies: number;
+  activeUsers: number;
   sharedSimulations: number;
   /** Simulations shared via email — only these can be opened by the client */
   emailSharedSimulations: number;
@@ -303,6 +305,7 @@ export interface AnalyticsOverview {
   avgConsumoAnual?: number | null;
   previousPeriod: {
     totalSimulations: number;
+    sharedSimulations: number;
     sentEmails: number;
     openedEmails: number;
     emailOpenEvents: number;
@@ -2009,7 +2012,7 @@ export async function fetchAnalyticsOverview(
   energyType?: string,
 ): Promise<AnalyticsOverview> {
   const qs = new URLSearchParams({ days: String(days) });
-  qs.set("comparisonVersion", "1");
+  qs.set("comparisonVersion", "2");
   if (energyType) qs.set("energyType", energyType);
   const response = await fetch(
     `${analyticsBaseUrl}/api/v1/internal/analytics/overview?${qs}`,
@@ -2035,7 +2038,7 @@ export async function fetchAnalyticsForAgency(
   energyType?: string,
 ): Promise<AnalyticsOverview> {
   const qs = new URLSearchParams({ days: String(days), agencyId });
-  qs.set("comparisonVersion", "1");
+  qs.set("comparisonVersion", "2");
   if (energyType) qs.set("energyType", energyType);
   const response = await fetch(
     `${analyticsBaseUrl}/api/v1/internal/analytics/overview?${qs}`,
