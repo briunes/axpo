@@ -306,8 +306,10 @@ export interface AnalyticsOverview {
   previousPeriod: {
     totalSimulations: number;
     sharedSimulations: number;
+    emailSharedSimulations: number;
     sentEmails: number;
     openedEmails: number;
+    openedWebSimulations: number;
     emailOpenEvents: number;
     activeAgencies: number;
     activeUsers: number;
@@ -2012,7 +2014,7 @@ export async function fetchAnalyticsOverview(
   energyType?: string,
 ): Promise<AnalyticsOverview> {
   const qs = new URLSearchParams({ days: String(days) });
-  qs.set("comparisonVersion", "2");
+  qs.set("comparisonVersion", "3");
   if (energyType) qs.set("energyType", energyType);
   const response = await fetch(
     `${analyticsBaseUrl}/api/v1/internal/analytics/overview?${qs}`,
@@ -2038,7 +2040,7 @@ export async function fetchAnalyticsForAgency(
   energyType?: string,
 ): Promise<AnalyticsOverview> {
   const qs = new URLSearchParams({ days: String(days), agencyId });
-  qs.set("comparisonVersion", "2");
+  qs.set("comparisonVersion", "3");
   if (energyType) qs.set("energyType", energyType);
   const response = await fetch(
     `${analyticsBaseUrl}/api/v1/internal/analytics/overview?${qs}`,

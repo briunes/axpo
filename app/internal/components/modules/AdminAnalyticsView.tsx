@@ -120,9 +120,9 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
     // PDF/download shares can never be opened by the client, so including them
     // would artificially deflate the open rate percentage.
     const emailSent = analytics.sentEmails ?? analytics.emailSharedSimulations ?? analytics.sharedSimulations;
-    const emailOpened = analytics.openedEmails ?? analytics.successfulAccess;
-    const openRate = emailSent > 0
-        ? Math.round((emailOpened / emailSent) * 100)
+    const emailOpened = analytics.successfulAccess;
+    const openRate = analytics.emailSharedSimulations > 0
+        ? Math.round((emailOpened / analytics.emailSharedSimulations) * 100)
         : 0;
     const sentRate = analytics.totalSimulations > 0
         ? Math.round((emailSent / analytics.totalSimulations) * 100)
@@ -133,8 +133,8 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
     const previous = analytics.previousPeriod;
     const percentChange = (current: number, prior: number | undefined) =>
         prior === undefined ? null : prior === 0 ? (current === 0 ? 0 : 100) : Math.round(((current - prior) / prior) * 100);
-    const previousOpenRate = previous && previous.sentEmails > 0
-        ? Math.round((previous.openedEmails / previous.sentEmails) * 100)
+    const previousOpenRate = previous && previous.emailSharedSimulations > 0
+        ? Math.round((previous.openedWebSimulations / previous.emailSharedSimulations) * 100)
         : 0;
     const previousValue = (value: string | number | undefined) => value ?? "—";
     const emailShareRate = analytics.sharedSimulations > 0 ? Math.round((analytics.emailSharedSimulations / analytics.sharedSimulations) * 100) : 0;
@@ -267,7 +267,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                     title={t("analyticsModule", "kpiOpenRate")}
                     icon={<TrackChangesOutlinedIcon fontSize="small" />}
                     value={`${openRate}%`}
-                    sub={t("analyticsModule", "kpiEmailSentSub").replace("{opened}", String(emailOpened)).replace("{sent}", String(emailSent))}
+                    sub={t("analyticsModule", "kpiEmailSentSub").replace("{opened}", String(emailOpened)).replace("{sent}", String(analytics.emailSharedSimulations))}
                     accent="#06b6d4"
                     progressPercentage={openRate}
                     comparison={previous ? percentChange(openRate, previousOpenRate) : null}
@@ -294,7 +294,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                     {[
                         { label: t("analyticsModule", "funnelCreated"), value: analytics.totalSimulations, color: "#3b82f6", percent: 100 },
                         { label: t("analyticsModule", "kpiSimsShared"), value: analytics.sharedSimulations, color: "#10b981", percent: analytics.totalSimulations > 0 ? Math.round((analytics.sharedSimulations / analytics.totalSimulations) * 100) : 0, context: `${analytics.emailSharedSimulations} email · ${Math.max(0, analytics.sharedSimulations - analytics.emailSharedSimulations)} PDF` },
-                        { label: t("analyticsModule", "funnelOpenedWeb"), value: analytics.successfulAccess, color: "#06b6d4", percent: analytics.sharedSimulations > 0 ? Math.round((analytics.successfulAccess / analytics.sharedSimulations) * 100) : 0 },
+                        { label: t("analyticsModule", "funnelOpenedWeb"), value: analytics.successfulAccess, color: "#06b6d4", percent: analytics.emailSharedSimulations > 0 ? Math.round((analytics.successfulAccess / analytics.emailSharedSimulations) * 100) : 0 },
                     ].map((stage, idx) => (
                         <div className="analytics-funnel-stage" key={stage.label} style={{ minWidth: 0 }}>
                             <div style={{
@@ -317,7 +317,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                                 </div>
                                 <div style={{ textAlign: "right" }}>
                                     <div style={{ fontSize: 18, fontWeight: 700, color: `${stage.color}DD` }}>{stage.percent}%</div>
-                                    <div style={{ minHeight: 11, fontSize: 9, color: "var(--scheme-neutral-500)", marginTop: 2 }}>{idx === 0 ? "\u00A0" : idx === 1 ? t("analyticsModule", "funnelPercentOfCreated") : t("analyticsModule", "sharePercentOfShared")}</div>
+                                    <div style={{ minHeight: 11, fontSize: 9, color: "var(--scheme-neutral-500)", marginTop: 2 }}>{idx === 0 ? "\u00A0" : idx === 1 ? t("analyticsModule", "funnelPercentOfCreated") : t("analyticsModule", "funnelPercentOfEmailed")}</div>
                                 </div>
                             </div>
                         </div>
