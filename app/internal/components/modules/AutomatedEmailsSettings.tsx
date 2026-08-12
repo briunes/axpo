@@ -23,6 +23,8 @@ interface EmailsConfig {
     otpEnabled: boolean;
     otpEmailTemplateId: string;
     otpCodeValidityMinutes: number;
+    accessRequestKamEmailTemplateId: string;
+    accessRequestApplicantEmailTemplateId: string;
 }
 
 const DEFAULT_CONFIG: EmailsConfig = {
@@ -35,6 +37,8 @@ const DEFAULT_CONFIG: EmailsConfig = {
     otpEnabled: false,
     otpEmailTemplateId: "",
     otpCodeValidityMinutes: 10,
+    accessRequestKamEmailTemplateId: "",
+    accessRequestApplicantEmailTemplateId: "",
 };
 
 export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSettingsProps) {
@@ -53,7 +57,7 @@ export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSe
             setIsLoading(true);
             const [data, templates] = await Promise.all([
                 getSystemConfig({ view: "admin" }),
-                getEmailTemplates({ type: ["user-welcome", "password-reset", "magic-link", "otp"] }),
+                getEmailTemplates({ type: ["user-welcome", "password-reset", "magic-link", "otp", "access-request-kam", "access-request-applicant"] }),
             ]);
             setConfig({
                 userCreationEmailTemplateId: (data as any).userCreationEmailTemplateId || "",
@@ -65,6 +69,8 @@ export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSe
                 otpEnabled: (data as any).otpEnabled ?? false,
                 otpEmailTemplateId: (data as any).otpEmailTemplateId || "",
                 otpCodeValidityMinutes: (data as any).otpCodeValidityMinutes || 10,
+                accessRequestKamEmailTemplateId: (data as any).accessRequestKamEmailTemplateId || "",
+                accessRequestApplicantEmailTemplateId: (data as any).accessRequestApplicantEmailTemplateId || "",
             });
             setEmailTemplates(templates);
         } catch (error) {
@@ -91,6 +97,8 @@ export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSe
                 otpEnabled: config.otpEnabled,
                 otpEmailTemplateId: config.otpEmailTemplateId || undefined,
                 otpCodeValidityMinutes: config.otpCodeValidityMinutes,
+                accessRequestKamEmailTemplateId: config.accessRequestKamEmailTemplateId || undefined,
+                accessRequestApplicantEmailTemplateId: config.accessRequestApplicantEmailTemplateId || undefined,
             });
             onNotify(t("systemSettings", "savedSuccess"), "success");
             setIsDirty(false);
@@ -156,6 +164,45 @@ export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSe
                                     { value: 48, label: "48 hours (2 days)" },
                                     { value: 72, label: "72 hours (3 days)" },
                                     { value: 168, label: "168 hours (7 days)" }
+                                ]}
+                            />
+                        </Stack>
+                    </div>
+
+                    <div className="settings-panel" style={{ marginTop: 24 }}>
+                        <h3 className="settings-panel-title">{t("systemSettings", "titleAccessRequestEmails")}</h3>
+                        <p style={{ color: "var(--text-secondary, #888)", marginBottom: 16 }}>
+                            {t("systemSettings", "titleAccessRequestEmailsDesc")}
+                        </p>
+                        <Stack spacing={3}>
+                            <FormSelect
+                                label={t("systemSettings", "fieldAccessRequestKamTemplate")}
+                                helperText={t("systemSettings", "fieldAccessRequestKamTemplateDesc")}
+                                value={config.accessRequestKamEmailTemplateId}
+                                onChange={(value) => handleChange("accessRequestKamEmailTemplateId", value)}
+                                options={[
+                                    { value: "", label: t("systemSettings", "noTemplateSelected") },
+                                    ...emailTemplates
+                                        .filter((template) => template.type === "access-request-kam")
+                                        .map((template) => ({
+                                            value: template.id,
+                                            label: `${template.name}${!template.active ? " (Inactive)" : ""}`,
+                                        })),
+                                ]}
+                            />
+                            <FormSelect
+                                label={t("systemSettings", "fieldAccessRequestApplicantTemplate")}
+                                helperText={t("systemSettings", "fieldAccessRequestApplicantTemplateDesc")}
+                                value={config.accessRequestApplicantEmailTemplateId}
+                                onChange={(value) => handleChange("accessRequestApplicantEmailTemplateId", value)}
+                                options={[
+                                    { value: "", label: t("systemSettings", "noTemplateSelected") },
+                                    ...emailTemplates
+                                        .filter((template) => template.type === "access-request-applicant")
+                                        .map((template) => ({
+                                            value: template.id,
+                                            label: `${template.name}${!template.active ? " (Inactive)" : ""}`,
+                                        })),
                                 ]}
                             />
                         </Stack>

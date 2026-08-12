@@ -54,6 +54,12 @@ describe("IP allowlist", () => {
     expect(isLocalRequest("localhost", true)).toBe(false);
   });
 
+  it("allows email tracking pixels through the IP gate", () => {
+    expect(
+      isIpGateBypassPath("/api/v1/public/email-open/tracking-token.gif"),
+    ).toBe(true);
+  });
+
   test.each([
     ["missing", undefined],
     ["empty", ""],

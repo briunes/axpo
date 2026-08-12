@@ -54,6 +54,8 @@ export type EmailTemplateType =
     | "welcome"
     | "user-welcome"
     | "password-reset"
+    | "access-request-kam"
+    | "access-request-applicant"
     | "expiring-soon"
     | "converted"
     | "notification";
@@ -147,7 +149,7 @@ const getButtonSnippets = (
  * Email template types that should ONLY show variables explicitly tagged for
  * them — no "universal" (untagged) variables.
  */
-const CLOSED_EMAIL_TYPES = new Set(["user-welcome", "welcome", "password-reset", "magic-link", "otp"]);
+const CLOSED_EMAIL_TYPES = new Set(["user-welcome", "welcome", "password-reset", "magic-link", "otp", "access-request-kam", "access-request-applicant"]);
 
 /** Types that should include the button snippets panel */
 const BUTTON_SNIPPET_TYPES = new Set(["user-welcome", "welcome", "password-reset", "magic-link", "simulation-share", "expiring-soon", "converted", "notification"]);
@@ -239,6 +241,8 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
         "welcome": t("emailTemplatesModule", "typeWelcome"),
         "user-welcome": t("emailTemplatesModule", "typeUserWelcome"),
         "password-reset": t("emailTemplatesModule", "typePasswordReset"),
+        "access-request-kam": t("emailTemplatesModule", "typeAccessRequestKam"),
+        "access-request-applicant": t("emailTemplatesModule", "typeAccessRequestApplicant"),
         "expiring-soon": t("emailTemplatesModule", "typeExpiringSoon"),
         "converted": t("emailTemplatesModule", "typeConverted"),
         "notification": t("emailTemplatesModule", "typeNotification"),

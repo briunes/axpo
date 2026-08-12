@@ -56,6 +56,9 @@ interface GasTaxConfig {
 
 interface BusinessConfig {
     simulationExpirationDays: number;
+    simulationIssuesEnabled: boolean;
+    accessRequestsEnabled: boolean;
+    electricityPersonalizedFixedEnabled: boolean;
     maxUploadFileSizeMb: number;
     autoCreateClientOnSimulation: boolean;
     defaultMaxActiveDevices: number;
@@ -100,6 +103,9 @@ const DEFAULT_GAS_TAX_CONFIG: GasTaxConfig = {
 
 const DEFAULT_CONFIG: BusinessConfig = {
     simulationExpirationDays: 30,
+    simulationIssuesEnabled: true,
+    accessRequestsEnabled: true,
+    electricityPersonalizedFixedEnabled: true,
     maxUploadFileSizeMb: 15,
     autoCreateClientOnSimulation: true,
     defaultMaxActiveDevices: 3,
@@ -242,6 +248,9 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
 
             setConfig({
                 simulationExpirationDays: data.simulationExpirationDays,
+                simulationIssuesEnabled: data.simulationIssuesEnabled ?? true,
+                accessRequestsEnabled: data.accessRequestsEnabled ?? true,
+                electricityPersonalizedFixedEnabled: data.electricityPersonalizedFixedEnabled ?? true,
                 maxUploadFileSizeMb: (data as any).maxUploadFileSizeMb ?? 15,
                 autoCreateClientOnSimulation: data.autoCreateClientOnSim,
                 defaultMaxActiveDevices: (data as any).defaultMaxActiveDevices ?? 3,
@@ -311,6 +320,9 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
         try {
             await updateSystemConfig({
                 simulationExpirationDays: config.simulationExpirationDays,
+                simulationIssuesEnabled: config.simulationIssuesEnabled,
+                accessRequestsEnabled: config.accessRequestsEnabled,
+                electricityPersonalizedFixedEnabled: config.electricityPersonalizedFixedEnabled,
                 maxUploadFileSizeMb: config.maxUploadFileSizeMb,
                 autoCreateClientOnSim: config.autoCreateClientOnSimulation,
                 defaultMaxActiveDevices: config.defaultMaxActiveDevices,
@@ -818,6 +830,42 @@ export function SystemBusinessSettings({ session, onNotify, role, activeSection,
 
                         {resolvedBusinessTab === "simulation" && (
                             <div className="settings-panel">
+                                <Box sx={{ mb: 3 }}>
+                                    <label className="config-field-inline">
+                                        <Switch
+                                            checked={config.simulationIssuesEnabled}
+                                            onChange={(e) => handleChange("simulationIssuesEnabled", e.target.checked)}
+                                        />
+                                        <span>{t("systemSettings", "fieldSimulationIssuesEnabled")}</span>
+                                    </label>
+                                    <span className="config-field-description" style={{ marginLeft: "46px" }}>
+                                        {t("systemSettings", "fieldSimulationIssuesEnabledDesc")}
+                                    </span>
+                                </Box>
+                                <Box sx={{ mb: 3 }}>
+                                    <label className="config-field-inline">
+                                        <Switch
+                                            checked={config.electricityPersonalizedFixedEnabled}
+                                            onChange={(e) => handleChange("electricityPersonalizedFixedEnabled", e.target.checked)}
+                                        />
+                                        <span>{t("systemSettings", "fieldElectricityPersonalizedFixedEnabled")}</span>
+                                    </label>
+                                    <span className="config-field-description" style={{ marginLeft: "46px" }}>
+                                        {t("systemSettings", "fieldElectricityPersonalizedFixedEnabledDesc")}
+                                    </span>
+                                </Box>
+                                <Box sx={{ mb: 3 }}>
+                                    <label className="config-field-inline">
+                                        <Switch
+                                            checked={config.accessRequestsEnabled}
+                                            onChange={(e) => handleChange("accessRequestsEnabled", e.target.checked)}
+                                        />
+                                        <span>{t("systemSettings", "fieldAccessRequestsEnabled")}</span>
+                                    </label>
+                                    <span className="config-field-description" style={{ marginLeft: "46px" }}>
+                                        {t("systemSettings", "fieldAccessRequestsEnabledDesc")}
+                                    </span>
+                                </Box>
                                 <Box sx={{ mb: 3 }}>
                                     <FormInput
                                         label={t("systemSettings", "fieldExpirationDays")}

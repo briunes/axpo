@@ -15,6 +15,7 @@ export type PermissionKey =
   | "section.cron-logs"
   | "section.ocr-logs"
   | "section.app-error-logs"
+  | "section.simulation-issues"
   | "section.analytics"
   | "section.configurations"
   | "section.ocr-usage"
@@ -25,6 +26,7 @@ export type PermissionKey =
   | "simulations.archive"
   | "simulations.delete"
   | "simulations.edit_payload"
+  | "simulations.download_excel"
   // ── Client actions ────────────────────────────────────────────────────────
   | "clients.view"
   | "clients.create"
@@ -62,6 +64,7 @@ export const LOG_PERMISSION_KEYS: PermissionKey[] = [
   "section.cron-logs",
   "section.ocr-logs",
   "section.app-error-logs",
+  "section.simulation-issues",
 ];
 
 export const PERMISSION_GROUPS: PermissionGroup[] = [
@@ -150,6 +153,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         description: "View application error logs (admin only)",
         adminOnly: true,
       },
+      {
+        key: "section.simulation-issues",
+        label: "Simulation Issues",
+        description: "Review simulation issues reported by agents (admin only)",
+        adminOnly: true,
+      },
     ],
   },
   {
@@ -180,6 +189,13 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: "simulations.edit_payload",
         label: "Edit simulation data",
         description: "Modify simulation payload and calculation inputs",
+      },
+      {
+        key: "simulations.download_excel",
+        label: "Download simulation Excel",
+        description:
+          "Download original or simulation-filled Excel workbooks (admin only)",
+        adminOnly: true,
       },
       {
         key: "simulations.delete",
@@ -302,6 +318,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.cron-logs": true,
     "section.ocr-logs": true,
     "section.app-error-logs": true,
+    "section.simulation-issues": true,
     "section.analytics": true,
     "section.configurations": true,
     "section.ocr-usage": true,
@@ -311,6 +328,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "simulations.archive": true,
     "simulations.delete": true,
     "simulations.edit_payload": true,
+    "simulations.download_excel": true,
     "clients.view": true,
     "clients.create": true,
     "clients.edit": true,
@@ -336,6 +354,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.cron-logs": true,
     "section.ocr-logs": true,
     "section.app-error-logs": true,
+    "section.simulation-issues": true,
     "section.analytics": true,
     "section.configurations": true,
     "section.ocr-usage": true,
@@ -345,6 +364,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "simulations.archive": true,
     "simulations.delete": true,
     "simulations.edit_payload": true,
+    "simulations.download_excel": true,
     "clients.view": true,
     "clients.create": true,
     "clients.edit": true,
@@ -370,6 +390,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.cron-logs": false,
     "section.ocr-logs": false,
     "section.app-error-logs": false,
+    "section.simulation-issues": false,
     "section.analytics": true,
     "section.configurations": false,
     "section.ocr-usage": false,
@@ -379,6 +400,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "simulations.archive": true,
     "simulations.delete": false,
     "simulations.edit_payload": true,
+    "simulations.download_excel": false,
     "clients.view": true,
     "clients.create": true,
     "clients.edit": true,
@@ -404,6 +426,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.cron-logs": false,
     "section.ocr-logs": false,
     "section.app-error-logs": false,
+    "section.simulation-issues": false,
     "section.analytics": false,
     "section.configurations": false,
     "section.ocr-usage": false,
@@ -413,6 +436,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "simulations.archive": true,
     "simulations.delete": false,
     "simulations.edit_payload": true,
+    "simulations.download_excel": false,
     "clients.view": true,
     "clients.create": false,
     "clients.edit": false,

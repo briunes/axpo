@@ -39,6 +39,7 @@ import SyncIcon from '@mui/icons-material/Sync';
 import AddIcon from '@mui/icons-material/Add';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -270,6 +271,17 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
                   aria-label={t("userSessions", "openSessionsPage")}
                 >
                   <span className="topbar-action-label">{t("userSessions", "openSessionsPage")}</span>
+                </Button>
+              </Link>
+            </span>
+          </Tooltip>
+        )}
+        {canCreateUsers && (
+          <Tooltip title={t("accessRequests", "openPage")} arrow>
+            <span className="topbar-action-wrap">
+              <Link href="/internal/users/access-requests" style={{ textDecoration: "none" }}>
+                <Button className="topbar-action topbar-action--compact" variant="outlined" size="small" startIcon={<HowToRegIcon fontSize="small" />}>
+                  <span className="topbar-action-label">{t("accessRequests", "openPage")}</span>
                 </Button>
               </Link>
             </span>

@@ -55,6 +55,9 @@ interface EmailLog {
     durationMs?: number;
     hasAttachments?: boolean;
     attachmentsCount?: number;
+    openedAt?: string;
+    lastOpenedAt?: string;
+    openCount?: number;
 }
 
 interface EmailLogsModuleProps {
@@ -377,6 +380,16 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                 />
             ),
         },
+        {
+            key: "openedAt",
+            label: t("logs", "opened"),
+            renderCell: (log) => (
+                <StatusBadge
+                    label={log.openedAt ? t("logs", "opened") : t("logs", "notOpened")}
+                    tone={log.openedAt ? "success" : "neutral"}
+                />
+            ),
+        },
     ];
 
 
@@ -496,6 +509,27 @@ export function EmailLogsModule({ session, onNotify }: EmailLogsModuleProps) {
                                         label={selectedLog.status}
                                         tone={selectedLog.status === "sent" ? "success" : "danger"}
                                     />
+                                </Box>
+
+                                <Typography variant="body2" color="text.secondary">
+                                    {t("logs", "opened")}
+                                </Typography>
+                                <Box>
+                                    {selectedLog.openedAt ? (
+                                        <Stack spacing={0.25}>
+                                            <StatusBadge label={t("logs", "opened")} tone="success" />
+                                            <Typography variant="caption" color="text.secondary">
+                                                {formatDate(selectedLog.openedAt)} · {t("logs", "openCount", { count: selectedLog.openCount ?? 1 })}
+                                            </Typography>
+                                            {selectedLog.lastOpenedAt && selectedLog.lastOpenedAt !== selectedLog.openedAt && (
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {t("logs", "lastOpenedAt")}: {formatDate(selectedLog.lastOpenedAt)}
+                                                </Typography>
+                                            )}
+                                        </Stack>
+                                    ) : (
+                                        <StatusBadge label={t("logs", "notOpened")} tone="neutral" />
+                                    )}
                                 </Box>
 
                                 <Typography variant="body2" color="text.secondary">

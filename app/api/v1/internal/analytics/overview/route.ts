@@ -35,10 +35,11 @@ const buildApiOverview = async (input: {
   energyTypeFilter?: "ELECTRICITY" | "GAS";
   elevated: boolean;
 }) => {
+  const previousSince = new Date(input.since.getTime() - input.days * 86_400_000);
   const simulations = await prisma.simulation.findMany({
     where: {
       isDeleted: false,
-      createdAt: { gte: input.since },
+      createdAt: { gte: previousSince },
       ...(input.filterAgencyId ? { agencyId: input.filterAgencyId } : {}),
     },
     select: {
@@ -63,14 +64,42 @@ const buildApiOverview = async (input: {
     },
   });
 
-  const periodSimulations = simulations.filter((simulation) => {
+  const filteredSimulations = simulations.filter((simulation) => {
     if (!input.energyTypeFilter) return true;
     return (
       payloadEnergyType(simulation.versions[0]?.payloadJson) ===
       input.energyTypeFilter
     );
   });
+  const periodSimulations = filteredSimulations.filter(
+    (simulation) => simulation.createdAt >= input.since,
+  );
+  const previousSimulations = filteredSimulations.filter(
+    (simulation) => simulation.createdAt >= previousSince && simulation.createdAt < input.since,
+  );
   const periodAccess = periodSimulations.flatMap((item) => item.accessAttempts);
+  const simulationIds = periodSimulations.map((item) => item.id);
+  const trackedEmails = simulationIds.length
+    ? await prisma.emailLog.findMany({
+        where: {
+          relatedSimulationId: { in: simulationIds },
+          sentAt: { gte: input.since },
+          status: "sent",
+        },
+        select: { openedAt: true, openCount: true },
+      })
+    : [];
+  const previousSimulationIds = previousSimulations.map((item) => item.id);
+  const previousEmails = previousSimulationIds.length
+    ? await prisma.emailLog.findMany({
+        where: {
+          relatedSimulationId: { in: previousSimulationIds },
+          sentAt: { gte: previousSince, lt: input.since },
+          status: "sent",
+        },
+        select: { openedAt: true, openCount: true },
+      })
+    : [];
 
   const recentAccess = await prisma.accessAttempt.findMany({
     where: { createdAt: { gte: input.since } },
@@ -175,6 +204,9 @@ const buildApiOverview = async (input: {
     emailSharedSimulations: periodSimulations.filter(
       (item) => item.status === "SHARED" && item.sharedVia === "EMAIL",
     ).length,
+    sentEmails: trackedEmails.length,
+    openedEmails: trackedEmails.filter((item) => item.openedAt !== null).length,
+    emailOpenEvents: trackedEmails.reduce((sum, item) => sum + item.openCount, 0),
     expiredSimulations: periodSimulations.filter(
       (item) => item.status === "EXPIRED",
     ).length,
@@ -202,6 +234,14 @@ const buildApiOverview = async (input: {
             consumptions.length,
         )
       : null,
+    previousPeriod: {
+      totalSimulations: previousSimulations.length,
+      sentEmails: previousEmails.length,
+      openedEmails: previousEmails.filter((item) => item.openedAt !== null).length,
+      emailOpenEvents: previousEmails.reduce((sum, item) => sum + item.openCount, 0),
+      activeAgencies: new Set(previousSimulations.map((item) => item.agencyId)).size,
+      activeUsers: new Set(previousSimulations.map((item) => item.ownerUserId)).size,
+    },
     ...(input.elevated && !input.filterAgencyId
       ? {
           byAgency: [...byAgencyGroups].map(([agencyId, items]) => ({
@@ -253,6 +293,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     90,
   );
   const since = new Date(Date.now() - days * 86_400_000);
+  const previousSince = new Date(since.getTime() - days * 86_400_000);
 
   // Admin can optionally scope to a specific agency
   const filterAgencyId = isElevatedRole(auth.role)
@@ -320,6 +361,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ...simulationFilter,
     createdAt: { gte: since },
   };
+  const previousSimulationPeriodFilter = {
+    ...simulationFilter,
+    createdAt: { gte: previousSince, lt: since },
+  };
 
   // Access counts are scoped to simulations created in the period (same cohort),
   // so that "opens" is always comparable to "sent" and open rate stays ≤ 100%
@@ -334,10 +379,31 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       }
     : { simulation: { createdAt: { gte: since }, ...energyTypeIdFilter } };
 
+  const simulationEmailFilter = {
+    relatedSimulationId: { in: await prisma.simulation.findMany({
+      where: simulationPeriodFilter,
+      select: { id: true },
+    }).then((rows) => rows.map((row) => row.id)) },
+    sentAt: { gte: since },
+    status: "sent",
+  };
+  const previousSimulationIds = await prisma.simulation.findMany({
+    where: previousSimulationPeriodFilter,
+    select: { id: true },
+  }).then((rows) => rows.map((row) => row.id));
+  const previousEmailFilter = {
+    relatedSimulationId: { in: previousSimulationIds },
+    sentAt: { gte: previousSince, lt: since },
+    status: "sent" as const,
+  };
+
   const [
     totalSimulations,
     sharedSimulations,
     emailSharedSimulations,
+    sentEmails,
+    openedEmails,
+    emailOpenAggregate,
     expiredSimulations,
     draftSimulations,
     accessAttempts,
@@ -360,6 +426,14 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         status: "SHARED",
         sharedVia: "EMAIL",
       },
+    }),
+    prisma.emailLog.count({ where: simulationEmailFilter }),
+    prisma.emailLog.count({
+      where: { ...simulationEmailFilter, openedAt: { not: null } },
+    }),
+    prisma.emailLog.aggregate({
+      where: simulationEmailFilter,
+      _sum: { openCount: true },
     }),
     prisma.simulation.count({
       where: { ...simulationPeriodFilter, status: "EXPIRED" },
@@ -399,6 +473,22 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       orderBy: { _count: { ownerUserId: "desc" } },
       take: 10,
     }),
+  ]);
+
+  const [
+    previousTotalSimulations,
+    previousSentEmails,
+    previousOpenedEmails,
+    previousEmailOpenAggregate,
+    previousAgencyRows,
+    previousUserRows,
+  ] = await Promise.all([
+    prisma.simulation.count({ where: previousSimulationPeriodFilter }),
+    prisma.emailLog.count({ where: previousEmailFilter }),
+    prisma.emailLog.count({ where: { ...previousEmailFilter, openedAt: { not: null } } }),
+    prisma.emailLog.aggregate({ where: previousEmailFilter, _sum: { openCount: true } }),
+    prisma.simulation.groupBy({ by: ["agencyId"], where: previousSimulationPeriodFilter }),
+    prisma.simulation.groupBy({ by: ["ownerUserId"], where: previousSimulationPeriodFilter }),
   ]);
 
   // ── Simulation content metrics (raw SQL — JSON payload extraction) ────────
@@ -653,6 +743,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       totalSimulations,
       sharedSimulations,
       emailSharedSimulations,
+      sentEmails,
+      openedEmails,
+      emailOpenEvents: emailOpenAggregate._sum.openCount ?? 0,
       expiredSimulations,
       draftSimulations,
       accessAttempts,
@@ -663,6 +756,14 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       energyTypeSplit,
       tariffBreakdown,
       avgConsumoAnual,
+      previousPeriod: {
+        totalSimulations: previousTotalSimulations,
+        sentEmails: previousSentEmails,
+        openedEmails: previousOpenedEmails,
+        emailOpenEvents: previousEmailOpenAggregate._sum.openCount ?? 0,
+        activeAgencies: previousAgencyRows.length,
+        activeUsers: previousUserRows.length,
+      },
       ...(byAgency ? { byAgency } : {}),
       ...(byUser ? { byUser } : {}),
     },

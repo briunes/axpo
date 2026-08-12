@@ -31,13 +31,15 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
 
   const section = getSection();
 
-  // Login, setup-password, forgot-password, and reset-password pages should not have the workspace wrapper
+  // Anonymous authentication and account-request pages should not have the
+  // authenticated workspace wrapper/session guard.
   if (
     pathname === "/internal/login" ||
     pathname === "/internal/login/magic" ||
     pathname === "/internal/setup-password" ||
     pathname === "/internal/forgot-password" ||
     pathname === "/internal/reset-password" ||
+    pathname === "/internal/request-access" ||
     pathname === "/internal" ||
     (process.env.NODE_ENV === "development" && pathname.includes("boneyard-fixture"))
   ) {
