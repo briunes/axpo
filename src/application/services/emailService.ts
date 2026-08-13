@@ -1,6 +1,8 @@
 import nodemailer from "nodemailer";
 import { prisma } from "@/infrastructure/database/prisma";
 import { resolveTranslation, DEFAULT_LANGUAGE } from "@/lib/supportedLanguages";
+import { randomUUID } from "node:crypto";
+import { appendEmailTrackingPixel } from "@/application/services/emailOpenTracking";
 
 const EMAIL_DEBUG_LOGS =
   process.env.NODE_ENV !== "production" ||
@@ -50,6 +52,71 @@ interface SendTemplateEmailOptions {
 }
 
 export class EmailService {
+  static async sendAccessRequestNotification(options: {
+    recipientEmail: string;
+    kamName: string;
+    requestId: string;
+    applicantName: string;
+    applicantEmail: string;
+    applicantPhone: string;
+    agencyName: string;
+    comments?: string;
+  }): Promise<boolean> {
+    const config = await prisma.systemConfig.findFirst();
+    if (!config?.accessRequestKamEmailTemplateId) {
+      console.warn("Access request KAM email template not configured. Skipping email.");
+      return false;
+    }
+
+    await this.sendTemplateEmail({
+      to: options.recipientEmail,
+      templateId: config.accessRequestKamEmailTemplateId,
+      triggeredBy: "access-request",
+      variables: {
+        REQUEST_ID: options.requestId,
+        APPLICANT_NAME: options.applicantName,
+        APPLICANT_EMAIL: options.applicantEmail,
+        APPLICANT_PHONE: options.applicantPhone,
+        AGENCY_NAME: options.agencyName,
+        KAM_NAME: options.kamName,
+      },
+      languageCode: config.defaultLanguage ?? "en",
+    });
+    return true;
+  }
+
+  static async sendAccessRequestApplicantConfirmation(options: {
+    recipientEmail: string;
+    languageCode: string;
+    requestId: string;
+    applicantName: string;
+    applicantPhone: string;
+    agencyName: string;
+    kamName: string;
+  }): Promise<boolean> {
+    const config = await prisma.systemConfig.findFirst();
+    if (!config?.accessRequestApplicantEmailTemplateId) {
+      console.warn("Access request applicant email template not configured. Skipping email.");
+      return false;
+    }
+
+    await this.sendTemplateEmail({
+      to: options.recipientEmail,
+      templateId: config.accessRequestApplicantEmailTemplateId,
+      triggeredBy: "access-request-confirmation",
+      languageCode: options.languageCode,
+      variables: {
+        REQUEST_ID: options.requestId,
+        APPLICANT_NAME: options.applicantName,
+        APPLICANT_EMAIL: options.recipientEmail,
+        APPLICANT_PHONE: options.applicantPhone,
+        AGENCY_NAME: options.agencyName,
+        KAM_NAME: options.kamName,
+      },
+    });
+    return true;
+  }
+
   /**
    * Get SMTP configuration from database
    */
@@ -141,6 +208,9 @@ export class EmailService {
    * Send an email with custom content and log it
    */
   static async sendEmail(options: EmailOptions): Promise<void> {
+    const emailLogId = randomUUID();
+    const trackingToken = randomUUID();
+    const trackedHtml = appendEmailTrackingPixel(options.html, trackingToken);
     const attachmentsCount = options.attachments?.length ?? 0;
     const tag = `[EmailService][${options.triggeredBy ?? "manual"}]`;
 
@@ -161,6 +231,7 @@ export class EmailService {
     }
 
     const baseLogData = {
+      id: emailLogId,
       recipientEmail: options.to,
       subject: options.subject,
       htmlBody: options.html,
@@ -173,9 +244,20 @@ export class EmailService {
       relatedSimulationId: options.relatedSimulationId,
       hasAttachments: attachmentsCount > 0,
       attachmentsCount,
+      trackingToken,
     };
 
     const startedAt = Date.now();
+
+    // Persist the token before handing the message to SMTP. Some providers
+    // prefetch images immediately, so creating the row after sendMail returns
+    // can otherwise lose the first open event.
+    await prisma.emailLog.create({
+      data: {
+        ...baseLogData,
+        status: "sending",
+      },
+    });
 
     try {
       debugEmailLog(`${tag} [1/4] Loading SMTP config from database`);
@@ -193,7 +275,7 @@ export class EmailService {
         from: `"${config.fromName}" <${config.fromEmail}>`,
         to: options.to,
         subject: options.subject,
-        html: options.html,
+        html: trackedHtml,
         text: options.text,
         attachments: options.attachments,
         disableFileAccess: true,
@@ -212,9 +294,9 @@ export class EmailService {
       }
 
       debugEmailLog(`${tag} [4/4] Writing success log to database`);
-      await prisma.emailLog.create({
+      await prisma.emailLog.update({
+        where: { id: emailLogId },
         data: {
-          ...baseLogData,
           status: "sent",
           errorMessage: null,
           smtpHost: config.host,
@@ -262,9 +344,9 @@ export class EmailService {
       }
 
       debugEmailLog(`${tag} Writing failure log to database`);
-      await prisma.emailLog.create({
+      await prisma.emailLog.update({
+        where: { id: emailLogId },
         data: {
-          ...baseLogData,
           status: "failed",
           errorMessage:
             error instanceof Error ? error.message : "Unknown error",

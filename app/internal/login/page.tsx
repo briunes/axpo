@@ -22,6 +22,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"password" | "magic-link" | "otp">("password");
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [magicLinkEnabled, setMagicLinkEnabled] = useState(false);
+  const [accessRequestsEnabled, setAccessRequestsEnabled] = useState(true);
   const [otpSessionToken, setOtpSessionToken] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpAttempts, setOtpAttempts] = useState(0);
@@ -55,6 +56,7 @@ export default function LoginPage() {
       .then((r) => r.json())
       .then((data) => {
         setMagicLinkEnabled(data?.data?.magicLinkEnabled === true || data?.magicLinkEnabled === true);
+        setAccessRequestsEnabled(data?.data?.accessRequestsEnabled !== false && data?.accessRequestsEnabled !== false);
       })
       .catch(() => { });
   }, []);
@@ -343,7 +345,16 @@ export default function LoginPage() {
                   required
                 />
 
-                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -8, marginBottom: 4 }}>
+                <div style={{ display: "flex", justifyContent: accessRequestsEnabled ? "space-between" : "flex-end", alignItems: "center", gap: 8, marginTop: -8, marginBottom: 4 }}>
+                  {accessRequestsEnabled && <Button
+                    type="button"
+                    variant="text"
+                    size="small"
+                    onClick={() => router.push("/internal/request-access")}
+                    data-testid="request-access-link"
+                  >
+                    {t("login", "requestAccess")}
+                  </Button>}
                   <Button
                     type="button"
                     variant="text"

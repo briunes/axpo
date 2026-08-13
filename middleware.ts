@@ -179,6 +179,7 @@ function isMaintenanceBypass(pathname: string): boolean {
     pathname === "/api/v1/internal/config/system" ||
     pathname === "/api/v1/internal/health" ||
     pathname === "/api/v1/public/version" ||
+    pathname.startsWith("/api/v1/public/email-open/") ||
     pathname.startsWith("/internal/configurations") ||
     pathname.startsWith("/internal/changelog") ||
     pathname.startsWith("/_next/") ||

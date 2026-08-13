@@ -14,6 +14,9 @@ import { AdminAnalyticsView } from "./AdminAnalyticsView";
 import { AgentAnalyticsView } from "./AgentAnalyticsView";
 import { RefreshIcon } from "../ui/icons";
 import { Button } from "@mui/material";
+import BoltIcon from "@mui/icons-material/Bolt";
+import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
+import AppsOutlinedIcon from "@mui/icons-material/AppsOutlined";
 
 // ─── Skeleton components ──────────────────────────────────────────────────────
 
@@ -332,10 +335,10 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
     refresh(d);
   };
 
-  const energyOptions: Array<{ value: string; label: string; icon: string }> = [
-    { value: "", label: t("analyticsModule", "energyTypeAll") || "All", icon: "🔋" },
-    { value: "ELECTRICITY", label: t("analyticsModule", "energyTypeElectricity") || "Electricity", icon: "⚡" },
-    { value: "GAS", label: t("analyticsModule", "energyTypeGas") || "Gas", icon: "🔥" },
+  const energyOptions: Array<{ value: string; label: string; icon: React.ReactNode }> = [
+    { value: "", label: t("analyticsModule", "energyTypeAll") || "All", icon: <AppsOutlinedIcon sx={{ fontSize: 16 }} /> },
+    { value: "ELECTRICITY", label: t("analyticsModule", "energyTypeElectricity") || "Electricity", icon: <BoltIcon sx={{ fontSize: 17 }} /> },
+    { value: "GAS", label: t("analyticsModule", "energyTypeGas") || "Gas", icon: <LocalFireDepartmentIcon sx={{ fontSize: 16 }} /> },
   ];
 
   // Render action buttons for topbar
@@ -353,7 +356,7 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
               disabled={loading}
               style={{ cursor: loading ? "not-allowed" : "pointer", minWidth: 0 }}
             >
-              {opt.icon} {opt.label}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{opt.icon}{opt.label}</span>
             </Button>
           ))}
         </div>

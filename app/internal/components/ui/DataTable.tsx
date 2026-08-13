@@ -27,6 +27,10 @@ export interface ColumnDef<T> {
    *  whose text cannot be derived from the raw row field (e.g. nested objects). */
   copyText?: (row: T) => string;
   width?: string;
+  /** Minimum column width in CSS pixels. Useful with flex columns. */
+  minWidth?: number;
+  /** Relative share of the remaining table width. Defaults to 1 for columns without a fixed width. */
+  flex?: number;
 }
 
 export interface SortState {
@@ -475,9 +479,9 @@ export function DataTable<T extends { id: string }>({
         headerName: col.label,
         sortable: col.sortable ?? false,
         width: explicitWidth ?? (isActionsColumn ? 164 : undefined),
-        minWidth: isActionsColumn ? 120 : undefined,
+        minWidth: col.minWidth ?? (isActionsColumn ? 120 : undefined),
         maxWidth: isActionsColumn && !explicitWidth ? 320 : undefined,
-        flex: !col.width && !isActionsColumn ? 1 : undefined,
+        flex: !col.width && !isActionsColumn ? (col.flex ?? 1) : undefined,
         align: isActionsColumn ? "right" : undefined,
         headerAlign: isActionsColumn ? "right" : undefined,
         cellClassName: isActionsColumn ? "dt-grid-cell-actions" : undefined,
