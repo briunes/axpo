@@ -50,21 +50,23 @@ def sanitize_screenshots():
     # opaque privacy panels remove customer, supply-point and invoice values.
     for src in V2_RAW.glob("*.png"):
         img = Image.open(src).convert("RGB")
-        app = img.crop((0, 84, img.width, img.height))
+        # Remove browser chrome and the Sys Admin sidebar. The detailed
+        # simulation workflow is shared by roles, while sidebar access is not.
+        app = img.crop((180, 84, img.width, img.height))
         draw = ImageDraw.Draw(app)
-        draw.rectangle((1230, 0, app.width, 48), fill=(255, 255, 255))
+        draw.rectangle((1050, 0, app.width, 48), fill=(255, 255, 255))
         stem = src.stem.removeprefix("es-")
         if stem in {"sim-extracted", "sim-validated"}:
             # Preserve headings, progress indicators and validation controls;
             # hide all invoice values in the form body.
-            draw.rectangle((205, 248, app.width - 28, app.height - 22), fill=(247, 248, 250))
-            draw.text((225, 268), "Example invoice values hidden for privacy", fill=(102, 112, 133))
+            draw.rectangle((25, 248, app.width - 28, app.height - 22), fill=(247, 248, 250))
+            draw.text((45, 268), "Example invoice values hidden for privacy", fill=(102, 112, 133))
         elif stem == "sim-inputs":
-            draw.rectangle((188, 53, app.width - 18, 84), fill=(255, 255, 255))
-            draw.rectangle((205, 243, app.width - 40, 444), fill=(247, 248, 250))
-            draw.text((225, 266), "Customer and supply values hidden for privacy", fill=(102, 112, 133))
+            draw.rectangle((8, 53, app.width - 18, 84), fill=(255, 255, 255))
+            draw.rectangle((25, 243, app.width - 40, 444), fill=(247, 248, 250))
+            draw.text((45, 266), "Customer and supply values hidden for privacy", fill=(102, 112, 133))
         elif stem == "sim-results":
-            draw.rectangle((188, 53, app.width - 18, 84), fill=(255, 255, 255))
+            draw.rectangle((8, 53, app.width - 18, 84), fill=(255, 255, 255))
         app.save(V2_IMAGES / f"{stem}.jpg", quality=92, optimize=True)
 
 
@@ -260,7 +262,7 @@ def add_steps(doc, items):
 
 def add_callout(doc, label, text, kind="tip"):
     table = doc.add_table(rows=1, cols=1)
-    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.alignment = WD_TABLE_ALIGNMENT.LEFT
     table.autofit = False
     table.columns[0].width = Inches(6.42)
     cell = table.cell(0, 0)
@@ -301,19 +303,18 @@ def add_capabilities_table(doc, role, language):
             ("Clients", "Create, edit, deactivate, restore and delete."),
             ("Users & agencies", "Create and maintain accounts, roles, sessions, access requests and agencies."),
             ("Base values", "Import, review, activate and archive economic reference sets."),
-            ("Operations", "Analytics, logs, issues and system configuration."),
+            ("Operations", "Analytics, audit logs, simulation issues, OCR usage and system configuration."),
         ],
         "Agent": [
             ("Simulations", "Create, review, edit, share, duplicate and archive."),
-            ("Clients", "Create and edit clients; no permanent deletion."),
-            ("Base values", "View reference sets used by calculations."),
+            ("Clients", "View, create, edit and delete client records."),
             ("Analytics", "View operational metrics within the permitted scope."),
-            ("Restricted", "No user, agency, logs or configuration administration."),
+            ("Restricted", "No base values, users, agencies, logs, OCR usage or configuration administration."),
         ],
         "Commercial": [
             ("Simulations", "Create, review, edit, share, duplicate and archive."),
-            ("Clients", "Select and view client information through simulation workflows."),
-            ("Restricted", "No client creation/editing, base values, analytics, users, agencies, logs or configuration."),
+            ("Clients", "View, create, edit and delete client records."),
+            ("Restricted", "No base values, analytics, users, agencies, logs, OCR usage or configuration."),
         ],
     }
     es_rows = {
@@ -322,19 +323,18 @@ def add_capabilities_table(doc, role, language):
             ("Clientes", "Crear, editar, desactivar, restaurar y eliminar."),
             ("Usuarios y agencias", "Crear y mantener cuentas, roles, sesiones, solicitudes de alta y agencias."),
             ("Valores base", "Importar, revisar, activar y archivar conjuntos de referencia económica."),
-            ("Operaciones", "Analíticas, registros, incidencias y configuración del sistema."),
+            ("Operaciones", "Analíticas, auditoría, incidencias de simulación, uso OCR y configuración."),
         ],
         "Agente": [
             ("Simulaciones", "Crear, revisar, editar, compartir, duplicar y archivar."),
-            ("Clientes", "Crear y editar clientes; sin eliminación permanente."),
-            ("Valores base", "Consultar los conjuntos de referencia utilizados en los cálculos."),
+            ("Clientes", "Consultar, crear, editar y eliminar registros de clientes."),
             ("Analíticas", "Consultar métricas operativas dentro del ámbito permitido."),
-            ("Restringido", "Sin administración de usuarios, agencias, registros o configuración."),
+            ("Restringido", "Sin valores base, usuarios, agencias, registros, uso OCR o configuración."),
         ],
         "Comercial": [
             ("Simulaciones", "Crear, revisar, editar, compartir, duplicar y archivar."),
-            ("Clientes", "Seleccionar y consultar información del cliente dentro del flujo de simulación."),
-            ("Restringido", "Sin edición de clientes, valores base, analíticas, usuarios, agencias, registros o configuración."),
+            ("Clientes", "Consultar, crear, editar y eliminar registros de clientes."),
+            ("Restringido", "Sin valores base, analíticas, usuarios, agencias, registros, uso OCR o configuración."),
         ],
     }
     es_key = {"Administrator": "Administrador", "Agent": "Agente", "Commercial": "Comercial"}[role]
@@ -347,6 +347,8 @@ def add_capabilities_table(doc, role, language):
     hdr = table.rows[0].cells
     hdr[0].text = "Area" if en else "Área"
     hdr[1].text = "Access for this role" if en else "Acceso para este rol"
+    hdr[0].width = Inches(1.6)
+    hdr[1].width = Inches(4.8)
     set_repeat_table_header(table.rows[0])
     for c in hdr:
         set_cell_shading(c, PINK)
@@ -357,6 +359,8 @@ def add_capabilities_table(doc, role, language):
         cells = table.add_row().cells
         cells[0].text = label
         cells[1].text = desc
+        cells[0].width = Inches(1.6)
+        cells[1].width = Inches(4.8)
         for i, c in enumerate(cells):
             c.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
             set_cell_margins(c)
@@ -483,7 +487,7 @@ ADMIN_EN = [
     ("Managing agencies", "Agencies scope users, clients, commercial rules and product availability.", ["Create an agency with a clear unique name and accurate location.", "Enable TLV only for the appropriate agency type.", "In the agency detail, review users, products, tariffs and operational settings.", "Test a sample simulation after tariff or product changes."], "agencies", "Agency list and management actions", "new-agency", "Blank agency creation form"),
     ("Base values", "Base values are economic reference data used by simulation calculations. Versions preserve calculation history.", ["Upload a prepared XLSX or XLSM workbook.", "Choose global or agency scope and verify the target agency.", "Review validation messages, item coverage, version and effective dates.", "Activate only after validation and test a representative simulation.", "Archive superseded versions instead of deleting historical data."], "base-values", "Base-value versions and publishing actions", None, None),
     ("Analytics", "Analytics summarizes simulation creation, sharing, opening and agency performance for the selected period and scope.", ["Select commodity, agency and reporting period.", "Compare like-for-like periods and note the record scope.", "Use counts and date ranges when communicating a result.", "Treat incomplete, archived or expired simulations as possible context for a change."], "analytics", "Analytics dashboard and engagement funnel", None, None),
-    ("Logs and issues", "Operational logs provide traceability for audit activity, email delivery, scheduled jobs, OCR processing, application errors and reported simulation issues.", ["Filter by date, type, status, user or reference before opening details.", "Use correlation information to connect a user action with email, OCR or application events.", "Do not copy sensitive payloads into general communication channels.", "Resolve or dismiss issues only after recording the reason and outcome."], None, None, None, None),
+    ("Audit logs and simulation issues", "The current Administrator configuration provides access to audit activity and reported simulation issues. Email, cron, OCR and application-error logs are not enabled for this role.", ["Filter audit activity by date, type, user or reference before opening details.", "Use the simulation reference and event time to connect a reported issue with relevant audit actions.", "Do not copy sensitive payloads into general communication channels.", "Resolve or dismiss simulation issues only after recording the reason and outcome."], None, None, None, None),
     ("Configurations", "Configuration changes can affect every user, calculation, document or outbound message.", ["Read the current value and description before editing.", "Change one logical setting at a time and keep a rollback value.", "Test changes to PDF/email templates, calculations, OCR prompts and role permissions in preview.", "Role-permission changes should be validated with the affected role before release."], "configurations", "Configuration groups for documents, business rules, platform, AI/OCR and access", None, None),
 ]
 
@@ -493,20 +497,18 @@ ADMIN_ES = [
     ("Gestión de agencias", "Las agencias delimitan usuarios, clientes, reglas comerciales y disponibilidad de productos.", ["Crea la agencia con un nombre único y ubicación correcta.", "Activa TLV solo para el tipo de agencia adecuado.", "En el detalle revisa usuarios, productos, tarifas y ajustes operativos.", "Prueba una simulación de muestra después de modificar tarifas o productos."], "agencies", "Lista y acciones de agencias", "new-agency", "Formulario de alta de agencia vacío"),
     ("Valores base", "Los valores base son referencias económicas utilizadas por los cálculos. Las versiones conservan el histórico.", ["Sube un libro XLSX o XLSM preparado.", "Elige ámbito global o de agencia y verifica la agencia de destino.", "Revisa mensajes de validación, cobertura, versión y vigencia.", "Activa solo después de validar y probar una simulación representativa.", "Archiva versiones sustituidas en lugar de borrar el histórico."], "base-values", "Versiones y acciones de publicación de valores base", None, None),
     ("Analíticas", "Las analíticas resumen creación, envío, apertura y rendimiento de agencias para el periodo y ámbito seleccionados.", ["Selecciona energía, agencia y periodo.", "Compara periodos equivalentes y anota el ámbito de los registros.", "Incluye recuentos y fechas al comunicar resultados.", "Ten en cuenta simulaciones incompletas, archivadas o caducadas al interpretar cambios."], "analytics", "Panel de analíticas y embudo de actividad", None, None),
-    ("Registros e incidencias", "Los registros aportan trazabilidad de auditoría, correos, tareas, OCR, errores e incidencias de simulación.", ["Filtra por fecha, tipo, estado, usuario o referencia antes de abrir detalles.", "Utiliza la correlación para relacionar acciones con eventos de correo, OCR o aplicación.", "No copies cargas sensibles en canales generales de comunicación.", "Resuelve o descarta una incidencia solo después de documentar motivo y resultado."], None, None, None, None),
+    ("Auditoría e incidencias de simulación", "La configuración actual del rol Administrador permite consultar auditoría e incidencias de simulación. Los registros de correo, tareas programadas, OCR y errores de aplicación no están habilitados.", ["Filtra la auditoría por fecha, tipo, usuario o referencia antes de abrir detalles.", "Utiliza la referencia y la hora para relacionar una incidencia con las acciones auditadas.", "No copies cargas sensibles en canales generales de comunicación.", "Resuelve o descarta una incidencia solo después de documentar motivo y resultado."], None, None, None, None),
     ("Configuraciones", "Los cambios de configuración pueden afectar a todos los usuarios, cálculos, documentos o mensajes.", ["Lee el valor actual y su descripción antes de editar.", "Cambia un bloque lógico cada vez y conserva el valor anterior.", "Prueba en preproducción plantillas, cálculos, prompts OCR y permisos.", "Valida los cambios de permisos con el rol afectado antes de publicarlos."], "configurations", "Grupos de configuración de documentos, negocio, plataforma, IA/OCR y acceso", None, None),
 ]
 
 AGENT_EN = [
-    ("Client management", "Agents can create and edit client records required by simulation work, but cannot permanently delete them.", ["Search before creating a client to avoid duplicates.", "Complete company, contact, address, agency and language information.", "Keep tax and contact data aligned with the source invoice.", "Ask an administrator to restore or remove a record when the action is outside your permission."], "clients", "Client search and table tools", "new-client", "Blank client creation form"),
-    ("Base values", "Agents can inspect the reference sets used by calculations. Publishing and lifecycle administration remain administrator tasks.", ["Check scope, version, effective dates and status when investigating a result.", "Do not assume the most recently created set is the production set.", "Escalate unexpected or missing values with the simulation reference and calculation date."], "base-values", "Base-value reference list", None, None),
-    ("Analytics", "The dashboard shows the activity and performance available to your operational scope.", ["Select a consistent period and commodity.", "Use totals and date ranges when sharing results.", "Ask an administrator when agency-level visibility appears incomplete."], "analytics", "Operational analytics dashboard", None, None),
+    ("Client management", "Agents can view, create, edit and delete client records required by simulation work.", ["Search before creating a client to avoid duplicates.", "Complete company, contact, address, agency and language information.", "Keep tax and contact data aligned with the source invoice.", "Before deleting, confirm the record is the intended client and follow the organization's retention rules."], None, None, None, None),
+    ("Analytics", "The dashboard shows the activity and performance available to your operational scope.", ["Select a consistent period and commodity.", "Use totals and date ranges when sharing results.", "Ask an administrator when agency-level visibility appears incomplete."], None, None, None, None),
 ]
 
 AGENT_ES = [
-    ("Gestión de clientes", "Los agentes pueden crear y editar clientes necesarios para las simulaciones, pero no eliminarlos de forma permanente.", ["Busca antes de crear para evitar duplicados.", "Completa empresa, contacto, dirección, agencia e idioma.", "Mantén los datos fiscales y de contacto coherentes con la factura.", "Solicita a un administrador restaurar o eliminar cuando la acción quede fuera de tus permisos."], "clients", "Búsqueda de clientes y herramientas de tabla", "new-client", "Formulario vacío de alta de cliente"),
-    ("Valores base", "Los agentes pueden consultar los conjuntos utilizados por los cálculos. La publicación y el ciclo de vida corresponden al administrador.", ["Comprueba ámbito, versión, vigencia y estado al investigar un resultado.", "No supongas que el conjunto más reciente es el de producción.", "Escala valores inesperados indicando referencia de simulación y fecha de cálculo."], "base-values", "Lista de referencia de valores base", None, None),
-    ("Analíticas", "El panel muestra la actividad y rendimiento disponibles para tu ámbito operativo.", ["Selecciona un periodo y energía coherentes.", "Incluye totales y rango de fechas al compartir resultados.", "Consulta al administrador si la visibilidad por agencia parece incompleta."], "analytics", "Panel de analíticas operativas", None, None),
+    ("Gestión de clientes", "Los agentes pueden consultar, crear, editar y eliminar clientes necesarios para las simulaciones.", ["Busca antes de crear para evitar duplicados.", "Completa empresa, contacto, dirección, agencia e idioma.", "Mantén los datos fiscales y de contacto coherentes con la factura.", "Antes de eliminar, confirma el registro y aplica las normas de conservación de la organización."], None, None, None, None),
+    ("Analíticas", "El panel muestra la actividad y rendimiento disponibles para tu ámbito operativo.", ["Selecciona un periodo y energía coherentes.", "Incluye totales y rango de fechas al compartir resultados.", "Consulta al administrador si la visibilidad por agencia parece incompleta."], None, None, None, None),
 ]
 
 
@@ -531,7 +533,7 @@ def build_manual(role, language):
         extra = ["Client, user and agency administration", "Base values, analytics, logs and configurations"] if en else ["Administración de clientes, usuarios y agencias", "Valores base, analíticas, registros y configuraciones"]
         add_bullets(doc, extra)
     elif role == "Agent":
-        add_bullets(doc, ["Client management, base values and analytics"] if en else ["Gestión de clientes, valores base y analíticas"])
+        add_bullets(doc, ["Client management and analytics"] if en else ["Gestión de clientes y analíticas"])
 
     add_heading(doc, "Role capabilities" if en else "Capacidades del rol", 1)
     add_capabilities_table(doc, role, language)
@@ -604,18 +606,18 @@ def build_manual(role, language):
         section_no += 1
 
     if role == "Commercial":
-        add_heading(doc, "6. Commercial role boundaries" if en else "6. Límites del rol Comercial", 1)
-        add_body(doc, "Commercial users focus on the complete simulation lifecycle. Client administration, base values, analytics and platform administration are intentionally absent from the sidebar." if en else "Los usuarios Comerciales se centran en el ciclo completo de la simulación. La administración de clientes, valores base, analíticas y plataforma no aparece en la barra lateral.")
+        add_heading(doc, "6. Client management" if en else "6. Gestión de clientes", 1)
+        add_body(doc, "Commercial users can view, create, edit and delete client records used by simulations." if en else "Los usuarios Comerciales pueden consultar, crear, editar y eliminar los clientes utilizados por las simulaciones.")
         add_bullets(doc, [
-            "Use an existing client when creating a simulation; request client corrections from an Agent or Administrator.",
-            "Duplicate a simulation when a similar offer is needed without changing the original.",
-            "Archive obsolete drafts rather than deleting auditable business history.",
-            "Escalate missing reference values, configuration issues or access questions to an Administrator.",
+            "Search before creating a client to avoid duplicates.",
+            "Keep company, tax, contact, address, agency and language information accurate.",
+            "Confirm the intended record and retention requirements before deleting a client.",
+            "Base values, analytics, users, agencies, logs, OCR usage and configuration remain unavailable.",
         ] if en else [
-            "Utiliza un cliente existente al crear una simulación; solicita correcciones a un Agente o Administrador.",
-            "Duplica cuando necesites una oferta similar sin modificar el original.",
-            "Archiva borradores obsoletos en lugar de eliminar historial auditable.",
-            "Escala valores de referencia, configuración o accesos al Administrador.",
+            "Busca antes de crear para evitar duplicados.",
+            "Mantén correctos los datos de empresa, fiscales, contacto, dirección, agencia e idioma.",
+            "Confirma el registro y las normas de conservación antes de eliminar un cliente.",
+            "Valores base, analíticas, usuarios, agencias, registros, uso OCR y configuración siguen sin estar disponibles.",
         ])
         section_no = 7
 
