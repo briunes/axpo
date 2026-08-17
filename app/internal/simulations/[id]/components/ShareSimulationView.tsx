@@ -440,7 +440,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
         <>
             <Stack spacing={3} sx={{ p: 2 }}>
                 {/* Share Mode and Template Selection */}
-                <Card>
+                <Card data-tour="simulation-share-options">
                     <CardContent>
                         <Box sx={{ display: "flex", gap: 3, flexDirection: { xs: "column", md: "row" } }}>
                             {/* Share Mode Selection */}
@@ -622,7 +622,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                         </CardContent>
                     </Card>
 
-                    <Card sx={{ display: { xs: "none", md: "block" } }}>
+                    <Card data-tour="simulation-share-preview" sx={{ display: { xs: "none", md: "block" } }}>
                         <CardContent>
                             {/* Tabs for Email mode - always show tabs */}
                             {shareMode === "email" ? (
@@ -685,7 +685,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 )}
 
                 {/* Actions */}
-                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+                <Box data-tour="simulation-share-submit-options" sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
                     {shareMode === "pdf" && (
                         <Button
                             variant="outlined"

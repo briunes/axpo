@@ -15,7 +15,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, RotatePinResult } from "../../lib/internalApi";
@@ -86,6 +86,7 @@ const getActivityIndicator = (latestActivityAt: string | null | undefined, now: 
 };
 
 export function UsersModule({ session, actions, agencies, onNotify, onActionButtons }: UsersModuleProps) {
+  const searchParams = useSearchParams();
   const { preferences } = useUserPreferences();
   const { t } = useI18n();
   const router = useRouter();
@@ -262,6 +263,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
         <Tooltip title={t("actions", "refresh")} arrow>
           <span className="topbar-action-wrap">
             <Button
+              data-tour="users-refresh"
               className="topbar-action topbar-action--compact"
               variant="outlined"
               size="small"
@@ -279,6 +281,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           <Tooltip title={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")} arrow>
             <span className="topbar-action-wrap">
               <Button
+                data-tour="users-archived"
                 className="topbar-action topbar-action--compact"
                 variant={showArchived ? "contained" : "outlined"}
                 size="small"
@@ -298,6 +301,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             <span className="topbar-action-wrap">
               <Link href="/internal/users/sessions" style={{ textDecoration: "none" }}>
                 <Button
+                  data-tour="users-sessions"
                   className="topbar-action topbar-action--compact"
                   variant="outlined"
                   size="small"
@@ -314,7 +318,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           <Tooltip title={t("accessRequests", "openPage")} arrow>
             <span className="topbar-action-wrap">
               <Link href="/internal/users/access-requests" style={{ textDecoration: "none" }}>
-                <Button className="topbar-action topbar-action--compact" variant="outlined" size="small" startIcon={<HowToRegIcon fontSize="small" />}>
+                <Button data-tour="users-access-requests" className="topbar-action topbar-action--compact" variant="outlined" size="small" startIcon={<HowToRegIcon fontSize="small" />}>
                   <span className="topbar-action-label">{t("accessRequests", "openPage")}</span>
                 </Button>
               </Link>
@@ -326,6 +330,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             <span className="topbar-action-wrap">
               <Link href="/internal/users/new" style={{ textDecoration: "none" }}>
                 <Button
+                  data-tour="users-new"
                   className="topbar-action topbar-action--compact"
                   variant="contained"
                   size="small"
@@ -458,7 +463,10 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           (u.isDeleted && isAdmin(role));
 
         const primaryLabel = t("actions", "edit");
-        const primaryOnClick = () => router.push(`/internal/users/${u.id}/edit`);
+        const primaryOnClick = () => {
+          const tutorial = searchParams.get("tutorial");
+          router.push(`/internal/users/${u.id}/edit${tutorial ? `?tutorial=${encodeURIComponent(tutorial)}` : ""}`);
+        };
 
         const secondaryItems: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }> = [];
         if (canToggle) {
@@ -492,6 +500,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             {canEdit ? (
               <ButtonGroup variant="outlined" size="small">
                 <Button
+                  data-tour="user-open"
                   onClick={primaryOnClick}
                   startIcon={<EditIcon fontSize="small" />}
                   title={primaryLabel}

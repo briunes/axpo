@@ -33,7 +33,7 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import { useCallback, useEffect, useMemo, useState, useLayoutEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, ClientItem, SimulationItem, UserItem } from "../../lib/internalApi";
@@ -131,6 +131,7 @@ function persistSavedSimulationViews(views: SavedSimulationView[]) {
 }
 
 export function SimulationsModule({ session, actions, agencies, clients, users, onNotify, onActionButtons }: SimulationsModuleProps) {
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { t } = useI18n();
   const { preferences } = useUserPreferences();
@@ -165,7 +166,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
   );
   const [dropdownState, setDropdownState] = useState<{
     anchorEl: HTMLElement | null;
-    items: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; warning?: boolean; danger?: boolean; disabled?: boolean }>;
+    items: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; warning?: boolean; danger?: boolean; disabled?: boolean; tourTarget?: string }>;
   }>({ anchorEl: null, items: [] });
   const closeDropdown = () => setDropdownState({ anchorEl: null, items: [] });
   const isAdminRole = isAdmin(session.user.role);
@@ -237,6 +238,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         <Tooltip title={t("actions", "refresh")} arrow>
           <span className="topbar-action-wrap">
             <Button
+              data-tour="simulations-refresh"
               className="topbar-action topbar-action--compact"
               variant="outlined"
               size="small"
@@ -253,6 +255,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
           <Tooltip title={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")} arrow>
             <span className="topbar-action-wrap">
               <Button
+                data-tour="simulations-archived"
                 className="topbar-action topbar-action--compact"
                 variant={showArchived ? "contained" : "outlined"}
                 size="small"
@@ -271,6 +274,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
           <Tooltip title={t("actions", "newSimulation")} arrow>
             <span className="topbar-action-wrap">
               <Button
+                data-tour="simulations-new"
                 className="topbar-action topbar-action--compact"
                 variant="contained"
                 size="small"
@@ -318,12 +322,43 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     return Boolean(payload?.selectedOffer?.productKey);
   }, []);
 
+  useEffect(() => {
+    const openTutorialSharePreview = () => {
+      const eligibleSimulation = displayData.find((simulation) =>
+        !simulation.isDeleted &&
+        simulation.status === "DRAFT" &&
+        hasSelectedProduct(simulation),
+      );
+
+      if (!eligibleSimulation) {
+        onNotify?.(t("tutorials", "No eligible simulation is visible. Select an offer in a draft simulation, return to the list, and restart the sharing tutorial."), "error");
+        return;
+      }
+
+      void handleShareAction(eligibleSimulation);
+    };
+    const closeTutorialSharePreview = () => setShareSim(null);
+    const closeTutorialActionsMenu = () => closeDropdown();
+
+    window.addEventListener("axpo:tutorial-open-share", openTutorialSharePreview);
+    window.addEventListener("axpo:tutorial-close-share", closeTutorialSharePreview);
+    window.addEventListener("axpo:tutorial-close-actions", closeTutorialActionsMenu);
+    return () => {
+      window.removeEventListener("axpo:tutorial-open-share", openTutorialSharePreview);
+      window.removeEventListener("axpo:tutorial-close-share", closeTutorialSharePreview);
+      window.removeEventListener("axpo:tutorial-close-actions", closeTutorialActionsMenu);
+    };
+  }, [displayData, handleShareAction, hasSelectedProduct, onNotify, t]);
+
   const getSimulationActions = useCallback((sim: SimulationItem) => {
     const isShared = sim.status === "SHARED";
     const canDelete =
       (!sim.isDeleted && canArchiveSimulation) ||
       (Boolean(sim.isDeleted) && isAdminRole);
     const canDraftShare = !sim.isDeleted && sim.status === "DRAFT" && canShareSimulation && hasSelectedProduct(sim);
+    // Mark every eligible rendered row. Joyride resolves the first matching DOM
+    // target on the current pagination page instead of an off-screen data row.
+    const isShareTutorialCandidate = canDraftShare;
 
     const secondaryItems: Array<{
       label: string;
@@ -332,6 +367,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       warning?: boolean;
       danger?: boolean;
       disabled?: boolean;
+      tourTarget?: string;
     }> = [];
 
     if (canDraftShare) {
@@ -339,6 +375,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         label: t("actions", "share"),
         warning: true,
         icon: <ShareIcon fontSize="small" />,
+        tourTarget: isShareTutorialCandidate ? "simulation-share-menu-item" : undefined,
         onClick: () => handleShareAction(sim),
       });
     }
@@ -359,11 +396,16 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       });
     }
 
+    const destination = isShared ? `/internal/simulations/${sim.id}/view` : `/internal/simulations/${sim.id}`;
+    const activeTutorial = searchParams.get("tutorial");
+
     return {
       primaryLabel: isShared ? t("actions", "view") : t("actions", "simulate"),
       primaryIcon: isShared ? <VisibilityIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />,
+      primaryTourTarget: !isShared ? "simulation-open" : undefined,
+      dropdownTourTarget: canDraftShare && isShareTutorialCandidate ? "simulation-share-actions" : undefined,
       primaryOnClick: () => router.push(
-        isShared ? `/internal/simulations/${sim.id}/view` : `/internal/simulations/${sim.id}`,
+        activeTutorial ? `${destination}?tutorial=${encodeURIComponent(activeTutorial)}` : destination,
       ),
       secondaryItems,
     };
@@ -377,6 +419,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     hasSelectedProduct,
     isAdminRole,
     router,
+    searchParams,
     t,
   ]);
 
@@ -913,7 +956,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
       key: "actions",
       label: t("columns", "actions"),
       renderCell: (s) => {
-        const { primaryLabel, primaryIcon, primaryOnClick, secondaryItems } = getSimulationActions(s);
+        const { primaryLabel, primaryIcon, primaryOnClick, primaryTourTarget, dropdownTourTarget, secondaryItems } = getSimulationActions(s);
 
         const hasDropdown = secondaryItems.length > 0;
 
@@ -921,6 +964,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
             <ButtonGroup variant="outlined" size="small">
               <Button
+                data-tour={primaryTourTarget}
                 onClick={primaryOnClick}
                 startIcon={primaryIcon}
                 title={primaryLabel}
@@ -935,6 +979,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
               {hasDropdown && (
                 <Button
                   size="small"
+                  data-tour="simulation-row-actions"
                   onClick={(e) => setDropdownState({ anchorEl: e.currentTarget, items: secondaryItems })}
                   aria-label="More actions"
                   sx={{ px: 0.5, minWidth: 32 }}
@@ -1131,7 +1176,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             },
           ],
           actions: (sim) => {
-            const { primaryLabel, primaryIcon, primaryOnClick, secondaryItems } = getSimulationActions(sim);
+            const { primaryLabel, primaryIcon, primaryOnClick, primaryTourTarget, dropdownTourTarget, secondaryItems } = getSimulationActions(sim);
             const actionCount = 1 + secondaryItems.length;
 
             return (
@@ -1143,6 +1188,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 }}
               >
                 <Button
+                  data-tour={primaryTourTarget}
                   variant="outlined"
                   size="small"
                   onClick={primaryOnClick}
@@ -1154,6 +1200,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 {secondaryItems.map((item) => (
                   <Button
                     key={item.label}
+                    data-tour={item.tourTarget ?? (dropdownTourTarget && item.warning ? dropdownTourTarget : undefined)}
                     variant="outlined"
                     color={item.danger ? "error" : item.warning ? "warning" : "primary"}
                     size="small"
@@ -1395,6 +1442,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         onClose={() => setShareSim(null)}
         maxWidth="lg"
         fullWidth
+        slotProps={{ paper: { "data-tour": "simulation-share-dialog" } as React.HTMLAttributes<HTMLDivElement> }}
       >
         <DialogTitle sx={{ pb: 1.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           {t("simulationDetail", "shareTitle") || t("actions", "share")}
@@ -1403,6 +1451,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
             color="inherit"
             onClick={() => setShareSim(null)}
             aria-label="close"
+            data-tour="simulation-share-close"
           >
             <CloseIcon />
           </IconButton>
@@ -1477,6 +1526,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         open={!!dropdownState.anchorEl}
         anchorEl={dropdownState.anchorEl}
         onClose={closeDropdown}
+        MenuListProps={{ "data-tour": "simulation-actions-menu" } as React.HTMLAttributes<HTMLUListElement>}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
         slotProps={{
@@ -1493,6 +1543,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
         {dropdownState.items.map((item, i) => (
           <MenuItem
             key={i}
+            data-tour={item.tourTarget}
             onClick={() => { item.onClick(); closeDropdown(); }}
             disabled={item.disabled}
             sx={{

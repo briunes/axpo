@@ -22,6 +22,7 @@ const sectionNavKey: Record<AppSection, string> = {
   "base-values": "baseValues",
   logs: "logs",
   analytics: "analytics",
+  tutorials: "tutorials",
   configurations: "configurations",
   notifications: "notifications",
 };

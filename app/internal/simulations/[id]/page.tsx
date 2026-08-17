@@ -294,6 +294,7 @@ function SimulationMeta({
 
   return (
     <div
+      data-tour="simulation-detail-summary"
       className="simulation-meta-card"
       style={{
         display: "flex",
@@ -689,7 +690,7 @@ export default function SimulationDetailPage({
       backHref="/internal/simulations"
       hideHeader
     >
-      <div className="simulation-detail-page">
+      <div className="simulation-detail-page" data-tour="simulation-detail-page">
       <SimulationMeta
         sim={simulation}
         token={session.token}
@@ -725,6 +726,7 @@ export default function SimulationDetailPage({
         </div>
       )}
 
+      <div data-tour="simulation-detail-results">
       <SimulationForm
         ref={formRef}
         simulation={simulation}
@@ -765,6 +767,7 @@ export default function SimulationDetailPage({
         readOnly={simulation.status === "SHARED"}
         baseValueSetId={selectedBaseValueSetId}
       />
+      </div>
       </div>
 
       {/* Share Dialog */}

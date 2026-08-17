@@ -154,6 +154,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
             backHref="/internal/clients"
             hideHeader
         >
+            <div data-tour="client-detail-form">
             <ClientForm
                 session={session}
                 agencies={agencies}
@@ -168,6 +169,7 @@ export default function EditClientPage({ params }: { params: Promise<{ id: strin
                 mode="edit"
                 onRenderActions={setFormActions}
             />
+            </div>
 
             {session && (
                 <AuditLogsModal

@@ -40,7 +40,7 @@ import {
 } from "../ui";
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDateTime } from "../../lib/formatPreferences";
@@ -65,6 +65,7 @@ const CLIENT_DEFAULT_SORT_COLUMN = "name";
 const CLIENT_DEFAULT_SORT_DIR: "asc" | "desc" = "asc";
 
 export function ClientsModule({ session, actions, agencies: initialAgencies, onNotify, onActionButtons }: ClientsModuleProps) {
+  const searchParams = useSearchParams();
   const { preferences } = useUserPreferences();
   const { t } = useI18n();
   const router = useRouter();
@@ -199,7 +200,10 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
       label: t("columns", "actions"),
       renderCell: (c) => {
         const primaryLabel = t("actions", "edit");
-        const primaryOnClick = () => router.push(`/internal/clients/${c.id}/edit`);
+        const primaryOnClick = () => {
+          const tutorial = searchParams.get("tutorial");
+          router.push(`/internal/clients/${c.id}/edit${tutorial ? `?tutorial=${encodeURIComponent(tutorial)}` : ""}`);
+        };
 
         const secondaryItems: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }> = [];
         if (canDo(role, "clients.edit")) {
@@ -229,6 +233,7 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
             {canDo(role, "clients.edit") ? (
               <ButtonGroup variant="outlined" size="small">
                 <Button
+                  data-tour="client-open"
                   onClick={primaryOnClick}
                   startIcon={<EditIcon fontSize="small" />}
                   title={primaryLabel}
@@ -337,6 +342,7 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
           <Tooltip title={t("actions", "refresh")} arrow>
             <span className="topbar-action-wrap">
               <Button
+                data-tour="clients-refresh"
                 className="topbar-action topbar-action--compact"
                 variant="outlined"
                 size="small"
@@ -354,6 +360,7 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
             <Tooltip title={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")} arrow>
               <span className="topbar-action-wrap">
                 <Button
+                  data-tour="clients-archived"
                   className="topbar-action topbar-action--compact"
                   variant={showArchived ? "contained" : "outlined"}
                   size="small"
@@ -373,6 +380,7 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
               <span className="topbar-action-wrap">
                 <Link href="/internal/clients/new" style={{ textDecoration: "none" }}>
                   <Button
+                    data-tour="clients-new"
                     className="topbar-action topbar-action--compact"
                     variant="contained"
                     size="small"
@@ -464,7 +472,10 @@ export function ClientsModule({ session, actions, agencies: initialAgencies, onN
                   <Button
                     variant="outlined"
                     size="small"
-                    onClick={() => router.push(`/internal/clients/${c.id}/edit`)}
+                    onClick={() => {
+                      const tutorial = searchParams.get("tutorial");
+                      router.push(`/internal/clients/${c.id}/edit${tutorial ? `?tutorial=${encodeURIComponent(tutorial)}` : ""}`);
+                    }}
                     startIcon={<EditIcon fontSize="small" />}
                     sx={{ minWidth: 0 }}
                   >

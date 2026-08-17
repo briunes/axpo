@@ -594,7 +594,7 @@ function EditableInputPanel({
     };
 
     return (
-        <div className="simulation-results-input-panel" style={{
+        <div className="simulation-results-input-panel" data-tour="simulation-quick-inputs" style={{
             position: "relative",
             height: "100%",
             overflowY: "auto",
@@ -907,6 +907,7 @@ function EditableInputPanel({
                         variant="contained"
                         color="primary"
                         fullWidth
+                        data-tour="simulation-recalculate"
                         onClick={onRecalculate}
                         disabled={calculating}
                         startIcon={<RefreshIcon />}
@@ -1106,6 +1107,7 @@ export function SimulationResultsCards({
 
                                 <Tabs
                                     className="simulation-results-offer-tabs"
+                                    data-tour="simulation-offer-filters"
                                     value={elecTab}
                                     onChange={(_, value: "all" | "fixed" | "indexed" | "personalizadas") => setElecTab(value)}
                                     textColor="primary"
@@ -1216,6 +1218,7 @@ export function SimulationResultsCards({
 
                                 <Tabs
                                     className="simulation-results-offer-tabs"
+                                    data-tour="simulation-offer-filters"
                                     value={gasTab}
                                     onChange={(_, value: "all" | "fixed" | "indexed" | "personalizadas") => setGasTab(value)}
                                     textColor="primary"

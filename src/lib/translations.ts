@@ -1,5 +1,8 @@
+import { tutorialTranslations } from "./tutorialTranslations";
+
 export const translations = {
   en: {
+    tutorials: tutorialTranslations.en,
     language: {
       en: "EN",
       es: "ES",
@@ -1290,6 +1293,7 @@ export const translations = {
       settings: "Settings",
       configurations: "Configurations",
       analytics: "Analytics",
+      tutorials: "Help & Tutorials",
       auditLogs: "Audit Logs",
       emailLogs: "Email Logs",
       baseValues: "Base Values",
@@ -3049,6 +3053,7 @@ export const translations = {
     },
   },
   es: {
+    tutorials: tutorialTranslations.es,
     language: {
       en: "EN",
       es: "ES",
@@ -4360,6 +4365,7 @@ export const translations = {
       settings: "Configuración",
       configurations: "Configuraciones",
       analytics: "Analíticas",
+      tutorials: "Ayuda y tutoriales",
       auditLogs: "Registros de Auditoría",
       emailLogs: "Registros de Correos",
       baseValues: "Valores Base",
@@ -6164,6 +6170,7 @@ export const translations = {
     },
   },
   fr: {
+    tutorials: tutorialTranslations.fr,
     language: {
       en: "EN",
       es: "ES",
@@ -8008,6 +8015,7 @@ export const translations = {
       settings: "Paramètres",
       configurations: "Configurations",
       analytics: "Analyses",
+      tutorials: "Aide et tutoriels",
       auditLogs: "Journaux d'audit",
       emailLogs: "Journaux de courrier électronique",
       baseValues: "Valeurs de base",
@@ -9295,6 +9303,7 @@ export const translations = {
     },
   },
   pt: {
+    tutorials: tutorialTranslations.pt,
     language: {
       en: "EN",
       es: "ES",
@@ -11113,6 +11122,7 @@ export const translations = {
       settings: "Configurações",
       configurations: "Configurações",
       analytics: "Análise",
+      tutorials: "Ajuda e tutoriais",
       auditLogs: "Registros de auditoria",
       emailLogs: "Registros de e-mail",
       baseValues: "Valores Base",

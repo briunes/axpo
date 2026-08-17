@@ -2140,7 +2140,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                     thickness={4}
                 />
             </Backdrop>
-            <Box className="simulation-detail-tabs" sx={{ mb: '12px' }}>
+            <Box className="simulation-detail-tabs" data-tour="simulation-view-tabs" sx={{ mb: '12px' }}>
                 <Tabs
                     value={activeTab}
                     onChange={(_, value: "inputs" | "results") => void handleTabClick(value)}
@@ -2159,10 +2159,12 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 >
                     <Tab
                         value="inputs"
+                        data-tour="simulation-inputs-tab"
                         label={<Typography component="span" variant="body2" sx={{ fontWeight: 500 }}>{t("simulationForm", "tabInputs")}</Typography>}
                     />
                     <Tab
                         value="results"
+                        data-tour="simulation-results-tab"
                         label={
                             <Typography component="span" variant="body2" sx={{ fontWeight: 500 }}>
                                 {results ? t("simulationForm", "tabResultsWithCount", { count: resultCount }) : t("simulationForm", "tabResults")}
@@ -2174,7 +2176,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
 
             {/* Inputs tab */}
             {activeTab === "inputs" && (
-                <div>
+                <div data-tour="simulation-full-inputs">
                     {/* OCR disclaimer */}
                     {isOcrFilled && (
                         <div className="simulation-input-notice-card simulation-input-notice-card--warning" style={{

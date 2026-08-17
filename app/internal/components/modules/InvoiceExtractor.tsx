@@ -663,7 +663,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
     };
 
     return (
-        <div className="invoice-extractor notranslate" translate="no">
+        <div className="invoice-extractor notranslate" data-tour="ocr-workspace" translate="no">
             <div className="extractor-header">
                 <div className="extractor-icon">
                     <AutoFixHighIcon />
@@ -678,6 +678,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 {/* Upload area */}
                 {files.length === 0 && (
                     <label
+                        data-tour="ocr-upload"
                         className={`file-upload-area${isDragging ? " dragging" : ""}`}
                         onDragOver={handleDragOver}
                         onDragEnter={handleDragOver}
@@ -700,7 +701,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 )}
 
                 {files.length > 0 && (
-                    <div className="file-selected">
+                    <div className="file-selected" data-tour="ocr-selected-file">
                         {/* Image grid (multiple files) or single PDF row */}
                         {currentType === "image" ? (
                             <div className="image-cards-grid">
@@ -768,7 +769,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                                                 <span className="file-size">{(f.size / 1024 / 1024).toFixed(2)} MB</span>
                                             </div>
                                             {/* Provider detection inline for PDF */}
-                                            <div className="provider-section pdf-inline">
+                                            <div className="provider-section pdf-inline" data-tour="ocr-provider">
                                                 {detectionStatus === "detecting" && (
                                                     <span className="provider-detecting-label">
                                                         <span className="provider-spinner" />
@@ -857,7 +858,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                         )}
 
                         {/* Provider detection — shown once below cards for images only */}
-                        {currentType === "image" && <div className="provider-section">
+                        {currentType === "image" && <div className="provider-section" data-tour="ocr-provider">
                             {detectionStatus === "detecting" && (
                                 <span className="provider-detecting-label">
                                     <span className="provider-spinner" />
@@ -933,6 +934,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                         {/* Row 2: Extract Data button */}
                         <div className="file-actions">
                             <Button
+                                data-tour="ocr-extract"
                                 variant="contained"
                                 type="button"
                                 className="btn-primary"
@@ -1012,6 +1014,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                 </Dialog>
 
                 {isExtracting && (
+                    <div data-tour="ocr-extracting">
                     <div style={{ marginTop: 16 }}>
                         <LinearProgress
                             variant="determinate"
@@ -1029,6 +1032,7 @@ export function InvoiceExtractor({ onDataExtracted, onError, onBeforeExtract, on
                         <span style={{ color: "var(--scheme-neutral-400, #9ca3af)" }}>
                             {t("invoiceExtractor", "extracting")}
                         </span>
+                    </div>
                     </div>
                 )}
 

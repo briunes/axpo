@@ -20,6 +20,7 @@ import { NotificationBell } from "./layout/NotificationBell";
 import { useUserPreferences } from "./providers/UserPreferencesProvider";
 import { ForbiddenState, LoadingState } from "./shared";
 import { Toast, useToast } from "./ui";
+import { TutorialRunner } from "./tutorials/TutorialRunner";
 
 export type { AppSection };
 
@@ -33,6 +34,7 @@ const SECTION_LABELS: Record<AppSection, string> = {
   "base-values": "Valores base",
   logs: "Logs",
   analytics: "Analytics",
+  tutorials: "Help & Tutorials",
   configurations: "Configuraciones",
   notifications: "Notificaciones",
 };
@@ -188,7 +190,10 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
   const [mounted, setMounted] = useState(false);
   const [permItems, setPermItems] = useState<RolePermissionItem[]>([]);
   const [permLoaded, setPermLoaded] = useState(false);
-  const [actionButtons, setActionButtons] = useState<React.ReactNode>(null);
+  const [actionButtons, setActionButtons] = useState<{ pathname: string; buttons: React.ReactNode }>({
+    pathname,
+    buttons: null,
+  });
   const [breadcrumbs, setBreadcrumbs] = useState<TopBarBreadcrumb[] | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
   const activeActionButtonsPathnameRef = useRef(pathname);
@@ -199,7 +204,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
     // effect cleanup runs. Ignore that stale cleanup so it cannot clear the
     // action buttons just registered by the destination page.
     if (activeActionButtonsPathnameRef.current !== pathname) return;
-    setActionButtons(buttons);
+    setActionButtons({ pathname, buttons });
   }, [pathname]);
 
   useEffect(() => {
@@ -289,6 +294,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
       "base-values": "/internal/base-values",
       logs: "/internal/logs",
       analytics: "/internal/analytics",
+      tutorials: "/internal/tutorials",
       configurations: "/internal/configurations",
       notifications: "/internal/notifications",
     };
@@ -321,6 +327,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
     "base-values": canDo(role, "section.base-values"),
     logs: canSeeAnyLogs,
     analytics: canDo(role, "section.analytics"),
+    tutorials: true,
     configurations: canDo(role, "section.configurations"),
     notifications: role === "SYS_ADMIN",
   };
@@ -448,15 +455,16 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
                   section={section}
                   onRefresh={() => refreshHandler?.()}
                   onMobileMenuToggle={() => setMobileMenuOpen((v) => !v)}
-                  actionButtons={actionButtons}
+                  actionButtons={actionButtons.pathname === pathname ? actionButtons.buttons : null}
                   breadcrumbs={breadcrumbs}
                   onCommandOpen={() => setCommandOpen(true)}
                   session={session}
                   onLogout={handleLogout}
                 />
-                <main className="app-content">
+                <main className="app-content" data-tour="page-content">
                   {children}
                 </main>
+                <TutorialRunner />
               </div>
               <CommandPalette
                 open={commandOpen}

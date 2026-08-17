@@ -391,7 +391,7 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
   const showAgencyDrillDown = isAdminView && selectedAgencyId !== null;
 
   return (
-    <div className="analytics-dashboard" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div className="analytics-dashboard" data-tour="analytics-dashboard" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       {errorText && <div className="sp-panel-error">{errorText}</div>}
 
       {showAgencyDrillDown ? (

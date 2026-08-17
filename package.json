@@ -67,6 +67,7 @@
     "react-dom": "^19.0.0",
     "react-email-editor": "^1.8.0",
     "react-international-phone": "^4.8.0",
+    "react-joyride": "^3.2.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-react": "^5.32.6",
     "zod": "^3.22.4"

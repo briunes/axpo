@@ -36,8 +36,9 @@ import { LanguageFlag } from "../../../../src/lib/LanguageFlag";
 import { UI_LANGUAGES } from "../../../../src/lib/uiLanguages";
 import { useThemeMode } from "../../lib/ThemeModeContext";
 import { WhatsNewButton } from "./WhatsNewButton";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 
-export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "logs" | "analytics" | "configurations" | "notifications";
+export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "logs" | "analytics" | "tutorials" | "configurations" | "notifications";
 
 const SECTION_KEYS: AppSection[] = [
   "simulations",
@@ -47,6 +48,7 @@ const SECTION_KEYS: AppSection[] = [
   "base-values",
   "logs",
   "analytics",
+  "tutorials",
   "configurations",
   "notifications",
 ];
@@ -60,6 +62,7 @@ const sectionNavKey: Record<AppSection, string> = {
   "base-values": "baseValues",
   logs: "logs",
   analytics: "analytics",
+  tutorials: "tutorials",
   configurations: "configurations",
   notifications: "notifications",
 };
@@ -72,6 +75,7 @@ export const sectionDescriptionKey: Record<AppSection, string> = {
   "base-values": "baseValues",
   logs: "auditLogs",
   analytics: "analytics",
+  tutorials: "tutorials",
   configurations: "configurations",
   notifications: "notifications",
 };
@@ -84,6 +88,7 @@ export const sectionRoute: Record<AppSection, string> = {
   "base-values": "/internal/base-values",
   logs: "/internal/logs",
   analytics: "/internal/analytics",
+  tutorials: "/internal/tutorials",
   configurations: "/internal/configurations",
   notifications: "/internal/notifications",
 };
@@ -96,6 +101,7 @@ export const sectionPrimaryAction: Record<AppSection, { labelKey: string; target
   "base-values": { labelKey: "newBaseValueSet", targetId: "base-values-create-form" },
   logs: { labelKey: "viewSystemLogs", targetId: "system-logs-table" },
   analytics: { labelKey: "refreshMetrics", targetId: "analytics-panel" },
+  tutorials: { labelKey: "tutorials", targetId: "tutorials-catalog" },
   configurations: { labelKey: "systemSettings", targetId: "configurations-panel" },
   notifications: { labelKey: "refreshNotifications", targetId: "notifications-table" },
 };
@@ -108,6 +114,7 @@ export const sectionIcon: Record<AppSection, React.FC<{ className?: string }>> =
   "base-values": BaseValuesIcon,
   logs: AuditLogsIcon,
   analytics: AnalyticsIcon,
+  tutorials: HelpOutlineIcon,
   configurations: ConfigurationsIcon,
   notifications: NotificationsNavIcon,
 };
@@ -198,6 +205,7 @@ export function SectionMenu({
   return (
     <>
       <Box
+        data-tour="main-navigation"
         component="nav"
         role="navigation"
         aria-label={t("nav", "sectionsLabel")}
@@ -219,6 +227,7 @@ export function SectionMenu({
                 >
                   <ListItemButton
                     data-testid={`nav-${item}`}
+                    data-tour={item === "tutorials" ? "help-menu" : undefined}
                     onClick={() => onNavigate(item)}
                     selected={isActive}
                     sx={{
