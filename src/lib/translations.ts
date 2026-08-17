@@ -1,5 +1,8 @@
+import { tutorialTranslations } from "./tutorialTranslations";
+
 export const translations = {
   en: {
+    tutorials: tutorialTranslations.en,
     language: {
       en: "EN",
       es: "ES",
@@ -390,6 +393,11 @@ export const translations = {
     },
     usersModule: {
       subtitle: "Manage user accounts and access levels.",
+      activity: "Activity",
+      allActivity: "All activity",
+      online: "Online",
+      notOnline: "Not online",
+      onlineUsers: "Online users",
       createRequiredFields: "Name, email, mobile phone, commercial contact and agency are required.", updateRequiredFields: "Full name, email, mobile phone and commercial contacts are required.",
       passwordPolicy: "Password must be 12–128 chars with uppercase, lowercase, number and special character.", newPasswordPolicy: "New password must be 12–128 chars with uppercase, lowercase, number and special character.",
       agentCreateRestriction: "Agent can only create commercial users in the same agency.", currentPasswordRequired: "Current password is required to change your own password.",
@@ -1285,6 +1293,7 @@ export const translations = {
       settings: "Settings",
       configurations: "Configurations",
       analytics: "Analytics",
+      tutorials: "Help & Tutorials",
       auditLogs: "Audit Logs",
       emailLogs: "Email Logs",
       baseValues: "Base Values",
@@ -3044,6 +3053,7 @@ export const translations = {
     },
   },
   es: {
+    tutorials: tutorialTranslations.es,
     language: {
       en: "EN",
       es: "ES",
@@ -3440,6 +3450,11 @@ export const translations = {
     },
     usersModule: {
       subtitle: "Gestiona cuentas de usuario y niveles de acceso.",
+      activity: "Actividad",
+      allActivity: "Toda la actividad",
+      online: "En línea",
+      notOnline: "No conectado",
+      onlineUsers: "Usuarios en línea",
       createRequiredFields: "El nombre, correo, teléfono móvil, contacto comercial y agencia son obligatorios.", updateRequiredFields: "El nombre completo, correo, teléfono móvil y contactos comerciales son obligatorios.",
       passwordPolicy: "La contraseña debe tener entre 12 y 128 caracteres e incluir mayúsculas, minúsculas, un número y un carácter especial.", newPasswordPolicy: "La nueva contraseña debe cumplir la política de seguridad.",
       agentCreateRestriction: "El agente solo puede crear usuarios comerciales en su misma agencia.", currentPasswordRequired: "La contraseña actual es obligatoria para cambiar tu propia contraseña.",
@@ -4350,6 +4365,7 @@ export const translations = {
       settings: "Configuración",
       configurations: "Configuraciones",
       analytics: "Analíticas",
+      tutorials: "Ayuda y tutoriales",
       auditLogs: "Registros de Auditoría",
       emailLogs: "Registros de Correos",
       baseValues: "Valores Base",
@@ -6154,6 +6170,7 @@ export const translations = {
     },
   },
   fr: {
+    tutorials: tutorialTranslations.fr,
     language: {
       en: "EN",
       es: "ES",
@@ -7118,6 +7135,11 @@ export const translations = {
     },
     usersModule: {
       subtitle: "Gérez les comptes d'utilisateurs et les niveaux d'accès.",
+      activity: "Activité",
+      allActivity: "Toute l’activité",
+      online: "En ligne",
+      notOnline: "Hors ligne",
+      onlineUsers: "Utilisateurs en ligne",
       createRequiredFields: "Le nom, l’e-mail, le téléphone portable, le contact commercial et l’agence sont obligatoires.", updateRequiredFields: "Le nom complet, l’e-mail, le téléphone portable et les contacts commerciaux sont obligatoires.",
       passwordPolicy: "Le mot de passe doit comporter 12 à 128 caractères avec majuscule, minuscule, chiffre et caractère spécial.", newPasswordPolicy: "Le nouveau mot de passe doit respecter la politique de sécurité.",
       agentCreateRestriction: "L’agent ne peut créer que des utilisateurs commerciaux dans la même agence.", currentPasswordRequired: "Le mot de passe actuel est requis pour modifier votre propre mot de passe.",
@@ -7993,6 +8015,7 @@ export const translations = {
       settings: "Paramètres",
       configurations: "Configurations",
       analytics: "Analyses",
+      tutorials: "Aide et tutoriels",
       auditLogs: "Journaux d'audit",
       emailLogs: "Journaux de courrier électronique",
       baseValues: "Valeurs de base",
@@ -9280,6 +9303,7 @@ export const translations = {
     },
   },
   pt: {
+    tutorials: tutorialTranslations.pt,
     language: {
       en: "EN",
       es: "ES",
@@ -10230,6 +10254,11 @@ export const translations = {
     },
     usersModule: {
       subtitle: "Gerencie contas de usuário e níveis de acesso.",
+      activity: "Atividade",
+      allActivity: "Toda a atividade",
+      online: "Online",
+      notOnline: "Não online",
+      onlineUsers: "Utilizadores online",
       createRequiredFields: "O nome, email, telemóvel, contacto comercial e agência são obrigatórios.", updateRequiredFields: "O nome completo, email, telemóvel e contactos comerciais são obrigatórios.",
       passwordPolicy: "A palavra-passe deve ter entre 12 e 128 caracteres, com maiúscula, minúscula, número e caráter especial.", newPasswordPolicy: "A nova palavra-passe deve cumprir a política de segurança.",
       agentCreateRestriction: "O agente só pode criar utilizadores comerciais na mesma agência.", currentPasswordRequired: "A palavra-passe atual é obrigatória para alterar a sua própria palavra-passe.",
@@ -11093,6 +11122,7 @@ export const translations = {
       settings: "Configurações",
       configurations: "Configurações",
       analytics: "Análise",
+      tutorials: "Ajuda e tutoriais",
       auditLogs: "Registros de auditoria",
       emailLogs: "Registros de e-mail",
       baseValues: "Valores Base",

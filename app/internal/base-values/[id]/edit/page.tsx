@@ -153,6 +153,7 @@ export default function EditBaseValueSetPage({
                 </>
             }
         >
+            <div data-tour="base-value-detail-form">
             <CrudFormContainer
                 onSubmit={handleSubmit}
                 errorMessage={errorMessage}
@@ -205,6 +206,7 @@ export default function EditBaseValueSetPage({
                     )}
                 </Stack>
             </CrudFormContainer>
+            </div>
         </CrudPageLayout>
     );
 }

@@ -274,7 +274,7 @@ export function ConfigurationsModule({ session, onNotify, role }: Configurations
 
     return (
         <div className="configurations-container">
-            <aside className="configurations-sidebar" aria-label={t("configurationsModule", "sidebarAria")}>
+            <aside className="configurations-sidebar" data-tour="configurations-navigation" aria-label={t("configurationsModule", "sidebarAria")}>
                 <div className="configurations-sidebar-heading">
                     <span className="configurations-sidebar-kicker">{t("configurationsModule", "settingsKicker")}</span>
                     <h2>{t("configurationsModule", "title")}</h2>
@@ -311,7 +311,7 @@ export function ConfigurationsModule({ session, onNotify, role }: Configurations
                 </nav>
             </aside>
 
-            <div className="configurations-main">
+            <div className="configurations-main" data-tour="configurations-content">
                 <header className="configurations-page-header">
                     <div>
                         <span className="configurations-page-eyebrow">{activeGroup?.label}</span>

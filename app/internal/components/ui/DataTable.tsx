@@ -864,7 +864,7 @@ export function DataTable<T extends { id: string }>({
       : tI18n('dataTable', 'densityStandard');
 
   return (
-    <div className="dt-root" style={{ height: '100%', minHeight: 0 }}>
+    <div className="dt-root" data-tour={tableId ? `${tableId}-table` : "data-table"} style={{ height: '100%', minHeight: 0 }}>
       {useMobileCards && (
         <Box
           sx={{
@@ -966,7 +966,7 @@ export function DataTable<T extends { id: string }>({
       )}
 
       {/* Toolbar */}
-      <Box className="dt-toolbar" sx={{ backgroundColor: tableHeaderBackground, display: { xs: useMobileCards ? 'none' : 'flex', md: 'flex' }, flexWrap: 'nowrap' }}>
+      <Box className="dt-toolbar" data-tour={tableId ? `${tableId}-toolbar` : "table-toolbar"} sx={{ backgroundColor: tableHeaderBackground, display: { xs: useMobileCards ? 'none' : 'flex', md: 'flex' }, flexWrap: 'nowrap' }}>
 
         <div
           className="dt-toolbar-left"
@@ -1073,7 +1073,8 @@ export function DataTable<T extends { id: string }>({
           )}
           {/* Column visibility toggle */}
           <Tooltip title={tI18n('dataTable', 'showHideColumns')}>
-            <IconButton
+          <IconButton
+              data-tour={tableId ? `${tableId}-columns` : "table-columns"}
               size="small"
               onClick={(e) => setColMenuAnchor(e.currentTarget)}
               sx={{ display: { xs: useMobileCards ? 'none' : 'inline-flex', md: 'inline-flex' } }}
@@ -1083,6 +1084,7 @@ export function DataTable<T extends { id: string }>({
           </Tooltip>
           <Tooltip title={densityLabel}>
             <IconButton
+              data-tour={tableId ? `${tableId}-density` : "table-density"}
               size="small"
               onClick={(e) => setDensityMenuAnchor(e.currentTarget)}
               sx={{ display: { xs: useMobileCards ? 'none' : 'inline-flex', md: 'inline-flex' } }}

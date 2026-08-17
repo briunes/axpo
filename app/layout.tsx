@@ -86,7 +86,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <BoneyardRegistry />
             <VersionChecker />
             <WhatsNewModal />
-            {!isProduction && (
+            {/* {!isProduction && (
               <div
                 className={`environment-indicator env-${appEnv}`}
                 role="status"
@@ -94,7 +94,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               >
                 Environment: {envLabel}
               </div>
-            )}
+            )} */}
             <div
               className={`environment-content${isProduction ? " no-environment-indicator" : ""}`}
             >

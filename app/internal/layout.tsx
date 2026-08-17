@@ -24,6 +24,7 @@ function InternalLayoutContent({ children }: { children: ReactNode }) {
     if (pathname.startsWith("/internal/audit-logs")) return "logs"; // Redirect old route
     if (pathname.startsWith("/internal/email-logs")) return "logs"; // Redirect old route
     if (pathname.startsWith("/internal/analytics")) return "analytics";
+    if (pathname.startsWith("/internal/tutorials")) return "tutorials";
     if (pathname.startsWith("/internal/configurations")) return "configurations";
     if (pathname.startsWith("/internal/ocr-usage")) return "configurations";
     return null;

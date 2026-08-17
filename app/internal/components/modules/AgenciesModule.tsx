@@ -38,7 +38,7 @@ import {
 } from "../ui";
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDateTime } from "../../lib/formatPreferences";
@@ -63,6 +63,7 @@ const AGENCY_DEFAULT_SORT_COLUMN = "createdAt";
 const AGENCY_DEFAULT_SORT_DIR: "asc" | "desc" = "desc";
 
 export function AgenciesModule({ session, actions, onNotify, onActionButtons }: AgenciesModuleProps) {
+  const searchParams = useSearchParams();
   const { t } = useI18n();
   const { preferences } = useUserPreferences();
   const router = useRouter();
@@ -264,7 +265,10 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
       width: "140",
       renderCell: (a) => {
         const primaryLabel = t("actions", "edit");
-        const primaryOnClick = () => router.push(`/internal/agencies/${a.id}/edit`);
+        const primaryOnClick = () => {
+          const tutorial = searchParams.get("tutorial");
+          router.push(`/internal/agencies/${a.id}/edit${tutorial ? `?tutorial=${encodeURIComponent(tutorial)}` : ""}`);
+        };
 
         const secondaryItems: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }> = [];
         secondaryItems.push({
@@ -286,6 +290,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
           <div style={{ display: "flex", justifyContent: "flex-end", width: '100%' }}>
             <ButtonGroup variant="outlined" size="small">
               <Button
+                data-tour="agency-open"
                 onClick={primaryOnClick}
                 startIcon={<EditIcon fontSize="small" />}
                 title={primaryLabel}
@@ -407,6 +412,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
             <Tooltip title={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")} arrow>
               <span className="topbar-action-wrap">
                 <Button
+                  data-tour="agencies-archived"
                   className="topbar-action topbar-action--compact"
                   variant={showArchived ? "contained" : "outlined"}
                   size="small"
@@ -425,6 +431,7 @@ export function AgenciesModule({ session, actions, onNotify, onActionButtons }: 
             <span className="topbar-action-wrap">
               <Link href="/internal/agencies/new" style={{ textDecoration: "none" }}>
                 <Button
+                  data-tour="agencies-new"
                   className="topbar-action topbar-action--compact"
                   variant="contained"
                   size="small"

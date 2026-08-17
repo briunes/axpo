@@ -52,6 +52,8 @@ export interface UsersActions {
   setRoleFilter: (v: string) => void;
   agencyFilter: string;
   setAgencyFilter: (v: string) => void;
+  activityFilter: string;
+  setActivityFilter: (v: string) => void;
   showArchived: boolean;
   setShowArchived: (v: boolean) => void;
   // create form
@@ -141,6 +143,7 @@ interface UseUsersOptions {
 interface UsersFilterPersistentState {
   roleFilter: string;
   agencyFilter: string;
+  activityFilter: string;
   showArchived: boolean;
 }
 
@@ -183,6 +186,7 @@ export function useUsers(
       return {
         roleFilter: parsed.roleFilter ?? "",
         agencyFilter: parsed.agencyFilter ?? "",
+        activityFilter: parsed.activityFilter ?? "",
         showArchived: parsed.showArchived ?? false,
       };
     } catch {
@@ -218,6 +222,9 @@ export function useUsers(
   );
   const [agencyFilter, setAgencyFilter] = useState(
     persistedFilters?.agencyFilter || "",
+  );
+  const [activityFilter, setActivityFilter] = useState(
+    persistedFilters?.activityFilter || "",
   );
   const [showArchived, setShowArchived] = useState(
     persistedFilters?.showArchived || false,
@@ -262,13 +269,14 @@ export function useUsers(
       const nextState: UsersFilterPersistentState = {
         roleFilter,
         agencyFilter,
+        activityFilter,
         showArchived,
       };
       localStorage.setItem("axpo_users_filters", JSON.stringify(nextState));
     } catch {
       // ignore persistence failures
     }
-  }, [usePersistedState, roleFilter, agencyFilter, showArchived]);
+  }, [usePersistedState, roleFilter, agencyFilter, activityFilter, showArchived]);
 
   // ── TanStack Query ──────────────────────────────────────────────────────
   const queryParams: ListUsersParams = {
@@ -277,6 +285,7 @@ export function useUsers(
     search: search || undefined,
     role: roleFilter || undefined,
     agencyId: agencyFilter || undefined,
+    activity: (activityFilter || undefined) as ListUsersParams["activity"],
     orderBy: sortColumn,
     sortDir,
     includeDeleted: showArchived || undefined,
@@ -290,6 +299,7 @@ export function useUsers(
     search,
     role: roleFilter,
     agencyId: agencyFilter,
+    activity: activityFilter,
     orderBy: sortColumn,
     sortDir,
     includeDeleted: showArchived,
@@ -303,6 +313,7 @@ export function useUsers(
         search: options.initialDataParams.search ?? "",
         role: options.initialDataParams.role ?? "",
         agencyId: options.initialDataParams.agencyId ?? "",
+        activity: options.initialDataParams.activity ?? "",
         orderBy: options.initialDataParams.orderBy ?? "createdAt",
         sortDir: options.initialDataParams.sortDir ?? "desc",
         includeDeleted: options.initialDataParams.includeDeleted ?? false,
@@ -667,6 +678,8 @@ export function useUsers(
     setRoleFilter,
     agencyFilter,
     setAgencyFilter,
+    activityFilter,
+    setActivityFilter,
     showArchived,
     setShowArchived,
     newUserName,

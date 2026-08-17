@@ -16,6 +16,9 @@ const nextConfig = {
     "@opendataloader/pdf",
   ],
   outputFileTracingIncludes: {
+    "/api/v1/internal/manuals/**": [
+      "./resources/user-manuals/**/*",
+    ],
     "/api/v1/internal/invoices/extract": [
       "./node_modules/pdfjs-dist/legacy/build/**/*",
       "./node_modules/@opendataloader/pdf/dist/**/*",

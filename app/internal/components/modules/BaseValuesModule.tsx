@@ -47,6 +47,7 @@ import {
 } from "../ui";
 import type { ColumnDef } from "../ui";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { formatDisplayDateTime } from "../../lib/formatPreferences";
@@ -79,6 +80,7 @@ const BASE_VALUE_DEFAULT_SORT_DIR: "asc" | "desc" = "desc";
 // ─── Main module ─────────────────────────────────────────────────────────────
 
 export function BaseValuesModule({ session, actions, onNotify, onActionButtons }: BaseValuesModuleProps) {
+  const searchParams = useSearchParams();
   const { preferences } = useUserPreferences();
   const { t } = useI18n();
   const {
@@ -349,8 +351,9 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
         <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
           <Tooltip title={t("baseValuesModule", "editSet_tooltip")} placement="top">
             <IconButton
+              data-tour="base-value-open"
               component={Link}
-              href={`/internal/base-values/${s.id}/edit`}
+              href={`/internal/base-values/${s.id}/edit${searchParams.get("tutorial") ? `?tutorial=${encodeURIComponent(searchParams.get("tutorial")!)}` : ""}`}
               size="small"
               sx={{ color: "text.secondary", "&:hover": { color: "primary.main" } }}
             >
@@ -415,6 +418,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
         <Tooltip title={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")} arrow>
           <span className="topbar-action-wrap">
             <Button
+              data-tour="base-values-archived"
               className="topbar-action topbar-action--compact"
               variant="outlined"
               size="small"
@@ -431,6 +435,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
         <Tooltip title={t("actions", "refresh")} arrow>
           <span className="topbar-action-wrap">
             <Button
+              data-tour="base-values-refresh"
               className="topbar-action topbar-action--compact"
               variant="outlined"
               size="small"
@@ -455,6 +460,7 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
             <Tooltip title={busyAction === "upload-base-value-file" ? t("baseValuesModule", "uploading") : t("baseValuesModule", "uploadExcel")} arrow>
               <span className="topbar-action-wrap">
                 <Button
+                  data-tour="base-values-upload"
                   className="topbar-action topbar-action--compact"
                   variant="outlined"
                   size="small"
@@ -566,11 +572,12 @@ export function BaseValuesModule({ session, actions, onNotify, onActionButtons }
           actions: (s) => {
             const actions = [
               <Button
+                data-tour="base-value-open"
                 key="edit"
                 variant="outlined"
                 size="small"
                 component={Link}
-                href={`/internal/base-values/${s.id}/edit`}
+                href={`/internal/base-values/${s.id}/edit${searchParams.get("tutorial") ? `?tutorial=${encodeURIComponent(searchParams.get("tutorial")!)}` : ""}`}
                 startIcon={<EditIcon fontSize="small" />}
                 sx={{ minWidth: 0 }}
               >
