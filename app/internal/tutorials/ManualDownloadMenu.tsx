@@ -23,7 +23,7 @@ type ManualRole = Exclude<UserRole, "SYS_ADMIN">;
 type ManualLanguage = "en" | "es";
 type ManualFormat = "pdf" | "docx";
 
-const MANUAL_RELEASE = "2026-08-17-simulations-v2";
+const MANUAL_RELEASE = "2026-08-17-role-permissions-v4";
 
 const ALL_MANUAL_ROLES: ManualRole[] = ["ADMIN", "AGENT", "COMMERCIAL"];
 
