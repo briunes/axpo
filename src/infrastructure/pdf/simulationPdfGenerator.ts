@@ -50,6 +50,7 @@ export interface PdfTemplateVariables {
   CURRENT_VAT: string;
   CURRENT_TOTAL: string;
   CURRENT_BREAKDOWN_HTML: string;
+  SELECTED_PRODUCT_ENERGY_TABLE: string;
 
   // AXPO plan - Power contracted (kW)
   AXPO_POWER_P1: string;
@@ -136,9 +137,9 @@ export function extractTemplateVariables(
   // Only use the annual-consumption value supplied by the endpoint payload.
   // Billing-period consumption must never be annualized in the presentation layer.
   const annualConsumption = (
-    electricity as (typeof electricity & {
+    electricity as typeof electricity & {
       clientData?: { consumoAnual?: number };
-    })
+    }
   )?.clientData?.consumoAnual;
 
   // Extract client info
@@ -199,11 +200,11 @@ export function extractTemplateVariables(
     ? (electricity?.extras as any)?.currentInvoiceBreakdown
     : undefined;
   const explicitCurrentTax = useCurrentInvoiceBreakdown
-    ? currentInvoiceBreakdown?.impuestoElectrico ??
-      (electricity?.extras as any)?.impuestoElectricoActual
+    ? (currentInvoiceBreakdown?.impuestoElectrico ??
+      (electricity?.extras as any)?.impuestoElectricoActual)
     : undefined;
   const explicitCurrentVat = useCurrentInvoiceBreakdown
-    ? currentInvoiceBreakdown?.iva ?? (electricity?.extras as any)?.ivaActual
+    ? (currentInvoiceBreakdown?.iva ?? (electricity?.extras as any)?.ivaActual)
     : undefined;
   const displayedCurrentTax =
     explicitCurrentTax != null ? Number(explicitCurrentTax) : currentTaxCost;
@@ -214,12 +215,12 @@ export function extractTemplateVariables(
     currentTotal - displayedCurrentTax - displayedCurrentVat - currentKnownBase,
   );
   const explicitCurrentPower = useCurrentInvoiceBreakdown
-    ? currentInvoiceBreakdown?.terminoPotencia ??
-      (electricity?.extras as any)?.terminoPotenciaActual
+    ? (currentInvoiceBreakdown?.terminoPotencia ??
+      (electricity?.extras as any)?.terminoPotenciaActual)
     : undefined;
   const explicitCurrentEnergy = useCurrentInvoiceBreakdown
-    ? currentInvoiceBreakdown?.terminoEnergia ??
-      (electricity?.extras as any)?.terminoEnergiaActual
+    ? (currentInvoiceBreakdown?.terminoEnergia ??
+      (electricity?.extras as any)?.terminoEnergiaActual)
     : undefined;
   const axpoPeSum = axpoPowerCost + axpoEnergyCost || 1;
   const currentPowerCost =
@@ -323,6 +324,7 @@ export function extractTemplateVariables(
     CURRENT_VAT: formatCurrency(displayedCurrentVat),
     CURRENT_TOTAL: formatCurrency(currentTotal),
     CURRENT_BREAKDOWN_HTML: currentBreakdownHtml,
+    SELECTED_PRODUCT_ENERGY_TABLE: "",
 
     // AXPO plan - Power contracted (same as current)
     AXPO_POWER_P1: getPeriodValue(electricity?.potenciaContratada, "P1"),

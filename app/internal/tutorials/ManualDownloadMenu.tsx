@@ -15,13 +15,12 @@ import {
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import { useI18n } from "@/lib/i18n-context";
 import type { UserRole } from "../lib/internalApi";
 
 type ManualRole = Exclude<UserRole, "SYS_ADMIN">;
 type ManualLanguage = "en" | "es";
-type ManualFormat = "pdf" | "docx";
+type ManualFormat = "pdf";
 
 const MANUAL_RELEASE = "2026-08-17-role-permissions-v4";
 
@@ -99,34 +98,34 @@ export function ManualDownloadMenu({ role, token }: { role: UserRole; token: str
         slotProps={{ paper: { sx: { minWidth: 300, maxHeight: 520 } } }}
       >
         {roles.flatMap((manualRole, roleIndex) => {
-          const items = (["en", "es"] as ManualLanguage[]).flatMap((language) =>
-            (["pdf", "docx"] as ManualFormat[]).map((format) => {
-              const key = `${manualRole}-${language}-${format}`;
-              const isDownloading = downloading === key;
-              return (
-                <MenuItem
-                  key={key}
-                  disabled={downloading !== null}
-                  onClick={() => download(manualRole, language, format)}
-                  data-testid={`manual-${key}`}
-                >
-                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ width: "100%" }}>
-                    {isDownloading
-                      ? <CircularProgress size={20} />
-                      : format === "pdf"
-                        ? <PictureAsPdfIcon fontSize="small" color="error" />
-                        : <DescriptionOutlinedIcon fontSize="small" color="primary" />}
-                    <Typography variant="body2" sx={{ flex: 1 }}>
-                      {t("tutorials", language === "en" ? "manualEnglish" : "manualSpanish")}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" fontWeight={700}>
-                      {format === "pdf" ? "PDF" : "Word"}
-                    </Typography>
-                  </Stack>
-                </MenuItem>
-              );
-            }),
-          );
+          const items = (["en", "es"] as ManualLanguage[]).map((language) => {
+            const format: ManualFormat = "pdf";
+            const key = `${manualRole}-${language}-${format}`;
+            const isDownloading = downloading === key;
+
+            return (
+              <MenuItem
+                key={key}
+                disabled={downloading !== null}
+                onClick={() => download(manualRole, language, format)}
+                data-testid={`manual-${key}`}
+              >
+                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ width: "100%" }}>
+                  {isDownloading ? (
+                    <CircularProgress size={20} />
+                  ) : (
+                    <PictureAsPdfIcon fontSize="small" color="error" />
+                  )}
+                  <Typography variant="body2" sx={{ flex: 1 }}>
+                    {t("tutorials", language === "en" ? "manualEnglish" : "manualSpanish")}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                    PDF
+                  </Typography>
+                </Stack>
+              </MenuItem>
+            );
+          });
 
           return [
             ...(roleIndex > 0 ? [<Divider key={`${manualRole}-divider`} component="li" />] : []),

@@ -453,27 +453,27 @@ export default function NewSimulationPage() {
                         : -1;
     const flowSteps = [
         {
-            label: "Source",
-            value: selectedClient?.name ?? (hasInvoiceFile ? "Invoice uploaded" : "Choose"),
+            label: t("newSimulationPage", "stepSource"),
+            value: selectedClient?.name ?? (hasInvoiceFile ? t("newSimulationPage", "stepInvoiceUploaded") : t("newSimulationPage", "stepChoose")),
             complete: hasSource,
             icon: clientId ? <PersonSearchIcon fontSize="small" /> : <CloudUploadIcon fontSize="small" />,
         },
 
         {
-            label: "Extract",
-            value: extractedData ? "Done" : hasInvoiceFile ? "Ready" : "Waiting",
+            label: t("newSimulationPage", "stepExtract"),
+            value: extractedData ? t("newSimulationPage", "stepDone") : hasInvoiceFile ? t("newSimulationPage", "stepReady") : t("newSimulationPage", "stepWaiting"),
             complete: Boolean(extractedData),
             icon: <AutoFixHighIcon fontSize="small" />,
         },
         {
-            label: "Validate",
-            value: isValidatedExtractedData ? "Validated" : extractedData ? "Review" : "Pending",
+            label: t("newSimulationPage", "stepValidate"),
+            value: isValidatedExtractedData ? t("newSimulationPage", "stepValidated") : extractedData ? t("newSimulationPage", "stepReview") : t("newSimulationPage", "stepPending"),
             complete: isValidatedExtractedData || canCreateFromClient,
             icon: <TuneIcon fontSize="small" />,
         },
         {
-            label: "Create",
-            value: reviewReady ? "Ready" : "Pending",
+            label: t("newSimulationPage", "stepCreate"),
+            value: reviewReady ? t("newSimulationPage", "stepReady") : t("newSimulationPage", "stepPending"),
             complete: reviewReady,
             icon: <CheckCircleIcon fontSize="small" />,
         },

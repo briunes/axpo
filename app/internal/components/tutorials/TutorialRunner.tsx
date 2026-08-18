@@ -28,9 +28,9 @@ export function TutorialRunner() {
     content: typeof step.content === "string" ? t("tutorials", step.content) : step.content,
     locale: step.locale
       ? Object.fromEntries(Object.entries(step.locale).map(([key, value]) => [
-          key,
-          typeof value === "string" ? t("tutorials", value) : value,
-        ]))
+        key,
+        typeof value === "string" ? t("tutorials", value) : value,
+      ]))
       : undefined,
   })), [sourceSteps, t]);
   const [run, setRun] = useState(false);
@@ -151,6 +151,7 @@ export function TutorialRunner() {
         close: t("tutorials", "controlClose"),
         last: t("tutorials", "controlFinish"),
         next: t("tutorials", "controlNext"),
+        nextWithProgress: t("tutorials", "controlNextWithProgress"),
         open: t("tutorials", "controlOpen"),
         skip: t("tutorials", "controlSkip"),
       }}

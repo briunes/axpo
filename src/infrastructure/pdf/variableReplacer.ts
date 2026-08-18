@@ -68,6 +68,248 @@ function buildCurrentBreakdownHtml(
         `;
 }
 
+function formatEnergyPriceValue(value: number | undefined): string {
+  if (value === undefined || value === null || Number.isNaN(value)) return "—";
+  const formatted = value.toFixed(6).replace(".", ",");
+  return formatted
+    .replace(/,(\d*?)0+$/, ",$1")
+    .replace(/,\d*?$/, (match) => match.replace(/0+$/, ""));
+}
+
+function resolveSelectedProductHistoryValue(
+  selectedProductHistory: any,
+  tariffAccess: string | undefined,
+  period: string,
+): number | null {
+  if (!selectedProductHistory || !tariffAccess) return null;
+
+  const tariffData = selectedProductHistory.tariffs?.[tariffAccess];
+  if (!tariffData) return null;
+
+  const periodEntry = tariffData[period];
+  if (typeof periodEntry === "number") {
+    return Number(periodEntry) > 0 ? Number(periodEntry) : null;
+  }
+
+  if (periodEntry && typeof periodEntry === "object") {
+    const monthly = periodEntry.monthly ?? {};
+    const monthKeys = Object.keys(monthly).sort();
+    for (let i = monthKeys.length - 1; i >= 0; i -= 1) {
+      const value = Number(monthly[monthKeys[i]] ?? 0);
+      if (value > 0) return value;
+    }
+
+    const avg = Number(periodEntry.avg ?? 0);
+    return avg > 0 ? avg : null;
+  }
+
+  return null;
+}
+
+function buildSelectedProductEnergyTable(
+  isGas: boolean,
+  electricity: any,
+  gas: any,
+  selectedResult: any,
+  language: string,
+  selectedProductHistory?: any,
+): string {
+  const periods = ["P1", "P2", "P3", "P4", "P5", "P6"] as const;
+  const gasEnergyTermLabel = language.toLowerCase().startsWith("en")
+    ? "Variable energy term"
+    : "Término energético variable";
+
+  const resolveGasHistoryValue = (): number | null => {
+    if (!selectedProductHistory || !gas?.tarifaAcceso) return null;
+
+    const normalizeZone = (zone?: string) => {
+      if (!zone) return undefined;
+      const upper = zone.toUpperCase();
+      if (upper === "PENINSULA" || upper === "PEN") return "PEN";
+      if (upper === "BALEARES" || upper === "BAL") return "BAL";
+      return upper;
+    };
+
+    const zoneKey = normalizeZone(gas.zonaGeografica);
+    const tariffHistory = selectedProductHistory.tariffs?.[gas.tarifaAcceso];
+    if (!tariffHistory) return null;
+
+    const zoneValue = zoneKey ? tariffHistory[zoneKey] : undefined;
+    if (typeof zoneValue === "number") {
+      return zoneValue > 0 ? zoneValue : null;
+    }
+
+    if (zoneValue && typeof zoneValue === "object") {
+      const avg = Number(zoneValue.avg ?? 0);
+      return avg > 0 ? avg : null;
+    }
+
+    const fallbackValue = Object.values(tariffHistory).find((entry) => {
+      if (typeof entry === "number") return entry > 0;
+      if (entry && typeof entry === "object") return Number(entry.avg ?? 0) > 0;
+      return false;
+    });
+
+    if (typeof fallbackValue === "number")
+      return fallbackValue > 0 ? fallbackValue : null;
+    if (fallbackValue && typeof fallbackValue === "object") {
+      const avg = Number(fallbackValue.avg ?? 0);
+      return avg > 0 ? avg : null;
+    }
+
+    return null;
+  };
+
+  const toValueList = (
+    raw: Record<string, any> | undefined,
+  ): Array<{ label: string; value: number }> => {
+    if (!raw || typeof raw !== "object") return [];
+    return periods
+      .map((period) => {
+        const value = Number(raw[period] ?? 0);
+        return { label: period, value };
+      })
+      .filter((item) => Number(item.value) > 0);
+  };
+
+  const periodValues = isGas
+    ? (() => {
+        const explicitValue =
+          gas?.personalizadaFijo?.terminoVariable ??
+          gas?.personalizadaIndex?.margenEnergia;
+
+        if (explicitValue != null && Number(explicitValue) > 0) {
+          return [{ label: gasEnergyTermLabel, value: Number(explicitValue) }];
+        }
+
+        const gasHistoryValue = resolveGasHistoryValue();
+        if (gasHistoryValue != null && Number(gasHistoryValue) > 0) {
+          return [
+            { label: gasEnergyTermLabel, value: Number(gasHistoryValue) },
+          ];
+        }
+
+        return [];
+      })()
+    : (() => {
+        const explicitMap =
+          electricity?.personalizadaFijo?.preciosEnergia ?? {};
+        const explicitValues = toValueList(explicitMap);
+        if (explicitValues.length > 0) {
+          return explicitValues;
+        }
+
+        const personalizedIndexMap =
+          electricity?.personalizadaIndex?.margenEnergia ?? {};
+        const omieMap = electricity?.omieEstimado ?? {};
+        const derivedIndexValues = periods
+          .map((period) => {
+            const omieValue = Number(omieMap[period] ?? 0);
+            const marginValue = Number(personalizedIndexMap[period] ?? 0);
+            const value = omieValue + marginValue / 1000;
+            if (value <= 0) return null;
+            return { label: period, value };
+          })
+          .filter((item): item is { label: string; value: number } => !!item);
+
+        if (derivedIndexValues.length > 0) {
+          return derivedIndexValues;
+        }
+
+        const resultMap = selectedResult?.desglose ?? {};
+        const explicitResultValues = toValueList(
+          Object.fromEntries(
+            periods.map((period) => [
+              period,
+              Number(resultMap[`precioEnergia${period}`] ?? 0),
+            ]),
+          ),
+        );
+        if (explicitResultValues.length > 0) {
+          return explicitResultValues;
+        }
+
+        const historyValues = periods
+          .map((period) => {
+            const value = resolveSelectedProductHistoryValue(
+              selectedProductHistory,
+              electricity?.tarifaAcceso,
+              period,
+            );
+            if (value == null) return null;
+            return { label: period, value };
+          })
+          .filter((item): item is { label: string; value: number } => !!item);
+
+        if (historyValues.length > 0) {
+          return historyValues;
+        }
+
+        return [];
+      })();
+
+  const title = isGas
+    ? language.toLowerCase().startsWith("en")
+      ? "Variable energy term"
+      : "Término energético variable"
+    : language.toLowerCase().startsWith("en")
+      ? "Energy term price"
+      : "Término energía";
+
+  const unit = "€/kWh";
+
+  if (periodValues.length === 0) {
+    console.debug(
+      "[buildSelectedProductEnergyTable] no values found for selected product",
+      {
+        isGas,
+        hasPersonalizedFijoEnergy:
+          !!electricity?.personalizadaFijo?.preciosEnergia,
+        personalizedIndexMargins:
+          electricity?.personalizadaIndex?.margenEnergia,
+        omieEstimado: electricity?.omieEstimado,
+        gasPersonalizedFixed: gas?.personalizadaFijo,
+        gasPersonalizedIndex: gas?.personalizadaIndex,
+        selectedResultKey: selectedResult?.productKey,
+        selectedResultDesglose: selectedResult?.desglose,
+      },
+    );
+    return "";
+  }
+
+  if (!isGas && periodValues.every((item) => Number(item.value) === 0)) {
+    console.debug(
+      "[buildSelectedProductEnergyTable] all values are zero for selected product",
+      {
+        selectedResultKey: selectedResult?.productKey,
+        electricity,
+        gas,
+      },
+    );
+    return "";
+  }
+
+  const rows = periodValues
+    .map((item) => {
+      const label = item.label;
+      const rawValue = Number(item.value ?? 0);
+      const value =
+        rawValue === 0 && !isGas ? "—" : formatEnergyPriceValue(rawValue);
+      return `
+            <div class="asim-energy-price-row">
+              <div class="asim-energy-price-label">${label}</div>
+              <div class="asim-energy-price-value">${value}${value !== "—" ? ` ${unit}` : ""}</div>
+            </div>`;
+    })
+    .join("");
+
+  return `
+        <div class="asim-energy-price-table" style="margin-top:18px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;background:#fff;">
+          <div class="asim-energy-price-header" style="background:#4545cf;color:#fff;padding:10px 12px;font-weight:700;font-size:10pt;">${title}</div>
+          <div class="asim-energy-price-grid" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:10px 12px;background:#f7f7ff;align-items:stretch;">${rows}</div>
+        </div>`;
+}
+
 function currentBreakdownLabel(
   language: string,
   englishLabel: string,
@@ -105,6 +347,7 @@ export function extractVariableValues(
   editableSections?: EditableSectionsConfig,
   editableOverrides?: EditableSectionOverrides,
   language: string = "es",
+  selectedProductHistory?: any,
 ): Record<string, string> {
   // Debug logging
   console.log(
@@ -130,15 +373,23 @@ export function extractVariableValues(
 
   // Get selected offer index or default to first result
   const selectedOfferKey = payload?.selectedOffer?.productKey;
+  const selectedOfferCommodity = payload?.selectedOffer?.commodity;
   console.log("[extractVariableValues] selectedOfferKey:", selectedOfferKey);
   console.log(
-    "[extractVariableValues] available results:",
-    results?.electricity?.map((r) => r.productKey),
+    "[extractVariableValues] selectedOfferCommodity:",
+    selectedOfferCommodity,
   );
+  console.log("[extractVariableValues] available results:", {
+    electricity: results?.electricity?.map((r) => r.productKey),
+    gas: results?.gas?.map((r) => r.productKey),
+  });
 
   const selectedResult = selectedOfferKey
-    ? results?.electricity?.find((r) => r.productKey === selectedOfferKey)
-    : results?.electricity?.[0];
+    ? (selectedOfferCommodity === "GAS"
+        ? (results?.gas ?? results?.electricity)
+        : (results?.electricity ?? results?.gas)
+      )?.find((r) => r.productKey === selectedOfferKey)
+    : (results?.electricity ?? results?.gas)?.[0];
 
   console.log(
     "[extractVariableValues] selectedResult:",
@@ -161,9 +412,9 @@ export function extractVariableValues(
   // Do not infer it from billing-period consumption: periods may cover a range
   // other than one month, and an inferred value can contradict the user's input.
   const annualConsumption = (
-    electricity as (typeof electricity & {
+    electricity as typeof electricity & {
       clientData?: { consumoAnual?: number };
-    })
+    }
   )?.clientData?.consumoAnual;
   // This is the explicit billing-period total used by the separate
   // ELECTRICITY_CONSUMPTION_KWH template field; it is not annualized.
@@ -263,11 +514,11 @@ export function extractVariableValues(
     ? (electricity?.extras as any)?.currentInvoiceBreakdown
     : undefined;
   const explicitCurrentTax = useCurrentInvoiceBreakdown
-    ? currentInvoiceBreakdown?.impuestoElectrico ??
-      (electricity?.extras as any)?.impuestoElectricoActual
+    ? (currentInvoiceBreakdown?.impuestoElectrico ??
+      (electricity?.extras as any)?.impuestoElectricoActual)
     : undefined;
   const explicitCurrentVat = useCurrentInvoiceBreakdown
-    ? currentInvoiceBreakdown?.iva ?? (electricity?.extras as any)?.ivaActual
+    ? (currentInvoiceBreakdown?.iva ?? (electricity?.extras as any)?.ivaActual)
     : undefined;
   const displayedCurrentTax =
     explicitCurrentTax != null ? Number(explicitCurrentTax) : currentTaxCost;
@@ -281,12 +532,12 @@ export function extractVariableValues(
   );
   // If the OCR or the form captured the real split, prefer it.
   const explicitCurrentPower = useCurrentInvoiceBreakdown
-    ? currentInvoiceBreakdown?.terminoPotencia ??
-      (electricity?.extras as any)?.terminoPotenciaActual
+    ? (currentInvoiceBreakdown?.terminoPotencia ??
+      (electricity?.extras as any)?.terminoPotenciaActual)
     : undefined;
   const explicitCurrentEnergy = useCurrentInvoiceBreakdown
-    ? currentInvoiceBreakdown?.terminoEnergia ??
-      (electricity?.extras as any)?.terminoEnergiaActual
+    ? (currentInvoiceBreakdown?.terminoEnergia ??
+      (electricity?.extras as any)?.terminoEnergiaActual)
     : undefined;
   // Otherwise, mirror the Axpo plan's power/energy ratio - a much
   // better estimate than fixed 35%/40% because it adapts to the
@@ -400,19 +651,19 @@ export function extractVariableValues(
     ? (gas?.extras as any)?.currentInvoiceBreakdown
     : undefined;
   const explicitGasCurrentFixed = useGasCurrentInvoiceBreakdown
-    ? gasCurrentInvoiceBreakdown?.terminoFijo ??
-      (gas?.extras as any)?.terminoFijoActual
+    ? (gasCurrentInvoiceBreakdown?.terminoFijo ??
+      (gas?.extras as any)?.terminoFijoActual)
     : undefined;
   const explicitGasCurrentVariable = useGasCurrentInvoiceBreakdown
-    ? gasCurrentInvoiceBreakdown?.terminoVariable ??
-      (gas?.extras as any)?.terminoVariableActual
+    ? (gasCurrentInvoiceBreakdown?.terminoVariable ??
+      (gas?.extras as any)?.terminoVariableActual)
     : undefined;
   const explicitGasCurrentTax = useGasCurrentInvoiceBreakdown
-    ? gasCurrentInvoiceBreakdown?.impuestoHidrocarburo ??
-      (gas?.extras as any)?.impuestoHidrocarburoActual
+    ? (gasCurrentInvoiceBreakdown?.impuestoHidrocarburo ??
+      (gas?.extras as any)?.impuestoHidrocarburoActual)
     : undefined;
   const explicitGasCurrentVat = useGasCurrentInvoiceBreakdown
-    ? gasCurrentInvoiceBreakdown?.iva ?? (gas?.extras as any)?.ivaActual
+    ? (gasCurrentInvoiceBreakdown?.iva ?? (gas?.extras as any)?.ivaActual)
     : undefined;
   const displayedGasCurrentTax =
     explicitGasCurrentTax != null
@@ -583,6 +834,14 @@ export function extractVariableValues(
     CURRENT_BREAKDOWN_HTML: isGas
       ? gasCurrentBreakdownHtml
       : electricityCurrentBreakdownHtml,
+    SELECTED_PRODUCT_ENERGY_TABLE: buildSelectedProductEnergyTable(
+      isGas,
+      electricity,
+      gas,
+      selectedResult || selectedGasResult,
+      language,
+      selectedProductHistory,
+    ),
 
     // AXPO plan - Power contracted (same as current)
     AXPO_POWER_P1: getPeriodValue(electricity?.potenciaContratada, "P1"),
