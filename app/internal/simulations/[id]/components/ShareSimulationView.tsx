@@ -42,6 +42,7 @@ import SendIcon from "@mui/icons-material/Send";
 import DownloadIcon from "@mui/icons-material/Download";
 import { LoadingState } from "../../../components/shared";
 import { FormInput } from "../../../components/ui/FormInput";
+import { resolveSelectedHistoryProduct } from "@/lib/historyProductSelection";
 
 type ShareMode = "pdf" | "email";
 
@@ -79,6 +80,7 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
     const [emailEditableOverrides, setEmailEditableOverrides] = useState<EditableSectionOverrides>({});
     const [emailPdfEditableOverrides, setEmailPdfEditableOverrides] = useState<EditableSectionOverrides>({});
     const [clientLanguage, setClientLanguage] = useState<string>("en");
+    const [selectedProductHistory, setSelectedProductHistory] = useState<any>(null);
 
     useEffect(() => {
         let isCurrent = true;
@@ -89,6 +91,24 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
 
                 setPdfTemplates(init.pdfTemplates);
                 setEmailTemplates(init.emailTemplates);
+
+                fetch(`/api/v1/internal/simulations/${simulation.id}/price-history`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+                    .then(async (r) => {
+                        if (!r.ok) return;
+                        const data = await r.json();
+                        const payload = simulation.payloadJson as { selectedOffer?: { productKey?: string; commodity?: string } } | null;
+                        const productList = Array.isArray(data?.products) ? data.products : [];
+                        const gasProductList = Array.isArray(data?.gasProducts) ? data.gasProducts : [];
+                        const selectedCommodity = payload?.selectedOffer?.commodity ?? (data?.isGas ? "GAS" : "ELECTRICITY");
+                        const product = resolveSelectedHistoryProduct(
+                            selectedCommodity === "GAS" ? gasProductList.length > 0 ? gasProductList : productList : productList,
+                            payload?.selectedOffer ?? { commodity: selectedCommodity },
+                        );
+                        setSelectedProductHistory(product);
+                    })
+                    .catch(() => setSelectedProductHistory(null));
 
                 // Determine client language from language preference (falls back to country detection).
                 // Testing mode still renders the client-facing PDF in the client's language;
@@ -199,10 +219,18 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
         if (!simulation) return content;
 
         const payload = simulation.payloadJson;
-        const variableValues = extractVariableValues(simulation, payload, {
-            pin: simulation.pinSnapshot ?? undefined,
-            ...(simulationLink ? { simulationLink } : {}),
-        });
+        const variableValues = extractVariableValues(
+            simulation,
+            payload,
+            {
+                pin: simulation.pinSnapshot ?? undefined,
+                ...(simulationLink ? { simulationLink } : {}),
+            },
+            undefined,
+            undefined,
+            clientLanguage,
+            selectedProductHistory,
+        );
         // Merge: use override value if set, otherwise fall back to section default
         if (templateSections) {
             const merged = mergeEditableSections(templateSections, editableOverrides);
@@ -226,10 +254,18 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
         if (!simulation) return content;
 
         const payload = simulation.payloadJson;
-        const variableValues = extractVariableValues(simulation, payload, {
-            pin: simulation.pinSnapshot ?? undefined,
-            ...(simulationLink ? { simulationLink } : {}),
-        });
+        const variableValues = extractVariableValues(
+            simulation,
+            payload,
+            {
+                pin: simulation.pinSnapshot ?? undefined,
+                ...(simulationLink ? { simulationLink } : {}),
+            },
+            undefined,
+            undefined,
+            clientLanguage,
+            selectedProductHistory,
+        );
         let result = replaceVars(content, variableValues);
         const merged = mergeEditableSections(templateSections, editableOverrides);
 
@@ -601,86 +637,86 @@ export function ShareSimulationView({ simulation, token, isTestingMode, loggedUs
                 {/* Template Editor / Preview */}
                 {currentTemplate && (
                     <>
-                    <Card sx={{ display: { xs: "block", md: "none" } }}>
-                        <CardContent>
-                            <Box
-                                sx={{
-                                    p: 2,
-                                    borderRadius: 1,
-                                    border: "1px dashed",
-                                    borderColor: "divider",
-                                    bgcolor: "action.hover",
-                                }}
-                            >
-                                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
-                                    {t("shareSimulation", "previewUnavailableMobileTitle") || "Preview not available on mobile"}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    {t("shareSimulation", "previewUnavailableMobile") || "Template previews are available on medium screens and above."}
-                                </Typography>
-                            </Box>
-                        </CardContent>
-                    </Card>
+                        <Card sx={{ display: { xs: "block", md: "none" } }}>
+                            <CardContent>
+                                <Box
+                                    sx={{
+                                        p: 2,
+                                        borderRadius: 1,
+                                        border: "1px dashed",
+                                        borderColor: "divider",
+                                        bgcolor: "action.hover",
+                                    }}
+                                >
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                                        {t("shareSimulation", "previewUnavailableMobileTitle") || "Preview not available on mobile"}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        {t("shareSimulation", "previewUnavailableMobile") || "Template previews are available on medium screens and above."}
+                                    </Typography>
+                                </Box>
+                            </CardContent>
+                        </Card>
 
-                    <Card data-tour="simulation-share-preview" sx={{ display: { xs: "none", md: "block" } }}>
-                        <CardContent>
-                            {/* Tabs for Email mode - always show tabs */}
-                            {shareMode === "email" ? (
-                                <>
-                                    <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
-                                        <Tab label={t("shareSimulation", "tabPreviewEmail")} value="email" />
-                                        {attachPdfToEmail && selectedEmailPdfTemplate && (
-                                            <Tab label={t("shareSimulation", "tabPreviewPdf")} value="pdf" />
-                                        )}
-                                    </Tabs>
+                        <Card data-tour="simulation-share-preview" sx={{ display: { xs: "none", md: "block" } }}>
+                            <CardContent>
+                                {/* Tabs for Email mode - always show tabs */}
+                                {shareMode === "email" ? (
+                                    <>
+                                        <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+                                            <Tab label={t("shareSimulation", "tabPreviewEmail")} value="email" />
+                                            {attachPdfToEmail && selectedEmailPdfTemplate && (
+                                                <Tab label={t("shareSimulation", "tabPreviewPdf")} value="pdf" />
+                                            )}
+                                        </Tabs>
 
-                                    {/* Email Tab */}
-                                    {activeTab === "email" && (
-                                        <Paper
-                                            variant="outlined"
-                                            sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
-                                            onClick={(e) => handlePreviewClick(e, currentTemplate.editableSections, emailEditableOverrides, setEmailEditableOverrides)}
-                                            dangerouslySetInnerHTML={{
-                                                __html: replaceVariablesWithEditableSections(editedEmailContent, emailEditableOverrides, currentTemplate.editableSections),
-                                            }}
-                                        />
-                                    )}
-
-                                    {/* PDF Tab */}
-                                    {activeTab === "pdf" && attachPdfToEmail && selectedEmailPdfTemplate && (() => {
-                                        const emailPdfTpl = pdfTemplates.find(t => t.id === selectedEmailPdfTemplate);
-                                        return (
+                                        {/* Email Tab */}
+                                        {activeTab === "email" && (
                                             <Paper
                                                 variant="outlined"
                                                 sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
-                                                onClick={(e) => handlePreviewClick(e, emailPdfTpl?.editableSections, emailPdfEditableOverrides, setEmailPdfEditableOverrides)}
+                                                onClick={(e) => handlePreviewClick(e, currentTemplate.editableSections, emailEditableOverrides, setEmailEditableOverrides)}
                                                 dangerouslySetInnerHTML={{
-                                                    __html: replaceVariablesWithEditableSections(editedEmailPdfContent, emailPdfEditableOverrides, emailPdfTpl?.editableSections),
+                                                    __html: replaceVariablesWithEditableSections(editedEmailContent, emailEditableOverrides, currentTemplate.editableSections),
                                                 }}
                                             />
-                                        );
-                                    })()}
-                                </>
-                            ) : (
-                                <>
-                                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-                                        <Typography variant="h6">
-                                            {t("shareSimulation", "previewTemplate")}
-                                        </Typography>
-                                    </Box>
+                                        )}
 
-                                    <Paper
-                                        variant="outlined"
-                                        sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
-                                        onClick={(e) => handlePreviewClick(e, currentTemplate.editableSections, pdfEditableOverrides, setPdfEditableOverrides)}
-                                        dangerouslySetInnerHTML={{
-                                            __html: replaceVariablesWithEditableSections(editedPdfContent, pdfEditableOverrides, currentTemplate.editableSections),
-                                        }}
-                                    />
-                                </>
-                            )}
-                        </CardContent>
-                    </Card>
+                                        {/* PDF Tab */}
+                                        {activeTab === "pdf" && attachPdfToEmail && selectedEmailPdfTemplate && (() => {
+                                            const emailPdfTpl = pdfTemplates.find(t => t.id === selectedEmailPdfTemplate);
+                                            return (
+                                                <Paper
+                                                    variant="outlined"
+                                                    sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
+                                                    onClick={(e) => handlePreviewClick(e, emailPdfTpl?.editableSections, emailPdfEditableOverrides, setEmailPdfEditableOverrides)}
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: replaceVariablesWithEditableSections(editedEmailPdfContent, emailPdfEditableOverrides, emailPdfTpl?.editableSections),
+                                                    }}
+                                                />
+                                            );
+                                        })()}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+                                            <Typography variant="h6">
+                                                {t("shareSimulation", "previewTemplate")}
+                                            </Typography>
+                                        </Box>
+
+                                        <Paper
+                                            variant="outlined"
+                                            sx={{ p: 3, minHeight: 400, overflow: "auto", bgcolor: "background.paper" }}
+                                            onClick={(e) => handlePreviewClick(e, currentTemplate.editableSections, pdfEditableOverrides, setPdfEditableOverrides)}
+                                            dangerouslySetInnerHTML={{
+                                                __html: replaceVariablesWithEditableSections(editedPdfContent, pdfEditableOverrides, currentTemplate.editableSections),
+                                            }}
+                                        />
+                                    </>
+                                )}
+                            </CardContent>
+                        </Card>
                     </>
                 )}
 

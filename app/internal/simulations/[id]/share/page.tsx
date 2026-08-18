@@ -42,6 +42,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import HistoryIcon from "@mui/icons-material/History";
 import { DownloadHistoryDialog } from "../components/DownloadHistoryDialog";
 import { useTopBarBreadcrumbs } from "../../../components/InternalWorkspace";
+import { resolveSelectedHistoryProduct } from "@/lib/historyProductSelection";
 
 type ShareMode = "pdf" | "email";
 
@@ -72,6 +73,7 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
     const [pdfEditableOverrides, setPdfEditableOverrides] = useState<EditableSectionOverrides>({});
     const [emailEditableOverrides, setEmailEditableOverrides] = useState<EditableSectionOverrides>({});
     const [clientLanguage, setClientLanguage] = useState<string>("en");
+    const [selectedProductHistory, setSelectedProductHistory] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSending, setIsSending] = useState(false);
     const [editingSection, setEditingSection] = useState<{
@@ -108,11 +110,28 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                 const payload = simData.simulation.payloadJson as {
                     type?: "ELECTRICITY" | "GAS";
                     results?: any;
-                    selectedOffer?: { productKey: string }
+                    selectedOffer?: { productKey?: string; commodity?: string }
                 } | null;
 
                 if (payload?.results) setHasResults(true);
                 setSelectedOfferProductKey(payload?.selectedOffer?.productKey ?? "");
+
+                fetch(`/api/v1/internal/simulations/${id}/price-history`, {
+                    headers: { Authorization: `Bearer ${session.token}` },
+                })
+                    .then(async (r) => {
+                        if (!r.ok) return;
+                        const data = await r.json();
+                        const productList = Array.isArray(data?.products) ? data.products : [];
+                        const gasProductList = Array.isArray(data?.gasProducts) ? data.gasProducts : [];
+                        const selectedCommodity = payload?.selectedOffer?.commodity ?? (data?.isGas ? "GAS" : "ELECTRICITY");
+                        const product = resolveSelectedHistoryProduct(
+                            selectedCommodity === "GAS" ? gasProductList.length > 0 ? gasProductList : productList : productList,
+                            payload?.selectedOffer ?? { commodity: selectedCommodity },
+                        );
+                        setSelectedProductHistory(product);
+                    })
+                    .catch(() => setSelectedProductHistory(null));
 
                 setPdfTemplates(init.pdfTemplates);
                 setEmailTemplates(init.emailTemplates);
@@ -201,9 +220,17 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
         if (!simulation) return content;
         // payloadJson is attached directly to the simulation object by the API
         const payload = simulation.payloadJson;
-        const variableValues = extractVariableValues(simulation, payload, {
-            pin: simulation.pinSnapshot ?? undefined,
-        });
+        const variableValues = extractVariableValues(
+            simulation,
+            payload,
+            {
+                pin: simulation.pinSnapshot ?? undefined,
+            },
+            undefined,
+            undefined,
+            clientLanguage,
+            selectedProductHistory,
+        );
         if (templateSections) {
             Object.assign(variableValues, mergeEditableSections(templateSections, overrides));
         } else if (overrides) {
@@ -221,9 +248,17 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
         if (!simulation) return content;
 
         const payload = simulation.payloadJson;
-        const variableValues = extractVariableValues(simulation, payload, {
-            pin: simulation.pinSnapshot ?? undefined,
-        });
+        const variableValues = extractVariableValues(
+            simulation,
+            payload,
+            {
+                pin: simulation.pinSnapshot ?? undefined,
+            },
+            undefined,
+            undefined,
+            clientLanguage,
+            selectedProductHistory,
+        );
         let result = replaceVars(content, variableValues);
         const merged = mergeEditableSections(templateSections, overrides);
 

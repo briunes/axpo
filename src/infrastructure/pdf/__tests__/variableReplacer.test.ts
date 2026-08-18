@@ -114,7 +114,7 @@ describe("extractVariableValues", () => {
           pricingType: "FIXED",
           selectedAt: "2026-02-01T00:00:00.000Z",
         },
-      },
+      } as any,
       undefined,
       undefined,
       undefined,
@@ -138,6 +138,437 @@ describe("extractVariableValues", () => {
     expect(variables.CURRENT_BREAKDOWN_HTML).toContain("1.00 €");
     expect(variables.CURRENT_BREAKDOWN_HTML).not.toContain(
       "{{CURRENT_GAS_FIXED_COST}}",
+    );
+  });
+
+  it("creates a selected-product energy term table from the chosen offer data", () => {
+    const electricityVariables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "ELECTRICITY",
+        electricity: {
+          tarifaAcceso: "3.0TD",
+          zonaGeografica: "Peninsula",
+          perfilCarga: "NORMAL",
+          periodo: {
+            fechaInicio: "2026-01-01",
+            fechaFin: "2026-01-31",
+            dias: 31,
+          },
+          facturaActual: 120,
+          personalizadaFijo: {
+            preciosEnergia: { P1: 0.02284, P2: 0.01579, P3: 0.01531 },
+            preciosPotencia: { P1: 0.1, P2: 0.2, P3: 0.3 },
+          },
+          extras: {
+            alquilerEquipoMedida: 1,
+            otrosCargos: 2,
+          },
+          consumo: { P1: 100, P2: 100, P3: 100 },
+          potenciaContratada: { P1: 1, P2: 1, P3: 1 },
+        },
+        results: {
+          electricity: [
+            {
+              productKey: "FIJO:TEST",
+              productLabel: "Personalizada Fijo",
+              commodity: "ELECTRICITY",
+              pricingType: "FIXED",
+              totalFactura: 120,
+              ahorro: 10,
+              pctAhorro: 8.33,
+              ahorroAnual: 120,
+              desglose: { terminoEnergia: 100 },
+            },
+          ],
+        },
+        selectedOffer: { productKey: "FIJO:TEST", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
+      } as any,
+      undefined,
+      undefined,
+      undefined,
+      "en",
+    );
+
+    expect(electricityVariables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P1");
+    expect(electricityVariables.SELECTED_PRODUCT_ENERGY_TABLE).toContain(
+      "0,02284",
+    );
+    expect(electricityVariables.SELECTED_PRODUCT_ENERGY_TABLE).toContain(
+      "Energy term price",
+    );
+
+    const gasVariables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "GAS",
+        gas: {
+          tarifaAcceso: "RL01",
+          zonaGeografica: "Peninsula",
+          consumo: 1000,
+          telemedida: "NO",
+          periodo: {
+            fechaInicio: "2026-01-01",
+            fechaFin: "2026-01-31",
+            dias: 31,
+          },
+          facturaActual: 120,
+          personalizadaFijo: {
+            terminoVariable: 0.085213,
+            terminoDia: 0.5,
+          },
+          extras: { alquilerEquipoMedida: 1, otrosCargos: 2 },
+          ivaTasa: 21,
+          impuestoHidrocarburo: 0.00234,
+        },
+        results: {
+          gas: [
+            {
+              productKey: "GAS:FIJO",
+              productLabel: "Gas Fijo",
+              commodity: "GAS",
+              pricingType: "FIXED",
+              totalFactura: 120,
+              ahorro: 10,
+              pctAhorro: 8.33,
+              ahorroAnual: 120,
+              desglose: { terminoEnergia: 85.213 },
+            },
+          ],
+        },
+        selectedOffer: { productKey: "GAS:FIJO", commodity: "GAS", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
+      } as any,
+      undefined,
+      undefined,
+      undefined,
+      "en",
+    );
+
+    expect(gasVariables.SELECTED_PRODUCT_ENERGY_TABLE).toContain(
+      "Variable energy term",
+    );
+    expect(gasVariables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,08521");
+  });
+
+  it("uses Spanish labels for gas selected-product energy rows", () => {
+    const gasSpanish = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "GAS",
+        gas: {
+          tarifaAcceso: "RL01",
+          zonaGeografica: "Peninsula",
+          consumo: 1000,
+          telemedida: "NO",
+          periodo: {
+            fechaInicio: "2026-01-01",
+            fechaFin: "2026-01-31",
+            dias: 31,
+          },
+          facturaActual: 120,
+          personalizadaFijo: {
+            terminoVariable: 0.085213,
+            terminoDia: 0.5,
+          },
+          extras: { alquilerEquipoMedida: 1, otrosCargos: 2 },
+          ivaTasa: 21,
+          impuestoHidrocarburo: 0.00234,
+        },
+        results: {
+          gas: [
+            {
+              productKey: "GAS:FIJO",
+              productLabel: "Gas Fijo",
+              commodity: "GAS",
+              pricingType: "FIXED",
+              totalFactura: 120,
+              ahorro: 10,
+              pctAhorro: 8.33,
+              ahorroAnual: 120,
+              desglose: { terminoEnergia: 85.213 },
+            },
+          ],
+        },
+        selectedOffer: { productKey: "GAS:FIJO", commodity: "GAS", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
+      } as any,
+      undefined,
+      undefined,
+      undefined,
+      "es",
+    );
+
+    expect(gasSpanish.SELECTED_PRODUCT_ENERGY_TABLE).toContain(
+      "Término energético variable",
+    );
+  });
+
+  it("uses the requested language for selected-product energy labels", () => {
+    const spanish = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "ELECTRICITY",
+        electricity: {
+          tarifaAcceso: "3.0TD",
+          zonaGeografica: "Peninsula",
+          perfilCarga: "NORMAL",
+          periodo: {
+            fechaInicio: "2026-01-01",
+            fechaFin: "2026-01-31",
+            dias: 31,
+          },
+          facturaActual: 120,
+          personalizadaFijo: {
+            preciosEnergia: { P1: 0.02284, P2: 0.01579, P3: 0.01531, P4: 0.01531, P5: 0.01531, P6: 0.01531 },
+            preciosPotencia: { P1: 0.1, P2: 0.2, P3: 0.3, P4: 0.3, P5: 0.3, P6: 0.3 },
+          },
+          extras: { alquilerEquipoMedida: 1, otrosCargos: 2 },
+          consumo: { P1: 100, P2: 100, P3: 100, P4: 100, P5: 100, P6: 100 },
+          potenciaContratada: { P1: 1, P2: 1, P3: 1, P4: 1, P5: 1, P6: 1 },
+        },
+        results: {
+          electricity: [
+            {
+              productKey: "FIJO:TEST",
+              productLabel: "Personalizada Fijo",
+              commodity: "ELECTRICITY",
+              pricingType: "FIXED",
+              totalFactura: 120,
+              ahorro: 10,
+              pctAhorro: 8.33,
+              ahorroAnual: 120,
+              desglose: { terminoEnergia: 100 },
+            },
+          ],
+        },
+        selectedOffer: { productKey: "FIJO:TEST", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
+      } as any,
+      undefined,
+      undefined,
+      undefined,
+      "es",
+    );
+
+    expect(spanish.SELECTED_PRODUCT_ENERGY_TABLE).toContain("Término energía");
+    expect(spanish.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,02284");
+  });
+
+  it("renders gas selected-product energy from the tariff history row instead of the total euro cost", () => {
+    const variables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "GAS",
+        gas: {
+          tarifaAcceso: "RL01",
+          zonaGeografica: "Peninsula",
+          consumo: 1000,
+          telemedida: "NO",
+          periodo: {
+            fechaInicio: "2026-01-01",
+            fechaFin: "2026-01-31",
+            dias: 31,
+          },
+          facturaActual: 120,
+          extras: { alquilerEquipoMedida: 1, otrosCargos: 2 },
+          ivaTasa: 21,
+          impuestoHidrocarburo: 0.00234,
+        },
+        results: {
+          gas: [
+            {
+              productKey: "GAS:FIJO",
+              productLabel: "Gas Fijo",
+              commodity: "GAS",
+              pricingType: "FIXED",
+              totalFactura: 120,
+              ahorro: 10,
+              pctAhorro: 8.33,
+              ahorroAnual: 120,
+              desglose: { terminoEnergia: 43.06 },
+            },
+          ],
+        },
+        selectedOffer: { productKey: "GAS:FIJO", commodity: "GAS", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
+      } as any,
+      undefined,
+      undefined,
+      undefined,
+      "en",
+      {
+        productKey: "GAS:FIJO",
+        productLabel: "Gas Fijo",
+        tariffs: {
+          RL01: { PEN: 0.085213 },
+        },
+        type: "GAS",
+      },
+    );
+
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain(
+      "Variable energy term",
+    );
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,08521");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toContain("43,06");
+  });
+
+  it("does not fabricate a repeated average fallback when the exact selected-product row is unavailable", () => {
+    const variables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "ELECTRICITY",
+        electricity: {
+          tarifaAcceso: "3.0TD",
+          zonaGeografica: "Peninsula",
+          perfilCarga: "NORMAL",
+          periodo: {
+            fechaInicio: "2026-01-01",
+            fechaFin: "2026-01-31",
+            dias: 31,
+          },
+          facturaActual: 120,
+          consumo: { P1: 100, P2: 100, P3: 100, P4: 100, P5: 100, P6: 100 },
+          potenciaContratada: { P1: 1, P2: 1, P3: 1, P4: 1, P5: 1, P6: 1 },
+        },
+        results: {
+          electricity: [
+            {
+              productKey: "ESTABLE:N1",
+              productLabel: "Estable N1",
+              commodity: "ELECTRICITY",
+              pricingType: "FIXED",
+              totalFactura: 120,
+              ahorro: 10,
+              pctAhorro: 8.33,
+              ahorroAnual: 120,
+              desglose: { terminoEnergia: 100 },
+            },
+          ],
+        },
+        selectedOffer: { productKey: "ESTABLE:N1", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
+      } as any,
+      undefined,
+      undefined,
+      undefined,
+      "en",
+    );
+
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toBe("");
+  });
+
+  it("uses the selected product history row when direct period prices are missing", () => {
+    const variables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "ELECTRICITY",
+        electricity: {
+          tarifaAcceso: "3.0TD",
+          zonaGeografica: "Peninsula",
+          perfilCarga: "NORMAL",
+          periodo: {
+            fechaInicio: "2026-01-01",
+            fechaFin: "2026-01-31",
+            dias: 31,
+          },
+          facturaActual: 120,
+          consumo: { P1: 100, P2: 100, P3: 100, P4: 100, P5: 100, P6: 100 },
+          potenciaContratada: { P1: 1, P2: 1, P3: 1, P4: 1, P5: 1, P6: 1 },
+        },
+        results: {
+          electricity: [
+            {
+              productKey: "ESTABLE:N1",
+              productLabel: "Estable N1",
+              commodity: "ELECTRICITY",
+              pricingType: "FIXED",
+              totalFactura: 120,
+              ahorro: 10,
+              pctAhorro: 8.33,
+              ahorroAnual: 120,
+              desglose: { terminoEnergia: 100 },
+            },
+          ],
+        },
+        selectedOffer: { productKey: "ESTABLE:N1", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
+      } as any,
+      undefined,
+      undefined,
+      undefined,
+      "en",
+      {
+        productKey: "ESTABLE:N1",
+        tariffs: {
+          "3.0TD": {
+            P1: { avg: 0.1, monthly: { "2026-01": 0.1, "2026-02": 0.11 } },
+            P2: { avg: 0.12, monthly: { "2026-01": 0.12, "2026-02": 0.13 } },
+            P3: { avg: 0.14, monthly: { "2026-01": 0.14, "2026-02": 0.15 } },
+            P4: { avg: 0.16, monthly: { "2026-01": 0.16, "2026-02": 0.17 } },
+            P5: { avg: 0.18, monthly: { "2026-01": 0.18, "2026-02": 0.19 } },
+            P6: { avg: 0.2, monthly: { "2026-01": 0.2, "2026-02": 0.21 } },
+          },
+        },
+      },
+    );
+
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,11");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,13");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P1");
+  });
+
+  it("derives the selected personalized index table from the actual energy-margin inputs", () => {
+    const variables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "ELECTRICITY",
+        electricity: {
+          tarifaAcceso: "3.0TD",
+          zonaGeografica: "Peninsula",
+          perfilCarga: "NORMAL",
+          periodo: {
+            fechaInicio: "2026-01-01",
+            fechaFin: "2026-01-31",
+            dias: 31,
+          },
+          facturaActual: 120,
+          omieEstimado: { P1: 0.12, P2: 0.13, P3: 0.14 },
+          personalizadaIndex: {
+            margenEnergia: { P1: 15, P2: 16, P3: 17 },
+            margenPotencia: { P1: 0, P2: 0, P3: 0 },
+          },
+          extras: { alquilerEquipoMedida: 1, otrosCargos: 2 },
+          consumo: { P1: 100, P2: 100, P3: 100 },
+          potenciaContratada: { P1: 1, P2: 1, P3: 1 },
+        },
+        results: {
+          electricity: [
+            {
+              productKey: "INDEX:TEST",
+              productLabel: "Personalized Index",
+              commodity: "ELECTRICITY",
+              pricingType: "INDEXED",
+              totalFactura: 120,
+              ahorro: 10,
+              pctAhorro: 8.33,
+              ahorroAnual: 120,
+              desglose: { terminoEnergia: 100 },
+            },
+          ],
+        },
+        selectedOffer: {
+          productKey: "INDEX:TEST",
+          commodity: "ELECTRICITY",
+          pricingType: "INDEXED",
+          selectedAt: "2026-08-18T10:00:00.000Z",
+        },
+      } as any,
+      undefined,
+      undefined,
+      undefined,
+      "en",
+    );
+
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P1");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,135");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain(
+      "Energy term price",
     );
   });
 
@@ -321,23 +752,18 @@ describe("extractVariableValues", () => {
     };
 
     expect(
-      extractVariableValues(
-        { id: "simulation-id" },
-        {
-          ...basePayload,
-          electricity: {
-            ...basePayload.electricity,
-            clientData: { consumoAnual: 0 },
-          },
-        } as any,
-      ).ANNUAL_CONSUMPTION,
+      extractVariableValues({ id: "simulation-id" }, {
+        ...basePayload,
+        electricity: {
+          ...basePayload.electricity,
+          clientData: { consumoAnual: 0 },
+        },
+      } as any).ANNUAL_CONSUMPTION,
     ).toBe("0");
 
     expect(
-      extractVariableValues(
-        { id: "simulation-id" },
-        basePayload,
-      ).ANNUAL_CONSUMPTION,
+      extractVariableValues({ id: "simulation-id" }, basePayload)
+        .ANNUAL_CONSUMPTION,
     ).toBe("-");
   });
 
@@ -430,7 +856,14 @@ describe("extractVariableValues", () => {
           tarifaAcceso: "3.0TD",
           zonaGeografica: "Peninsula",
           perfilCarga: "NORMAL",
-          potenciaContratada: { P1: 64.7, P2: 64.7, P3: 64.7, P4: 64.7, P5: 64.7, P6: 100 },
+          potenciaContratada: {
+            P1: 64.7,
+            P2: 64.7,
+            P3: 64.7,
+            P4: 64.7,
+            P5: 64.7,
+            P6: 100,
+          },
           consumo: { P1: 0, P2: 8858, P3: 6576, P4: 0, P5: 0, P6: 13113 },
           periodo: {
             fechaInicio: "2026-04-10",
