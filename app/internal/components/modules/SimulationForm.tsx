@@ -1635,6 +1635,7 @@ function GasForm({ state, onChange, errors = {}, ivaRateOptions = [], hydrocarbo
                             <Field label="Fixed term" flex="1 1 180px">
                                 <CurrencyInput value={state.importeTerminoFijo} onChange={(v) => up("importeTerminoFijo", isNaN(v) ? 0 : v)} />
                             </Field>
+                            
                             <Field label="Variable energy term" flex="1 1 180px">
                                 <CurrencyInput value={state.importeTerminoVariable} onChange={(v) => up("importeTerminoVariable", isNaN(v) ? 0 : v)} />
                             </Field>
