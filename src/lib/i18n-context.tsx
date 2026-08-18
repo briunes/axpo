@@ -49,7 +49,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         // Replace parameters if provided
         if (params) {
             Object.entries(params).forEach(([param, value]) => {
-                text = text.replace(`{${param}}`, String(value));
+                text = text.split(`{${param}}`).join(String(value));
             });
         }
 

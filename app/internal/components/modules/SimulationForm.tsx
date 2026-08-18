@@ -2226,20 +2226,10 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                                         <ElecForm
                                             state={elecState}
                                             onChange={(s) => {
-                                                // When zone changes, auto-update tax values to first configured rate for new zone
-                                                if (s.zonaGeografica !== elecState.zonaGeografica && electricityTaxConfig) {
-                                                    const newZoneKey = s.zonaGeografica === "Baleares" ? "baleares" : s.zonaGeografica === "Canarias" ? "canarias" : "peninsula";
-                                                    const newZoneConf = electricityTaxConfig[newZoneKey];
-                                                    const newIvaRates: number[] = (newZoneConf?.ivaRates ?? newZoneConf?.igicRates ?? []).map((v: any) => Number(v) * 100);
-                                                    const newElecTaxRates: number[] = (newZoneConf?.elecTaxRates ?? []).map((v: any) => Number(v) * 100);
-                                                    setElecState({
-                                                        ...s,
-                                                        ...(newIvaRates.length > 0 ? { ivaTasa: newIvaRates[0] } : {}),
-                                                        ...(newElecTaxRates.length > 0 ? { impuestoElectricoTasa: newElecTaxRates[0] } : {}),
-                                                    });
-                                                } else {
-                                                    setElecState(s);
-                                                }
+                                                // The geographic zone selects the corresponding price table.
+                                                // Keep the tax rates extracted from the customer's invoice: changing
+                                                // the zone while validating offers must not silently rewrite them.
+                                                setElecState(s);
                                             }}
                                             errors={elecErrors}
                                             cupsHistory={cupsHistory}
