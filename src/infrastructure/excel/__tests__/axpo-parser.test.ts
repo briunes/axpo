@@ -266,8 +266,12 @@ describe("parseAxpoExcel", () => {
       parsed.items.map((item) => [item.key, item.valueNumeric]),
     );
 
-    expect(byKey.get("ELEC:FIJO:1P_PLUS:N1:6.1TD:P1:ENERGIA")).toBe(0);
-    expect(byKey.get("ELEC:FIJO:1P_PLUS:N1:6.1TD:P1:POTENCIA")).toBe(0);
+    expect(
+      byKey.get("ELEC:FIJO:1P_PLUS:N1:6.1TD:P1:ENERGIA:ZONE:PENINSULA"),
+    ).toBe(0);
+    expect(
+      byKey.get("ELEC:FIJO:1P_PLUS:N1:6.1TD:P1:POTENCIA:ZONE:PENINSULA"),
+    ).toBe(0);
     expect(
       byKey.get("ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:P6:MARGEN:2026-04"),
     ).toBeCloseTo(0.1201824484, 10);
@@ -306,6 +310,160 @@ describe("parseAxpoExcel", () => {
         "ELEC:INDEX:DINAMICA:N1:6.1TD:P1:MARGEN:2026-04:PROFILE:DIURNO",
       ),
     ).toBeCloseTo(0.2, 10);
+  });
+
+  it("tags hidden electricity lookup values with the workbook geographic zone", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const inputs = workbook.addWorksheet("PETICION DATOS LUZ");
+    inputs.getCell("E11").value = "Canarias";
+
+    const lookup = workbook.addWorksheet(".");
+    lookup.getCell("B6").value = "DINAMICA N1";
+    lookup.getCell("C6").value = "3.0TD";
+    lookup.getCell("D6").value = "FEBRERO-26";
+    lookup.getCell("H6").value = 0.0974043511;
+
+    const parsed = await parseAxpoExcel(
+      Buffer.from(await workbook.xlsx.writeBuffer()),
+      "SIMULADOR TEST.xlsm",
+    );
+    const byKey = new Map(
+      parsed.items.map((item) => [item.key, item.valueNumeric]),
+    );
+
+    expect(
+      byKey.get(
+        "ELEC:INDEX:DINAMICA:N1:3.0TD:P4:MARGEN:2026-02:ZONE:CANARIAS",
+      ),
+    ).toBe(0.0974043511);
+    expect(
+      byKey.has("ELEC:INDEX:DINAMICA:N1:3.0TD:P4:MARGEN:2026-02"),
+    ).toBe(false);
+  });
+
+  it("matches the Canarias Excel result for simulation 00357/2026", async () => {
+    const workbookPath = path.join(process.cwd(), "00357.2026.xlsm");
+    const parsed = await parseAxpoExcel(
+      fs.readFileSync(workbookPath),
+      path.basename(workbookPath),
+    );
+    const priceMap = CalculationService.buildPriceMap(
+      parsed.items.map((item) => ({
+        key: item.key,
+        valueNumeric: item.valueNumeric ?? null,
+      })),
+    );
+    const inputs = {
+        tarifaAcceso: "3.0TD",
+        zonaGeografica: "Canarias",
+        perfilCarga: "NORMAL",
+        billingMonth: "2026-02",
+        potenciaContratada: {
+          P1: 12,
+          P2: 12,
+          P3: 12,
+          P4: 12,
+          P5: 12,
+          P6: 20.785,
+        },
+        consumo: { P1: 0, P2: 1083, P3: 0, P4: 708, P5: 0, P6: 1663 },
+        periodo: {
+          fechaInicio: "2026-02-01",
+          fechaFin: "2026-02-28",
+          dias: 28,
+        },
+        facturaActual: 594.77,
+        excesoPotencia: 0,
+        extras: {
+          reactiva: 18.58,
+          alquilerEquipoMedida: 9.94,
+          otrosCargos: 0,
+          ivaTasa: 3,
+          impuestoElectricoTasa: 5.11,
+        },
+      } as const;
+    const results = CalculationService.calculateElectricity(inputs, priceMap);
+    const byKey = new Map(results.map((result) => [result.productKey, result]));
+
+    expect(byKey.get("ESTABLE:N1")?.totalFactura).toBeCloseTo(739.57, 2);
+    expect(byKey.get("DINAMICA:N1")?.totalFactura).toBeCloseTo(465.62, 2);
+    expect(byKey.get("DINAMICA:N1")?.desglose?.terminoEnergia).toBeCloseTo(
+      361.19,
+      2,
+    );
+
+    for (const [zone, expected] of [
+      ["Peninsula", 691.16],
+      ["Baleares", 728.54],
+      ["Canarias", 739.57],
+    ] as const) {
+      const zoneResults = CalculationService.calculateElectricity(
+        { ...inputs, zonaGeografica: zone },
+        priceMap,
+      );
+      expect(
+        zoneResults.find((result) => result.productKey === "ESTABLE:N1")
+          ?.totalFactura,
+      ).toBeCloseTo(expected, 2);
+    }
+
+    const peninsulaResults = CalculationService.calculateElectricity(
+      { ...inputs, zonaGeografica: "Peninsula" },
+      priceMap,
+    );
+    expect(
+      peninsulaResults.find((result) => result.productKey === "DINAMICA:N1")
+        ?.totalFactura,
+    ).toBeCloseTo(370.48, 2);
+    for (const [productKey, expected] of [
+      ["DINAMICA:N1", 370.48],
+      ["DINAMICA:N2", 322.16],
+      ["DINAMICA:N3", 307.1],
+    ] as const) {
+      expect(
+        peninsulaResults.find((result) => result.productKey === productKey)
+          ?.totalFactura,
+      ).toBeCloseTo(expected, 2);
+    }
+    for (const [productKey, expected] of [
+      ["DINAMICA:N1", 465.62],
+      ["DINAMICA:N2", 404.83],
+      ["DINAMICA:N3", 385.89],
+      ["DINAMICA_CONTROL_PLUS:N1", 439.6],
+      ["PERSONALIZADA_INDEX", 327.04],
+    ] as const) {
+      expect(
+        results.find((result) => result.productKey === productKey)
+          ?.totalFactura,
+      ).toBeCloseTo(expected, 2);
+    }
+    for (const [productKey, expected] of [
+      ["1P_PLUS_SSCC_LIBRES:N1", 130.41],
+      ["1P_PLUS_SSCC_LIBRES:N2", 122.3],
+      ["1P_PLUS_SSCC_LIBRES:N3", 112.67],
+      ["ESTABLE_TALLERES:N1", 30.35],
+      ["ESTABLE_TALLERES:N2", 30.35],
+      ["ESTABLE_TALLERES:N3", 30.35],
+      ["ESTABLE_PLUS_TALLERES:N1", 30.35],
+      ["ESTABLE_PLUS_TALLERES:N2", 30.35],
+      ["ESTABLE_PLUS_TALLERES:N3", 30.35],
+    ] as const) {
+      expect(
+        results.find((result) => result.productKey === productKey)
+          ?.totalFactura,
+      ).toBeCloseTo(expected, 2);
+    }
+
+    const balearesResults = CalculationService.calculateElectricity(
+      { ...inputs, zonaGeografica: "Baleares" },
+      priceMap,
+    );
+    expect(
+      balearesResults.find((result) => result.productKey === "DINAMICA:N1"),
+    ).toBeUndefined();
+    expect(peninsulaResults).toHaveLength(34);
+    expect(results).toHaveLength(34);
+    expect(balearesResults).toHaveLength(18);
   });
 
   it("extracts profile prices when Precio TE uses intermediate profile cells", async () => {
