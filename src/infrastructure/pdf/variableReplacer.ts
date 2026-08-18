@@ -140,39 +140,38 @@ function buildSelectedProductEnergyTable(
     }
 
     if (zoneValue && typeof zoneValue === "object") {
-      const avg = Number(zoneValue.avg ?? 0);
+      const avg = Number((zoneValue as { avg?: number }).avg ?? 0);
       return avg > 0 ? avg : null;
     }
 
     const fallbackValue = Object.values(tariffHistory).find((entry) => {
       if (typeof entry === "number") return entry > 0;
-      if (entry && typeof entry === "object") return Number(entry.avg ?? 0) > 0;
+      if (entry && typeof entry === "object") return Number((entry as { avg?: number }).avg ?? 0) > 0;
       return false;
     });
 
     if (typeof fallbackValue === "number")
       return fallbackValue > 0 ? fallbackValue : null;
     if (fallbackValue && typeof fallbackValue === "object") {
-      const avg = Number(fallbackValue.avg ?? 0);
+      const avg = Number((fallbackValue as { avg?: number }).avg ?? 0);
       return avg > 0 ? avg : null;
     }
 
     return null;
   };
 
+  type PeriodValue = { label: string; value: number };
+
   const toValueList = (
     raw: Record<string, any> | undefined,
-  ): Array<{ label: string; value: number }> => {
+  ): PeriodValue[] => {
     if (!raw || typeof raw !== "object") return [];
     return periods
-      .map((period) => {
-        const value = Number(raw[period] ?? 0);
-        return { label: period, value };
-      })
-      .filter((item) => Number(item.value) > 0);
+      .map((period) => ({ label: period, value: Number(raw[period] ?? 0) }))
+      .filter((item) => Number(item.value) > 0) as PeriodValue[];
   };
 
-  const periodValues = isGas
+  const periodValues = (isGas
     ? (() => {
         const explicitValue =
           gas?.personalizadaFijo?.terminoVariable ??
@@ -210,7 +209,7 @@ function buildSelectedProductEnergyTable(
             if (value <= 0) return null;
             return { label: period, value };
           })
-          .filter((item): item is { label: string; value: number } => !!item);
+          .filter((item) => item !== null) as PeriodValue[];
 
         if (derivedIndexValues.length > 0) {
           return derivedIndexValues;
@@ -239,14 +238,14 @@ function buildSelectedProductEnergyTable(
             if (value == null) return null;
             return { label: period, value };
           })
-          .filter((item): item is { label: string; value: number } => !!item);
+          .filter((item) => item !== null) as PeriodValue[];
 
         if (historyValues.length > 0) {
           return historyValues;
         }
 
         return [];
-      })();
+      })()) as PeriodValue[];
 
   const title = isGas
     ? language.toLowerCase().startsWith("en")

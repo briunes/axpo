@@ -110,7 +110,7 @@ export default function ShareSimulationPage({ params }: ShareSimulationPageProps
                 const payload = simData.simulation.payloadJson as {
                     type?: "ELECTRICITY" | "GAS";
                     results?: any;
-                    selectedOffer?: { productKey: string }
+                    selectedOffer?: { productKey?: string; commodity?: string }
                 } | null;
 
                 if (payload?.results) setHasResults(true);
