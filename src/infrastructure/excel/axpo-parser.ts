@@ -102,12 +102,17 @@ async function readWorkbook(buffer: Buffer): Promise<WorkbookLike> {
       row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
         const value = excelCellValue(cell.value);
         const formula = excelCellFormula(cell);
-        if (value === undefined || value === null || value === "") return;
+        if (
+          (value === undefined || value === null || value === "") &&
+          !formula
+        ) {
+          return;
+        }
 
         const r = rowNumber - 1;
         const c = colNumber - 1;
         sheet[encodeCell({ r, c })] = {
-          v: value,
+          v: value ?? "",
           ...(formula ? { f: formula } : {}),
         };
         minRow = Math.min(minRow, r);
@@ -148,6 +153,10 @@ export interface ParsedBaseValues {
 }
 
 export type BaseValueImportScope = "GLOBAL" | "AGENCY" | "TLV";
+export type ElectricityGeographicZone =
+  | "PENINSULA"
+  | "BALEARES"
+  | "CANARIAS";
 
 export interface AxpoImportProfile {
   scopeType: BaseValueImportScope;
@@ -519,6 +528,73 @@ function parseFijo(
   return items;
 }
 
+const ELECTRICITY_ZONES: ElectricityGeographicZone[] = [
+  "PENINSULA",
+  "BALEARES",
+  "CANARIAS",
+];
+
+const ELECTRICITY_ZONE_LABELS: Record<ElectricityGeographicZone, string> = {
+  PENINSULA: "Peninsula",
+  BALEARES: "Baleares",
+  CANARIAS: "Canarias",
+};
+
+/**
+ * BASE DE DATOS FIJO is only a zone-selected view. Its formulas point at the
+ * three complete regional tables in the individual fixed-product sheets. Build
+ * that view once per zone from the formula references instead of importing the
+ * workbook's single cached result.
+ */
+function parseZoneAwareFijo(
+  workbook: WorkbookLike,
+  sheet: WorksheetLike,
+  profile: AxpoImportProfile,
+): BaseValueItem[] {
+  const baseRows = worksheetToRows(sheet);
+  const items: BaseValueItem[] = [];
+
+  for (const zone of ELECTRICITY_ZONES) {
+    const rows: SheetData = Object.fromEntries(
+      Object.entries(baseRows).map(([row, cells]) => [row, { ...cells }]),
+    );
+    const label = ELECTRICITY_ZONE_LABELS[zone];
+    const range = decodeRange(sheet["!ref"] || "A1");
+
+    for (let r = range.s.r; r <= Math.min(range.e.r, 299); r++) {
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const address = encodeCell({ r, c });
+        const formula = sheet[address]?.f;
+        if (typeof formula !== "string") continue;
+
+        const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const branch = formula.match(
+          new RegExp(
+            `\\$?E\\$?11="${escapedLabel}"\\s*,\\s*'([^']+)'!\\$?([A-Z]+)\\$?(\\d+)`,
+            "i",
+          ),
+        );
+        const sourceValue = branch
+          ? workbook.Sheets[branch[1]]?.[`${branch[2]}${branch[3]}`]?.v
+          : undefined;
+        // Some Excel branches deliberately target blank cells (SSCC in the
+        // islands), while Talleres only defines a Peninsula branch. Both mean
+        // a zero commercial price, not "reuse the cached Peninsula value".
+        (rows[r + 1] ??= {})[encodeCol(c)] = sourceValue ?? 0;
+      }
+    }
+
+    items.push(
+      ...parseFijo(rows, profile).map((item) => ({
+        ...item,
+        key: `${item.key}:ZONE:${zone}`,
+      })),
+    );
+  }
+
+  return items;
+}
+
 function parseIndex(
   rows: SheetData,
   profile: AxpoImportProfile,
@@ -620,6 +696,28 @@ function normalizeLookupLabel(value: string): string {
     .replace(/\s+/g, " ");
 }
 
+function normalizeElectricityZone(
+  value: unknown,
+): ElectricityGeographicZone | null {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (normalized === "PENINSULA") return "PENINSULA";
+  if (normalized === "BALEARES") return "BALEARES";
+  if (normalized === "CANARIAS") return "CANARIAS";
+  return null;
+}
+
+function workbookElectricityZone(
+  workbook: WorkbookLike,
+): ElectricityGeographicZone | null {
+  return normalizeElectricityZone(
+    workbook.Sheets["PETICION DATOS LUZ"]?.E11?.v,
+  );
+}
+
 const HIDDEN_FIXED_PRODUCT_MAP: Record<string, string> = {
   ESTABLE: "ESTABLE",
   "ESTABLE PLUS": "ESTABLE_PLUS",
@@ -636,7 +734,10 @@ const HIDDEN_INDEX_PRODUCT_MAP: Record<string, string> = Object.fromEntries(
   ]),
 );
 
-function parseHiddenElectricityLookup(sheet: WorksheetLike): BaseValueItem[] {
+function parseHiddenElectricityLookup(
+  sheet: WorksheetLike,
+  zone: ElectricityGeographicZone | null,
+): BaseValueItem[] {
   const items: BaseValueItem[] = [];
   const range = decodeRange(sheet["!ref"] || "A1");
   const periods = ["P1", "P2", "P3", "P4", "P5", "P6"];
@@ -669,10 +770,11 @@ function parseHiddenElectricityLookup(sheet: WorksheetLike): BaseValueItem[] {
         sheet[encodeCell({ r: R, c: energyCols[i] })]?.v,
       );
       if (energyValue !== null) {
+        const key = fixedProduct
+          ? `ELEC:FIJO:${fixedProduct}:${parsed.tier}:${tariff}:${periods[i]}:ENERGIA`
+          : `ELEC:INDEX:${indexProduct}:${parsed.tier}:${tariff}:${periods[i]}:MARGEN:${monthKey}`;
         items.push({
-          key: fixedProduct
-            ? `ELEC:FIJO:${fixedProduct}:${parsed.tier}:${tariff}:${periods[i]}:ENERGIA`
-            : `ELEC:INDEX:${indexProduct}:${parsed.tier}:${tariff}:${periods[i]}:MARGEN:${monthKey}`,
+          key: zone ? `${key}:ZONE:${zone}` : key,
           valueNumeric: Math.round(energyValue * 1e10) / 1e10,
           unit: "€/kWh",
         });
@@ -682,10 +784,11 @@ function parseHiddenElectricityLookup(sheet: WorksheetLike): BaseValueItem[] {
         sheet[encodeCell({ r: R, c: powerCols[i] })]?.v,
       );
       if (dailyPowerValue !== null) {
+        const key = fixedProduct
+          ? `ELEC:FIJO:${fixedProduct}:${parsed.tier}:${tariff}:${periods[i]}:POTENCIA`
+          : `ELEC:INDEX:${indexProduct}:${parsed.tier}:${tariff}:${periods[i]}:POTENCIA`;
         items.push({
-          key: fixedProduct
-            ? `ELEC:FIJO:${fixedProduct}:${parsed.tier}:${tariff}:${periods[i]}:POTENCIA`
-            : `ELEC:INDEX:${indexProduct}:${parsed.tier}:${tariff}:${periods[i]}:POTENCIA`,
+          key: zone ? `${key}:ZONE:${zone}` : key,
           valueNumeric: Math.round(dailyPowerValue * 365 * 1e10) / 1e10,
           unit: "€/kW/año",
         });
@@ -1157,6 +1260,180 @@ function formulaCellValue(sheet: WorksheetLike, ref: CellAddress): number | null
   return safeFloat(sheet[encodeCell(ref)]?.v);
 }
 
+function splitFormulaArguments(value: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let quoted = false;
+  let start = 0;
+  for (let i = 0; i < value.length; i++) {
+    const char = value[i];
+    if (char === '"') quoted = !quoted;
+    if (quoted) continue;
+    if (char === "(") depth++;
+    else if (char === ")") depth--;
+    else if (char === "," && depth === 0) {
+      parts.push(value.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  parts.push(value.slice(start).trim());
+  return parts;
+}
+
+function unwrapFormulaParentheses(value: string): string {
+  let result = value.trim();
+  while (result.startsWith("(") && result.endsWith(")")) {
+    let depth = 0;
+    let wrapsAll = true;
+    for (let i = 0; i < result.length; i++) {
+      if (result[i] === "(") depth++;
+      else if (result[i] === ")") depth--;
+      if (depth === 0 && i < result.length - 1) {
+        wrapsAll = false;
+        break;
+      }
+    }
+    if (!wrapsAll) break;
+    result = result.slice(1, -1).trim();
+  }
+  return result;
+}
+
+/** Evaluate the small, deterministic Excel formula subset used by Precio TE. */
+function evaluateZoneFormulaCell(
+  workbook: WorkbookLike,
+  sheetName: string,
+  address: string,
+  zone: "Peninsula" | "Canarias",
+  cache: Map<string, number | string | null>,
+): number | string | null {
+  const resolvedSheetName =
+    workbook.SheetNames.find((name) => name === sheetName) ??
+    workbook.SheetNames.find((name) => name.trim() === sheetName.trim()) ??
+    sheetName;
+  sheetName = resolvedSheetName;
+
+  if (
+    sheetName.trim() === "PETICION DATOS LUZ" &&
+    address.replace(/\$/g, "") === "E11"
+  ) {
+    return zone;
+  }
+  const cacheKey = `${sheetName}!${address}:${zone}`;
+  if (cache.has(cacheKey)) return cache.get(cacheKey) ?? null;
+  const cell = workbook.Sheets[sheetName]?.[address.replace(/\$/g, "")];
+  if (!cell) return null;
+  cache.set(cacheKey, null);
+
+  const evaluate = (raw: string): number | string | null => {
+    let expression = unwrapFormulaParentheses(
+      raw.trim().replace(/^=/, "").replace(/_xlfn\./gi, ""),
+    );
+    if (expression === '""') return "";
+    if (/^".*"$/.test(expression)) return expression.slice(1, -1);
+    const literal = Number(expression);
+    if (Number.isFinite(literal)) return literal;
+
+    const call = expression.match(/^([A-Z]+)\(([\s\S]*)\)$/i);
+    if (call) {
+      const name = call[1].toUpperCase();
+      const args = splitFormulaArguments(call[2]);
+      if (name === "IF") {
+        return evaluate(args[0]) ? evaluate(args[1]) : evaluate(args[2]);
+      }
+      if (name === "IFS") {
+        for (let i = 0; i + 1 < args.length; i += 2) {
+          if (evaluate(args[i])) return evaluate(args[i + 1]);
+        }
+        return null;
+      }
+      if (name === "IFERROR") {
+        try {
+          return evaluate(args[0]);
+        } catch {
+          return args.length > 1 ? evaluate(args[1]) : null;
+        }
+      }
+      if (name === "AVERAGE") {
+        const values = args
+          .map(evaluate)
+          .filter((item): item is number => typeof item === "number");
+        return values.length
+          ? values.reduce((sum, item) => sum + item, 0) / values.length
+          : null;
+      }
+    }
+
+    const equality = expression.match(/^([\s\S]*?)=([\s\S]*)$/);
+    if (equality && !/[<>]/.test(expression)) {
+      const left = evaluate(equality[1]);
+      const right = evaluate(equality[2]);
+      const normalizedLeft = left === "" || left === null ? 0 : left;
+      const normalizedRight = right === "" || right === null ? 0 : right;
+      return normalizedLeft === normalizedRight ? 1 : 0;
+    }
+
+    const directReference = expression.match(
+      /^(?:'([^']+)'|([A-Za-z0-9 _.+\-]+))!\$?([A-Z]+)\$?(\d+)$|^\$?([A-Z]+)\$?(\d+)$/,
+    );
+    if (directReference) {
+      const targetSheet =
+        directReference[1] || directReference[2] || sheetName;
+      const targetAddress = directReference[3]
+        ? `${directReference[3]}${directReference[4]}`
+        : `${directReference[5]}${directReference[6]}`;
+      return evaluateZoneFormulaCell(
+        workbook,
+        targetSheet,
+        targetAddress,
+        zone,
+        cache,
+      );
+    }
+
+    expression = expression.replace(
+      /(?:'([^']+)'|([A-Za-z0-9 _.+\-]+))!\$?([A-Z]+)\$?(\d+)|\$?([A-Z]+)\$?(\d+)/g,
+      (match, quotedSheet, plainSheet, crossCol, crossRow, localCol, localRow) => {
+        const targetSheet = quotedSheet || plainSheet || sheetName;
+        const targetAddress = crossCol
+          ? `${crossCol}${crossRow}`
+          : `${localCol}${localRow}`;
+        const result = evaluateZoneFormulaCell(
+          workbook,
+          targetSheet,
+          targetAddress,
+          zone,
+          cache,
+        );
+        if (result === "" || result === null) return "0";
+        if (typeof result !== "number" || !Number.isFinite(result)) {
+          throw new Error(`Non-numeric formula reference ${match}`);
+        }
+        return String(result);
+      },
+    );
+    if (!/^[0-9eE+\-*/().\s]+$/.test(expression)) {
+      throw new Error(`Unsupported Excel formula: ${expression}`);
+    }
+    // Formula text has been reduced to numeric literals and arithmetic only.
+    const result = Function(`"use strict"; return (${expression});`)();
+    return typeof result === "number" && Number.isFinite(result) ? result : null;
+  };
+
+  let result: number | string | null;
+  if (typeof cell.f === "string") {
+    try {
+      result = evaluate(cell.f);
+    } catch {
+      result = safeFloat(cell.v);
+    }
+  } else {
+    result = typeof cell.v === "string" ? cell.v : safeFloat(cell.v);
+  }
+  cache.set(cacheKey, result);
+  return result;
+}
+
 function profileSensitivityFromFormula(
   sheet: WorksheetLike,
   formula: string | undefined,
@@ -1329,6 +1606,11 @@ function parseDinamicaSheet(
   product: string,
   tier: string,
   potenciaByTariff = false,
+  zoneContext?: {
+    workbook: WorkbookLike;
+    sheetName: string;
+    zone: "Peninsula" | "Canarias";
+  },
 ): BaseValueItem[] {
   const items: BaseValueItem[] = [];
   const range = decodeRange(sheet["!ref"] || "A1");
@@ -1337,7 +1619,10 @@ function parseDinamicaSheet(
   // col 4.  Each subsequent row either holds a month ("ENERO-26" etc.) or is the
   // PROMEDIO summary row.  We stop after the PROMEDIO row.
   let inSection = false;
-  const zone = String(sheet[encodeCell({ r: 41, c: 6 })]?.v ?? "Peninsula");
+  const zone =
+    zoneContext?.zone ??
+    String(sheet[encodeCell({ r: 41, c: 6 })]?.v ?? "Peninsula");
+  const zoneFormulaCache = new Map<string, number | string | null>();
   const promedioBFactors = new Map<string, { sum: number; count: number }>();
 
   for (let R = range.s.r; R <= range.e.r; R++) {
@@ -1365,8 +1650,18 @@ function parseDinamicaSheet(
       for (let i = 0; i < periods.length; i++) {
         const cell = sheet[encodeCell({ r: R, c: cols[i] })];
         if (!cell || cell.v === undefined || cell.v === null) continue;
-        const v = safeFloat(cell.v);
-        if (v === null || v <= 0) continue;
+        const v = zoneContext
+          ? safeFloat(
+              evaluateZoneFormulaCell(
+                zoneContext.workbook,
+                zoneContext.sheetName,
+                encodeCell({ r: R, c: cols[i] }),
+                zoneContext.zone,
+                zoneFormulaCache,
+              ),
+            )
+          : safeFloat(cell.v);
+        if (v === null || (!zoneContext && v <= 0)) continue;
         const baseKey = `ELEC:INDEX:${product}:${tier}:${tariff}:${periods[i]}:MARGEN`;
         let adjustedMwh = v;
         let bFactor: number | null = null;
@@ -1701,8 +1996,7 @@ export async function parseAxpoExcel(
   // Parse FIJO sheet (electricity fixed)
   if (workbook.SheetNames.includes("BASE DE DATOS FIJO")) {
     const sheet = workbook.Sheets["BASE DE DATOS FIJO"];
-    const rows = worksheetToRows(sheet);
-    const fijoItems = parseFijo(rows, profile);
+    const fijoItems = parseZoneAwareFijo(workbook, sheet, profile);
     allItems.push(...fijoItems);
   }
 
@@ -1738,14 +2032,24 @@ export async function parseAxpoExcel(
           .replace(/[^A-Z0-9]+/g, "_")
           .replace(/^_|_$/g, "");
         const isPersonalizada = autoSlug.startsWith("PERSONALIZADA");
-        const dinamicaItems = parseDinamicaSheet(
-          workbook.Sheets[actual],
-          workbook.Sheets["INPUT OMIE"],
-          autoSlug,
-          m[2],
-          isPersonalizada,
-        );
-        allItems.push(...dinamicaItems);
+        for (const zone of ["Peninsula", "Canarias"] as const) {
+          const dinamicaItems = parseDinamicaSheet(
+            workbook.Sheets[actual],
+            workbook.Sheets["INPUT OMIE"],
+            autoSlug,
+            m[2],
+            isPersonalizada,
+            { workbook, sheetName: actual, zone },
+          );
+          allItems.push(
+            ...dinamicaItems.map((item) => ({
+              ...item,
+              key: item.key.startsWith("ELEC:INDEX:")
+                ? `${item.key}:ZONE:${zone.toUpperCase()}`
+                : item.key,
+            })),
+          );
+        }
       }
     }
   }
@@ -1755,14 +2059,24 @@ export async function parseAxpoExcel(
     if (actualSheetName) {
       const sheet = workbook.Sheets[actualSheetName];
       // All sheets use tariff-specific POTENCIA rows.
-      const dinamicaItems = parseDinamicaSheet(
-        sheet,
-        workbook.Sheets["INPUT OMIE"],
-        product,
-        tier,
-        true,
-      );
-      allItems.push(...dinamicaItems);
+      for (const zone of ["Peninsula", "Canarias"] as const) {
+        const dinamicaItems = parseDinamicaSheet(
+          sheet,
+          workbook.Sheets["INPUT OMIE"],
+          product,
+          tier,
+          true,
+          { workbook, sheetName: actualSheetName, zone },
+        );
+        allItems.push(
+          ...dinamicaItems.map((item) => ({
+            ...item,
+            key: item.key.startsWith("ELEC:INDEX:")
+              ? `${item.key}:ZONE:${zone.toUpperCase()}`
+              : item.key,
+          })),
+        );
+      }
     }
   }
 
@@ -1773,6 +2087,7 @@ export async function parseAxpoExcel(
   if (workbook.SheetNames.includes(".")) {
     const hiddenElectricityItems = parseHiddenElectricityLookup(
       workbook.Sheets["."],
+      workbookElectricityZone(workbook),
     );
     allItems.push(...hiddenElectricityItems);
   }

@@ -82,16 +82,51 @@ function priceOf(map: PriceMap, key: string): number | undefined {
   return map.get(key);
 }
 
+function electricityZoneKey(zone: ElectricityInputs["zonaGeografica"]): string {
+  return zone
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+}
+
+function electricityPriceOf(
+  map: PriceMap,
+  key: string,
+  zone: ElectricityInputs["zonaGeografica"],
+): number | undefined {
+  const zoneKey = `${key}:ZONE:${electricityZoneKey(zone)}`;
+  const zonePrice = priceOf(map, zoneKey);
+  if (zonePrice !== undefined) return zonePrice;
+
+  // Once a key has zone-aware variants, never borrow another zone's cached
+  // workbook result through the legacy key. Legacy-only imports still retain
+  // their previous behaviour until they are re-imported.
+  const hasZoneVariant = electricityKeyHasZoneVariant(map, key);
+  return hasZoneVariant ? undefined : priceOf(map, key);
+}
+
+function electricityKeyHasZoneVariant(map: PriceMap, key: string): boolean {
+  return ["PENINSULA", "BALEARES", "CANARIAS"].some(
+    (candidate) => map.has(`${key}:ZONE:${candidate}`),
+  );
+}
+
 function indexedEnergyPriceOf(
   map: PriceMap,
   baseKey: string,
   billingMonthKey: string,
   perfilCarga: "NORMAL" | "DIURNO",
+  zone: ElectricityInputs["zonaGeografica"],
 ): number | undefined {
-  const monthPrice = priceOf(
+  const monthKey = `${baseKey}:MARGEN:${billingMonthKey}`;
+  const monthPrice = electricityPriceOf(
     map,
-    `${baseKey}:MARGEN:${billingMonthKey}`,
+    monthKey,
+    zone,
   );
+  if (monthPrice === undefined && electricityKeyHasZoneVariant(map, monthKey)) {
+    return undefined;
+  }
   const averagePrice = priceOf(map, `${baseKey}:MARGEN`);
 
   // The workbook's ordinary month keys are its final NORMAL-profile Precio TE
@@ -126,8 +161,13 @@ function singlePeriodPriceOf(
   tier: string,
   tariff: string,
   kind: "ENERGIA" | "POTENCIA",
+  zone: ElectricityInputs["zonaGeografica"],
 ): number | undefined {
-  return priceOf(map, `ELEC:FIJO:${product}:${tier}:${tariff}:P1:${kind}`);
+  return electricityPriceOf(
+    map,
+    `ELEC:FIJO:${product}:${tier}:${tariff}:P1:${kind}`,
+    zone,
+  );
 }
 
 /**
@@ -227,6 +267,7 @@ function calcElecFijo(
     periodo,
     facturaActual,
     extras,
+    zonaGeografica,
   } = inputs;
   const dias = periodo.dias;
   const energyPeriods = ENERGY_PERIODS[tarifaAcceso] ?? [];
@@ -246,28 +287,43 @@ function calcElecFijo(
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
     const precioEn =
-      priceOf(
+      electricityPriceOf(
         map,
         `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:${p}:ENERGIA`,
+        zonaGeografica,
       ) ??
       (isSinglePeriod
-        ? singlePeriodPriceOf(map, product, tier, tarifaAcceso, "ENERGIA")
+        ? singlePeriodPriceOf(
+            map,
+            product,
+            tier,
+            tarifaAcceso,
+            "ENERGIA",
+            zonaGeografica,
+          )
         : undefined);
     if (precioEn === undefined) return null; // missing price → product unavailable for this tier/tariff combo
     terminoEnergia += precioEn * pv(consumoMap, p);
   }
-
   let terminoPotencia = 0;
   for (const p of powerPeriods) {
-    const explicitPrice = priceOf(
+    const explicitPrice = electricityPriceOf(
       map,
       `ELEC:FIJO:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
+      zonaGeografica,
     );
     const precioPot = explicitPrice ??
       (isUnpriced20TdPowerPeriod(tarifaAcceso, p)
         ? 0
         : isSinglePeriod
-          ? singlePeriodPriceOf(map, product, tier, tarifaAcceso, "POTENCIA")
+          ? singlePeriodPriceOf(
+              map,
+              product,
+              tier,
+              tarifaAcceso,
+              "POTENCIA",
+              zonaGeografica,
+            )
           : undefined);
     if (precioPot === undefined) return null;
     terminoPotencia += precioPot * pv(potenciaMap, p) * (dias / 365);
@@ -341,6 +397,7 @@ function calcElecIndex(
     facturaActual,
     extras,
     omieEstimado,
+    zonaGeografica,
   } = inputs;
   // Indexed offers use the selected billing month for price lookup, while Excel
   // still uses the invoice period days for power and annualized savings.
@@ -376,6 +433,7 @@ function calcElecIndex(
       baseKey,
       billingMonthKey,
       perfilCarga,
+      zonaGeografica,
     );
     if (storedPrice === undefined) return null;
     terminoEnergia += storedPrice * pv(consumoMap, p);
@@ -383,9 +441,10 @@ function calcElecIndex(
 
   let terminoPotencia = 0;
   for (const p of powerPeriods) {
-    const explicitPrice = priceOf(
+    const explicitPrice = electricityPriceOf(
       map,
       `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
+      zonaGeografica,
     );
     const precioPot = explicitPrice ??
       (isUnpriced20TdPowerPeriod(tarifaAcceso, p) ? 0 : undefined);
@@ -572,7 +631,13 @@ function calcPersonalizadaIndex(
     (p) => {
       const baseKey = `ELEC:INDEX:${product}:${tier}:${inputs.tarifaAcceso}:${p}`;
       return (
-        indexedEnergyPriceOf(map, baseKey, billingMonthKey, perfilCarga) !==
+        indexedEnergyPriceOf(
+          map,
+          baseKey,
+          billingMonthKey,
+          perfilCarga,
+          inputs.zonaGeografica,
+        ) !==
         undefined
       );
     },
@@ -617,6 +682,7 @@ function calcPersonalizadaIndex(
       baseKey,
       billingMonthKey,
       perfilCarga,
+      inputs.zonaGeografica,
     );
     const margenEnergiaP =
       ((margenEnergiaMap[p] ?? 0) * PERSONALIZADA_INDEX_ENERGY_MARGIN_FACTOR) /
@@ -636,9 +702,10 @@ function calcPersonalizadaIndex(
     // Base ATR power price comes from the DB (same regulated charge across all indexed products).
     // The user's margenPotencia is the commercial power margin added on top.
     const precioPotBase =
-      priceOf(
+      electricityPriceOf(
         map,
         `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}:POTENCIA`,
+        inputs.zonaGeografica,
       ) ?? 0;
     const margenPotP = margenPotIdxMap[p] ?? 0;
     terminoPotencia +=
@@ -743,7 +810,13 @@ function calcPersonalizadaOmieB(
   for (const p of energyPeriods) {
     const baseKey = `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}`;
     const storedPrice =
-      indexedEnergyPriceOf(map, baseKey, billingMonthKey, perfilCarga) ??
+      indexedEnergyPriceOf(
+        map,
+        baseKey,
+        billingMonthKey,
+        perfilCarga,
+        inputs.zonaGeografica,
+      ) ??
       ((inputs.omieEstimado ?? {}) as Record<string, number | undefined>)[p];
     if (storedPrice === undefined) return null;
     const bFactor =
