@@ -255,6 +255,48 @@ describe("CalculationService single-period offer eligibility", () => {
   });
 });
 
+describe("CalculationService geographic electricity prices", () => {
+  it("prefers the price for the simulation geographic zone", () => {
+    const entries: Array<{ key: string; valueNumeric: number }> = [];
+    for (const period of ["P1", "P2", "P3", "P4", "P5", "P6"]) {
+      const base = `ELEC:INDEX:DINAMICA:N1:3.0TD:${period}`;
+      entries.push({
+        key: `${base}:MARGEN:2026-03:ZONE:PENINSULA`,
+        valueNumeric: 0.1,
+      });
+      entries.push({
+        key: `${base}:MARGEN:2026-03:ZONE:CANARIAS`,
+        valueNumeric: 0.2,
+      });
+      entries.push({ key: `${base}:POTENCIA`, valueNumeric: 0 });
+    }
+    const map = CalculationService.buildPriceMap(entries);
+    const peninsula = buildInputs(0);
+    peninsula.billingMonth = "2026-03";
+    peninsula.zonaGeografica = "Peninsula";
+    const canarias = { ...peninsula, zonaGeografica: "Canarias" as const };
+    const baleares = { ...peninsula, zonaGeografica: "Baleares" as const };
+
+    const penResult = CalculationService.calculateElectricity(
+      peninsula,
+      map,
+    ).find((item) => item.productKey === "DINAMICA:N1");
+    const canResult = CalculationService.calculateElectricity(
+      canarias,
+      map,
+    ).find((item) => item.productKey === "DINAMICA:N1");
+    const balResult = CalculationService.calculateElectricity(
+      baleares,
+      map,
+    ).find((item) => item.productKey === "DINAMICA:N1");
+
+    expect(penResult?.desglose?.terminoEnergia).toBe(60);
+    expect(canResult?.desglose?.terminoEnergia).toBe(120);
+    expect(balResult).toBeUndefined();
+  });
+
+});
+
 describe("CalculationService Personalizada OMIE + B", () => {
   it("applies the Excel B multiplier on top of month-specific Precio TE", () => {
     const inputs = buildInputs(62000);
