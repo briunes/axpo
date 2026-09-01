@@ -9,6 +9,8 @@ import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
 import { tryDecryptSensitiveValue } from "@/application/lib/sensitiveData";
+import { resolveDefaultBaseValueSetId } from "@/application/services/simulationCalculationRunner";
+import { getBaseValueBillingMonths } from "@/application/services/baseValueBillingMonths";
 
 const updateSimulationSchema = z.object({
   status: z.nativeEnum(SimulationStatus).optional(),
@@ -102,10 +104,14 @@ export const GET = withErrorHandler(
 
     const simulation = await SimulationService.assertSimulationAccess(auth, id);
 
+    // Each version is a complete payload snapshot (including all calculated
+    // product results). The detail screen only needs current state, so loading
+    // up to 200 snapshots made this endpoint grow dramatically over time.
+    // Version/history views use their own endpoints.
     const versions = await prisma.simulationVersion.findMany({
       where: { simulationId: id },
       orderBy: { createdAt: "desc" },
-      take: 200,
+      take: 1,
       select: {
         id: true,
         payloadJson: true,
@@ -115,8 +121,12 @@ export const GET = withErrorHandler(
       },
     });
 
-    // Enrich with client and full ownerUser for PDF/email template variable replacement
-    const [client, ownerUser, agency] = await Promise.all([
+    const resolvedBaseValueSetId =
+      versions[0]?.baseValueSetId ??
+      await resolveDefaultBaseValueSetId(simulation.agency.isTlv);
+
+    // Enrich the response and load the compact month list concurrently.
+    const [client, ownerUser, agency, billingMonths] = await Promise.all([
       simulation.clientId
         ? prisma.client.findUnique({
             where: { id: simulation.clientId },
@@ -151,6 +161,9 @@ export const GET = withErrorHandler(
         where: { id: simulation.agencyId },
         select: { id: true, name: true, isTlv: true },
       }),
+      resolvedBaseValueSetId
+        ? getBaseValueBillingMonths(resolvedBaseValueSetId)
+        : Promise.resolve([]),
     ]);
 
     const mergedPayload = mergeVersionPayloads(versions);
@@ -167,6 +180,7 @@ export const GET = withErrorHandler(
       pinSnapshot: displayPin,
       payloadJson: mergedPayload,
       baseValueSetId: versions[0]?.baseValueSetId ?? null,
+      billingMonths,
       client: client ?? null,
       ownerUser: ownerUser ?? simulation.ownerUser,
       agency: agency ?? null,

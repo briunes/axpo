@@ -1993,6 +1993,24 @@ export async function parseAxpoExcel(
 
   const allItems: BaseValueItem[] = [];
 
+  // PETICION DATOS LUZ!O7 uses this hidden helper range as its dropdown.
+  // Persist the same months explicitly so consumers do not have to infer UI
+  // availability from whichever product price rows happen to be populated.
+  const hiddenSheet = workbook.Sheets["."];
+  if (hiddenSheet) {
+    for (let row = 23; row <= 34; row++) {
+      const raw = hiddenSheet[`W${row}`]?.v;
+      const month = raw == null ? null : parseSpanishMonthYear(String(raw));
+      if (month) {
+        allItems.push({
+          key: `META:BILLING_MONTH:${month}`,
+          valueText: month,
+          unit: "YYYY-MM",
+        });
+      }
+    }
+  }
+
   // Parse FIJO sheet (electricity fixed)
   if (workbook.SheetNames.includes("BASE DE DATOS FIJO")) {
     const sheet = workbook.Sheets["BASE DE DATOS FIJO"];

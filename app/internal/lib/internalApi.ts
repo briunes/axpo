@@ -43,6 +43,7 @@ export interface SimulationItem {
   ownerUserId?: string;
   clientId?: string | null;
   baseValueSetId?: string | null;
+  billingMonths?: string[];
   clonedFromSimulation?: {
     id: string;
     referenceNumber?: string | null;
@@ -1372,6 +1373,7 @@ export interface CalculateSimulationResult {
   versionId: string;
   baseValueSetId: string;
   results: import("@/domain/types").SimulationResults;
+  billingMonths: string[];
 }
 
 export async function calculateSimulation(

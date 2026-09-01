@@ -164,9 +164,10 @@ function buildSelectedProductEnergyTable(
 
   const toValueList = (
     raw: Record<string, any> | undefined,
+    includedPeriods: readonly string[] = periods,
   ): PeriodValue[] => {
     if (!raw || typeof raw !== "object") return [];
-    return periods
+    return includedPeriods
       .map((period) => ({ label: period, value: Number(raw[period] ?? 0) }))
       .filter((item) => Number(item.value) > 0) as PeriodValue[];
   };
@@ -191,44 +192,54 @@ function buildSelectedProductEnergyTable(
         return [];
       })()
     : (() => {
-        const explicitMap =
-          electricity?.personalizadaFijo?.preciosEnergia ?? {};
-        const explicitValues = toValueList(explicitMap);
-        if (explicitValues.length > 0) {
-          return explicitValues;
+        const selectedProductKey = String(selectedResult?.productKey ?? "");
+        // Excel's catalogue proposal cells use
+        // IF(period consumption = 0, 0, selected product price). Preserve that
+        // output rule even when the underlying tariff history contains prices
+        // for all six periods.
+        const cataloguePeriods = periods.filter(
+          (period) => Number(electricity?.consumo?.[period] ?? 0) > 0,
+        );
+
+        // Custom inputs belong only to their matching custom result. They are
+        // present in the payload even when a standard catalogue product is
+        // selected, so using them unconditionally displays unrelated prices.
+        if (selectedProductKey === "PERSONALIZADA_FIJO") {
+          const explicitMap =
+            electricity?.personalizadaFijo?.preciosEnergia ?? {};
+          return toValueList(explicitMap);
         }
 
-        const personalizedIndexMap =
-          electricity?.personalizadaIndex?.margenEnergia ?? {};
-        const omieMap = electricity?.omieEstimado ?? {};
-        const derivedIndexValues = periods
-          .map((period) => {
-            const omieValue = Number(omieMap[period] ?? 0);
-            const marginValue = Number(personalizedIndexMap[period] ?? 0);
-            const value = omieValue + marginValue / 1000;
-            if (value <= 0) return null;
-            return { label: period, value };
-          })
-          .filter((item) => item !== null) as PeriodValue[];
-
-        if (derivedIndexValues.length > 0) {
-          return derivedIndexValues;
+        if (selectedProductKey === "PERSONALIZADA_INDEX") {
+          const personalizedIndexMap =
+            electricity?.personalizadaIndex?.margenEnergia ?? {};
+          const omieMap = electricity?.omieEstimado ?? {};
+          return periods
+            .map((period) => {
+              const omieValue = Number(omieMap[period] ?? 0);
+              const marginValue = Number(personalizedIndexMap[period] ?? 0);
+              const value = omieValue + marginValue / 1000;
+              if (value <= 0) return null;
+              return { label: period, value };
+            })
+            .filter((item) => item !== null) as PeriodValue[];
         }
 
         const resultMap = selectedResult?.desglose ?? {};
         const explicitResultValues = toValueList(
           Object.fromEntries(
-            periods.map((period) => [
+            cataloguePeriods.map((period) => [
               period,
               Number(resultMap[`precioEnergia${period}`] ?? 0),
             ]),
           ),
+          cataloguePeriods,
         );
         if (explicitResultValues.length > 0) {
           return explicitResultValues;
         }
 
-        const historyValues = periods
+        const historyValues = cataloguePeriods
           .map((period) => {
             const value = resolveSelectedProductHistoryValue(
               selectedProductHistory,
@@ -552,8 +563,18 @@ export function extractVariableValues(
       : currentPowerEnergyBase * (axpoEnergyCost / axpoPeSum);
   const currentOtherCost =
     currentInvoiceBreakdown?.otrosCargos != null
-      ? Number(currentInvoiceBreakdown.otrosCargos)
+      ? currentInvoiceBreakdown?.reactiva == null
+        ? Math.max(
+            0,
+            Number(currentInvoiceBreakdown.otrosCargos) - currentReactiveCost,
+          )
+        : Number(currentInvoiceBreakdown.otrosCargos)
       : currentOtherChargeCost;
+  const displayedCurrentReactive =
+    currentInvoiceBreakdown?.reactiva != null
+      ? Number(currentInvoiceBreakdown.reactiva)
+      : currentReactiveCost;
+  const displayedCurrentOther = currentOtherCost + displayedCurrentReactive;
   const displayedCurrentExcess =
     currentInvoiceBreakdown?.excesoPotencia != null
       ? Number(currentInvoiceBreakdown.excesoPotencia)
@@ -598,7 +619,7 @@ export function extractVariableValues(
             "Other charges",
             "Otros cargos",
           ),
-          value: currentOtherCost,
+          value: displayedCurrentOther,
         },
         {
           label: currentBreakdownLabel(language, "Rental", "Alquiler"),
@@ -826,7 +847,7 @@ export function extractVariableValues(
     CURRENT_ENERGY_COST: formatCurrency(currentEnergyCost),
     CURRENT_EXCESS_COST: formatCurrency(displayedCurrentExcess),
     CURRENT_TAX_COST: formatCurrency(displayedCurrentTax),
-    CURRENT_OTHER_COST: formatCurrency(currentOtherCost),
+    CURRENT_OTHER_COST: formatCurrency(displayedCurrentOther),
     CURRENT_RENTAL_COST: formatCurrency(displayedCurrentRental),
     CURRENT_VAT: formatCurrency(displayedCurrentVat),
     CURRENT_TOTAL: formatCurrency(currentTotal),
@@ -894,7 +915,7 @@ export function extractVariableValues(
     ELECTRICITY_CONSUMPTION_KWH: formatNumber(totalConsumption as number, 0),
     ELECTRICITY_IVA_RATE: formatNumber(currentIvaTasa, 2),
     ELECTRICITY_TAX_RATE: formatNumber(currentIeTasa, 5),
-    CURRENT_REACTIVE_COST: formatCurrency(currentReactiveCost),
+    CURRENT_REACTIVE_COST: formatCurrency(displayedCurrentReactive),
     CURRENT_OTHER_CHARGES: formatCurrency(currentOtherChargeCost),
 
     // ─── Gas-specific variables ──────────────────────────────────────────────
