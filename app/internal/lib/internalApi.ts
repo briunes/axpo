@@ -214,6 +214,7 @@ export interface UserItem {
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  latestActivityAt?: string | null;
   pinRotatedAt?: string;
   createdByUser?: { id: string; fullName: string } | null;
   updatedByUser?: { id: string; fullName: string } | null;
@@ -1496,6 +1497,7 @@ export interface ListUsersParams {
   search?: string;
   role?: string;
   agencyId?: string;
+  activity?: "online" | "offline";
   orderBy?: string;
   sortDir?: "asc" | "desc";
   includeDeleted?: boolean;
@@ -1529,6 +1531,7 @@ export async function listUsers(
   if (params?.search) qs.set("search", params.search);
   if (params?.role) qs.set("role", params.role);
   if (params?.agencyId) qs.set("agencyId", params.agencyId);
+  if (params?.activity) qs.set("activity", params.activity);
   if (params?.orderBy) qs.set("orderBy", params.orderBy);
   if (params?.sortDir) qs.set("sortDir", params.sortDir);
   if (params?.includeDeleted) qs.set("includeDeleted", "true");

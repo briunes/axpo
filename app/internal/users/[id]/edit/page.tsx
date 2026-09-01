@@ -288,8 +288,8 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                 maxWidth={undefined}
                 hideHeader
             >
-                <Box className="crud-tab-panel">
-                    <Box className="crud-tab-panel__tabs">
+                <Box className="crud-tab-panel" data-tour="user-detail-page">
+                    <Box className="crud-tab-panel__tabs" data-tour="user-detail-tabs">
                         <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
                             <Tab label={t("userFormPage", "tabDetails")} />
                             <Tab label={t("userPreferences", "tabPreferences")} />
@@ -297,7 +297,7 @@ export default function EditUserPage({ params }: { params: Promise<{ id: string 
                         </Tabs>
                     </Box>
 
-                    <Box sx={{ display: activeTab === 0 ? "block" : "none" }}>
+                    <Box sx={{ display: activeTab === 0 ? "block" : "none" }} data-tour="user-detail-form">
                         <UserForm
                             session={session}
                             agencies={agenciesActions.agencies}

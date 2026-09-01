@@ -1,5 +1,8 @@
 "use client";
 
+import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import CheckIcon from "@mui/icons-material/Check";
 import { Box, Button, Tabs, Tab, Alert, Typography } from "@mui/material";
 import { FormSelect } from "../../components/ui/FormSelect";
 import { useRouter } from "next/navigation";
@@ -94,6 +97,7 @@ export default function NewUserPage() {
         email: string;
         pin: string;
     } | null>(null);
+    const [copiedPin, setCopiedPin] = useState(false);
     const [formActions, setFormActions] = useState<React.ReactNode>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -142,6 +146,7 @@ export default function NewUserPage() {
                 email: result.user.email,
                 pin: result.generatedPin || "",
             });
+            setCopiedPin(false);
 
             if (result.generatedPin) {
                 showSuccess(t("userFormPage", "createdWithPin"));
@@ -156,6 +161,18 @@ export default function NewUserPage() {
 
     const handleDismissPin = () => {
         router.push("/internal/users");
+    };
+
+    const handleCopyPin = async () => {
+        if (!newlyCreated?.pin) return;
+
+        try {
+            await navigator.clipboard.writeText(newlyCreated.pin);
+            setCopiedPin(true);
+            window.setTimeout(() => setCopiedPin(false), 2500);
+        } catch {
+            // Clipboard access can fail in restricted browser contexts.
+        }
     };
 
     useEffect(() => {
@@ -188,29 +205,115 @@ export default function NewUserPage() {
             hideHeader
         >
             {newlyCreated?.pin && (
-                <div className="crud-callout" style={{ marginBottom: "24px" }}>
-                    <span className="crud-callout-label">
-                        {t("userFormPage", "pinCallout")}
-                    </span>
-                    <div style={{ display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap", marginTop: 12 }}>
-                        <div>
-                            <div className="dt-cell-secondary">{t("userFormPage", "userLabel")}</div>
-                            <div className="dt-cell-primary">{newlyCreated.email}</div>
-                        </div>
-                        <div>
-                            <div className="dt-cell-secondary">{t("userFormPage", "pinLabel")}</div>
-                            <div className="crud-callout-value">{newlyCreated.pin}</div>
-                        </div>
-                        <Button variant="outlined" size="small" onClick={handleDismissPin}>
+                <Box
+                    className="crud-form-panel"
+                    sx={{
+                        display: "grid",
+                        gap: 3,
+                        maxWidth: 920,
+                        margin: "0 auto",
+                    }}
+                >
+                    <Box
+                        sx={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 2,
+                            p: { xs: 2, sm: 2.5 },
+                            borderRadius: 3,
+                            border: "1px solid",
+                            borderColor: "success.light",
+                            bgcolor: "success.50",
+                        }}
+                    >
+                        <CheckCircleOutlineOutlinedIcon color="success" sx={{ mt: 0.25 }} />
+                        <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                {t("userFormPage", "pinCallout")}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+                                {t("userFormPage", "createdWithPin")}
+                            </Typography>
+                        </Box>
+                    </Box>
+
+                    <Box
+                        sx={{
+                            display: "grid",
+                            gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1.4fr) minmax(240px, 0.8fr)" },
+                            gap: 2,
+                        }}
+                    >
+                        <Box
+                            sx={{
+                                p: { xs: 2, sm: 2.5 },
+                                borderRadius: 3,
+                                bgcolor: "var(--scheme-surface-raised-muted)",
+                                border: "1px solid",
+                                borderColor: "divider",
+                            }}
+                        >
+                            <Typography variant="overline" color="text.secondary">
+                                {t("userFormPage", "userLabel")}
+                            </Typography>
+                            <Typography variant="body1" sx={{ fontWeight: 600, mt: 0.5, overflowWrap: "anywhere" }}>
+                                {newlyCreated.email}
+                            </Typography>
+                        </Box>
+
+                        <Box
+                            sx={{
+                                p: { xs: 2, sm: 2.5 },
+                                borderRadius: 3,
+                                bgcolor: "var(--scheme-surface-raised-muted)",
+                                border: "1px solid",
+                                borderColor: "divider",
+                            }}
+                        >
+                            <Typography variant="overline" color="text.secondary">
+                                {t("userFormPage", "pinLabel")}
+                            </Typography>
+                            <Typography
+                                variant="h4"
+                                sx={{
+                                    mt: 0.5,
+                                    fontFamily: "var(--font-mono)",
+                                    fontWeight: 700,
+                                    letterSpacing: "0.12em",
+                                    overflowWrap: "anywhere",
+                                }}
+                            >
+                                {newlyCreated.pin}
+                            </Typography>
+                        </Box>
+                    </Box>
+
+                    <Box
+                        sx={{
+                            display: "flex",
+                            gap: 1.5,
+                            justifyContent: "flex-end",
+                            flexWrap: "wrap",
+                        }}
+                    >
+                        <Button
+                            variant="outlined"
+                            onClick={handleCopyPin}
+                            startIcon={copiedPin ? <CheckIcon /> : <ContentCopyIcon />}
+                            color={copiedPin ? "success" : "primary"}
+                        >
+                            {copiedPin ? t("common", "copied") : t("common", "copyPin")}
+                        </Button>
+                        <Button variant="contained" onClick={handleDismissPin}>
                             {t("actions", "done")}
                         </Button>
-                    </div>
-                </div>
+                    </Box>
+                </Box>
             )}
 
             {!newlyCreated?.pin && (
-                <>
-                    <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+                <Box className="crud-tab-panel">
+                    <Box className="crud-tab-panel__tabs">
                         <Tabs value={activeTab} onChange={handleTabChange}>
                             <Tab label={t("userFormPage", "tabDetails")} />
                             <Tab label={t("userFormPage", "tabPreferences")} />
@@ -340,7 +443,7 @@ export default function NewUserPage() {
                             showSessionsList={false}
                         />
                     )}
-                </>
+                </Box>
             )}
         </CrudPageLayout>
     );

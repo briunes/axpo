@@ -15,7 +15,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useLayoutEffect } from "react";
 import type { SessionState } from "../../lib/authSession";
 import type { AgencyItem, RotatePinResult } from "../../lib/internalApi";
@@ -61,6 +61,7 @@ type UserItem = UsersActions["users"] extends (infer T)[] ? T : never;
 type UsersViewState = {
   roleFilter: string;
   agencyFilter: string;
+  activityFilter: string;
   showArchived: boolean;
   sortColumn: string;
   sortDir: "asc" | "desc";
@@ -69,8 +70,23 @@ type UsersViewState = {
 const USER_VIEWS_STORAGE_KEY = "axpo_user_saved_views";
 const USER_DEFAULT_SORT_COLUMN = "createdAt";
 const USER_DEFAULT_SORT_DIR: "asc" | "desc" = "desc";
+const RECENT_ACTIVITY_MS = 15 * 60 * 1000;
+const IDLE_ACTIVITY_MS = 60 * 60 * 1000;
+
+const getActivityIndicator = (latestActivityAt: string | null | undefined, now: number) => {
+  if (!latestActivityAt) return { color: "#9e9e9e", label: "No activity recorded" };
+
+  const activityTime = new Date(latestActivityAt).getTime();
+  if (Number.isNaN(activityTime)) return { color: "#9e9e9e", label: "No activity recorded" };
+
+  const elapsed = Math.max(0, now - activityTime);
+  if (elapsed <= RECENT_ACTIVITY_MS) return { color: "#00a651", label: "Online" };
+  if (elapsed <= IDLE_ACTIVITY_MS) return { color: "#f5b700", label: "Recently active" };
+  return { color: "#9e9e9e", label: "Offline" };
+};
 
 export function UsersModule({ session, actions, agencies, onNotify, onActionButtons }: UsersModuleProps) {
+  const searchParams = useSearchParams();
   const { preferences } = useUserPreferences();
   const { t } = useI18n();
   const router = useRouter();
@@ -81,6 +97,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
     search, setSearch,
     roleFilter, setRoleFilter,
     agencyFilter, setAgencyFilter,
+    activityFilter, setActivityFilter,
     showArchived, setShowArchived,
     selectedUserId, editUserName, setEditUserName, editUserEmail, setEditUserEmail,
     editUserPassword, setEditUserPassword, editUserCurrentPassword, setEditUserCurrentPassword,
@@ -106,8 +123,15 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   const [draftRoleFilter, setDraftRoleFilter] = useState(roleFilter);
   const [draftAgencyFilter, setDraftAgencyFilter] = useState(agencyFilter);
+  const [draftActivityFilter, setDraftActivityFilter] = useState(activityFilter);
   const [draftSortColumn, setDraftSortColumn] = useState(sortColumn);
   const [draftSortDir, setDraftSortDir] = useState<"asc" | "desc">(sortDir);
+  const [activityClock, setActivityClock] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setActivityClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Bubble success up
   useEffect(() => {
@@ -137,51 +161,59 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
     if (!filtersOpen) return;
     setDraftRoleFilter(roleFilter);
     setDraftAgencyFilter(agencyFilter);
+    setDraftActivityFilter(activityFilter);
     setDraftSortColumn(sortColumn);
     setDraftSortDir(sortDir);
-  }, [agencyFilter, filtersOpen, roleFilter, sortColumn, sortDir]);
+  }, [activityFilter, agencyFilter, filtersOpen, roleFilter, sortColumn, sortDir]);
 
   const currentView = useMemo<UsersViewState>(() => ({
     roleFilter,
     agencyFilter,
+    activityFilter,
     showArchived,
     sortColumn,
     sortDir,
-  }), [agencyFilter, roleFilter, showArchived, sortColumn, sortDir]);
+  }), [activityFilter, agencyFilter, roleFilter, showArchived, sortColumn, sortDir]);
 
   const applyView = useCallback((view: UsersViewState) => {
     setRoleFilter(view.roleFilter ?? "");
     setAgencyFilter(view.agencyFilter ?? "");
+    setActivityFilter(view.activityFilter ?? "");
     setShowArchived(Boolean(view.showArchived));
     setSort(view.sortColumn || USER_DEFAULT_SORT_COLUMN, view.sortDir || USER_DEFAULT_SORT_DIR);
     setPage(1);
-  }, [setAgencyFilter, setPage, setRoleFilter, setShowArchived, setSort]);
+  }, [setActivityFilter, setAgencyFilter, setPage, setRoleFilter, setShowArchived, setSort]);
 
   const builtInViews = useMemo<Array<{ id: string; name: string; view: UsersViewState }>>(() => [
     {
       id: "my-agency-users",
       name: t("viewPresets", "myAgencyUsers"),
-      view: { roleFilter: "", agencyFilter: session.user.agencyId, showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
+      view: { roleFilter: "", agencyFilter: session.user.agencyId, activityFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
     },
     {
       id: "all-users",
       name: t("viewPresets", "allUsers"),
-      view: { roleFilter: "", agencyFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
+      view: { roleFilter: "", agencyFilter: "", activityFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
+    },
+    {
+      id: "online-users",
+      name: t("usersModule", "onlineUsers"),
+      view: { roleFilter: "", agencyFilter: "", activityFilter: "online", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
     },
     {
       id: "commercial",
       name: t("userFormPage", "roleCommercial"),
-      view: { roleFilter: "COMMERCIAL", agencyFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
+      view: { roleFilter: "COMMERCIAL", agencyFilter: "", activityFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
     },
     {
       id: "master-agents",
       name: t("userFormPage", "roleAgent"),
-      view: { roleFilter: "AGENT", agencyFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
+      view: { roleFilter: "AGENT", agencyFilter: "", activityFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
     },
     {
       id: "admins",
       name: t("userFormPage", "roleAdmin"),
-      view: { roleFilter: "ADMIN", agencyFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
+      view: { roleFilter: "ADMIN", agencyFilter: "", activityFilter: "", showArchived: false, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR },
     },
   ], [session.user.agencyId, t]);
 
@@ -200,24 +232,27 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
   const activeAdvancedFilterCount = useMemo(() => [
     !activeViewPresetId && roleFilter,
     !activeViewPresetId && isAdmin(role) && agencyFilter,
+    !activeViewPresetId && activityFilter,
     !activeViewPresetId && showArchived,
     !activeViewPresetId && (sortColumn !== USER_DEFAULT_SORT_COLUMN || sortDir !== USER_DEFAULT_SORT_DIR),
-  ].filter(Boolean).length, [activeViewPresetId, agencyFilter, role, roleFilter, showArchived, sortColumn, sortDir]);
+  ].filter(Boolean).length, [activeViewPresetId, activityFilter, agencyFilter, role, roleFilter, showArchived, sortColumn, sortDir]);
 
   const applyAdvancedFilters = useCallback(() => {
     setRoleFilter(draftRoleFilter);
     setAgencyFilter(draftAgencyFilter);
+    setActivityFilter(draftActivityFilter);
     setSort(draftSortColumn || USER_DEFAULT_SORT_COLUMN, draftSortDir);
     setPage(1);
     setFiltersOpen(false);
-  }, [draftAgencyFilter, draftRoleFilter, draftSortColumn, draftSortDir, setAgencyFilter, setPage, setRoleFilter, setSort]);
+  }, [draftActivityFilter, draftAgencyFilter, draftRoleFilter, draftSortColumn, draftSortDir, setActivityFilter, setAgencyFilter, setPage, setRoleFilter, setSort]);
 
   const clearAdvancedFilters = useCallback(() => {
     setDraftRoleFilter("");
     setDraftAgencyFilter("");
+    setDraftActivityFilter("");
     setDraftSortColumn(USER_DEFAULT_SORT_COLUMN);
     setDraftSortDir(USER_DEFAULT_SORT_DIR);
-    applyView({ roleFilter: "", agencyFilter: "", showArchived, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR });
+    applyView({ roleFilter: "", agencyFilter: "", activityFilter: "", showArchived, sortColumn: USER_DEFAULT_SORT_COLUMN, sortDir: USER_DEFAULT_SORT_DIR });
     setFiltersOpen(false);
   }, [applyView, showArchived]);
 
@@ -228,6 +263,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
         <Tooltip title={t("actions", "refresh")} arrow>
           <span className="topbar-action-wrap">
             <Button
+              data-tour="users-refresh"
               className="topbar-action topbar-action--compact"
               variant="outlined"
               size="small"
@@ -245,6 +281,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           <Tooltip title={showArchived ? t("actions", "hideArchived") : t("actions", "showArchived")} arrow>
             <span className="topbar-action-wrap">
               <Button
+                data-tour="users-archived"
                 className="topbar-action topbar-action--compact"
                 variant={showArchived ? "contained" : "outlined"}
                 size="small"
@@ -264,6 +301,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             <span className="topbar-action-wrap">
               <Link href="/internal/users/sessions" style={{ textDecoration: "none" }}>
                 <Button
+                  data-tour="users-sessions"
                   className="topbar-action topbar-action--compact"
                   variant="outlined"
                   size="small"
@@ -280,7 +318,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           <Tooltip title={t("accessRequests", "openPage")} arrow>
             <span className="topbar-action-wrap">
               <Link href="/internal/users/access-requests" style={{ textDecoration: "none" }}>
-                <Button className="topbar-action topbar-action--compact" variant="outlined" size="small" startIcon={<HowToRegIcon fontSize="small" />}>
+                <Button data-tour="users-access-requests" className="topbar-action topbar-action--compact" variant="outlined" size="small" startIcon={<HowToRegIcon fontSize="small" />}>
                   <span className="topbar-action-label">{t("accessRequests", "openPage")}</span>
                 </Button>
               </Link>
@@ -292,6 +330,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             <span className="topbar-action-wrap">
               <Link href="/internal/users/new" style={{ textDecoration: "none" }}>
                 <Button
+                  data-tour="users-new"
                   className="topbar-action topbar-action--compact"
                   variant="contained"
                   size="small"
@@ -318,16 +357,40 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
       sortable: true,
       copyable: true,
       copyText: (u) => [u.fullName, u.email].filter(Boolean).join(', '),
-      renderCell: (u) => (
-        <Box >
-          <Typography variant="body1">
-            {u.fullName}
-          </Typography>
+      renderCell: (u) => {
+        const activity = getActivityIndicator(u.latestActivityAt, activityClock);
+        const lastActivity = u.latestActivityAt
+          ? formatDisplayDateTime(u.latestActivityAt, preferences)
+          : null;
+
+        return (
+        <Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Tooltip title={`${activity.label}${lastActivity ? ` · ${t("userSessions", "lastActivity")}: ${lastActivity}` : ""}`} arrow>
+              <Box
+                component="span"
+                role="img"
+                aria-label={activity.label}
+                sx={{
+                  width: 9,
+                  height: 9,
+                  flex: "0 0 auto",
+                  borderRadius: "50%",
+                  bgcolor: activity.color,
+                  boxShadow: "0 0 0 2px #fff",
+                }}
+              />
+            </Tooltip>
+            <Typography variant="body1">
+              {u.fullName}
+            </Typography>
+          </Box>
           <Typography variant="body2" color="textSecondary">
             {u.email}
           </Typography>
         </Box>
-      ),
+        );
+      },
     },
     {
       key: "role",
@@ -400,7 +463,10 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           (u.isDeleted && isAdmin(role));
 
         const primaryLabel = t("actions", "edit");
-        const primaryOnClick = () => router.push(`/internal/users/${u.id}/edit`);
+        const primaryOnClick = () => {
+          const tutorial = searchParams.get("tutorial");
+          router.push(`/internal/users/${u.id}/edit${tutorial ? `?tutorial=${encodeURIComponent(tutorial)}` : ""}`);
+        };
 
         const secondaryItems: Array<{ label: string; onClick: () => void; icon?: React.ReactNode; danger?: boolean; disabled?: boolean }> = [];
         if (canToggle) {
@@ -434,6 +500,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             {canEdit ? (
               <ButtonGroup variant="outlined" size="small">
                 <Button
+                  data-tour="user-open"
                   onClick={primaryOnClick}
                   startIcon={<EditIcon fontSize="small" />}
                   title={primaryLabel}
@@ -489,6 +556,7 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
           setSearch("");
           setRoleFilter("");
           setAgencyFilter("");
+          setActivityFilter("");
           setPage(1);
         }}
         hasActiveFilters={Boolean(search || activeAdvancedFilterCount)}
@@ -650,6 +718,17 @@ export function UsersModule({ session, actions, agencies, onNotify, onActionButt
             textFieldProps={{ size: "small" }}
           />
         )}
+        <FormSelect
+          label={t("usersModule", "activity")}
+          options={[
+            { value: "", label: t("usersModule", "allActivity") },
+            { value: "online", label: t("usersModule", "online") },
+            { value: "offline", label: t("usersModule", "notOnline") },
+          ]}
+          value={draftActivityFilter}
+          onChange={(val) => setDraftActivityFilter((val as string) ?? "")}
+          textFieldProps={{ size: "small" }}
+        />
         <FormSelect
           label={t("simulationsModule", "sortBy")}
           options={[

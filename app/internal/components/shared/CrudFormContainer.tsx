@@ -59,6 +59,7 @@ export function CrudFormContainer({
             )}
             {!hideSubmit && (
                 <Button
+                    data-tour="crud-submit"
                     className={onRenderActions ? "topbar-action topbar-action--compact topbar-action--text" : undefined}
                     type="submit"
                     form={formId}

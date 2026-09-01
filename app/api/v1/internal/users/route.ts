@@ -122,6 +122,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const search = sp.get("search") || undefined;
   const roleFilter = sp.get("role") || undefined;
   const agencyIdFilter = sp.get("agencyId") || undefined;
+  const activityFilter = sp.get("activity");
   const includeDeleted =
     sp.get("includeDeleted") === "true" && isElevatedRole(auth.role);
   const rawOrderBy = sp.get("orderBy") || "createdAt";
@@ -156,6 +157,18 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     agencyIdFilter && isElevatedRole(auth.role)
       ? { agencyId: agencyIdFilter }
       : {};
+  const onlineSince = new Date(Date.now() - 15 * 60 * 1000);
+  const onlineSessions = activityFilter === "online" || activityFilter === "offline"
+    ? await prisma.userSession.findMany({
+        where: { isActive: true, lastActivityAt: { gte: onlineSince } },
+        select: { userId: true },
+      })
+    : [];
+  const onlineUserIds = [...new Set(onlineSessions.map((session) => session.userId))];
+  if (activityFilter === "online" && onlineUserIds.length === 0) {
+    return ResponseHandler.ok({ items: [], total: 0, page, pageSize }, 200);
+  }
+
   const where = {
     ...baseWhere,
     ...searchWhere,
@@ -164,6 +177,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ...(includeDeleted
       ? { isDeleted: true, deletedAt: null }
       : { isDeleted: false }),
+    ...(activityFilter === "online" ? { id: { in: onlineUserIds } } : {}),
+    ...(activityFilter === "offline" && onlineUserIds.length
+      ? { id: { notIn: onlineUserIds } }
+      : {}),
   };
 
   if (minimal) {
@@ -222,7 +239,25 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     prisma.user.count({ where }),
   ]);
 
-  return ResponseHandler.ok({ items: users, total, page, pageSize }, 200);
+  const activeSessions = users.length
+    ? await prisma.userSession.findMany({
+        where: { userId: { in: users.map((user) => user.id) }, isActive: true },
+        select: { userId: true, lastActivityAt: true },
+        orderBy: { lastActivityAt: "desc" },
+      })
+    : [];
+  const latestActivityByUser = new Map<string, Date>();
+  for (const activeSession of activeSessions) {
+    if (!latestActivityByUser.has(activeSession.userId)) {
+      latestActivityByUser.set(activeSession.userId, activeSession.lastActivityAt);
+    }
+  }
+  const items = users.map((user) => ({
+    ...user,
+    latestActivityAt: latestActivityByUser.get(user.id) ?? null,
+  }));
+
+  return ResponseHandler.ok({ items, total, page, pageSize }, 200);
 });
 
 /**

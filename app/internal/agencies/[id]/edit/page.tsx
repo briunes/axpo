@@ -267,7 +267,7 @@ export default function EditAgencyPage({
       hideHeader
     >
       <Box className="crud-tab-panel">
-        <Box className="crud-tab-panel__tabs">
+        <Box className="crud-tab-panel__tabs" data-tour="agency-detail-tabs">
           <Tabs
             value={activeTab}
             onChange={(_, newValue) => setActiveTab(newValue)}
@@ -278,7 +278,7 @@ export default function EditAgencyPage({
             {false && <Tab label={t("agencyFormPage", "tabTariffs")} />}
           </Tabs>
         </Box>
-        <Box sx={{ display: activeTab === 0 ? "block" : "none" }}>
+        <Box sx={{ display: activeTab === 0 ? "block" : "none" }} data-tour="agency-detail-form">
           <CrudFormContainer
             onSubmit={handleSubmit}
             errorMessage={errorMessage}

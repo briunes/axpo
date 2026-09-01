@@ -36,6 +36,7 @@ export default function UsersPage() {
     const filterState = readJsonStorage<{
       roleFilter: string;
       agencyFilter: string;
+      activityFilter: string;
       showArchived: boolean;
     }>("axpo_users_filters");
 
@@ -46,6 +47,7 @@ export default function UsersPage() {
         search: tableState.search || undefined,
         role: filterState.roleFilter || undefined,
         agencyId: filterState.agencyFilter || undefined,
+        activity: (filterState.activityFilter || undefined) as "online" | "offline" | undefined,
         orderBy: tableState.sortColumn || "createdAt",
         sortDir: tableState.sortDirection || "desc",
         includeDeleted: filterState.showArchived || undefined,

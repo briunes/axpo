@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import { normalizeSubdivision } from "../../../../src/lib/locations";
 import BoltIcon from "@mui/icons-material/Bolt";
@@ -375,6 +375,7 @@ function buildGasPayloadFromOcr(data: import("../../components/modules").Extract
 
 export default function NewSimulationPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [session] = useState(loadSession());
     const { showSuccess, showError } = useAlerts();
     const { t } = useI18n();
@@ -452,27 +453,27 @@ export default function NewSimulationPage() {
                         : -1;
     const flowSteps = [
         {
-            label: "Source",
-            value: selectedClient?.name ?? (hasInvoiceFile ? "Invoice uploaded" : "Choose"),
+            label: t("newSimulationPage", "stepSource"),
+            value: selectedClient?.name ?? (hasInvoiceFile ? t("newSimulationPage", "stepInvoiceUploaded") : t("newSimulationPage", "stepChoose")),
             complete: hasSource,
             icon: clientId ? <PersonSearchIcon fontSize="small" /> : <CloudUploadIcon fontSize="small" />,
         },
 
         {
-            label: "Extract",
-            value: extractedData ? "Done" : hasInvoiceFile ? "Ready" : "Waiting",
+            label: t("newSimulationPage", "stepExtract"),
+            value: extractedData ? t("newSimulationPage", "stepDone") : hasInvoiceFile ? t("newSimulationPage", "stepReady") : t("newSimulationPage", "stepWaiting"),
             complete: Boolean(extractedData),
             icon: <AutoFixHighIcon fontSize="small" />,
         },
         {
-            label: "Validate",
-            value: isValidatedExtractedData ? "Validated" : extractedData ? "Review" : "Pending",
+            label: t("newSimulationPage", "stepValidate"),
+            value: isValidatedExtractedData ? t("newSimulationPage", "stepValidated") : extractedData ? t("newSimulationPage", "stepReview") : t("newSimulationPage", "stepPending"),
             complete: isValidatedExtractedData || canCreateFromClient,
             icon: <TuneIcon fontSize="small" />,
         },
         {
-            label: "Create",
-            value: reviewReady ? "Ready" : "Pending",
+            label: t("newSimulationPage", "stepCreate"),
+            value: reviewReady ? t("newSimulationPage", "stepReady") : t("newSimulationPage", "stepPending"),
             complete: reviewReady,
             icon: <CheckCircleIcon fontSize="small" />,
         },
@@ -831,7 +832,8 @@ export default function NewSimulationPage() {
             });
 
             showSuccess(t("newSimulationPage", "created"));
-            router.push(`/internal/simulations/${created.id}`);
+            const activeTutorial = searchParams.get("tutorial");
+            router.push(`/internal/simulations/${created.id}${activeTutorial ? `?tutorial=${encodeURIComponent(activeTutorial)}` : ""}`);
         } catch (err) {
             const msg = err instanceof Error ? err.message : "Could not create simulation.";
             showError(msg);
@@ -862,8 +864,8 @@ export default function NewSimulationPage() {
                     </div>
                 </div>
             ) : (
-                <div className="new-simulation-flow">
-                    <div className="new-simulation-stepper" aria-label="Simulation progress">
+                <div className="new-simulation-flow" data-tour="simulation-create-flow">
+                    <div className="new-simulation-stepper" data-tour="simulation-progress" aria-label="Simulation progress">
                         {flowSteps.map((step, index) => (
                             <div
                                 className={[
@@ -896,7 +898,7 @@ export default function NewSimulationPage() {
                     >
                         {/* Invoice Data Extraction - Only show if LLM is enabled */}
                         {llmEnabled && (
-                            <div className="crud-form-section new-simulation-card new-simulation-card--invoice">
+                            <div className="crud-form-section new-simulation-card new-simulation-card--invoice" data-tour="simulation-invoice-upload">
                                 <div className="new-simulation-card__header">
                                     <div className="new-simulation-card__icon">
                                         <AutoFixHighIcon fontSize="small" />
@@ -968,7 +970,7 @@ export default function NewSimulationPage() {
 
                         {/* Display Extracted Data */}
                         {llmEnabled && extractedData && (
-                            <Box className="new-simulation-extracted">
+                            <Box className="new-simulation-extracted" data-tour="ocr-extracted-data">
                                 {/* Header */}
                                 <div className="new-simulation-extracted__header">
                                     <div className="new-simulation-extracted__title">
@@ -1002,6 +1004,7 @@ export default function NewSimulationPage() {
                                     <div className="new-simulation-extracted__actions">
                                         {!reportSubmitted && (
                                             <Button
+                                                data-tour="ocr-report-issue"
                                                 type="button"
                                                 size="small"
                                                 variant="text"
@@ -1013,6 +1016,7 @@ export default function NewSimulationPage() {
                                             </Button>
                                         )}
                                         <Button
+                                            data-tour="ocr-validate"
                                             type="button"
                                             size="small"
                                             variant={isValidatedExtractedData ? "contained" : "outlined"}
@@ -1028,7 +1032,7 @@ export default function NewSimulationPage() {
 
                                 {/* Inline report issue form */}
                                 {showReportIssue && !reportSubmitted && (
-                                    <div style={{
+                                    <div data-tour="ocr-issue-form" style={{
                                         marginBottom: 14,
                                         padding: "10px 14px",
                                         borderRadius: 8,
@@ -1052,6 +1056,7 @@ export default function NewSimulationPage() {
                                         />
                                         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 6 }}>
                                             <button
+                                                data-tour="ocr-issue-cancel"
                                                 type="button"
                                                 onClick={() => { setShowReportIssue(false); setReportIssueMessage(""); }}
                                                 style={{ fontSize: 11, cursor: "pointer", background: "transparent", border: "none", color: isDarkMode ? "#fca5a5" : "#b91c1c", padding: "3px 8px" }}
@@ -1115,7 +1120,7 @@ export default function NewSimulationPage() {
                                     const upStr = (key: keyof ExtractedInvoiceData, val: string) =>
                                         setExtractedData(prev => prev ? { ...prev, [key]: val || undefined } : prev);
                                     return (
-                                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px 20px" }}>
+                                        <div data-tour="ocr-correct-data" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px 20px" }}>
                                             {/* CLIENT */}
                                             <div style={{ gridColumn: "span 2" }}>
                                                 <div style={labelStyle}>{t("newSimulationPage", "clientLabel")}</div>
@@ -1660,6 +1665,7 @@ export default function NewSimulationPage() {
                 onClose={handleCancelQuickCreate}
                 maxWidth="md"
                 fullWidth
+                slotProps={{ paper: { "data-tour": "ocr-create-client" } as React.HTMLAttributes<HTMLDivElement> }}
             >
                 <DialogTitle>{t("newSimulationPage", "createNewClientTitle")}</DialogTitle>
                 <DialogContent>
