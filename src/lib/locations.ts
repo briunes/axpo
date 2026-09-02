@@ -28,12 +28,6 @@ export function getSubdivisions(countryCode?: string | null): readonly string[] 
   return countryCode ? (SUBDIVISIONS_BY_COUNTRY[countryCode.toUpperCase()] ?? []) : [];
 }
 
-export function getSubdivisionLabel(countryCode: string | null | undefined, value: string): string {
-  if (countryCode?.toUpperCase() !== "ES") return value;
-
-  return value.replace(/^(?:Province of|Província de|Provincia (?:da|de))\s+/i, "");
-}
-
 export function normalizeSubdivision(countryCode: string, value: string): string {
   const match = getSubdivisions(countryCode).find(
     (subdivision) => subdivision.localeCompare(value, undefined, { sensitivity: "base" }) === 0,

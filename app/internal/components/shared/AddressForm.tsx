@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Stack } from "@mui/material";
 import { useI18n } from "../../../../src/lib/i18n-context";
-import { getSubdivisionLabel, getSubdivisions } from "../../../../src/lib/locations";
+import { getSubdivisions } from "../../../../src/lib/locations";
 import { FormInput, FormSelect, CountrySelect } from "../ui";
 
 export interface AddressData {
@@ -72,10 +72,7 @@ export function AddressForm({ value = {}, onChange, disabled, countryRequired, c
                                 onChange({ ...value, province: val as string })
                             }
                             options={[
-                                ...provinces.map((province) => ({
-                                    value: province,
-                                    label: getSubdivisionLabel(value.country, province),
-                                }))
+                                ...provinces.map((province) => ({ value: province, label: province }))
                             ]}
                             placeholder={t("addressForm", "provinceSelectPlaceholder")}
                             allowCustomValue
