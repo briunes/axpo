@@ -110,6 +110,8 @@ export interface DataTableProps<T extends { id: string }> {
   rowDetailContent?: (row: T) => React.ReactNode;
   /** Hide the detail toggle for rows that do not contain expandable data. */
   rowHasDetails?: (row: T) => boolean;
+  /** Opens or selects a row when its non-interactive area is clicked. */
+  onRowClick?: (row: T) => void;
 }
 
 const BASE_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -285,6 +287,7 @@ export function DataTable<T extends { id: string }>({
   renderMobileCard,
   rowDetailContent,
   rowHasDetails,
+  onRowClick,
 }: DataTableProps<T>) {
   const { preferences } = useUserPreferences();
   const theme = useTheme();
@@ -1385,6 +1388,12 @@ export function DataTable<T extends { id: string }>({
               rowCount={pagination?.total || 0}
               sortModel={sortModel}
               onSortModelChange={handleSortModelChange}
+              onRowClick={onRowClick ? (params, event) => {
+                if ((params.row as any).__detailPanelFor) return;
+                const target = event.target as HTMLElement;
+                if (target.closest('a, button, input, select, textarea, [role="button"]')) return;
+                onRowClick(params.row);
+              } : undefined}
               disableRowSelectionOnClick
               disableColumnMenu
               hideFooter
@@ -1431,6 +1440,7 @@ export function DataTable<T extends { id: string }>({
                   lineHeight: 1,
                 },
                 '& .MuiDataGrid-row': {
+                  cursor: onRowClick ? 'pointer' : 'default',
                   backgroundColor: tableSurface,
                   borderBottom: '0px solid rgba(0, 0, 0, 0.08)',
                   transition: 'background-color 140ms ease, box-shadow 140ms ease',
@@ -1578,7 +1588,10 @@ export function DataTable<T extends { id: string }>({
             ))
             : rows.length > 0
               ? rows.map((row) => (
-                <Box key={row.id}>
+                <Box key={row.id} onClick={onRowClick ? (event) => {
+                  const target = event.target as HTMLElement;
+                  if (!target.closest('a, button, input, select, textarea, [role="button"]')) onRowClick(row);
+                } : undefined} sx={{ cursor: onRowClick ? 'pointer' : 'default' }}>
                   {renderMobileCard ? renderMobileCard(row) : renderDefaultMobileCard(row)}
                 </Box>
               ))

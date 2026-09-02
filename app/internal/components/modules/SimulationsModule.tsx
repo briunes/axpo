@@ -175,6 +175,7 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
   const canShareSimulation = canDo(session.user.role, "simulations.share");
   const canDuplicateSimulation = canDo(session.user.role, "simulations.duplicate");
   const [savedViews, setSavedViews] = useState<SavedSimulationView[]>([]);
+  const [selectedViewPresetId, setSelectedViewPresetId] = useState<string>();
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   const [saveViewName, setSaveViewName] = useState("");
   const [filtersAnchorEl, setFiltersAnchorEl] = useState<HTMLElement | null>(null);
@@ -609,10 +610,13 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
     [builtInViews, savedViews],
   );
 
-  const activeViewPresetId = useMemo(
-    () => viewPresets.find((preset) => isSamePresetView(preset.view, currentView))?.id,
-    [currentView, viewPresets],
-  );
+  const activeViewPresetId = useMemo(() => {
+    const selectedPreset = viewPresets.find((preset) => preset.id === selectedViewPresetId);
+    if (selectedPreset && isSamePresetView(selectedPreset.view, currentView)) {
+      return selectedPreset.id;
+    }
+    return viewPresets.find((preset) => isSamePresetView(preset.view, currentView))?.id;
+  }, [currentView, selectedViewPresetId, viewPresets]);
 
   const saveCurrentView = useCallback(() => {
     const trimmed = saveViewName.trim();
@@ -1057,7 +1061,10 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
                 value={activeViewPresetId ?? CUSTOM_VIEW_OPTION}
                 onChange={(event) => {
                   const preset = viewPresets.find((view) => view.id === event.target.value);
-                  if (preset) applyView(preset.view);
+                  if (preset) {
+                    setSelectedViewPresetId(preset.id);
+                    applyView(preset.view);
+                  }
                 }}
                 sx={{
                   width: "100%",

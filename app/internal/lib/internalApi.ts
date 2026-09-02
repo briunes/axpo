@@ -2428,10 +2428,19 @@ export async function reportSimulationIssue(token: string, simulationId: string,
 export interface SimulationIssueItem {
   id: string; simulationId: string | null; simulationReference: string | null; description: string;
   status: "NEW" | "IN_REVIEW" | "RESOLVED" | "DISMISSED"; createdAt: string; statusChangedAt: string | null;
-  snapshotFileName: string; snapshotFileSize: number;
+  snapshotFileName: string; snapshotFileSize: number; snapshotMimeType: string;
   reportedByUser: { id: string; fullName: string; email: string };
   handledByUser: { id: string; fullName: string } | null;
   attachments: Array<{ id: string; fileName: string; mimeType: string; fileSize: number }>;
+  resolutionNotes?: string | null;
+  statusChanges?: Array<{ id: string; fromStatus: SimulationIssueItem["status"]; toStatus: SimulationIssueItem["status"]; notes: string | null; createdAt: string; changedByUser: { id: string; fullName: string } }>;
+}
+
+export async function getSimulationIssue(token: string, id: string): Promise<SimulationIssueItem> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulation-issues/${id}`, { headers: authHeaders(token) });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload?.error?.message ?? "Failed to load issue");
+  return payload.data;
 }
 
 export async function listSimulationIssues(token: string, filters?: { status?: string; reporter?: string; dateFrom?: string; dateTo?: string; page?: number; pageSize?: number }): Promise<{ items: SimulationIssueItem[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } }> {
@@ -2448,9 +2457,11 @@ export async function listSimulationIssues(token: string, filters?: { status?: s
   return payload.data;
 }
 
-export async function updateSimulationIssueStatus(token: string, id: string, status: string): Promise<void> {
-  const response = await fetch(`${baseUrl}/api/v1/internal/simulation-issues/${id}`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify({ status }) });
-  if (!response.ok) throw new Error("Failed to update issue status");
+export async function updateSimulationIssueStatus(token: string, id: string, status: string, notes?: string): Promise<SimulationIssueItem> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulation-issues/${id}`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify({ status, notes }) });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload?.error?.message ?? "Failed to update issue status");
+  return payload.data;
 }
 
 export async function downloadSimulationIssueFile(token: string, issueId: string, fileId: string, fileName: string): Promise<void> {

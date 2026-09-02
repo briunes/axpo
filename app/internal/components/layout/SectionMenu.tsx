@@ -30,6 +30,7 @@ import {
   LogoutIcon,
   ConfigurationsIcon,
   NotificationsNavIcon,
+  SimulationIssuesIcon,
 } from "../ui/icons";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { LanguageFlag } from "../../../../src/lib/LanguageFlag";
@@ -38,7 +39,7 @@ import { useThemeMode } from "../../lib/ThemeModeContext";
 import { WhatsNewButton } from "./WhatsNewButton";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 
-export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "logs" | "analytics" | "tutorials" | "configurations" | "notifications";
+export type AppSection = "simulations" | "users" | "agencies" | "clients" | "base-values" | "logs" | "simulation-issues" | "analytics" | "tutorials" | "configurations" | "notifications";
 
 const SECTION_KEYS: AppSection[] = [
   "simulations",
@@ -47,6 +48,7 @@ const SECTION_KEYS: AppSection[] = [
   "clients",
   "base-values",
   "logs",
+  "simulation-issues",
   "analytics",
   "tutorials",
   "configurations",
@@ -61,6 +63,7 @@ const sectionNavKey: Record<AppSection, string> = {
   clients: "clients",
   "base-values": "baseValues",
   logs: "logs",
+  "simulation-issues": "simulationIssues",
   analytics: "analytics",
   tutorials: "tutorials",
   configurations: "configurations",
@@ -74,6 +77,7 @@ export const sectionDescriptionKey: Record<AppSection, string> = {
   clients: "clients",
   "base-values": "baseValues",
   logs: "auditLogs",
+  "simulation-issues": "simulationIssues",
   analytics: "analytics",
   tutorials: "tutorials",
   configurations: "configurations",
@@ -87,6 +91,7 @@ export const sectionRoute: Record<AppSection, string> = {
   clients: "/internal/clients",
   "base-values": "/internal/base-values",
   logs: "/internal/logs",
+  "simulation-issues": "/internal/simulations/issues",
   analytics: "/internal/analytics",
   tutorials: "/internal/tutorials",
   configurations: "/internal/configurations",
@@ -100,6 +105,7 @@ export const sectionPrimaryAction: Record<AppSection, { labelKey: string; target
   clients: { labelKey: "newClient", targetId: "clients-create-form" },
   "base-values": { labelKey: "newBaseValueSet", targetId: "base-values-create-form" },
   logs: { labelKey: "viewSystemLogs", targetId: "system-logs-table" },
+  "simulation-issues": { labelKey: "simulationIssues", targetId: "simulation-issues-table" },
   analytics: { labelKey: "refreshMetrics", targetId: "analytics-panel" },
   tutorials: { labelKey: "tutorials", targetId: "tutorials-catalog" },
   configurations: { labelKey: "systemSettings", targetId: "configurations-panel" },
@@ -113,6 +119,7 @@ export const sectionIcon: Record<AppSection, React.FC<{ className?: string }>> =
   clients: ClientsIcon,
   "base-values": BaseValuesIcon,
   logs: AuditLogsIcon,
+  "simulation-issues": SimulationIssuesIcon,
   analytics: AnalyticsIcon,
   tutorials: HelpOutlineIcon,
   configurations: ConfigurationsIcon,
@@ -141,6 +148,7 @@ export function SectionMenu({
   canSeeClientsSection,
   canSeeBaseValuesSection,
   canSeeLogsSection,
+  canSeeSimulationIssuesSection,
   canViewAnalytics,
   canSeeConfigurationsSection,
   onNavigate,
@@ -155,6 +163,7 @@ export function SectionMenu({
   canSeeClientsSection: boolean;
   canSeeBaseValuesSection: boolean;
   canSeeLogsSection: boolean;
+  canSeeSimulationIssuesSection: boolean;
   canViewAnalytics: boolean;
   canSeeConfigurationsSection: boolean;
   onNavigate: (section: AppSection) => void;
@@ -177,6 +186,7 @@ export function SectionMenu({
       if (item === "clients" && !canSeeClientsSection) return false;
       if (item === "base-values" && !canSeeBaseValuesSection) return false;
       if (item === "logs" && !canSeeLogsSection) return false;
+      if (item === "simulation-issues" && !canSeeSimulationIssuesSection) return false;
       if (item === "analytics" && !canViewAnalytics) return false;
       return true;
     });
@@ -275,6 +285,8 @@ export function SectionMenu({
                         opacity: collapsed ? 0 : 1,
                         maxWidth: collapsed ? 0 : 180,
                         overflow: "hidden",
+                        fontSize: "0.875rem",
+                        lineHeight: 1.43,
                         fontWeight: isActive ? 600 : 500,
                         color: isActive ? "var(--scheme-brand-600)" : "var(--scheme-neutral-400)",
                         whiteSpace: "nowrap",

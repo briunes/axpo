@@ -21,6 +21,7 @@ import { useUserPreferences } from "./providers/UserPreferencesProvider";
 import { ForbiddenState, LoadingState } from "./shared";
 import { Toast, useToast } from "./ui";
 import { TutorialRunner } from "./tutorials/TutorialRunner";
+import { getSystemConfig } from "../lib/configApi";
 
 export type { AppSection };
 
@@ -33,6 +34,7 @@ const SECTION_LABELS: Record<AppSection, string> = {
   clients: "Clientes",
   "base-values": "Valores base",
   logs: "Logs",
+  "simulation-issues": "Simulation Issues",
   analytics: "Analytics",
   tutorials: "Help & Tutorials",
   configurations: "Configuraciones",
@@ -190,6 +192,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
   const [mounted, setMounted] = useState(false);
   const [permItems, setPermItems] = useState<RolePermissionItem[]>([]);
   const [permLoaded, setPermLoaded] = useState(false);
+  const [simulationIssuesEnabled, setSimulationIssuesEnabled] = useState(false);
   const [actionButtons, setActionButtons] = useState<{ pathname: string; buttons: React.ReactNode }>({
     pathname,
     buttons: null,
@@ -231,6 +234,19 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
         // Fall back to hardcoded defaults silently
         setPermLoaded(true);
       });
+  }, [session?.token]);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    getSystemConfig({ view: "runtime" })
+      .then((config) => {
+        if (!cancelled) setSimulationIssuesEnabled(config.simulationIssuesEnabled !== false);
+      })
+      .catch(() => {
+        if (!cancelled) setSimulationIssuesEnabled(false);
+      });
+    return () => { cancelled = true; };
   }, [session?.token]);
 
   useEffect(() => {
@@ -293,6 +309,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
       clients: "/internal/clients",
       "base-values": "/internal/base-values",
       logs: "/internal/logs",
+      "simulation-issues": "/internal/simulations/issues",
       analytics: "/internal/analytics",
       tutorials: "/internal/tutorials",
       configurations: "/internal/configurations",
@@ -318,7 +335,9 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
   const role = session?.user.role ?? "";
 
   const canSeeAnyLogs =
-    isElevatedRole(role) && LOG_PERMISSION_KEYS.some((key) => canDo(role, key));
+    isElevatedRole(role) && LOG_PERMISSION_KEYS
+      .filter((key) => key !== "section.simulation-issues")
+      .some((key) => canDo(role, key));
   const sectionAllowed: Record<AppSection, boolean> = {
     simulations: canDo(role, "section.simulations"),
     users: canDo(role, "section.users"),
@@ -326,6 +345,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
     clients: canDo(role, "section.clients"),
     "base-values": canDo(role, "section.base-values"),
     logs: canSeeAnyLogs,
+    "simulation-issues": isElevatedRole(role) && simulationIssuesEnabled && canDo(role, "section.simulation-issues"),
     analytics: canDo(role, "section.analytics"),
     tutorials: true,
     configurations: canDo(role, "section.configurations"),
@@ -372,6 +392,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
             canSeeClientsSection={canDo(role, "section.clients")}
             canSeeBaseValuesSection={canDo(role, "section.base-values")}
             canSeeLogsSection={canSeeAnyLogs}
+            canSeeSimulationIssuesSection={sectionAllowed["simulation-issues"]}
             canViewAnalytics={canDo(role, "section.analytics")}
             canSeeConfigurationsSection={canDo(role, "section.configurations")}
             onNavigate={handleNavigate}
@@ -440,6 +461,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
                   canSeeClientsSection={canDo(role, "section.clients")}
                   canSeeBaseValuesSection={canDo(role, "section.base-values")}
                   canSeeLogsSection={canSeeAnyLogs}
+                  canSeeSimulationIssuesSection={sectionAllowed["simulation-issues"]}
                   canViewAnalytics={canDo(role, "section.analytics")}
                   canSeeConfigurationsSection={canDo(role, "section.configurations")}
                   onNavigate={handleNavigate}

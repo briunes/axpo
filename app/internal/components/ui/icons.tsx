@@ -17,6 +17,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import MenuIcon from "@mui/icons-material/Menu";
+import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 
 export function SimulationsIcon({ className }: { className?: string }) {
   return <MonitorIcon className={className} sx={{ fontSize: 18 }} />;
@@ -56,6 +57,10 @@ export function ConfigurationsIcon({ className }: { className?: string }) {
 
 export function NotificationsNavIcon({ className }: { className?: string }) {
   return <NotificationsNoneIcon className={className} sx={{ fontSize: 18 }} />;
+}
+
+export function SimulationIssuesIcon({ className }: { className?: string }) {
+  return <ReportProblemOutlinedIcon className={className} sx={{ fontSize: 18 }} />;
 }
 
 export { LogoutIcon, ChevronLeftIcon, ChevronRightIcon, RefreshIcon, MenuIcon };

@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Box, Button, Chip, FormControl, InputLabel, Link, MenuItem, Select, Stack, Typography } from "@mui/material";
+import { Chip, Link, Stack, Typography } from "@mui/material";
 import NextLink from "next/link";
-import DownloadIcon from "@mui/icons-material/Download";
+import { useRouter } from "next/navigation";
 import type { SessionState } from "../../lib/authSession";
-import { downloadSimulationIssueFile, listSimulationIssues, updateSimulationIssueStatus, type SimulationIssueItem } from "../../lib/internalApi";
+import { listSimulationIssues, type SimulationIssueItem } from "../../lib/internalApi";
 import { DataTable, DateInput, TableFilterButton, TableFiltersDialog, type ColumnDef } from "../ui";
 import { useI18n } from "@/lib/i18n-context";
 import { FormSelect } from "../ui/FormSelect";
@@ -19,6 +19,7 @@ const ISSUES_VIEWS_STORAGE_KEY = "axpo_simulation_issue_views";
 
 export function SimulationIssuesPanel({ session, onNotify }: { session: SessionState; onNotify?: (text: string, tone: "success" | "error") => void }) {
   const { t } = useI18n();
+  const router = useRouter();
   const cachePolicy = useRequestCachePolicy("logs");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -34,7 +35,7 @@ export function SimulationIssuesPanel({ session, onNotify }: { session: SessionS
     NEW: t("simulationIssues", "statusNew"), IN_REVIEW: t("simulationIssues", "statusInReview"),
     RESOLVED: t("simulationIssues", "statusResolved"), DISMISSED: t("simulationIssues", "statusDismissed"),
   }), [t]);
-  const { data, isFetching, error, refetch } = useQuery({
+  const { data, isFetching, error } = useQuery({
     queryKey: ["simulation-issues", session.token, status, reporter, dateFrom, dateTo, page, pageSize],
     queryFn: () => listSimulationIssues(session.token, { status, reporter, dateFrom, dateTo, page, pageSize }),
     placeholderData: keepPreviousData,
@@ -86,20 +87,7 @@ export function SimulationIssuesPanel({ session, onNotify }: { session: SessionS
     onClearFilters={clearFilters} hasActiveFilters={Boolean(reporter || activeFilterCount)}
     headerRight={<TableFilterButton title={t("simulationsModule", "filtersTitle")} activeFilterCount={activeFilterCount} onClick={openFilters} />}
     pagination={{ page, pageSize, total, onPageChange: setPage, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }}
-    rowHasDetails={() => true}
-    rowDetailContent={(row) => <Box sx={{ display: "flex", alignItems: { xs: "stretch", md: "center" }, justifyContent: "space-between", flexDirection: { xs: "column", md: "row" }, gap: 2, px: 2, py: 1.5, width: "100%" }}>
-      <Stack direction="row" gap={1} flexWrap="wrap" sx={{ minWidth: 0 }}>
-        <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={() => downloadSimulationIssueFile(session.token, row.id, "snapshot", row.snapshotFileName)}>{t("simulationIssues", "simulationExcel")}</Button>
-        {row.attachments.map((file) => <Button key={file.id} variant="outlined" size="small" startIcon={<DownloadIcon />} sx={{ maxWidth: 360 }} onClick={() => downloadSimulationIssueFile(session.token, row.id, file.id, file.fileName)}><Box component="span" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.fileName}</Box></Button>)}
-      </Stack>
-      <Stack spacing={0.5} sx={{ width: { xs: "100%", md: 230 }, flexShrink: 0 }}>
-        <FormControl size="small" fullWidth><InputLabel>{t("simulationIssues", "changeStatus")}</InputLabel><Select value={row.status} label={t("simulationIssues", "changeStatus")} onChange={async (event) => {
-          try { await updateSimulationIssueStatus(session.token, row.id, event.target.value); await refetch(); }
-          catch (cause) { onNotify?.(cause instanceof Error ? cause.message : t("common", "actionFailed"), "error"); }
-        }}>{STATUSES.map((value) => <MenuItem key={value} value={value}>{labels[value]}</MenuItem>)}</Select></FormControl>
-        {row.handledByUser && <Typography variant="caption" color="text.secondary">{t("simulationIssues", "lastChangedBy", { name: row.handledByUser.fullName })}{row.statusChangedAt ? ` · ${new Date(row.statusChangedAt).toLocaleString()}` : ""}</Typography>}
-      </Stack>
-    </Box>}
+    onRowClick={(row) => router.push(`/internal/simulations/issues/${row.id}`)}
   />
     <TableFiltersDialog open={filtersOpen} title={t("simulationsModule", "filtersTitle")}
       saveViewLabel={t("simulationsModule", "saveView")} clearLabel={t("simulationsModule", "clearFilters")}
