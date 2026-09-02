@@ -264,7 +264,7 @@ export async function GET(
         isGas
           ? item.key.startsWith("GAS:") &&
             (item.key.endsWith(":MARGEN") ||
-              item.key.endsWith(":ENERGIA"))
+              item.key.includes(":ENERGIA"))
           : item.key.startsWith("ELEC:") &&
             (item.key.includes(":MARGEN") ||
               item.key.endsWith(":ENERGIA")),
@@ -358,20 +358,32 @@ export async function GET(
     // rather than month-specific snapshots. Store them as plain numeric
     // period values; the history renderer displays that fixed value for each
     // month while indexed products retain their real monthly series.
+    const electricity = payload?.electricity as any;
+    const electricityZone = String(
+      electricity?.zonaGeografica ?? "PENINSULA",
+    )
+      .trim()
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
     const fixedElectricityItems = baseValueItems.filter(
       (item) =>
-        item.key.startsWith("ELEC:FIJO:") && item.key.endsWith(":ENERGIA"),
+        item.key.startsWith("ELEC:FIJO:") && item.key.includes(":ENERGIA"),
     );
+
+    const fixedElectricityPriorities = new Map<string, number>();
 
     for (const item of fixedElectricityItems) {
       // ELEC : FIJO : PRODUCT : TIER : TARIFA : PERIODO : ENERGIA
       const parts = item.key.split(":");
-      if (parts.length !== 7) continue;
+      if (parts.length < 7 || parts[6] !== "ENERGIA") continue;
 
       const product = parts[2];
       const tier = parts[3];
       const tariff = parts[4];
       const period = parts[5];
+      const itemZone = parts[7] === "ZONE" ? parts[8] : undefined;
+      if (itemZone && itemZone !== electricityZone) continue;
       const productTierKey = `${product}:${tier}`;
 
       if (!productData[productTierKey]) {
@@ -388,8 +400,13 @@ export async function GET(
         productData[productTierKey].tariffs[tariff] = {};
       }
 
-      productData[productTierKey].tariffs[tariff][period] =
-        Number(item.valueNumeric) ?? 0;
+      const priorityKey = `${productTierKey}:${tariff}:${period}`;
+      const priority = itemZone ? 2 : 1;
+      if ((fixedElectricityPriorities.get(priorityKey) ?? 0) <= priority) {
+        productData[productTierKey].tariffs[tariff][period] =
+          Number(item.valueNumeric) ?? 0;
+        fixedElectricityPriorities.set(priorityKey, priority);
+      }
     }
 
     // History is a catalogue view, so expose every product for which the
@@ -485,7 +502,6 @@ export async function GET(
 
     const gasSimulationProducts = Object.values(gasProductData);
 
-    const electricity = payload?.electricity as any;
     const tarifaAcceso = electricity?.tarifaAcceso ?? "2.0TD";
     const perfilCarga = electricity?.perfilCarga ?? "NORMAL";
 

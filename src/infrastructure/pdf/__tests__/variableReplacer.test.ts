@@ -170,7 +170,7 @@ describe("extractVariableValues", () => {
         results: {
           electricity: [
             {
-              productKey: "FIJO:TEST",
+              productKey: "PERSONALIZADA_FIJO",
               productLabel: "Personalizada Fijo",
               commodity: "ELECTRICITY",
               pricingType: "FIXED",
@@ -182,7 +182,7 @@ describe("extractVariableValues", () => {
             },
           ],
         },
-        selectedOffer: { productKey: "FIJO:TEST", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
+        selectedOffer: { productKey: "PERSONALIZADA_FIJO", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
       } as any,
       undefined,
       undefined,
@@ -328,7 +328,7 @@ describe("extractVariableValues", () => {
         results: {
           electricity: [
             {
-              productKey: "FIJO:TEST",
+              productKey: "PERSONALIZADA_FIJO",
               productLabel: "Personalizada Fijo",
               commodity: "ELECTRICITY",
               pricingType: "FIXED",
@@ -340,7 +340,7 @@ describe("extractVariableValues", () => {
             },
           ],
         },
-        selectedOffer: { productKey: "FIJO:TEST", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
+        selectedOffer: { productKey: "PERSONALIZADA_FIJO", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
       } as any,
       undefined,
       undefined,
@@ -540,7 +540,7 @@ describe("extractVariableValues", () => {
         results: {
           electricity: [
             {
-              productKey: "INDEX:TEST",
+              productKey: "PERSONALIZADA_INDEX",
               productLabel: "Personalized Index",
               commodity: "ELECTRICITY",
               pricingType: "INDEXED",
@@ -553,7 +553,7 @@ describe("extractVariableValues", () => {
           ],
         },
         selectedOffer: {
-          productKey: "INDEX:TEST",
+          productKey: "PERSONALIZADA_INDEX",
           commodity: "ELECTRICITY",
           pricingType: "INDEXED",
           selectedAt: "2026-08-18T10:00:00.000Z",
@@ -724,7 +724,7 @@ describe("extractVariableValues", () => {
     expect(variables.ELECTRICITY_TAX_RATE).toBe("5,11269");
     expect(variables.CURRENT_REACTIVE_COST).toBe("3.00");
     expect(variables.CURRENT_OTHER_CHARGES).toBe("2.00");
-    expect(variables.CURRENT_OTHER_COST).toBe("2.00");
+    expect(variables.CURRENT_OTHER_COST).toBe("5.00");
     expect(variables.CHART_COMPARATIVA).toContain("display:block;width:100%");
     expect(variables.CHART_COMPARATIVA).toContain('width="100%"');
     expect(variables.CHART_COMPARATIVA).toContain("flex:0 0 50%");
@@ -886,10 +886,11 @@ describe("extractVariableValues", () => {
               terminoEnergia: 2,
               excesoPotencia: 3,
               impuestoElectrico: 4,
+              reactiva: 8,
               otrosCargos: 5,
               alquiler: 6,
               iva: 7,
-              total: 28,
+              total: 36,
             },
             ivaTasa: 21,
             impuestoElectricoTasa: 5.11269,
@@ -919,10 +920,12 @@ describe("extractVariableValues", () => {
     expect(variables.CURRENT_ENERGY_COST).toBe("2.00");
     expect(variables.CURRENT_EXCESS_COST).toBe("3.00");
     expect(variables.CURRENT_TAX_COST).toBe("4.00");
-    expect(variables.CURRENT_OTHER_COST).toBe("5.00");
+    expect(variables.CURRENT_REACTIVE_COST).toBe("8.00");
+    expect(variables.CURRENT_OTHER_COST).toBe("13.00");
     expect(variables.CURRENT_RENTAL_COST).toBe("6.00");
     expect(variables.CURRENT_VAT).toBe("7.00");
-    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("5.00 €");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("13.00 €");
+    expect(variables.CURRENT_BREAKDOWN_HTML).not.toContain("Energía reactiva");
     expect(variables.CURRENT_BREAKDOWN_HTML).not.toContain("123.30 €");
   });
 
@@ -993,5 +996,106 @@ describe("extractVariableValues", () => {
     expect(variables.CURRENT_ENERGY_COST).toBe("415.25");
     expect(variables.CURRENT_TAX_COST).toBe("28.38");
     expect(variables.CURRENT_VAT).toBe("141.39");
+  });
+
+  it("shows the selected catalogue product prices instead of unrelated custom fixed inputs", () => {
+    const variables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "ELECTRICITY",
+        electricity: {
+          tarifaAcceso: "3.0TD",
+          consumo: { P1: 1063.47, P2: 664.8, P3: 769.16 },
+          potenciaContratada: { P1: 14.9, P2: 14.9 },
+          periodo: { fechaInicio: "2026-07-17", fechaFin: "2026-08-17", dias: 32 },
+          facturaActual: 698.27,
+          personalizadaFijo: {
+            preciosEnergia: { P1: 0.18866, P2: 0.135158, P3: 0.115374 },
+            preciosPotencia: {},
+          },
+        },
+        results: {
+          electricity: [{
+            productKey: "1P_PLUS:N2",
+            productLabel: "1P Plus N2",
+            commodity: "ELECTRICITY",
+            pricingType: "FIXED",
+            totalFactura: 665.17,
+            ahorro: 33.1,
+            pctAhorro: 4.74,
+            ahorroAnual: 377.48,
+            desglose: { terminoEnergia: 443.36 },
+          }],
+        },
+        selectedOffer: { productKey: "1P_PLUS:N2", commodity: "ELECTRICITY" },
+      } as any,
+      undefined,
+      undefined,
+      undefined,
+      "es",
+      {
+        productKey: "1P_PLUS:N2",
+        tariffs: { "3.0TD": { P1: 0.177527, P2: 0.177527, P3: 0.177527 } },
+      },
+    );
+
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,177527");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toContain("0,18866");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toBe("");
+  });
+
+  it("matches Excel by showing catalogue energy prices only for periods with consumption", () => {
+    const variables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "ELECTRICITY",
+        electricity: {
+          tarifaAcceso: "3.0TD",
+          consumo: { P1: 1063, P2: 665, P3: 769, P4: 0, P5: 0, P6: 0 },
+          potenciaContratada: { P1: 15, P2: 15, P3: 15, P4: 15, P5: 15, P6: 15 },
+          periodo: { fechaInicio: "2026-07-17", fechaFin: "2026-08-17", dias: 32 },
+          facturaActual: 698.27,
+        },
+        results: {
+          electricity: [{
+            productKey: "ESTABLE_TALLERES:N2",
+            productLabel: "Estable Talleres N2",
+            commodity: "ELECTRICITY",
+            pricingType: "FIXED",
+            totalFactura: 643.68,
+            ahorro: 54.59,
+            pctAhorro: 7.82,
+            ahorroAnual: 622.66,
+            desglose: { terminoEnergia: 461 },
+          }],
+        },
+        selectedOffer: { productKey: "ESTABLE_TALLERES:N2", commodity: "ELECTRICITY" },
+      } as any,
+      undefined,
+      undefined,
+      undefined,
+      "es",
+      {
+        productKey: "ESTABLE_TALLERES:N2",
+        tariffs: {
+          "3.0TD": {
+            P1: 0.209668,
+            P2: 0.182539,
+            P3: 0.151693,
+            P4: 0.119048,
+            P5: 0.099017,
+            P6: 0.128996,
+          },
+        },
+      },
+    );
+
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P1");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P2");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P3");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toContain("P4");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toContain("P5");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toContain("P6");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toContain("0,119048");
   });
 });

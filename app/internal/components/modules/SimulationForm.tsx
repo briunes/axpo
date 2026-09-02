@@ -5,7 +5,7 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import { SimulationResultsCards } from "./SimulationResultsCards";
 import type { SimulationItem, ClientItem, CupsLookupEntry } from "../../lib/internalApi";
-import { calculateSimulation, updateSimulationSelectedOffer, fetchCupsLookup, listBaseValueSets, listBaseValueItems } from "../../lib/internalApi";
+import { calculateSimulation, updateSimulationSelectedOffer, fetchCupsLookup } from "../../lib/internalApi";
 import { getSystemConfig } from "../../lib/configApi";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { getCountryName } from "../../../../src/lib/locations";
@@ -87,8 +87,12 @@ interface ElecFormState {
     personalizadaFijoEnergia: PeriodMap;
     facturaActual: number;
     reactiva: number;
+    /** Current supplier reactive-energy amount; independent from the AXPO pass-through input. */
+    reactivaActual: number;
     alquiler: number;
     otrosCargos: number;
+    /** Current-plan display value; intentionally independent from simulation otrosCargos. */
+    otrosCargosActuales: number;
     useCurrentInvoiceBreakdown: boolean;
     importePotencia: number;
     importeEnergia: number;
@@ -344,6 +348,7 @@ function currentElecInvoiceBreakdownTotal(s: ElecFormState): number {
         (s.importeEnergia || 0) +
         (s.exceso || 0) +
         (s.importeImpuestoElectrico || 0) +
+        (s.reactivaActual || 0) +
         currentElecOtherChargesForBreakdown(s) +
         (s.alquiler || 0) +
         (s.importeIva || 0),
@@ -351,7 +356,7 @@ function currentElecInvoiceBreakdownTotal(s: ElecFormState): number {
 }
 
 function currentElecOtherChargesForBreakdown(s: ElecFormState): number {
-    return roundMoney((s.otrosCargos || 0) + (s.reactiva || 0));
+    return roundMoney(s.otrosCargosActuales || 0);
 }
 
 function currentGasInvoiceBreakdownTotal(s: GasFormState): number {
@@ -396,8 +401,10 @@ function defaultElecState(): ElecFormState {
         personalizadaFijoEnergia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
         facturaActual: 0,
         reactiva: 0,
+        reactivaActual: 0,
         alquiler: 0,
         otrosCargos: 0,
+        otrosCargosActuales: 0,
         useCurrentInvoiceBreakdown: true,
         importePotencia: 0,
         importeEnergia: 0,
@@ -489,7 +496,8 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
                 terminoEnergia: s.importeEnergia || 0,
                 excesoPotencia: s.exceso || 0,
                 impuestoElectrico: s.importeImpuestoElectrico || 0,
-                otrosCargos: currentElecOtherChargesForBreakdown(s),
+                reactiva: s.reactivaActual || 0,
+                otrosCargos: s.otrosCargosActuales || 0,
                 alquiler: s.alquiler || 0,
                 iva: s.importeIva || 0,
                 total: currentElecInvoiceBreakdownTotal(s),
@@ -623,8 +631,10 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
             personalizadaFijoEnergia: emptyPeriods(ep),
             facturaActual: invoiceData.facturaActual ?? 0,
             reactiva: invoiceData.reactiva ?? 0,
+            reactivaActual: invoiceData.reactivaActual ?? invoiceData.reactiva ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
             otrosCargos: invoiceData.otrosCargos ?? 0,
+            otrosCargosActuales: roundMoney(invoiceData.otrosCargos ?? 0),
             useCurrentInvoiceBreakdown: invoiceData.useCurrentInvoiceBreakdown !== false,
             importePotencia: invoiceData.importePotencia ?? deriveCurrentBreakdown(invoiceData).importePotencia ?? 0,
             importeEnergia: invoiceData.importeEnergia ?? deriveCurrentBreakdown(invoiceData).importeEnergia ?? 0,
@@ -686,8 +696,18 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
         personalizadaFijoPotencia: Object.fromEntries(pp.map((p) => [p, ((e.personalizadaFijo?.preciosPotencia ?? {}) as Record<string, number>)[p] ?? 0])),
         facturaActual: e.facturaActual,
         reactiva: e.extras?.reactiva ?? 0,
+        reactivaActual: (e.extras as any)?.currentInvoiceBreakdown?.reactiva ?? e.extras?.reactiva ?? 0,
         alquiler: e.extras?.alquilerEquipoMedida ?? 0,
         otrosCargos: e.extras?.otrosCargos ?? 0,
+        otrosCargosActuales: (() => {
+            const savedBreakdown = (e.extras as any)?.currentInvoiceBreakdown;
+            if (savedBreakdown?.otrosCargos == null) return roundMoney(e.extras?.otrosCargos ?? 0);
+            // Older versions stored reactive energy merged into this field.
+            if (savedBreakdown.reactiva == null) {
+                return roundMoney(Math.max(0, Number(savedBreakdown.otrosCargos) - (e.extras?.reactiva ?? 0)));
+            }
+            return roundMoney(Number(savedBreakdown.otrosCargos));
+        })(),
         useCurrentInvoiceBreakdown: (e.extras as any)?.useCurrentInvoiceBreakdown !== false,
         importePotencia: (e.extras as any)?.terminoPotenciaActual ?? (invoiceData as any)?.importePotencia ?? derivedBreakdown.importePotencia ?? 0,
         importeEnergia: (e.extras as any)?.terminoEnergiaActual ?? (invoiceData as any)?.importeEnergia ?? derivedBreakdown.importeEnergia ?? 0,
@@ -1372,13 +1392,13 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                             <BreakdownField label={t("simulationForm", "currentElectricityTaxLabel")}>
                                 <CurrencyInput value={state.importeImpuestoElectrico} onChange={(v) => up("importeImpuestoElectrico", isNaN(v) ? 0 : v)} />
                             </BreakdownField>
-                            <BreakdownField label={t("simulationForm", "fieldOtherCharges")} hint={t("simulationForm", "currentOtherChargesIncludesReactiveHint")}>
+                            <BreakdownField label={t("simulationForm", "fieldReactiveEnergy")}>
+                                <CurrencyInput value={state.reactivaActual} onChange={(v) => up("reactivaActual", isNaN(v) ? 0 : v)} />
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "fieldOtherCharges")}>
                                 <CurrencyInput
                                     value={currentOtherChargesBreakdown}
-                                    onChange={(v) => {
-                                        const totalOtherCharges = isNaN(v) ? 0 : v;
-                                        up("otrosCargos", Math.max(0, roundMoney(totalOtherCharges - (state.reactiva || 0))));
-                                    }}
+                                    onChange={(v) => up("otrosCargosActuales", isNaN(v) ? 0 : v)}
                                 />
                             </BreakdownField>
                             <BreakdownField label={t("simulationForm", "fieldMeterRental")}>
@@ -1753,12 +1773,15 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         existingPayload.selectedOffer ?? undefined
     );
     // Excel treats PETICION DATOS LUZ!O7 (the explicitly selected billing
-    // month) as authoritative. Preserve the saved selection across edits;
-    // dates determine billing days, not the indexed-price month.
+    // month) as authoritative. Preserve the saved selection until the user
+    // changes the billing-period end date; that edit selects the new month.
     const [billingMonthOverride, setBillingMonthOverride] = useState<string | null>(() =>
         existingPayload.electricity?.billingMonth ??
         existingPayload.electricity?.periodo.fechaFin?.slice(0, 7) ??
         null
+    );
+    const [availableBillingMonths, setAvailableBillingMonths] = useState<string[]>(
+        simulation.billingMonths ?? [],
     );
     const [cupsHistory, setCupsHistory] = useState<CupsLookupEntry[]>([]);
     const [ivaRateOptions, setIvaRateOptions] = useState<number[]>([]);
@@ -1913,8 +1936,10 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 omie: { P1: 0.17623088364033698, P2: 0.10728797576897793, P3: 0.079728736723209598, P4: 0, P5: 0, P6: 0 },
                 facturaActual: 493.79,
                 reactiva: 0,
+                reactivaActual: 0,
                 alquiler: 1.3,
                 otrosCargos: 0,
+                otrosCargosActuales: 0,
                 useCurrentInvoiceBreakdown: true,
                 importePotencia: 0,
                 importeEnergia: 0,
@@ -2000,6 +2025,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 results: calcResult.results,
             };
             setResults(calcResult.results);
+            setAvailableBillingMonths(calcResult.billingMonths);
             setActiveTab("results");
             onSuccess?.(calcResult.results, calcResult.baseValueSetId, updatedPayload);
             onNotify?.(t("simulationForm", "calculationComplete", { count: (calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0) }), "success");
@@ -2043,6 +2069,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 results: calcResult.results,
             };
             setResults(calcResult.results);
+            setAvailableBillingMonths(calcResult.billingMonths);
             setActiveTab("results");
             onSuccess?.(calcResult.results, calcResult.baseValueSetId, updatedPayload);
             onNotify?.(t("simulationForm", "calculationComplete", { count: (calcResult.results.electricity?.length ?? 0) + (calcResult.results.gas?.length ?? 0) }), "success");
@@ -2096,18 +2123,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             ? elecState.fechaFin.slice(0, 7)
             : getDominantBillingMonth(gasState.fechaInicio, gasState.fechaFin)
     );
-    const availableMonths = (() => {
-        const today = new Date();
-        const months: string[] = [];
-        for (let delta = 0; delta <= 17; delta++) {
-            const d = new Date(today.getFullYear(), today.getMonth() - delta, 1);
-            months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-        }
-        if (selectedMonth && !months.includes(selectedMonth)) {
-            months.unshift(selectedMonth);
-        }
-        return months; // most recent first
-    })();
+    const availableMonths = availableBillingMonths;
 
     const resultCount = (results?.electricity?.length ?? 0) + (results?.gas?.length ?? 0);
 
@@ -2234,6 +2250,11 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                                                 // The geographic zone selects the corresponding price table.
                                                 // Keep the tax rates extracted from the customer's invoice: changing
                                                 // the zone while validating offers must not silently rewrite them.
+                                                if (s.fechaFin !== elecState.fechaFin) {
+                                                    setBillingMonthOverride(
+                                                        s.fechaFin ? s.fechaFin.slice(0, 7) : null,
+                                                    );
+                                                }
                                                 setElecState(s);
                                             }}
                                             errors={elecErrors}

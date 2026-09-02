@@ -16,6 +16,7 @@ import {
   type ExcelParserProductConfigScope,
 } from "@/domain/excelParserProductConfig";
 import type { ProductDefinition } from "@/domain/productRegistry";
+import { getBaseValueBillingMonths } from "@/application/services/baseValueBillingMonths";
 
 const PRICE_MAP_CACHE_TTL_MS = 60_000;
 const PRODUCT_DEFINITIONS_CACHE_TTL_MS = 60_000;
@@ -105,6 +106,12 @@ export async function calculateAndPersistSimulation(
     );
   }
 
+  const selectedBillingMonth =
+    input.selectedMonth ??
+    payload.electricity?.billingMonth ??
+    payload.electricity?.periodo.fechaFin.slice(0, 7);
+  let availableBillingMonths: string[] = [];
+
   const [baseValueSet, priceMapResult, systemConfig] = await Promise.all([
     prisma.baseValueSet.findUnique({
       where: { id: baseValueSetId },
@@ -150,10 +157,18 @@ export async function calculateAndPersistSimulation(
     );
   }
 
-  const selectedBillingMonth =
-    input.selectedMonth ??
-    payload.electricity?.billingMonth ??
-    payload.electricity?.periodo.fechaFin.slice(0, 7);
+  availableBillingMonths = await getBaseValueBillingMonths(baseValueSetId);
+  if (payload.electricity && selectedBillingMonth) {
+    if (
+      availableBillingMonths.length > 0 &&
+      !availableBillingMonths.includes(selectedBillingMonth)
+    ) {
+      throw new ValidationError(
+        `Billing month ${selectedBillingMonth} is not available in the selected base value set`,
+      );
+    }
+  }
+
   const payloadWithTaxRates: SimulationPayload = {
     ...payload,
     electricity: payload.electricity
@@ -270,6 +285,7 @@ export async function calculateAndPersistSimulation(
     simulationId: input.simulationId,
     versionId: newVersion.id,
     baseValueSetId,
+    billingMonths: availableBillingMonths,
     results,
   };
 }
@@ -412,7 +428,7 @@ function toParserConfigItem(row: {
   };
 }
 
-async function resolveDefaultBaseValueSetId(
+export async function resolveDefaultBaseValueSetId(
   isTlvAgency: boolean,
 ): Promise<string | null> {
   const scopeType = isTlvAgency ? "TLV" : "GLOBAL";
