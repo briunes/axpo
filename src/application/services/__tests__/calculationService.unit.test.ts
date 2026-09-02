@@ -295,6 +295,102 @@ describe("CalculationService geographic electricity prices", () => {
     expect(balResult).toBeUndefined();
   });
 
+  it("matches Excel's 3.0TD energy-block exception for 6.1TD Control Techo N3", () => {
+    const inputs = buildInputs(0);
+    inputs.tarifaAcceso = "6.1TD";
+    inputs.perfilCarga = "DIURNO";
+    inputs.billingMonth = "2026-07";
+    inputs.consumo = { P1: 1000, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 };
+    inputs.potenciaContratada = {
+      P1: 0,
+      P2: 0,
+      P3: 0,
+      P4: 0,
+      P5: 0,
+      P6: 0,
+    };
+    inputs.extras = { ivaTasa: 0, impuestoElectricoTasa: 0 };
+
+    const entries: Array<{ key: string; valueNumeric: number }> = [];
+    for (const period of ["P1", "P2", "P3", "P4", "P5", "P6"]) {
+      entries.push({
+        key: `ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:${period}:MARGEN:2026-07:PROFILE:DIURNO:ZONE:PENINSULA`,
+        valueNumeric: 0.1,
+      });
+      entries.push({
+        key: `ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:${period}:MARGEN:2026-07:PROFILE:DIURNO:ZONE:PENINSULA`,
+        valueNumeric: 0.2,
+      });
+      entries.push({
+        key: `ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:${period}:POTENCIA:ZONE:PENINSULA`,
+        valueNumeric: 0,
+      });
+    }
+
+    const result = CalculationService.calculateElectricity(
+      inputs,
+      CalculationService.buildPriceMap(entries),
+      {
+        productDefinitions: [
+          {
+            productKey: "DINAMICA_CONTROL_TECHO",
+            displayName: "Dinámica Control Techo",
+            commodity: "ELECTRICITY",
+            pricingType: "INDEXED",
+            tiers: ["N3"],
+          },
+        ],
+      },
+    )[0];
+
+    expect(result.desglose?.terminoEnergia).toBe(200);
+    expect(result.desglose?.terminoPotencia).toBe(0);
+  });
+
+  it("uses Canarias prices from the 3.0TD exception for Control Techo N3", () => {
+    const inputs = buildInputs(0);
+    inputs.tarifaAcceso = "6.1TD";
+    inputs.zonaGeografica = "Canarias";
+    inputs.perfilCarga = "DIURNO";
+    inputs.billingMonth = "2026-07";
+    inputs.consumo = { P1: 1000, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 };
+    inputs.potenciaContratada = { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 };
+    inputs.extras = { ivaTasa: 0, impuestoElectricoTasa: 0 };
+
+    const entries: Array<{ key: string; valueNumeric: number }> = [];
+    for (const period of ["P1", "P2", "P3", "P4", "P5", "P6"]) {
+      entries.push({
+        key: `ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:${period}:MARGEN:2026-07:PROFILE:DIURNO:ZONE:CANARIAS`,
+        valueNumeric: 0.1,
+      });
+      entries.push({
+        key: `ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:3.0TD:${period}:MARGEN:2026-07:PROFILE:DIURNO:ZONE:CANARIAS`,
+        valueNumeric: 0.2,
+      });
+      entries.push({
+        key: `ELEC:INDEX:DINAMICA_CONTROL_TECHO:N3:6.1TD:${period}:POTENCIA:ZONE:CANARIAS`,
+        valueNumeric: 0,
+      });
+    }
+
+    const result = CalculationService.calculateElectricity(
+      inputs,
+      CalculationService.buildPriceMap(entries),
+      {
+        productDefinitions: [{
+          productKey: "DINAMICA_CONTROL_TECHO",
+          displayName: "Dinámica Control Techo",
+          commodity: "ELECTRICITY",
+          pricingType: "INDEXED",
+          tiers: ["N3"],
+        }],
+      },
+    )[0];
+
+    expect(result.desglose?.terminoEnergia).toBe(200);
+    expect(result.desglose?.terminoPotencia).toBe(0);
+  });
+
 });
 
 describe("CalculationService Personalizada OMIE + B", () => {
@@ -675,29 +771,41 @@ describe("CalculationService Personalizada Index", () => {
 
     const map = CalculationService.buildPriceMap([
       {
-        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P1:MARGEN:2026-04:PROFILE:NORMAL",
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P1:MARGEN:2026-04:PROFILE:NORMAL:ZONE:PENINSULA",
         valueNumeric: 0.1,
       },
       {
-        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P2:MARGEN:2026-04:PROFILE:NORMAL",
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P2:MARGEN:2026-04:PROFILE:NORMAL:ZONE:PENINSULA",
         valueNumeric: 0.1,
       },
       {
-        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P3:MARGEN:2026-04:PROFILE:NORMAL",
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P3:MARGEN:2026-04:PROFILE:NORMAL:ZONE:PENINSULA",
         valueNumeric: 0.1,
       },
       {
-        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P1:MARGEN:2026-04:PROFILE:DIURNO",
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P1:MARGEN:2026-04:PROFILE:DIURNO:ZONE:PENINSULA",
         valueNumeric: 0.2,
       },
       {
-        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P2:MARGEN:2026-04:PROFILE:DIURNO",
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P2:MARGEN:2026-04:PROFILE:DIURNO:ZONE:PENINSULA",
         valueNumeric: 0.2,
       },
       {
-        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P3:MARGEN:2026-04:PROFILE:DIURNO",
+        key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P3:MARGEN:2026-04:PROFILE:DIURNO:ZONE:PENINSULA",
         valueNumeric: 0.2,
       },
+      // Conflicting prices in another zone prove the profile lookup remains
+      // constrained to the simulation's selected geographic zone.
+      ...["P1", "P2", "P3"].flatMap((period) => [
+        {
+          key: `ELEC:INDEX:TEST_INDEX:N1:2.0TD:${period}:MARGEN:2026-04:PROFILE:NORMAL:ZONE:CANARIAS`,
+          valueNumeric: 0.8,
+        },
+        {
+          key: `ELEC:INDEX:TEST_INDEX:N1:2.0TD:${period}:MARGEN:2026-04:PROFILE:DIURNO:ZONE:CANARIAS`,
+          valueNumeric: 0.9,
+        },
+      ]),
       {
         key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P1:POTENCIA",
         valueNumeric: 0,
