@@ -36,6 +36,7 @@ const blobUploadSchema = z.object({
 });
 
 export const maxDuration = 60;
+const API_ITEM_BATCH_SIZE = 500;
 
 /**
  * @swagger
@@ -73,7 +74,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   assertRole(auth, [UserRole.ADMIN]);
 
   let fileName: string;
-  const replace = false;
+  let replace = false;
   let scopeType: ExcelParserConfigScope | undefined;
   let buffer: Buffer;
   let temporaryBlobUrl: string | null = null;
@@ -89,6 +90,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
       fileName = payload.data.fileName;
       scopeType = payload.data.scopeType;
+      replace = payload.data.replace;
       temporaryBlobUrl = payload.data.blobUrl;
 
       const blob = await get(temporaryBlobUrl, {
@@ -115,6 +117,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
       fileName = file.name;
       const formScopeType = formData.get("scopeType");
+      replace = formData.get("replace") === "true";
       scopeType =
         formScopeType === "GLOBAL" || formScopeType === "TLV"
           ? formScopeType
@@ -226,32 +229,60 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     } else {
       // Create new version
       const nextVersion = existing ? existing.version + 1 : 1;
+      const setData = {
+        name: parsed.name,
+        scopeType: parsed.scopeType,
+        agencyId: null,
+        sourceWorkbookRef: parsed.sourceWorkbookRef,
+        sourceScope: parsed.sourceScope,
+        sourceFileName: fileName,
+        sourceFileData: buffer,
+        version: nextVersion,
+        isActive: false,
+        createdBy: auth.userId,
+      };
+      const itemData = parsed.items.map((item) => ({
+        key: item.key,
+        valueNumeric: item.valueNumeric ?? null,
+        valueText: item.valueText ?? null,
+        unit: item.unit ?? null,
+      }));
 
-      set = await prisma.baseValueSet.create({
-        data: {
-          name: parsed.name,
-          scopeType: parsed.scopeType,
-          agencyId: null,
-          sourceWorkbookRef: parsed.sourceWorkbookRef,
-          sourceScope: parsed.sourceScope,
-          sourceFileName: fileName,
-          sourceFileData: buffer,
-          version: nextVersion,
-          isActive: false, // Uploaded sets start as Draft; activate manually
-          createdBy: auth.userId,
-          items: {
-            create: parsed.items.map((item) => ({
-              key: item.key,
-              valueNumeric: item.valueNumeric ?? null,
-              valueText: item.valueText ?? null,
-              unit: item.unit ?? null,
-            })),
+      if (isSupabaseApiMode()) {
+        const createdSet = await prisma.baseValueSet.create({ data: setData });
+        try {
+          for (let offset = 0; offset < itemData.length; offset += API_ITEM_BATCH_SIZE) {
+            await prisma.baseValueItem.createMany({
+              data: itemData.slice(offset, offset + API_ITEM_BATCH_SIZE).map((item) => ({
+                baseValueSetId: createdSet.id,
+                ...item,
+              })),
+            });
+          }
+          set = await prisma.baseValueSet.findUnique({
+            where: { id: createdSet.id },
+            include: { _count: { select: { items: true } } },
+          });
+          if (!set || set._count.items !== itemData.length) {
+            throw new Error(
+              `Imported ${set?._count.items ?? 0} of ${itemData.length} price items`,
+            );
+          }
+        } catch (error) {
+          // API mode cannot wrap the parent and batches in a transaction. The
+          // relation cascades, so removing the parent also cleans partial items.
+          await prisma.baseValueSet.delete({ where: { id: createdSet.id } });
+          throw error;
+        }
+      } else {
+        set = await prisma.baseValueSet.create({
+          data: {
+            ...setData,
+            items: { create: itemData },
           },
-        },
-        include: {
-          _count: { select: { items: true } },
-        },
-      });
+          include: { _count: { select: { items: true } } },
+        });
+      }
 
       await AuditService.logEvent({
         actorUserId: auth.userId,
