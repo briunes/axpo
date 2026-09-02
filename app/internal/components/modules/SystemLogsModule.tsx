@@ -7,13 +7,11 @@ import type { AuditLogsActions } from "../hooks/useAuditLogs";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import { usePermissions } from "../../lib/permissionsContext";
 import type { PermissionKey } from "../../lib/permissionsDefinitions";
-import { getSystemConfig } from "../../lib/configApi";
 import { AuditLogsModule } from "./AuditLogsModule";
 import { EmailLogsModule } from "./EmailLogsModule";
 import { CronLogsPanel } from "./CronLogsPanel";
 import { OcrLogsPanel } from "./OcrLogsPanel";
 import { AppErrorLogsPanel } from "./AppErrorLogsPanel";
-import { SimulationIssuesPanel } from "./SimulationIssuesPanel";
 import "./configurations.css";
 
 export interface SystemLogsModuleProps {
@@ -23,7 +21,7 @@ export interface SystemLogsModuleProps {
     onActionButtons?: (buttons: React.ReactNode) => void;
 }
 
-type LogType = "audit" | "email" | "cron" | "ocr" | "app-errors" | "simulation-issues";
+type LogType = "audit" | "email" | "cron" | "ocr" | "app-errors";
 
 const LOG_TABS: Array<{
     id: LogType;
@@ -35,7 +33,6 @@ const LOG_TABS: Array<{
     { id: "cron", labelKey: "cronLogs", permission: "section.cron-logs" },
     { id: "ocr", labelKey: "ocrLogs", permission: "section.ocr-logs" },
     { id: "app-errors", labelKey: "appErrors", permission: "section.app-error-logs" },
-    { id: "simulation-issues", labelKey: "simulationIssues", permission: "section.simulation-issues" },
 ];
 
 const isElevatedRole = (role: string) => role === "ADMIN" || role === "SYS_ADMIN";
@@ -44,30 +41,14 @@ export function SystemLogsModule({ session, auditLogsActions, onNotify, onAction
     const { t } = useI18n();
     const searchParams = useSearchParams();
     const { canDo } = usePermissions();
-    const [simulationIssuesEnabled, setSimulationIssuesEnabled] = useState<boolean | null>(null);
     const requestedTab = searchParams.get("tab") as LogType | null;
     const [activeTab, setActiveTab] = useState<LogType>(
         requestedTab && LOG_TABS.some((tab) => tab.id === requestedTab) ? requestedTab : "audit",
     );
 
-    useEffect(() => {
-        let cancelled = false;
-        getSystemConfig({ view: "runtime" })
-            .then((config) => {
-                if (!cancelled) setSimulationIssuesEnabled(config.simulationIssuesEnabled !== false);
-            })
-            .catch(() => {
-                if (!cancelled) setSimulationIssuesEnabled(false);
-            });
-        return () => { cancelled = true; };
-    }, []);
-
     const visibleTabs = useMemo(() => isElevatedRole(session.user.role)
-        ? LOG_TABS.filter((tab) =>
-            canDo(session.user.role, tab.permission) &&
-            (tab.id !== "simulation-issues" || simulationIssuesEnabled === true),
-        )
-        : [], [canDo, session.user.role, simulationIssuesEnabled]);
+        ? LOG_TABS.filter((tab) => canDo(session.user.role, tab.permission))
+        : [], [canDo, session.user.role]);
 
     useEffect(() => {
         if (visibleTabs.length > 0 && !visibleTabs.some((tab) => tab.id === activeTab)) {
@@ -138,9 +119,6 @@ export function SystemLogsModule({ session, auditLogsActions, onNotify, onAction
                         session={session}
                         onNotify={onNotify}
                     />
-                )}
-                {simulationIssuesEnabled === true && activeTab === "simulation-issues" && (
-                    <SimulationIssuesPanel session={session} onNotify={onNotify} />
                 )}
             </div>
         </div>

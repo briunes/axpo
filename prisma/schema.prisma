@@ -297,6 +297,7 @@ model SimulationIssue {
   reportedByUserId       String
   handledByUserId        String?
   statusChangedAt        DateTime?
+  resolutionNotes        String?                 @db.Text
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   simulation             Simulation?             @relation(fields: [simulationId], references: [id], onDelete: SetNull)
@@ -318,6 +319,7 @@ model SimulationIssueStatusChange {
   toStatus    SimulationIssueStatus
   changedByUserId String
   createdAt   DateTime              @default(now())
+  notes       String?               @db.Text
   issue       SimulationIssue       @relation(fields: [issueId], references: [id], onDelete: Cascade)
   changedByUser User                @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
 
