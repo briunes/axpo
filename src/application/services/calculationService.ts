@@ -137,18 +137,31 @@ function indexedEnergyPriceOf(
     return (
       monthPrice ??
       averagePrice ??
-      priceOf(
+      electricityPriceOf(
         map,
         `${baseKey}:MARGEN:${billingMonthKey}:PROFILE:NORMAL`,
+        zone,
       ) ??
-      priceOf(map, `${baseKey}:MARGEN:PROFILE:NORMAL`) ??
+      electricityPriceOf(
+        map,
+        `${baseKey}:MARGEN:PROFILE:NORMAL`,
+        zone,
+      ) ??
       priceOf(map, `${baseKey}:ENERGIA`)
     );
   }
 
   return (
-    priceOf(map, `${baseKey}:MARGEN:${billingMonthKey}:PROFILE:DIURNO`) ??
-    priceOf(map, `${baseKey}:MARGEN:PROFILE:DIURNO`) ??
+    electricityPriceOf(
+      map,
+      `${baseKey}:MARGEN:${billingMonthKey}:PROFILE:DIURNO`,
+      zone,
+    ) ??
+    electricityPriceOf(
+      map,
+      `${baseKey}:MARGEN:PROFILE:DIURNO`,
+      zone,
+    ) ??
     monthPrice ??
     averagePrice ??
     priceOf(map, `${baseKey}:ENERGIA`)
@@ -425,9 +438,20 @@ function calcElecIndex(
   // for DINAMICA_CONTROL variants or older imports), we fall back to the PROMEDIO
   // (12-month average) key, and then to the legacy ENERGIA key.
 
+  // Excel's lookup table maps DINAMICA CONTROL TECHO N3 with a 6.1TD access
+  // tariff to the product sheet's 3.0TD energy-price block. The geographic
+  // suffix still selects the corresponding Peninsula/Canarias prices.
+  // Contracted-power prices continue to use the actual tariff below.
+  const energyTariff =
+    product === "DINAMICA_CONTROL_TECHO" &&
+    tier === "N3" &&
+    tarifaAcceso === "6.1TD"
+      ? "3.0TD"
+      : tarifaAcceso;
+
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
-    const baseKey = `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}`;
+    const baseKey = `ELEC:INDEX:${product}:${tier}:${energyTariff}:${p}`;
     const storedPrice = indexedEnergyPriceOf(
       map,
       baseKey,

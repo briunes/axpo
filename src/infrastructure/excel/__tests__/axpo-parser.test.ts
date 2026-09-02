@@ -341,6 +341,42 @@ describe("parseAxpoExcel", () => {
     ).toBe(false);
   });
 
+  it("preserves explicit zero profile prices for Canarias", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const inputs = workbook.addWorksheet("PETICION DATOS LUZ");
+    inputs.getCell("E11").value = "Peninsula";
+    inputs.getCell("E57").value = "NORMAL";
+
+    const dinamica = workbook.addWorksheet("DINAMICA N1");
+    dinamica.getCell("E1").value = "PRECIO TE";
+    dinamica.getCell("E2").value = "JULIO-26";
+    dinamica.getCell("G2").value = {
+      formula:
+        "IFS('PETICION DATOS LUZ'!E11=\"Peninsula\",IF('PETICION DATOS LUZ'!E57=\"NORMAL\",100,80),'PETICION DATOS LUZ'!E11=\"Canarias\",IF('PETICION DATOS LUZ'!E57=\"NORMAL\",50,0))",
+      result: 100,
+    } as any;
+    dinamica.getCell("E3").value = "PROMEDIO 12 MESES";
+
+    const parsed = await parseAxpoExcel(
+      Buffer.from(await workbook.xlsx.writeBuffer()),
+      "SIMULADOR TEST.xlsm",
+    );
+    const byKey = new Map(
+      parsed.items.map((item) => [item.key, item.valueNumeric]),
+    );
+
+    expect(
+      byKey.get(
+        "ELEC:INDEX:DINAMICA:N1:6.1TD:P1:MARGEN:2026-07:PROFILE:NORMAL:ZONE:CANARIAS",
+      ),
+    ).toBe(0.05);
+    expect(
+      byKey.get(
+        "ELEC:INDEX:DINAMICA:N1:6.1TD:P1:MARGEN:2026-07:PROFILE:DIURNO:ZONE:CANARIAS",
+      ),
+    ).toBe(0);
+  });
+
   it("matches the Canarias Excel result for simulation 00357/2026", async () => {
     const workbookPath = path.join(process.cwd(), "00357.2026.xlsm");
     const parsed = await parseAxpoExcel(

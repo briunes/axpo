@@ -1306,6 +1306,7 @@ function evaluateZoneFormulaCell(
   address: string,
   zone: "Peninsula" | "Canarias",
   cache: Map<string, number | string | null>,
+  profile?: "NORMAL" | "DIURNO",
 ): number | string | null {
   const resolvedSheetName =
     workbook.SheetNames.find((name) => name === sheetName) ??
@@ -1319,7 +1320,14 @@ function evaluateZoneFormulaCell(
   ) {
     return zone;
   }
-  const cacheKey = `${sheetName}!${address}:${zone}`;
+  if (
+    profile &&
+    sheetName.trim() === "PETICION DATOS LUZ" &&
+    address.replace(/\$/g, "") === "E57"
+  ) {
+    return profile;
+  }
+  const cacheKey = `${sheetName}!${address}:${zone}:${profile ?? "CACHED"}`;
   if (cache.has(cacheKey)) return cache.get(cacheKey) ?? null;
   const cell = workbook.Sheets[sheetName]?.[address.replace(/\$/g, "")];
   if (!cell) return null;
@@ -1388,6 +1396,7 @@ function evaluateZoneFormulaCell(
         targetAddress,
         zone,
         cache,
+        profile,
       );
     }
 
@@ -1404,6 +1413,7 @@ function evaluateZoneFormulaCell(
           targetAddress,
           zone,
           cache,
+          profile,
         );
         if (result === "" || result === null) return "0";
         if (typeof result !== "number" || !Number.isFinite(result)) {
@@ -1721,13 +1731,33 @@ function parseDinamicaSheet(
           }
         }
 
-        const profilePrices = profilePricesFromFormulaCell(
-          sheet,
-          inputOmieSheet,
-          cell,
-        );
-        const normalRawMwh = profilePrices?.normalMwh ?? null;
-        const diurnoRawMwh = profilePrices?.diurnoMwh ?? null;
+        const profilePrices = zoneContext
+          ? null
+          : profilePricesFromFormulaCell(sheet, inputOmieSheet, cell);
+        const normalRawMwh = zoneContext
+          ? safeFloat(
+              evaluateZoneFormulaCell(
+                zoneContext.workbook,
+                zoneContext.sheetName,
+                encodeCell({ r: R, c: cols[i] }),
+                zoneContext.zone,
+                zoneFormulaCache,
+                "NORMAL",
+              ),
+            )
+          : (profilePrices?.normalMwh ?? null);
+        const diurnoRawMwh = zoneContext
+          ? safeFloat(
+              evaluateZoneFormulaCell(
+                zoneContext.workbook,
+                zoneContext.sheetName,
+                encodeCell({ r: R, c: cols[i] }),
+                zoneContext.zone,
+                zoneFormulaCache,
+                "DIURNO",
+              ),
+            )
+          : (profilePrices?.diurnoMwh ?? null);
 
         const toAdjustedKwh = (rawMwh: number): number => {
           let adjusted = rawMwh;
@@ -1760,14 +1790,14 @@ function parseDinamicaSheet(
         if (isPromedio) {
           // 12-month average — stored as the un-suffixed fallback key
           items.push({ key: baseKey, valueNumeric: numVal, unit: "€/kWh" });
-          if (normalRawMwh !== null && normalRawMwh > 0) {
+          if (normalRawMwh !== null && (zoneContext || normalRawMwh > 0)) {
             items.push({
               key: `${baseKey}:PROFILE:NORMAL`,
               valueNumeric: toAdjustedKwh(normalRawMwh),
               unit: "€/kWh",
             });
           }
-          if (diurnoRawMwh !== null && diurnoRawMwh > 0) {
+          if (diurnoRawMwh !== null && (zoneContext || diurnoRawMwh > 0)) {
             items.push({
               key: `${baseKey}:PROFILE:DIURNO`,
               valueNumeric: toAdjustedKwh(diurnoRawMwh),
@@ -1781,14 +1811,14 @@ function parseDinamicaSheet(
             valueNumeric: numVal,
             unit: "€/kWh",
           });
-          if (normalRawMwh !== null && normalRawMwh > 0) {
+          if (normalRawMwh !== null && (zoneContext || normalRawMwh > 0)) {
             items.push({
               key: `${baseKey}:${monthKey}:PROFILE:NORMAL`,
               valueNumeric: toAdjustedKwh(normalRawMwh),
               unit: "€/kWh",
             });
           }
-          if (diurnoRawMwh !== null && diurnoRawMwh > 0) {
+          if (diurnoRawMwh !== null && (zoneContext || diurnoRawMwh > 0)) {
             items.push({
               key: `${baseKey}:${monthKey}:PROFILE:DIURNO`,
               valueNumeric: toAdjustedKwh(diurnoRawMwh),
