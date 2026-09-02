@@ -34,6 +34,10 @@ function parseCountries(contents) {
     .sort((a, b) => a[1].localeCompare(b[1], "en"));
 }
 
+function normalizeSpanishProvinceName(name) {
+  return name.replace(/^(?:Province of|Província de|Provincia (?:da|de))\s+/i, "");
+}
+
 function parseSubdivisions(admin1Contents, admin2Contents, countryCodes) {
   const subdivisions = new Map();
 
@@ -60,7 +64,7 @@ function parseSubdivisions(admin1Contents, admin2Contents, countryCodes) {
     if (!line.startsWith("ES.")) continue;
     const [, rawName] = line.split("\t");
     const name = rawName?.trim();
-    if (name) spanishProvinces.add(name);
+    if (name) spanishProvinces.add(normalizeSpanishProvinceName(name));
   }
   subdivisions.set("ES", spanishProvinces);
 
