@@ -21,6 +21,10 @@ import type { SimulationPayload } from "@/domain/types/simulation";
 import { getRequestSessionContext } from "@/application/middleware/requestSessionContext";
 import { keyedDigest } from "@/application/lib/sensitiveData";
 import { normalizeLanguageCode } from "@/lib/supportedLanguages";
+import {
+  buildSelectedProductEnergyHistory,
+  selectedProductEnergyKeyPrefixes,
+} from "@/lib/selectedProductEnergyHistory";
 
 const accessSchema = z.object({
   token: z.string().min(16),
@@ -225,6 +229,26 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
           : {}),
       }
     : null;
+  const simulationPayload = mergedPayload as SimulationPayload | null;
+  const baseValueSetId =
+    baseVersion?.baseValueSetId ??
+    (simulationPayload?.results as { baseValueSetId?: string } | undefined)
+      ?.baseValueSetId;
+  const selectedProductPrefixes = selectedProductEnergyKeyPrefixes(simulationPayload);
+  const selectedProductBaseValues =
+    baseValueSetId && selectedProductPrefixes.length > 0
+      ? await prisma.baseValueItem.findMany({
+          where: {
+            baseValueSetId,
+            OR: selectedProductPrefixes.map((prefix) => ({ key: { startsWith: prefix } })),
+          },
+          select: { key: true, valueNumeric: true },
+        })
+      : [];
+  const selectedProductHistory = buildSelectedProductEnergyHistory(
+    simulationPayload,
+    selectedProductBaseValues,
+  );
   // Determine commodity from the merged payload inputs
   const commodity = mergedPayload?.type as "ELECTRICITY" | "GAS" | undefined;
 
@@ -270,11 +294,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
         const variableValues = extractVariableValues(
           simulation,
-          mergedPayload as SimulationPayload | undefined,
+          simulationPayload ?? undefined,
           undefined,
           editableSections ?? undefined,
           undefined,
           preferredLanguage,
+          selectedProductHistory,
         );
         defaultPdfTemplate = {
           id: template.id,

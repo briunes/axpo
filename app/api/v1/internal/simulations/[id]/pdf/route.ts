@@ -18,6 +18,10 @@ import {
 import type { SimulationPayload } from "@/domain/types/simulation";
 import { normalizeLanguageCode } from "@/lib/supportedLanguages";
 import type { EditableSectionsConfig } from "@/infrastructure/templates/editableSections";
+import {
+  buildSelectedProductEnergyHistory,
+  selectedProductEnergyKeyPrefixes,
+} from "@/lib/selectedProductEnergyHistory";
 
 const PDF_PAGE_BREAK_STYLE = `<style>
   @media print {
@@ -124,6 +128,26 @@ export const GET = withErrorHandler(
             : {}),
         }
       : null;
+    const simulationPayload = mergedPayload as SimulationPayload | null;
+    const baseValueSetId =
+      baseVersion?.baseValueSetId ??
+      (simulationPayload?.results as { baseValueSetId?: string } | undefined)
+        ?.baseValueSetId;
+    const selectedProductPrefixes = selectedProductEnergyKeyPrefixes(simulationPayload);
+    const selectedProductBaseValues =
+      baseValueSetId && selectedProductPrefixes.length > 0
+        ? await prisma.baseValueItem.findMany({
+            where: {
+              baseValueSetId,
+              OR: selectedProductPrefixes.map((prefix) => ({ key: { startsWith: prefix } })),
+            },
+            select: { key: true, valueNumeric: true },
+          })
+        : [];
+    const selectedProductHistory = buildSelectedProductEnergyHistory(
+      simulationPayload,
+      selectedProductBaseValues,
+    );
 
     const preferredLanguage = normalizeLanguageCode(
       simulation.client?.language ?? simulation.ownerUser?.preferences?.language,
@@ -187,12 +211,13 @@ export const GET = withErrorHandler(
       templateHtml,
       extractVariableValues(
         simulation,
-        (mergedPayload as SimulationPayload | null) ?? undefined,
+        simulationPayload ?? undefined,
         undefined,
         (pdfTemplate.editableSections as EditableSectionsConfig | null) ??
           undefined,
         undefined,
         preferredLanguage,
+        selectedProductHistory,
       ),
     );
     const fullHtml = processedHtml.includes("<!DOCTYPE html>")
