@@ -142,6 +142,56 @@ export const POST = withErrorHandler(
           .asim-data-section + .asim-cost-breakdown {
             margin-top: -8px !important;
           }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) {
+            padding-top: 6px !important;
+          }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) > .asim-section-title {
+            margin-bottom: 14px !important;
+          }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) .asim-comparison {
+            margin-bottom: 16px !important;
+          }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) .asim-plan-body {
+            padding: 12px !important;
+          }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) .asim-plan-tariff {
+            margin-bottom: 10px !important;
+          }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) .asim-data-section {
+            margin-bottom: 10px !important;
+          }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) .asim-data-section-title {
+            margin-bottom: 5px !important;
+            padding-bottom: 3px !important;
+          }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) .asim-period-grid {
+            gap: 6px !important;
+            margin-bottom: 6px !important;
+          }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) .asim-period-item {
+            padding: 6px 4px !important;
+          }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) .asim-cost-item {
+            padding: 5px 0 !important;
+          }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) .asim-total-item {
+            padding: 8px 12px !important;
+          }
+          .asim-page--comparison .asim-energy-price-table--electricity {
+            margin-top: 10px !important;
+          }
+          .asim-page--comparison .asim-energy-price-table--electricity .asim-energy-price-header,
+          .asim-page--comparison .asim-energy-price-table--electricity .asim-energy-price-grid {
+            padding-top: 7px !important;
+            padding-bottom: 7px !important;
+          }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) .asim-notice {
+            margin-top: 6px !important;
+          }
+          .asim-page--comparison:has(.asim-energy-price-table--electricity) .asim-footer {
+            margin-top: 8px !important;
+            padding-top: 7px !important;
+          }
           /* Prevent page breaks inside key layout containers and leaf elements */
           table, figure, img,
           .asim-comparison,
