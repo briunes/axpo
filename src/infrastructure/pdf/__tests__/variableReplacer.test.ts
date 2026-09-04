@@ -170,7 +170,7 @@ describe("extractVariableValues", () => {
         results: {
           electricity: [
             {
-              productKey: "FIJO:TEST",
+              productKey: "PERSONALIZADA_FIJO",
               productLabel: "Personalizada Fijo",
               commodity: "ELECTRICITY",
               pricingType: "FIXED",
@@ -182,7 +182,7 @@ describe("extractVariableValues", () => {
             },
           ],
         },
-        selectedOffer: { productKey: "FIJO:TEST", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
+        selectedOffer: { productKey: "PERSONALIZADA_FIJO", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
       } as any,
       undefined,
       undefined,
@@ -328,7 +328,7 @@ describe("extractVariableValues", () => {
         results: {
           electricity: [
             {
-              productKey: "FIJO:TEST",
+              productKey: "PERSONALIZADA_FIJO",
               productLabel: "Personalizada Fijo",
               commodity: "ELECTRICITY",
               pricingType: "FIXED",
@@ -340,7 +340,7 @@ describe("extractVariableValues", () => {
             },
           ],
         },
-        selectedOffer: { productKey: "FIJO:TEST", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
+        selectedOffer: { productKey: "PERSONALIZADA_FIJO", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
       } as any,
       undefined,
       undefined,
@@ -540,7 +540,7 @@ describe("extractVariableValues", () => {
         results: {
           electricity: [
             {
-              productKey: "INDEX:TEST",
+              productKey: "PERSONALIZADA_INDEX",
               productLabel: "Personalized Index",
               commodity: "ELECTRICITY",
               pricingType: "INDEXED",
@@ -553,7 +553,7 @@ describe("extractVariableValues", () => {
           ],
         },
         selectedOffer: {
-          productKey: "INDEX:TEST",
+          productKey: "PERSONALIZADA_INDEX",
           commodity: "ELECTRICITY",
           pricingType: "INDEXED",
           selectedAt: "2026-08-18T10:00:00.000Z",
@@ -993,5 +993,51 @@ describe("extractVariableValues", () => {
     expect(variables.CURRENT_ENERGY_COST).toBe("415.25");
     expect(variables.CURRENT_TAX_COST).toBe("28.38");
     expect(variables.CURRENT_VAT).toBe("141.39");
+  });
+
+  it("shows the selected catalogue product prices instead of unrelated custom fixed inputs", () => {
+    const variables = extractVariableValues(
+      { id: "simulation-id" },
+      {
+        type: "ELECTRICITY",
+        electricity: {
+          tarifaAcceso: "3.0TD",
+          consumo: { P1: 1063.47, P2: 664.8, P3: 769.16 },
+          potenciaContratada: { P1: 14.9, P2: 14.9 },
+          periodo: { fechaInicio: "2026-07-17", fechaFin: "2026-08-17", dias: 32 },
+          facturaActual: 698.27,
+          personalizadaFijo: {
+            preciosEnergia: { P1: 0.18866, P2: 0.135158, P3: 0.115374 },
+            preciosPotencia: {},
+          },
+        },
+        results: {
+          electricity: [{
+            productKey: "1P_PLUS:N2",
+            productLabel: "1P Plus N2",
+            commodity: "ELECTRICITY",
+            pricingType: "FIXED",
+            totalFactura: 665.17,
+            ahorro: 33.1,
+            pctAhorro: 4.74,
+            ahorroAnual: 377.48,
+            desglose: { terminoEnergia: 443.36 },
+          }],
+        },
+        selectedOffer: { productKey: "1P_PLUS:N2", commodity: "ELECTRICITY" },
+      } as any,
+      undefined,
+      undefined,
+      undefined,
+      "es",
+      {
+        productKey: "1P_PLUS:N2",
+        tariffs: { "3.0TD": { P1: 0.177527, P2: 0.177527, P3: 0.177527 } },
+      },
+    );
+
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,177527");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toContain("0,18866");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toBe("");
   });
 });
