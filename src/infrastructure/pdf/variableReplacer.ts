@@ -164,9 +164,10 @@ function buildSelectedProductEnergyTable(
 
   const toValueList = (
     raw: Record<string, any> | undefined,
+    includedPeriods: readonly string[] = periods,
   ): PeriodValue[] => {
     if (!raw || typeof raw !== "object") return [];
-    return periods
+    return includedPeriods
       .map((period) => ({ label: period, value: Number(raw[period] ?? 0) }))
       .filter((item) => Number(item.value) > 0) as PeriodValue[];
   };
@@ -191,44 +192,47 @@ function buildSelectedProductEnergyTable(
         return [];
       })()
     : (() => {
-        const explicitMap =
-          electricity?.personalizadaFijo?.preciosEnergia ?? {};
-        const explicitValues = toValueList(explicitMap);
-        if (explicitValues.length > 0) {
-          return explicitValues;
+        const selectedProductKey = String(selectedResult?.productKey ?? "");
+        const cataloguePeriods = periods.filter(
+          (period) => Number(electricity?.consumo?.[period] ?? 0) > 0,
+        );
+
+        if (selectedProductKey === "PERSONALIZADA_FIJO") {
+          const explicitMap =
+            electricity?.personalizadaFijo?.preciosEnergia ?? {};
+          return toValueList(explicitMap);
         }
 
-        const personalizedIndexMap =
-          electricity?.personalizadaIndex?.margenEnergia ?? {};
-        const omieMap = electricity?.omieEstimado ?? {};
-        const derivedIndexValues = periods
-          .map((period) => {
-            const omieValue = Number(omieMap[period] ?? 0);
-            const marginValue = Number(personalizedIndexMap[period] ?? 0);
-            const value = omieValue + marginValue / 1000;
-            if (value <= 0) return null;
-            return { label: period, value };
-          })
-          .filter((item) => item !== null) as PeriodValue[];
-
-        if (derivedIndexValues.length > 0) {
-          return derivedIndexValues;
+        if (selectedProductKey === "PERSONALIZADA_INDEX") {
+          const personalizedIndexMap =
+            electricity?.personalizadaIndex?.margenEnergia ?? {};
+          const omieMap = electricity?.omieEstimado ?? {};
+          return periods
+            .map((period) => {
+              const omieValue = Number(omieMap[period] ?? 0);
+              const marginValue = Number(personalizedIndexMap[period] ?? 0);
+              const value = omieValue + marginValue / 1000;
+              if (value <= 0) return null;
+              return { label: period, value };
+            })
+            .filter((item) => item !== null) as PeriodValue[];
         }
 
         const resultMap = selectedResult?.desglose ?? {};
         const explicitResultValues = toValueList(
           Object.fromEntries(
-            periods.map((period) => [
+            cataloguePeriods.map((period) => [
               period,
               Number(resultMap[`precioEnergia${period}`] ?? 0),
             ]),
           ),
+          cataloguePeriods,
         );
         if (explicitResultValues.length > 0) {
           return explicitResultValues;
         }
 
-        const historyValues = periods
+        const historyValues = cataloguePeriods
           .map((period) => {
             const value = resolveSelectedProductHistoryValue(
               selectedProductHistory,
