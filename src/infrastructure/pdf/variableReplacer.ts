@@ -314,7 +314,7 @@ function buildSelectedProductEnergyTable(
     .join("");
 
   return `
-        <div class="asim-energy-price-table" style="margin-top:18px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;background:#fff;">
+        <div class="asim-energy-price-table${isGas ? "" : " asim-energy-price-table--electricity"}" style="margin-top:18px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;background:#fff;">
           <div class="asim-energy-price-header" style="background:#4545cf;color:#fff;padding:10px 12px;font-weight:700;font-size:10pt;">${title}</div>
           <div class="asim-energy-price-grid" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:10px 12px;background:#f7f7ff;align-items:stretch;">${rows}</div>
         </div>`;
