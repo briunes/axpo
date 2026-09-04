@@ -16,6 +16,10 @@ import {
 import { installPdfResourceGuard } from "@/infrastructure/pdf/pdfResourceGuard";
 import { normalizeLanguageCode } from "@/lib/supportedLanguages";
 import type { EditableSectionsConfig } from "@/infrastructure/templates/editableSections";
+import {
+  buildSelectedProductEnergyHistory,
+  selectedProductEnergyKeyPrefixes,
+} from "@/lib/selectedProductEnergyHistory";
 
 interface PublicSessionPayload {
   typ?: string;
@@ -263,6 +267,29 @@ export async function GET(
 
     // Extract variable values from simulation data
     const simulationPayload = mergedPayload as SimulationPayload | null;
+    const baseValueSetId =
+      baseVersion?.baseValueSetId ??
+      (simulationPayload?.results as { baseValueSetId?: string } | undefined)
+        ?.baseValueSetId;
+    const selectedProductPrefixes = selectedProductEnergyKeyPrefixes(
+      simulationPayload,
+    );
+    const selectedProductBaseValues =
+      baseValueSetId && selectedProductPrefixes.length > 0
+        ? await prisma.baseValueItem.findMany({
+            where: {
+              baseValueSetId,
+              OR: selectedProductPrefixes.map((prefix) => ({
+                key: { startsWith: prefix },
+              })),
+            },
+            select: { key: true, valueNumeric: true },
+          })
+        : [];
+    const selectedProductHistory = buildSelectedProductEnergyHistory(
+      simulationPayload,
+      selectedProductBaseValues,
+    );
     const variableValues = extractVariableValues(
       simulation,
       simulationPayload ?? undefined,
@@ -271,6 +298,7 @@ export async function GET(
         undefined,
       undefined,
       preferredLanguage,
+      selectedProductHistory,
     );
 
     // Replace variables in template
