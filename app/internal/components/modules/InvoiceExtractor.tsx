@@ -64,8 +64,12 @@ export interface ExtractedInvoiceData {
     facturaActual?: number;
     excesoPotencia?: number;
     reactiva?: number;
+    /** Current-plan breakdown reactive energy; independent from the new-plan input. */
+    reactivaActual?: number;
     alquiler?: number;
     otrosCargos?: number;
+    /** Current supplier's displayed "other charges" total, excluding reactive energy. */
+    otrosCargosActuales?: number;
     importePotencia?: number;
     importeEnergia?: number;
     importeImpuestoElectrico?: number;

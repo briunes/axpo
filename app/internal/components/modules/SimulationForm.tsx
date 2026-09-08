@@ -87,8 +87,12 @@ interface ElecFormState {
     personalizadaFijoEnergia: PeriodMap;
     facturaActual: number;
     reactiva: number;
+    /** Current supplier reactive-energy amount; independent from the AXPO pass-through input. */
+    reactivaActual: number;
     alquiler: number;
     otrosCargos: number;
+    /** Current-plan display value; intentionally independent from simulation otrosCargos. */
+    otrosCargosActuales: number;
     useCurrentInvoiceBreakdown: boolean;
     importePotencia: number;
     importeEnergia: number;
@@ -344,6 +348,7 @@ function currentElecInvoiceBreakdownTotal(s: ElecFormState): number {
         (s.importeEnergia || 0) +
         (s.exceso || 0) +
         (s.importeImpuestoElectrico || 0) +
+        (s.reactivaActual || 0) +
         currentElecOtherChargesForBreakdown(s) +
         (s.alquiler || 0) +
         (s.importeIva || 0),
@@ -351,7 +356,7 @@ function currentElecInvoiceBreakdownTotal(s: ElecFormState): number {
 }
 
 function currentElecOtherChargesForBreakdown(s: ElecFormState): number {
-    return roundMoney((s.otrosCargos || 0) + (s.reactiva || 0));
+    return roundMoney(s.otrosCargosActuales || 0);
 }
 
 function currentGasInvoiceBreakdownTotal(s: GasFormState): number {
@@ -396,8 +401,10 @@ function defaultElecState(): ElecFormState {
         personalizadaFijoEnergia: { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, P6: 0 },
         facturaActual: 0,
         reactiva: 0,
+        reactivaActual: 0,
         alquiler: 0,
         otrosCargos: 0,
+        otrosCargosActuales: 0,
         useCurrentInvoiceBreakdown: true,
         importePotencia: 0,
         importeEnergia: 0,
@@ -489,7 +496,8 @@ function buildElecInputs(s: ElecFormState): ElectricityInputs {
                 terminoEnergia: s.importeEnergia || 0,
                 excesoPotencia: s.exceso || 0,
                 impuestoElectrico: s.importeImpuestoElectrico || 0,
-                otrosCargos: currentElecOtherChargesForBreakdown(s),
+                reactiva: s.reactivaActual || 0,
+                otrosCargos: s.otrosCargosActuales || 0,
                 alquiler: s.alquiler || 0,
                 iva: s.importeIva || 0,
                 total: currentElecInvoiceBreakdownTotal(s),
@@ -623,8 +631,10 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
             personalizadaFijoEnergia: emptyPeriods(ep),
             facturaActual: invoiceData.facturaActual ?? 0,
             reactiva: invoiceData.reactiva ?? 0,
+            reactivaActual: invoiceData.reactivaActual ?? invoiceData.reactiva ?? 0,
             alquiler: invoiceData.alquiler ?? 0,
             otrosCargos: invoiceData.otrosCargos ?? 0,
+            otrosCargosActuales: roundMoney(invoiceData.otrosCargos ?? 0),
             useCurrentInvoiceBreakdown: invoiceData.useCurrentInvoiceBreakdown !== false,
             importePotencia: invoiceData.importePotencia ?? deriveCurrentBreakdown(invoiceData).importePotencia ?? 0,
             importeEnergia: invoiceData.importeEnergia ?? deriveCurrentBreakdown(invoiceData).importeEnergia ?? 0,
@@ -686,8 +696,18 @@ function hydrateElec(p: SimulationPayload): ElecFormState | null {
         personalizadaFijoPotencia: Object.fromEntries(pp.map((p) => [p, ((e.personalizadaFijo?.preciosPotencia ?? {}) as Record<string, number>)[p] ?? 0])),
         facturaActual: e.facturaActual,
         reactiva: e.extras?.reactiva ?? 0,
+        reactivaActual: (e.extras as any)?.currentInvoiceBreakdown?.reactiva ?? e.extras?.reactiva ?? 0,
         alquiler: e.extras?.alquilerEquipoMedida ?? 0,
         otrosCargos: e.extras?.otrosCargos ?? 0,
+        otrosCargosActuales: (() => {
+            const savedBreakdown = (e.extras as any)?.currentInvoiceBreakdown;
+            if (savedBreakdown?.otrosCargos == null) return roundMoney(e.extras?.otrosCargos ?? 0);
+            // Older versions stored reactive energy merged into this field.
+            if (savedBreakdown.reactiva == null) {
+                return roundMoney(Math.max(0, Number(savedBreakdown.otrosCargos) - (e.extras?.reactiva ?? 0)));
+            }
+            return roundMoney(Number(savedBreakdown.otrosCargos));
+        })(),
         useCurrentInvoiceBreakdown: (e.extras as any)?.useCurrentInvoiceBreakdown !== false,
         importePotencia: (e.extras as any)?.terminoPotenciaActual ?? (invoiceData as any)?.importePotencia ?? derivedBreakdown.importePotencia ?? 0,
         importeEnergia: (e.extras as any)?.terminoEnergiaActual ?? (invoiceData as any)?.importeEnergia ?? derivedBreakdown.importeEnergia ?? 0,
@@ -1372,13 +1392,13 @@ function ElecForm({ state, onChange, errors = {}, cupsHistory = [], onClientFiel
                             <BreakdownField label={t("simulationForm", "currentElectricityTaxLabel")}>
                                 <CurrencyInput value={state.importeImpuestoElectrico} onChange={(v) => up("importeImpuestoElectrico", isNaN(v) ? 0 : v)} />
                             </BreakdownField>
-                            <BreakdownField label={t("simulationForm", "fieldOtherCharges")} hint={t("simulationForm", "currentOtherChargesIncludesReactiveHint")}>
+                            <BreakdownField label={t("simulationForm", "fieldReactiveEnergy")}>
+                                <CurrencyInput value={state.reactivaActual} onChange={(v) => up("reactivaActual", isNaN(v) ? 0 : v)} />
+                            </BreakdownField>
+                            <BreakdownField label={t("simulationForm", "fieldOtherCharges")}>
                                 <CurrencyInput
                                     value={currentOtherChargesBreakdown}
-                                    onChange={(v) => {
-                                        const totalOtherCharges = isNaN(v) ? 0 : v;
-                                        up("otrosCargos", Math.max(0, roundMoney(totalOtherCharges - (state.reactiva || 0))));
-                                    }}
+                                    onChange={(v) => up("otrosCargosActuales", isNaN(v) ? 0 : v)}
                                 />
                             </BreakdownField>
                             <BreakdownField label={t("simulationForm", "fieldMeterRental")}>
@@ -1913,8 +1933,10 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
                 omie: { P1: 0.17623088364033698, P2: 0.10728797576897793, P3: 0.079728736723209598, P4: 0, P5: 0, P6: 0 },
                 facturaActual: 493.79,
                 reactiva: 0,
+                reactivaActual: 0,
                 alquiler: 1.3,
                 otrosCargos: 0,
+                otrosCargosActuales: 0,
                 useCurrentInvoiceBreakdown: true,
                 importePotencia: 0,
                 importeEnergia: 0,

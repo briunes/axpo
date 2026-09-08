@@ -556,8 +556,18 @@ export function extractVariableValues(
       : currentPowerEnergyBase * (axpoEnergyCost / axpoPeSum);
   const currentOtherCost =
     currentInvoiceBreakdown?.otrosCargos != null
-      ? Number(currentInvoiceBreakdown.otrosCargos)
+      ? currentInvoiceBreakdown?.reactiva == null
+        ? Math.max(
+            0,
+            Number(currentInvoiceBreakdown.otrosCargos) - currentReactiveCost,
+          )
+        : Number(currentInvoiceBreakdown.otrosCargos)
       : currentOtherChargeCost;
+  const displayedCurrentReactive =
+    currentInvoiceBreakdown?.reactiva != null
+      ? Number(currentInvoiceBreakdown.reactiva)
+      : currentReactiveCost;
+  const displayedCurrentOther = currentOtherCost + displayedCurrentReactive;
   const displayedCurrentExcess =
     currentInvoiceBreakdown?.excesoPotencia != null
       ? Number(currentInvoiceBreakdown.excesoPotencia)
@@ -602,7 +612,7 @@ export function extractVariableValues(
             "Other charges",
             "Otros cargos",
           ),
-          value: currentOtherCost,
+          value: displayedCurrentOther,
         },
         {
           label: currentBreakdownLabel(language, "Rental", "Alquiler"),
@@ -830,7 +840,7 @@ export function extractVariableValues(
     CURRENT_ENERGY_COST: formatCurrency(currentEnergyCost),
     CURRENT_EXCESS_COST: formatCurrency(displayedCurrentExcess),
     CURRENT_TAX_COST: formatCurrency(displayedCurrentTax),
-    CURRENT_OTHER_COST: formatCurrency(currentOtherCost),
+    CURRENT_OTHER_COST: formatCurrency(displayedCurrentOther),
     CURRENT_RENTAL_COST: formatCurrency(displayedCurrentRental),
     CURRENT_VAT: formatCurrency(displayedCurrentVat),
     CURRENT_TOTAL: formatCurrency(currentTotal),
@@ -898,7 +908,7 @@ export function extractVariableValues(
     ELECTRICITY_CONSUMPTION_KWH: formatNumber(totalConsumption as number, 0),
     ELECTRICITY_IVA_RATE: formatNumber(currentIvaTasa, 2),
     ELECTRICITY_TAX_RATE: formatNumber(currentIeTasa, 5),
-    CURRENT_REACTIVE_COST: formatCurrency(currentReactiveCost),
+    CURRENT_REACTIVE_COST: formatCurrency(displayedCurrentReactive),
     CURRENT_OTHER_CHARGES: formatCurrency(currentOtherChargeCost),
 
     // ─── Gas-specific variables ──────────────────────────────────────────────

@@ -724,7 +724,7 @@ describe("extractVariableValues", () => {
     expect(variables.ELECTRICITY_TAX_RATE).toBe("5,11269");
     expect(variables.CURRENT_REACTIVE_COST).toBe("3.00");
     expect(variables.CURRENT_OTHER_CHARGES).toBe("2.00");
-    expect(variables.CURRENT_OTHER_COST).toBe("2.00");
+    expect(variables.CURRENT_OTHER_COST).toBe("5.00");
     expect(variables.CHART_COMPARATIVA).toContain("display:block;width:100%");
     expect(variables.CHART_COMPARATIVA).toContain('width="100%"');
     expect(variables.CHART_COMPARATIVA).toContain("flex:0 0 50%");
@@ -886,10 +886,11 @@ describe("extractVariableValues", () => {
               terminoEnergia: 2,
               excesoPotencia: 3,
               impuestoElectrico: 4,
+              reactiva: 8,
               otrosCargos: 5,
               alquiler: 6,
               iva: 7,
-              total: 28,
+              total: 36,
             },
             ivaTasa: 21,
             impuestoElectricoTasa: 5.11269,
@@ -919,10 +920,12 @@ describe("extractVariableValues", () => {
     expect(variables.CURRENT_ENERGY_COST).toBe("2.00");
     expect(variables.CURRENT_EXCESS_COST).toBe("3.00");
     expect(variables.CURRENT_TAX_COST).toBe("4.00");
-    expect(variables.CURRENT_OTHER_COST).toBe("5.00");
+    expect(variables.CURRENT_REACTIVE_COST).toBe("8.00");
+    expect(variables.CURRENT_OTHER_COST).toBe("13.00");
     expect(variables.CURRENT_RENTAL_COST).toBe("6.00");
     expect(variables.CURRENT_VAT).toBe("7.00");
-    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("5.00 €");
+    expect(variables.CURRENT_BREAKDOWN_HTML).toContain("13.00 €");
+    expect(variables.CURRENT_BREAKDOWN_HTML).not.toContain("Energía reactiva");
     expect(variables.CURRENT_BREAKDOWN_HTML).not.toContain("123.30 €");
   });
 
