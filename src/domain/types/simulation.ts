@@ -201,6 +201,7 @@ export interface ElectricityInputs {
       terminoEnergia?: number;
       excesoPotencia?: number;
       impuestoElectrico?: number;
+      reactiva?: number;
       otrosCargos?: number;
       alquiler?: number;
       iva?: number;

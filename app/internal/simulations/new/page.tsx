@@ -114,7 +114,7 @@ function deriveCurrentInvoiceBreakdown(
             (next.importeImpuestoElectrico ?? 0) +
             (next.importeIva ?? 0) +
             (next.excesoPotencia ?? 0) +
-            (next.reactiva ?? 0) +
+            (next.reactivaActual ?? next.reactiva ?? 0) +
             rentalOrOther;
         const residual = factura - known;
         if (known > 0 && residual > 0) {
@@ -184,6 +184,7 @@ function currentElecInvoiceBreakdownTotal(data: ExtractedInvoiceData): number {
         (data.importeEnergia ?? 0) +
         (data.excesoPotencia ?? 0) +
         (data.importeImpuestoElectrico ?? 0) +
+        (data.reactivaActual ?? 0) +
         currentElecOtherChargesForBreakdown(data) +
         (data.alquiler ?? 0) +
         (data.importeIva ?? 0),
@@ -191,7 +192,7 @@ function currentElecInvoiceBreakdownTotal(data: ExtractedInvoiceData): number {
 }
 
 function currentElecOtherChargesForBreakdown(data: ExtractedInvoiceData): number {
-    return roundMoney((data.otrosCargos ?? 0) + (data.reactiva ?? 0));
+    return roundMoney(data.otrosCargosActuales ?? 0);
 }
 
 function currentGasInvoiceBreakdownTotal(data: ExtractedInvoiceData): number {
@@ -322,7 +323,8 @@ function buildElecPayloadFromOcr(data: import("../../components/modules").Extrac
                 terminoEnergia: data.importeEnergia ?? 0,
                 excesoPotencia: data.excesoPotencia ?? 0,
                 impuestoElectrico: data.importeImpuestoElectrico ?? 0,
-                otrosCargos: currentElecOtherChargesForBreakdown(data),
+                reactiva: data.reactivaActual ?? data.reactiva ?? 0,
+                otrosCargos: data.otrosCargosActuales ?? 0,
                 alquiler: data.alquiler ?? 0,
                 iva: data.importeIva ?? 0,
                 total: currentElecInvoiceBreakdownTotal(data),
@@ -542,7 +544,14 @@ export default function NewSimulationPage() {
                 useCurrentInvoiceBreakdown: data.useCurrentInvoiceBreakdown !== false,
             })
             : deriveCurrentInvoiceBreakdown(
-                { ...normalizedData, ivaTasa: resolvedIva, impuestoElectricoTasa: resolvedElecTax },
+                {
+                    ...normalizedData,
+                    reactivaActual: normalizedData.reactivaActual ?? normalizedData.reactiva ?? 0,
+                    otrosCargosActuales: normalizedData.otrosCargosActuales
+                        ?? roundMoney(normalizedData.otrosCargos ?? 0),
+                    ivaTasa: resolvedIva,
+                    impuestoElectricoTasa: resolvedElecTax,
+                },
                 resolvedIva,
                 resolvedElecTax,
             );
@@ -794,7 +803,8 @@ export default function NewSimulationPage() {
                             terminoEnergia: extractedData.importeEnergia ?? 0,
                             excesoPotencia: extractedData.excesoPotencia ?? 0,
                             impuestoElectrico: extractedData.importeImpuestoElectrico ?? 0,
-                            otrosCargos: currentElecOtherChargesForBreakdown(extractedData),
+                            reactiva: extractedData.reactivaActual ?? extractedData.reactiva ?? 0,
+                            otrosCargos: extractedData.otrosCargosActuales ?? 0,
                             alquiler: extractedData.alquiler ?? 0,
                             iva: extractedData.importeIva ?? 0,
                             total: currentElecInvoiceBreakdownTotal(extractedData),
@@ -1484,21 +1494,13 @@ export default function NewSimulationPage() {
                                                             <div><div style={labelStyle3}>{t("invoiceExtractor", "currentPlanEnergyCostLabel")}</div><CurrencyInput value={extractedData.importeEnergia ?? 0} onChange={updateMoney("importeEnergia")} /></div>
                                                             <div><div style={labelStyle3}>{t("simulationForm", "excessPowerLabel")}</div><CurrencyInput value={extractedData.excesoPotencia ?? 0} onChange={updateMoney("excesoPotencia")} /></div>
                                                             <div><div style={labelStyle3}>{t("simulationForm", "currentElectricityTaxLabel")}</div><CurrencyInput value={extractedData.importeImpuestoElectrico ?? 0} onChange={updateMoney("importeImpuestoElectrico")} /></div>
+                                                            <div><div style={labelStyle3}>{t("simulationForm", "fieldReactiveEnergy")}</div><CurrencyInput value={extractedData.reactivaActual ?? 0} onChange={updateMoney("reactivaActual")} /></div>
                                                             <div>
                                                                 <div style={labelStyle3}>{t("simulationForm", "fieldOtherCharges")}</div>
                                                                 <CurrencyInput
                                                                     value={currentElecOtherChargesForBreakdown(extractedData)}
-                                                                    onChange={(value) => {
-                                                                        const totalOtherCharges = isNaN(value) ? 0 : value;
-                                                                        setExtractedData(prev => prev ? {
-                                                                            ...prev,
-                                                                            otrosCargos: Math.max(0, roundMoney(totalOtherCharges - (prev.reactiva ?? 0))),
-                                                                        } : prev);
-                                                                    }}
+                                                                    onChange={updateMoney("otrosCargosActuales")}
                                                                 />
-                                                                <div style={{ marginTop: 4, fontSize: 11, color: isDarkMode ? "#94a3b8" : "#64748b" }}>
-                                                                    {t("simulationForm", "currentOtherChargesIncludesReactiveHint")}
-                                                                </div>
                                                             </div>
                                                             <div><div style={labelStyle3}>{t("simulationForm", "fieldMeterRental")}</div><CurrencyInput value={extractedData.alquiler ?? 0} onChange={updateMoney("alquiler")} /></div>
                                                             <div><div style={labelStyle3}>{t("simulationForm", "currentIvaAmountLabel")}</div><CurrencyInput value={extractedData.importeIva ?? 0} onChange={updateMoney("importeIva")} /></div>
