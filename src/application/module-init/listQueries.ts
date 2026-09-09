@@ -8,8 +8,8 @@ import { isSupabaseApiMode } from "@/infrastructure/database/databaseMode";
 const pageValue = (value: string | null, fallback = 1) =>
   Math.max(1, parseInt(value || String(fallback), 10));
 
-const pageSizeValue = (value: string | null, fallback = 25) =>
-  Math.min(100, Math.max(1, parseInt(value || String(fallback), 10)));
+const pageSizeValue = (value: string | null, fallback = 25, maximum = 100) =>
+  Math.min(maximum, Math.max(1, parseInt(value || String(fallback), 10)));
 
 const sortDirValue = (value: string | null): "asc" | "desc" =>
   value === "asc" ? "asc" : "desc";
@@ -456,8 +456,10 @@ export async function listAgenciesForModule(
   auth: AuthContext,
   sp: URLSearchParams,
 ) {
+  // Match the larger dropdown limit in the standalone agencies endpoint.
+  const minimal = sp.get("minimal") === "true";
   const page = pageValue(sp.get("page"));
-  const pageSize = pageSizeValue(sp.get("pageSize"), 25);
+  const pageSize = pageSizeValue(sp.get("pageSize"), 25, minimal ? 1000 : 100);
   const search = sp.get("search") || undefined;
   const includeDeleted =
     sp.get("includeDeleted") === "true" && isElevatedRole(auth.role);
@@ -465,7 +467,6 @@ export async function listAgenciesForModule(
   const sortDir = sortDirValue(sp.get("sortDir"));
   const isTlvParam = sp.get("isTlv");
   const statusParam = sp.get("status");
-  const minimal = sp.get("minimal") === "true";
   const allowedOrderBy: Record<string, true> = {
     createdAt: true,
     name: true,
