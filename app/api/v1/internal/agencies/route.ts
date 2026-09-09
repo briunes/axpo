@@ -124,9 +124,11 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
 
   const { searchParams } = new URL(request.url);
+  // Dropdowns need a larger lightweight list than full agency tables.
+  const minimal = searchParams.get("minimal") === "true";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const pageSize = Math.min(
-    100,
+    minimal ? 1000 : 100,
     Math.max(1, parseInt(searchParams.get("pageSize") ?? "25", 10)),
   );
   const search = searchParams.get("search") ?? undefined;
@@ -137,8 +139,6 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     (searchParams.get("sortDir") ?? "desc") === "asc" ? "asc" : "desc";
   const isTlvParam = searchParams.get("isTlv");
   const statusParam = searchParams.get("status");
-  // minimal=true: skip all includes/joins. Used by dropdowns that only need id + name.
-  const minimal = searchParams.get("minimal") === "true";
 
   const allowedOrderBy: Record<string, true> = {
     createdAt: true,
