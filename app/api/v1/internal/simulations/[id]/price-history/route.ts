@@ -3,6 +3,8 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
+import { selectedIndexedEnergyPrices } from "@/lib/selectedProductEnergyHistory";
+import type { SimulationPayload } from "@/domain/types/simulation";
 
 const PRODUCT_LABELS: Record<string, string> = {
   "ESTABLE:N1": "Estable N1",
@@ -412,7 +414,11 @@ export async function GET(
     // History is a catalogue view, so expose every product for which the
     // imported base-value set contains historical data. Restricting this to
     // the current simulation results hid valid product families.
-    const simulationProducts = Object.values(productData);
+    const simulationProducts = Object.values(productData).map((product) => {
+      if (product.productKey !== payload?.selectedOffer?.productKey) return product;
+      const selectedEnergyPrices = selectedIndexedEnergyPrices(payload as SimulationPayload, baseValueItems);
+      return selectedEnergyPrices === undefined ? product : { ...product, selectedEnergyPrices };
+    });
 
     // ── Gas indexed margin items ──────────────────────────────────────────
     // Key format: GAS:INDEX:{PRODUCT}:{TIER}:{TARIFA}:{ZONE}:MARGEN

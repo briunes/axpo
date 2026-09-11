@@ -70,6 +70,7 @@ function buildCurrentBreakdownHtml(
 
 function formatEnergyPriceValue(value: number | undefined): string {
   if (value === undefined || value === null || Number.isNaN(value)) return "—";
+  if (value === 0) return "0";
   const formatted = value.toFixed(6).replace(".", ",");
   return formatted
     .replace(/,(\d*?)0+$/, ",$1")
@@ -80,6 +81,7 @@ function resolveSelectedProductHistoryValue(
   selectedProductHistory: any,
   tariffAccess: string | undefined,
   period: string,
+  billingMonth: string | undefined,
 ): number | null {
   if (!selectedProductHistory || !tariffAccess) return null;
 
@@ -93,10 +95,8 @@ function resolveSelectedProductHistoryValue(
 
   if (periodEntry && typeof periodEntry === "object") {
     const monthly = periodEntry.monthly ?? {};
-    const monthKeys = Object.keys(monthly).sort();
-    for (let i = monthKeys.length - 1; i >= 0; i -= 1) {
-      const value = Number(monthly[monthKeys[i]] ?? 0);
-      if (value > 0) return value;
+    if (billingMonth && monthly[billingMonth] != null) {
+      return Number(monthly[billingMonth]);
     }
 
     const avg = Number(periodEntry.avg ?? 0);
@@ -197,9 +197,18 @@ function buildSelectedProductEnergyTable(
         // IF(period consumption = 0, 0, selected product price). Preserve that
         // output rule even when the underlying tariff history contains prices
         // for all six periods.
-        const cataloguePeriods = periods.filter(
-          (period) => Number(electricity?.consumo?.[period] ?? 0) > 0,
-        );
+        const catalogueValues = (prices: Record<string, unknown>): PeriodValue[] =>
+          periods.flatMap((period) => {
+            // COMPARATIVA LUZ!I48:N48 retains all six cells. No consumption
+            // displays zero; consumed periods retain the selected price,
+            // including a genuine zero, without borrowing another month.
+            if (Number(electricity?.consumo?.[period] ?? 0) === 0) {
+              return [{ label: period, value: 0 }];
+            }
+            const raw = prices[period];
+            if (raw == null || !Number.isFinite(Number(raw))) return [];
+            return [{ label: period, value: Number(raw) }];
+          });
 
         // Custom inputs belong only to their matching custom result. They are
         // present in the payload even when a standard catalogue product is
@@ -226,25 +235,30 @@ function buildSelectedProductEnergyTable(
         }
 
         const resultMap = selectedResult?.desglose ?? {};
-        const explicitResultValues = toValueList(
-          Object.fromEntries(
-            cataloguePeriods.map((period) => [
+        const explicitPrices = Object.fromEntries(
+            periods.map((period) => [
               period,
-              Number(resultMap[`precioEnergia${period}`] ?? 0),
+              resultMap[`precioEnergia${period}`],
             ]),
-          ),
-          cataloguePeriods,
         );
-        if (explicitResultValues.length > 0) {
-          return explicitResultValues;
+        if (Object.values(explicitPrices).some((value) => value != null)) {
+          return catalogueValues(explicitPrices);
         }
 
-        const historyValues = cataloguePeriods
+        // Both internal previews and public PDFs resolve these from the
+        // simulation's base values using the billing calculation's lookup.
+        // An empty map means prices are unavailable; don't substitute history.
+        if (selectedProductHistory?.selectedEnergyPrices !== undefined) {
+          return catalogueValues(selectedProductHistory.selectedEnergyPrices);
+        }
+
+        const historyValues = periods
           .map((period) => {
             const value = resolveSelectedProductHistoryValue(
               selectedProductHistory,
               electricity?.tarifaAcceso,
               period,
+              electricity?.billingMonth ?? electricity?.periodo?.fechaFin?.slice(0, 7),
             );
             if (value == null) return null;
             return { label: period, value };
@@ -252,7 +266,7 @@ function buildSelectedProductEnergyTable(
           .filter((item) => item !== null) as PeriodValue[];
 
         if (historyValues.length > 0) {
-          return historyValues;
+          return catalogueValues(Object.fromEntries(historyValues.map(({ label, value }) => [label, value])));
         }
 
         return [];
@@ -287,24 +301,11 @@ function buildSelectedProductEnergyTable(
     return "";
   }
 
-  if (!isGas && periodValues.every((item) => Number(item.value) === 0)) {
-    console.debug(
-      "[buildSelectedProductEnergyTable] all values are zero for selected product",
-      {
-        selectedResultKey: selectedResult?.productKey,
-        electricity,
-        gas,
-      },
-    );
-    return "";
-  }
-
   const rows = periodValues
     .map((item) => {
       const label = item.label;
       const rawValue = Number(item.value ?? 0);
-      const value =
-        rawValue === 0 && !isGas ? "—" : formatEnergyPriceValue(rawValue);
+      const value = formatEnergyPriceValue(rawValue);
       return `
             <div class="asim-energy-price-row">
               <div class="asim-energy-price-label">${label}</div>

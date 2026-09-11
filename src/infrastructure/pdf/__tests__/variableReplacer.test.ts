@@ -454,7 +454,7 @@ describe("extractVariableValues", () => {
     expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toBe("");
   });
 
-  it("uses the selected product history row when direct period prices are missing", () => {
+  it("uses the invoice month from legacy history when direct period prices are missing", () => {
     const variables = extractVariableValues(
       { id: "simulation-id" },
       {
@@ -475,10 +475,10 @@ describe("extractVariableValues", () => {
         results: {
           electricity: [
             {
-              productKey: "ESTABLE:N1",
-              productLabel: "Estable N1",
+              productKey: "DINAMICA:N1",
+              productLabel: "Dinámica N1",
               commodity: "ELECTRICITY",
-              pricingType: "FIXED",
+              pricingType: "INDEXED",
               totalFactura: 120,
               ahorro: 10,
               pctAhorro: 8.33,
@@ -487,14 +487,14 @@ describe("extractVariableValues", () => {
             },
           ],
         },
-        selectedOffer: { productKey: "ESTABLE:N1", commodity: "ELECTRICITY", pricingType: "FIXED", selectedAt: "2026-02-01T00:00:00.000Z" },
+        selectedOffer: { productKey: "DINAMICA:N1", commodity: "ELECTRICITY", pricingType: "INDEXED", selectedAt: "2026-02-01T00:00:00.000Z" },
       } as any,
       undefined,
       undefined,
       undefined,
       "en",
       {
-        productKey: "ESTABLE:N1",
+        productKey: "DINAMICA:N1",
         tariffs: {
           "3.0TD": {
             P1: { avg: 0.1, monthly: { "2026-01": 0.1, "2026-02": 0.11 } },
@@ -508,8 +508,8 @@ describe("extractVariableValues", () => {
       },
     );
 
-    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,11");
-    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,13");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,1 €/kWh");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,12 €/kWh");
     expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P1");
   });
 
@@ -1044,7 +1044,7 @@ describe("extractVariableValues", () => {
     expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toBe("");
   });
 
-  it("matches Excel by showing catalogue energy prices only for periods with consumption", () => {
+  it("matches Excel by retaining all periods and showing zero where there is no consumption", () => {
     const variables = extractVariableValues(
       { id: "simulation-id" },
       {
@@ -1093,9 +1093,9 @@ describe("extractVariableValues", () => {
     expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P1");
     expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P2");
     expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P3");
-    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toContain("P4");
-    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toContain("P5");
-    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toContain("P6");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P4");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P5");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P6");
     expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).not.toContain("0,119048");
   });
 });
