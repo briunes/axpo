@@ -111,7 +111,7 @@ function electricityKeyHasZoneVariant(map: PriceMap, key: string): boolean {
   );
 }
 
-function indexedEnergyPriceOf(
+export function indexedEnergyPriceOf(
   map: PriceMap,
   baseKey: string,
   billingMonthKey: string,
