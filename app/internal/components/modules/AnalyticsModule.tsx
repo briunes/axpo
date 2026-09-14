@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useLayoutEffect } from "react";
+import { useEffect, useState, useLayoutEffect, useMemo, useCallback } from "react";
+import { DateRangePicker } from "../ui/DateRangePicker";
+import { format } from "date-fns";
 import Skeleton from "@mui/material/Skeleton";
 import type { SessionState } from "../../lib/authSession";
 import type { AnalyticsActions } from "../hooks/useAnalytics";
@@ -257,37 +259,6 @@ export function AgentAnalyticsViewSkeleton() {
   );
 }
 
-// ─── Helper components ────────────────────────────────────────────────────────
-
-function DaysFilter({
-  selected,
-  onChange,
-  loading,
-}: {
-  selected: number;
-  onChange: (d: number) => void;
-  loading: boolean;
-}) {
-  return (
-    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-      {[7, 30, 90].map((d) => (
-        <Button
-          key={d}
-          onClick={() => onChange(d)}
-          disabled={loading}
-          size="small"
-          variant={selected === d ? "contained" : "outlined"}
-          style={{
-            cursor: loading ? "not-allowed" : "pointer",
-          }}
-        >
-          {d}d
-        </Button>
-      ))}
-    </div>
-  );
-}
-
 // ─── Main module ──────────────────────────────────────────────────────────────
 
 interface AnalyticsModuleProps {
@@ -298,9 +269,14 @@ interface AnalyticsModuleProps {
 }
 
 export function AnalyticsModule({ session, actions, onNotify, onActionButtons }: AnalyticsModuleProps) {
-  const { t } = useI18n();
-  const { analytics, loading, errorText, refresh, energyType, setEnergyType } = actions;
-  const [selectedDays, setSelectedDays] = useState(30);
+  const { t, locale } = useI18n();
+  const { analytics, loading, errorText, refresh, energyType, setEnergyType, days: selectedDays, setDays, dateRange, setDateRange } = actions;
+  const pickerStart = useMemo(() => dateRange ? new Date(`${dateRange.startDate}T00:00:00`) : null, [dateRange]);
+  const pickerEnd = useMemo(() => dateRange ? new Date(`${dateRange.endDate}T00:00:00`) : null, [dateRange]);
+  const periodLabel = pickerStart && pickerEnd
+    ? `${pickerStart.toLocaleDateString(locale)} – ${pickerEnd.toLocaleDateString(locale)}`
+    : undefined;
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const isAdminView = isAdmin(session.user.role);
 
   // ── Per-agency drill-down (admin only) ────────────────────────────────────
@@ -309,7 +285,6 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
   const [agencyLoading, setAgencyLoading] = useState(false);
   const [allAgencies, setAllAgencies] = useState<FormSelectOption[]>([]);
 
-  useEffect(() => { refresh(30); }, []);
 
   // Fetch all agencies once for the selector
   useEffect(() => {
@@ -323,17 +298,19 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
 
   useEffect(() => {
     if (!selectedAgencyId) { setAgencyAnalytics(null); return; }
+    let cancelled = false;
     setAgencyLoading(true);
-    fetchAnalyticsForAgency(session.token, selectedAgencyId, selectedDays, energyType || undefined)
-      .then(setAgencyAnalytics)
-      .catch(() => setAgencyAnalytics(null))
-      .finally(() => setAgencyLoading(false));
-  }, [selectedAgencyId, selectedDays, energyType]);
+    fetchAnalyticsForAgency(session.token, selectedAgencyId, selectedDays, energyType || undefined, dateRange)
+      .then((data) => { if (!cancelled) setAgencyAnalytics(data); })
+      .catch(() => { if (!cancelled) setAgencyAnalytics(null); })
+      .finally(() => { if (!cancelled) setAgencyLoading(false); });
+    return () => { cancelled = true; };
+  }, [session.token, selectedAgencyId, selectedDays, energyType, dateRange, refreshVersion]);
 
-  const handleDaysChange = (d: number) => {
-    setSelectedDays(d);
-    refresh(d);
-  };
+  const handleDaysChange = useCallback((d: number) => {
+    setDateRange(null);
+    setDays(d);
+  }, [setDateRange, setDays]);
 
   const energyOptions: Array<{ value: string; label: string; icon: React.ReactNode }> = [
     { value: "", label: t("analyticsModule", "energyTypeAll") || "All", icon: <AppsOutlinedIcon sx={{ fontSize: 16 }} /> },
@@ -373,11 +350,33 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
             />
           </div>
         )}
-        <DaysFilter selected={selectedDays} onChange={handleDaysChange} loading={loading} />
+        <div style={{ width: 280, maxWidth: "100%" }}>
+          <DateRangePicker
+            months={2}
+            closeOnSelect
+            startDate={pickerStart}
+            endDate={pickerEnd}
+            label={t("datePicker", "selectRange")}
+            displayValue={!dateRange ? t("analyticsModule", "lastDays").replace("{days}", String(selectedDays)) : undefined}
+            shortcuts={[7, 30, 90].map((days) => ({
+              label: t("analyticsModule", "lastDays").replace("{days}", String(days)),
+              selected: !dateRange && selectedDays === days,
+              onSelect: () => handleDaysChange(days),
+            }))}
+            disabled={loading}
+            onChange={(start, end) => {
+              if (!start && !end) handleDaysChange(30);
+              if (start && end) {
+                const [first, last] = start <= end ? [start, end] : [end, start];
+                setDateRange({ startDate: format(first, "yyyy-MM-dd"), endDate: format(last, "yyyy-MM-dd") });
+              }
+            }}
+          />
+        </div>
         <Button
           variant="contained"
           size="small"
-          onClick={() => refresh(selectedDays)}
+          onClick={() => { void refresh(); setRefreshVersion((value) => value + 1); }}
           disabled={loading}
         >
           {loading ? t("common", "loading") : <><RefreshIcon fontSize="small" /> {t("actions", "refresh")}</>}
@@ -385,7 +384,7 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
       </>
     );
     return () => onActionButtons?.(null);
-  }, [onActionButtons, selectedDays, handleDaysChange, loading, t, refresh, selectedAgencyId, isAdminView, allAgencies, energyType, setEnergyType]);
+  }, [onActionButtons, selectedDays, handleDaysChange, loading, t, refresh, selectedAgencyId, isAdminView, allAgencies, energyType, setEnergyType, dateRange, pickerStart, pickerEnd, setDateRange]);
 
   // Determine what to render
   const showAgencyDrillDown = isAdminView && selectedAgencyId !== null;
@@ -400,7 +399,7 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
         ) : !agencyAnalytics ? (
           <EmptyState message={t("analyticsModule", "noData")} />
         ) :
-          <AgentAnalyticsView analytics={agencyAnalytics} selectedDays={selectedDays} />
+          <AgentAnalyticsView analytics={agencyAnalytics} selectedDays={selectedDays} periodLabel={periodLabel} />
       ) : loading ? (
         isAdminView ? <AdminAnalyticsViewSkeleton /> : <AgentAnalyticsViewSkeleton />
       ) : !analytics ? (
@@ -408,9 +407,9 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
       ) : (
         <>
           {isAdminView ? (
-            <AdminAnalyticsView analytics={analytics} selectedDays={selectedDays} />
+            <AdminAnalyticsView analytics={analytics} selectedDays={selectedDays} periodLabel={periodLabel} />
           ) : (
-            <AgentAnalyticsView analytics={analytics} selectedDays={selectedDays} />
+            <AgentAnalyticsView analytics={analytics} selectedDays={selectedDays} periodLabel={periodLabel} />
           )}
         </>
       )}

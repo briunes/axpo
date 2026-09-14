@@ -103,9 +103,10 @@ function ChartPanel({ title, subtitle, children, style }: {
 interface AgentAnalyticsViewProps {
     analytics: AnalyticsOverview;
     selectedDays: number;
+    periodLabel?: string;
 }
 
-export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsViewProps) {
+export function AgentAnalyticsView({ analytics, selectedDays, periodLabel }: AgentAnalyticsViewProps) {
     const { t } = useI18n();
     const chartSx = {
         "& .MuiChartsAxis-tickLabel": { fontSize: 10, fill: "var(--scheme-neutral-400)" },
@@ -332,7 +333,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 14 }}>
                 <ChartPanel
                     title={t("analyticsModule", "chartActivityOverTime")}
-                    subtitle={t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))}
+                    subtitle={(periodLabel ?? t("analyticsModule", "lastDays").replace("{days}", String(selectedDays)))}
                 >
                     <GradientBarChart
                         xData={simDates}
@@ -486,7 +487,7 @@ export function AgentAnalyticsView({ analytics, selectedDays }: AgentAnalyticsVi
             {hasAccessTrend && (
                 <ChartPanel
                     title={t("analyticsModule", "chartClientOpens")}
-                    subtitle={`${t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))} - ${t("analyticsModule", "chartClientOpensSub")}`}
+                    subtitle={`${(periodLabel ?? t("analyticsModule", "lastDays").replace("{days}", String(selectedDays)))} - ${t("analyticsModule", "chartClientOpensSub")}`}
                 >
                     <GradientLineChart
                         xData={accessDates}
