@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { Box, Typography } from "@mui/material";
 import { GradientLineChart, GradientBarChart, ResponsivePieChart } from "../ui";
 import type { AnalyticsOverview, AnalyticsAgencyStat } from "../../lib/internalApi";
 import { DataTable } from "../ui";
-import type { ColumnDef } from "../ui";
+import type { ColumnDef, SortState } from "../ui";
+import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { useI18n } from "../../../../src/lib/i18n-context";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
@@ -105,10 +107,12 @@ function ChartPanel({ title, subtitle, children, style }: {
 interface AdminAnalyticsViewProps {
     analytics: AnalyticsOverview;
     selectedDays: number;
+    periodLabel?: string;
 }
 
-export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsViewProps) {
-    const { t } = useI18n();
+export function AdminAnalyticsView({ analytics, selectedDays, periodLabel }: AdminAnalyticsViewProps) {
+    const { t, locale } = useI18n();
+    const { preferences } = useUserPreferences();
     const chartSx = {
         "& .MuiChartsAxis-tickLabel": { fontSize: 10, fill: "var(--scheme-neutral-400)" },
         "& .MuiChartsGrid-line": { strokeDasharray: "4 4", opacity: 0.2, stroke: "var(--scheme-neutral-800)" },
@@ -150,6 +154,27 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
     const hasSimTrend = simCounts.some((v) => v > 0);
     const hasAccessTrend = opensPerDay.some((v) => v > 0);
 
+    const [agencySort, setAgencySort] = useState<SortState>({ column: "total", direction: "desc" });
+    const [agencyPage, setAgencyPage] = useState(1);
+    const [agencyPageSize, setAgencyPageSize] = useState(preferences.itemsPerPage);
+    const agencyRows = (analytics.byAgency ?? []).map((row) => ({
+        ...row,
+        id: row.agencyId,
+        openRate: row.shared > 0 ? Math.round((row.opened / row.shared) * 100) : 0,
+    }));
+    agencyRows.sort((left, right) => {
+        const column = agencySort.column as "agencyName" | "total" | "shared" | "openRate" | "expired";
+        const a = left[column];
+        const b = right[column];
+        const comparison = typeof a === "number" && typeof b === "number"
+            ? a - b
+            : String(a).localeCompare(String(b), locale);
+        return comparison * (agencySort.direction === "asc" ? 1 : -1);
+    });
+    const currentAgencyPage = Math.min(agencyPage, Math.max(1, Math.ceil(agencyRows.length / agencyPageSize)));
+    const pagedAgencyRows = agencyRows.slice((currentAgencyPage - 1) * agencyPageSize, currentAgencyPage * agencyPageSize);
+
+
     // Agency performance columns
     const agencyColumns: ColumnDef<AnalyticsAgencyStat & { id: string }>[] = [
         {
@@ -160,15 +185,17 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
         },
         {
             key: "total",
+            type: "number",
             label: t("analyticsModule", "colCreated"),
             sortable: true,
-            renderCell: (r) => <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>{r.total}</Typography>
+            renderCell: (r) => <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>{r.total || "—"}</Typography>
         },
         {
             key: "shared",
+            type: "number",
             label: t("analyticsModule", "colSent"),
             sortable: true,
-            renderCell: (r) => (
+            renderCell: (r) => r.total === 0 ? "—" : (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Typography component="span" variant="body2" sx={{ fontWeight: 600, color: "#10b981" }}>{r.shared}</Typography>
                     <div style={{
@@ -190,8 +217,11 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
         },
         {
             key: "openRate",
+            sortable: true,
+            type: "number",
             label: t("analyticsModule", "colOpenRate"),
             renderCell: (r) => {
+                if (r.total === 0) return "—";
                 const rate = r.shared > 0 ? Math.round((r.opened / r.shared) * 100) : 0;
                 return (
                     <Box sx={{
@@ -215,9 +245,10 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
         },
         {
             key: "expired",
+            type: "number",
             label: t("analyticsModule", "colExpired"),
             sortable: true,
-            renderCell: (r) => <Typography component="span" variant="body2" sx={{ color: r.expired > 0 ? "#f59e0b" : "inherit" }}>{r.expired}</Typography>,
+            renderCell: (r) => <Typography component="span" variant="body2" sx={{ color: r.expired > 0 ? "#f59e0b" : "inherit" }}>{r.total === 0 ? "—" : r.expired}</Typography>,
         },
     ];
 
@@ -329,7 +360,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 14 }}>
                 <ChartPanel
                     title={t("analyticsModule", "chartSimsCreated")}
-                    subtitle={t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))}
+                    subtitle={(periodLabel ?? t("analyticsModule", "lastDays").replace("{days}", String(selectedDays)))}
                 >
                     <GradientLineChart
                         xData={simDates}
@@ -343,7 +374,7 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
 
                 <ChartPanel
                     title={t("analyticsModule", "chartSimsOpened")}
-                    subtitle={t("analyticsModule", "lastDays").replace("{days}", String(selectedDays))}
+                    subtitle={(periodLabel ?? t("analyticsModule", "lastDays").replace("{days}", String(selectedDays)))}
                 >
                     <GradientLineChart
                         xData={accessDates}
@@ -369,10 +400,27 @@ export function AdminAnalyticsView({ analytics, selectedDays }: AdminAnalyticsVi
                     </div>
                     <DataTable<AnalyticsAgencyStat & { id: string }>
                         columns={agencyColumns}
-                        rows={(analytics.byAgency ?? []).map((r) => ({ ...r, id: r.agencyId }))}
+                        rows={pagedAgencyRows}
+                        sortingMode="server"
+                        sortState={agencySort}
+                        onSort={(column) => {
+                            setAgencyPage(1);
+                            setAgencySort((current) => ({
+                                column,
+                                direction: current.column === column && current.direction === "asc" ? "desc" : "asc",
+                            }));
+                        }}
+                        pagination={{
+                            page: currentAgencyPage,
+                            pageSize: agencyPageSize,
+                            total: agencyRows.length,
+                            onPageChange: setAgencyPage,
+                            onPageSizeChange: (size) => {
+                                setAgencyPageSize(size);
+                                setAgencyPage(1);
+                            },
+                        }}
                         loading={false}
-                        onClearFilters={() => undefined}
-                        hasActiveFilters={false}
                         emptyMessage={t("analyticsModule", "emptyAgencyData")}
                         headerRight={<span className="dt-meta-pill">{t("analyticsModule", "pillAgencies").replace("{count}", String(analytics.byAgency.length))}</span>}
                     />

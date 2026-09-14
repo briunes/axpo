@@ -2013,13 +2013,23 @@ export async function softDeleteClient(
   await parseApiResponse<ClientItem>(response, "Delete client failed");
 }
 
+export interface AnalyticsDateRange {
+  startDate: string;
+  endDate: string;
+}
+
 export async function fetchAnalyticsOverview(
   token: string,
   days = 30,
   energyType?: string,
+  dateRange?: AnalyticsDateRange | null,
 ): Promise<AnalyticsOverview> {
   const qs = new URLSearchParams({ days: String(days) });
   qs.set("comparisonVersion", "3");
+  if (dateRange) {
+    qs.set("startDate", dateRange.startDate);
+    qs.set("endDate", dateRange.endDate);
+  }
   if (energyType) qs.set("energyType", energyType);
   const response = await fetch(
     `${analyticsBaseUrl}/api/v1/internal/analytics/overview?${qs}`,
@@ -2043,9 +2053,14 @@ export async function fetchAnalyticsForAgency(
   agencyId: string,
   days = 30,
   energyType?: string,
+  dateRange?: AnalyticsDateRange | null,
 ): Promise<AnalyticsOverview> {
   const qs = new URLSearchParams({ days: String(days), agencyId });
   qs.set("comparisonVersion", "3");
+  if (dateRange) {
+    qs.set("startDate", dateRange.startDate);
+    qs.set("endDate", dateRange.endDate);
+  }
   if (energyType) qs.set("energyType", energyType);
   const response = await fetch(
     `${analyticsBaseUrl}/api/v1/internal/analytics/overview?${qs}`,
@@ -2531,8 +2546,9 @@ export async function getAnalyticsSummary(
   token: string,
   days = 30,
   energyType?: string,
+  dateRange?: AnalyticsDateRange | null,
 ): Promise<AnalyticsSummary> {
-  return fetchAnalyticsOverview(token, days, energyType);
+  return fetchAnalyticsOverview(token, days, energyType, dateRange);
 }
 
 export function isAdmin(role: UserRole): boolean {

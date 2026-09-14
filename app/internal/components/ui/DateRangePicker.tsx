@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useId } from 'react';
-import { Box, IconButton, Popover, Typography, TextField, InputAdornment, styled } from '@mui/material';
+import { Button, Box, IconButton, Popover, Typography, TextField, InputAdornment, styled } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CloseIcon from '@mui/icons-material/Close';
@@ -70,6 +70,12 @@ export interface DateRangePickerProps {
     filterinput?: boolean;
     id?: string;
     months?: number;
+    closeOnSelect?: boolean;
+    /** Label for an active relative period, instead of fixed calendar dates. */
+    displayValue?: string;
+    /** Replaces the default calendar shortcuts when supplied. */
+    shortcuts?: Array<{ label: string; selected?: boolean; onSelect: () => void }>;
+
 }
 
 export function DateRangePicker({
@@ -91,6 +97,9 @@ export function DateRangePicker({
     filterinput = false,
     id,
     months = 1,
+    closeOnSelect = false,
+    displayValue,
+    shortcuts,
 }: DateRangePickerProps) {
     const { preferences } = useUserPreferences();
     const { locale, t } = useI18n();
@@ -99,6 +108,9 @@ export function DateRangePicker({
     const rangeSeparator = t('datePicker', 'rangeSeparator');
 
     const [isOpen, setIsOpen] = useState(false);
+    useEffect(() => {
+        if (closeOnSelect && disabled) setIsOpen(false);
+    }, [closeOnSelect, disabled]);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [startDate, setStartDate] = useState<Date | null>(initialStartDate);
     const [endDate, setEndDate] = useState<Date | null>(initialEndDate);
@@ -249,6 +261,7 @@ export function DateRangePicker({
             } else {
                 setEndDate(selectedDate);
             }
+            if (closeOnSelect) setIsOpen(false);
             if (onChange) {
                 const newStart = selectedDate < startDate ? selectedDate : startDate;
                 const newEnd = selectedDate < startDate ? startDate : selectedDate;
@@ -329,7 +342,7 @@ export function DateRangePicker({
     // ── Typing support ────────────────────────────────────────────────────────
 
     const handleFocus = () => {
-        if (disabled) return;
+        if (disabled || displayValue) return;
         setInputText(formatDateRange());
         setIsEditing(true);
     };
@@ -347,6 +360,7 @@ export function DateRangePicker({
     };
 
     const handleBlur = () => {
+        if (!isEditing) return;
         setIsEditing(false);
         if (!inputText.trim()) {
             handleClear();
@@ -601,7 +615,8 @@ export function DateRangePicker({
     const textFieldContent = (
         <StyledTextField
             fullWidth
-            value={isEditing ? inputText : formatDateRange()}
+            value={displayValue ?? (isEditing ? inputText : formatDateRange())}
+            onClick={displayValue ? () => { if (!disabled) setIsOpen(true); } : undefined}
             placeholder={resolvedPlaceholder}
             onChange={handleTextChange}
             onFocus={handleFocus}
@@ -613,11 +628,9 @@ export function DateRangePicker({
             helperText={filterinput ? undefined : helperText || undefined}
             nopadding={nopadding}
             id={inputId}
-            label={labelPosition === 'default' ? label : undefined}
             slotProps={{
-                inputLabel: { shrink: true },
-                htmlInput: { suppressHydrationWarning: true },
-                input: inputPropsWithAdornments,
+                htmlInput: { suppressHydrationWarning: true, 'aria-label': label || resolvedPlaceholder },
+                input: { ...inputPropsWithAdornments, readOnly: Boolean(displayValue), notched: false },
                 formHelperText: { suppressHydrationWarning: true },
             }}
         />
@@ -753,11 +766,32 @@ export function DateRangePicker({
             </Box>
 
             {/* Footer */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: shortcuts ? 0.5 : 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                {shortcuts ? shortcuts.map((shortcut) => (
+                    <Button
+                        key={shortcut.label}
+                        size="small"
+                        variant={shortcut.selected ? 'contained' : 'text'}
+                        onClick={() => {
+                            setStartDate(null);
+                            setEndDate(null);
+                            setInputText('');
+                            setIsEditing(false);
+                            setIsOpen(false);
+                            setPickerMode('day');
+                            shortcut.onSelect();
+                        }}
+                    >
+                        {shortcut.label}
+                    </Button>
+                )) : (
+                    <>
                 <Typography onClick={handleToday} sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}>{t('datePicker', 'today')}</Typography>
                 <Typography onClick={handleWeek} sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}>{t('datePicker', 'week')}</Typography>
                 <Typography onClick={handleMonth} sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}>{t('datePicker', 'month')}</Typography>
                 <Typography onClick={handleYear} sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 600, fontSize: '14px', '&:hover': { textDecoration: 'underline' } }}>{t('datePicker', 'year')}</Typography>
+                    </>
+                )}
             </Box>
 
             {/* Selected range display */}

@@ -1,3 +1,4 @@
+import { resolveAnalyticsPeriod } from "@/lib/analyticsPeriod";
 import { NextRequest } from "next/server";
 import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
@@ -59,6 +60,7 @@ const findTrackedEmailsForSimulations = async (input: {
 const buildApiOverview = async (input: {
   days: number;
   since: Date;
+  until: Date;
   filterAgencyId?: string;
   energyTypeFilter?: "ELECTRICITY" | "GAS";
   elevated: boolean;
@@ -67,7 +69,7 @@ const buildApiOverview = async (input: {
   const simulations = await prisma.simulation.findMany({
     where: {
       isDeleted: false,
-      createdAt: { gte: previousSince },
+      createdAt: { gte: previousSince, lt: input.until },
       ...(input.filterAgencyId ? { agencyId: input.filterAgencyId } : {}),
     },
     select: {
@@ -94,7 +96,7 @@ const buildApiOverview = async (input: {
   const sharedCandidates = await prisma.simulation.findMany({
     where: {
       isDeleted: false,
-      sharedAt: { gte: previousSince },
+      sharedAt: { gte: previousSince, lt: input.until },
       ...(input.filterAgencyId ? { agencyId: input.filterAgencyId } : {}),
     },
     select: {
@@ -138,7 +140,7 @@ const buildApiOverview = async (input: {
   const simulationIds = periodShared.filter((item) => item.sharedVia === "EMAIL").map((item) => item.id);
   const trackedEmails = await findTrackedEmailsForSimulations({
     simulationIds,
-    sentAt: { gte: input.since },
+    sentAt: { gte: input.since, lt: input.until },
   });
   const previousSimulationIds = previousShared.filter((item) => item.sharedVia === "EMAIL").map((item) => item.id);
   const previousEmails = await findTrackedEmailsForSimulations({
@@ -147,7 +149,7 @@ const buildApiOverview = async (input: {
   });
 
   const recentAccess = await prisma.accessAttempt.findMany({
-    where: { createdAt: { gte: input.since } },
+    where: { createdAt: { gte: input.since, lt: input.until } },
     select: {
       createdAt: true,
       success: true,
@@ -207,12 +209,11 @@ const buildApiOverview = async (input: {
     if (consumption !== null) consumptions.push(consumption);
   }
 
-  const agencyIds = [...new Set(periodSimulations.map((item) => item.agencyId))];
   const userIds = [...new Set(periodSimulations.map((item) => item.ownerUserId))];
   const [agencies, users] = await Promise.all([
-    input.elevated && !input.filterAgencyId && agencyIds.length
+    input.elevated && !input.filterAgencyId
       ? prisma.agency.findMany({
-          where: { id: { in: agencyIds } },
+          where: { isDeleted: false },
           select: { id: true, name: true },
         })
       : Promise.resolve([]),
@@ -223,7 +224,6 @@ const buildApiOverview = async (input: {
         })
       : Promise.resolve([]),
   ]);
-  const agencyNames = new Map(agencies.map((item) => [item.id, item.name]));
   const userNames = new Map(users.map((item) => [item.id, item.fullName]));
 
   type PeriodSimulation = (typeof periodSimulations)[number];
@@ -294,14 +294,17 @@ const buildApiOverview = async (input: {
     },
     ...(input.elevated && !input.filterAgencyId
       ? {
-          byAgency: [...byAgencyGroups].map(([agencyId, items]) => ({
-            agencyId,
-            agencyName: agencyNames.get(agencyId) ?? agencyId,
-            total: items.length,
-            shared: items.filter((item) => item.status === "SHARED").length,
-            expired: items.filter((item) => item.status === "EXPIRED").length,
-            opened: items.filter(hasSuccessfulAccess).length,
-          })),
+          byAgency: agencies.map((agency) => {
+            const items = byAgencyGroups.get(agency.id) ?? [];
+            return {
+              agencyId: agency.id,
+              agencyName: agency.name,
+              total: items.length,
+              shared: items.filter((item) => item.status === "SHARED").length,
+              expired: items.filter((item) => item.status === "EXPIRED").length,
+              opened: items.filter(hasSuccessfulAccess).length,
+            };
+          }).sort((a, b) => b.total - a.total),
         }
       : {}),
     byUser: [...byUserGroups]
@@ -332,18 +335,25 @@ const buildApiOverview = async (input: {
  *           type: integer
  *           default: 30
  *         description: Number of days for trend data (7, 30 or 90)
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Inclusive UTC start date; requires endDate and overrides days
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Inclusive UTC end date; requires startDate
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
   await assertPermission(auth, "section.analytics");
 
   const { searchParams } = new URL(request.url);
-  const days = Math.min(
-    Math.max(parseInt(searchParams.get("days") ?? "30", 10), 7),
-    90,
-  );
-  const since = new Date(Date.now() - days * 86_400_000);
-  const previousSince = new Date(since.getTime() - days * 86_400_000);
+  const { days, since, until, previousSince } = resolveAnalyticsPeriod(searchParams);
 
   // Admin can optionally scope to a specific agency
   const filterAgencyId = isElevatedRole(auth.role)
@@ -362,6 +372,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       await buildApiOverview({
         days,
         since,
+        until,
         filterAgencyId,
         energyTypeFilter,
         elevated: isElevatedRole(auth.role),
@@ -409,7 +420,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   // Period-scoped variants — used for all KPI counts so they respect the days filter
   const simulationPeriodFilter = {
     ...simulationFilter,
-    createdAt: { gte: since },
+    createdAt: { gte: since, lt: until },
   };
   const previousSimulationPeriodFilter = {
     ...simulationFilter,
@@ -417,7 +428,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   };
   const sharedPeriodFilter = {
     ...simulationFilter,
-    sharedAt: { gte: since },
+    sharedAt: { gte: since, lt: until },
   };
   const previousSharedPeriodFilter = {
     ...simulationFilter,
@@ -431,18 +442,18 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ? {
         simulation: {
           agencyId: filterAgencyId,
-          createdAt: { gte: since },
+          createdAt: { gte: since, lt: until },
           ...energyTypeIdFilter,
         },
       }
-    : { simulation: { createdAt: { gte: since }, ...energyTypeIdFilter } };
+    : { simulation: { createdAt: { gte: since, lt: until }, ...energyTypeIdFilter } };
 
   const simulationEmailFilter = {
     relatedSimulationId: { in: await prisma.simulation.findMany({
       where: { ...sharedPeriodFilter, sharedVia: "EMAIL" },
       select: { id: true },
     }).then((rows) => rows.map((row) => row.id)) },
-    sentAt: { gte: since },
+    sentAt: { gte: since, lt: until },
     status: "sent",
   };
   const previousSimulationIds = await prisma.simulation.findMany({
@@ -518,12 +529,12 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         })
       : Promise.resolve(null),
     prisma.simulation.findMany({
-      where: { ...simulationFilter, createdAt: { gte: since } },
+      where: { ...simulationFilter, createdAt: { gte: since, lt: until } },
       select: { createdAt: true },
       orderBy: { createdAt: "asc" },
     }),
     prisma.accessAttempt.findMany({
-      where: { ...accessFilter, createdAt: { gte: since } },
+      where: { ...accessFilter, createdAt: { gte: since, lt: until } },
       select: { createdAt: true, success: true, simulationId: true },
       orderBy: { createdAt: "asc" },
     }),
@@ -590,6 +601,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         INNER JOIN simulations s ON s.id = latest."simulationId"
         WHERE s."isDeleted" = false
           AND s."createdAt" >= ${since}
+          AND s."createdAt" < ${until}
           ${agencyClause}
           ${energyTypeClause}
         GROUP BY latest."payloadJson"->>'type'
@@ -610,6 +622,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         INNER JOIN simulations s ON s.id = latest."simulationId"
         WHERE s."isDeleted" = false
           AND s."createdAt" >= ${since}
+          AND s."createdAt" < ${until}
           ${agencyClause}
           ${energyTypeClause}
         GROUP BY tariff
@@ -634,6 +647,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         INNER JOIN simulations s ON s.id = latest."simulationId"
         WHERE s."isDeleted" = false
           AND s."createdAt" >= ${since}
+          AND s."createdAt" < ${until}
           ${agencyClause}
           ${energyTypeClause}
       `,
@@ -704,46 +718,45 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         expired: number;
       }>
     | undefined;
-  if (byAgencyRaw && byAgencyRaw.length > 0) {
+  if (byAgencyRaw) {
     const agencyIds = byAgencyRaw
       .map((r) => r.agencyId)
       .filter(Boolean) as string[];
     const [agencies, sharedByAgency, expiredByAgency, openedByAgency] =
       await Promise.all([
         prisma.agency.findMany({
-          where: { id: { in: agencyIds } },
+          where: { isDeleted: false },
           select: { id: true, name: true },
         }),
         prisma.simulation.groupBy({
           by: ["agencyId"],
           where: {
-            isDeleted: false,
+            ...simulationPeriodFilter,
             status: "SHARED",
-            createdAt: { gte: since },
+            createdAt: { gte: since, lt: until },
           },
           _count: { _all: true },
         }),
         prisma.simulation.groupBy({
           by: ["agencyId"],
           where: {
-            isDeleted: false,
+            ...simulationPeriodFilter,
             status: "EXPIRED",
-            createdAt: { gte: since },
+            createdAt: { gte: since, lt: until },
           },
           _count: { _all: true },
         }),
         prisma.simulation.groupBy({
           by: ["agencyId"],
           where: {
-            isDeleted: false,
-            createdAt: { gte: since },
+            ...simulationPeriodFilter,
             agencyId: { in: agencyIds },
             accessAttempts: { some: { success: true } },
           },
           _count: { _all: true },
         }),
       ]);
-    const agencyMap = new Map(agencies.map((a) => [a.id, a.name]));
+    const totalMap = new Map(byAgencyRaw.map((r) => [r.agencyId, r._count._all]));
     const sharedMap = new Map(
       sharedByAgency.map((r) => [r.agencyId, r._count._all]),
     );
@@ -753,16 +766,14 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     const openedMap = new Map(
       openedByAgency.map((r) => [r.agencyId, r._count._all]),
     );
-    byAgency = byAgencyRaw
-      .filter((r) => r.agencyId)
-      .map((r) => ({
-        agencyId: r.agencyId as string,
-        agencyName:
-          agencyMap.get(r.agencyId as string) ?? (r.agencyId as string),
-        total: r._count._all,
-        shared: sharedMap.get(r.agencyId as string) ?? 0,
-        expired: expiredMap.get(r.agencyId as string) ?? 0,
-        opened: openedMap.get(r.agencyId as string) ?? 0,
+    byAgency = agencies
+      .map((agency) => ({
+        agencyId: agency.id,
+        agencyName: agency.name,
+        total: totalMap.get(agency.id) ?? 0,
+        shared: sharedMap.get(agency.id) ?? 0,
+        expired: expiredMap.get(agency.id) ?? 0,
+        opened: openedMap.get(agency.id) ?? 0,
       }))
       .sort((a, b) => b.total - a.total);
   }
