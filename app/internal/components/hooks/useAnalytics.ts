@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getAnalyticsSummary,
   type AnalyticsSummary,
+  type AnalyticsDateRange,
 } from "../../lib/internalApi";
 import type { SessionState } from "../../lib/authSession";
 import { useRequestCachePolicy } from "./useRequestCachePolicy";
@@ -13,6 +14,8 @@ export interface AnalyticsActions {
   analytics: AnalyticsSummary | null;
   loading: boolean;
   errorText: string | null;
+  dateRange: AnalyticsDateRange | null;
+  setDateRange: (range: AnalyticsDateRange | null) => void;
   days: number;
   setDays: (d: number) => void;
   energyType: string;
@@ -23,13 +26,14 @@ export interface AnalyticsActions {
 export function useAnalytics(session: SessionState | null): AnalyticsActions {
   const queryClient = useQueryClient();
   const cachePolicy = useRequestCachePolicy("analytics");
+  const [dateRange, setDateRange] = useState<AnalyticsDateRange | null>(null);
   const [days, setDays] = useState(30);
   const [energyType, setEnergyType] = useState<string>("");
 
   const { data, isFetching, error, refetch } = useQuery({
-    queryKey: ["analytics", "period-comparison-v3", session?.token ?? "", days, energyType],
+    queryKey: ["analytics", "period-comparison-v3", session?.token ?? "", days, energyType, dateRange],
     queryFn: () =>
-      getAnalyticsSummary(session!.token, days, energyType || undefined),
+      getAnalyticsSummary(session!.token, days, energyType || undefined, dateRange),
     enabled: !!session,
     ...cachePolicy,
   });
@@ -61,6 +65,8 @@ export function useAnalytics(session: SessionState | null): AnalyticsActions {
 
   return {
     analytics,
+    dateRange,
+    setDateRange,
     loading,
     errorText,
     days,

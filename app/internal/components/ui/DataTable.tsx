@@ -20,6 +20,7 @@ export interface ColumnDef<T> {
   key: string;
   label: string;
   sortable?: boolean;
+  type?: "string" | "number";
   renderCell: (row: T) => React.ReactNode;
   /** If true, a copy button appears on hover to copy the cell's text content */
   copyable?: boolean;
@@ -82,6 +83,8 @@ export interface DataTableProps<T extends { id: string }> {
   hasActiveFilters?: boolean;
   searchPlaceholder?: string;
   sortState?: SortState;
+  /** Use server when the caller sorts the full dataset before paginating rows. */
+  sortingMode?: "client" | "server";
   onSort?: (column: string) => void;
   toolbarLeft?: React.ReactNode;
   renderCustomSearch?: (params: {
@@ -269,6 +272,7 @@ export function DataTable<T extends { id: string }>({
   hasActiveFilters = true,
   searchPlaceholder = "Search…",
   sortState,
+  sortingMode = "client",
   onSort,
   toolbarLeft,
   renderCustomSearch,
@@ -479,14 +483,15 @@ export function DataTable<T extends { id: string }>({
 
       cols.push({
         field: col.key,
+        type: col.type,
         headerName: col.label,
         sortable: col.sortable ?? false,
         width: explicitWidth ?? (isActionsColumn ? 164 : undefined),
         minWidth: col.minWidth ?? (isActionsColumn ? 120 : undefined),
         maxWidth: isActionsColumn && !explicitWidth ? 320 : undefined,
         flex: !col.width && !isActionsColumn ? (col.flex ?? 1) : undefined,
-        align: isActionsColumn ? "right" : undefined,
-        headerAlign: isActionsColumn ? "right" : undefined,
+        align: isActionsColumn ? "right" : "left",
+        headerAlign: isActionsColumn ? "right" : "left",
         cellClassName: isActionsColumn ? "dt-grid-cell-actions" : undefined,
         colSpan: (_value, row) => (row as any).__detailPanelFor && col.key === firstDataColumn ? detailColSpan : undefined,
         renderCell: (params) => {
@@ -1386,6 +1391,8 @@ export function DataTable<T extends { id: string }>({
               paginationMode="server"
               paginationModel={paginationModel}
               rowCount={pagination?.total || 0}
+              sortingOrder={onSort ? ["asc", "desc"] : undefined}
+              sortingMode={sortingMode}
               sortModel={sortModel}
               onSortModelChange={handleSortModelChange}
               onRowClick={onRowClick ? (params, event) => {
