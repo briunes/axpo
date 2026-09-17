@@ -1,5 +1,5 @@
 import type { SimulationPayload } from "@/domain/types/simulation";
-import { indexedEnergyPriceOf } from "@/application/services/calculationService";
+import { indexedEnergyPriceOf, personalizadaIndexEnergyPrices } from "@/application/services/calculationService";
 
 type BaseValueItem = { key: string; valueNumeric: unknown };
 
@@ -10,6 +10,11 @@ export function selectedIndexedEnergyPrices(
 ): Record<string, number> | undefined {
   const electricity = payload?.electricity;
   const selectedKey = payload?.selectedOffer?.productKey;
+  if (electricity && selectedKey === "PERSONALIZADA_INDEX") {
+    const map = new Map(items.filter((item) => item.valueNumeric != null)
+      .map((item) => [item.key, Number(item.valueNumeric)]));
+    return personalizadaIndexEnergyPrices(electricity, map);
+  }
   if (!electricity || !selectedKey || selectedKey.includes("PERSONALIZADA")) return undefined;
   const [product, tier] = selectedKey.split(":");
   const tariff = product === "DINAMICA_CONTROL_TECHO" && tier === "N3" && electricity.tarifaAcceso === "6.1TD"
@@ -32,6 +37,9 @@ export function selectedProductEnergyKeyPrefixes(
   payload: SimulationPayload | null | undefined,
 ): string[] {
   const selectedKey = payload?.selectedOffer?.productKey?.trim();
+  if (selectedKey === "PERSONALIZADA_INDEX" && payload?.electricity?.tarifaAcceso) {
+    return [`ELEC:INDEX:PERSONALIZADA_INDEX::${payload.electricity.tarifaAcceso}:`];
+  }
   if (!selectedKey || selectedKey.includes("PERSONALIZADA")) return [];
   const isGas = payload?.selectedOffer?.commodity === "GAS";
   const tariff = isGas
@@ -66,6 +74,11 @@ export function buildSelectedProductEnergyHistory(
     ? payload?.gas?.tarifaAcceso
     : payload?.electricity?.tarifaAcceso;
   if (!tariff) return null;
+
+  if (!isGas && selectedKey === "PERSONALIZADA_INDEX") {
+    return { productKey: selectedKey, tariffs: {},
+      selectedEnergyPrices: selectedIndexedEnergyPrices(payload, items) };
+  }
 
   const keyParts = selectedKey.split(":");
   const normalizedParts = isGas && keyParts[0] === "GAS" ? keyParts.slice(1) : keyParts;

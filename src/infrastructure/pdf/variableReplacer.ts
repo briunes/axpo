@@ -5,6 +5,7 @@
  * in HTML templates with actual simulation data.
  */
 
+import { personalizadaIndexEnergyPrices } from "@/application/services/calculationService";
 import type {
   SimulationPayload,
   ElecPeriodMap,
@@ -220,18 +221,10 @@ function buildSelectedProductEnergyTable(
         }
 
         if (selectedProductKey === "PERSONALIZADA_INDEX") {
-          const personalizedIndexMap =
-            electricity?.personalizadaIndex?.margenEnergia ?? {};
-          const omieMap = electricity?.omieEstimado ?? {};
-          return periods
-            .map((period) => {
-              const omieValue = Number(omieMap[period] ?? 0);
-              const marginValue = Number(personalizedIndexMap[period] ?? 0);
-              const value = omieValue + marginValue / 1000;
-              if (value <= 0) return null;
-              return { label: period, value };
-            })
-            .filter((item) => item !== null) as PeriodValue[];
+          const prices = selectedResult?.desglose?.preciosEnergia
+            ?? selectedProductHistory?.selectedEnergyPrices
+            ?? personalizadaIndexEnergyPrices(electricity, new Map());
+          return catalogueValues(prices);
         }
 
         const resultMap = selectedResult?.desglose ?? {};
@@ -305,11 +298,13 @@ function buildSelectedProductEnergyTable(
     .map((item) => {
       const label = item.label;
       const rawValue = Number(item.value ?? 0);
-      const value = formatEnergyPriceValue(rawValue);
+      const isPersonalizadaIndex = !isGas && selectedResult?.productKey === "PERSONALIZADA_INDEX";
+      const value = isPersonalizadaIndex ? formatNumber(rawValue, 4) : formatEnergyPriceValue(rawValue);
+      const hideUnusedPeriod = isPersonalizadaIndex && Number(electricity?.consumo?.[label] ?? 0) === 0;
       return `
             <div class="asim-energy-price-row">
               <div class="asim-energy-price-label">${label}</div>
-              <div class="asim-energy-price-value">${value}${value !== "—" ? ` ${unit}` : ""}</div>
+              <div class="asim-energy-price-value">${hideUnusedPeriod ? "&nbsp;" : `${value}${value !== "—" ? ` ${unit}` : ""}`}</div>
             </div>`;
     })
     .join("");
