@@ -513,7 +513,7 @@ describe("extractVariableValues", () => {
     expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P1");
   });
 
-  it("derives the selected personalized index table from the actual energy-margin inputs", () => {
+  it("applies the billing margin factor when falling back to manual OMIE prices", () => {
     const variables = extractVariableValues(
       { id: "simulation-id" },
       {
@@ -566,7 +566,7 @@ describe("extractVariableValues", () => {
     );
 
     expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("P1");
-    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,135");
+    expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain("0,1352");
     expect(variables.SELECTED_PRODUCT_ENERGY_TABLE).toContain(
       "Energy term price",
     );
