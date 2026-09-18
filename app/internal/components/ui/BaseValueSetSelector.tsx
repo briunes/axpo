@@ -33,8 +33,13 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
     const [selected, setSelected] = useState<string>("");
 
     useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        setSets([]);
+        setSelected("");
         listBaseValueSets(token, { pageSize: 100, showArchived: false, scopeType, forAgencyId, minimal: true })
             .then((res) => {
+                if (cancelled) return;
                 setSets(res.items);
                 let resolved: BaseValueSetItem | undefined;
                 if (usedBaseValueSetId && res.items.find((s) => s.id === usedBaseValueSetId)) {
@@ -53,7 +58,8 @@ export function BaseValueSetSelector({ token, isAdmin, usedBaseValueSetId, scope
                 }
             })
             .catch(() => { /* non-critical */ })
-            .finally(() => setLoading(false));
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
     }, [token, scopeType, forAgencyId]);
 
     useEffect(() => {

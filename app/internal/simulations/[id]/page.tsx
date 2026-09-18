@@ -499,6 +499,10 @@ export default function SimulationDetailPage({
   const canChooseBaseValues =
     !!session &&
     (session.user.role === "ADMIN" || session.user.role === "SYS_ADMIN");
+  const simulationBaseValueScope =
+    typeof simulation?.agency?.isTlv === "boolean"
+      ? simulation.agency.isTlv ? "TLV" : "GLOBAL"
+      : undefined;
   const canDownloadExcel =
     !!session && canDo(session.user.role, "simulations.download_excel");
   const canOpenAuditLogs =
@@ -514,13 +518,14 @@ export default function SimulationDetailPage({
 
     onActionButtons?.(
       <>
-        {canChooseBaseValues && (
+        {canChooseBaseValues && simulationBaseValueScope && (
           <span className="topbar-action-wrap simulation-topbar-base-values">
             <BaseValueSetSelector
+              key={`${simulation?.id}:${simulationBaseValueScope}`}
               token={session.token}
               isAdmin
               usedBaseValueSetId={usedBaseValueSetId}
-              forAgencyId={session.user.agencyId}
+              scopeType={simulationBaseValueScope}
               compact
               onChange={handleBaseValueSetChange}
               onChangeItem={(item) =>
@@ -644,6 +649,8 @@ export default function SimulationDetailPage({
     selectedOfferProductKey,
     session,
     showDraftResultActions,
+    simulation?.id,
+    simulationBaseValueScope,
     t,
     showReportIssueDialog,
     simulationIssuesEnabled,

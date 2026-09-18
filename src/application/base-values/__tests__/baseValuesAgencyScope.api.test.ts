@@ -49,6 +49,37 @@ describe("base value agency scope listing", () => {
     baseValueCountMock.mockResolvedValue(0);
   });
 
+  it.each([UserRole.ADMIN, UserRole.SYS_ADMIN])(
+    "%s lists only the explicitly requested simulation scope, independently of their agency",
+    async (role) => {
+      requireAuthMock.mockResolvedValue({
+        userId: "admin-1",
+        role,
+        agencyId: "admin-agency",
+      });
+
+      for (const scopeType of [BaseValueScope.TLV, BaseValueScope.GLOBAL]) {
+        const response = await GET(
+          new NextRequest(
+            `http://localhost/api/v1/internal/base-values?scopeType=${scopeType}&minimal=true&showArchived=false`,
+            { headers: { authorization: "Bearer token" } },
+          ),
+        );
+
+        expect(response.status).toBe(200);
+        expect(agencyFindUniqueMock).not.toHaveBeenCalled();
+        expect(baseValueFindManyMock).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            where: { scopeType, isDeleted: false },
+          }),
+        );
+        expect(baseValueCountMock).toHaveBeenLastCalledWith({
+          where: { scopeType, isDeleted: false },
+        });
+      }
+    },
+  );
+
   it("excludes TLV base values when sys admin lists values for a non-TLV agency", async () => {
     agencyFindUniqueMock.mockResolvedValue({ isTlv: false });
 
