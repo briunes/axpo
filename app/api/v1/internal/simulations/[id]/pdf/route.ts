@@ -16,6 +16,7 @@ import {
   resolveSimulationProductName,
 } from "@/infrastructure/pdf/pdfFilename";
 import type { SimulationPayload } from "@/domain/types/simulation";
+import { buildSelectedProductEnergyHistory, selectedProductEnergyKeyPrefixes } from "@/lib/selectedProductEnergyHistory";
 import { normalizeLanguageCode } from "@/lib/supportedLanguages";
 import type { EditableSectionsConfig } from "@/infrastructure/templates/editableSections";
 
@@ -199,6 +200,18 @@ export const GET = withErrorHandler(
         (translation) =>
           translation.languageCode.trim().toLowerCase() === preferredLanguage,
       )?.htmlContent ?? pdfTemplate.htmlContent;
+    const simulationPayload = mergedPayload as SimulationPayload | null;
+    const baseValueSetId = baseVersion?.baseValueSetId ?? simulationPayload?.results?.baseValueSetId;
+    // Older Personalizada Index results do not store the per-period prices.
+    // Recover them from the same snapshotted base values used for billing.
+    const prefixes = simulationPayload?.selectedOffer?.productKey === "PERSONALIZADA_INDEX"
+      ? selectedProductEnergyKeyPrefixes(simulationPayload) : [];
+    const selectedProductHistory = prefixes.length && baseValueSetId
+      ? buildSelectedProductEnergyHistory(simulationPayload, await prisma.baseValueItem.findMany({
+          where: { baseValueSetId, OR: prefixes.map((prefix) => ({ key: { startsWith: prefix } })) },
+          select: { key: true, valueNumeric: true },
+        }))
+      : undefined;
     const processedHtml = replaceVariables(
       templateHtml,
       extractVariableValues(
@@ -209,6 +222,7 @@ export const GET = withErrorHandler(
           undefined,
         undefined,
         preferredLanguage,
+        selectedProductHistory,
       ),
     );
     const fullHtml = processedHtml.includes("<!DOCTYPE html>")

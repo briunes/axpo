@@ -1,3 +1,4 @@
+import { CalculationService } from "@/application/services/calculationService";
 import {
   buildSelectedProductEnergyHistory,
   selectedProductEnergyKeyPrefixes,
@@ -35,6 +36,38 @@ describe("buildSelectedProductEnergyHistory", () => {
     selectedOffer: { productKey: "DINAMICA:N2", commodity: "ELECTRICITY" },
     results: { electricity: [{ productKey: "DINAMICA:N2", desglose: { terminoEnergia: 100 } }] },
   });
+  it.each([false, true])("renders full Personalizada Index prices for saved/recalculated results (%s)", (recalculate) => {
+    const payload = indexedPayload("2026-01", "DIURNO");
+    payload.selectedOffer.productKey = "PERSONALIZADA_INDEX";
+    payload.results.electricity[0].productKey = "PERSONALIZADA_INDEX";
+    payload.electricity.consumo = { P1: 100, P2: 200, P6: 300 };
+    payload.electricity.personalizadaIndex = {
+      margenEnergia: { P1: 5, P2: 5, P3: 5, P4: 5, P5: 5, P6: 5 }, margenPotencia: {},
+    };
+    // These full prices reproduce the proposal shown in the reported screenshot.
+    const fullPrices = { P1: 0.1920, P2: 0.1773, P6: 0.1701 };
+    const items = Object.entries(fullPrices).flatMap(([period, price]) => [
+      { key: `ELEC:INDEX:PERSONALIZADA_INDEX::3.0TD:${period}:MARGEN:2026-01:PROFILE:DIURNO:ZONE:CANARIAS`, valueNumeric: price - 5 * 1.01528 / 1000 },
+      { key: `ELEC:INDEX:PERSONALIZADA_INDEX::3.0TD:${period}:MARGEN:2026-02:PROFILE:DIURNO:ZONE:CANARIAS`, valueNumeric: 0.9 },
+      { key: `ELEC:INDEX:PERSONALIZADA_INDEX::3.0TD:${period}:MARGEN:2026-01:PROFILE:DIURNO:ZONE:PENINSULA`, valueNumeric: 0.8 },
+    ]);
+    expect(selectedProductEnergyKeyPrefixes(payload)).toEqual(["ELEC:INDEX:PERSONALIZADA_INDEX::3.0TD:"]);
+    const results = CalculationService.calculateElectricity(payload.electricity, CalculationService.buildPriceMap(items));
+    const result = results.find((entry) => entry.productKey === "PERSONALIZADA_INDEX")!;
+    expect(result.desglose?.terminoEnergia).toBe(105.69);
+    expect(result.desglose?.preciosEnergia?.P1).toBeCloseTo(0.192);
+    if (recalculate) payload.results.electricity = [result];
+    const history = buildSelectedProductEnergyHistory(payload, items);
+    expect(history?.selectedEnergyPrices?.P2).toBeCloseTo(0.1773);
+    // Recalculated results must retain their own prices even if history differs.
+    if (recalculate) history!.selectedEnergyPrices = { P1: 0.9 };
+    const html = extractVariableValues({ id: "test" }, payload, undefined, undefined, undefined, "es", history).SELECTED_PRODUCT_ENERGY_TABLE;
+    for (const price of ["0,1920", "0,1773", "0,1701"]) expect(html).toContain(`${price} €/kWh`);
+    expect(html.match(/asim-energy-price-label">P[1-6]/g)).toHaveLength(6);
+    expect(html.match(/&nbsp;/g)).toHaveLength(3);
+    expect(html).not.toContain("0,005");
+  });
+
   const prefix = "ELEC:INDEX:DINAMICA:N2:3.0TD:P6:MARGEN";
   const indexedItems = [
     { key: `${prefix}:2026-05:ZONE:CANARIAS`, valueNumeric: 0.127606397 },

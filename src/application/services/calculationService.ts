@@ -623,6 +623,23 @@ function calcElecPersonalizadaFijo(
 
 // ─── Electricity – Personalizada Index ────────────────────────────────────────
 
+/** Full €/kWh prices shared by billing and proposal rendering. */
+export function personalizadaIndexEnergyPrices(
+  inputs: ElectricityInputs,
+  map: PriceMap,
+): Record<string, number> {
+  const month = inputs.billingMonth ?? inputs.periodo.fechaFin.slice(0, 7);
+  const margins = (inputs.personalizadaIndex?.margenEnergia ?? {}) as Record<string, number>;
+  const omie = (inputs.omieEstimado ?? {}) as Record<string, number>;
+  return Object.fromEntries((ENERGY_PERIODS[inputs.tarifaAcceso] ?? []).map((period) => {
+    const storedPrice = indexedEnergyPriceOf(map,
+      `ELEC:INDEX:PERSONALIZADA_INDEX::${inputs.tarifaAcceso}:${period}`,
+      month, inputs.perfilCarga ?? "NORMAL", inputs.zonaGeografica);
+    return [period, (storedPrice ?? omie[period] ?? 0)
+      + (margins[period] ?? 0) * PERSONALIZADA_INDEX_ENERGY_MARGIN_FACTOR / 1000];
+  }));
+}
+
 /**
  * Personalizada Index product.
  * Uses user-supplied energy margins (€/MWh) and power margins (€/kW/year).
@@ -667,9 +684,6 @@ function calcPersonalizadaIndex(
     },
   );
   if (!hasAnyUserValue && !hasImportedDefaults) return null;
-  const hasExplicitOmie = Object.values(inputs.omieEstimado ?? {}).some(
-    (v) => v != null && v !== 0,
-  );
 
   const {
     tarifaAcceso,
@@ -689,36 +703,13 @@ function calcPersonalizadaIndex(
     number | undefined
   >;
 
-  const omieMapIdx = (inputs.omieEstimado ?? {}) as Record<
-    string,
-    number | undefined
-  >;
-  const margenEnergiaMap = (inputs.personalizadaIndex?.margenEnergia ??
-    {}) as Record<string, number | undefined>;
   const margenPotIdxMap = (inputs.personalizadaIndex?.margenPotencia ??
     {}) as Record<string, number | undefined>;
 
+  const energyPrices = personalizadaIndexEnergyPrices(inputs, map);
   let terminoEnergia = 0;
   for (const p of energyPeriods) {
-    const baseKey = `ELEC:INDEX:${product}:${tier}:${tarifaAcceso}:${p}`;
-    const storedPrice = indexedEnergyPriceOf(
-      map,
-      baseKey,
-      billingMonthKey,
-      perfilCarga,
-      inputs.zonaGeografica,
-    );
-    const margenEnergiaP =
-      ((margenEnergiaMap[p] ?? 0) * PERSONALIZADA_INDEX_ENERGY_MARGIN_FACTOR) /
-      1000;
-    const precioEnergia =
-      storedPrice !== undefined
-        ? storedPrice + margenEnergiaP
-        : hasExplicitOmie
-          ? pv(omieMapIdx, p) + margenEnergiaP
-          : margenEnergiaP;
-    if (precioEnergia === undefined) return null;
-    terminoEnergia += precioEnergia * pv(consumoMap, p);
+    terminoEnergia += energyPrices[p] * pv(consumoMap, p);
   }
 
   let terminoPotencia = 0;
@@ -766,6 +757,7 @@ function calcPersonalizadaIndex(
     pctAhorro,
     ahorroAnual,
     desglose: {
+      preciosEnergia: energyPrices,
       terminoEnergia: r2(terminoEnergia),
       terminoPotencia: r2(terminoPotencia),
       excesoPotencia: r2(terminoExceso),
