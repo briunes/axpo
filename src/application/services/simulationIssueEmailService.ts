@@ -2,47 +2,78 @@ import { InternalServerError } from "@/domain/errors/errors";
 import { UserRole } from "@/domain/types";
 import { prisma } from "@/infrastructure/database/prisma";
 import { EmailService } from "./emailService";
+import { NotificationService } from "./notificationService";
 import { resolveTrackingBaseUrl } from "./emailOpenTracking";
+import { incidentNotificationLanguage } from "@/lib/incidentNotificationLanguage";
+import { INCIDENT_EMAILS } from "@/lib/incidentEmails";
 
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[character]!);
+export interface IncidentEvent {
+  issueId: string;
+  incidentNumber: number;
+  eventId: string;
+  kind: "created" | "escalated" | "status" | "resolved";
+  simulationReference: string | null;
+  simulationId: string | null;
+  description: string;
+  reporterId: string;
+  escalated: boolean;
+  status: string;
+  previousStatus: string;
+  changedBy: string;
+  changedByUserId: string;
+  notes: string;
+  resolutionNotes: string;
 }
 
 export class SimulationIssueEmailService {
-  static async notifyEscalation(input: {
-    issueId: string;
-    escalationId: string;
-    simulationReference: string | null;
-    simulationId: string | null;
-    escalatedBy: string;
-    escalatedByUserId: string;
-    notes: string;
-  }): Promise<void> {
-    const recipients = await prisma.user.findMany({
-      where: { role: UserRole.SYS_ADMIN, isActive: true, isDeleted: false, deletedAt: null },
-      select: { id: true, email: true },
-    });
-    const issueUrl = `${resolveTrackingBaseUrl()}/internal/simulations/issues/${encodeURIComponent(input.issueId)}`;
-    const reference = input.simulationReference || input.issueId;
-    const subject = `Simulation issue escalated: ${reference.replace(/[\r\n]/g, " ")}`;
-    const text = `A simulation issue requires technical review.\n\nSimulation: ${reference}\nEscalated by: ${input.escalatedBy}\n\n${input.notes}\n\nOpen incident: ${issueUrl}`;
-    const html = `<h2>Simulation issue escalated</h2><p>A simulation issue requires technical review.</p><p><strong>Simulation:</strong> ${escapeHtml(reference)}<br><strong>Escalated by:</strong> ${escapeHtml(input.escalatedBy)}</p><p style="white-space:pre-wrap">${escapeHtml(input.notes)}</p><p><a href="${escapeHtml(issueUrl)}">Open incident</a></p>`;
-    const results = await Promise.allSettled(recipients.map((recipient) => EmailService.sendEmail({
-      deliveryId: `simulation-issue-escalation:${input.escalationId}:${recipient.id}`,
-      to: recipient.email,
-      subject,
-      html,
-      text,
-      triggeredBy: "simulation-issue-escalation",
-      triggeredByUserId: input.escalatedByUserId,
-      relatedUserId: recipient.id,
-      relatedSimulationId: input.simulationId ?? undefined,
-      variables: { ISSUE_ID: input.issueId, ESCALATION_ID: input.escalationId, ISSUE_URL: issueUrl },
-    })));
+  // One event ID per persisted transition; retrying never re-sends successful emails.
+  static async notifyEvent(input: IncidentEvent): Promise<void> {
+    const [recipients, config] = await Promise.all([
+      prisma.user.findMany({
+        where: { isActive: true, isDeleted: false, deletedAt: null, OR: [
+          { role: { in: input.escalated ? [UserRole.ADMIN, UserRole.SYS_ADMIN] : [UserRole.ADMIN] } },
+          ...(input.kind === "created" ? [] : [{ id: input.reporterId }]),
+        ] },
+        select: { id: true, email: true, fullName: true, role: true, preferences: { select: { language: true } } },
+      }),
+      prisma.systemConfig.findFirst(),
+    ]);
+    const template = INCIDENT_EMAILS.find((event) => event.type === `incident-${input.kind}`)!;
+    const templateId = config?.[template.field];
+    const results = await Promise.allSettled(recipients.flatMap((recipient) => {
+      const language = incidentNotificationLanguage(recipient.preferences?.language, config?.defaultLanguage);
+      const title = `${language.title(input.kind)} #${input.incidentNumber}`;
+      const status = language.status(input.status);
+      const previousStatus = language.status(input.previousStatus);
+      const canManage = recipient.role === UserRole.ADMIN || recipient.role === UserRole.SYS_ADMIN;
+      // Reporters receive the update in their inbox; management pages remain restricted.
+      const actionUrl = canManage ? `/internal/simulations/issues/${encodeURIComponent(input.issueId)}` : "/internal/notifications";
+      const variables = {
+        ISSUE_ID: input.issueId, INCIDENT_NUMBER: String(input.incidentNumber),
+        SIMULATION_REFERENCE: input.simulationReference || "—", DESCRIPTION: input.description,
+        STATUS: status, PREVIOUS_STATUS: previousStatus, NOTES: input.notes,
+        RESOLUTION_NOTES: input.resolutionNotes, CHANGED_BY: input.changedBy,
+        RECIPIENT_NAME: recipient.fullName, ISSUE_URL: `${resolveTrackingBaseUrl()}${actionUrl}`,
+      };
+      return [
+        NotificationService.notifyIncidentEvent({
+          eventId: input.eventId, issueId: input.issueId, kind: input.kind,
+          recipientId: recipient.id, recipientRole: recipient.role as UserRole,
+          title, body: `${previousStatus ? `${previousStatus} → ` : ""}${status}\n${input.resolutionNotes || input.notes || input.description}`,
+          actionUrl,
+        }),
+        ...(templateId ? [EmailService.sendTemplateEmail({
+          deliveryId: `incident:${input.eventId}:${recipient.id}`,
+          templateId, to: recipient.email, variables, escapeHtmlVariables: true,
+          requiredHtmlVariables: input.kind === "resolved" ? ["RESOLUTION_NOTES"] : [],
+          languageCode: language.languageCode,
+          triggeredBy: `incident-${input.kind}`, triggeredByUserId: input.changedByUserId,
+          relatedUserId: recipient.id, relatedSimulationId: input.simulationId ?? undefined,
+        })] : []),
+      ];
+    }));
     if (results.some((result) => result.status === "rejected")) {
-      throw new InternalServerError("The issue was escalated, but some notification emails failed. Save again to retry failed deliveries; details are available in email logs.");
+      throw new InternalServerError("The incident was saved, but some notifications failed. Save again to retry failed deliveries; details are available in email logs.");
     }
   }
 }

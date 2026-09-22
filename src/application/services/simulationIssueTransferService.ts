@@ -17,6 +17,7 @@ const file = z.object({
   data: z.string().refine((value) => value.length % 4 === 0 && !/[^A-Za-z0-9+/]/.test(value.replace(/={1,2}$/, "")), "Invalid base64 file data"),
 });
 const incident = z.object({
+  incidentNumber: z.number().int().positive().max(2147483647).optional(),
   id: z.string().min(1).max(200), simulationId: z.string().max(200).nullable(), simulationReference: z.string().max(500).nullable(),
   description: z.string().max(100000), status, appStatus, resolutionNotes: z.string().max(100000).nullable(),
   createdAt: timestamp, updatedAt: timestamp, statusChangedAt: timestamp.nullable(),
@@ -51,7 +52,7 @@ export class SimulationIssueTransferService {
       statusChanges: { orderBy: { createdAt: "asc" }, include: { changedByUser: { select: { fullName: true, email: true } } } },
     } });
     const data = { format: "axpo-simulation-incidents", version: 1, exportedAt: new Date().toISOString(), incidents: items.map((item) => ({
-      id: item.id, simulationId: item.simulationId, simulationReference: item.simulationReference, description: item.description,
+      id: item.id, incidentNumber: item.incidentNumber, simulationId: item.simulationId, simulationReference: item.simulationReference, description: item.description,
       status: item.status, appStatus: item.appStatus, resolutionNotes: item.resolutionNotes, createdAt: item.createdAt, updatedAt: item.updatedAt, statusChangedAt: item.statusChangedAt,
       reportedByUser: item.reportedByUser, handledByUser: item.handledByUser,
       snapshot: { fileName: item.snapshotFileName, mimeType: item.snapshotMimeType, data: Buffer.from(item.snapshotFileData).toString("base64") },
@@ -95,7 +96,7 @@ export class SimulationIssueTransferService {
       }
       history.push({ id: randomUUID(), fromStatus: item.status, toStatus: item.status, fromAppStatus: item.appStatus, toAppStatus: item.appStatus,
         changedByUserId: importingUserId, createdAt: new Date().toISOString(),
-        notes: `Imported from an incident export dated ${data.exportedAt}. Original reporter: ${item.reportedByUser.fullName} <${item.reportedByUser.email}>.${item.handledByUser ? ` Original handler: ${item.handledByUser.fullName} <${item.handledByUser.email}>.` : ""}${!reporterId ? " Reporter is not present in this environment; linked to the importing sys admin." : ""}${item.simulationId && !simulationId ? ` Original simulation ${item.simulationId} is not linked in this environment; the snapshot is preserved.` : ""}` });
+        notes: `Imported from an incident export dated ${data.exportedAt}. ${item.incidentNumber ? `Original incident number: #${item.incidentNumber}. ` : ""}Original reporter: ${item.reportedByUser.fullName} <${item.reportedByUser.email}>.${item.handledByUser ? ` Original handler: ${item.handledByUser.fullName} <${item.handledByUser.email}>.` : ""}${!reporterId ? " Reporter is not present in this environment; linked to the importing sys admin." : ""}${item.simulationId && !simulationId ? ` Original simulation ${item.simulationId} is not linked in this environment; the snapshot is preserved.` : ""}` });
       const snapshotData = Buffer.from(item.snapshot.data, "base64");
       records.push({ id: item.id, simulationId, simulationReference: item.simulationReference, description: item.description, status: item.status, appStatus: item.appStatus,
         resolutionNotes: item.resolutionNotes, createdAt: item.createdAt, updatedAt: item.updatedAt, statusChangedAt: item.statusChangedAt,

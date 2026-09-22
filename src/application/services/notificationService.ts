@@ -90,6 +90,19 @@ async function upsertNotification(input: NotificationInput): Promise<void> {
 }
 
 export class NotificationService {
+  static async notifyIncidentEvent(input: {
+    eventId: string; issueId: string; kind: string; recipientId: string; recipientRole: UserRole;
+    title: string; body: string; actionUrl: string;
+  }): Promise<void> {
+    await upsertNotification({
+      type: `simulation_issue.${input.kind}`, category: "simulations",
+      severity: input.kind === "resolved" ? "SUCCESS" : input.kind === "escalated" ? "WARNING" : "INFO",
+      title: input.title, body: input.body, audienceUserId: input.recipientId, audienceRole: input.recipientRole,
+      sourceType: "simulation_issue", sourceId: input.issueId,
+      dedupeKey: `incident:${input.eventId}:${input.recipientId}`, actionUrl: input.actionUrl,
+    });
+  }
+
   static async notifySimulationIssueEscalated(input: {
     issueId: string;
     escalationId: string;
@@ -474,7 +487,7 @@ export class NotificationService {
     const now = new Date();
     const audienceWhere: Prisma.NotificationWhereInput[] =
       params.role === UserRole.SYS_ADMIN
-        ? [{ audienceRole: UserRole.SYS_ADMIN }, { audienceUserId: params.userId }]
+        ? [{ audienceRole: UserRole.SYS_ADMIN, audienceUserId: null }, { audienceUserId: params.userId }]
         : [{ audienceUserId: params.userId }];
 
     const where: Prisma.NotificationWhereInput = {
@@ -555,7 +568,7 @@ export class NotificationService {
 
     const audienceWhere: Prisma.NotificationWhereInput[] =
       role === UserRole.SYS_ADMIN
-        ? [{ audienceRole: UserRole.SYS_ADMIN }, { audienceUserId: userId }]
+        ? [{ audienceRole: UserRole.SYS_ADMIN, audienceUserId: null }, { audienceUserId: userId }]
         : [{ audienceUserId: userId }];
 
     const markableNotifications = await prisma.notification.findMany({

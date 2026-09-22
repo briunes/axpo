@@ -17,7 +17,7 @@ function isSimulationIssueStatus(value: unknown): value is SimulationIssueStatus
 }
 
 const issueSelect = {
-  id: true, simulationId: true, simulationReference: true, description: true, status: true, appStatus: true,
+  id: true, incidentNumber: true, simulationId: true, simulationReference: true, description: true, status: true, appStatus: true,
   snapshotFileName: true, snapshotMimeType: true, snapshotFileSize: true,
   resolutionNotes: true, statusChangedAt: true, createdAt: true, updatedAt: true,
   reportedByUser: { select: { id: true, fullName: true, email: true } },
@@ -68,7 +68,7 @@ export const PATCH = withErrorHandler(async (request: NextRequest, context?: { p
     ? (requestedAppStatus ?? current.appStatus ?? "NEW") as "NEW" | "IN_REVIEW" | "RESOLVED" | "DISMISSED"
     : null;
   const effectiveStatus = appStatus ?? status;
-  if (effectiveStatus === "RESOLVED" && (current.appStatus ?? current.status) !== "RESOLVED" && !notes) {
+  if (["RESOLVED", "DISMISSED"].includes(effectiveStatus) && (current.appStatus ?? current.status) !== effectiveStatus && !notes) {
     throw new ValidationError("Resolution notes are required when resolving an issue");
   }
   if (status === "ESCALATED" && current.status !== "ESCALATED" && !notes) {
@@ -77,7 +77,7 @@ export const PATCH = withErrorHandler(async (request: NextRequest, context?: { p
   await prisma.simulationIssue.update({
     where: { id }, data: {
       status, appStatus, handledByUserId: auth.userId, statusChangedAt: new Date(),
-      ...(effectiveStatus === "RESOLVED" && notes && { resolutionNotes: notes }),
+      ...(["RESOLVED", "DISMISSED"].includes(effectiveStatus) && (current.appStatus ?? current.status) !== effectiveStatus && notes && { resolutionNotes: notes }),
     },
   });
 
@@ -99,32 +99,26 @@ export const PATCH = withErrorHandler(async (request: NextRequest, context?: { p
 
   const item = await prisma.simulationIssue.findUnique({ where: { id }, select: issueSelect });
   if (!item) throw new ValidationError("Issue not found after update");
-  if (effectiveStatus === "RESOLVED" || effectiveStatus === "DISMISSED") {
-    await NotificationService.resolveSimulationIssue(id);
-  } else if (status === "ESCALATED" && requestedAppStatus === undefined) {
-    // Reuse the transition ID on retries and note edits so notifications stay
-    // deduplicated. A later escalation gets a fresh unread notification.
-    const escalation = item.statusChanges.find((change) =>
-      change.toStatus === "ESCALATED" && change.fromStatus !== "ESCALATED"
-    );
-    if (escalation) {
-      await NotificationService.notifySimulationIssueEscalated({
-        issueId: id,
-        escalationId: escalation.id,
-        simulationReference: item.simulationReference,
-        escalatedBy: escalation.changedByUser.fullName,
-        notes: escalation.notes || "",
-      });
-      await SimulationIssueEmailService.notifyEscalation({
-        issueId: id,
-        escalationId: escalation.id,
-        simulationReference: item.simulationReference,
-        simulationId: item.simulationId,
-        escalatedBy: escalation.changedByUser.fullName,
-        escalatedByUserId: escalation.changedByUser.id,
-        notes: escalation.notes || "",
-      });
+  const transition = item.statusChanges.find((change) =>
+    change.fromStatus !== change.toStatus || change.fromAppStatus !== change.toAppStatus
+  );
+  if (transition) {
+    const finalStatus = transition.toAppStatus ?? transition.toStatus;
+    const finalized = finalStatus === "RESOLVED" || finalStatus === "DISMISSED";
+    const escalatedNow = transition.toStatus === "ESCALATED" && transition.fromStatus !== "ESCALATED";
+    if (finalized && (current.status !== status || current.appStatus !== appStatus)) {
+      await NotificationService.resolveSimulationIssue(id);
     }
+    await SimulationIssueEmailService.notifyEvent({
+      issueId: id, incidentNumber: item.incidentNumber, eventId: transition.id,
+      kind: finalized ? "resolved" : escalatedNow ? "escalated" : "status",
+      simulationReference: item.simulationReference, simulationId: item.simulationId,
+      description: item.description, reporterId: item.reportedByUser.id,
+      escalated: transition.toStatus === "ESCALATED", status: finalStatus,
+      previousStatus: transition.fromAppStatus ?? transition.fromStatus,
+      changedBy: transition.changedByUser.fullName, changedByUserId: transition.changedByUser.id,
+      notes: transition.notes || "", resolutionNotes: finalized ? transition.notes || "" : "",
+    });
   }
   return ResponseHandler.ok(item);
 });

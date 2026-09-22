@@ -48,6 +48,15 @@ describe("Incident transfers", () => {
     expect(record.statusChanges[0]).toMatchObject({ changedByUserId: "target-user", fromStatus: "NEW", toStatus: "ESCALATED", toAppStatus: "NEW", notes: "Investigate" });
     expect(record.statusChanges[1].notes).toContain("Original reporter:");
   });
+  it("allocates a destination number while retaining the source number in history", async () => {
+    await SimulationIssueTransferService.import({ ...archive, incidents: [{ ...issue, incidentNumber: 42 }] }, "sys-1", false);
+    const record = rpcMock.mock.calls[0][1].payload[0];
+    expect(record).not.toHaveProperty("incidentNumber");
+    expect(record.statusChanges[1].notes).toContain("Original incident number: #42.");
+  });
+  it("accepts older archives without incident numbers", () => {
+    expect(parseIncidentArchive(archive).incidents[0].incidentNumber).toBeUndefined();
+  });
   it("preserves source attribution when users and simulations are absent", async () => {
     userMock.mockResolvedValue(null); simulationMock.mockResolvedValue(null);
     await SimulationIssueTransferService.import(archive, "sys-1", false);
@@ -88,18 +97,18 @@ describe("Incident transfers", () => {
   });
   it("exports a round-trip-compatible archive and excludes unrelated user data", async () => {
     findManyMock.mockResolvedValueOnce([{ id: issue.id, snapshotFileSize: 17, attachments: [{ fileSize: 8 }] }]).mockResolvedValueOnce([{
-      ...issue, snapshotFileName: issue.snapshot.fileName, snapshotMimeType: issue.snapshot.mimeType, snapshotFileData: Buffer.from(issue.snapshot.data, "base64"),
+      ...issue, incidentNumber: 42, snapshotFileName: issue.snapshot.fileName, snapshotMimeType: issue.snapshot.mimeType, snapshotFileData: Buffer.from(issue.snapshot.data, "base64"),
       attachments: [{ ...issue.attachments[0], fileData: Buffer.from("PDF data") }],
     }]);
     const exported = JSON.parse(await SimulationIssueTransferService.export({ status: "ESCALATED" }));
-    expect(parseIncidentArchive(exported).incidents[0]).toEqual(issue);
+    expect(parseIncidentArchive(exported).incidents[0]).toEqual({ ...issue, incidentNumber: 42 });
     expect(findManyMock.mock.calls[0][0].where).toEqual({ status: "ESCALATED" });
     expect(findManyMock.mock.calls[1][0].include.reportedByUser.select).toEqual({ fullName: true, email: true });
   });
   it("exports and imports an incident with an attachment larger than the former 4 MB cap", async () => {
     const attachment = Buffer.alloc(5 * 1024 * 1024, 65);
     findManyMock.mockResolvedValueOnce([{ id: issue.id, snapshotFileSize: 17, attachments: [{ fileSize: attachment.length }] }]).mockResolvedValueOnce([{
-      ...issue, snapshotFileName: issue.snapshot.fileName, snapshotMimeType: issue.snapshot.mimeType, snapshotFileData: Buffer.from(issue.snapshot.data, "base64"),
+      ...issue, incidentNumber: 42, snapshotFileName: issue.snapshot.fileName, snapshotMimeType: issue.snapshot.mimeType, snapshotFileData: Buffer.from(issue.snapshot.data, "base64"),
       attachments: [{ ...issue.attachments[0], fileData: attachment }],
     }]);
     const json = await SimulationIssueTransferService.export({ id: { in: [issue.id] } });

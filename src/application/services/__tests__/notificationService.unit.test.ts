@@ -151,7 +151,7 @@ describe("NotificationService.markForUser", () => {
     expect(notificationFindManyMock).toHaveBeenCalledWith({
       where: {
         id: { in: ["existing-notification", "deleted-notification"] },
-        OR: [{ audienceRole: UserRole.SYS_ADMIN }, { audienceUserId: "user-1" }],
+        OR: [{ audienceRole: UserRole.SYS_ADMIN, audienceUserId: null }, { audienceUserId: "user-1" }],
       },
       select: { id: true },
     });
@@ -234,5 +234,21 @@ describe("Simulation issue escalation notifications", () => {
       where: { sourceType: "simulation_issue", sourceId: "issue-1", resolvedAt: null },
       data: { resolvedAt: expect.any(Date) },
     });
+  });
+});
+
+describe("Incident recipient privacy", () => {
+  beforeEach(() => { jest.clearAllMocks(); notificationFindManyMock.mockResolvedValue([]); });
+  it.each([UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL])("limits %s to their own inbox", async (role) => {
+    await NotificationService.listForUser({ userId: "recipient-1", role });
+    const where = notificationFindManyMock.mock.calls[0][0].where;
+    expect(where.OR).toEqual([{ audienceUserId: "recipient-1" }]);
+    await NotificationService.markForUser("recipient-1", role, ["someone-elses-notification"], "read");
+    expect(notificationFindManyMock.mock.calls[1][0].where.OR).toEqual([{ audienceUserId: "recipient-1" }]);
+    expect(notificationReadUpsertMock).not.toHaveBeenCalled();
+  });
+  it("does not show another sys admin's personal notification", async () => {
+    await NotificationService.listForUser({ userId: "sys-1", role: UserRole.SYS_ADMIN });
+    expect(notificationFindManyMock.mock.calls[0][0].where.OR).toEqual([{ audienceRole: UserRole.SYS_ADMIN, audienceUserId: null }, { audienceUserId: "sys-1" }]);
   });
 });

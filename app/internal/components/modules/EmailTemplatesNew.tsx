@@ -1,5 +1,7 @@
 "use client";
 
+import { INCIDENT_EMAILS, INCIDENT_EMAIL_VARIABLES } from "@/lib/incidentEmails";
+
 import { useState, useEffect, useMemo } from "react";
 import {
     Box,
@@ -48,6 +50,11 @@ export interface EmailTemplatesProps {
 }
 
 export type EmailTemplateType =
+    | "incident-created"
+    | "incident-escalated"
+    | "incident-status"
+    | "incident-resolved"
+
     | "simulation-share"
     | "magic-link"
     | "otp"
@@ -149,7 +156,7 @@ const getButtonSnippets = (
  * Email template types that should ONLY show variables explicitly tagged for
  * them — no "universal" (untagged) variables.
  */
-const CLOSED_EMAIL_TYPES = new Set(["user-welcome", "welcome", "password-reset", "magic-link", "otp", "access-request-kam", "access-request-applicant"]);
+const CLOSED_EMAIL_TYPES = new Set([...INCIDENT_EMAILS.map((item) => item.type), "user-welcome", "welcome", "password-reset", "magic-link", "otp", "access-request-kam", "access-request-applicant"]);
 
 /** Types that should include the button snippets panel */
 const BUTTON_SNIPPET_TYPES = new Set(["user-welcome", "welcome", "password-reset", "magic-link", "simulation-share", "expiring-soon", "converted", "notification"]);
@@ -210,6 +217,10 @@ function getVariablesForEmailTemplate(
             .map((v) => ({ name: v.key, label: v.label, description: v.description || "" }));
     }
 
+    if (type?.startsWith("incident-")) {
+        vars = INCIDENT_EMAIL_VARIABLES.map((name) => ({ name, label: name, description: `{{${name}}}` }));
+    }
+
     const builtinVariables = type ? (getBuiltinEmailVariables(t)[type] ?? []) : [];
     const existingNames = new Set(vars.map((variable) => variable.name));
     vars = [
@@ -235,6 +246,11 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
     const { t } = useI18n();
     const { preferences } = useUserPreferences();
     const TEMPLATE_TYPE_LABELS: Record<EmailTemplateType, string> = {
+        "incident-created": t("simulationIssues", "emailCreated"),
+        "incident-escalated": t("simulationIssues", "emailEscalated"),
+        "incident-status": t("simulationIssues", "emailStatus"),
+        "incident-resolved": t("simulationIssues", "emailResolved"),
+
         "simulation-share": t("emailTemplatesModule", "typeSimulationShare"),
         "magic-link": t("emailTemplatesModule", "typeMagicLink"),
         "otp": t("emailTemplatesModule", "typeOtp"),
@@ -316,6 +332,13 @@ export function EmailTemplatesNew({ session, onNotify }: EmailTemplatesProps) {
         (template.translations ?? []).forEach((tr) => {
             map[tr.languageCode] = { subject: tr.subject, htmlContent: tr.htmlContent };
         });
+        // Legacy templates may only have content in the parent row.
+        if (!map[DEFAULT_LANGUAGE]?.htmlContent?.trim() && template.htmlContent?.trim()) {
+            map[DEFAULT_LANGUAGE] = {
+                subject: map[DEFAULT_LANGUAGE]?.subject || template.subject || "",
+                htmlContent: template.htmlContent,
+            };
+        }
         return map;
     };
 

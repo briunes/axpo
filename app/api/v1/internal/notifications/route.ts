@@ -1,11 +1,10 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { UserRole } from "@/domain/types";
-import { ForbiddenError, ValidationError } from "@/domain/errors/errors";
+import { ValidationError } from "@/domain/errors/errors";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
 import { requireAuth } from "@/application/middleware/auth";
-import { assertRole } from "@/application/middleware/rbac";
 import { NotificationService } from "@/application/services/notificationService";
 
 const notificationActionSchema = z.object({
@@ -22,16 +21,8 @@ function cleanFilterValue(value: string | null): string | undefined {
   return trimmed;
 }
 
-const assertSysAdmin = (role: UserRole) => {
-  if (role !== UserRole.SYS_ADMIN) {
-    throw new ForbiddenError("Notifications are currently restricted to Sys Admin users");
-  }
-};
-
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.SYS_ADMIN]);
-  assertSysAdmin(auth.role);
 
   const { searchParams } = new URL(request.url);
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "10", 10), 100);
@@ -52,7 +43,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     !cleanFilterValue(searchParams.get("sourceType"));
 
   try {
-    if (shouldSync) {
+    if (shouldSync && auth.role === UserRole.SYS_ADMIN) {
       await NotificationService.syncSysAdminNotifications();
     }
 
@@ -81,11 +72,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.SYS_ADMIN]);
-  assertSysAdmin(auth.role);
 
   try {
-    await NotificationService.syncSysAdminNotifications({ force: true });
+    if (auth.role === UserRole.SYS_ADMIN) await NotificationService.syncSysAdminNotifications({ force: true });
     const result = await NotificationService.listForUser({
       userId: auth.userId,
       role: auth.role,
@@ -103,8 +92,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
 export const PATCH = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
-  assertRole(auth, [UserRole.SYS_ADMIN]);
-  assertSysAdmin(auth.role);
 
   const parsed = notificationActionSchema.safeParse(
     await request.json().catch(() => null),

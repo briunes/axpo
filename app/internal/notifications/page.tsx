@@ -61,6 +61,9 @@ const typeOptions = [
   "invoice_provider.prompt_config_needed",
   "system.maintenance_active",
   "simulation_issue.escalated",
+  "simulation_issue.created",
+  "simulation_issue.status",
+  "simulation_issue.resolved",
 ];
 
 const categoryOptions = [

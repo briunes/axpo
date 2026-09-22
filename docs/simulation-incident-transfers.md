@@ -12,6 +12,7 @@ A branch deployment imports into its configured database. Branches sharing the s
 ## Transfer behavior
 
 - Version 1 JSON archives include incident descriptions, both status workflows, resolution notes, timestamps, snapshots, attachments, and status history.
+- Incident numbers are unique within each environment. Exports include the source number; new imports receive a destination number and retain the source number in their import history. Older archives without numbers remain supported.
 - Existing incident IDs are skipped; destination incidents are never overwritten.
 - Users are matched by email. Missing required user links use the importing sys admin, with original identities recorded in history; missing optional handlers remain unassigned.
 - Simulations are linked only when the source ID and reference match. Otherwise, the incident retains its reference and snapshot without a simulation link.

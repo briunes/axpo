@@ -67,7 +67,7 @@ export function NotificationBell({
   const cachePolicy = useRequestCachePolicy("notifications");
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const isVisible =
-    role === "SYS_ADMIN" && (surface === "sidebar" || !pathname.startsWith("/internal/notifications"));
+    (surface === "sidebar" || !pathname.startsWith("/internal/notifications"));
   const queryKey = useMemo(() => ["notifications", token, { limit: 10 }] as const, [token]);
 
   const { data, error: queryError, isFetching, isLoading, refetch } = useQuery({

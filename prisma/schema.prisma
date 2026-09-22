@@ -286,6 +286,7 @@ model Simulation {
 
 model SimulationIssue {
   id                     String                  @id @default(cuid())
+  incidentNumber         Int                     @unique @default(autoincrement())
   simulationId           String?
   simulationReference    String?
   description            String
@@ -502,6 +503,10 @@ model SystemConfig {
   otpEnabled                            Boolean   @default(false)
   otpEmailTemplateId                    String?
   otpCodeValidityMinutes                Int       @default(10)
+  incidentCreatedEmailTemplateId String? @default("default-incident-created")
+  incidentEscalatedEmailTemplateId String? @default("default-incident-escalated")
+  incidentStatusEmailTemplateId String? @default("default-incident-status")
+  incidentResolvedEmailTemplateId String? @default("default-incident-resolved")
   accessRequestKamEmailTemplateId       String?
   accessRequestApplicantEmailTemplateId String?
   defaultMaxActiveDevices               Int       @default(3)

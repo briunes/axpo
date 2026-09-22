@@ -700,8 +700,9 @@ export default function SimulationDetailPage({
       />
       {simulationIssuesEnabled && <ReportIssueDialog open={showReportIssueDialog} onClose={() => setShowReportIssueDialog(false)}
         onSubmit={async (description, files) => {
-          await reportSimulationIssue(session.token, simulation.id, description, files);
-          showSuccess(t("simulationIssues", "submitSuccess"));
+          const result = await reportSimulationIssue(session.token, simulation.id, description, files);
+          if (result.notificationWarning) showError(result.notificationWarning);
+          else showSuccess(t("simulationIssues", "submitSuccess"));
         }} />}
 
       {simulation.status === "SHARED" && (

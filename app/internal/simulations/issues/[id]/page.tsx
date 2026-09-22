@@ -63,7 +63,7 @@ export default function SimulationIssueDetailPage() {
     enabled: Boolean(session && id),
   });
   const issue = query.data;
-  const breadcrumbs = useMemo(() => issue ? [{ label: issue.simulationReference || t("simulationIssues", "issueDetails"), href: `/internal/simulations/issues/${issue.id}` }] : null, [issue, t]);
+  const breadcrumbs = useMemo(() => issue ? [{ label: `${t("simulationIssues", "incidentNumber")} #${issue.incidentNumber}`, href: `/internal/simulations/issues/${issue.id}` }] : null, [issue, t]);
   useTopBarBreadcrumbs(breadcrumbs);
 
   const selectedStatus = draftStatus ?? issue?.status ?? "NEW";
@@ -71,7 +71,7 @@ export default function SimulationIssueDetailPage() {
   const canManageAppIssue = session?.user.role === "SYS_ADMIN";
   const selectedAppStatus = draftAppStatus ?? issue?.appStatus ?? "NEW";
   const effectiveStatus = isAppIssue ? selectedAppStatus : selectedStatus;
-  const isChangingToResolved = effectiveStatus === "RESOLVED" && (issue?.appStatus ?? issue?.status) !== "RESOLVED";
+  const isChangingToResolved = ["RESOLVED", "DISMISSED"].includes(effectiveStatus) && (issue?.appStatus ?? issue?.status) !== effectiveStatus;
   const isEscalating = selectedStatus === "ESCALATED" && issue?.status !== "ESCALATED";
   const needsNotes = (isChangingToResolved || isEscalating) && !notes.trim();
   const hasChanges = Boolean(issue && (selectedStatus !== issue.status || (isAppIssue && selectedAppStatus !== (issue.appStatus ?? "NEW")) || notes.trim()));
@@ -110,6 +110,7 @@ export default function SimulationIssueDetailPage() {
 
   return <CrudPageLayout title={t("simulationIssues", "issueDetails")} backHref="/internal/simulations/issues" maxWidth={undefined} hideHeader>
     <Box className="crud-tab-panel" data-tour="simulation-issue-detail-page" sx={{ position: "relative", p: { xs: 2, md: 2 } }}>
+      <Typography variant="h6" sx={{ mb: 2 }}>{t("simulationIssues", "incidentNumber")} #{issue.incidentNumber}</Typography>
       <Chip size="small" label={labels[issue.status]} color={statusColor} sx={{ mb: 2, fontWeight: 600 }} />
       {isAppIssue && <Chip size="small" label={`${t("simulationIssues", "appStatus")}: ${labels[issue.appStatus ?? "NEW"]}`} color={issue.appStatus === "RESOLVED" ? "success" : issue.appStatus === "IN_REVIEW" ? "warning" : "default"} sx={{ ml: 1, mb: 2 }} />}
       <Box className="crud-tab-panel__tabs" sx={{ mb: 2 }}>

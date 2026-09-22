@@ -30,7 +30,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const [items, total] = await Promise.all([prisma.simulationIssue.findMany({
     where, orderBy: { createdAt: "desc" }, skip: (page - 1) * limit, take: limit,
     select: {
-      id: true, simulationId: true, simulationReference: true, description: true, status: true, appStatus: true,
+      id: true, incidentNumber: true, simulationId: true, simulationReference: true, description: true, status: true, appStatus: true,
       snapshotFileName: true, snapshotMimeType: true, snapshotFileSize: true,
       reportedByUserId: true, handledByUserId: true, statusChangedAt: true, createdAt: true, updatedAt: true,
       reportedByUser: { select: { id: true, fullName: true, email: true } },

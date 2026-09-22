@@ -42,6 +42,9 @@ interface EmailOptions {
 }
 
 interface SendTemplateEmailOptions {
+  deliveryId?: string;
+  escapeHtmlVariables?: boolean;
+  requiredHtmlVariables?: string[];
   to: string;
   templateId: string;
   variables?: Record<string, string>;
@@ -201,7 +204,7 @@ export class EmailService {
 
     for (const [key, value] of Object.entries(merged)) {
       const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "g");
-      result = result.replace(regex, value || "");
+      result = result.replace(regex, () => value || "");
     }
     return result;
   }
@@ -404,7 +407,7 @@ export class EmailService {
         throw new Error(`Email template not found: ${options.templateId}`);
       }
 
-      if (!template.active) {
+      if (!template.active || template.isDeleted || template.deletedAt) {
         throw new Error(`Email template is inactive: ${options.templateId}`);
       }
 
@@ -419,14 +422,26 @@ export class EmailService {
         translation?.subject ?? template.subject,
         options.variables ?? {},
       );
-      const html = this.replaceVariables(
+      let html = this.replaceVariables(
         translation?.htmlContent ?? template.htmlContent,
-        options.variables ?? {},
+        options.escapeHtmlVariables
+          ? Object.fromEntries(Object.entries(options.variables ?? {}).map(([key, value]) => [key, value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!)]))
+          : options.variables ?? {},
       );
 
+      for (const key of options.requiredHtmlVariables ?? []) {
+        const value = options.variables?.[key];
+        const placeholder = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`);
+        if (value && !placeholder.test(translation?.htmlContent ?? template.htmlContent)) {
+          const escaped = value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
+          const note = `<p style="white-space:pre-wrap">${escaped}</p>`;
+          html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, () => `${note}</body>`) : html + note;
+        }
+      }
       await this.sendEmail({
+        deliveryId: options.deliveryId,
         to: options.to,
-        subject,
+        subject: options.escapeHtmlVariables ? subject.replace(/[\r\n]/g, " ") : subject,
         html,
         templateId: template.id,
         templateName: template.name,

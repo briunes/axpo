@@ -2413,7 +2413,7 @@ export async function downloadFilledSimulationExcel(
   URL.revokeObjectURL(url);
 }
 
-export async function reportSimulationIssue(token: string, simulationId: string, description: string, files: File[]): Promise<void> {
+export async function reportSimulationIssue(token: string, simulationId: string, description: string, files: File[]): Promise<{ notificationWarning?: string }> {
   const body = new FormData();
   body.set("description", description);
   files.forEach((file) => body.append("attachments", file));
@@ -2424,9 +2424,12 @@ export async function reportSimulationIssue(token: string, simulationId: string,
     const payload = await response.json().catch(() => null);
     throw new Error(payload?.error?.message ?? "No se pudo enviar la incidencia");
   }
+  const payload = await response.json();
+  return payload.data ?? payload;
 }
 
 export interface SimulationIssueItem {
+  incidentNumber: number;
   id: string; simulationId: string | null; simulationReference: string | null; description: string;
   status: "NEW" | "IN_REVIEW" | "ESCALATED" | "RESOLVED" | "DISMISSED"; createdAt: string; statusChangedAt: string | null;
   appStatus: "NEW" | "IN_REVIEW" | "RESOLVED" | "DISMISSED" | null;

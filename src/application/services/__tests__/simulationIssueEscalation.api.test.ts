@@ -10,7 +10,7 @@ const notifyMock = jest.fn();
 const resolveMock = jest.fn();
 const emailNotifyMock = jest.fn();
 
-jest.mock("@/application/services/simulationIssueEmailService", () => ({ SimulationIssueEmailService: { notifyEscalation: (...args: unknown[]) => emailNotifyMock(...args) } }));
+jest.mock("@/application/services/simulationIssueEmailService", () => ({ SimulationIssueEmailService: { notifyEvent: (...args: unknown[]) => emailNotifyMock(...args) } }));
 jest.mock("@/application/middleware/auth", () => ({ requireAuth: (...args: unknown[]) => requireAuthMock(...args) }));
 jest.mock("@/application/services/errorLoggerService", () => ({ ErrorLoggerService: { capture: async () => undefined } }));
 jest.mock("@/application/services/notificationService", () => ({ NotificationService: {
@@ -24,7 +24,7 @@ jest.mock("@/infrastructure/database/prisma", () => ({ prisma: {
 } }));
 
 const escalation = { id: "event-1", fromStatus: "NEW", toStatus: "ESCALATED", notes: "Calculation fails", changedByUser: { id: "admin-1", fullName: "Admin" } };
-const item = { id: "issue-1", status: "ESCALATED", appStatus: "NEW", simulationReference: "001/2026", statusChanges: [escalation] };
+const item = { incidentNumber: 42, reportedByUser: { id: "reporter-1" }, description: "Problem", simulationId: "sim-1", id: "issue-1", status: "ESCALATED", appStatus: "NEW", simulationReference: "001/2026", statusChanges: [escalation] };
 const request = (body: unknown) => new NextRequest("http://localhost/api/v1/internal/simulation-issues/issue-1", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 const context = { params: { id: "issue-1" } };
 
@@ -42,8 +42,8 @@ describe("Simulation issue escalation API", () => {
     expect(response.status).toBe(200);
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "ESCALATED", handledByUserId: "admin-1" }) }));
     expect(historyCreateMock).toHaveBeenCalledWith({ data: { issueId: "issue-1", fromStatus: "NEW", toStatus: "ESCALATED", fromAppStatus: null, toAppStatus: "NEW", changedByUserId: "admin-1", notes: "Calculation fails" } });
-    expect(emailNotifyMock).toHaveBeenCalledWith(expect.objectContaining({ issueId: "issue-1", escalationId: "event-1", escalatedByUserId: "admin-1" }));
-    expect(notifyMock).toHaveBeenCalledWith({ issueId: "issue-1", escalationId: "event-1", simulationReference: "001/2026", escalatedBy: "Admin", notes: "Calculation fails" });
+    expect(emailNotifyMock).toHaveBeenCalledWith(expect.objectContaining({ issueId: "issue-1", eventId: "event-1", changedByUserId: "admin-1" }));
+    expect(emailNotifyMock).toHaveBeenCalledWith(expect.objectContaining({ issueId: "issue-1", kind: "escalated", escalated: true, reporterId: "reporter-1" }));
   });
 
   it("rejects escalation without a meaningful handoff note", async () => {
@@ -67,32 +67,33 @@ describe("Simulation issue escalation API", () => {
 
   it.each(["RESOLVED", "DISMISSED"])("lets a sys admin close an escalated issue as %s and clear notifications", async (status) => {
     requireAuthMock.mockResolvedValue({ userId: "sys-1", role: UserRole.SYS_ADMIN });
-    findUniqueMock.mockReset().mockResolvedValueOnce({ status: "ESCALATED", appStatus: "IN_REVIEW" }).mockResolvedValue({ ...item, appStatus: status });
+    findUniqueMock.mockReset().mockResolvedValueOnce({ status: "ESCALATED", appStatus: "IN_REVIEW" }).mockResolvedValue({ ...item, appStatus: status, statusChanges: [{ ...escalation, fromStatus: "ESCALATED", toStatus: "ESCALATED", fromAppStatus: "IN_REVIEW", toAppStatus: status, notes: "Fixed application calculation" }] });
     expect((await PATCH(request({ status: "ESCALATED", appStatus: status, notes: "Fixed application calculation" }), context)).status).toBe(200);
     expect(resolveMock).toHaveBeenCalledWith("issue-1");
+    expect(emailNotifyMock).toHaveBeenCalledWith(expect.objectContaining({ kind: "resolved", resolutionNotes: "Fixed application calculation" }));
     expect(notifyMock).not.toHaveBeenCalled();
   });
 
   it("keeps the alert active when a sys admin begins reviewing", async () => {
     requireAuthMock.mockResolvedValue({ userId: "sys-1", role: UserRole.SYS_ADMIN });
-    findUniqueMock.mockReset().mockResolvedValueOnce({ status: "ESCALATED", appStatus: "NEW" }).mockResolvedValue({ ...item, appStatus: "IN_REVIEW" });
+    findUniqueMock.mockReset().mockResolvedValueOnce({ status: "ESCALATED", appStatus: "NEW" }).mockResolvedValue({ ...item, appStatus: "IN_REVIEW", statusChanges: [{ ...escalation, fromStatus: "ESCALATED", toStatus: "ESCALATED", fromAppStatus: "NEW", toAppStatus: "IN_REVIEW" }] });
     expect((await PATCH(request({ status: "ESCALATED", appStatus: "IN_REVIEW" }), context)).status).toBe(200);
     expect(resolveMock).not.toHaveBeenCalled();
   });
 
   it("retries notification delivery using the original transition after a delivery failure", async () => {
-    notifyMock.mockRejectedValueOnce(new Error("Notification store unavailable"));
+    emailNotifyMock.mockRejectedValueOnce(new Error("Notification store unavailable"));
     expect((await PATCH(request({ status: "ESCALATED", notes: "Calculation fails" }), context)).status).toBe(500);
     findUniqueMock.mockReset().mockResolvedValueOnce({ status: "ESCALATED", appStatus: "NEW" }).mockResolvedValue(item);
     expect((await PATCH(request({ status: "ESCALATED" }), context)).status).toBe(200);
-    expect(notifyMock).toHaveBeenLastCalledWith(expect.objectContaining({ escalationId: "event-1" }));
+    expect(emailNotifyMock).toHaveBeenLastCalledWith(expect.objectContaining({ eventId: "event-1" }));
     expect(historyCreateMock).toHaveBeenCalledTimes(1);
   });
 
   it("does not turn an additional note into a fresh escalation notification", async () => {
     findUniqueMock.mockReset().mockResolvedValueOnce({ status: "ESCALATED" }).mockResolvedValue({ ...item, statusChanges: [{ ...escalation, id: "note-2", fromStatus: "ESCALATED", notes: "More details" }, escalation] });
     expect((await PATCH(request({ status: "ESCALATED", notes: "More details" }), context)).status).toBe(200);
-    expect(notifyMock).toHaveBeenCalledWith(expect.objectContaining({ escalationId: "event-1", notes: "Calculation fails" }));
+    expect(emailNotifyMock).toHaveBeenCalledWith(expect.objectContaining({ eventId: "event-1", notes: "Calculation fails" }));
   });
   it("starts an escalation at New in the app administrator workflow", async () => {
     await PATCH(request({ status: "ESCALATED", notes: "Technical investigation needed" }), context);
@@ -107,12 +108,26 @@ describe("Simulation issue escalation API", () => {
 
   it("preserves escalation when a sys admin changes progress and audits both states", async () => {
     requireAuthMock.mockResolvedValue({ userId: "sys-1", role: UserRole.SYS_ADMIN });
-    findUniqueMock.mockReset().mockResolvedValueOnce({ status: "ESCALATED", appStatus: "NEW" }).mockResolvedValue({ ...item, appStatus: "IN_REVIEW" });
+    findUniqueMock.mockReset().mockResolvedValueOnce({ status: "ESCALATED", appStatus: "NEW" }).mockResolvedValue({ ...item, appStatus: "IN_REVIEW", statusChanges: [{ ...escalation, fromStatus: "ESCALATED", toStatus: "ESCALATED", fromAppStatus: "NEW", toAppStatus: "IN_REVIEW" }] });
     expect((await PATCH(request({ status: "ESCALATED", appStatus: "IN_REVIEW" }), context)).status).toBe(200);
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "ESCALATED", appStatus: "IN_REVIEW" }) }));
     expect(historyCreateMock).toHaveBeenCalledWith({ data: expect.objectContaining({ fromStatus: "ESCALATED", toStatus: "ESCALATED", fromAppStatus: "NEW", toAppStatus: "IN_REVIEW", changedByUserId: "sys-1" }) });
     expect(notifyMock).not.toHaveBeenCalled();
-    expect(emailNotifyMock).not.toHaveBeenCalled();
+    expect(emailNotifyMock).toHaveBeenCalledWith(expect.objectContaining({ kind: "status", status: "IN_REVIEW", escalated: true }));
+  });
+
+  it.each(["RESOLVED", "DISMISSED"])("requires an admin resolution note for %s", async (status) => {
+    expect((await PATCH(request({ status, notes: "  " }), context)).status).toBe(400);
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
+  it("notifies the reporter with the admin's resolution", async () => {
+    findUniqueMock.mockReset().mockResolvedValueOnce({ status: "IN_REVIEW", appStatus: null }).mockResolvedValue({
+      ...item, status: "RESOLVED", appStatus: null,
+      statusChanges: [{ ...escalation, fromStatus: "IN_REVIEW", toStatus: "RESOLVED", fromAppStatus: null, toAppStatus: null, notes: "Corrected tariff." }],
+    });
+    expect((await PATCH(request({ status: "RESOLVED", notes: "Corrected tariff." }), context)).status).toBe(200);
+    expect(emailNotifyMock).toHaveBeenCalledWith(expect.objectContaining({ kind: "resolved", reporterId: "reporter-1", escalated: false, resolutionNotes: "Corrected tariff." }));
   });
 
   it("requires notes when app administrators resolve an issue", async () => {
