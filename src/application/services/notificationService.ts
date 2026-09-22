@@ -90,6 +90,34 @@ async function upsertNotification(input: NotificationInput): Promise<void> {
 }
 
 export class NotificationService {
+  static async notifySimulationIssueEscalated(input: {
+    issueId: string;
+    escalationId: string;
+    simulationReference: string | null;
+    escalatedBy: string;
+    notes: string;
+  }): Promise<void> {
+    await upsertNotification({
+      type: "simulation_issue.escalated",
+      category: "simulations",
+      severity: "WARNING",
+      title: `Simulation issue escalated: ${input.simulationReference || input.issueId}`,
+      body: `${input.escalatedBy}: ${input.notes}`,
+      audienceRole: UserRole.SYS_ADMIN,
+      sourceType: "simulation_issue",
+      sourceId: input.issueId,
+      dedupeKey: `sys_admin:simulation_issue.escalated:${input.escalationId}`,
+      actionUrl: `/internal/simulations/issues/${input.issueId}`,
+    });
+  }
+
+  static async resolveSimulationIssue(issueId: string): Promise<void> {
+    await prisma.notification.updateMany({
+      where: { sourceType: "simulation_issue", sourceId: issueId, resolvedAt: null },
+      data: { resolvedAt: new Date() },
+    });
+  }
+
   static isNotificationStoreUnavailable(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error);
     return (

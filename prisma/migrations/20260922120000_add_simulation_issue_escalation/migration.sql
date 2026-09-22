@@ -1,0 +1,1 @@
+ALTER TYPE "SimulationIssueStatus" ADD VALUE IF NOT EXISTS 'ESCALATED';

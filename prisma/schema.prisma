@@ -290,6 +290,7 @@ model SimulationIssue {
   simulationReference    String?
   description            String
   status                 SimulationIssueStatus   @default(NEW)
+  appStatus              SimulationIssueAppStatus?
   snapshotFileName       String
   snapshotMimeType       String
   snapshotFileSize       Int
@@ -317,6 +318,8 @@ model SimulationIssueStatusChange {
   issueId     String
   fromStatus  SimulationIssueStatus
   toStatus    SimulationIssueStatus
+  fromAppStatus SimulationIssueAppStatus?
+  toAppStatus SimulationIssueAppStatus?
   changedByUserId String
   createdAt   DateTime              @default(now())
   notes       String?               @db.Text
@@ -883,9 +886,17 @@ enum SimulationStatus {
   EXPIRED
 }
 
+enum SimulationIssueAppStatus {
+  NEW
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
 enum SimulationIssueStatus {
   NEW
   IN_REVIEW
+  ESCALATED
   RESOLVED
   DISMISSED
 }
