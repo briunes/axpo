@@ -1,3 +1,4 @@
+import { INCIDENT_EMAILS } from "@/lib/incidentEmails";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
 import { invalidateAppVersionCache } from "@/application/lib/appVersionCache";
@@ -91,6 +92,10 @@ const toAdminConfig = (config: Record<string, any>) => ({
   otpEnabled: config.otpEnabled,
   otpEmailTemplateId: config.otpEmailTemplateId,
   otpCodeValidityMinutes: config.otpCodeValidityMinutes,
+  incidentCreatedEmailTemplateId: config.incidentCreatedEmailTemplateId,
+  incidentEscalatedEmailTemplateId: config.incidentEscalatedEmailTemplateId,
+  incidentStatusEmailTemplateId: config.incidentStatusEmailTemplateId,
+  incidentResolvedEmailTemplateId: config.incidentResolvedEmailTemplateId,
   accessRequestKamEmailTemplateId: config.accessRequestKamEmailTemplateId,
   accessRequestApplicantEmailTemplateId: config.accessRequestApplicantEmailTemplateId,
   defaultPdfTemplateElectricityId: config.defaultPdfTemplateElectricityId,
@@ -196,6 +201,15 @@ const PUT = withErrorHandler(async (req: NextRequest) => {
 
   const body = await req.json();
   const data = { ...body };
+  for (const event of INCIDENT_EMAILS) {
+    const templateId = data[event.field];
+    if (templateId === undefined || templateId === null) continue;
+    if (typeof templateId !== "string") throw new ValidationError("Invalid incident email template");
+    const template = await prisma.emailTemplate.findUnique({ where: { id: templateId } });
+    if (!template || !template.active || template.isDeleted || template.deletedAt || template.type !== event.type) {
+      throw new ValidationError(`Choose an active ${event.type} email template`);
+    }
+  }
   let config = await prisma.systemConfig.findFirst();
   const previousAppVersion = config?.appVersion ?? null;
   const changelogNotes = data.appChangelogNotes;

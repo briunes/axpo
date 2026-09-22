@@ -71,6 +71,10 @@ export interface SystemConfig {
   otpEnabled?: boolean;
   otpEmailTemplateId?: string;
   otpCodeValidityMinutes?: number;
+  incidentCreatedEmailTemplateId?: string | null;
+  incidentEscalatedEmailTemplateId?: string | null;
+  incidentStatusEmailTemplateId?: string | null;
+  incidentResolvedEmailTemplateId?: string | null;
   accessRequestKamEmailTemplateId?: string;
   accessRequestApplicantEmailTemplateId?: string;
   defaultMaxActiveDevices?: number;

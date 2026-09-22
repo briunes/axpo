@@ -286,10 +286,12 @@ model Simulation {
 
 model SimulationIssue {
   id                     String                  @id @default(cuid())
+  incidentNumber         Int                     @unique @default(autoincrement())
   simulationId           String?
   simulationReference    String?
   description            String
   status                 SimulationIssueStatus   @default(NEW)
+  appStatus              SimulationIssueAppStatus?
   snapshotFileName       String
   snapshotMimeType       String
   snapshotFileSize       Int
@@ -317,6 +319,8 @@ model SimulationIssueStatusChange {
   issueId     String
   fromStatus  SimulationIssueStatus
   toStatus    SimulationIssueStatus
+  fromAppStatus SimulationIssueAppStatus?
+  toAppStatus SimulationIssueAppStatus?
   changedByUserId String
   createdAt   DateTime              @default(now())
   notes       String?               @db.Text
@@ -499,6 +503,10 @@ model SystemConfig {
   otpEnabled                            Boolean   @default(false)
   otpEmailTemplateId                    String?
   otpCodeValidityMinutes                Int       @default(10)
+  incidentCreatedEmailTemplateId String? @default("default-incident-created")
+  incidentEscalatedEmailTemplateId String? @default("default-incident-escalated")
+  incidentStatusEmailTemplateId String? @default("default-incident-status")
+  incidentResolvedEmailTemplateId String? @default("default-incident-resolved")
   accessRequestKamEmailTemplateId       String?
   accessRequestApplicantEmailTemplateId String?
   defaultMaxActiveDevices               Int       @default(3)
@@ -883,9 +891,17 @@ enum SimulationStatus {
   EXPIRED
 }
 
+enum SimulationIssueAppStatus {
+  NEW
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
 enum SimulationIssueStatus {
   NEW
   IN_REVIEW
+  ESCALATED
   RESOLVED
   DISMISSED
 }

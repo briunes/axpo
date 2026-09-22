@@ -349,7 +349,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
     analytics: canDo(role, "section.analytics"),
     tutorials: true,
     configurations: canDo(role, "section.configurations"),
-    notifications: role === "SYS_ADMIN",
+    notifications: true,
   };
   const availableSections = (Object.keys(sectionAllowed) as AppSection[]).filter(
     (key) => sectionAllowed[key],

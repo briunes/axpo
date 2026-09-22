@@ -1,3 +1,4 @@
+import { MAX_ISSUE_TRANSFER_BYTES } from "@/lib/simulationIssueTransferLimits";
 import { getBrowserFingerprint } from "./browserFingerprint";
 import { uploadPresigned } from "@vercel/blob/client";
 import { getBaseValueWorkbookContentType } from "@/infrastructure/excel/baseValueUpload";
@@ -2427,7 +2428,7 @@ export async function downloadFilledSimulationExcel(
   URL.revokeObjectURL(url);
 }
 
-export async function reportSimulationIssue(token: string, simulationId: string, description: string, files: File[]): Promise<void> {
+export async function reportSimulationIssue(token: string, simulationId: string, description: string, files: File[]): Promise<{ notificationWarning?: string }> {
   const body = new FormData();
   body.set("description", description);
   files.forEach((file) => body.append("attachments", file));
@@ -2438,17 +2439,21 @@ export async function reportSimulationIssue(token: string, simulationId: string,
     const payload = await response.json().catch(() => null);
     throw new Error(payload?.error?.message ?? "No se pudo enviar la incidencia");
   }
+  const payload = await response.json();
+  return payload.data ?? payload;
 }
 
 export interface SimulationIssueItem {
+  incidentNumber: number;
   id: string; simulationId: string | null; simulationReference: string | null; description: string;
-  status: "NEW" | "IN_REVIEW" | "RESOLVED" | "DISMISSED"; createdAt: string; statusChangedAt: string | null;
+  status: "NEW" | "IN_REVIEW" | "ESCALATED" | "RESOLVED" | "DISMISSED"; createdAt: string; statusChangedAt: string | null;
+  appStatus: "NEW" | "IN_REVIEW" | "RESOLVED" | "DISMISSED" | null;
   snapshotFileName: string; snapshotFileSize: number; snapshotMimeType: string;
   reportedByUser: { id: string; fullName: string; email: string };
   handledByUser: { id: string; fullName: string } | null;
   attachments: Array<{ id: string; fileName: string; mimeType: string; fileSize: number }>;
   resolutionNotes?: string | null;
-  statusChanges?: Array<{ id: string; fromStatus: SimulationIssueItem["status"]; toStatus: SimulationIssueItem["status"]; notes: string | null; createdAt: string; changedByUser: { id: string; fullName: string } }>;
+  statusChanges?: Array<{ id: string; fromStatus: SimulationIssueItem["status"]; toStatus: SimulationIssueItem["status"]; fromAppStatus: SimulationIssueItem["appStatus"]; toAppStatus: SimulationIssueItem["appStatus"]; notes: string | null; createdAt: string; changedByUser: { id: string; fullName: string } }>;
 }
 
 export async function getSimulationIssue(token: string, id: string): Promise<SimulationIssueItem> {
@@ -2472,8 +2477,8 @@ export async function listSimulationIssues(token: string, filters?: { status?: s
   return payload.data;
 }
 
-export async function updateSimulationIssueStatus(token: string, id: string, status: string, notes?: string): Promise<SimulationIssueItem> {
-  const response = await fetch(`${baseUrl}/api/v1/internal/simulation-issues/${id}`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify({ status, notes }) });
+export async function updateSimulationIssueStatus(token: string, id: string, status: string, notes?: string, appStatus?: NonNullable<SimulationIssueItem["appStatus"]>): Promise<SimulationIssueItem> {
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulation-issues/${id}`, { method: "PATCH", headers: authHeaders(token), body: JSON.stringify({ status, notes, appStatus }) });
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(payload?.error?.message ?? "Failed to update issue status");
   return payload.data;
@@ -3126,4 +3131,27 @@ export async function updateOcrBillingConfig(
     ocrBillingFixedFeePerCall: Number(data.ocrBillingFixedFeePerCall ?? 0),
     ocrBillingIncludeFailedCalls: Boolean(data.ocrBillingIncludeFailedCalls),
   };
+}
+
+export interface IncidentImportResult {
+  total: number; toImport: number; imported: number; skipped: number;
+  missingUsers: string[]; missingSimulations: string[];
+}
+
+export async function exportSimulationIssues(token: string, ids: string[]): Promise<void> {
+  const query = new URLSearchParams();
+  ids.forEach((id) => query.append("id", id));
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulation-issues/export?${query}`, { headers: authHeaders(token) });
+  if (!response.ok) { const payload = await response.json().catch(() => null); throw new Error(payload?.error?.message ?? "Failed to export incidents"); }
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a"); anchor.href = url; anchor.download = `simulation-incidents-${new Date().toISOString().slice(0, 10)}.json`; anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function importSimulationIssues(token: string, file: File, preview: boolean): Promise<IncidentImportResult> {
+  if (file.size > MAX_ISSUE_TRANSFER_BYTES) throw new Error("Incident imports must not exceed 100 MB");
+  const response = await fetch(`${baseUrl}/api/v1/internal/simulation-issues/import?preview=${preview}`, { method: "POST", headers: authHeaders(token), body: file });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload?.error?.message ?? "Failed to import incidents");
+  return payload.data;
 }

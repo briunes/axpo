@@ -1,5 +1,6 @@
 const notificationFindManyMock = jest.fn();
 const notificationUpsertMock = jest.fn();
+const notificationUpdateManyMock = jest.fn();
 const notificationReadUpsertMock = jest.fn();
 const appErrorLogCountMock = jest.fn();
 const appErrorLogFindFirstMock = jest.fn();
@@ -12,6 +13,7 @@ const systemConfigFindFirstMock = jest.fn();
 jest.mock("@/infrastructure/database/prisma", () => ({
   prisma: {
     notification: {
+      updateMany: (...args: unknown[]) => notificationUpdateManyMock(...args),
       findMany: (...args: unknown[]) => notificationFindManyMock(...args),
       upsert: (...args: unknown[]) => notificationUpsertMock(...args),
     },
@@ -149,7 +151,7 @@ describe("NotificationService.markForUser", () => {
     expect(notificationFindManyMock).toHaveBeenCalledWith({
       where: {
         id: { in: ["existing-notification", "deleted-notification"] },
-        OR: [{ audienceRole: UserRole.SYS_ADMIN }, { audienceUserId: "user-1" }],
+        OR: [{ audienceRole: UserRole.SYS_ADMIN, audienceUserId: null }, { audienceUserId: "user-1" }],
       },
       select: { id: true },
     });
@@ -197,5 +199,56 @@ describe("NotificationService.syncSysAdminNotifications", () => {
     expect(ocrLogCountMock).toHaveBeenCalledTimes(2);
     expect(invoiceProviderPromptCountMock).toHaveBeenCalledTimes(1);
     expect(systemConfigFindFirstMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe("Simulation issue escalation notifications", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("targets system administrators and links to the issue with a deduplicated escalation event", async () => {
+    const input = { issueId: "issue-1", escalationId: "event-1", simulationReference: "001/2026", escalatedBy: "Admin", notes: "Calculation fails" };
+    await NotificationService.notifySimulationIssueEscalated(input);
+    await NotificationService.notifySimulationIssueEscalated(input);
+    expect(notificationUpsertMock).toHaveBeenCalledTimes(2);
+    expect(notificationUpsertMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      where: { dedupeKey: "sys_admin:simulation_issue.escalated:event-1" },
+      create: expect.objectContaining({
+        audienceRole: UserRole.SYS_ADMIN,
+        audienceUserId: undefined,
+        sourceType: "simulation_issue",
+        sourceId: "issue-1",
+        actionUrl: "/internal/simulations/issues/issue-1",
+        body: "Admin: Calculation fails",
+      }),
+    }));
+    await NotificationService.notifySimulationIssueEscalated({ ...input, escalationId: "event-2" });
+    expect(notificationUpsertMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      where: { dedupeKey: "sys_admin:simulation_issue.escalated:event-2" },
+    }));
+  });
+
+  it("clears only active notifications for the closed issue", async () => {
+    await NotificationService.resolveSimulationIssue("issue-1");
+    expect(notificationUpdateManyMock).toHaveBeenCalledWith({
+      where: { sourceType: "simulation_issue", sourceId: "issue-1", resolvedAt: null },
+      data: { resolvedAt: expect.any(Date) },
+    });
+  });
+});
+
+describe("Incident recipient privacy", () => {
+  beforeEach(() => { jest.clearAllMocks(); notificationFindManyMock.mockResolvedValue([]); });
+  it.each([UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL])("limits %s to their own inbox", async (role) => {
+    await NotificationService.listForUser({ userId: "recipient-1", role });
+    const where = notificationFindManyMock.mock.calls[0][0].where;
+    expect(where.OR).toEqual([{ audienceUserId: "recipient-1" }]);
+    await NotificationService.markForUser("recipient-1", role, ["someone-elses-notification"], "read");
+    expect(notificationFindManyMock.mock.calls[1][0].where.OR).toEqual([{ audienceUserId: "recipient-1" }]);
+    expect(notificationReadUpsertMock).not.toHaveBeenCalled();
+  });
+  it("does not show another sys admin's personal notification", async () => {
+    await NotificationService.listForUser({ userId: "sys-1", role: UserRole.SYS_ADMIN });
+    expect(notificationFindManyMock.mock.calls[0][0].where.OR).toEqual([{ audienceRole: UserRole.SYS_ADMIN, audienceUserId: null }, { audienceUserId: "sys-1" }]);
   });
 });
