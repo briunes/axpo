@@ -2448,8 +2448,9 @@ export async function getSimulationIssue(token: string, id: string): Promise<Sim
   return payload.data;
 }
 
-export async function listSimulationIssues(token: string, filters?: { status?: string; reporter?: string; dateFrom?: string; dateTo?: string; page?: number; pageSize?: number }): Promise<{ items: SimulationIssueItem[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } }> {
+export async function listSimulationIssues(token: string, filters?: { queue?: "admin" | "sys-admin"; status?: string; reporter?: string; dateFrom?: string; dateTo?: string; page?: number; pageSize?: number }): Promise<{ items: SimulationIssueItem[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } }> {
   const query = new URLSearchParams();
+  if (filters?.queue) query.set("queue", filters.queue);
   if (filters?.status) query.set("status", filters.status);
   if (filters?.reporter) query.set("reporter", filters.reporter);
   if (filters?.dateFrom) query.set("dateFrom", filters.dateFrom);

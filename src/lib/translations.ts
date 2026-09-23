@@ -1480,6 +1480,10 @@ export const translations = {
         "This simulation has been shared and is now read-only. No changes can be made.",
     },
     simulationIssues: {
+      adminTab: "All",
+      sysAdminTab: "Escalated",
+      queueLabel: "Issue queues",
+      emptySysAdmin: "No escalated issues found.",
       report: "Report issue",
       reportTooltip: "Report a problem with this simulation",
       title: "Report issue",
@@ -4707,6 +4711,10 @@ export const translations = {
         "Esta simulación ha sido compartida y ahora es de solo lectura. No se pueden realizar cambios.",
     },
     simulationIssues: {
+      adminTab: "Todos",
+      sysAdminTab: "Escaladas",
+      queueLabel: "Colas de incidencias",
+      emptySysAdmin: "No se encontraron incidencias escaladas.",
       report: "Reportar incidencia",
       reportTooltip: "Reportar un problema con esta simulación",
       title: "Reportar incidencia",
@@ -6559,6 +6567,10 @@ export const translations = {
         "Cette simulation a été partagée et est désormais en lecture seule. Aucune modification ne peut être apportée.",
     },
     simulationIssues: {
+      adminTab: "Tous",
+      sysAdminTab: "Transmis",
+      queueLabel: "Files d’incidents",
+      emptySysAdmin: "Aucun incident transmis trouvé.",
       report: "Signaler un incident",
       reportTooltip: "Signaler un problème avec cette simulation",
       title: "Signaler un incident",
@@ -9833,6 +9845,10 @@ export const translations = {
         "Esta simulação foi compartilhada e agora é somente leitura. Nenhuma alteração pode ser feita.",
     },
     simulationIssues: {
+      adminTab: "Todos",
+      sysAdminTab: "Escalados",
+      queueLabel: "Filas de incidentes",
+      emptySysAdmin: "Não foram encontrados incidentes escalados.",
       report: "Reportar incidente",
       reportTooltip: "Reportar um problema com esta simulação",
       title: "Reportar incidente",

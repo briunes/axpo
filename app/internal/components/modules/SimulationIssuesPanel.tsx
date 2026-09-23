@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Link, Stack, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Link, Stack, Tab, Tabs, Tooltip, Typography } from "@mui/material";
 import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import { useActionButtons } from "../InternalWorkspace";
@@ -41,6 +41,7 @@ export function SimulationIssuesPanel({ session, onNotify }: { session: SessionS
     return () => onActionButtons?.(null);
   }, [isSysAdmin, onActionButtons, t, transferBusy]);
   const cachePolicy = useRequestCachePolicy("logs");
+  const [queue, setQueue] = useState<"admin" | "sys-admin">(isSysAdmin ? "sys-admin" : "admin");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [status, setStatus] = useState("");
@@ -57,9 +58,9 @@ export function SimulationIssuesPanel({ session, onNotify }: { session: SessionS
     RESOLVED: t("simulationIssues", "statusResolved"), DISMISSED: t("simulationIssues", "statusDismissed"),
   }), [t]);
   const { data, isFetching, error } = useQuery({
-    queryKey: ["simulation-issues", session.token, status, reporter, dateFrom, dateTo, page, pageSize],
-    queryFn: () => listSimulationIssues(session.token, { status, reporter, dateFrom, dateTo, page, pageSize }),
-    placeholderData: keepPreviousData,
+    queryKey: ["simulation-issues", session.token, queue, status, reporter, dateFrom, dateTo, page, pageSize],
+    queryFn: () => listSimulationIssues(session.token, { queue, status, reporter, dateFrom, dateTo, page, pageSize }),
+    placeholderData: (previousData, previousQuery) => previousQuery?.queryKey[2] === queue ? keepPreviousData(previousData) : undefined,
     ...cachePolicy,
   });
   const items = data?.items ?? [];
@@ -131,17 +132,27 @@ export function SimulationIssuesPanel({ session, onNotify }: { session: SessionS
     { key: "status", label: t("simulationIssues", "status"), minWidth: 120, flex: 0.65, renderCell: (row) => <Chip size="small" label={labels[row.status]} color={row.status === "NEW" ? "error" : row.status === "ESCALATED" ? "info" : row.status === "IN_REVIEW" ? "warning" : row.status === "RESOLVED" ? "success" : "default"} sx={{ fontWeight: 600 }} /> },
   ], [labels, t]);
 
-  return <>
+  return <Box sx={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
     {transferError && !importPreview && <Alert severity="error" sx={{ mb: 2 }}>{transferError}</Alert>}
     {isSysAdmin && <input ref={fileInput} type="file" accept="application/json,.json" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void previewImport(file); }} />}
-    <DataTable tableId="simulation-issues" columns={columns} rows={items} loading={isFetching} error={error instanceof Error ? error.message : undefined}
-    {...searchProps} emptyMessage={t("simulationIssues", "empty")} t={t}
+    <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2, flexShrink: 0 }}>
+      <Tabs value={queue} aria-label={t("simulationIssues", "queueLabel")} onChange={(_, value: "admin" | "sys-admin") => { setQueue(value); setPage(1); }}>
+        {(isSysAdmin ? ["sys-admin", "admin"] : ["admin", "sys-admin"]).map((tab) => (
+          <Tab key={tab} id={tab === "admin" ? "issues-admin-tab" : "issues-sys-admin-tab"} aria-controls="issues-panel" value={tab}
+            label={t("simulationIssues", tab === "admin" ? "adminTab" : "sysAdminTab")} sx={{ textTransform: "none" }} />
+        ))}
+      </Tabs>
+    </Box>
+    <Box sx={{ flex: 1, minHeight: 0 }} id="issues-panel" role="tabpanel" aria-labelledby={queue === "admin" ? "issues-admin-tab" : "issues-sys-admin-tab"}>
+    <DataTable key={queue} tableId="simulation-issues" columns={columns} rows={items} loading={isFetching} error={error instanceof Error ? error.message : undefined}
+    {...searchProps} emptyMessage={t("simulationIssues", queue === "sys-admin" ? "emptySysAdmin" : "empty")} t={t}
     onClearFilters={clearFilters} hasActiveFilters={Boolean(reporter || activeFilterCount)}
     headerRight={<TableFilterButton title={t("simulationsModule", "filtersTitle")} activeFilterCount={activeFilterCount} onClick={openFilters} />}
     massActions={isSysAdmin ? [{ label: t("simulationIssues", "exportIncidents"), icon: <FileDownloadOutlinedIcon fontSize="small" />, onClick: exportIncidents, disabled: transferBusy }] : undefined}
     pagination={{ page, pageSize, total, onPageChange: setPage, onPageSizeChange: (size) => { setPageSize(size); setPage(1); } }}
     onRowClick={(row) => router.push(`/internal/simulations/issues/${row.id}`)}
   />
+    </Box>
     <TableFiltersDialog open={filtersOpen} title={t("simulationsModule", "filtersTitle")}
       saveViewLabel={t("simulationsModule", "saveView")} clearLabel={t("simulationsModule", "clearFilters")}
       applyLabel={t("simulationsModule", "applyFilters")} onClose={() => setFiltersOpen(false)}
@@ -164,5 +175,5 @@ export function SimulationIssuesPanel({ session, onNotify }: { session: SessionS
       <DialogActions><Button disabled={transferBusy} onClick={() => { setImportFile(null); setImportPreview(null); }}>{t("actions", "cancel")}</Button><Button variant="contained" disabled={transferBusy || !importPreview?.toImport} onClick={confirmImport}>{t("simulationIssues", "importIncidents")}</Button></DialogActions>
     </Dialog>}
     {saveViewDialog}
-  </>;
+  </Box>;
 }
