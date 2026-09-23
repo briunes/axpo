@@ -465,6 +465,7 @@ model SystemConfig {
   defaultDashboardView                  String    @default("COMMERCIAL")
   enableRealtimeReports                 Boolean   @default(false)
   simulationIssuesEnabled               Boolean   @default(true)
+  incidentRecipientIds                  String[]  @default([])
   accessRequestsEnabled                 Boolean   @default(true)
   electricityPersonalizedFixedEnabled  Boolean   @default(true)
   updatedAt                             DateTime  @updatedAt

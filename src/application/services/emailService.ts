@@ -45,6 +45,8 @@ interface SendTemplateEmailOptions {
   deliveryId?: string;
   escapeHtmlVariables?: boolean;
   requiredHtmlVariables?: string[];
+  // Remove recipient-inaccessible calls to action before substituting variables.
+  omitLinksForVariables?: string[];
   to: string;
   templateId: string;
   variables?: Record<string, string>;
@@ -422,8 +424,16 @@ export class EmailService {
         translation?.subject ?? template.subject,
         options.variables ?? {},
       );
+      let htmlTemplate = translation?.htmlContent ?? template.htmlContent;
+      for (const key of options.omitLinksForVariables ?? []) {
+        // Inspect only the opening tag, never user-provided text or other links.
+        htmlTemplate = htmlTemplate.replace(/<a\b([^>]*)>[\s\S]*?<\/a\s*>/gi, (link: string, attributes: string) => {
+          const placeholders = [...attributes.matchAll(/\{\{\s*(\w+)\s*\}\}/g)];
+          return placeholders.some(match => match[1] === key) ? "" : link;
+        });
+      }
       let html = this.replaceVariables(
-        translation?.htmlContent ?? template.htmlContent,
+        htmlTemplate,
         options.escapeHtmlVariables
           ? Object.fromEntries(Object.entries(options.variables ?? {}).map(([key, value]) => [key, value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!)]))
           : options.variables ?? {},

@@ -18,6 +18,7 @@ jest.mock("@/application/services/notificationService", () => ({ NotificationSer
   resolveSimulationIssue: (...args: unknown[]) => resolveMock(...args),
 } }));
 jest.mock("@/infrastructure/database/prisma", () => ({ prisma: {
+  systemConfig: { findFirst: async () => ({ incidentRecipientIds: ["admin-1", "sys-1"], simulationIssuesEnabled: true }) },
   rolePermission: { findUnique: async () => null },
   simulationIssue: { findUnique: (...args: unknown[]) => findUniqueMock(...args), update: (...args: unknown[]) => updateMock(...args) },
   simulationIssueStatusChange: { create: (...args: unknown[]) => historyCreateMock(...args) },

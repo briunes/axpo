@@ -58,6 +58,14 @@ export async function assertPermission(
   context: AuthContext,
   key: PermissionKey,
 ): Promise<void> {
+  if (key === "section.simulation-issues") {
+    const config = await prisma.systemConfig.findFirst();
+    if (!isElevated(context.role) || config?.simulationIssuesEnabled === false ||
+        !config?.incidentRecipientIds?.includes(context.userId)) {
+      throw new ForbiddenError("You are not assigned to manage simulation incidents");
+    }
+    return;
+  }
   if (context.role === UserRole.SYS_ADMIN) return;
   if (
     context.role === UserRole.ADMIN &&

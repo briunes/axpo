@@ -17,3 +17,22 @@ Templates support `INCIDENT_NUMBER`, `ISSUE_ID`, `SIMULATION_REFERENCE`, `DESCRI
 Status notification failures leave the incident saved and return a delivery error. Saving again retries with the same transition identity, skipping successful email deliveries. Additional notes do not create a new status event. Initial report delivery failures return a warning while preserving the newly created incident, avoiding duplicate reports; email failures are recorded in email logs.
 
 Deploy `20260922160000_add_incident_email_templates` before running the updated application. Applying this migration sends no emails. SMTP delivery must be verified separately in the target environment.
+
+
+## Recipient assignment
+
+Configurations → Simulation incidents controls incident reporting and the selected
+active Admins and Sys Admins. Selected Admins receive incident notifications;
+selected Sys Admins join the recipients for escalated incidents. Reporters continue
+to receive updates on their own incidents, with links to their notification inbox
+when they are not assigned to incident management.
+
+Only selected Admins and Sys Admins can see Simulation Issues or access its
+management APIs. Import/export additionally requires the Sys Admin role. An empty
+selection removes management access for everyone; Configurations remains available
+to restore the selection. Disabling reporting also hides management access.
+
+Apply migration `20260923120000_add_incident_recipients` before running this version.
+It preselects existing active Admins and Sys Admins to preserve access. Future users
+must be explicitly selected. The migration has no effect on role permissions for
+other sections.
