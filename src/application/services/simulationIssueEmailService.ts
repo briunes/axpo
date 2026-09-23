@@ -28,16 +28,15 @@ export interface IncidentEvent {
 export class SimulationIssueEmailService {
   // One event ID per persisted transition; retrying never re-sends successful emails.
   static async notifyEvent(input: IncidentEvent): Promise<void> {
-    const [recipients, config] = await Promise.all([
-      prisma.user.findMany({
-        where: { isActive: true, isDeleted: false, deletedAt: null, OR: [
-          { role: { in: input.escalated ? [UserRole.ADMIN, UserRole.SYS_ADMIN] : [UserRole.ADMIN] } },
-          ...(input.kind === "created" ? [] : [{ id: input.reporterId }]),
-        ] },
-        select: { id: true, email: true, fullName: true, role: true, preferences: { select: { language: true } } },
-      }),
-      prisma.systemConfig.findFirst(),
-    ]);
+    const config = await prisma.systemConfig.findFirst();
+    const recipientIds = config?.incidentRecipientIds ?? [];
+    const recipients = await prisma.user.findMany({
+      where: { isActive: true, isDeleted: false, deletedAt: null, OR: [
+        { id: { in: recipientIds }, role: { in: input.escalated ? [UserRole.ADMIN, UserRole.SYS_ADMIN] : [UserRole.ADMIN] } },
+        ...(input.kind === "created" ? [] : [{ id: input.reporterId }]),
+      ] },
+      select: { id: true, email: true, fullName: true, role: true, preferences: { select: { language: true } } },
+    });
     const template = INCIDENT_EMAILS.find((event) => event.type === `incident-${input.kind}`)!;
     const templateId = config?.[template.field];
     const results = await Promise.allSettled(recipients.flatMap((recipient) => {
@@ -45,7 +44,8 @@ export class SimulationIssueEmailService {
       const title = `${language.title(input.kind)} #${input.incidentNumber}`;
       const status = language.status(input.status);
       const previousStatus = language.status(input.previousStatus);
-      const canManage = recipient.role === UserRole.ADMIN || recipient.role === UserRole.SYS_ADMIN;
+      const canManage = config?.simulationIssuesEnabled !== false && recipientIds.includes(recipient.id) &&
+        (recipient.role === UserRole.ADMIN || recipient.role === UserRole.SYS_ADMIN);
       // Reporters receive the update in their inbox; management pages remain restricted.
       const actionUrl = canManage ? `/internal/simulations/issues/${encodeURIComponent(input.issueId)}` : "/internal/notifications";
       const variables = {
@@ -53,7 +53,7 @@ export class SimulationIssueEmailService {
         SIMULATION_REFERENCE: input.simulationReference || "—", DESCRIPTION: input.description,
         STATUS: status, PREVIOUS_STATUS: previousStatus, NOTES: input.notes,
         RESOLUTION_NOTES: input.resolutionNotes, CHANGED_BY: input.changedBy,
-        RECIPIENT_NAME: recipient.fullName, ISSUE_URL: `${resolveTrackingBaseUrl()}${actionUrl}`,
+        RECIPIENT_NAME: recipient.fullName, ISSUE_URL: canManage ? `${resolveTrackingBaseUrl()}${actionUrl}` : "",
       };
       return [
         NotificationService.notifyIncidentEvent({
@@ -65,6 +65,7 @@ export class SimulationIssueEmailService {
         ...(templateId ? [EmailService.sendTemplateEmail({
           deliveryId: `incident:${input.eventId}:${recipient.id}`,
           templateId, to: recipient.email, variables, escapeHtmlVariables: true,
+          omitLinksForVariables: canManage ? [] : ["ISSUE_URL"],
           requiredHtmlVariables: input.kind === "resolved" ? ["RESOLUTION_NOTES"] : [],
           languageCode: language.languageCode,
           triggeredBy: `incident-${input.kind}`, triggeredByUserId: input.changedByUserId,

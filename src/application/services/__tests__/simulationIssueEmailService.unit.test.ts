@@ -16,11 +16,11 @@ describe("Incident workflow notifications", () => {
   beforeEach(() => {
     jest.resetAllMocks();
     findManyMock.mockResolvedValue([{ id: "admin-1", email: "admin@example.com", role: "ADMIN", fullName: "Admin", preferences: { language: "es" } }, { id: "reporter-1", email: "reporter@example.com", role: "AGENT", fullName: "Reporter" }]);
-    configMock.mockResolvedValue({ incidentCreatedEmailTemplateId: "created-template", incidentEscalatedEmailTemplateId: "escalated-template", incidentStatusEmailTemplateId: "status-template", incidentResolvedEmailTemplateId: "resolved-template", defaultLanguage: "en" });
+    configMock.mockResolvedValue({ incidentRecipientIds: ["admin-1", "sys-1"], incidentCreatedEmailTemplateId: "created-template", incidentEscalatedEmailTemplateId: "escalated-template", incidentStatusEmailTemplateId: "status-template", incidentResolvedEmailTemplateId: "resolved-template", defaultLanguage: "en" });
   });
-  it("notifies all active admins and sys admins plus the reporter on escalation", async () => {
+  it("notifies selected active admins and sys admins plus the reporter on escalation", async () => {
     await SimulationIssueEmailService.notifyEvent(input);
-    expect(findManyMock.mock.calls[0][0].where).toEqual({ isActive: true, isDeleted: false, deletedAt: null, OR: [{ role: { in: ["ADMIN", "SYS_ADMIN"] } }, { id: "reporter-1" }] });
+    expect(findManyMock.mock.calls[0][0].where).toEqual({ isActive: true, isDeleted: false, deletedAt: null, OR: [{ id: { in: ["admin-1", "sys-1"] }, role: { in: ["ADMIN", "SYS_ADMIN"] } }, { id: "reporter-1" }] });
     expect(sendTemplateMock).toHaveBeenCalledTimes(2);
     expect(notificationMock).toHaveBeenCalledTimes(2);
     expect(sendTemplateMock.mock.calls[0][0]).toMatchObject({ templateId: "escalated-template", deliveryId: "incident:event-1:admin-1", languageCode: "es", escapeHtmlVariables: true, variables: { INCIDENT_NUMBER: "42", NOTES: input.notes } });
@@ -33,20 +33,22 @@ describe("Incident workflow notifications", () => {
     expect(notificationMock.mock.calls[1][0].title).toBe("Incident escalated to system administrators #42");
   });
   it("uses the configured default when the recipient has no preference", async () => {
-    configMock.mockResolvedValue({ defaultLanguage: "es", incidentEscalatedEmailTemplateId: "escalated-template" });
+    configMock.mockResolvedValue({ incidentRecipientIds: ["admin-1", "sys-1"], defaultLanguage: "es", incidentEscalatedEmailTemplateId: "escalated-template" });
     await SimulationIssueEmailService.notifyEvent(input);
     expect(sendTemplateMock.mock.calls[1][0]).toMatchObject({ languageCode: "es", variables: { STATUS: "Nueva" } });
     expect(notificationMock.mock.calls[1][0].body).toBe(`En curso → Nueva\n${input.notes}`);
   });
   it("notifies only admins for a new incident", async () => {
     await SimulationIssueEmailService.notifyEvent({ ...input, kind: "created", escalated: false });
-    expect(findManyMock.mock.calls[0][0].where.OR).toEqual([{ role: { in: ["ADMIN"] } }]);
+    expect(findManyMock.mock.calls[0][0].where.OR).toEqual([{ id: { in: ["admin-1", "sys-1"] }, role: { in: ["ADMIN"] } }]);
     expect(sendTemplateMock.mock.calls[0][0].templateId).toBe("created-template");
   });
   it("keeps the reporter updated while admins handle the incident", async () => {
     await SimulationIssueEmailService.notifyEvent({ ...input, kind: "status", escalated: false });
-    expect(findManyMock.mock.calls[0][0].where.OR).toEqual([{ role: { in: ["ADMIN"] } }, { id: "reporter-1" }]);
-    expect(sendTemplateMock.mock.calls[1][0].variables.ISSUE_URL).toBe("https://simulator.example.com/internal/notifications");
+    expect(findManyMock.mock.calls[0][0].where.OR).toEqual([{ id: { in: ["admin-1", "sys-1"] }, role: { in: ["ADMIN"] } }, { id: "reporter-1" }]);
+    expect(sendTemplateMock.mock.calls[1][0].variables.ISSUE_URL).toBe("");
+    expect(sendTemplateMock.mock.calls[1][0].omitLinksForVariables).toEqual(["ISSUE_URL"]);
+    expect(sendTemplateMock.mock.calls[0][0].omitLinksForVariables).toEqual([]);
     expect(sendTemplateMock.mock.calls[0][0].variables.ISSUE_URL).toContain("/internal/simulations/issues/issue-1");
   });
   it.each([false, true])("sends the exact resolution note, escalated=%s", async (escalated) => {
@@ -55,7 +57,7 @@ describe("Incident workflow notifications", () => {
     expect(notificationMock.mock.calls[0][0].body).toContain("Fixed <calculation>\nVerified totals.");
   });
   it("keeps in-app notifications enabled when the email template is cleared", async () => {
-    configMock.mockResolvedValue({ incidentEscalatedEmailTemplateId: null });
+    configMock.mockResolvedValue({ incidentRecipientIds: ["admin-1", "sys-1"], incidentEscalatedEmailTemplateId: null });
     await SimulationIssueEmailService.notifyEvent(input);
     expect(sendTemplateMock).not.toHaveBeenCalled();
     expect(notificationMock).toHaveBeenCalledTimes(2);
@@ -66,6 +68,15 @@ describe("Incident workflow notifications", () => {
     await expect(SimulationIssueEmailService.notifyEvent(input)).rejects.toThrow("Save again to retry");
     expect(sendTemplateMock).toHaveBeenCalledTimes(2);
     expect(notificationMock).toHaveBeenCalledTimes(2);
+  });
+  it("does not grant management links to an unselected admin reporter", async () => {
+    configMock.mockResolvedValue({ incidentRecipientIds: [] });
+    findManyMock.mockResolvedValue([{ id: "reporter-1", role: "ADMIN", fullName: "Reporter" }]);
+    await SimulationIssueEmailService.notifyEvent(input);
+    expect(findManyMock.mock.calls[0][0].where.OR).toEqual([
+      { id: { in: [] }, role: { in: ["ADMIN", "SYS_ADMIN"] } }, { id: "reporter-1" },
+    ]);
+    expect(notificationMock.mock.calls[0][0].actionUrl).toBe("/internal/notifications");
   });
   it("keeps delivery identities stable on retry", async () => {
     await SimulationIssueEmailService.notifyEvent(input);

@@ -8,6 +8,9 @@ jest.mock("@/application/services/errorLoggerService", () => ({ ErrorLoggerServi
 jest.mock("@/application/services/simulationIssueTransferService", () => ({ MAX_ISSUE_TRANSFER_BYTES: 1024, SimulationIssueTransferService: {
   export: (...args: unknown[]) => exportMock(...args), import: (...args: unknown[]) => importMock(...args),
 } }));
+jest.mock("@/infrastructure/database/prisma", () => ({ prisma: {
+  systemConfig: { findFirst: async () => ({ incidentRecipientIds: ["sys"], simulationIssuesEnabled: true }) },
+} }));
 const url = "http://localhost/api/v1/internal/simulation-issues";
 describe("Incident transfer authorization", () => {
   beforeEach(() => { jest.resetAllMocks(); jest.spyOn(console, "error").mockImplementation(() => undefined); exportMock.mockResolvedValue("{}"); importMock.mockResolvedValue({ imported: 1 }); });
@@ -15,6 +18,12 @@ describe("Incident transfer authorization", () => {
   it.each([UserRole.ADMIN, UserRole.AGENT, UserRole.COMMERCIAL])("denies both actions to %s", async (role) => {
     authMock.mockResolvedValue({ userId: "user", role });
     expect((await GET(new NextRequest(`${url}/export`))).status).toBe(403);
+    expect((await POST(new NextRequest(`${url}/import`, { method: "POST", body: "{}" }))).status).toBe(403);
+    expect(exportMock).not.toHaveBeenCalled(); expect(importMock).not.toHaveBeenCalled();
+  });
+  it("denies transfers to unassigned sys admins", async () => {
+    authMock.mockResolvedValue({ userId: "unassigned", role: UserRole.SYS_ADMIN });
+    expect((await GET(new NextRequest(`${url}/export?id=issue-1`))).status).toBe(403);
     expect((await POST(new NextRequest(`${url}/import`, { method: "POST", body: "{}" }))).status).toBe(403);
     expect(exportMock).not.toHaveBeenCalled(); expect(importMock).not.toHaveBeenCalled();
   });

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { UserRole } from "@/domain/types";
 import { ForbiddenError, ValidationError } from "@/domain/errors/errors";
+import { assertPermission } from "@/application/middleware/rbac";
 import { requireAuth } from "@/application/middleware/auth";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
@@ -9,6 +10,7 @@ import { MAX_ISSUE_TRANSFER_BYTES, SimulationIssueTransferService } from "@/appl
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
   if (auth.role !== UserRole.SYS_ADMIN) throw new ForbiddenError("Only sys admins can import incidents");
+  await assertPermission(auth, "section.simulation-issues");
   const reader = request.body?.getReader();
   if (!reader) throw new ValidationError("An incident export file is required");
   const chunks: Uint8Array[] = [];

@@ -12,6 +12,7 @@ jest.mock("@/application/services/errorLoggerService", () => ({
   ErrorLoggerService: { capture: async () => undefined },
 }));
 jest.mock("@/infrastructure/database/prisma", () => ({ prisma: {
+  systemConfig: { findFirst: async () => ({ incidentRecipientIds: ["admin-1", "sys-1"], simulationIssuesEnabled: true }) },
   rolePermission: { findUnique: async () => null },
   simulationIssue: {
     findMany: (...args: unknown[]) => findManyMock(...args),
