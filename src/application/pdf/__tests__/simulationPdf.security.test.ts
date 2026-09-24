@@ -8,6 +8,7 @@ const assertPermissionMock = jest.fn();
 const assertSimulationAccessMock = jest.fn();
 const findSimulationMock = jest.fn();
 const findVersionsMock = jest.fn();
+const findBaseValuesMock = jest.fn();
 const findSystemConfigMock = jest.fn();
 const findPdfTemplateMock = jest.fn();
 const findLegacyPdfTemplateMock = jest.fn();
@@ -34,6 +35,7 @@ jest.mock("@/infrastructure/database/prisma", () => ({
     simulation: {
       findFirst: (...args: unknown[]) => findSimulationMock(...args),
     },
+    baseValueItem: { findMany: (...args: unknown[]) => findBaseValuesMock(...args) },
     simulationVersion: {
       findMany: (...args: unknown[]) => findVersionsMock(...args),
     },
@@ -148,6 +150,33 @@ describe("simulation PDF route security", () => {
     expect(findVersionsMock).not.toHaveBeenCalled();
   });
 
+  it("recovers Personalizada Index PDF prices from the saved base-value set", async () => {
+    assertSimulationAccessMock.mockResolvedValue({ id: "sim-1" });
+    findVersionsMock.mockResolvedValue([{
+      id: "ver-1", baseValueSetId: "saved-prices",
+      payloadJson: {
+        type: "ELECTRICITY", results: {},
+        selectedOffer: { productKey: "PERSONALIZADA_INDEX", commodity: "ELECTRICITY" },
+        electricity: {
+          tarifaAcceso: "3.0TD", zonaGeografica: "Peninsula",
+          periodo: { fechaFin: "2026-01-31" },
+          personalizadaIndex: { margenEnergia: { P1: 5 } },
+        },
+      },
+    }]);
+    findBaseValuesMock.mockResolvedValue([{
+      key: "ELEC:INDEX:PERSONALIZADA_INDEX::3.0TD:P1:MARGEN:2026-01",
+      valueNumeric: 0.1869236,
+    }]);
+    const response = await GET(new NextRequest("http://localhost/api/v1/internal/simulations/sim-1/pdf"), { params: { id: "sim-1" } });
+    expect(response.status).toBe(200);
+    expect(findBaseValuesMock).toHaveBeenCalledWith({
+      where: { baseValueSetId: "saved-prices", OR: [{ key: { startsWith: "ELEC:INDEX:PERSONALIZADA_INDEX::3.0TD:" } }] },
+      select: { key: true, valueNumeric: true },
+    });
+    expect(extractVariableValuesMock.mock.calls[0][6].selectedEnergyPrices.P1).toBeCloseTo(0.192);
+  });
+
   it("returns PDF with secure headers when simulation is accessible", async () => {
     assertSimulationAccessMock.mockResolvedValue({
       id: "sim-1",
@@ -181,6 +210,7 @@ describe("simulation PDF route security", () => {
       }),
       undefined,
       "es",
+      undefined,
     );
   });
 });

@@ -25,6 +25,7 @@ describe("Personalizada Index history API", () => {
         type: "ELECTRICITY",
         selectedOffer: { productKey: "PERSONALIZADA_INDEX" },
         electricity: { tarifaAcceso: "3.0TD", perfilCarga: "NORMAL", zonaGeografica: "Peninsula",
+          periodo: { fechaInicio: "2026-08-01", fechaFin: "2026-08-31" },
           personalizadaIndex: { margenEnergia: { P1: 5, P2: 5, P3: 5, P4: 5, P5: 5, P6: 5 } } },
       },
     });
@@ -34,6 +35,7 @@ describe("Personalizada Index history API", () => {
       }))));
     const response = await GET(new NextRequest("http://localhost/api/v1/internal/simulations/simulation/price-history"),
       { params: Promise.resolve({ id: "simulation" }) });
+    if (response.status !== 200) throw new Error(await response.text());
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.months).toHaveLength(12);

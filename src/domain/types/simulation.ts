@@ -136,7 +136,8 @@ export interface ElectricityInputs {
    * Personalizada Index: user-supplied energy margins (€/MWh) and power margins
    * (€/kW/year) per period.  When present and at least one energy margin is > 0,
    * the calculation emits a single "PERSONALIZADA_INDEX" result row using
-   * formula: energyCost = (omieEstimado[p] + margenEnergia[p]/1000) × consumo[p].
+   * formula: energyCost = (importedPrice[p] + margenEnergia[p] × 1.01528/1000) × consumo[p].
+   * Manual OMIE prices are the fallback when an imported price is unavailable.
    */
   personalizadaIndex?: {
     /** Energy margin in €/MWh per period (filled by user in the form) */
@@ -351,6 +352,8 @@ export interface ProductResult {
 
   /** Breakdown for transparency / PDF */
   desglose?: {
+    /** Calculated energy prices in €/kWh, before consumption is applied. */
+    preciosEnergia?: Record<string, number>;
     terminoEnergia?: number;
     terminoPotencia?: number;
     excesoPotencia?: number;
