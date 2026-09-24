@@ -770,6 +770,13 @@ describe("CalculationService Personalizada Index", () => {
     };
 
     const map = CalculationService.buildPriceMap([
+      // The workbook's generic monthly cell follows its currently selected
+      // profile and can therefore contain the DIURNO price. NORMAL must still
+      // resolve through its explicit zone-aware profile row.
+      ...["P1", "P2", "P3"].map((period) => ({
+        key: `ELEC:INDEX:TEST_INDEX:N1:2.0TD:${period}:MARGEN:2026-04:ZONE:PENINSULA`,
+        valueNumeric: 0.2,
+      })),
       {
         key: "ELEC:INDEX:TEST_INDEX:N1:2.0TD:P1:MARGEN:2026-04:PROFILE:NORMAL:ZONE:PENINSULA",
         valueNumeric: 0.1,
