@@ -80,8 +80,8 @@ describe("buildSelectedProductEnergyHistory", () => {
   ];
 
   it.each([
-    ["2026-05", "0,127606"], ["2026-06", "0,142532"], ["2026-07", "0,1858"],
-  ])("renders the actual monthly price for %s instead of the zone average", (month, expected) => {
+    ["2026-05", "0,05"], ["2026-06", "0,142532"], ["2026-07", "0,1858"],
+  ])("renders the profile-specific monthly price for %s instead of the zone average", (month, expected) => {
     const payload = indexedPayload(month);
     const history = buildSelectedProductEnergyHistory(payload, indexedItems);
     const variables = extractVariableValues({ id: "test" }, payload, undefined, undefined, undefined, "es", history);
