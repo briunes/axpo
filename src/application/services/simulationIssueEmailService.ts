@@ -39,7 +39,13 @@ export class SimulationIssueEmailService {
     });
     const template = INCIDENT_EMAILS.find((event) => event.type === `incident-${input.kind}`)!;
     const templateId = config?.[template.field];
-    const results = await Promise.allSettled(recipients.flatMap((recipient) => {
+    // Enforce the delivery allowlist independently of database filter translation.
+    const allowedRecipients = recipients.filter((recipient) =>
+      (recipientIds.includes(recipient.id) &&
+        (recipient.role === UserRole.ADMIN || (input.escalated && recipient.role === UserRole.SYS_ADMIN))) ||
+      (input.kind !== "created" && recipient.id === input.reporterId),
+    );
+    const results = await Promise.allSettled(allowedRecipients.flatMap((recipient) => {
       const language = incidentNotificationLanguage(recipient.preferences?.language, config?.defaultLanguage);
       const title = `${language.title(input.kind)} #${input.incidentNumber}`;
       const status = language.status(input.status);

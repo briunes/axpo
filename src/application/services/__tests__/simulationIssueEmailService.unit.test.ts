@@ -42,6 +42,27 @@ describe("Incident workflow notifications", () => {
     await SimulationIssueEmailService.notifyEvent({ ...input, kind: "created", escalated: false });
     expect(findManyMock.mock.calls[0][0].where.OR).toEqual([{ id: { in: ["admin-1", "sys-1"] }, role: { in: ["ADMIN"] } }]);
     expect(sendTemplateMock.mock.calls[0][0].templateId).toBe("created-template");
+    expect(sendTemplateMock).toHaveBeenCalledTimes(1);
+  });
+  it.each(["created", "resolved"] as const)("rejects extra database recipients before %s delivery", async (kind) => {
+    configMock.mockResolvedValue({
+      incidentRecipientIds: ["admin-1", "admin-2", "sys-1", "sys-2"],
+      incidentCreatedEmailTemplateId: "created-template",
+      incidentResolvedEmailTemplateId: "resolved-template",
+    });
+    const users = [
+      ["admin-1", "ADMIN"], ["admin-2", "ADMIN"],
+      ["sys-1", "SYS_ADMIN"], ["sys-2", "SYS_ADMIN"],
+      ["unselected-admin", "ADMIN"], ["unselected-sys", "SYS_ADMIN"],
+      ["reporter-1", "AGENT"],
+    ].map(([id, role]) => ({ id, role, fullName: id, email: `${id}@example.com` }));
+    findManyMock.mockResolvedValue(users);
+
+    await SimulationIssueEmailService.notifyEvent({ ...input, kind, escalated: false });
+
+    const expectedIds = kind === "created" ? ["admin-1", "admin-2"] : ["admin-1", "admin-2", "reporter-1"];
+    expect(sendTemplateMock.mock.calls.map(([args]) => args.relatedUserId)).toEqual(expectedIds);
+    expect(notificationMock.mock.calls.map(([args]) => args.recipientId)).toEqual(expectedIds);
   });
   it("keeps the reporter updated while admins handle the incident", async () => {
     await SimulationIssueEmailService.notifyEvent({ ...input, kind: "status", escalated: false });
