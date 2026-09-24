@@ -4,9 +4,9 @@ Configure the four incident email templates in **Configurations → Integrations
 
 | Event | Recipients (active, non-deleted users) |
 | --- | --- |
-| New incident | All ADMIN users |
-| Admin status change or resolution | All ADMIN users and the reporter |
-| Escalation and subsequent status changes or resolution | All ADMIN and SYS_ADMIN users and the reporter |
+| New incident | Selected ADMIN users |
+| Admin status change or resolution | Selected ADMIN users and the reporter |
+| Escalation and subsequent status changes or resolution | Selected ADMIN and SYS_ADMIN users and the reporter |
 
 Each recipient receives a private in-app notification and an individual email. A reporter who is also an administrator appears only once. Reporters see updates in their notification inbox; incident management remains restricted to administrators. Imports do not trigger notifications.
 

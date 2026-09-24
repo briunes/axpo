@@ -272,6 +272,28 @@ describe("Supabase Data API database adapter", () => {
     expect(url).not.toContain("role_permissionKey");
   });
 
+  it.each([false, true])("preserves the recipient ID and role conjunction inside OR (reporter=%s)", async (withReporter) => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+    const client = createSupabaseApiPrismaClient();
+
+    await client.user.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { id: { in: ["admin-1", "sys-1"] }, role: { in: ["ADMIN"] } },
+          ...(withReporter ? [{ id: "reporter-1" }] : []),
+        ],
+      },
+      select: { id: true },
+    });
+
+    const url = new URL(fetchMock.mock.calls[0][0]);
+    expect(url.searchParams.get("or")).toBe(
+      '(and(id.in.("admin-1","sys-1"),role.in.("ADMIN"))' +
+      (withReporter ? ",and(id.eq.reporter-1)" : "") + ")",
+    );
+  });
+
   it("encodes scalar OR searches containing reference-number slashes", async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify([]), {
