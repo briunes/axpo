@@ -3,6 +3,7 @@ import { requireAuth } from "@/application/middleware/auth";
 import { assertPermission } from "@/application/middleware/rbac";
 import { prisma } from "@/infrastructure/database/prisma";
 import { SimulationService } from "@/application/services/simulationService";
+import { buildIndexedElectricityHistory, latestIndexedHistoryMonth } from "@/lib/indexedElectricityHistory";
 import { selectedIndexedEnergyPrices } from "@/lib/selectedProductEnergyHistory";
 import type { SimulationPayload } from "@/domain/types/simulation";
 
@@ -283,78 +284,13 @@ export async function GET(
       }
     }
 
-    // Filter all indexed electricity margin items:
-    //   12-month average: ELEC:INDEX:{PRODUCT}:{TIER}:{TARIFA}:{PERIODO}:MARGEN
-    //   Per-month:        ELEC:INDEX:{PRODUCT}:{TIER}:{TARIFA}:{PERIODO}:MARGEN:{YYYY-MM}
-    const marginItems = baseValueItems.filter(
-      (item) =>
-        item.key.startsWith("ELEC:INDEX:") && item.key.includes(":MARGEN"),
+    const productData = buildIndexedElectricityHistory(
+      baseValueItems,
+      payload?.electricity?.perfilCarga ?? "NORMAL",
+      payload?.electricity?.zonaGeografica ?? "Peninsula",
+      PRODUCT_LABELS,
+      payload?.electricity?.personalizadaIndex?.margenEnergia ?? {},
     );
-
-    // Build electricity structure:
-    // productTierKey -> {
-    //   productKey, productLabel,
-    //   tariffs: { tariff -> { period -> { avg: number; monthly: { YYYY-MM: number } } } }
-    // }
-    const productData: Record<
-      string,
-      {
-        productKey: string;
-        productLabel: string;
-        tariffs: Record<
-          string,
-          Record<
-            string,
-            { avg: number; monthly: Record<string, number> } | number
-          >
-        >;
-      }
-    > = {};
-
-    for (const item of marginItems) {
-      // Split: ELEC : INDEX : PRODUCT : TIER : TARIFA : PERIODO : MARGEN [: YYYY-MM]
-      const parts = item.key.split(":");
-      if (parts.length < 7) continue;
-
-      const product = parts[2];
-      const tier = parts[3];
-      const tariff = parts[4];
-      const period = parts[5];
-      // parts[6] === 'MARGEN'; parts[7] (if present) === 'YYYY-MM'
-      const monthKey = parts.length >= 8 ? parts[7] : null;
-      const productTierKey = `${product}:${tier}`;
-
-      if (!productData[productTierKey]) {
-        productData[productTierKey] = {
-          productKey: productTierKey,
-          productLabel:
-            PRODUCT_LABELS[productTierKey] ??
-            `${product.replace(/_/g, " ")} ${tier}`,
-          tariffs: {},
-        };
-      }
-
-      if (!productData[productTierKey].tariffs[tariff]) {
-        productData[productTierKey].tariffs[tariff] = {};
-      }
-
-      if (!productData[productTierKey].tariffs[tariff][period]) {
-        productData[productTierKey].tariffs[tariff][period] = {
-          avg: 0,
-          monthly: {},
-        };
-      }
-
-      const entry = productData[productTierKey].tariffs[tariff][period];
-      if (typeof entry === "number") continue;
-      const v = Number(item.valueNumeric) ?? 0;
-
-      if (monthKey) {
-        entry.monthly[monthKey] = v;
-      } else {
-        entry.avg = v;
-      }
-    }
 
     // Fixed electricity products have one current price per tariff/period,
     // rather than month-specific snapshots. Store them as plain numeric
@@ -516,13 +452,21 @@ export async function GET(
 
     // Anchor months to the latest month that actually has per-month data in
     // the base value set, so we never show future months without data.
-    const dataAnchor = latestDataMonth(baseValueItems);
+    const selectedHistory = simulationProducts.find(
+      (product) => product.productKey === payload?.selectedOffer?.productKey,
+    );
+    const dataAnchor = isGas
+      ? latestDataMonth(baseValueItems.filter((item) => item.key.startsWith("GAS:")))
+      : (selectedHistory ? latestIndexedHistoryMonth([selectedHistory]) : undefined)
+        ?? latestIndexedHistoryMonth(simulationProducts);
+    const isFixedHistory = selectedHistory && Object.values(selectedHistory.tariffs)
+      .some((periods) => Object.values(periods).some((value) => typeof value === "number"));
 
     return NextResponse.json({
       tarifaAcceso,
       perfilCarga,
       products: simulationProducts,
-      months: generateLast12Months(dataAnchor),
+      months: isGas || isFixedHistory || dataAnchor ? generateLast12Months(dataAnchor) : [],
       // Gas-specific fields
       isGas,
       gasTarifaAcceso,
