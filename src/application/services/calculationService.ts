@@ -128,18 +128,24 @@ export function indexedEnergyPriceOf(
     return undefined;
   }
   const averagePrice = priceOf(map, `${baseKey}:MARGEN`);
+  const normalProfileMonthKey =
+    `${baseKey}:MARGEN:${billingMonthKey}:PROFILE:NORMAL`;
 
-  // The workbook's ordinary month keys are its final NORMAL-profile Precio TE
-  // values, including each product/tier's commercial adjustments. Some imported
-  // PROFILE:NORMAL keys contain only the shared OMIE component, which flattens
-  // every indexed product to the same energy price if they take precedence.
+  // Current imports expose product- and zone-specific NORMAL prices. Prefer
+  // those over the ordinary month key, because the workbook's selected profile
+  // can make that generic cell contain the DIURNO price. Legacy imports did not
+  // have zone-specific profile keys and still need the ordinary product price
+  // to win over their shared PROFILE:NORMAL OMIE component.
   if (perfilCarga === "NORMAL") {
     return (
+      (electricityKeyHasZoneVariant(map, normalProfileMonthKey)
+        ? electricityPriceOf(map, normalProfileMonthKey, zone)
+        : undefined) ??
       monthPrice ??
       averagePrice ??
       electricityPriceOf(
         map,
-        `${baseKey}:MARGEN:${billingMonthKey}:PROFILE:NORMAL`,
+        normalProfileMonthKey,
         zone,
       ) ??
       electricityPriceOf(
