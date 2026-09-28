@@ -1082,6 +1082,16 @@ class SupabaseApi {
     return {
       findMany: async (args: JsonRecord = {}) => {
         const rows: any[] = [];
+        // OFFSET pagination requires the same unique ordering on every page.
+        // Otherwise query-plan changes can repeat rows and omit price keys.
+        const orderBy = args.orderBy
+          ? Array.isArray(args.orderBy)
+            ? [...args.orderBy]
+            : [args.orderBy]
+          : [];
+        if (!orderBy.some((order: JsonRecord) => "id" in order)) {
+          orderBy.push({ id: "asc" });
+        }
         const initialSkip = args.skip ?? 0;
         const requestedRows =
           args.take === undefined ? Infinity : Math.abs(args.take);
@@ -1097,6 +1107,7 @@ class SupabaseApi {
           const page = await this.request(
             buildPath({
               ...args,
+              orderBy,
               skip: offset,
               take: pageSize,
             }),
