@@ -1,3 +1,4 @@
+import { INCIDENT_EMAILS } from "@/lib/incidentEmails";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
 import { invalidateAppVersionCache } from "@/application/lib/appVersionCache";
@@ -64,6 +65,7 @@ const toRuntimeConfig = (config: Record<string, any>) => ({
 
 const toAdminConfig = (config: Record<string, any>) => ({
   ...toRuntimeConfig(config),
+  incidentRecipientIds: config.incidentRecipientIds ?? [],
   simulationShareText: config.simulationShareText,
   enablePixelTracking: config.enablePixelTracking,
   requirePinForAccess: config.requirePinForAccess,
@@ -91,6 +93,10 @@ const toAdminConfig = (config: Record<string, any>) => ({
   otpEnabled: config.otpEnabled,
   otpEmailTemplateId: config.otpEmailTemplateId,
   otpCodeValidityMinutes: config.otpCodeValidityMinutes,
+  incidentCreatedEmailTemplateId: config.incidentCreatedEmailTemplateId,
+  incidentEscalatedEmailTemplateId: config.incidentEscalatedEmailTemplateId,
+  incidentStatusEmailTemplateId: config.incidentStatusEmailTemplateId,
+  incidentResolvedEmailTemplateId: config.incidentResolvedEmailTemplateId,
   accessRequestKamEmailTemplateId: config.accessRequestKamEmailTemplateId,
   accessRequestApplicantEmailTemplateId: config.accessRequestApplicantEmailTemplateId,
   defaultPdfTemplateElectricityId: config.defaultPdfTemplateElectricityId,
@@ -163,12 +169,19 @@ const GET = withErrorHandler(async (req: NextRequest) => {
   if (view === "admin") {
     const auth = await requireAuth(req);
     await assertPermission(auth, "section.configurations");
-    return NextResponse.json(toAdminConfig(config));
+    const incidentRecipientOptions = await prisma.user.findMany({
+      where: { role: { in: ["ADMIN", "SYS_ADMIN"] }, isActive: true, isDeleted: false, deletedAt: null },
+      select: { id: true, fullName: true, email: true, role: true },
+      orderBy: { fullName: "asc" },
+    });
+    return NextResponse.json({ ...toAdminConfig(config), incidentRecipientOptions });
   }
 
   if (view === "runtime") {
-    await requireAuth(req);
-    return NextResponse.json(toRuntimeConfig(config));
+    const auth = await requireAuth(req);
+    return NextResponse.json({ ...toRuntimeConfig(config), canManageSimulationIssues:
+      ["ADMIN", "SYS_ADMIN"].includes(auth.role) && config.simulationIssuesEnabled !== false &&
+      (config.incidentRecipientIds ?? []).includes(auth.userId) });
   }
 
   return NextResponse.json(toPublicConfig(config));
@@ -196,6 +209,26 @@ const PUT = withErrorHandler(async (req: NextRequest) => {
 
   const body = await req.json();
   const data = { ...body };
+  if (data.incidentRecipientIds !== undefined) {
+    if (!Array.isArray(data.incidentRecipientIds) || data.incidentRecipientIds.some((id: unknown) => typeof id !== "string" || !id)) {
+      throw new ValidationError("Invalid incident recipient selection");
+    }
+    data.incidentRecipientIds = [...new Set(data.incidentRecipientIds)];
+    const eligible = await prisma.user.findMany({
+      where: { id: { in: data.incidentRecipientIds }, role: { in: ["ADMIN", "SYS_ADMIN"] }, isActive: true, isDeleted: false, deletedAt: null },
+      select: { id: true },
+    });
+    if (eligible.length !== data.incidentRecipientIds.length) throw new ValidationError("Choose active Admins or Sys Admins");
+  }
+  for (const event of INCIDENT_EMAILS) {
+    const templateId = data[event.field];
+    if (templateId === undefined || templateId === null) continue;
+    if (typeof templateId !== "string") throw new ValidationError("Invalid incident email template");
+    const template = await prisma.emailTemplate.findUnique({ where: { id: templateId } });
+    if (!template || !template.active || template.isDeleted || template.deletedAt || template.type !== event.type) {
+      throw new ValidationError(`Choose an active ${event.type} email template`);
+    }
+  }
   let config = await prisma.systemConfig.findFirst();
   const previousAppVersion = config?.appVersion ?? null;
   const changelogNotes = data.appChangelogNotes;

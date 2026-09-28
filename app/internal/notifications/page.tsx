@@ -60,6 +60,10 @@ const typeOptions = [
   "ocr.issues_open",
   "invoice_provider.prompt_config_needed",
   "system.maintenance_active",
+  "simulation_issue.escalated",
+  "simulation_issue.created",
+  "simulation_issue.status",
+  "simulation_issue.resolved",
 ];
 
 const categoryOptions = [
@@ -70,6 +74,7 @@ const categoryOptions = [
   "integrations",
   "operations",
   "configuration",
+  "simulations",
 ];
 
 const sourceTypeOptions = [
@@ -80,6 +85,7 @@ const sourceTypeOptions = [
   "ocr_logs",
   "invoice_provider_prompts",
   "system_config",
+  "simulation_issue",
 ];
 
 const statusOptions: NotificationStatusFilter[] = ["all", "unread", "read", "dismissed"];

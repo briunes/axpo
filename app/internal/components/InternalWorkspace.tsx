@@ -239,15 +239,18 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
-    getSystemConfig({ view: "runtime" })
+    const refresh = () => getSystemConfig({ view: "runtime" })
       .then((config) => {
-        if (!cancelled) setSimulationIssuesEnabled(config.simulationIssuesEnabled !== false);
+        if (!cancelled) setSimulationIssuesEnabled(config.canManageSimulationIssues === true);
       })
       .catch(() => {
         if (!cancelled) setSimulationIssuesEnabled(false);
       });
-    return () => { cancelled = true; };
-  }, [session?.token]);
+    void refresh();
+    window.addEventListener("system-config-updated", refresh);
+    window.addEventListener("focus", refresh);
+    return () => { cancelled = true; window.removeEventListener("system-config-updated", refresh); window.removeEventListener("focus", refresh); };
+  }, [session?.token, pathname]);
 
   useEffect(() => {
     if (mounted) {
@@ -349,7 +352,7 @@ export function InternalWorkspace({ section, children }: { section: AppSection |
     analytics: canDo(role, "section.analytics"),
     tutorials: true,
     configurations: canDo(role, "section.configurations"),
-    notifications: role === "SYS_ADMIN",
+    notifications: true,
   };
   const availableSections = (Object.keys(sectionAllowed) as AppSection[]).filter(
     (key) => sectionAllowed[key],

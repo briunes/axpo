@@ -1,5 +1,7 @@
 "use client";
 
+import { INCIDENT_EMAILS } from "@/lib/incidentEmails";
+
 import { useState, useEffect } from "react";
 import { Box, Button, Stack, Divider, Switch, FormControlLabel, Typography } from "@mui/material";
 import type { SessionState } from "../../lib/authSession";
@@ -14,6 +16,11 @@ export interface AutomatedEmailsSettingsProps {
 }
 
 interface EmailsConfig {
+    incidentCreatedEmailTemplateId: string;
+    incidentEscalatedEmailTemplateId: string;
+    incidentStatusEmailTemplateId: string;
+    incidentResolvedEmailTemplateId: string;
+
     userCreationEmailTemplateId: string;
     passwordResetEmailTemplateId: string;
     setupTokenValidityHours: number;
@@ -28,6 +35,11 @@ interface EmailsConfig {
 }
 
 const DEFAULT_CONFIG: EmailsConfig = {
+    incidentCreatedEmailTemplateId: "",
+    incidentEscalatedEmailTemplateId: "",
+    incidentStatusEmailTemplateId: "",
+    incidentResolvedEmailTemplateId: "",
+
     userCreationEmailTemplateId: "",
     passwordResetEmailTemplateId: "",
     setupTokenValidityHours: 72,
@@ -57,9 +69,14 @@ export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSe
             setIsLoading(true);
             const [data, templates] = await Promise.all([
                 getSystemConfig({ view: "admin" }),
-                getEmailTemplates({ type: ["user-welcome", "password-reset", "magic-link", "otp", "access-request-kam", "access-request-applicant"] }),
+                getEmailTemplates({ type: ["user-welcome", "password-reset", "magic-link", "otp", "access-request-kam", "access-request-applicant", ...INCIDENT_EMAILS.map((item) => item.type)] }),
             ]);
             setConfig({
+                incidentCreatedEmailTemplateId: data.incidentCreatedEmailTemplateId || "",
+                incidentEscalatedEmailTemplateId: data.incidentEscalatedEmailTemplateId || "",
+                incidentStatusEmailTemplateId: data.incidentStatusEmailTemplateId || "",
+                incidentResolvedEmailTemplateId: data.incidentResolvedEmailTemplateId || "",
+
                 userCreationEmailTemplateId: (data as any).userCreationEmailTemplateId || "",
                 passwordResetEmailTemplateId: (data as any).passwordResetEmailTemplateId || "",
                 setupTokenValidityHours: (data as any).setupTokenValidityHours || 72,
@@ -88,6 +105,11 @@ export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSe
     const handleSave = async () => {
         try {
             await updateSystemConfig({
+                incidentCreatedEmailTemplateId: config.incidentCreatedEmailTemplateId || null,
+                incidentEscalatedEmailTemplateId: config.incidentEscalatedEmailTemplateId || null,
+                incidentStatusEmailTemplateId: config.incidentStatusEmailTemplateId || null,
+                incidentResolvedEmailTemplateId: config.incidentResolvedEmailTemplateId || null,
+
                 userCreationEmailTemplateId: config.userCreationEmailTemplateId || undefined,
                 passwordResetEmailTemplateId: config.passwordResetEmailTemplateId || undefined,
                 setupTokenValidityHours: config.setupTokenValidityHours,
@@ -120,6 +142,15 @@ export function AutomatedEmailsSettings({ session, onNotify }: AutomatedEmailsSe
                 <>
                     <div className="settings-panel">
                         <Stack spacing={3}>
+                            <Typography variant="h6">{t("simulationIssues", "emailSettings")}</Typography>
+                            <Typography variant="body2">{t("simulationIssues", "emailSettingsHelp")}</Typography>
+                            {INCIDENT_EMAILS.map((event) => <FormSelect key={event.field}
+                                label={t("simulationIssues", event.label)} value={config[event.field]}
+                                onChange={(value) => handleChange(event.field, value)}
+                                options={[{ value: "", label: t("systemSettings", "noTemplateSelected") },
+                                    ...emailTemplates.filter((template) => template.type === event.type && template.active)
+                                        .map((template) => ({ value: template.id, label: template.name }))]} />)}
+                            <Divider />
                             <FormSelect
                                 label={t("systemSettings", "fieldUserCreationTemplate")}
                                 helperText={t("systemSettings", "fieldUserCreationTemplateDesc")}

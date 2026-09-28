@@ -39,6 +39,10 @@ const bulkDeleteSchema = z.object({
  *         name: errorType
  *         schema: { type: string }
  *       - in: query
+ *         name: errorScope
+ *         description: Unexpected excludes controlled HTTP 4xx responses; explicit error types default to all.
+ *         schema: { type: string, enum: [unexpected, all], default: unexpected }
+ *       - in: query
  *         name: path
  *         schema: { type: string }
  */
@@ -52,6 +56,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "25", 10), 100);
   const skip = (page - 1) * limit;
   const errorType = searchParams.get("errorType") ?? undefined;
+  const errorScope = z.enum(["unexpected", "all"]).parse(
+    searchParams.get("errorScope") ?? (errorType ? "all" : "unexpected"),
+  );
   const path = searchParams.get("path") ?? undefined;
   const dateFrom = searchParams.get("dateFrom") || undefined;
   const dateTo = searchParams.get("dateTo") || undefined;
@@ -61,6 +68,15 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ...(errorType && { errorType }),
     ...(path && { path: { contains: path, mode: "insensitive" } }),
   };
+  if (errorScope === "unexpected") {
+    // Keep client exceptions and legacy logs with no status visible. Only known
+    // HTTP 4xx responses are controlled errors; 5xx failures remain actionable.
+    filters.AND = [{ OR: [
+      { statusCode: null },
+      { statusCode: { lt: 400 } },
+      { statusCode: { gte: 500 } },
+    ] }];
+  }
   if (dateFrom || dateTo) {
     filters.createdAt = {
       ...(dateFrom ? { gte: new Date(dateFrom + "T00:00:00.000Z") } : {}),

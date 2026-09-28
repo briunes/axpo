@@ -582,7 +582,11 @@ const expression = (where: JsonRecord): string => {
   const parts: string[] = [];
   for (const [field, value] of Object.entries(where || {})) {
     if (field === "AND" || field === "OR") {
-      const items = (Array.isArray(value) ? value : [value]).map(expression);
+      // Fields within one Prisma branch are implicitly ANDed, including when
+      // that branch is a child of OR. Preserve the branch boundary in PostgREST.
+      const items = (Array.isArray(value) ? value : [value]).map(
+        (item) => `and(${expression(item)})`,
+      );
       parts.push(`${field.toLowerCase()}(${items.join(",")})`);
       continue;
     }
