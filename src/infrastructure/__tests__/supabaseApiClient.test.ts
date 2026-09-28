@@ -367,6 +367,47 @@ describe("Supabase Data API database adapter", () => {
     expect(fetchMock.mock.calls[0][0]).toContain("limit=1000");
     expect(fetchMock.mock.calls[1][0]).toContain("offset=1000");
     expect(fetchMock.mock.calls[1][0]).toContain("limit=1000");
+    for (const [url] of fetchMock.mock.calls) {
+      expect(new URL(url).searchParams.get("order")).toBe("id.asc");
+    }
+  });
+
+  it.each([
+    [undefined, "id.asc"],
+    [{ createdAt: "desc" }, "createdAt.desc,id.asc"],
+    [[{ createdAt: "desc" }, { key: "asc" }], "createdAt.desc,key.asc,id.asc"],
+    [{ id: "desc" }, "id.desc"],
+  ])("keeps pagination complete with orderBy %j", async (orderBy, expectedOrder) => {
+    const source = Array.from({ length: 1002 }, (_, index) => ({
+      key: `ELEC:${index}`,
+      valueNumeric: "0.1",
+    }));
+    const originalOrder = JSON.stringify(orderBy);
+    fetchMock.mockImplementation(async (url: string) => {
+      const params = new URL(url).searchParams;
+      const offset = Number(params.get("offset"));
+      const limit = Number(params.get("limit"));
+      expect(params.get("order")).toBe(expectedOrder);
+      return new Response(JSON.stringify(source.slice(offset, offset + limit)), {
+        status: 200,
+      });
+    });
+
+    const client = createSupabaseApiPrismaClient();
+    const items = await client.baseValueItem.findMany({
+      where: { baseValueSetId: "set-1" },
+      select: { key: true, valueNumeric: true },
+      orderBy,
+      skip: 1,
+      take: 1001,
+    });
+
+    expect(items.map((item: { key: string }) => item.key)).toEqual(
+      source.slice(1).map((item) => item.key),
+    );
+    expect(new Set(items.map((item: { key: string }) => item.key)).size).toBe(1001);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(orderBy)).toBe(originalOrder);
   });
 
   it("creates supported nested child records through related API tables", async () => {
