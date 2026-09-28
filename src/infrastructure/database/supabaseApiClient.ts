@@ -582,7 +582,11 @@ const expression = (where: JsonRecord): string => {
   const parts: string[] = [];
   for (const [field, value] of Object.entries(where || {})) {
     if (field === "AND" || field === "OR") {
-      const items = (Array.isArray(value) ? value : [value]).map(expression);
+      // Fields within one Prisma branch are implicitly ANDed, including when
+      // that branch is a child of OR. Preserve the branch boundary in PostgREST.
+      const items = (Array.isArray(value) ? value : [value]).map(
+        (item) => `and(${expression(item)})`,
+      );
       parts.push(`${field.toLowerCase()}(${items.join(",")})`);
       continue;
     }
@@ -1082,6 +1086,16 @@ class SupabaseApi {
     return {
       findMany: async (args: JsonRecord = {}) => {
         const rows: any[] = [];
+        // OFFSET pagination requires the same unique ordering on every page.
+        // Otherwise query-plan changes can repeat rows and omit price keys.
+        const orderBy = args.orderBy
+          ? Array.isArray(args.orderBy)
+            ? [...args.orderBy]
+            : [args.orderBy]
+          : [];
+        if (!orderBy.some((order: JsonRecord) => "id" in order)) {
+          orderBy.push({ id: "asc" });
+        }
         const initialSkip = args.skip ?? 0;
         const requestedRows =
           args.take === undefined ? Infinity : Math.abs(args.take);
@@ -1097,6 +1111,7 @@ class SupabaseApi {
           const page = await this.request(
             buildPath({
               ...args,
+              orderBy,
               skip: offset,
               take: pageSize,
             }),

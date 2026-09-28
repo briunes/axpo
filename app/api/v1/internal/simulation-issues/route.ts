@@ -10,6 +10,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const auth = await requireAuth(request);
   assertRole(auth, [UserRole.ADMIN, UserRole.SYS_ADMIN]);
   await assertPermission(auth, "section.simulation-issues");
+  const isSysAdminQueue = request.nextUrl.searchParams.get("queue") === "sys-admin";
   const status = request.nextUrl.searchParams.get("status") || undefined;
   const page = Math.max(Number.parseInt(request.nextUrl.searchParams.get("page") ?? "1", 10), 1);
   const limit = Math.min(Math.max(Number.parseInt(request.nextUrl.searchParams.get("limit") ?? "25", 10), 1), 100);
@@ -17,7 +18,8 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const dateFrom = request.nextUrl.searchParams.get("dateFrom") || undefined;
   const dateTo = request.nextUrl.searchParams.get("dateTo") || undefined;
   const where = {
-    ...(status && { status: status as never }),
+    ...(isSysAdminQueue && { status: "ESCALATED" as const }),
+    ...(status && { OR: [{ status: status as never }, ...(status !== "ESCALATED" ? [{ appStatus: status as never }] : [])] }),
     ...(reporter && { reportedByUser: { OR: [
       { fullName: { contains: reporter, mode: "insensitive" as const } },
       { email: { contains: reporter, mode: "insensitive" as const } },
@@ -30,7 +32,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const [items, total] = await Promise.all([prisma.simulationIssue.findMany({
     where, orderBy: { createdAt: "desc" }, skip: (page - 1) * limit, take: limit,
     select: {
-      id: true, simulationId: true, simulationReference: true, description: true, status: true,
+      id: true, incidentNumber: true, simulationId: true, simulationReference: true, description: true, status: true, appStatus: true,
       snapshotFileName: true, snapshotMimeType: true, snapshotFileSize: true,
       reportedByUserId: true, handledByUserId: true, statusChangedAt: true, createdAt: true, updatedAt: true,
       reportedByUser: { select: { id: true, fullName: true, email: true } },

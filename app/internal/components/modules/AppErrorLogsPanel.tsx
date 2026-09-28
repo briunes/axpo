@@ -86,13 +86,13 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
     const reportedLoadError = useRef<unknown>(null);
 
     // Applied filters
-    const [filterErrorType, setFilterErrorType] = useState("");
+    const [filterErrorType, setFilterErrorType] = useState("unexpected");
     const [filterSearch, setFilterSearch] = useState("");
     const [filterDateFrom, setFilterDateFrom] = useState("");
     const [filterDateTo, setFilterDateTo] = useState("");
 
     // Local (pending) filter state
-    const [localErrorType, setLocalErrorType] = useState("");
+    const [localErrorType, setLocalErrorType] = useState("unexpected");
     const [localDateFrom, setLocalDateFrom] = useState<Date | null>(null);
     const [localDateTo, setLocalDateTo] = useState<Date | null>(null);
     const [filtersOpen, setFiltersOpen] = useState(false);
@@ -143,7 +143,8 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
     }, []);
 
     const builtInViews = useMemo<Array<{ id: string; name: string; view: AppErrorLogsViewState }>>(() => [
-        { id: "recent", name: t("simulationsModule", "presetRecent"), view: { errorType: "", dateFrom: "", dateTo: "" } },
+        { id: "unexpected", name: t("logs", "unexpectedErrors"), view: { errorType: "unexpected", dateFrom: "", dateTo: "" } },
+        { id: "recent", name: t("logs", "allErrors"), view: { errorType: "", dateFrom: "", dateTo: "" } },
         { id: "error", name: "Error", view: { errorType: "Error", dateFrom: "", dateTo: "" } },
         { id: "type-error", name: "TypeError", view: { errorType: "TypeError", dateFrom: "", dateTo: "" } },
         { id: "reference-error", name: "ReferenceError", view: { errorType: "ReferenceError", dateFrom: "", dateTo: "" } },
@@ -177,7 +178,8 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                 page: page.toString(),
                 limit: pageSize.toString(),
             });
-            if (filterErrorType) params.append("errorType", filterErrorType);
+            params.append("errorScope", filterErrorType === "unexpected" ? "unexpected" : "all");
+            if (filterErrorType && filterErrorType !== "unexpected") params.append("errorType", filterErrorType);
             if (filterSearch) params.append("search", filterSearch);
             if (filterDateFrom) params.append("dateFrom", filterDateFrom);
             if (filterDateTo) params.append("dateTo", filterDateTo);
@@ -487,7 +489,8 @@ export function AppErrorLogsPanel({ session, onNotify }: AppErrorLogsPanelProps)
                 <FormSelect
                     label={t("logs", "errorType")}
                     options={[
-                        { value: "", label: t("logs", "allTypes") },
+                        { value: "unexpected", label: t("logs", "unexpectedErrors") },
+                        { value: "", label: t("logs", "allErrors") },
                         { value: "Error", label: "Error" },
                         { value: "ReferenceError", label: "ReferenceError" },
                         { value: "TypeError", label: "TypeError" },

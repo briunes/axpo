@@ -48,6 +48,7 @@ export interface PaginationState {
 }
 
 export interface MassAction {
+  disabled?: boolean;
   label: string;
   icon?: React.ReactNode;
   onClick: (selectedIds: string[]) => void;
@@ -1348,6 +1349,7 @@ export function DataTable<T extends { id: string }>({
               variant="outlined"
               color={action.color ?? 'primary'}
               startIcon={action.icon}
+              disabled={action.disabled}
               onClick={() => action.onClick(Array.from(selectedIds))}
             >
               {action.label}

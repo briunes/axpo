@@ -1,3 +1,4 @@
+import { SimulationIssueEmailService } from "@/application/services/simulationIssueEmailService";
 import { NextRequest } from "next/server";
 import { requireAuth } from "@/application/middleware/auth";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
@@ -49,10 +50,23 @@ export const POST = withErrorHandler(async (request: NextRequest, context?: { pa
         }))),
       },
     },
-    select: { id: true, createdAt: true },
+    select: { id: true, incidentNumber: true, createdAt: true, reportedByUser: { select: { fullName: true } } },
   });
+  // Creation remains successful if delivery fails; never invite a duplicate report.
+  let notificationWarning: string | undefined;
+  try {
+    await SimulationIssueEmailService.notifyEvent({
+      issueId: issue.id, incidentNumber: issue.incidentNumber, eventId: `created:${issue.id}`, kind: "created",
+      simulationReference: simulation.referenceNumber, simulationId, description: description.trim(),
+      reporterId: auth.userId, escalated: false, status: "NEW", previousStatus: "",
+      changedBy: issue.reportedByUser.fullName, changedByUserId: auth.userId, notes: "", resolutionNotes: "",
+    });
+  } catch (error) {
+    console.error("Incident created; notification delivery failed", error);
+    notificationWarning = "Incident saved, but some notifications could not be delivered.";
+  }
   const createdAt = issue.createdAt instanceof Date
     ? issue.createdAt.toISOString()
     : new Date(issue.createdAt as unknown as string).toISOString();
-  return ResponseHandler.ok({ id: issue.id, createdAt }, 201);
+  return ResponseHandler.ok({ id: issue.id, incidentNumber: issue.incidentNumber, createdAt, notificationWarning }, 201);
 });

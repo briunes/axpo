@@ -22,6 +22,7 @@ import TuneOutlinedIcon from "@mui/icons-material/TuneOutlined";
 import ViewComfyAltOutlinedIcon from "@mui/icons-material/ViewComfyAltOutlined";
 import type { SessionState } from "../../lib/authSession";
 import { useI18n } from "../../../../src/lib/i18n-context";
+import { SimulationIncidentSettings } from "./SimulationIncidentSettings";
 import { SystemBusinessSettings } from "./SystemBusinessSettings";
 import { OcrUsageDashboard } from "./OcrUsageDashboard";
 import { ExcelParserConfigSettings } from "./ExcelParserConfigSettings";
@@ -46,6 +47,7 @@ type ConfigPage =
     | "email-templates"
     | "pdf-defaults"
     | "automated-emails"
+    | "simulation-incidents"
     | "simulation"
     | "clients"
     | "calculation"
@@ -134,6 +136,12 @@ export function ConfigurationsModule({ session, onNotify, role }: Configurations
                     label: t("systemSettings", "tabSimulation"),
                     description: t("configurationsModule", "descSimulation"),
                     icon: <BusinessCenterOutlinedIcon fontSize="small" />,
+                },
+                {
+                    id: "simulation-incidents",
+                    label: t("systemSettings", "fieldSimulationIssuesEnabled"),
+                    description: t("systemSettings", "incidentSettingsDescription"),
+                    icon: <MarkEmailReadOutlinedIcon fontSize="small" />,
                 },
                 {
                     id: "clients",
@@ -337,6 +345,9 @@ export function ConfigurationsModule({ session, onNotify, role }: Configurations
                             )}
                             {resolvedPage === "simulation" && (
                                 <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="simulation" hideNavigation />
+                            )}
+                            {resolvedPage === "simulation-incidents" && (
+                                <SimulationIncidentSettings onNotify={onNotify} />
                             )}
                             {resolvedPage === "clients" && (
                                 <SystemBusinessSettings session={session} onNotify={onNotify} role={role} activeSection="clients" hideNavigation />

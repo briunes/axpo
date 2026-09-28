@@ -36,6 +36,9 @@ export interface SystemConfig {
   defaultDashboardView: string;
   enableRealtimeReports: boolean;
   simulationIssuesEnabled?: boolean;
+  incidentRecipientIds?: string[];
+  canManageSimulationIssues?: boolean;
+  incidentRecipientOptions?: { id: string; fullName: string; email: string; role: string }[];
   accessRequestsEnabled?: boolean;
   electricityPersonalizedFixedEnabled?: boolean;
   ivaRate?: number;
@@ -71,6 +74,10 @@ export interface SystemConfig {
   otpEnabled?: boolean;
   otpEmailTemplateId?: string;
   otpCodeValidityMinutes?: number;
+  incidentCreatedEmailTemplateId?: string | null;
+  incidentEscalatedEmailTemplateId?: string | null;
+  incidentStatusEmailTemplateId?: string | null;
+  incidentResolvedEmailTemplateId?: string | null;
   accessRequestKamEmailTemplateId?: string;
   accessRequestApplicantEmailTemplateId?: string;
   defaultMaxActiveDevices?: number;
@@ -326,6 +333,7 @@ export async function updateSystemConfig(
   });
   if (!res.ok) throw new Error("Failed to update system config");
   runtimeSystemConfigCache.clear();
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("system-config-updated"));
   return res.json();
 }
 
