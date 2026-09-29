@@ -61,3 +61,56 @@ describe("Email delivery idempotency", () => {
     expect(sendMailMock).toHaveBeenCalledTimes(1);
   });
 });
+
+
+describe("Email subject environment tag", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    jest.spyOn(console, "log").mockImplementation(() => undefined);
+    process.env = { ...originalEnv };
+    delete process.env.APP_ENV;
+    delete process.env.VERCEL_ENV;
+    Reflect.deleteProperty(process.env, "NODE_ENV");
+    findUniqueMock.mockResolvedValue(null);
+    sendMailMock.mockResolvedValue({ messageId: "message-1", rejected: [] });
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+    jest.restoreAllMocks();
+  });
+
+  it.each([
+    ["dev", undefined, "production", true],
+    ["preview", undefined, "production", true],
+    ["qld", "preview", "production", true],
+    ["local", undefined, "development", true],
+    ["prod", "production", "production", false],
+    ["production", undefined, "production", false],
+    [undefined, "preview", "production", true],
+    [undefined, "development", "production", true],
+    [undefined, "production", "production", false],
+    [undefined, undefined, "production", false],
+    [undefined, undefined, "development", true],
+    [undefined, undefined, undefined, true],
+  ])("uses the expected subject for APP_ENV=%s VERCEL_ENV=%s NODE_ENV=%s", async (appEnv, vercelEnv, nodeEnv, tagged) => {
+    if (appEnv) process.env.APP_ENV = appEnv;
+    if (vercelEnv) process.env.VERCEL_ENV = vercelEnv;
+    if (nodeEnv) Object.assign(process.env, { NODE_ENV: nodeEnv });
+
+    await EmailService.sendEmail(input);
+
+    const subject = tagged ? `[DEV/PREVIEW] ${input.subject}` : input.subject;
+    expect(sendMailMock).toHaveBeenCalledWith(expect.objectContaining({ subject }));
+    expect(createMock).toHaveBeenCalledWith({ data: expect.objectContaining({ subject }) });
+  });
+
+  it("does not duplicate an existing prefix", async () => {
+    process.env.APP_ENV = "preview";
+    const subject = "[DEV/PREVIEW] Escalation";
+    await EmailService.sendEmail({ ...input, subject });
+    expect(sendMailMock).toHaveBeenCalledWith(expect.objectContaining({ subject }));
+  });
+});
