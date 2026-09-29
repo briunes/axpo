@@ -216,11 +216,20 @@ export class EmailService {
    */
   static async sendEmail(options: EmailOptions): Promise<void> {
     // Preview deployments also use NODE_ENV=production, so prefer deployment config.
-    const environment = process.env.APP_ENV || process.env.VERCEL_ENV || process.env.NODE_ENV;
+    const environment = (process.env.APP_ENV || process.env.VERCEL_ENV || process.env.NODE_ENV || "local")
+      .trim().toLowerCase();
     const isProduction = environment === "prod" || environment === "production";
-    const subject = isProduction || options.subject.startsWith("[DEV/PREVIEW]")
+    const environmentLabels: Record<string, string> = {
+      dev: "DEV",
+      development: "DEV",
+      preview: "PREVIEW",
+      qld: "PREVIEW",
+      local: "LOCAL",
+    };
+    const prefix = `[${environmentLabels[environment] || environment.toUpperCase()}]`;
+    const subject = isProduction || options.subject.startsWith(`${prefix} `)
       ? options.subject
-      : `[DEV/PREVIEW] ${options.subject}`;
+      : `${prefix} ${options.subject}`;
     const emailLogId = options.deliveryId ?? randomUUID();
     const trackingToken = randomUUID();
     const trackedHtml = appendEmailTrackingPixel(options.html, trackingToken);
