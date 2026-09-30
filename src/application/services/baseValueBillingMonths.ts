@@ -2,18 +2,30 @@ import { billingMonthsFromItems, BILLING_MONTH_KEY_PREFIX } from "@/domain/billi
 import { prisma } from "@/infrastructure/database/prisma";
 
 export async function getBaseValueBillingMonths(baseValueSetId: string): Promise<string[]> {
-  // A single filtered query supports both new metadata-bearing imports and
-  // legacy month-specific price keys. Avoid probing metadata first because
-  // that made older sets pay for two sequential remote database requests.
-  const items = await prisma.baseValueItem.findMany({
+  // Current imports store explicit months. Fetch these first: the previous OR
+  // query also fetched ~20,000 margin rows, requiring ~20 serial API requests.
+  const metadata = await prisma.baseValueItem.findMany({
     where: {
       baseValueSetId,
-      OR: [
-        { key: { startsWith: BILLING_MONTH_KEY_PREFIX } },
-        { key: { contains: ":MARGEN:" } },
-      ],
+      key: { startsWith: BILLING_MONTH_KEY_PREFIX },
     },
     select: { key: true, valueText: true },
   });
-  return billingMonthsFromItems(items);
+  const hasExplicitMonths = metadata.some((item) =>
+    /^\d{4}-(0[1-9]|1[0-2])$/.test(
+      item.valueText ?? item.key.slice(BILLING_MONTH_KEY_PREFIX.length),
+    ),
+  );
+  if (hasExplicitMonths) return billingMonthsFromItems(metadata);
+
+  // Preserve legacy discovery, including dates embedded in malformed metadata
+  // keys when no valid explicit value exists. No truncation or month caching.
+  const margins = await prisma.baseValueItem.findMany({
+    where: {
+      baseValueSetId,
+      key: { contains: ":MARGEN:" },
+    },
+    select: { key: true, valueText: true },
+  });
+  return billingMonthsFromItems([...metadata, ...margins]);
 }

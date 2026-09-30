@@ -3,6 +3,9 @@ import { GET } from "../../../../app/api/v1/internal/cups/lookup/route";
 
 const findSimulationsMock = jest.fn();
 const findVersionsMock = jest.fn();
+const queryRawMock = jest.fn();
+const apiModeMock = jest.fn();
+jest.mock("@/infrastructure/database/databaseMode", () => ({ isSupabaseApiMode: () => apiModeMock() }));
 
 jest.mock("@/application/middleware/auth", () => ({
   requireAuth: jest.fn().mockResolvedValue({
@@ -24,6 +27,7 @@ jest.mock("@/application/services/simulationService", () => ({
 
 jest.mock("@/infrastructure/database/prisma", () => ({
   prisma: {
+    $queryRaw: (...args: unknown[]) => queryRawMock(...args),
     simulation: {
       findMany: (...args: unknown[]) => findSimulationsMock(...args),
     },
@@ -33,10 +37,12 @@ jest.mock("@/infrastructure/database/prisma", () => ({
   },
 }));
 
+beforeEach(() => {
+  jest.clearAllMocks();
+  apiModeMock.mockReturnValue(true);
+});
+
 describe("CUPS lookup in Supabase API compatible mode", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
 
   it("joins versions to simulations without relying on embedded relations", async () => {
     findSimulationsMock.mockResolvedValue([
@@ -96,4 +102,29 @@ describe("CUPS lookup in Supabase API compatible mode", () => {
     expect(body.data.items).toEqual([]);
     expect(findVersionsMock).not.toHaveBeenCalled();
   });
+});
+
+it("projects client data in direct mode, preserves older distinct CUPS and newest duplicates", async () => {
+  apiModeMock.mockReturnValue(false);
+  findSimulationsMock.mockResolvedValue([{ id: "authorized", clientId: "client-1", status: "DRAFT", updatedAt: new Date("2026-09-01") }]);
+  const row = (cups: string, name: string, simulationId = "authorized") => ({ simulationId, payloadJson: { electricity: { clientData: { cups, nombreTitular: name } } } });
+  queryRawMock.mockResolvedValue([row(" es001 ", "Newest"), row("ES001", "Older"), row("ES002", "Historic"), row("ES003", "Hidden", "unauthorized"), { simulationId: "authorized", payloadJson: { electricity: { clientData: null } } }]);
+  const response = await GET(new NextRequest("http://localhost/api/v1/internal/cups/lookup?clientId=client-1"));
+  const body = await response.json();
+  expect(body.data.items.map((item: any) => [item.cups, item.nombreTitular])).toEqual([["ES001", "Newest"], ["ES002", "Historic"]]);
+  expect(findVersionsMock).not.toHaveBeenCalled();
+  const query = queryRawMock.mock.calls[0][0];
+  expect(query.values).toEqual(["authorized"]);
+  expect(query.sql).toContain('"payloadJson" #>');
+  expect(query.sql).toContain('ORDER BY "createdAt" DESC');
+  expect(findSimulationsMock).toHaveBeenCalledWith(expect.objectContaining({ where: { agencyId: "agency-1", isDeleted: false, clientId: "client-1" } }));
+});
+
+it("skips the direct version query when no authorized simulations exist", async () => {
+  apiModeMock.mockReturnValue(false);
+  queryRawMock.mockClear();
+  findSimulationsMock.mockResolvedValue([]);
+  const response = await GET(new NextRequest("http://localhost/api/v1/internal/cups/lookup"));
+  expect((await response.json()).data.items).toEqual([]);
+  expect(queryRawMock).not.toHaveBeenCalled();
 });

@@ -23,9 +23,11 @@ interface VersionCache {
 declare global {
   // eslint-disable-next-line no-var
   var __axpoAppVersionCache: VersionCache | null;
+  var __axpoAppVersionLoad: Promise<void> | null;
 }
 
 globalThis.__axpoAppVersionCache ??= null;
+globalThis.__axpoAppVersionLoad ??= null;
 
 /** Returns the currently cached version (sync). Falls back to FALLBACK_VERSION. */
 export function getCachedAppVersion(): string {
@@ -40,6 +42,8 @@ export function getLoadedAppVersion(): string | null {
 /** Clears the cache so the next `warmAppVersionCache()` call re-fetches from DB. */
 export function invalidateAppVersionCache(): void {
   globalThis.__axpoAppVersionCache = null;
+  // An older pending read must not repopulate an explicitly invalidated cache.
+  globalThis.__axpoAppVersionLoad = null;
 }
 
 /**
@@ -53,15 +57,30 @@ export async function warmAppVersionCache(): Promise<void> {
   const cache = globalThis.__axpoAppVersionCache;
   if (cache && now - cache.loadedAt < CACHE_TTL_MS) return;
 
+  if (globalThis.__axpoAppVersionLoad) return globalThis.__axpoAppVersionLoad;
+
+  let pending!: Promise<void>;
+  pending = (async () => {
+    try {
+      const config = await prisma.systemConfig.findFirst({
+        select: { appVersion: true },
+      });
+      if (globalThis.__axpoAppVersionLoad === pending) {
+        globalThis.__axpoAppVersionCache = {
+          version: config?.appVersion ?? FALLBACK_VERSION,
+          loadedAt: now,
+        };
+      }
+    } catch {
+      // On DB error, keep existing cache (or keep fallback); don't crash.
+    }
+  })();
+  globalThis.__axpoAppVersionLoad = pending;
   try {
-    const config = await prisma.systemConfig.findFirst({
-      select: { appVersion: true },
-    });
-    globalThis.__axpoAppVersionCache = {
-      version: config?.appVersion ?? FALLBACK_VERSION,
-      loadedAt: now,
-    };
-  } catch {
-    // On DB error, keep existing cache (or keep fallback); don't crash.
+    await pending;
+  } finally {
+    if (globalThis.__axpoAppVersionLoad === pending) {
+      globalThis.__axpoAppVersionLoad = null;
+    }
   }
 }

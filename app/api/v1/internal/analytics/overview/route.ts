@@ -1,3 +1,4 @@
+import { analyticsPayloadSummaries } from "@/application/analytics/payloadSummaries";
 import { resolveAnalyticsPeriod } from "@/lib/analyticsPeriod";
 import { NextRequest } from "next/server";
 import { UserRole } from "@/domain/types";
@@ -66,58 +67,54 @@ const buildApiOverview = async (input: {
   elevated: boolean;
 }) => {
   const previousSince = new Date(input.since.getTime() - input.days * 86_400_000);
-  const simulations = await prisma.simulation.findMany({
-    where: {
-      isDeleted: false,
-      createdAt: { gte: previousSince, lt: input.until },
-      ...(input.filterAgencyId ? { agencyId: input.filterAgencyId } : {}),
-    },
-    select: {
-      id: true,
-      agencyId: true,
-      ownerUserId: true,
-      status: true,
-      sharedVia: true,
-      createdAt: true,
-      versions: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { payloadJson: true },
+  const [simulations, sharedCandidates] = await Promise.all([
+    prisma.simulation.findMany({
+      where: {
+        isDeleted: false,
+        createdAt: { gte: previousSince, lt: input.until },
+        ...(input.filterAgencyId ? { agencyId: input.filterAgencyId } : {}),
       },
-      accessAttempts: {
-        select: {
-          success: true,
-          createdAt: true,
-          simulationId: true,
+      select: {
+        id: true,
+        agencyId: true,
+        ownerUserId: true,
+        status: true,
+        sharedVia: true,
+        createdAt: true,
+        accessAttempts: {
+          select: {
+            success: true,
+            createdAt: true,
+            simulationId: true,
+          },
         },
       },
-    },
-  });
-  const sharedCandidates = await prisma.simulation.findMany({
-    where: {
-      isDeleted: false,
-      sharedAt: { gte: previousSince, lt: input.until },
-      ...(input.filterAgencyId ? { agencyId: input.filterAgencyId } : {}),
-    },
-    select: {
-      id: true,
-      sharedAt: true,
-      sharedVia: true,
-      accessAttempts: {
-        select: { success: true },
+    }),
+    prisma.simulation.findMany({
+      where: {
+        isDeleted: false,
+        sharedAt: { gte: previousSince, lt: input.until },
+        ...(input.filterAgencyId ? { agencyId: input.filterAgencyId } : {}),
       },
-      versions: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { payloadJson: true },
+      select: {
+        id: true,
+        sharedAt: true,
+        sharedVia: true,
+        accessAttempts: {
+          select: { success: true },
+        },
       },
-    },
-  });
+    }),
+  ]);
+
+  const payloads = await analyticsPayloadSummaries([
+    ...new Set([...simulations, ...sharedCandidates].map(simulation => simulation.id)),
+  ]);
 
   const filteredSimulations = simulations.filter((simulation) => {
     if (!input.energyTypeFilter) return true;
     return (
-      payloadEnergyType(simulation.versions[0]?.payloadJson) ===
+      payloadEnergyType(payloads.get(simulation.id)) ===
       input.energyTypeFilter
     );
   });
@@ -128,7 +125,7 @@ const buildApiOverview = async (input: {
     (simulation) => simulation.createdAt >= previousSince && simulation.createdAt < input.since,
   );
   const filteredShared = sharedCandidates.filter((simulation) =>
-    !input.energyTypeFilter || payloadEnergyType(simulation.versions[0]?.payloadJson) === input.energyTypeFilter,
+    !input.energyTypeFilter || payloadEnergyType(payloads.get(simulation.id)) === input.energyTypeFilter,
   );
   const periodShared = filteredShared.filter(
     (simulation) => simulation.sharedAt && simulation.sharedAt >= input.since,
@@ -138,15 +135,11 @@ const buildApiOverview = async (input: {
   );
   const periodAccess = periodSimulations.flatMap((item) => item.accessAttempts);
   const simulationIds = periodShared.filter((item) => item.sharedVia === "EMAIL").map((item) => item.id);
-  const trackedEmails = await findTrackedEmailsForSimulations({
-    simulationIds,
-    sentAt: { gte: input.since, lt: input.until },
-  });
   const previousSimulationIds = previousShared.filter((item) => item.sharedVia === "EMAIL").map((item) => item.id);
-  const previousEmails = await findTrackedEmailsForSimulations({
-    simulationIds: previousSimulationIds,
-    sentAt: { gte: previousSince, lt: input.since },
-  });
+  const [trackedEmails, previousEmails] = await Promise.all([
+    findTrackedEmailsForSimulations({ simulationIds, sentAt: { gte: input.since, lt: input.until } }),
+    findTrackedEmailsForSimulations({ simulationIds: previousSimulationIds, sentAt: { gte: previousSince, lt: input.since } }),
+  ]);
 
   const recentAccess = await prisma.accessAttempt.findMany({
     where: { createdAt: { gte: input.since, lt: input.until } },
@@ -198,7 +191,7 @@ const buildApiOverview = async (input: {
   const tariffCounts = new Map<string, number>();
   const consumptions: number[] = [];
   for (const simulation of periodSimulations) {
-    const payload = simulation.versions[0]?.payloadJson;
+    const payload = payloads.get(simulation.id);
     const energyType = payloadEnergyType(payload);
     const tariff = payloadTariff(payload);
     const consumption = payloadConsumption(payload);
@@ -448,25 +441,22 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       }
     : { simulation: { createdAt: { gte: since, lt: until }, ...energyTypeIdFilter } };
 
+  const [currentSimulationIds, previousSimulationIds] = await Promise.all([
+    prisma.simulation.findMany({ where: { ...sharedPeriodFilter, sharedVia: "EMAIL" }, select: { id: true } }).then(rows => rows.map(row => row.id)),
+    prisma.simulation.findMany({ where: { ...previousSharedPeriodFilter, sharedVia: "EMAIL" }, select: { id: true } }).then(rows => rows.map(row => row.id)),
+  ]);
   const simulationEmailFilter = {
-    relatedSimulationId: { in: await prisma.simulation.findMany({
-      where: { ...sharedPeriodFilter, sharedVia: "EMAIL" },
-      select: { id: true },
-    }).then((rows) => rows.map((row) => row.id)) },
+    relatedSimulationId: { in: currentSimulationIds },
     sentAt: { gte: since, lt: until },
     status: "sent",
   };
-  const previousSimulationIds = await prisma.simulation.findMany({
-    where: { ...previousSharedPeriodFilter, sharedVia: "EMAIL" },
-    select: { id: true },
-  }).then((rows) => rows.map((row) => row.id));
   const previousEmailFilter = {
     relatedSimulationId: { in: previousSimulationIds },
     sentAt: { gte: previousSince, lt: since },
     status: "sent" as const,
   };
 
-  const [
+  const [[
     totalSimulations,
     sharedSimulations,
     emailSharedSimulations,
@@ -483,79 +473,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     byUserRaw,
     activeAgencyRows,
     activeUserRows,
-  ] = await Promise.all([
-    prisma.simulation.count({ where: simulationPeriodFilter }),
-    prisma.simulation.count({
-      where: sharedPeriodFilter,
-    }),
-    // Only simulations sent via email can be "opened" by the client —
-    // PDF/download shares will never register an open, so email-sent is the
-    // correct denominator for open-rate calculations.
-    prisma.simulation.count({
-      where: {
-        ...sharedPeriodFilter,
-        sharedVia: "EMAIL",
-      },
-    }),
-    prisma.emailLog.count({ where: simulationEmailFilter }),
-    prisma.emailLog.count({
-      where: { ...simulationEmailFilter, openedAt: { not: null } },
-    }),
-    prisma.emailLog.aggregate({
-      where: simulationEmailFilter,
-      _sum: { openCount: true },
-    }),
-    prisma.simulation.count({
-      where: { ...simulationPeriodFilter, status: "EXPIRED" },
-    }),
-    prisma.simulation.count({
-      where: { ...simulationPeriodFilter, status: "DRAFT" },
-    }),
-    prisma.accessAttempt.count({ where: accessOnPeriodSimsFilter }),
-    // "Opened on web" = distinct email-shared simulations from the period
-    // that a client accessed successfully. PDF shares cannot be opened on web.
-    prisma.simulation.count({
-      where: {
-        ...sharedPeriodFilter,
-        sharedVia: "EMAIL",
-        accessAttempts: { some: { success: true } },
-      },
-    }),
-    isElevatedRole(auth.role) && !filterAgencyId
-      ? prisma.simulation.groupBy({
-          by: ["agencyId"],
-          where: simulationPeriodFilter,
-          _count: { _all: true },
-        })
-      : Promise.resolve(null),
-    prisma.simulation.findMany({
-      where: { ...simulationFilter, createdAt: { gte: since, lt: until } },
-      select: { createdAt: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.accessAttempt.findMany({
-      where: { ...accessFilter, createdAt: { gte: since, lt: until } },
-      select: { createdAt: true, success: true, simulationId: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.simulation.groupBy({
-      by: ["ownerUserId"],
-      where: simulationPeriodFilter,
-      _count: { _all: true },
-      orderBy: { _count: { ownerUserId: "desc" } },
-      take: 10,
-    }),
-    prisma.simulation.groupBy({
-      by: ["agencyId"],
-      where: simulationPeriodFilter,
-    }),
-    prisma.simulation.groupBy({
-      by: ["ownerUserId"],
-      where: simulationPeriodFilter,
-    }),
-  ]);
-
-  const [
+  ], [
     previousTotalSimulations,
     previousSharedSimulations,
     previousEmailSharedSimulations,
@@ -565,22 +483,95 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     previousEmailOpenAggregate,
     previousAgencyRows,
     previousUserRows,
-  ] = await Promise.all([
-    prisma.simulation.count({ where: previousSimulationPeriodFilter }),
-    prisma.simulation.count({ where: previousSharedPeriodFilter }),
-    prisma.simulation.count({ where: { ...previousSharedPeriodFilter, sharedVia: "EMAIL" } }),
-    prisma.emailLog.count({ where: previousEmailFilter }),
-    prisma.emailLog.count({ where: { ...previousEmailFilter, openedAt: { not: null } } }),
-    prisma.simulation.count({
-      where: {
-        ...previousSharedPeriodFilter,
-        sharedVia: "EMAIL",
-        accessAttempts: { some: { success: true } },
-      },
-    }),
-    prisma.emailLog.aggregate({ where: previousEmailFilter, _sum: { openCount: true } }),
-    prisma.simulation.groupBy({ by: ["agencyId"], where: previousSimulationPeriodFilter }),
-    prisma.simulation.groupBy({ by: ["ownerUserId"], where: previousSimulationPeriodFilter }),
+  ]] = await Promise.all([
+    Promise.all([
+      prisma.simulation.count({ where: simulationPeriodFilter }),
+      prisma.simulation.count({
+        where: sharedPeriodFilter,
+      }),
+      // Only simulations sent via email can be "opened" by the client —
+      // PDF/download shares will never register an open, so email-sent is the
+      // correct denominator for open-rate calculations.
+      prisma.simulation.count({
+        where: {
+          ...sharedPeriodFilter,
+          sharedVia: "EMAIL",
+        },
+      }),
+      prisma.emailLog.count({ where: simulationEmailFilter }),
+      prisma.emailLog.count({
+        where: { ...simulationEmailFilter, openedAt: { not: null } },
+      }),
+      prisma.emailLog.aggregate({
+        where: simulationEmailFilter,
+        _sum: { openCount: true },
+      }),
+      prisma.simulation.count({
+        where: { ...simulationPeriodFilter, status: "EXPIRED" },
+      }),
+      prisma.simulation.count({
+        where: { ...simulationPeriodFilter, status: "DRAFT" },
+      }),
+      prisma.accessAttempt.count({ where: accessOnPeriodSimsFilter }),
+      // "Opened on web" = distinct email-shared simulations from the period
+      // that a client accessed successfully. PDF shares cannot be opened on web.
+      prisma.simulation.count({
+        where: {
+          ...sharedPeriodFilter,
+          sharedVia: "EMAIL",
+          accessAttempts: { some: { success: true } },
+        },
+      }),
+      isElevatedRole(auth.role) && !filterAgencyId
+        ? prisma.simulation.groupBy({
+            by: ["agencyId"],
+            where: simulationPeriodFilter,
+            _count: { _all: true },
+          })
+        : Promise.resolve(null),
+      prisma.simulation.findMany({
+        where: { ...simulationFilter, createdAt: { gte: since, lt: until } },
+        select: { createdAt: true },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.accessAttempt.findMany({
+        where: { ...accessFilter, createdAt: { gte: since, lt: until } },
+        select: { createdAt: true, success: true, simulationId: true },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.simulation.groupBy({
+        by: ["ownerUserId"],
+        where: simulationPeriodFilter,
+        _count: { _all: true },
+        orderBy: { _count: { ownerUserId: "desc" } },
+        take: 10,
+      }),
+      prisma.simulation.groupBy({
+        by: ["agencyId"],
+        where: simulationPeriodFilter,
+      }),
+      prisma.simulation.groupBy({
+        by: ["ownerUserId"],
+        where: simulationPeriodFilter,
+      }),
+    ]),
+    Promise.all([
+      prisma.simulation.count({ where: previousSimulationPeriodFilter }),
+      prisma.simulation.count({ where: previousSharedPeriodFilter }),
+      prisma.simulation.count({ where: { ...previousSharedPeriodFilter, sharedVia: "EMAIL" } }),
+      prisma.emailLog.count({ where: previousEmailFilter }),
+      prisma.emailLog.count({ where: { ...previousEmailFilter, openedAt: { not: null } } }),
+      prisma.simulation.count({
+        where: {
+          ...previousSharedPeriodFilter,
+          sharedVia: "EMAIL",
+          accessAttempts: { some: { success: true } },
+        },
+      }),
+      prisma.emailLog.aggregate({ where: previousEmailFilter, _sum: { openCount: true } }),
+      prisma.simulation.groupBy({ by: ["agencyId"], where: previousSimulationPeriodFilter }),
+      prisma.simulation.groupBy({ by: ["ownerUserId"], where: previousSimulationPeriodFilter }),
+    ]),
   ]);
 
   // ── Simulation content metrics (raw SQL — JSON payload extraction) ────────
@@ -591,14 +582,15 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const [energyTypeSplitRaw, tariffBreakdownRaw, avgConsumptionRaw] =
     await Promise.all([
       prisma.$queryRaw<Array<{ type: string | null; count: number }>>`
-        WITH latest AS (
-          SELECT DISTINCT ON ("simulationId") "simulationId", "payloadJson"
-          FROM simulation_versions
-          ORDER BY "simulationId", "createdAt" DESC
-        )
         SELECT latest."payloadJson"->>'type' AS type, COUNT(*)::int AS count
-        FROM latest
-        INNER JOIN simulations s ON s.id = latest."simulationId"
+        FROM simulations s
+        CROSS JOIN LATERAL (
+          SELECT v."payloadJson"
+          FROM simulation_versions v
+          WHERE v."simulationId" = s.id
+          ORDER BY v."createdAt" DESC
+          LIMIT 1
+        ) latest
         WHERE s."isDeleted" = false
           AND s."createdAt" >= ${since}
           AND s."createdAt" < ${until}
@@ -607,19 +599,20 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         GROUP BY latest."payloadJson"->>'type'
       `,
       prisma.$queryRaw<Array<{ tariff: string | null; count: number }>>`
-        WITH latest AS (
-          SELECT DISTINCT ON ("simulationId") "simulationId", "payloadJson"
-          FROM simulation_versions
-          ORDER BY "simulationId", "createdAt" DESC
-        )
         SELECT
           COALESCE(
             latest."payloadJson"->'electricity'->>'tarifaAcceso',
             latest."payloadJson"->'gas'->>'tarifaAcceso'
           ) AS tariff,
           COUNT(*)::int AS count
-        FROM latest
-        INNER JOIN simulations s ON s.id = latest."simulationId"
+        FROM simulations s
+        CROSS JOIN LATERAL (
+          SELECT v."payloadJson"
+          FROM simulation_versions v
+          WHERE v."simulationId" = s.id
+          ORDER BY v."createdAt" DESC
+          LIMIT 1
+        ) latest
         WHERE s."isDeleted" = false
           AND s."createdAt" >= ${since}
           AND s."createdAt" < ${until}
@@ -629,11 +622,6 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         ORDER BY count DESC
       `,
       prisma.$queryRaw<Array<{ avg_consumption: number | null }>>`
-        WITH latest AS (
-          SELECT DISTINCT ON ("simulationId") "simulationId", "payloadJson"
-          FROM simulation_versions
-          ORDER BY "simulationId", "createdAt" DESC
-        )
         SELECT AVG(
           CASE
             WHEN latest."payloadJson"->>'type' = 'ELECTRICITY'
@@ -643,8 +631,14 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
             ELSE NULL
           END
         ) AS avg_consumption
-        FROM latest
-        INNER JOIN simulations s ON s.id = latest."simulationId"
+        FROM simulations s
+        CROSS JOIN LATERAL (
+          SELECT v."payloadJson"
+          FROM simulation_versions v
+          WHERE v."simulationId" = s.id
+          ORDER BY v."createdAt" DESC
+          LIMIT 1
+        ) latest
         WHERE s."isDeleted" = false
           AND s."createdAt" >= ${since}
           AND s."createdAt" < ${until}

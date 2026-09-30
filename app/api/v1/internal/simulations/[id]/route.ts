@@ -1,3 +1,4 @@
+import { ServerTiming } from "@/application/middleware/serverTiming";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { SimulationStatus, UserRole } from "@/domain/types";
@@ -94,42 +95,52 @@ export const GET = withErrorHandler(
     request: NextRequest,
     context?: { params?: Record<string, string> },
   ) => {
-    const auth = await requireAuth(request);
-    await assertPermission(auth, "section.simulations");
+    const timing = new ServerTiming();
+    const auth = await timing.measure("auth", () => requireAuth(request));
+    await timing.measure("permission", () => assertPermission(auth, "section.simulations"));
 
     const id = context?.params?.id;
     if (!id) {
       throw new ValidationError("Simulation id parameter is required");
     }
 
-    const simulation = await SimulationService.assertSimulationAccess(auth, id);
+    const simulation = await timing.measure("access", () => SimulationService.assertSimulationAccess(auth, id));
 
-    // Each version is a complete payload snapshot (including all calculated
-    // product results). The detail screen only needs current state, so loading
-    // up to 200 snapshots made this endpoint grow dramatically over time.
-    // Version/history views use their own endpoints.
-    const versions = await prisma.simulationVersion.findMany({
-      where: { simulationId: id },
-      orderBy: { createdAt: "desc" },
-      take: 1,
-      select: {
-        id: true,
-        payloadJson: true,
-        baseValueSetId: true,
-        createdBy: true,
-        createdAt: true,
-      },
-    });
+    const clientId = simulation.clientId;
 
-    const resolvedBaseValueSetId =
-      versions[0]?.baseValueSetId ??
-      await resolveDefaultBaseValueSetId(simulation.agency.isTlv);
+    // Independent detail reads must not wait for the saved version or its
+    // billing-month lookup. Keep authorization ahead of every detail query.
+    const [{ versions, billingMonths }, client, ownerUser, agency] = await Promise.all([
+      (async () => {
+        // Each version is a complete payload snapshot (including all calculated
+        // product results). The detail screen only needs current state, so loading
+        // up to 200 snapshots made this endpoint grow dramatically over time.
+        // Version/history views use their own endpoints.
+        const versions = await timing.measure("version", () => prisma.simulationVersion.findMany({
+          where: { simulationId: id },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            id: true,
+            payloadJson: true,
+            baseValueSetId: true,
+            createdBy: true,
+            createdAt: true,
+          },
+        }));
 
-    // Enrich the response and load the compact month list concurrently.
-    const [client, ownerUser, agency, billingMonths] = await Promise.all([
-      simulation.clientId
-        ? prisma.client.findUnique({
-            where: { id: simulation.clientId },
+        const resolvedBaseValueSetId =
+          versions[0]?.baseValueSetId ??
+          await timing.measure("default_set", () => resolveDefaultBaseValueSetId(simulation.agency.isTlv));
+
+        const billingMonths = resolvedBaseValueSetId
+          ? await timing.measure("billing_months", () => getBaseValueBillingMonths(resolvedBaseValueSetId))
+          : [];
+        return { versions, billingMonths };
+      })(),
+      clientId
+        ? timing.measure("client", () => prisma.client.findUnique({
+            where: { id: clientId },
             select: {
               id: true,
               name: true,
@@ -142,9 +153,9 @@ export const GET = withErrorHandler(
               country: true,
               language: true,
             },
-          })
+          }))
         : null,
-      prisma.user.findUnique({
+      timing.measure("owner", () => prisma.user.findUnique({
         where: { id: simulation.ownerUserId },
         select: {
           id: true,
@@ -156,14 +167,11 @@ export const GET = withErrorHandler(
           agencyId: true,
           pinCurrent: true,
         },
-      }),
-      prisma.agency.findUnique({
+      })),
+      timing.measure("agency", () => prisma.agency.findUnique({
         where: { id: simulation.agencyId },
         select: { id: true, name: true, isTlv: true },
-      }),
-      resolvedBaseValueSetId
-        ? getBaseValueBillingMonths(resolvedBaseValueSetId)
-        : Promise.resolve([]),
+      })),
     ]);
 
     const mergedPayload = mergeVersionPayloads(versions);
@@ -190,10 +198,12 @@ export const GET = withErrorHandler(
       ({ payloadJson: _payloadJson, ...version }) => version,
     );
 
-    return ResponseHandler.ok(
+    const response = ResponseHandler.ok(
       { simulation: simulationWithPayload, versions: versionSummaries },
       200,
     );
+    timing.append(response.headers, "detail_total");
+    return response;
   },
 );
 

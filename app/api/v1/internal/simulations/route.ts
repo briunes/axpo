@@ -1,3 +1,4 @@
+import { listVersionSummaries } from "@/application/module-init/listVersionSummaries";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { UserRole, SimulationStatus } from "@/domain/types";
@@ -404,14 +405,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         updatedAt: true,
         ownerUser: { select: { id: true, fullName: true, email: true } },
         client: { select: { id: true, name: true } },
-        versions: {
-          orderBy: { createdAt: "desc" },
-          // The list only needs a compact payload summary (type, CUPS, selectedOffer).
-          // A small recent window preserves legacy selectedOffer patch versions while
-          // avoiding deserializing large historical calculation payloads for every row.
-          take: 5,
-          select: { payloadJson: true },
-        },
+
       },
       orderBy: { [orderBy]: sortDir },
       ...(postFilterPayload
@@ -422,15 +416,16 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   ]);
 
   // Attach payloadJson and extract CUPS from latest version
+  const versionSummaries = await listVersionSummaries(simulations.map(sim => sim.id));
   const allItems = simulations.map((sim) => {
-    const payload = mergeVersionPayloads(sim.versions);
+    const payload = mergeVersionPayloads(versionSummaries.get(sim.id) ?? []);
     const payloadSummary = buildListPayloadSummary(payload);
     const cupsNumber =
       getNestedString(payloadSummary, ["electricity", "clientData", "cups"]) ||
       getNestedString(payloadSummary, ["gas", "clientData", "cups"]) ||
       null;
 
-    const { versions, ...simWithoutVersions } = sim;
+    const simWithoutVersions = sim;
     return {
       ...simWithoutVersions,
       hasPublicToken: Boolean(sim.publicToken),

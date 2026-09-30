@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import Skeleton from "@mui/material/Skeleton";
 import type { SessionState } from "../../lib/authSession";
 import type { AnalyticsActions } from "../hooks/useAnalytics";
-import { isAdmin, fetchAnalyticsForAgency, listAgencies } from "../../lib/internalApi";
+import { isAdmin, fetchAnalyticsForAgency } from "../../lib/internalApi";
 import type { AnalyticsOverview } from "../../lib/internalApi";
 import { EmptyState, LoadingState } from "../shared";
 import { FormSelect } from "../ui/FormSelect";
@@ -283,18 +283,10 @@ export function AnalyticsModule({ session, actions, onNotify, onActionButtons }:
   const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
   const [agencyAnalytics, setAgencyAnalytics] = useState<AnalyticsOverview | null>(null);
   const [agencyLoading, setAgencyLoading] = useState(false);
-  const [allAgencies, setAllAgencies] = useState<FormSelectOption[]>([]);
-
-
-  // Fetch all agencies once for the selector
-  useEffect(() => {
-    if (!isAdminView) return;
-    listAgencies(session.token, { pageSize: 500 })
-      .then((res) =>
-        setAllAgencies(res.items.map((a) => ({ value: a.id, label: a.name })))
-      )
-      .catch(() => { });
-  }, [isAdminView]);
+  // The overview already includes every visible agency, including empty ones.
+  const allAgencies: FormSelectOption[] = (actions.analytics?.byAgency ?? []).map(
+    agency => ({ value: agency.agencyId, label: agency.agencyName }),
+  );
 
   useEffect(() => {
     if (!selectedAgencyId) { setAgencyAnalytics(null); return; }
