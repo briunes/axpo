@@ -477,12 +477,6 @@ describe("parseAxpoExcel", () => {
       ["1P_PLUS_SSCC_LIBRES:N1", 130.41],
       ["1P_PLUS_SSCC_LIBRES:N2", 122.3],
       ["1P_PLUS_SSCC_LIBRES:N3", 112.67],
-      ["ESTABLE_TALLERES:N1", 30.35],
-      ["ESTABLE_TALLERES:N2", 30.35],
-      ["ESTABLE_TALLERES:N3", 30.35],
-      ["ESTABLE_PLUS_TALLERES:N1", 30.35],
-      ["ESTABLE_PLUS_TALLERES:N2", 30.35],
-      ["ESTABLE_PLUS_TALLERES:N3", 30.35],
     ] as const) {
       expect(
         results.find((result) => result.productKey === productKey)
@@ -498,8 +492,13 @@ describe("parseAxpoExcel", () => {
       balearesResults.find((result) => result.productKey === "DINAMICA:N1"),
     ).toBeUndefined();
     expect(peninsulaResults).toHaveLength(34);
-    expect(results).toHaveLength(34);
-    expect(balearesResults).toHaveLength(18);
+    for (const islandResults of [results, balearesResults]) {
+      expect(
+        islandResults.some((result) => result.productKey.includes("TALLERES")),
+      ).toBe(false);
+    }
+    expect(results).toHaveLength(28);
+    expect(balearesResults).toHaveLength(12);
   });
 
   it("extracts profile prices when Precio TE uses intermediate profile cells", async () => {
