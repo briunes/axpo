@@ -261,6 +261,17 @@ function isEligibleProduct(
   inputs: ElectricityInputs,
   definition: ProductDefinition,
 ): boolean {
+  // Talleres prices are only defined for Peninsula in the workbook. Island
+  // imports can contain zero prices for these unavailable products, so price
+  // presence alone cannot establish eligibility (including for existing imports).
+  if (
+    (definition.productKey === "ESTABLE_TALLERES" ||
+      definition.productKey === "ESTABLE_PLUS_TALLERES") &&
+    inputs.zonaGeografica !== "Peninsula"
+  ) {
+    return false;
+  }
+
   const annualConsumption = getAnnualConsumption(inputs);
   return isProductEligible(definition, { annualConsumption });
 }
