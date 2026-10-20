@@ -5,6 +5,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Modal,
+  CircularProgress,
   Divider,
   Button,
   Badge,
@@ -1006,6 +1008,39 @@ export function SimulationsModule({ session, actions, agencies, clients, users, 
 
   return (
     <Stack spacing={2} sx={{ height: '100%', minHeight: 0 }}>
+      <Modal
+        open={Boolean(busyAction?.startsWith("clone-"))}
+        disableEscapeKeyDown
+        aria-label={t("simulationsModule", "duplicating")}
+        sx={{ zIndex: (theme) => theme.zIndex.modal + 1 }}
+        slotProps={{
+          backdrop: {
+            sx: {
+              backgroundColor: "rgba(15, 23, 42, 0.62)",
+              backdropFilter: "blur(2px)",
+            },
+          },
+        }}
+      >
+        <Stack
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("simulationsModule", "duplicating")}
+          tabIndex={-1}
+          spacing={2}
+          alignItems="center"
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            color: "primary.main",
+            outline: "none",
+          }}
+        >
+          <CircularProgress color="inherit" size={44} thickness={4} aria-label={t("simulationsModule", "duplicating")} />
+        </Stack>
+      </Modal>
       <DataTable<SimulationItem>
         tableId="simulations"
         columns={columns}

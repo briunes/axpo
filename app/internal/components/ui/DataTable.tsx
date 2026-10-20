@@ -1398,7 +1398,7 @@ export function DataTable<T extends { id: string }>({
               sortModel={sortModel}
               onSortModelChange={handleSortModelChange}
               onRowClick={onRowClick ? (params, event) => {
-                if ((params.row as any).__detailPanelFor) return;
+                if (loading || (params.row as any).__skeleton || (params.row as any).__detailPanelFor) return;
                 const target = event.target as HTMLElement;
                 if (target.closest('a, button, input, select, textarea, [role="button"]')) return;
                 onRowClick(params.row);
@@ -1449,7 +1449,7 @@ export function DataTable<T extends { id: string }>({
                   lineHeight: 1,
                 },
                 '& .MuiDataGrid-row': {
-                  cursor: onRowClick ? 'pointer' : 'default',
+                  cursor: onRowClick && !loading ? 'pointer' : 'default',
                   backgroundColor: tableSurface,
                   borderBottom: '0px solid rgba(0, 0, 0, 0.08)',
                   transition: 'background-color 140ms ease, box-shadow 140ms ease',
