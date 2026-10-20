@@ -1,6 +1,7 @@
 import { CalculationService } from "../calculationService";
 import {
   defaultExcelParserProductConfigs,
+  productDefinitionsFromParserConfigs,
   withMissingDefaultExcelParserProductConfigs,
 } from "@/domain/excelParserProductConfig";
 import type { ElectricityInputs, GasInputs } from "@/domain/types";
@@ -1089,5 +1090,88 @@ describe("CalculationService gas product configuration", () => {
     expect(results.some((item) => item.productKey === "INDEXADO:N1")).toBe(
       false,
     );
+  });
+});
+
+describe("CalculationService Talleres geographic availability", () => {
+  const products = ["ESTABLE_TALLERES", "ESTABLE_PLUS_TALLERES"];
+  const tiers = ["N1", "N2", "N3"];
+
+  function tallerPriceMap(tariff: string) {
+    const entries: Array<{ key: string; valueNumeric: number }> = [];
+    for (const product of products) {
+      for (const tier of tiers) {
+        for (let period = 1; period <= 6; period++) {
+          for (const kind of ["ENERGIA", "POTENCIA"]) {
+            const key = `ELEC:FIJO:${product}:${tier}:${tariff}:P${period}:${kind}`;
+            const value = kind === "ENERGIA" ? 0.1 : 36.5;
+            // Include legacy prices to prove islands cannot borrow them.
+            entries.push({ key, valueNumeric: value });
+            for (const zone of ["PENINSULA", "BALEARES", "CANARIAS"]) {
+              entries.push({
+                key: `${key}:ZONE:${zone}`,
+                valueNumeric: zone === "PENINSULA" ? value : 0,
+              });
+            }
+          }
+        }
+      }
+    }
+    return CalculationService.buildPriceMap(entries);
+  }
+
+  describe.each(["GLOBAL", "AGENCY", "TLV"] as const)("%s scope", (scope) => {
+    it.each(["2.0TD", "3.0TD", "6.1TD"] as const)(
+      "excludes island Talleres offers and retains Peninsula offers for %s",
+      (tariff) => {
+        const inputs = buildInputs(0);
+        inputs.tarifaAcceso = tariff;
+        inputs.facturaActual = 4283.82;
+        inputs.extras = { alquilerEquipoMedida: 11.01 };
+        const map = tallerPriceMap(tariff);
+        // Production supplies definitions from parser configs, not just registry defaults.
+        for (const productDefinitions of [
+          undefined,
+          productDefinitionsFromParserConfigs(
+            defaultExcelParserProductConfigs(scope),
+          ),
+        ]) {
+          const options = { baseValueScope: scope, productDefinitions };
+          for (const zonaGeografica of ["Baleares", "Canarias"] as const) {
+            expect(
+              CalculationService.calculateElectricity(
+                { ...inputs, zonaGeografica },
+                map,
+                options,
+              ),
+            ).toEqual([]);
+          }
+          const peninsula = CalculationService.calculateElectricity(
+            inputs,
+            map,
+            options,
+          );
+          expect(peninsula.map((result) => result.productKey)).toEqual(
+            products.flatMap((product) =>
+              tiers.map((tier) => `${product}:${tier}`),
+            ),
+          );
+          expect(
+            peninsula.every((result) => result.totalFactura > 13.32),
+          ).toBe(true);
+        }
+      },
+    );
+  });
+
+  it("preserves legitimate zero prices for other fixed products in the islands", () => {
+    const map = buildSinglePeriodPriceMap();
+    for (const key of map.keys()) map.set(key, 0);
+    const inputs = buildInputs(0);
+    inputs.zonaGeografica = "Baleares";
+    inputs.extras = { alquilerEquipoMedida: 11.01 };
+    const results = CalculationService.calculateElectricity(inputs, map);
+    expect(results).toHaveLength(3);
+    expect(results.every((result) => result.totalFactura === 13.32)).toBe(true);
   });
 });
