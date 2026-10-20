@@ -6,6 +6,7 @@ import { SimulationService } from "@/application/services/simulationService";
 import { buildIndexedElectricityHistory, latestIndexedHistoryMonth } from "@/lib/indexedElectricityHistory";
 import { selectedIndexedEnergyPrices } from "@/lib/selectedProductEnergyHistory";
 import type { SimulationPayload } from "@/domain/types/simulation";
+import { billingMonthsFromItems, BILLING_MONTH_KEY_PREFIX } from "@/domain/billingMonths";
 
 const PRODUCT_LABELS: Record<string, string> = {
   "ESTABLE:N1": "Estable N1",
@@ -115,7 +116,7 @@ function latestDataMonth(items: { key: string }[]): Date | undefined {
 
 async function loadBaseValueItemsBySetId(
   baseValueSetId: string,
-): Promise<{ key: string; valueNumeric: any }[]> {
+): Promise<{ key: string; valueNumeric: any; valueText: string | null }[]> {
   // Keep this as a top-level query instead of embedding `items` in a
   // BaseValueSet include. In Supabase Data API mode, PostgREST caps embedded
   // relations at 1,000 rows; base-value sets are considerably larger. The
@@ -123,7 +124,7 @@ async function loadBaseValueItemsBySetId(
   // queries, so this returns the complete set in both database modes.
   return prisma.baseValueItem.findMany({
     where: { baseValueSetId },
-    select: { key: true, valueNumeric: true },
+    select: { key: true, valueNumeric: true, valueText: true },
   });
 }
 
@@ -131,7 +132,7 @@ async function loadCommodityBaseValueItems(
   commodity: "ELEC" | "GAS",
   agencyId?: string | null,
   isTlvAgency = false,
-): Promise<{ key: string; valueNumeric: any }[]> {
+): Promise<{ key: string; valueNumeric: any; valueText: string | null }[]> {
   const matchingItems = await prisma.baseValueItem.findMany({
     where: { key: { startsWith: `${commodity}:` } },
     select: { baseValueSetId: true },
@@ -171,7 +172,7 @@ async function loadCommodityBaseValueItems(
 
   return prisma.baseValueItem.findMany({
     where: { baseValueSetId: selectedSet.id },
-    select: { key: true, valueNumeric: true },
+    select: { key: true, valueNumeric: true, valueText: true },
   });
 }
 
@@ -234,7 +235,7 @@ export async function GET(
       null;
 
     // Load base value items
-    let baseValueItems: { key: string; valueNumeric: any }[] = [];
+    let baseValueItems: { key: string; valueNumeric: any; valueText: string | null }[] = [];
     if (baseValueSetId) {
       const bvSet = await prisma.baseValueSet.findUnique({
         where: { id: baseValueSetId },
@@ -459,14 +460,29 @@ export async function GET(
       ? latestDataMonth(baseValueItems.filter((item) => item.key.startsWith("GAS:")))
       : (selectedHistory ? latestIndexedHistoryMonth([selectedHistory]) : undefined)
         ?? latestIndexedHistoryMonth(simulationProducts);
-    const isFixedHistory = selectedHistory && Object.values(selectedHistory.tariffs)
-      .some((periods) => Object.values(periods).some((value) => typeof value === "number"));
+    // The dialog can select any catalogue product, even without a saved offer.
+    const hasFixedHistory = simulationProducts.some((product) => Object.values(product.tariffs)
+      .some((periods) => Object.values(periods).some((value) => typeof value === "number")));
+
+    // Excel's COMPARATIVA LUZ reads the reference months from '.'!W23:W34
+    // for every product, including fixed prices repeated across those months.
+    // Current imports persist that range independently of product/profile/zone
+    // prices. Prefer it to the saved offer or today's calendar; retain the
+    // existing date-window fallback for legacy imports without metadata.
+    const workbookMonths = isGas ? [] : billingMonthsFromItems(
+      baseValueItems.filter((item) => item.key.startsWith(BILLING_MONTH_KEY_PREFIX)),
+    ).reverse().map((key) => {
+      const [year, month] = key.split("-");
+      return { key, label: `${MONTH_NAMES[Number(month) - 1]} ${year.slice(2)}` };
+    });
 
     return NextResponse.json({
       tarifaAcceso,
       perfilCarga,
       products: simulationProducts,
-      months: isGas || isFixedHistory || dataAnchor ? generateLast12Months(dataAnchor) : [],
+      months: workbookMonths.length > 0
+        ? workbookMonths
+        : isGas || hasFixedHistory || dataAnchor ? generateLast12Months(dataAnchor) : [],
       // Gas-specific fields
       isGas,
       gasTarifaAcceso,
