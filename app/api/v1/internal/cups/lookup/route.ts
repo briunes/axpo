@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+import { isSupabaseApiMode } from "@/infrastructure/database/databaseMode";
 import { NextRequest } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
@@ -59,16 +61,27 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     return ResponseHandler.ok({ items: [] }, 200);
   }
 
-  const versions = await prisma.simulationVersion.findMany({
-    where: {
-      simulationId: { in: Array.from(simulationById.keys()) },
-    },
-    orderBy: { createdAt: "desc" },
-    select: {
-      payloadJson: true,
-      simulationId: true,
-    },
-  });
+  const simulationIds = Array.from(simulationById.keys());
+  // Autocomplete only consumes clientData. Avoid transferring and parsing every
+  // historical calculation result over the remote database connection. Keep all
+  // versions and the existing ordering so older distinct CUPS remain available.
+  const versions = isSupabaseApiMode()
+    ? await prisma.simulationVersion.findMany({
+        where: { simulationId: { in: simulationIds } },
+        orderBy: { createdAt: "desc" },
+        select: { payloadJson: true, simulationId: true },
+      })
+    : await prisma.$queryRaw<Array<{ simulationId: string; payloadJson: unknown }>>(
+        Prisma.sql`
+          SELECT "simulationId",
+            jsonb_build_object('electricity', jsonb_build_object(
+              'clientData', "payloadJson" #> '{electricity,clientData}'
+            )) AS "payloadJson"
+          FROM "simulation_versions"
+          WHERE "simulationId" IN (${Prisma.join(simulationIds)})
+          ORDER BY "createdAt" DESC
+        `,
+      );
 
   // Extract clientData from each version's payload, deduplicate by CUPS
   const seen = new Map<

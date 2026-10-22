@@ -479,6 +479,57 @@ function ProductTable({ products, facturaActual, selectedOffer, onOfferClick, co
     );
 }
 
+// Keep the component identity stable so committing an input does not remount
+// the fields and interrupt native Tab / Shift+Tab navigation.
+function AccordionSection({
+    expanded,
+    onChange,
+    title,
+    children,
+}: {
+    expanded: boolean;
+    onChange: (expanded: boolean) => void;
+    title: React.ReactNode;
+    children: React.ReactNode;
+}) {
+    return (
+        <Accordion
+            disableGutters
+            elevation={0}
+            expanded={expanded}
+            onChange={(_, nextExpanded) => onChange(nextExpanded)}
+            sx={{
+                mt: 1,
+                border: "1px solid",
+                borderColor: "color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent)",
+                borderRadius: "9px !important",
+                bgcolor: "color-mix(in srgb, var(--scheme-surface-raised) 70%, var(--scheme-surface-raised-subtle))",
+                "&::before": { display: "none" },
+                overflow: "hidden",
+            }}
+        >
+            <AccordionSummary
+                expandIcon={<ExpandMoreIcon fontSize="small" />}
+                sx={{
+                    minHeight: 36,
+                    px: 1.25,
+                    "&.Mui-expanded": { minHeight: 36 },
+                    "& .MuiAccordionSummary-content": {
+                        my: 0.75,
+                        fontSize: 12,
+                        fontWeight: 700,
+                    },
+                }}
+            >
+                {title}
+            </AccordionSummary>
+            <AccordionDetails sx={{ px: 1.25, pt: 0, pb: 1.25 }}>
+                {children}
+            </AccordionDetails>
+        </Accordion>
+    );
+}
+
 function EditableInputPanel({
     facturaActual,
     tarifaAcceso,
@@ -541,56 +592,6 @@ function EditableInputPanel({
         if (!isNaN(numValue) && onUpdatePeriod) {
             onUpdatePeriod(type, period, numValue);
         }
-    };
-
-    const AccordionSection = ({
-        id,
-        title,
-        children,
-    }: {
-        id: string;
-        title: React.ReactNode;
-        children: React.ReactNode;
-    }) => {
-        const expanded = Boolean(expandedSections[id]);
-        return (
-            <Accordion
-                disableGutters
-                elevation={0}
-                expanded={expanded}
-                onChange={(_, nextExpanded) =>
-                    setExpandedSections((prev) => ({ ...prev, [id]: nextExpanded }))
-                }
-                sx={{
-                    mt: 1,
-                    border: "1px solid",
-                    borderColor: "color-mix(in srgb, var(--scheme-neutral-900) 74%, transparent)",
-                    borderRadius: "9px !important",
-                    bgcolor: "color-mix(in srgb, var(--scheme-surface-raised) 70%, var(--scheme-surface-raised-subtle))",
-                    "&::before": { display: "none" },
-                    overflow: "hidden",
-                }}
-            >
-                <AccordionSummary
-                    expandIcon={<ExpandMoreIcon fontSize="small" />}
-                    sx={{
-                        minHeight: 36,
-                        px: 1.25,
-                        "&.Mui-expanded": { minHeight: 36 },
-                        "& .MuiAccordionSummary-content": {
-                            my: 0.75,
-                            fontSize: 12,
-                            fontWeight: 700,
-                        },
-                    }}
-                >
-                    {title}
-                </AccordionSummary>
-                <AccordionDetails sx={{ px: 1.25, pt: 0, pb: 1.25 }}>
-                    {children}
-                </AccordionDetails>
-            </Accordion>
-        );
     };
 
     return (
@@ -711,7 +712,11 @@ function EditableInputPanel({
 
                 {/* Editable periods */}
                 {energyPeriods && Object.keys(energyPeriods).length > 0 && (
-                    <AccordionSection id="consumption" title={t("simulationOffersCards", "btnConsumption")}>
+                    <AccordionSection
+                        expanded={Boolean(expandedSections["consumption"])}
+                        onChange={(expanded) => setExpandedSections((prev) => ({ ...prev, "consumption": expanded }))}
+                        title={t("simulationOffersCards", "btnConsumption")}
+                    >
                         <div>
                             {Object.entries(energyPeriods).map(([period, value]) => (
                                 <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -731,7 +736,11 @@ function EditableInputPanel({
                 )}
 
                 {powerPeriods && Object.keys(powerPeriods).length > 0 && (
-                    <AccordionSection id="power" title={t("simulationOffersCards", "btnPower")}>
+                    <AccordionSection
+                        expanded={Boolean(expandedSections["power"])}
+                        onChange={(expanded) => setExpandedSections((prev) => ({ ...prev, "power": expanded }))}
+                        title={t("simulationOffersCards", "btnPower")}
+                    >
                         <div>
                             {Object.entries(powerPeriods).map(([period, value]) => (
                                 <div key={period} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -751,7 +760,11 @@ function EditableInputPanel({
                 )}
 
                 {personalizadaIndexPeriods && (Object.keys(personalizadaIndexPeriods.margenEnergia).length > 0 || Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0) && (
-                    <AccordionSection id="personalizada-index" title={t("simulationForm", "sectionPersonalizadaIndex")}>
+                    <AccordionSection
+                        expanded={Boolean(expandedSections["personalizada-index"])}
+                        onChange={(expanded) => setExpandedSections((prev) => ({ ...prev, "personalizada-index": expanded }))}
+                        title={t("simulationForm", "sectionPersonalizadaIndex")}
+                    >
                         <div>
                             {Object.keys(personalizadaIndexPeriods.margenPotencia).length > 0 && (
                                 <>
@@ -790,7 +803,11 @@ function EditableInputPanel({
                 )}
 
                 {personalizadaOmieBPeriods && (Object.keys(personalizadaOmieBPeriods.terminoB).length > 0 || Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0) && (
-                    <AccordionSection id="personalizada-omie-b" title={t("simulationForm", "sectionPersonalizadaOmieB")}>
+                    <AccordionSection
+                        expanded={Boolean(expandedSections["personalizada-omie-b"])}
+                        onChange={(expanded) => setExpandedSections((prev) => ({ ...prev, "personalizada-omie-b": expanded }))}
+                        title={t("simulationForm", "sectionPersonalizadaOmieB")}
+                    >
                         <div>
                             {Object.keys(personalizadaOmieBPeriods.margenPotencia).length > 0 && (
                                 <>
@@ -829,7 +846,11 @@ function EditableInputPanel({
                 )}
 
                 {gasPersonalizadaIndexMargen !== undefined && (
-                    <AccordionSection id="gas-personalizada-index" title={t("simulationForm", "sectionGasPersonalizadaIndex")}>
+                    <AccordionSection
+                        expanded={Boolean(expandedSections["gas-personalizada-index"])}
+                        onChange={(expanded) => setExpandedSections((prev) => ({ ...prev, "gas-personalizada-index": expanded }))}
+                        title={t("simulationForm", "sectionGasPersonalizadaIndex")}
+                    >
                         <div>
                             <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, textTransform: "uppercase" }}>{t("simulationForm", "gasPersonalizadaIndexMargenLabel")}</Typography>
                             <CurrencyInput
@@ -845,7 +866,11 @@ function EditableInputPanel({
                 )}
 
                 {electricityPersonalizedFixedEnabled && elecPersonalizadaFijoPeriods && (
-                    <AccordionSection id="elec-personalizada-fijo" title="Personalized Fixed (custom)">
+                    <AccordionSection
+                        expanded={Boolean(expandedSections["elec-personalizada-fijo"])}
+                        onChange={(expanded) => setExpandedSections((prev) => ({ ...prev, "elec-personalizada-fijo": expanded }))}
+                        title="Personalized Fixed (custom)"
+                    >
                         <div>
                             <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, textTransform: "uppercase" }}>Término Potencia (€/kWdia)</Typography>
                             {Object.entries(elecPersonalizadaFijoPeriods.preciosPotencia).map(([period, value]) => (
@@ -876,7 +901,11 @@ function EditableInputPanel({
                 )}
 
                 {gasPersonalizadaFijo !== undefined && (
-                    <AccordionSection id="gas-personalizada-fijo" title="Personalized Fixed (custom)">
+                    <AccordionSection
+                        expanded={Boolean(expandedSections["gas-personalizada-fijo"])}
+                        onChange={(expanded) => setExpandedSections((prev) => ({ ...prev, "gas-personalizada-fijo": expanded }))}
+                        title="Personalized Fixed (custom)"
+                    >
                         <div>
                             <Typography variant="caption" component="div" sx={{ fontWeight: 700, color: uiColors.textMuted, mb: 0.75, textTransform: "uppercase" }}>Término Fijo (€/día)</Typography>
                             <CurrencyInput

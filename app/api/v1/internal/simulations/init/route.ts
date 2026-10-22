@@ -1,3 +1,4 @@
+import { ServerTiming } from "@/application/middleware/serverTiming";
 import { NextRequest } from "next/server";
 import { UserRole } from "@/domain/types";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
@@ -32,9 +33,10 @@ const defaultParams = (
 };
 
 export const GET = withErrorHandler(async (request: NextRequest) => {
-  const auth = await requireAuth(request);
-  await assertPermission(auth, "section.simulations");
-  await assertPermission(auth, "clients.view");
+  const timing = new ServerTiming();
+  const auth = await timing.measure("auth", () => requireAuth(request));
+  await timing.measure("simulation_permission", () => assertPermission(auth, "section.simulations"));
+  await timing.measure("client_permission", () => assertPermission(auth, "clients.view"));
 
   const searchParams = request.nextUrl.searchParams;
   const simulationsParams = scopedParams(searchParams, "simulations.");
@@ -71,7 +73,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     }).forEach((value, key) => usersParams.set(key, value));
   }
 
-  const usersPromise =
+  const usersPromise = timing.measure("list_users", () =>
     auth.role === UserRole.COMMERCIAL
       ? prisma.user
           .findUnique({
@@ -95,13 +97,16 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
             page: 1,
             pageSize: 1,
           }))
-      : listUsersForModule(auth, usersParams);
+      : listUsersForModule(auth, usersParams),
+  );
 
   const [simulations, clients, users] = await Promise.all([
-    listSimulationsForModule(auth, simulationsParams),
-    listClientsForModule(auth, clientsParams),
+    timing.measure("list_simulations", () => listSimulationsForModule(auth, simulationsParams)),
+    timing.measure("list_clients", () => listClientsForModule(auth, clientsParams)),
     usersPromise,
   ]);
 
-  return ResponseHandler.ok({ simulations, clients, users }, 200);
+  const response = ResponseHandler.ok({ simulations, clients, users }, 200);
+  timing.append(response.headers, "list_init_total");
+  return response;
 });

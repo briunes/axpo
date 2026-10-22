@@ -215,6 +215,21 @@ export class EmailService {
    * Send an email with custom content and log it
    */
   static async sendEmail(options: EmailOptions): Promise<void> {
+    // Preview deployments also use NODE_ENV=production, so prefer deployment config.
+    const environment = (process.env.APP_ENV || process.env.VERCEL_ENV || process.env.NODE_ENV || "local")
+      .trim().toLowerCase();
+    const isProduction = environment === "prod" || environment === "production";
+    const environmentLabels: Record<string, string> = {
+      dev: "DEV",
+      development: "DEV",
+      preview: "PREVIEW",
+      qld: "PREVIEW",
+      local: "LOCAL",
+    };
+    const prefix = `[${environmentLabels[environment] || environment.toUpperCase()}]`;
+    const subject = isProduction || options.subject.startsWith(`${prefix} `)
+      ? options.subject
+      : `${prefix} ${options.subject}`;
     const emailLogId = options.deliveryId ?? randomUUID();
     const trackingToken = randomUUID();
     const trackedHtml = appendEmailTrackingPixel(options.html, trackingToken);
@@ -240,7 +255,7 @@ export class EmailService {
     const baseLogData = {
       id: emailLogId,
       recipientEmail: options.to,
-      subject: options.subject,
+      subject,
       htmlBody: options.html,
       templateId: options.templateId,
       templateName: options.templateName,
@@ -298,7 +313,7 @@ export class EmailService {
       const info = await transporter.sendMail({
         from: `"${config.fromName}" <${config.fromEmail}>`,
         to: options.to,
-        subject: options.subject,
+        subject,
         html: trackedHtml,
         text: options.text,
         attachments: options.attachments,

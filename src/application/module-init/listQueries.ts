@@ -1,3 +1,4 @@
+import { listVersionSummaries } from "@/application/module-init/listVersionSummaries";
 import { UserRole, SimulationStatus } from "@/domain/types";
 import type { AuthContext } from "@/application/middleware/auth";
 import { isElevatedRole } from "@/application/middleware/rbac";
@@ -268,11 +269,7 @@ export async function listSimulationsForModule(
         updatedAt: true,
         ownerUser: { select: { id: true, fullName: true, email: true } },
         client: { select: { id: true, name: true } },
-        versions: {
-          orderBy: { createdAt: "desc" },
-          take: 5,
-          select: { payloadJson: true },
-        },
+
       },
       orderBy: { [orderBy]: sortDir },
       ...(postFilterPayload
@@ -282,15 +279,16 @@ export async function listSimulationsForModule(
     postFilterPayload ? Promise.resolve(0) : prisma.simulation.count({ where }),
   ]);
 
+  const versionSummaries = await listVersionSummaries(simulations.map(sim => sim.id));
   const allItems = simulations.map((sim) => {
-    const payload = mergeVersionPayloads(sim.versions);
+    const payload = mergeVersionPayloads(versionSummaries.get(sim.id) ?? []);
     const payloadSummary = buildListPayloadSummary(payload);
     const cupsNumber =
       getNestedString(payloadSummary, ["electricity", "clientData", "cups"]) ||
       getNestedString(payloadSummary, ["gas", "clientData", "cups"]) ||
       null;
 
-    const { versions, ...simWithoutVersions } = sim;
+    const simWithoutVersions = sim;
     return {
       ...simWithoutVersions,
       hasPublicToken: Boolean(sim.publicToken),

@@ -61,3 +61,75 @@ describe("Email delivery idempotency", () => {
     expect(sendMailMock).toHaveBeenCalledTimes(1);
   });
 });
+
+
+describe("Email subject environment tag", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    jest.spyOn(console, "log").mockImplementation(() => undefined);
+    process.env = { ...originalEnv };
+    delete process.env.APP_ENV;
+    delete process.env.VERCEL_ENV;
+    Reflect.deleteProperty(process.env, "NODE_ENV");
+    findUniqueMock.mockResolvedValue(null);
+    sendMailMock.mockResolvedValue({ messageId: "message-1", rejected: [] });
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+    jest.restoreAllMocks();
+  });
+
+  it.each([
+    ["dev", undefined, "production", "DEV"],
+    ["test", undefined, "test", "TEST"],
+    [" PREVIEW ", undefined, "production", "PREVIEW"],
+    ["preview", undefined, "production", "PREVIEW"],
+    ["qld", "preview", "production", "PREVIEW"],
+    ["local", undefined, "development", "LOCAL"],
+    ["prod", "production", "production", null],
+    ["production", undefined, "production", null],
+    [undefined, "preview", "production", "PREVIEW"],
+    [undefined, "development", "production", "DEV"],
+    [undefined, "production", "production", null],
+    [undefined, undefined, "production", null],
+    [undefined, undefined, "development", "DEV"],
+    [undefined, undefined, undefined, "LOCAL"],
+  ])("uses the expected subject for APP_ENV=%s VERCEL_ENV=%s NODE_ENV=%s", async (appEnv, vercelEnv, nodeEnv, label) => {
+    if (appEnv) process.env.APP_ENV = appEnv;
+    if (vercelEnv) process.env.VERCEL_ENV = vercelEnv;
+    if (nodeEnv) Object.assign(process.env, { NODE_ENV: nodeEnv });
+
+    await EmailService.sendEmail(input);
+
+    const subject = label ? `[${label}] ${input.subject}` : input.subject;
+    expect(sendMailMock).toHaveBeenCalledWith(expect.objectContaining({ subject }));
+    expect(createMock).toHaveBeenCalledWith({ data: expect.objectContaining({ subject }) });
+  });
+
+  it("serializes the preview tag into the actual email Subject header", async () => {
+    process.env.APP_ENV = "preview";
+    const nodemailer = jest.requireActual("nodemailer");
+    const transporter = nodemailer.createTransport({ streamTransport: true, buffer: true, newline: "unix" });
+    let rawMessage = "";
+    sendMailMock.mockImplementation(async (options) => {
+      const info = await transporter.sendMail(options);
+      rawMessage = info.message.toString();
+      return info;
+    });
+
+    await EmailService.sendEmail(input);
+
+    expect(rawMessage).toMatch(/^Subject: \[PREVIEW\] Escalation$/m);
+    expect(createMock).toHaveBeenCalledWith({ data: expect.objectContaining({ subject: "[PREVIEW] Escalation" }) });
+  });
+
+  it("does not duplicate an existing prefix", async () => {
+    process.env.APP_ENV = "preview";
+    const subject = "[PREVIEW] Escalation";
+    await EmailService.sendEmail({ ...input, subject });
+    expect(sendMailMock).toHaveBeenCalledWith(expect.objectContaining({ subject }));
+  });
+});

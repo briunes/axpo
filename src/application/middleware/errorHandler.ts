@@ -2,6 +2,7 @@
  * Error handler middleware
  */
 
+import { ServerTiming } from "./serverTiming";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { isDomainError } from "@/domain/errors/errors";
@@ -178,9 +179,10 @@ export const withErrorHandler = (
   ) => {
     try {
       return await withRequestContext(async () => {
+        const timing = new ServerTiming();
         const frontendVersion = req.headers.get("x-axpo-app-version");
         if (frontendVersion) {
-          await warmAppVersionCache();
+          await timing.measure("app_version", () => warmAppVersionCache());
           const currentVersion = getLoadedAppVersion();
 
           if (currentVersion && frontendVersion !== currentVersion) {
@@ -212,6 +214,7 @@ export const withErrorHandler = (
         }
 
         await captureApiErrorResponse(req, response);
+        timing.append(response.headers, "request_total");
         return response;
       });
     } catch (error) {
