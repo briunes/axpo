@@ -1,3 +1,4 @@
+import { recordScope } from "@/application/services/recordAccess";
 import { listVersionSummaries } from "@/application/module-init/listVersionSummaries";
 import { UserRole, SimulationStatus } from "@/domain/types";
 import type { AuthContext } from "@/application/middleware/auth";
@@ -195,7 +196,7 @@ export async function listSimulationsForModule(
   const orderBy = allowedOrderBy[rawOrderBy] ? rawOrderBy : "updatedAt";
   const postFilterPayload = isSupabaseApiMode() && Boolean(search || cups || type);
 
-  const baseWhere = SimulationService.buildSimulationFilter(
+  const baseWhere = await SimulationService.buildSimulationFilter(
     auth,
     includeDeleted,
   );
@@ -226,13 +227,13 @@ export async function listSimulationsForModule(
       ]
     : [];
   const advancedPayloadFilters = [
+    ...(ownerUserId ? [{ ownerUserId }] : []),
     ...(!postFilterPayload && cups ? [payloadCupsFilter(cups)] : []),
     ...(!postFilterPayload && type ? [payloadTypeFilter(type)] : []),
   ];
 
   const where = {
     ...baseWhere,
-    ...(ownerUserId ? { ownerUserId } : {}),
     ...(clientId ? { clientId } : {}),
     ...(status ? { status } : {}),
     ...(createdFrom || createdTo
@@ -574,7 +575,7 @@ export async function listClientsForModule(
           : { isDeleted: false }),
         ...(agencyIdFilter ? { agencyId: agencyIdFilter } : {}),
       }
-    : { agencyId: auth.agencyId, isDeleted: false };
+    : { ...(await recordScope(auth, "clients")), isDeleted: false };
 
   const where = search
     ? {

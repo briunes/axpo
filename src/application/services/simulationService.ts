@@ -1,3 +1,4 @@
+import { recordScope, canAccessRecord, assertClientAccess } from "./recordAccess";
 import { randomBytes } from "crypto";
 import { Prisma } from "@prisma/client";
 import { BaseValueScope, SimulationStatus, UserRole } from "@/domain/types";
@@ -286,23 +287,12 @@ const applySalesAgentDefaults = (
 };
 
 export class SimulationService {
-  static buildSimulationFilter(actor: ActorContext, includeDeleted = false) {
-    if (isElevatedRole(actor.role)) {
-      return includeDeleted
-        ? { isDeleted: true, deletedAt: null }
-        : { isDeleted: false };
-    }
-
-    if (actor.role === UserRole.AGENT) {
-      return {
-        isDeleted: false,
-        agencyId: actor.agencyId,
-      };
-    }
-
+  static async buildSimulationFilter(actor: ActorContext, includeDeleted = false) {
     return {
-      isDeleted: false,
-      ownerUserId: actor.userId,
+      ...(await recordScope(actor, "simulations")),
+      ...(includeDeleted && isElevatedRole(actor.role)
+        ? { isDeleted: true, deletedAt: null }
+        : { isDeleted: false }),
     };
   }
 
@@ -350,21 +340,7 @@ export class SimulationService {
       throw new NotFoundError("Simulation", simulationId);
     }
 
-    if (isElevatedRole(actor.role)) {
-      return simulation;
-    }
-
-    if (
-      actor.role === UserRole.AGENT &&
-      simulation.agencyId === actor.agencyId
-    ) {
-      return simulation;
-    }
-
-    if (
-      actor.role === UserRole.COMMERCIAL &&
-      simulation.ownerUserId === actor.userId
-    ) {
+    if (await canAccessRecord(actor, "simulations", simulation)) {
       return simulation;
     }
 
@@ -398,6 +374,14 @@ export class SimulationService {
         "Agent can only create simulations for own agency users",
       );
     }
+
+    if (!(await canAccessRecord(actor, "simulations", {
+      agencyId: ownerUser.agencyId,
+      ownerUserId,
+    }))) {
+      throw new ForbiddenError("Cannot create a simulation for this owner");
+    }
+    if (input.clientId) await assertClientAccess(actor, input.clientId);
 
     // Generate unique reference number: 00001/YYYY
     // Uses a retry loop to handle the unlikely race condition where two
@@ -756,10 +740,7 @@ export class SimulationService {
     }
 
     const canAccess =
-      isElevatedRole(actor.role) ||
-      (actor.role === UserRole.AGENT && simulation.agencyId === actor.agencyId) ||
-      (actor.role === UserRole.COMMERCIAL &&
-        simulation.ownerUserId === actor.userId);
+      await canAccessRecord(actor, "simulations", simulation);
 
     if (!canAccess) {
       throw new ForbiddenError("You do not have access to this simulation");
@@ -857,10 +838,7 @@ export class SimulationService {
     }
 
     const canArchive =
-      isElevatedRole(actor.role) ||
-      (actor.role === UserRole.AGENT && simulation.agencyId === actor.agencyId) ||
-      (actor.role === UserRole.COMMERCIAL &&
-        simulation.ownerUserId === actor.userId);
+      await canAccessRecord(actor, "simulations", simulation);
 
     if (!canArchive) {
       throw new ForbiddenError("You do not have access to this simulation");
