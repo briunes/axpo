@@ -1,3 +1,4 @@
+import { recordScope } from "@/application/services/recordAccess";
 import { NextRequest } from "next/server";
 import { withErrorHandler } from "@/application/middleware/errorHandler";
 import { ResponseHandler } from "@/application/middleware/response";
@@ -22,6 +23,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const clients = await prisma.client.findMany({
     where: {
+      ...(await recordScope(auth, "clients")),
       agencyId,
       isDeleted: false,
       isActive: true,

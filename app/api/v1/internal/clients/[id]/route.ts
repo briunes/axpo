@@ -1,3 +1,4 @@
+import { canAccessRecord } from "@/application/services/recordAccess";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { UserRole } from "@/domain/types";
@@ -35,7 +36,7 @@ const updateClientSchema = z.object({
  *   get:
  *     tags: [Clients]
  *     summary: Get client by id
- *     description: Get a specific client (Admin sees any, Agent sees only their agency's clients)
+ *     description: Get a specific client (Admin sees any, Client access follows role ownership permissions)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -83,7 +84,7 @@ const updateClientSchema = z.object({
  *   patch:
  *     tags: [Clients]
  *     summary: Update a client
- *     description: Update client information (Admin or Agent from same agency)
+ *     description: Update client information according to role ownership and action permissions
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -253,7 +254,7 @@ export const GET = withErrorHandler(
       throw new NotFoundError("Client", id);
     }
 
-    if (!isElevatedRole(auth.role) && client.agencyId !== auth.agencyId) {
+    if (!(await canAccessRecord(auth, "clients", client))) {
       throw new ForbiddenError("Access denied");
     }
 
@@ -277,8 +278,8 @@ export const PATCH = withErrorHandler(
       throw new NotFoundError("Client", id);
     }
 
-    // Non-admins can only edit their own agency's clients
-    if (!isElevatedRole(auth.role) && client.agencyId !== auth.agencyId) {
+    // Apply the same ownership scope to reads and writes.
+    if (!(await canAccessRecord(auth, "clients", client))) {
       throw new ForbiddenError("Access denied");
     }
 
@@ -382,7 +383,7 @@ export const DELETE = withErrorHandler(
       throw new ForbiddenError("Only administrators can delete archived clients");
     }
 
-    if (!isElevatedRole(auth.role) && client.agencyId !== auth.agencyId) {
+    if (!(await canAccessRecord(auth, "clients", client))) {
       throw new ForbiddenError("Access denied");
     }
 

@@ -1,3 +1,4 @@
+import { recordScope } from "@/application/services/recordAccess";
 import { analyticsPayloadSummaries } from "@/application/analytics/payloadSummaries";
 import { resolveAnalyticsPeriod } from "@/lib/analyticsPeriod";
 import { NextRequest } from "next/server";
@@ -63,6 +64,7 @@ const buildApiOverview = async (input: {
   since: Date;
   until: Date;
   filterAgencyId?: string;
+  ownerUserId?: string;
   energyTypeFilter?: "ELECTRICITY" | "GAS";
   elevated: boolean;
 }) => {
@@ -73,6 +75,7 @@ const buildApiOverview = async (input: {
         isDeleted: false,
         createdAt: { gte: previousSince, lt: input.until },
         ...(input.filterAgencyId ? { agencyId: input.filterAgencyId } : {}),
+        ...(input.ownerUserId ? { ownerUserId: input.ownerUserId } : {}),
       },
       select: {
         id: true,
@@ -95,6 +98,7 @@ const buildApiOverview = async (input: {
         isDeleted: false,
         sharedAt: { gte: previousSince, lt: input.until },
         ...(input.filterAgencyId ? { agencyId: input.filterAgencyId } : {}),
+        ...(input.ownerUserId ? { ownerUserId: input.ownerUserId } : {}),
       },
       select: {
         id: true,
@@ -147,14 +151,14 @@ const buildApiOverview = async (input: {
       createdAt: true,
       success: true,
       simulationId: true,
-      simulation: { select: { agencyId: true } },
+      simulation: { select: { agencyId: true, ownerUserId: true } },
     },
     orderBy: { createdAt: "asc" },
   });
   const trendAccess = recentAccess.filter(
     (attempt) =>
-      !input.filterAgencyId ||
-      attempt.simulation?.agencyId === input.filterAgencyId,
+      (!input.filterAgencyId || attempt.simulation?.agencyId === input.filterAgencyId) &&
+      (!input.ownerUserId || attempt.simulation?.ownerUserId === input.ownerUserId),
   );
 
   const dayKeys = Array.from({ length: input.days }, (_, index) =>
@@ -353,6 +357,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     ? (searchParams.get("agencyId") ?? undefined)
     : auth.agencyId!;
 
+  const scope = await recordScope(auth, "simulations");
+  const ownerUserId = scope.ownerUserId;
+
   // Optional energy type filter: "ELECTRICITY" | "GAS" | undefined (all)
   const energyTypeParam = searchParams.get("energyType") ?? undefined;
   const energyTypeFilter =
@@ -367,6 +374,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         since,
         until,
         filterAgencyId,
+        ownerUserId,
         energyTypeFilter,
         elevated: isElevatedRole(auth.role),
       }),
@@ -375,9 +383,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   }
 
   // SQL clause helpers — used in raw queries
-  const agencyClause = filterAgencyId
-    ? Prisma.sql`AND s."agencyId" = ${filterAgencyId}`
-    : Prisma.sql``;
+  const agencyClause = Prisma.sql`
+    ${filterAgencyId ? Prisma.sql`AND s."agencyId" = ${filterAgencyId}` : Prisma.sql``}
+    ${ownerUserId ? Prisma.sql`AND s."ownerUserId" = ${ownerUserId}` : Prisma.sql``}
+  `;
 
   // When energy type is set, narrow to matching simulation IDs via the JSON payload
   let energyTypeIdFilter: { id?: { in: string[] } } = {};
@@ -402,13 +411,16 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     };
   }
 
-  const simulationFilter = filterAgencyId
-    ? { isDeleted: false, agencyId: filterAgencyId, ...energyTypeIdFilter }
-    : { isDeleted: false, ...energyTypeIdFilter };
+  const simulationFilter = {
+    ...scope,
+    ...(filterAgencyId ? { agencyId: filterAgencyId } : {}),
+    isDeleted: false,
+    ...energyTypeIdFilter,
+  };
 
-  const accessFilter = filterAgencyId
-    ? { simulation: { agencyId: filterAgencyId } }
-    : {};
+  const accessFilter = {
+    simulation: { ...scope, ...(filterAgencyId ? { agencyId: filterAgencyId } : {}) },
+  };
 
   // Period-scoped variants — used for all KPI counts so they respect the days filter
   const simulationPeriodFilter = {
@@ -431,15 +443,13 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   // Access counts are scoped to simulations created in the period (same cohort),
   // so that "opens" is always comparable to "sent" and open rate stays ≤ 100%
   // (unless a client opens multiple times, which is expected).
-  const accessOnPeriodSimsFilter = filterAgencyId
-    ? {
-        simulation: {
-          agencyId: filterAgencyId,
-          createdAt: { gte: since, lt: until },
-          ...energyTypeIdFilter,
-        },
-      }
-    : { simulation: { createdAt: { gte: since, lt: until }, ...energyTypeIdFilter } };
+  const accessOnPeriodSimsFilter = {
+    simulation: {
+      ...accessFilter.simulation,
+      createdAt: { gte: since, lt: until },
+      ...energyTypeIdFilter,
+    },
+  };
 
   const [currentSimulationIds, previousSimulationIds] = await Promise.all([
     prisma.simulation.findMany({ where: { ...sharedPeriodFilter, sharedVia: "EMAIL" }, select: { id: true } }).then(rows => rows.map(row => row.id)),
