@@ -1,3 +1,4 @@
+import { recordScope } from "@/application/services/recordAccess";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { UserRole } from "@/domain/types";
@@ -33,7 +34,7 @@ const createClientSchema = z.object({
  *   get:
  *     tags: [Clients]
  *     summary: List clients scoped by RBAC
- *     description: List all clients (Admin sees all, Agent sees only their agency's clients)
+ *     description: List all clients (Admins see all; other roles follow configured client ownership scope)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -173,7 +174,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
           : { isDeleted: false }),
         ...(agencyIdFilter ? { agencyId: agencyIdFilter } : {}),
       }
-    : { agencyId: auth.agencyId, isDeleted: false };
+    : { ...(await recordScope(auth, "clients")), isDeleted: false };
 
   const where = search
     ? {

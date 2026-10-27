@@ -54,24 +54,24 @@ export function invalidatePermissionCache(): void {
  * For other roles, looks up the rolePermission table (with in-process cache)
  * and falls back to the static defaults if no record is found.
  */
-export async function assertPermission(
-  context: AuthContext,
+export async function hasPermission(
+  context: Pick<AuthContext, "userId" | "role">,
   key: PermissionKey,
-): Promise<void> {
+): Promise<boolean> {
   if (key === "section.simulation-issues") {
     const config = await prisma.systemConfig.findFirst();
     if (!isElevated(context.role) || config?.simulationIssuesEnabled === false ||
         !config?.incidentRecipientIds?.includes(context.userId)) {
-      throw new ForbiddenError("You are not assigned to manage simulation incidents");
+      return false;
     }
-    return;
+    return true;
   }
-  if (context.role === UserRole.SYS_ADMIN) return;
+  if (context.role === UserRole.SYS_ADMIN) return true;
   if (
     context.role === UserRole.ADMIN &&
     !LOG_PERMISSION_KEYS.includes(key)
   ) {
-    return;
+    return true;
   }
 
   const cacheKey = permissionCacheKey(context.role, key);
@@ -99,7 +99,16 @@ export async function assertPermission(
     });
   }
 
-  if (!allowed) {
-    throw new ForbiddenError("Insufficient permissions for this operation");
+  return allowed;
+}
+
+export async function assertPermission(
+  context: Pick<AuthContext, "userId" | "role">,
+  key: PermissionKey,
+): Promise<void> {
+  if (!(await hasPermission(context, key))) {
+    throw new ForbiddenError(key === "section.simulation-issues"
+      ? "You are not assigned to manage simulation incidents"
+      : "Insufficient permissions for this operation");
   }
 }

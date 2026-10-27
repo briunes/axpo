@@ -20,6 +20,7 @@ export type PermissionKey =
   | "section.configurations"
   | "section.ocr-usage"
   // ── Simulation actions ───────────────────────────────────────────────────
+  | "simulations.view_agency"
   | "simulations.create"
   | "simulations.share"
   | "simulations.duplicate"
@@ -29,6 +30,7 @@ export type PermissionKey =
   | "simulations.download_excel"
   // ── Client actions ────────────────────────────────────────────────────────
   | "clients.view"
+  | "clients.view_agency"
   | "clients.create"
   | "clients.edit"
   | "clients.delete"
@@ -166,6 +168,11 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     label: "Simulation Actions",
     permissions: [
       {
+        key: "simulations.view_agency",
+        label: "View other users’ simulations in the agency",
+        description: "When disabled, access is limited to own simulations. Existing action permissions still apply.",
+      },
+      {
         key: "simulations.create",
         label: "Create simulations",
         description: "Create new simulations from scratch or via OCR",
@@ -213,6 +220,11 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: "clients.view",
         label: "View clients",
         description: "View the client list and client details",
+      },
+      {
+        key: "clients.view_agency",
+        label: "View other users’ clients in the agency",
+        description: "When disabled, access is limited to own clients. Existing action permissions still apply.",
       },
       {
         key: "clients.create",
@@ -322,6 +334,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.analytics": true,
     "section.configurations": true,
     "section.ocr-usage": true,
+    "simulations.view_agency": true,
     "simulations.create": true,
     "simulations.share": true,
     "simulations.duplicate": true,
@@ -330,6 +343,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "simulations.edit_payload": true,
     "simulations.download_excel": true,
     "clients.view": true,
+    "clients.view_agency": true,
     "clients.create": true,
     "clients.edit": true,
     "clients.delete": true,
@@ -358,6 +372,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.analytics": true,
     "section.configurations": true,
     "section.ocr-usage": true,
+    "simulations.view_agency": true,
     "simulations.create": true,
     "simulations.share": true,
     "simulations.duplicate": true,
@@ -366,6 +381,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "simulations.edit_payload": true,
     "simulations.download_excel": true,
     "clients.view": true,
+    "clients.view_agency": true,
     "clients.create": true,
     "clients.edit": true,
     "clients.delete": true,
@@ -394,6 +410,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.analytics": true,
     "section.configurations": false,
     "section.ocr-usage": false,
+    "simulations.view_agency": true,
     "simulations.create": true,
     "simulations.share": true,
     "simulations.duplicate": true,
@@ -402,6 +419,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "simulations.edit_payload": true,
     "simulations.download_excel": false,
     "clients.view": true,
+    "clients.view_agency": true,
     "clients.create": true,
     "clients.edit": true,
     "clients.delete": false,
@@ -430,6 +448,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "section.analytics": false,
     "section.configurations": false,
     "section.ocr-usage": false,
+    "simulations.view_agency": false,
     "simulations.create": true,
     "simulations.share": true,
     "simulations.duplicate": true,
@@ -438,6 +457,7 @@ export const ROLE_PERMISSION_DEFAULTS: Record<
     "simulations.edit_payload": true,
     "simulations.download_excel": false,
     "clients.view": true,
+    "clients.view_agency": false,
     "clients.create": false,
     "clients.edit": false,
     "clients.delete": false,
