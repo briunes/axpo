@@ -35,7 +35,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const clientId = searchParams.get("clientId") || undefined;
 
   // Build RBAC filter (same as simulations list)
-  const simFilter = SimulationService.buildSimulationFilter(auth);
+  const simFilter = await SimulationService.buildSimulationFilter(auth);
 
   // Resolve the authorized simulations first. PostgREST relation filters use
   // left-join embeds by default, which can return versions with simulation=null

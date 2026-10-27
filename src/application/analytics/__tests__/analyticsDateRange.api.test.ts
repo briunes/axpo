@@ -1,3 +1,4 @@
+import { requireAuth } from "@/application/middleware/auth";
 import { NextRequest } from "next/server";
 import { GET } from "../../../../app/api/v1/internal/analytics/overview/route";
 import { prisma } from "@/infrastructure/database/prisma";
@@ -7,7 +8,7 @@ jest.mock("@/application/middleware/auth", () => ({
   requireAuth: jest.fn().mockResolvedValue({ role: "ADMIN", agencyId: "agency-1" }),
 }));
 jest.mock("@/application/middleware/rbac", () => ({
-  assertPermission: jest.fn(), isElevatedRole: () => true,
+  assertPermission: jest.fn(), isElevatedRole: (role: string) => role === "ADMIN", hasPermission: async () => false,
 }));
 jest.mock("@/application/middleware/errorHandler", () => ({ withErrorHandler: (handler: unknown) => handler }));
 jest.mock("@/application/lib/appVersionCache", () => ({
@@ -91,4 +92,23 @@ it.each([false, true])("includes agencies even when the entire period is empty (
   expect(db.agency.findMany).toHaveBeenCalledWith({
     where: { isDeleted: false }, select: { id: true, name: true },
   });
+});
+
+
+it.each([false, true])("limits analytics to own simulations when agency scope is disabled (API mode: %s)", async (apiMode) => {
+  jest.mocked(isSupabaseApiMode).mockReturnValue(apiMode);
+  jest.mocked(requireAuth).mockResolvedValueOnce({ userId: "own", role: "COMMERCIAL", agencyId: "agency-1" } as any);
+  const response = await GET(request());
+  expect(response.status).toBe(200);
+  for (const [query] of db.simulation.findMany.mock.calls) {
+    expect(query.where).toMatchObject({ agencyId: "agency-1", ownerUserId: "own" });
+  }
+  if (!apiMode) {
+    for (const [query] of db.simulation.count.mock.calls) {
+      expect(query.where).toMatchObject({ agencyId: "agency-1", ownerUserId: "own" });
+    }
+    for (const [query] of db.accessAttempt.findMany.mock.calls) {
+      expect(query.where.simulation).toMatchObject({ agencyId: "agency-1", ownerUserId: "own" });
+    }
+  }
 });

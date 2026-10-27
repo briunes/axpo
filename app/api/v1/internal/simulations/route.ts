@@ -307,7 +307,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const orderBy = allowedOrderBy[rawOrderBy] ? rawOrderBy : "updatedAt";
   const postFilterPayload = isSupabaseApiMode() && Boolean(search || cups || type);
 
-  const baseWhere = SimulationService.buildSimulationFilter(
+  const baseWhere = await SimulationService.buildSimulationFilter(
     auth,
     includeDeleted,
   );
@@ -358,13 +358,13 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       ]
     : [];
   const advancedPayloadFilters = [
+    ...(ownerUserId ? [{ ownerUserId }] : []),
     ...(!postFilterPayload && cups ? [payloadCupsFilter(cups)] : []),
     ...(!postFilterPayload && type ? [payloadTypeFilter(type)] : []),
   ];
 
   const where = {
     ...baseWhere,
-    ...(ownerUserId ? { ownerUserId } : {}),
     ...(clientId ? { clientId } : {}),
     ...(status ? { status } : {}),
     ...(createdFrom || createdTo

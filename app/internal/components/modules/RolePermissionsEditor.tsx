@@ -200,7 +200,7 @@ export function RolePermissionsEditor({
                     <span>{t("rolePermissionsModule", "loading")}</span>
                 </div>
             ) : (
-                <div className="rpe-matrix">
+                <div className="rpe-matrix" tabIndex={0} role="region" aria-label={t("configurationsModule", "tabRolePermissions")}>
                     {/* Column headers */}
                     <div className="rpe-matrix-header">
                         <div className="rpe-col-perm-label" />
@@ -237,6 +237,7 @@ export function RolePermissionsEditor({
                                     {/* SYS_ADMIN column — always ON, not editable */}
                                     <div className="rpe-col-role rpe-col-role--admin">
                                         <Switch
+                                            slotProps={{ input: { "aria-label": `${getRoleLabel("SYS_ADMIN")}: ${getPermLabel(perm.key)}` } }}
                                             checked
                                             disabled
                                             size="small"
@@ -252,6 +253,7 @@ export function RolePermissionsEditor({
                                         return (
                                             <div className="rpe-col-role rpe-col-role--admin">
                                                 <Switch
+                                                    slotProps={{ input: { "aria-label": `${getRoleLabel(role)}: ${getPermLabel(perm.key)}` } }}
                                                     checked={checked}
                                                     disabled={locked}
                                                     size="small"
@@ -270,6 +272,7 @@ export function RolePermissionsEditor({
                                         return (
                                             <div key={role} className="rpe-col-role">
                                                 <Switch
+                                                    slotProps={{ input: { "aria-label": `${getRoleLabel(role)}: ${getPermLabel(perm.key)}` } }}
                                                     checked={checked}
                                                     size="small"
                                                     color="primary"
@@ -288,6 +291,8 @@ export function RolePermissionsEditor({
 
             <style>{`
         .rpe-container {
+          min-width: 0;
+          max-width: 100%;
           padding: 24px 0 40px;
         }
         .rpe-topbar {
@@ -344,8 +349,16 @@ export function RolePermissionsEditor({
         .rpe-matrix {
                     border: 1px solid var(--scheme-neutral-900);
           border-radius: 12px;
-          overflow: hidden;
+          overflow-x: auto;
+          max-width: 100%;
                     background: var(--scheme-neutral-1200);
+        }
+        .rpe-matrix-header, .rpe-group {
+          min-width: 720px;
+        }
+        .rpe-matrix:focus-visible {
+          outline: 2px solid var(--scheme-brand-600);
+          outline-offset: 2px;
         }
         .rpe-matrix-header {
           display: grid;
