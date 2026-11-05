@@ -158,16 +158,17 @@ export async function calculateAndPersistSimulation(
   }
 
   availableBillingMonths = await getBaseValueBillingMonths(baseValueSetId);
-  if (payload.electricity && selectedBillingMonth) {
-    if (
-      availableBillingMonths.length > 0 &&
-      !availableBillingMonths.includes(selectedBillingMonth)
-    ) {
-      throw new ValidationError(
-        `Billing month ${selectedBillingMonth} is not available in the selected base value set`,
-      );
-    }
-  }
+  // Fixed prices are snapshot values in the uploaded set, not month-keyed.
+  // Keep the invoice month/dates intact and suppress all indexed calculations.
+  const fixedOnlyFallback =
+    payload.electricity && selectedBillingMonth &&
+    availableBillingMonths.length > 0 &&
+    !availableBillingMonths.includes(selectedBillingMonth)
+      ? {
+          requestedMonth: selectedBillingMonth,
+          sourceMonth: availableBillingMonths[0],
+        }
+      : undefined;
 
   const payloadWithTaxRates: SimulationPayload = {
     ...payload,
@@ -235,8 +236,11 @@ export async function calculateAndPersistSimulation(
         | "AGENCY"
         | "TLV",
       productDefinitions,
+      fixedOnly: Boolean(fixedOnlyFallback),
     },
   );
+
+  if (fixedOnlyFallback) results.fixedOnlyFallback = fixedOnlyFallback;
 
   const updatedPayload: SimulationPayload = {
     ...payload,
@@ -256,6 +260,9 @@ export async function calculateAndPersistSimulation(
         }
       : undefined,
     results,
+    ...(fixedOnlyFallback && payload.selectedOffer?.pricingType === "INDEXED"
+      ? { selectedOffer: null }
+      : {}),
   };
 
   const newVersion = await prisma.simulationVersion.create({

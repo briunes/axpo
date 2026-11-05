@@ -2023,7 +2023,14 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             const updatedPayload: SimulationPayload = {
                 ...payload,
                 results: calcResult.results,
+                ...(calcResult.results.fixedOnlyFallback && selectedOffer?.pricingType === "INDEXED"
+                    ? { selectedOffer: null }
+                    : {}),
             };
+            if (updatedPayload.selectedOffer === null) {
+                setSelectedOffer(undefined);
+                onOfferSelected?.(undefined, null);
+            }
             setResults(calcResult.results);
             setAvailableBillingMonths(calcResult.billingMonths);
             setActiveTab("results");
@@ -2036,7 +2043,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         } finally {
             setCalculating(false);
         }
-    }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify, baseValueSetId, billingMonthOverride]);
+    }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify, onOfferSelected, baseValueSetId, billingMonthOverride]);
 
     const calculateWithMonth = useCallback(async (month: string) => {
         // Do NOT change fechaInicio/fechaFin — the billing period must stay as-is.
@@ -2067,7 +2074,14 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
             const updatedPayload: SimulationPayload = {
                 ...payload,
                 results: calcResult.results,
+                ...(calcResult.results.fixedOnlyFallback && selectedOffer?.pricingType === "INDEXED"
+                    ? { selectedOffer: null }
+                    : {}),
             };
+            if (updatedPayload.selectedOffer === null) {
+                setSelectedOffer(undefined);
+                onOfferSelected?.(undefined, null);
+            }
             setResults(calcResult.results);
             setAvailableBillingMonths(calcResult.billingMonths);
             setActiveTab("results");
@@ -2080,7 +2094,7 @@ export const SimulationForm = forwardRef<SimulationFormHandle, SimulationFormPro
         } finally {
             setCalculating(false);
         }
-    }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify, baseValueSetId]);
+    }, [simulation.id, token, simType, elecState, gasState, selectedOffer, onSuccess, onNotify, onOfferSelected, baseValueSetId]);
 
     useImperativeHandle(ref, () => ({ calculate: handleCalculate }), [handleCalculate]);
 

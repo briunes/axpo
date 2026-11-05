@@ -367,6 +367,9 @@ export interface ProductResult {
 }
 
 export interface SimulationResults {
+  /** Missing monthly indexed data; fixed prices use the uploaded snapshot. */
+  fixedOnlyFallback?: { requestedMonth: string; sourceMonth: string };
+
   /** ISO timestamp of when the calculation was run */
   calculatedAt: string;
 
