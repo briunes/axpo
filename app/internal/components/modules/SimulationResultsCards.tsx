@@ -7,7 +7,7 @@ import { FormSelect } from "../ui/FormSelect";
 import { CurrencyInput } from "../ui/CurrencyInput";
 import { useUserPreferences } from "../providers/UserPreferencesProvider";
 import { alpha, useTheme } from "@mui/material/styles";
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Radio, Stack, Tab, Tabs, Tooltip, Typography, useMediaQuery } from "@mui/material";
+import { Alert, Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Radio, Stack, Tab, Tabs, Tooltip, Typography, useMediaQuery } from "@mui/material";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import BoltIcon from "@mui/icons-material/Bolt";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -692,7 +692,7 @@ function EditableInputPanel({
                         <FormSelect
                             label={t("simulationOffersCards", "monthSelectorLabel")}
                             value={selectedMonth}
-                            options={availableMonths.map((month) => ({
+                            options={[...new Set([selectedMonth, ...availableMonths])].map((month) => ({
                                 value: month,
                                 label: fmtMonth(month, locale),
                             }))}
@@ -1031,9 +1031,25 @@ export function SimulationResultsCards({
         setPendingOffer(null);
     };
 
+    // YYYY-MM strings compare chronologically. Only a month after the newest
+    // uploaded one is "not uploaded yet"; an older month is outside the set.
+    const fallbackNoticeKey = results.fixedOnlyFallback &&
+        results.fixedOnlyFallback.requestedMonth > results.fixedOnlyFallback.sourceMonth
+        ? "fixedOnlyNotice"
+        : "fixedOnlyNoticeMonthNotInSet";
+    const fallbackNotice = results.fixedOnlyFallback ? (
+        <Alert severity="info" sx={{ mb: 2, overflowWrap: "anywhere" }}>
+            {t("simulationForm", fallbackNoticeKey, {
+                month: fmtMonth(results.fixedOnlyFallback.requestedMonth, locale),
+                sourceMonth: fmtMonth(results.fixedOnlyFallback.sourceMonth, locale),
+            })}
+        </Alert>
+    ) : null;
+
     if (!hasElec && !hasGas) {
         return (
             <div style={{ padding: 60, textAlign: "center", background: uiColors.surfaceRaised, borderRadius: 12, border: `1px solid ${uiColors.border}` }}>
+                {fallbackNotice}
                 <BarChartIcon sx={{ fontSize: 48, mb: 2, color: "text.disabled" }} />
                 <Typography variant="body2" component="div" sx={{ color: uiColors.textMuted, mb: 1, fontWeight: 600 }}>
                     {t("simulationOffersCards", "noResults")}
@@ -1047,6 +1063,7 @@ export function SimulationResultsCards({
 
     return (
         <div className="simulation-results-shell" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {fallbackNotice}
             <div className="simulation-results-grid" style={{
                 display: "grid",
                 gridTemplateColumns: "minmax(280px, 320px) minmax(0, 1fr)",

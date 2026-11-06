@@ -24,3 +24,15 @@ export function billingMonthsFromItems(items: BillingMonthItem[]): string[] {
 
   return [...new Set(discovered)].sort((a, b) => b.localeCompare(a));
 }
+
+const MIBGAS_MONTH_KEY = /^MIBGAS:(\d{4}-(?:0[1-9]|1[0-2]))$/;
+
+/** Returns the months with an uploaded MIBGAS reference price, newest first. */
+export function mibgasMonthsFromKeys(keys: Iterable<string>): string[] {
+  const months: string[] = [];
+  for (const key of keys) {
+    const month = key.match(MIBGAS_MONTH_KEY)?.[1];
+    if (month) months.push(month);
+  }
+  return [...new Set(months)].sort((a, b) => b.localeCompare(a));
+}

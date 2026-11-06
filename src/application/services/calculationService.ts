@@ -63,6 +63,8 @@ function isUnpriced20TdPowerPeriod(tariff: string, period: string): boolean {
 }
 
 export interface CalculationOptions {
+  /** Skip every indexed product, including personalized offers. */
+  fixedOnly?: boolean;
   baseValueScope?: ProductRegistryScope;
   productDefinitions?: ProductDefinition[];
 }
@@ -195,7 +197,7 @@ function singlePeriodPriceOf(
  * "MES" field and is used to look up the correct MIBGAS reference price when
  * the billing period spans multiple months.
  */
-function dominantBillingMonth(fechaInicio: string, fechaFin: string): string {
+export function dominantBillingMonth(fechaInicio: string, fechaFin: string): string {
   const start = new Date(fechaInicio + "T00:00:00");
   const end = new Date(fechaFin + "T00:00:00");
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
@@ -1256,20 +1258,22 @@ export class CalculationService {
       }
     }
 
-    for (const product of configuredProducts("ELECTRICITY", "INDEXED")) {
-      for (const tier of product.tiers) {
-        const r = calcElecIndex(inputs, product, tier, map);
-        if (r) results.push(r);
+    if (!options.fixedOnly) {
+      for (const product of configuredProducts("ELECTRICITY", "INDEXED")) {
+        for (const tier of product.tiers) {
+          const r = calcElecIndex(inputs, product, tier, map);
+          if (r) results.push(r);
+        }
       }
+
+      // Personalizada products — prices come from their dedicated Excel sheets (stored in
+      // the DB like DINAMICA products). They are included whenever prices exist in the DB.
+      const rPIdx = calcPersonalizadaIndex(inputs, map);
+      if (rPIdx) results.push(rPIdx);
+
+      const rPOmieB = calcPersonalizadaOmieB(inputs, map);
+      if (rPOmieB) results.push(rPOmieB);
     }
-
-    // Personalizada products — prices come from their dedicated Excel sheets (stored in
-    // the DB like DINAMICA products). They are included whenever prices exist in the DB.
-    const rPIdx = calcPersonalizadaIndex(inputs, map);
-    if (rPIdx) results.push(rPIdx);
-
-    const rPOmieB = calcPersonalizadaOmieB(inputs, map);
-    if (rPOmieB) results.push(rPOmieB);
 
     // Personalizada Fijo — user-supplied all-in prices per period
     const rPFijo = calcElecPersonalizadaFijo(inputs, map);
@@ -1315,10 +1319,12 @@ export class CalculationService {
       }
     }
 
-    for (const product of configuredProducts("INDEXED")) {
-      for (const tier of product.tiers) {
-        const r = calcGasIndex(inputs, product, tier, map);
-        if (r) results.push(r);
+    if (!options.fixedOnly) {
+      for (const product of configuredProducts("INDEXED")) {
+        for (const tier of product.tiers) {
+          const r = calcGasIndex(inputs, product, tier, map);
+          if (r) results.push(r);
+        }
       }
     }
 
@@ -1327,8 +1333,10 @@ export class CalculationService {
     if (rGasPFijo) results.push(rGasPFijo);
 
     // Personalizada Indexada — only included when the user has provided a margin
-    const rGasPIdx = calcGasPersonalizadaIndex(inputs, map);
-    if (rGasPIdx) results.push(rGasPIdx);
+    if (!options.fixedOnly) {
+      const rGasPIdx = calcGasPersonalizadaIndex(inputs, map);
+      if (rGasPIdx) results.push(rGasPIdx);
+    }
 
     // Products are already in declaration order due to iteration sequence:
     // GAS products iterated in order (ESTABLE_GAS→ESTABLE_PLUS_GAS→DINAMICA_GAS→etc), each with tiers N1→N2→N3
