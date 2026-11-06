@@ -1,4 +1,16 @@
-import { billingMonthsFromItems } from "../billingMonths";
+import { billingMonthsFromItems, mibgasMonthsFromKeys } from "../billingMonths";
+
+describe("mibgasMonthsFromKeys", () => {
+  it("returns uploaded MIBGAS months newest first and ignores other keys", () => {
+    expect(mibgasMonthsFromKeys([
+      "MIBGAS:2026-09",
+      "MIBGAS:2026-10",
+      "MIBGAS:2026-13",
+      "MIBGAS:2026-10:EXTRA",
+      "GAS:INDEX:INDEXADO:N1:RL01:PEN:MARGEN",
+    ])).toEqual(["2026-10", "2026-09"]);
+  });
+});
 
 describe("billingMonthsFromItems", () => {
   it("uses explicit workbook metadata and sorts newest first", () => {

@@ -197,7 +197,7 @@ function singlePeriodPriceOf(
  * "MES" field and is used to look up the correct MIBGAS reference price when
  * the billing period spans multiple months.
  */
-function dominantBillingMonth(fechaInicio: string, fechaFin: string): string {
+export function dominantBillingMonth(fechaInicio: string, fechaFin: string): string {
   const start = new Date(fechaInicio + "T00:00:00");
   const end = new Date(fechaFin + "T00:00:00");
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {

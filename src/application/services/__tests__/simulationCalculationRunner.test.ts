@@ -103,6 +103,84 @@ it("uses the latest loaded month even when the requested month is older", async 
   expect(results.fixedOnlyFallback).toEqual({ requestedMonth: "2026-08", sourceMonth: "2026-10" });
 });
 
+describe("gas", () => {
+  const num = (value: number) => ({ toNumber: () => value });
+  const gasRows = [
+    { key: "GAS:FIJO:FIJO:N1:RL01:PEN:ENERGIA", valueNumeric: num(0.05) },
+    { key: "GAS:FIJO:FIJO:N1:RL01:TERMINO_DIA", valueNumeric: num(0.2) },
+    { key: "GAS:INDEX:INDEXADO:N1:RL01:PEN:MARGEN", valueNumeric: num(0.01) },
+    { key: "MIBGAS:2026-10", valueNumeric: num(0.03) },
+    { key: "MIBGAS:2026-09", valueNumeric: num(0.03) },
+  ];
+  const useGasPeriod = (fechaInicio: string, fechaFin: string) => {
+    payload = {
+      gas: {
+        tarifaAcceso: "RL01", zonaGeografica: "Peninsula", consumo: 1000, telemedida: "NO",
+        periodo: { fechaInicio, fechaFin, dias: 30 }, facturaActual: 150, extras: {},
+      },
+      selectedOffer: {
+        productKey: "INDEXADO:N1", commodity: "GAS", pricingType: "INDEXED",
+        selectedAt: "2026-10-01",
+      },
+    };
+    (prisma.simulationVersion.findFirst as jest.Mock).mockResolvedValue({
+      payloadJson: payload, baseValueSetId: null,
+    });
+  };
+
+  beforeEach(() => {
+    (prisma.baseValueItem.findMany as jest.Mock).mockResolvedValue(gasRows);
+  });
+
+  it("calculates only fixed offers when the MIBGAS month has not been uploaded", async () => {
+    useGasPeriod("2026-11-01", "2026-11-30");
+    const { results } = await calculate();
+    expect(results.fixedOnlyFallback).toEqual({ requestedMonth: "2026-11", sourceMonth: "2026-10" });
+    expect(results.gas!.length).toBeGreaterThan(0);
+    expect(results.gas!.every(result => result.pricingType === "FIXED")).toBe(true);
+    const saved = (prisma.simulationVersion.create as jest.Mock).mock.calls[0][0].data.payloadJson;
+    expect(saved.results.fixedOnlyFallback).toEqual(results.fixedOnlyFallback);
+    expect(saved.gas.periodo.fechaInicio).toBe("2026-11-01");
+    expect(saved.selectedOffer).toBeNull();
+  });
+
+  it("uses the period's dominant month, not the end date's month", async () => {
+    // 2026-10-05 → 2026-11-02: 27 days in October, 2 in November.
+    useGasPeriod("2026-10-05", "2026-11-02");
+    const { results } = await calculate();
+    expect(results.fixedOnlyFallback).toBeUndefined();
+    expect(results.gas).toEqual(expect.arrayContaining([
+      expect.objectContaining({ pricingType: "INDEXED" }),
+    ]));
+  });
+
+  it("keeps indexed offers when the MIBGAS month is uploaded", async () => {
+    useGasPeriod("2026-10-01", "2026-10-31");
+    const { results } = await calculate();
+    expect(results.fixedOnlyFallback).toBeUndefined();
+    expect(results.gas).toEqual(expect.arrayContaining([
+      expect.objectContaining({ pricingType: "FIXED" }),
+      expect.objectContaining({ pricingType: "INDEXED" }),
+    ]));
+  });
+
+  it("falls back for a month older than the uploaded MIBGAS range", async () => {
+    useGasPeriod("2026-08-01", "2026-08-31");
+    const { results } = await calculate();
+    expect(results.fixedOnlyFallback).toEqual({ requestedMonth: "2026-08", sourceMonth: "2026-10" });
+  });
+
+  it("retains legacy calculation for sets without MIBGAS months", async () => {
+    (prisma.baseValueItem.findMany as jest.Mock).mockResolvedValue(
+      gasRows.filter(row => !row.key.startsWith("MIBGAS:")),
+    );
+    useGasPeriod("2026-11-01", "2026-11-30");
+    const { results } = await calculate();
+    expect(results.fixedOnlyFallback).toBeUndefined();
+    expect(results.gas!.some(result => result.pricingType === "INDEXED")).toBe(true);
+  });
+});
+
 it("retains legacy calculation for sets without monthly metadata", async () => {
   (getBaseValueBillingMonths as jest.Mock).mockResolvedValue([]);
   const { results } = await calculate();

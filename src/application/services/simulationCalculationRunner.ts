@@ -4,8 +4,10 @@ import { BaseValueScope, type SimulationPayload } from "@/domain/types";
 import { prisma } from "@/infrastructure/database/prisma";
 import {
   CalculationService,
+  dominantBillingMonth,
   type PriceMap,
 } from "@/application/services/calculationService";
+import { mibgasMonthsFromKeys } from "@/domain/billingMonths";
 import { SimulationService } from "@/application/services/simulationService";
 import { AuditService } from "@/application/services/auditService";
 import {
@@ -160,14 +162,18 @@ export async function calculateAndPersistSimulation(
   availableBillingMonths = await getBaseValueBillingMonths(baseValueSetId);
   // Fixed prices are snapshot values in the uploaded set, not month-keyed.
   // Keep the invoice month/dates intact and suppress all indexed calculations.
-  const fixedOnlyFallback =
-    payload.electricity && selectedBillingMonth &&
-    availableBillingMonths.length > 0 &&
-    !availableBillingMonths.includes(selectedBillingMonth)
-      ? {
-          requestedMonth: selectedBillingMonth,
-          sourceMonth: availableBillingMonths[0],
-        }
+  // Electricity indexed prices are keyed by billing month; gas indexed prices
+  // add the MIBGAS reference of the period's dominant month.
+  const fixedOnlyFallback = payload.electricity
+    ? missingMonthFallback(selectedBillingMonth, availableBillingMonths)
+    : payload.gas
+      ? missingMonthFallback(
+          dominantBillingMonth(
+            payload.gas.periodo.fechaInicio,
+            payload.gas.periodo.fechaFin,
+          ),
+          mibgasMonthsFromKeys(priceMapResult.priceMap.keys()),
+        )
       : undefined;
 
   const payloadWithTaxRates: SimulationPayload = {
@@ -295,6 +301,19 @@ export async function calculateAndPersistSimulation(
     billingMonths: availableBillingMonths,
     results,
   };
+}
+
+/**
+ * Sets without monthly data (legacy imports) keep the regular calculation.
+ * Otherwise a month absent from the set only allows fixed offers.
+ */
+function missingMonthFallback(
+  requestedMonth: string | undefined,
+  availableMonths: string[],
+): { requestedMonth: string; sourceMonth: string } | undefined {
+  if (!requestedMonth || availableMonths.length === 0) return undefined;
+  if (availableMonths.includes(requestedMonth)) return undefined;
+  return { requestedMonth, sourceMonth: availableMonths[0] };
 }
 
 async function getPriceMapForBaseValueSet(

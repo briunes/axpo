@@ -1031,9 +1031,15 @@ export function SimulationResultsCards({
         setPendingOffer(null);
     };
 
+    // YYYY-MM strings compare chronologically. Only a month after the newest
+    // uploaded one is "not uploaded yet"; an older month is outside the set.
+    const fallbackNoticeKey = results.fixedOnlyFallback &&
+        results.fixedOnlyFallback.requestedMonth > results.fixedOnlyFallback.sourceMonth
+        ? "fixedOnlyNotice"
+        : "fixedOnlyNoticeMonthNotInSet";
     const fallbackNotice = results.fixedOnlyFallback ? (
         <Alert severity="info" sx={{ mb: 2, overflowWrap: "anywhere" }}>
-            {t("simulationForm", "fixedOnlyNotice", {
+            {t("simulationForm", fallbackNoticeKey, {
                 month: fmtMonth(results.fixedOnlyFallback.requestedMonth, locale),
                 sourceMonth: fmtMonth(results.fixedOnlyFallback.sourceMonth, locale),
             })}
